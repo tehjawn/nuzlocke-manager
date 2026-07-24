@@ -5,7 +5,7 @@ import { BadgeCase } from "@/components/BadgeCase";
 import { Frame } from "@/components/Frame";
 import { ReviveToken } from "@/components/ReviveToken";
 import { displayName, pokemonInSlot } from "@/lib/challenges";
-import { pokemonSpriteUrl, trainerSpriteUrl } from "@/lib/sprites";
+import { avatarImageUrl, pokemonSpriteUrl } from "@/lib/sprites";
 
 type TrainerCardProps = {
   challenge: Challenge;
@@ -20,7 +20,7 @@ export function TrainerCard({ challenge, trainer }: TrainerCardProps) {
     <Frame>
       <div className="flex items-start gap-3">
         <Image
-          src={trainerSpriteUrl(trainer.avatarSpriteKey)}
+          src={avatarImageUrl(trainer.avatarSpriteKey)}
           alt=""
           width={64}
           height={64}

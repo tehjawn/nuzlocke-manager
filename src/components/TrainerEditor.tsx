@@ -7,6 +7,7 @@ import {
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
+import { AvatarPicker } from "@/components/AvatarPicker";
 import { SpeciesCombobox } from "@/components/SpeciesCombobox";
 import type {
   BadgeDefinition,
@@ -14,7 +15,6 @@ import type {
   PokemonSlot,
   TrainerProfile,
 } from "@/lib/challenge-types";
-import { DEFAULT_TRAINER_SPRITES } from "@/lib/sprites";
 
 type TrainerEditorProps = {
   trainer: TrainerProfile;
@@ -51,6 +51,7 @@ export function TrainerEditor({
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [handle, setHandle] = useState(trainer.handle);
   const [statusText, setStatusText] = useState(trainer.statusText ?? "");
   const [realName, setRealName] = useState(trainer.realName ?? "");
   const [avatarSpriteKey, setAvatarSpriteKey] = useState(
@@ -92,54 +93,63 @@ export function TrainerEditor({
   }
 
   return (
-    <div className="space-y-6">
+    <div id="edit-board" className="scroll-mt-4 space-y-6">
       <section className="gba-frame">
         <header className="gba-frame-title px-3 py-2 text-sm">
-          Edit board
+          Edit profile
         </header>
-        <div className="space-y-3 p-3 sm:p-4">
+        <div className="space-y-4 p-3 sm:p-4">
           <label className="block text-sm">
-            <span className="mb-1 block font-bold text-muted">Status</span>
-            <textarea
-              className="min-h-20 w-full rounded-sm border-2 border-frame bg-surface px-3 py-2 text-sm"
-              value={statusText}
-              onChange={(e) => setStatusText(e.target.value)}
+            <span className="mb-1 block font-bold text-muted">Nickname</span>
+            <input
+              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2 text-sm"
+              value={handle}
+              maxLength={24}
+              placeholder="Your league nickname"
+              onChange={(e) => setHandle(e.target.value)}
             />
+            <span className="mt-1 block text-xs text-muted">
+              Shown on the league board. Letters, numbers, spaces, and hyphens.
+            </span>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-bold text-muted">Real name</span>
             <input
               className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2 text-sm"
               value={realName}
+              placeholder="Optional — e.g. John"
               onChange={(e) => setRealName(e.target.value)}
             />
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-bold text-muted">
-              Trainer sprite
-            </span>
-            <select
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2 text-sm"
-              value={avatarSpriteKey}
-              onChange={(e) => setAvatarSpriteKey(e.target.value)}
-            >
-              {DEFAULT_TRAINER_SPRITES.map((key) => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
-              ))}
-            </select>
+            <span className="mb-1 block font-bold text-muted">Status</span>
+            <textarea
+              className="min-h-20 w-full rounded-sm border-2 border-frame bg-surface px-3 py-2 text-sm"
+              value={statusText}
+              placeholder="Where you are in the run…"
+              onChange={(e) => setStatusText(e.target.value)}
+            />
           </label>
+          <div>
+            <span className="mb-2 block text-sm font-bold text-muted">
+              Avatar
+            </span>
+            <AvatarPicker
+              value={avatarSpriteKey}
+              onChange={setAvatarSpriteKey}
+            />
+          </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={pending}
+              disabled={pending || !handle.trim()}
               className="pressable rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
               onClick={() => {
                 startTransition(async () => {
                   flash(
                     await updateTrainerBoardAction({
                       trainerId: trainer.id,
+                      handle: handle.trim(),
                       statusText,
                       realName: realName || null,
                       avatarSpriteKey,
@@ -454,27 +464,33 @@ export function TrainerEditor({
           Quick edit existing
         </header>
         <ul className="divide-y-2 divide-frame/20 p-2">
-          {trainer.pokemon.map((mon) => (
-            <li
-              key={mon.id}
-              className="flex items-center justify-between gap-2 px-2 py-2 text-sm"
-            >
-              <span>
-                <span className="font-bold">{mon.nickname || mon.species}</span>
-                <span className="text-muted">
-                  {" "}
-                  · {mon.slot.toLowerCase()} #{mon.partyIndex}
-                </span>
-              </span>
-              <button
-                type="button"
-                className="pressable rounded-sm bg-surface px-3 py-1 text-xs font-bold uppercase"
-                onClick={() => editPokemon(mon)}
-              >
-                Edit
-              </button>
+          {trainer.pokemon.length === 0 ? (
+            <li className="px-2 py-3 text-sm text-muted">
+              No Pokémon yet — add your Main Squad above.
             </li>
-          ))}
+          ) : (
+            trainer.pokemon.map((mon) => (
+              <li
+                key={mon.id}
+                className="flex items-center justify-between gap-2 px-2 py-2 text-sm"
+              >
+                <span>
+                  <span className="font-bold">{mon.nickname || mon.species}</span>
+                  <span className="text-muted">
+                    {" "}
+                    · {mon.slot.toLowerCase()} #{mon.partyIndex}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="pressable rounded-sm bg-surface px-3 py-1 text-xs font-bold uppercase"
+                  onClick={() => editPokemon(mon)}
+                >
+                  Edit
+                </button>
+              </li>
+            ))
+          )}
         </ul>
       </section>
 

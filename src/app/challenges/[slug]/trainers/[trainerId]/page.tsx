@@ -15,7 +15,7 @@ import {
   pokemonInSlot,
 } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
-import { trainerSpriteUrl } from "@/lib/sprites";
+import { avatarImageUrl } from "@/lib/sprites";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +43,13 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     : null;
   const canEdit = Boolean(access?.canEditTrainer(trainer.userId));
   const isDemo = !trainer.userId;
+  // Header only needs a truthy id to show “My board” → /me
+  const myTrainerId =
+    access?.isPlayer
+      ? trainer.userId === access.userId
+        ? trainer.id
+        : access.userId
+      : null;
 
   const main = pokemonInSlot(trainer, "MAIN");
   const reserves = pokemonInSlot(trainer, "RESERVE");
@@ -54,6 +61,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         challengeSlug={challenge.slug}
         challengeName={challenge.name}
         showGm={Boolean(access?.isGm)}
+        myTrainerId={myTrainerId}
       />
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6">
         <DataSourceBanner source={challenge.source} />
@@ -67,7 +75,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         <Frame>
           <div className="flex flex-wrap items-start gap-4">
             <Image
-              src={trainerSpriteUrl(trainer.avatarSpriteKey)}
+              src={avatarImageUrl(trainer.avatarSpriteKey)}
               alt=""
               width={96}
               height={96}
@@ -93,6 +101,14 @@ export default async function TrainerBoardPage({ params }: PageProps) {
                     Demo example
                   </span>
                 ) : null}
+                {canEdit ? (
+                  <a
+                    href="#edit-board"
+                    className="pressable rounded-sm bg-accent px-3 py-2 font-display text-xs font-bold tracking-wide text-white uppercase"
+                  >
+                    Edit profile
+                  </a>
+                ) : null}
               </div>
               {isDemo ? (
                 <p className="mt-3 text-sm text-muted">
@@ -106,9 +122,24 @@ export default async function TrainerBoardPage({ params }: PageProps) {
                   to get your own editable board.
                 </p>
               ) : null}
+              {canEdit && trainer.pokemon.length === 0 ? (
+                <p className="mt-3 text-sm text-muted">
+                  Your board is ready — set a nickname, pick an avatar, toggle
+                  badges, and fill your party below.
+                </p>
+              ) : null}
             </div>
           </div>
         </Frame>
+
+        {canEdit && trainer.pokemon.length === 0 ? (
+          <TrainerEditor
+            trainer={trainer}
+            badges={challenge.badges}
+            canEdit={canEdit}
+            isGm={Boolean(access?.isGm)}
+          />
+        ) : null}
 
         <Frame title="Badge case">
           <BadgeCase
@@ -139,7 +170,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           )}
         </Frame>
 
-        {canEdit ? (
+        {canEdit && trainer.pokemon.length > 0 ? (
           <TrainerEditor
             trainer={trainer}
             badges={challenge.badges}
