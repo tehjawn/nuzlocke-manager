@@ -1,10 +1,11 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
+import { ChallengeShell } from "@/components/ChallengeShell";
 import { Frame } from "@/components/Frame";
-import { SiteHeader } from "@/components/SiteHeader";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
+import { ensureTrainerForChallenge } from "@/lib/provision";
 
 export const dynamic = "force-dynamic";
 
@@ -22,43 +23,52 @@ export async function generateMetadata({
 
 export default async function FaqPage({ params }: PageProps) {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const session = await auth();
+  const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
+
+  let myTrainerId: string | null = null;
+  if (session?.user?.id && challenge.source === "database") {
+    const provisioned = await ensureTrainerForChallenge({
+      userId: session.user.id,
+      slug: challenge.slug,
+      allowAutoJoin: challenge.visibility !== "INVITE",
+    });
+    if (provisioned.ok) {
+      myTrainerId = provisioned.trainerId;
+    }
+  }
+
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <SiteHeader
-        challengeSlug={challenge.slug}
-        challengeName={challenge.name}
-        showGm={Boolean(access?.isGm)}
-      />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-2 sm:px-6">
-        <Link
-          href={`/challenges/${challenge.slug}`}
-          className="text-sm text-muted hover:text-ink"
-        >
-          ← League board
-        </Link>
-        <h1 className="font-display mt-4 text-3xl font-extrabold tracking-tight">
+    <ChallengeShell
+      slug={challenge.slug}
+      name={challenge.name}
+      year={challenge.year}
+      showGm={Boolean(access?.isGm)}
+      myTrainerId={myTrainerId}
+    >
+      <header className="mb-6">
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">
           FAQ
         </h1>
         <p className="mt-2 text-muted">
           Common questions for {challenge.name}.
         </p>
+      </header>
 
-        <div className="mt-8 space-y-4">
-          {challenge.faqs.map((faq) => (
-            <Frame key={faq.id} title={faq.question}>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                {faq.answer}
-              </p>
-            </Frame>
-          ))}
-        </div>
-      </main>
-    </div>
+      <div className="space-y-4">
+        {challenge.faqs.map((faq) => (
+          <Frame key={faq.id} title={faq.question}>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {faq.answer}
+            </p>
+          </Frame>
+        ))}
+      </div>
+    </ChallengeShell>
   );
 }

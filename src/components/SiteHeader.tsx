@@ -43,18 +43,6 @@ export function SiteHeader({
         </Link>
         {challengeSlug ? (
           <>
-            <Link
-              href={`/challenges/${challengeSlug}/rules`}
-              className="pressable hidden rounded-sm bg-surface px-3 py-1.5 font-medium sm:inline-block"
-            >
-              Rules
-            </Link>
-            <Link
-              href={`/challenges/${challengeSlug}/faq`}
-              className="pressable hidden rounded-sm bg-surface px-3 py-1.5 font-medium sm:inline-block"
-            >
-              FAQ
-            </Link>
             {myTrainerId ? (
               <Link
                 href={`/challenges/${challengeSlug}/me`}

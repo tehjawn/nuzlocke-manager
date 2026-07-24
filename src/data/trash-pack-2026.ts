@@ -199,11 +199,11 @@ const ashKetchum = trainer({
 
 export const trashPack2026: SeedChallenge = {
   slug: "2026-trash-pack",
-  name: "Trash Pack Pokémon Nuzlocke",
+  name: "Pokémon Emerald Crest",
   year: 2026,
   game: "Pokémon Emerald",
   description:
-    "Friend-group Hoenn Nuzlocke. Sign in with Discord to get a trainer board automatically. Ash is a demo example only.",
+    "Trash Pack's 2026 Nuzlocke. Sign in with Discord and import your save file!",
   status: "ACTIVE",
   visibility: "PUBLIC",
   playerInviteCode: null,

@@ -22,11 +22,11 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Nuzlocke Manager",
+    default: "Trash Pack's Nuzlocke Challenge Manager",
     template: "%s · Nuzlocke Manager",
   },
   description:
-    "Trash Pack's Nuzlocke tracker — league boards, graves, badges, and season archives with a Gen 3 warm feel.",
+    "Trash Pack's Nuzlocke Challenge Manager — league boards, graves, badges, and season archives.",
 };
 
 export default function RootLayout({
