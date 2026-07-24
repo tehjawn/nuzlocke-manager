@@ -10,7 +10,7 @@ Phases 0–2 shipped (Clubhouse UI, Trash Pack seed, Discord auth, board editing
 - Invite / GM codes for gated seasons and GM elevation
 - Player board editing (status, revive, badges, Pokémon CRUD)
 - Species + shiny sprite picker
-- Import Pokémon from Afterplay save states / Gen 3 `.sav` (preview → overwrite living roster)
+- Import from Afterplay / Gen 3 saves (party, box, R.I.P., encounters + optional name/badges)
 - GM console (settings, rules, FAQ, Main Squad lock)
 - Activity feed on the league board
 - Postgres-backed data with seed fallback for read-only demo

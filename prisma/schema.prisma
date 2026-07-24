@@ -33,6 +33,7 @@ enum PokemonSlot {
   MAIN
   RESERVE
   GRAVEYARD
+  ENCOUNTERED
 }
 
 enum ActivityType {

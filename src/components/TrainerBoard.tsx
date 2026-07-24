@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   deletePokemonAction,
-  replaceLivingRosterAction,
+  importFromSaveAction,
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
@@ -21,10 +21,7 @@ import {
 } from "@/components/PokemonFormModal";
 import { PartyStrip } from "@/components/PartyStrip";
 import { ReviveToken } from "@/components/ReviveToken";
-import {
-  SaveImportModal,
-  type SaveImportDraft,
-} from "@/components/SaveImportModal";
+import { SaveImportModal } from "@/components/SaveImportModal";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
 import type {
   BadgeDefinition,
@@ -80,6 +77,7 @@ export function TrainerBoard({
   const main = pokemonInSlot(trainer, "MAIN");
   const reserves = pokemonInSlot(trainer, "RESERVE");
   const graveyard = pokemonInSlot(trainer, "GRAVEYARD");
+  const encountered = pokemonInSlot(trainer, "ENCOUNTERED");
 
   function flash(
     result: { ok: true; message?: string } | { ok: false; error: string },
@@ -446,6 +444,37 @@ export function TrainerBoard({
               </p>
             )}
           </Frame>
+
+          <Frame title="Encountered">
+            {editing ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-muted">
+                    {encountered.length === 0
+                      ? "No extra encounters logged."
+                      : "Caught / seen outside the active party."}
+                  </p>
+                  <button
+                    type="button"
+                    className="pressable rounded-sm border-2 border-frame bg-surface px-3 py-1.5 text-xs font-bold uppercase"
+                    onClick={() => openAddPokemon("ENCOUNTERED")}
+                  >
+                    + Add
+                  </button>
+                </div>
+                {encountered.length > 0 ? (
+                  <PartyStrip
+                    pokemon={encountered}
+                    onSelect={openEditPokemon}
+                  />
+                ) : null}
+              </div>
+            ) : encountered.length > 0 ? (
+              <PartyStrip pokemon={encountered} />
+            ) : (
+              <p className="text-sm text-muted">No encounters logged yet.</p>
+            )}
+          </Frame>
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-4">
@@ -529,11 +558,11 @@ export function TrainerBoard({
             open={saveImportOpen}
             pending={pending}
             onClose={() => setSaveImportOpen(false)}
-            onApply={(mons: SaveImportDraft[]) => {
+            onApply={(payload) => {
               startTransition(async () => {
-                const result = await replaceLivingRosterAction({
+                const result = await importFromSaveAction({
                   trainerId: trainer.id,
-                  pokemon: mons.map((m) => ({
+                  pokemon: payload.pokemon.map((m) => ({
                     nickname: m.nickname || null,
                     species: m.species.trim(),
                     pokedexId: m.pokedexId,
@@ -541,6 +570,17 @@ export function TrainerBoard({
                     isShiny: m.isShiny,
                     slot: m.slot,
                   })),
+                  trainerName: payload.trainerName,
+                  applyTrainerName: payload.applyTrainerName,
+                  badgeKeys: payload.badgeKeys,
+                  applyBadges: payload.applyBadges,
+                  // Full category sync: unchecked mons clear that slot group.
+                  replaceSlots: [
+                    "MAIN",
+                    "RESERVE",
+                    "GRAVEYARD",
+                    "ENCOUNTERED",
+                  ],
                 });
                 flash(result);
                 if (result.ok) setSaveImportOpen(false);

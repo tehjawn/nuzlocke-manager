@@ -1,16 +1,19 @@
 /**
- * Parse Pokémon from Gen 3–style saves and Afterplay/RetroArch save states.
+ * Parse Pokémon + trainer meta from Gen 3–style saves and Afterplay states.
  *
- * Supports:
- * - Afterplay `#RZIPv` compressed save states (mGBA / RASTATE)
- * - Raw `.sav` / `.srm` flash saves (128 KiB / 64 KiB)
+ * Categories (Crest / expansion layout):
+ * - party: 6-slot playerParty (only filled slots)
+ * - encountered: Pokémon stored immediately after the party block
+ * - box: remaining PC / storage Pokémon
+ * - rip: storage copies with 0 HP (fainted / boxed dead)
  *
- * Emerald Crest (and similar expansion hacks) XOR-encrypt the 48-byte data
- * section with repeating `pid ^ otId` instead of the vanilla LCG stream.
- * Both schemes are tried per candidate.
+ * Crest encrypts the 48-byte data section with repeating `pid ^ otId`
+ * (vanilla Emerald uses an LCG stream). Both are tried.
  */
 
 import { findPokemonById } from "@/data/pokemon-index";
+
+export type SaveMonCategory = "party" | "box" | "rip" | "encountered";
 
 export type ParsedSavePokemon = {
   pid: number;
@@ -19,11 +22,33 @@ export type ParsedSavePokemon = {
   pokedexId: number;
   level: number | null;
   isShiny: boolean;
-  source: "party" | "box";
+  category: SaveMonCategory;
+};
+
+export type ParsedSaveTrainer = {
+  name: string;
+  gender: "M" | "F" | null;
+};
+
+export type ParsedSaveBadges = {
+  /** Keys matching DEFAULT_BADGE_DEFINITIONS gym-1 … gym-8 */
+  earnedKeys: string[];
+  /** True when flag bytes looked coherent enough to trust. */
+  reliable: boolean;
 };
 
 export type ParseSaveResult =
-  | { ok: true; pokemon: ParsedSavePokemon[]; format: string; warnings: string[] }
+  | {
+      ok: true;
+      format: string;
+      warnings: string[];
+      trainer: ParsedSaveTrainer | null;
+      badges: ParsedSaveBadges;
+      party: ParsedSavePokemon[];
+      box: ParsedSavePokemon[];
+      rip: ParsedSavePokemon[];
+      encountered: ParsedSavePokemon[];
+    }
   | { ok: false; error: string };
 
 const GBA_STATE_SIZE = 0x61000;
@@ -31,8 +56,12 @@ const EWRAM_OFFSET = 0x21000;
 const EWRAM_SIZE = 0x40000;
 const MON_SIZE = 100;
 const BOX_SIZE = 80;
+const PARTY_SLOTS = 6;
+/** Vanilla Emerald: flags[] starts this many bytes after playerParty. */
+const FLAGS_AFTER_PARTY = 0x1038;
+const SYSTEM_FLAGS = 0x860;
+const FLAG_BADGE01 = SYSTEM_FLAGS + 0x7;
 
-/** Personality % 24 → position of each substructure type [G,A,E,M]. */
 const POS_OF_TYPE: readonly (readonly number[])[] = [
   [0, 1, 2, 3],
   [0, 1, 3, 2],
@@ -132,7 +161,6 @@ async function inflateRzipAsync(buf: Uint8Array): Promise<Uint8Array | null> {
 async function inflateZlibAsync(chunk: Uint8Array): Promise<Uint8Array | null> {
   if (typeof DecompressionStream === "undefined") return null;
   try {
-    // "deflate" = zlib wrapper (what RetroArch RZIP chunks use)
     const ds = new DecompressionStream("deflate");
     const stream = new Blob([chunk as BlobPart]).stream().pipeThrough(ds);
     return new Uint8Array(await new Response(stream).arrayBuffer());
@@ -234,7 +262,6 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
     return null;
   }
 
-  // Language: English is typically 2 on Emerald / Crest
   const language = bytes[offset + 18] ?? 0;
   if (language === 0 || language > 8) return null;
 
@@ -262,7 +289,6 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
   const growthPos = posOfType[0]!;
   const growthView = new DataView(dec.buffer, dec.byteOffset + growthPos * 12, 12);
   const speciesId = growthView.getUint16(0, true);
-  // National dex through Gen 9 (+ headroom for hack forms)
   if (speciesId === 0 || speciesId > 1500) return null;
   if (!findPokemonById(speciesId) && !/^[A-Z]/.test(nickname)) return null;
 
@@ -303,25 +329,11 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
   };
 }
 
-function collectMons(bytes: Uint8Array): RawMon[] {
-  const best = new Map<number, RawMon>();
-  for (let off = 0; off + BOX_SIZE <= bytes.length; off += 4) {
-    const mon = tryParseMon(bytes, off);
-    if (!mon) continue;
-    const prev = best.get(mon.pid);
-    if (!prev) {
-      best.set(mon.pid, mon);
-      continue;
-    }
-    // Prefer healed / party-stat copies over battle-damaged duplicates
-    const score = (m: RawMon) =>
-      (m.level != null ? 1000 : 0) + (m.maxHp > 0 ? 100 : 0) + m.hp;
-    if (score(mon) > score(prev)) best.set(mon.pid, mon);
-  }
-  return [...best.values()].sort((a, b) => a.offset - b.offset);
+function monScore(m: RawMon): number {
+  return (m.level != null ? 1000 : 0) + (m.maxHp > 0 ? 100 : 0) + m.hp;
 }
 
-function toParsed(mon: RawMon): ParsedSavePokemon {
+function toParsed(mon: RawMon, category: SaveMonCategory): ParsedSavePokemon {
   const entry = findPokemonById(mon.speciesId);
   const species =
     entry?.name ??
@@ -329,8 +341,7 @@ function toParsed(mon: RawMon): ParsedSavePokemon {
       ? mon.nickname
       : `Species #${mon.speciesId}`);
   const nick =
-    mon.nickname &&
-    mon.nickname.toLowerCase() !== species.toLowerCase()
+    mon.nickname && mon.nickname.toLowerCase() !== species.toLowerCase()
       ? mon.nickname
       : null;
 
@@ -341,53 +352,236 @@ function toParsed(mon: RawMon): ParsedSavePokemon {
     pokedexId: mon.speciesId,
     level: mon.level,
     isShiny: mon.isShiny,
-    source: mon.level != null ? "party" : "box",
+    category,
   };
 }
 
-function parseFromRegions(
-  regions: { label: string; bytes: Uint8Array }[],
-): ParseSaveResult {
-  const warnings: string[] = [];
-  let best: RawMon[] = [];
-  let format = regions[0]?.label ?? "unknown";
+/** Find 6-slot party arrays; prefer healed storage copies with a post-party list. */
+function findPartyBases(bytes: Uint8Array): number[] {
+  const scored: { off: number; score: number }[] = [];
 
-  for (const region of regions) {
-    const mons = collectMons(region.bytes);
-    if (mons.length > best.length) {
-      best = mons;
-      format = region.label;
+  for (let off = 0; off + PARTY_SLOTS * MON_SIZE <= bytes.length; off += 4) {
+    let filled = 0;
+    let heal = 0;
+    let valid = true;
+    for (let i = 0; i < PARTY_SLOTS; i++) {
+      const slotOff = off + i * MON_SIZE;
+      const pid = new DataView(
+        bytes.buffer,
+        bytes.byteOffset + slotOff,
+        4,
+      ).getUint32(0, true);
+      if (pid === 0) continue;
+      const mon = tryParseMon(bytes, slotOff);
+      if (!mon || mon.level == null) {
+        valid = false;
+        break;
+      }
+      filled += 1;
+      heal += mon.hp;
     }
+    if (!valid || filled === 0) continue;
+
+    // Prefer arrays followed by more Pokémon (Crest encounter list).
+    let post = 0;
+    const postBase = off + PARTY_SLOTS * MON_SIZE;
+    for (let i = 0; i < 12; i++) {
+      const m = tryParseMon(bytes, postBase + i * MON_SIZE);
+      if (!m || m.level == null) break;
+      post += 1;
+    }
+
+    scored.push({
+      off,
+      score: filled * 1000 + post * 100 + heal + off * 0.0001,
+    });
   }
 
-  if (best.length === 0) {
+  scored.sort((a, b) => b.score - a.score);
+  // Dedupe overlapping windows — keep best only per ~600-byte neighborhood
+  const kept: number[] = [];
+  for (const s of scored) {
+    if (kept.some((k) => Math.abs(k - s.off) < PARTY_SLOTS * MON_SIZE)) continue;
+    kept.push(s.off);
+    if (kept.length >= 4) break;
+  }
+  return kept;
+}
+
+function readSlotArray(
+  bytes: Uint8Array,
+  base: number,
+  maxSlots: number,
+): RawMon[] {
+  const out: RawMon[] = [];
+  let empties = 0;
+  for (let i = 0; i < maxSlots; i++) {
+    const off = base + i * MON_SIZE;
+    if (off + MON_SIZE > bytes.length) break;
+    const pid = new DataView(bytes.buffer, bytes.byteOffset + off, 4).getUint32(
+      0,
+      true,
+    );
+    if (pid === 0) {
+      empties += 1;
+      if (empties >= 2 && out.length > 0) break;
+      continue;
+    }
+    empties = 0;
+    const mon = tryParseMon(bytes, off);
+    if (mon && mon.level != null) out.push(mon);
+    else if (out.length > 0) break;
+  }
+  return out;
+}
+
+function findTrainer(bytes: Uint8Array, partyOid: number | null): ParsedSaveTrainer | null {
+  // SaveBlock2 starts with playerName[8]; gender at +8; trainerId at +0xA
+  for (let i = 0; i + 16 < bytes.length; i++) {
+    if (bytes[i + 7] !== 0xff && bytes[i + 3] !== 0xff) continue;
+    const name = decodeGen3Text(bytes.subarray(i, i + 8));
+    if (!/^[A-Za-z][A-Za-z0-9]{1,6}$/.test(name)) continue;
+    const genderByte = bytes[i + 8] ?? 0xff;
+    if (genderByte > 1) continue;
+    const tid = new DataView(bytes.buffer, bytes.byteOffset + i + 0xa, 4).getUint32(
+      0,
+      true,
+    );
+    // Prefer names whose block is near a matching OT id from party
+    if (partyOid != null) {
+      // OT id is often nearby in summary structs; SB2 trainer id is related but not always equal
+      void tid;
+    }
+    // Heuristic: next bytes after name look like SB2 (playtime / options small ints)
+    const b9 = bytes[i + 9] ?? 0xff;
+    if (b9 !== 0 && b9 !== 0xff) continue;
+    return { name, gender: genderByte === 1 ? "F" : "M" };
+  }
+  return null;
+}
+
+function findTrainerNearParty(
+  bytes: Uint8Array,
+  partyMons: RawMon[],
+): ParsedSaveTrainer | null {
+  if (partyMons.length === 0) return findTrainer(bytes, null);
+  const otName = decodeGen3Text(
+    // OT is on the mon at +20; party OT name should match trainer
+    bytes.subarray(partyMons[0]!.offset + 20, partyMons[0]!.offset + 27),
+  );
+  if (/^[A-Za-z][A-Za-z0-9]{1,6}$/.test(otName)) {
+    return { name: otName, gender: null };
+  }
+  return findTrainer(bytes, partyMons[0]!.oid);
+}
+
+function readBadges(bytes: Uint8Array, partyBase: number | null): ParsedSaveBadges {
+  const empty: ParsedSaveBadges = { earnedKeys: [], reliable: false };
+  if (partyBase == null) return empty;
+
+  const flagsBase = partyBase + FLAGS_AFTER_PARTY;
+  if (flagsBase + 0x120 >= bytes.length) return empty;
+
+  const flagGet = (flag: number) => {
+    const i = flag >> 3;
+    const b = flag & 7;
+    return ((bytes[flagsBase + i]! >> b) & 1) === 1;
+  };
+
+  // Require SYS_POKEMON_GET for a coherent flags block
+  if (!flagGet(SYSTEM_FLAGS)) {
+    return empty;
+  }
+
+  const earnedKeys: string[] = [];
+  for (let i = 0; i < 8; i++) {
+    if (flagGet(FLAG_BADGE01 + i)) earnedKeys.push(`gym-${i + 1}`);
+  }
+  return { earnedKeys, reliable: true };
+}
+
+function classifyEwram(bytes: Uint8Array): ParseSaveResult {
+  const warnings: string[] = [];
+  const partyBases = findPartyBases(bytes);
+  if (partyBases.length === 0) {
     return {
       ok: false,
       error:
-        "No Pokémon found. Use an Afterplay save state or a Gen 3 .sav/.srm (in-game save).",
+        "No party block found. Use an Afterplay save state or a Gen 3 .sav/.srm.",
     };
   }
 
-  const party = best.filter((m) => m.level != null);
-  // Prefer party-stat copies (levels/HP). Fall back to box-only if that's all we found.
-  const ordered = party.length > 0 ? party : best;
-  if (party.length === 0) {
-    warnings.push("No party stats found — showing box/PC Pokémon instead.");
-  } else if (best.length > party.length) {
-    warnings.push(
-      `Skipped ${best.length - party.length} box-only Pokémon (party import only).`,
-    );
+  // Highest-scoring base: healed party + post-party encounter list when present
+  const partyBase = partyBases[0]!;
+
+  const party: RawMon[] = [];
+  for (let i = 0; i < PARTY_SLOTS; i++) {
+    const m = tryParseMon(bytes, partyBase + i * MON_SIZE);
+    if (m && m.level != null) party.push(m);
   }
-  if (ordered.some((m) => m.crypto === "xor32")) {
+
+  const encountered = readSlotArray(
+    bytes,
+    partyBase + PARTY_SLOTS * MON_SIZE,
+    60,
+  ).filter((m) => !party.some((p) => p.pid === m.pid));
+
+  // Collect other unique mons (best healed copies) for box / rip
+  const bestByPid = new Map<number, RawMon>();
+  for (let off = 0; off + BOX_SIZE <= bytes.length; off += 4) {
+    const mon = tryParseMon(bytes, off);
+    if (!mon) continue;
+    const prev = bestByPid.get(mon.pid);
+    if (!prev || monScore(mon) > monScore(prev)) bestByPid.set(mon.pid, mon);
+  }
+
+  const claimed = new Set([
+    ...party.map((m) => m.pid),
+    ...encountered.map((m) => m.pid),
+  ]);
+
+  const box: RawMon[] = [];
+  const rip: RawMon[] = [];
+  for (const mon of bestByPid.values()) {
+    if (claimed.has(mon.pid)) continue;
+    if (mon.maxHp > 0 && mon.hp === 0) {
+      rip.push(mon);
+    } else if (mon.level != null || mon.speciesId > 0) {
+      box.push(mon);
+    }
+  }
+  box.sort((a, b) => a.offset - b.offset);
+  rip.sort((a, b) => a.offset - b.offset);
+
+  const trainer = findTrainerNearParty(bytes, party);
+  const badges = readBadges(bytes, partyBase);
+  if (!badges.reliable) {
+    warnings.push("Could not reliably read gym badge flags from this save.");
+  } else if (badges.earnedKeys.length === 0) {
+    warnings.push("No gym badges set in save (early game).");
+  }
+  if (party.some((m) => m.crypto === "xor32")) {
     warnings.push("Decoded with Crest-style encryption (pid⊕otId).");
   }
 
   return {
     ok: true,
-    pokemon: ordered.map(toParsed),
-    format,
+    format: "Afterplay/mGBA EWRAM",
     warnings,
+    trainer,
+    badges,
+    party: party.map((m) => toParsed(m, "party")),
+    box: box.map((m) => toParsed(m, "box")),
+    rip: rip.map((m) => toParsed(m, "rip")),
+    encountered: encountered.map((m) => toParsed(m, "encountered")),
   };
+}
+
+function parseUncompressedState(state: Uint8Array): ParseSaveResult {
+  const mem = extractRastateMem(state) ?? state;
+  const ewram = extractMgbaEwram(mem);
+  if (ewram) return classifyEwram(ewram);
+  return classifyEwram(mem);
 }
 
 /** Parse uncompressed dumps / flash saves (no RZIP). */
@@ -406,31 +600,16 @@ export function parsePokemonSave(buf: Uint8Array): ParseSaveResult {
     return parseUncompressedState(buf);
   }
 
-  const regions: { label: string; bytes: Uint8Array }[] = [];
-
   if (buf.length >= GBA_STATE_SIZE) {
     const ewram = extractMgbaEwram(buf);
-    if (ewram) regions.push({ label: "mGBA state EWRAM", bytes: ewram });
+    if (ewram) return classifyEwram(ewram);
   }
 
   if (buf.length === 0x20000 || buf.length === 0x10000 || buf.length === 0x20010) {
-    regions.push({
-      label: "Gen 3 flash save",
-      bytes: buf.subarray(0, Math.min(buf.length, 0x20000)),
-    });
+    return classifyEwram(buf.subarray(0, Math.min(buf.length, 0x20000)));
   }
 
-  regions.push({ label: "raw buffer", bytes: buf });
-  return parseFromRegions(regions);
-}
-
-function parseUncompressedState(state: Uint8Array): ParseSaveResult {
-  const regions: { label: string; bytes: Uint8Array }[] = [];
-  const mem = extractRastateMem(state) ?? state;
-  const ewram = extractMgbaEwram(mem);
-  if (ewram) regions.push({ label: "Afterplay/mGBA EWRAM", bytes: ewram });
-  regions.push({ label: "state memory", bytes: mem });
-  return parseFromRegions(regions);
+  return classifyEwram(buf);
 }
 
 /** Preferred browser entry: handles Afterplay RZIP via DecompressionStream. */

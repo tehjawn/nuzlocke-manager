@@ -268,7 +268,7 @@ Known gaps to close in this phase (or sooner if painful):
 - Optional public share links
 - Soft dark theme variant (still warm, not OLED gamer)
 
-**Shipped early (outside original phase order):** Afterplay / Gen 3 **save import** on the trainer board (preview → edit → overwrite Main + Reserves; R.I.P. kept). Crest-style `pid⊕otId` encryption + vanilla LCG both supported.
+**Shipped early (outside original phase order):** Afterplay / Gen 3 **save import** — categorizes party → Main, box → Reserves, fainted → R.I.P., post-party storage → Encountered; optional trainer name + gym badge sync. Crest-style `pid⊕otId` encryption + vanilla LCG both supported.
 
 **Explicitly deprioritized:** damage calculator, full boss scouting DB, real-time CRDT, multi-tenant billing.
 
