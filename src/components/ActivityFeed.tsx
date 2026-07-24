@@ -1,6 +1,11 @@
 "use client";
 
 import { useOptimistic, useState, useTransition } from "react";
+import EmojiPicker, {
+  EmojiStyle,
+  Theme,
+  type EmojiClickData,
+} from "emoji-picker-react";
 import { toggleActivityReactionAction } from "@/app/actions/challenge";
 import { Frame } from "@/components/Frame";
 import type {
@@ -8,7 +13,7 @@ import type {
   ActivityReactionSummary,
 } from "@/lib/challenge-types";
 
-const FEED_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
+const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
 
 type ActivityFeedProps = {
   activities: ActivityItem[];
@@ -62,6 +67,7 @@ function ActivityRow({
 }) {
   const [pending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [reactions, setOptimistic] = useOptimistic(
     item.reactions ?? [],
     (current, emoji: string) => mergeReaction(current, emoji),
@@ -69,9 +75,14 @@ function ActivityRow({
 
   const visibleReactions = reactions.filter((r) => r.count > 0);
 
+  function closePicker() {
+    setPickerOpen(false);
+    setMoreOpen(false);
+  }
+
   function react(emoji: string) {
     if (!canReact) return;
-    setPickerOpen(false);
+    closePicker();
     startTransition(async () => {
       setOptimistic(emoji);
       await toggleActivityReactionAction({
@@ -79,6 +90,10 @@ function ActivityRow({
         emoji,
       });
     });
+  }
+
+  function onEmojiClick(data: EmojiClickData) {
+    react(data.emoji);
   }
 
   return (
@@ -101,14 +116,17 @@ function ActivityRow({
               disabled={pending}
               aria-label="Add reaction"
               aria-expanded={pickerOpen}
-              aria-haspopup="listbox"
+              aria-haspopup="dialog"
               title="Add reaction"
               className={`rounded-sm border border-frame/40 bg-surface-2 p-1 text-muted transition-opacity pressable hover:bg-accent/10 hover:text-ink ${
                 pickerOpen
                   ? "opacity-100"
                   : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
               }`}
-              onClick={() => setPickerOpen((open) => !open)}
+              onClick={() => {
+                setPickerOpen((open) => !open);
+                setMoreOpen(false);
+              }}
             >
               <AddReactionIcon />
             </button>
@@ -119,34 +137,65 @@ function ActivityRow({
                   type="button"
                   aria-label="Dismiss emoji picker"
                   className="fixed inset-0 z-10 cursor-default"
-                  onClick={() => setPickerOpen(false)}
+                  onClick={closePicker}
                 />
                 <div
-                  role="listbox"
+                  role="dialog"
                   aria-label="Emoji reactions"
-                  className="absolute top-full right-0 z-20 mt-1 flex gap-0.5 rounded-sm border-2 border-frame bg-surface p-1 shadow-[3px_3px_0_var(--shadow)]"
+                  className="absolute top-full right-0 z-20 mt-1 rounded-sm border-2 border-frame bg-surface p-1.5 shadow-[3px_3px_0_var(--shadow)]"
                 >
-                  {FEED_EMOJIS.map((emoji) => {
-                    const active = Boolean(
-                      reactions.find((r) => r.emoji === emoji)?.reactedByMe,
-                    );
-                    return (
-                      <button
-                        key={emoji}
-                        type="button"
-                        role="option"
-                        aria-selected={active}
-                        disabled={pending}
-                        title={emoji}
-                        className={`rounded-sm px-1.5 py-1 text-base leading-none hover:bg-accent/15 ${
-                          active ? "bg-accent/20" : ""
-                        }`}
-                        onClick={() => react(emoji)}
-                      >
-                        <span aria-hidden>{emoji}</span>
-                      </button>
-                    );
-                  })}
+                  <div className="flex items-center gap-0.5">
+                    {QUICK_EMOJIS.map((emoji) => {
+                      const active = Boolean(
+                        reactions.find((r) => r.emoji === emoji)?.reactedByMe,
+                      );
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          disabled={pending}
+                          title={emoji}
+                          className={`rounded-sm px-1.5 py-1 text-base leading-none hover:bg-accent/15 ${
+                            active ? "bg-accent/20" : ""
+                          }`}
+                          onClick={() => react(emoji)}
+                        >
+                          <span aria-hidden>{emoji}</span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      disabled={pending}
+                      aria-label="More emojis"
+                      aria-expanded={moreOpen}
+                      title="More emojis"
+                      className={`ml-0.5 rounded-sm border border-frame/40 px-2 py-1 font-display text-sm font-bold leading-none hover:bg-accent/15 ${
+                        moreOpen
+                          ? "border-accent bg-accent/20 text-accent-deep"
+                          : "bg-surface-2 text-muted"
+                      }`}
+                      onClick={() => setMoreOpen((open) => !open)}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {moreOpen ? (
+                    <div className="emoji-picker-shell mt-1.5 overflow-hidden rounded-sm border border-frame/30">
+                      <EmojiPicker
+                        onEmojiClick={onEmojiClick}
+                        theme={Theme.LIGHT}
+                        emojiStyle={EmojiStyle.NATIVE}
+                        width={300}
+                        height={360}
+                        searchPlaceHolder="Search emoji…"
+                        previewConfig={{ showPreview: false }}
+                        skinTonesDisabled
+                        lazyLoadEmojis
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </>
             ) : null}

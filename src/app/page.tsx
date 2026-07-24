@@ -1,45 +1,65 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { Frame } from "@/components/Frame";
 import { SiteHeader } from "@/components/SiteHeader";
+import {
+  TrainerCarousel,
+  type CarouselTrainer,
+} from "@/components/TrainerCarousel";
 import { listChallenges } from "@/lib/challenges";
+import { pokemonInSlot } from "@/lib/trainer-display";
 
 export default async function HomePage() {
   const session = await auth();
   const challenges = await listChallenges();
   const active = challenges.find((c) => c.status === "ACTIVE");
 
-  return (
-    <div className="flex flex-1 flex-col">
-      <SiteHeader />
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-4 pb-16 pt-6 sm:px-6">
-        <p className="font-display text-sm font-bold tracking-[0.2em] text-accent-deep uppercase">
-          Trash Pack
-        </p>
-        <h1 className="font-display mt-3 max-w-2xl text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">
-          Track the run.
-          <span className="mt-1 block text-accent-deep">Honor the fallen.</span>
-        </h1>
-        <p className="mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-          A warm, Gen 3–flavored board for your crew&apos;s Nuzlocke season —
-          league standings, trainer boards, badges, and memorials.
-        </p>
+  const carouselTrainers: CarouselTrainer[] = (active?.trainers ?? [])
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((trainer) => {
+      const lead = pokemonInSlot(trainer, "MAIN")[0] ?? null;
+      return {
+        id: trainer.id,
+        handle: trainer.handle,
+        realName: trainer.realName,
+        avatarSpriteKey: trainer.avatarSpriteKey,
+        badgeCount: trainer.earnedBadgeKeys.length,
+        leadPokemon: lead
+          ? {
+              species: lead.species,
+              nickname: lead.nickname,
+              pokedexId: lead.pokedexId,
+              isShiny: lead.isShiny,
+            }
+          : null,
+      };
+    });
 
-        <div className="mt-8 flex flex-wrap gap-3">
+  return (
+    <div className="flex flex-1 flex-col overflow-x-hidden">
+      <SiteHeader />
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-start justify-center px-4 pb-16 pt-10 sm:px-6">
+        <h1 className="font-display max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
+          <span className="block text-accent-deep">Trash Pack&apos;s</span>
+          <span className="mt-1 block">Nuzlocke Challenge Manager</span>
+        </h1>
+
+        <div className="mt-8 flex flex-wrap items-center gap-3">
           {active ? (
             <Link
               href={`/challenges/${active.slug}`}
               className="pressable rounded-sm bg-accent px-5 py-3 font-display text-sm font-bold tracking-wide text-white uppercase"
             >
-              Open {active.year} league
+              Open {active.year} League →
             </Link>
-          ) : null}
-          <Link
-            href="/challenges"
-            className="pressable rounded-sm bg-surface px-5 py-3 font-display text-sm font-bold tracking-wide uppercase"
-          >
-            All seasons
-          </Link>
+          ) : (
+            <Link
+              href="/challenges"
+              className="pressable rounded-sm bg-accent px-5 py-3 font-display text-sm font-bold tracking-wide text-white uppercase"
+            >
+              Browse seasons →
+            </Link>
+          )}
           {!session?.user ? (
             <Link
               href="/login"
@@ -50,26 +70,12 @@ export default async function HomePage() {
           ) : null}
         </div>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-3">
-          {[
-            {
-              title: "League board",
-              body: "See every trainer’s status, badges, and Main Squad at a glance.",
-            },
-            {
-              title: "Live editing",
-              body: "Players update boards; GMs own rules, roster, and overrides.",
-            },
-            {
-              title: "Season archives",
-              body: "Trash Pack 2026 stays readable when 2027 starts.",
-            },
-          ].map((item) => (
-            <Frame key={item.title} title={item.title}>
-              <p className="text-sm leading-relaxed text-muted">{item.body}</p>
-            </Frame>
-          ))}
-        </div>
+        {active && carouselTrainers.length > 0 ? (
+          <TrainerCarousel
+            challengeSlug={active.slug}
+            trainers={carouselTrainers}
+          />
+        ) : null}
       </main>
     </div>
   );

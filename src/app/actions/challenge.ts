@@ -23,6 +23,7 @@ import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
 
 function revalidateChallenge(slug: string, trainerId?: string) {
   revalidatePath(`/challenges/${slug}`);
+  revalidatePath(`/challenges/${slug}/setup`);
   revalidatePath(`/challenges/${slug}/rules`);
   revalidatePath(`/challenges/${slug}/faq`);
   revalidatePath(`/challenges/${slug}/gm`);
@@ -904,14 +905,21 @@ export async function gmUpdateChallengeMetaAction(input: {
   }
 }
 
-const FEED_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
+function isValidReactionEmoji(emoji: string): boolean {
+  const trimmed = emoji.trim();
+  // Allow any single emoji / ZWJ sequence; reject blanks and junk payloads.
+  if (!trimmed || trimmed.length > 32) return false;
+  if (/\s/.test(trimmed)) return false;
+  if (/[\u0000-\u001F\u007F]/.test(trimmed)) return false;
+  return true;
+}
 
 export async function toggleActivityReactionAction(input: {
   activityId: string;
   emoji: string;
 }): Promise<ActionResult> {
   try {
-    if (!FEED_EMOJIS.includes(input.emoji as (typeof FEED_EMOJIS)[number])) {
+    if (!isValidReactionEmoji(input.emoji)) {
       return { ok: false, error: "Unsupported reaction" };
     }
     const userId = await requireUserId();

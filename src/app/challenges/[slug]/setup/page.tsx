@@ -1,0 +1,203 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { auth } from "@/auth";
+import { ChallengeShell } from "@/components/ChallengeShell";
+import { Frame } from "@/components/Frame";
+import { getChallenge } from "@/lib/challenges";
+import { getAccessForChallenge } from "@/lib/permissions";
+import { ensureTrainerForChallenge } from "@/lib/provision";
+
+export const dynamic = "force-dynamic";
+
+const ROM_DOWNLOAD_URL =
+  "https://drive.google.com/file/d/1gW4d5CSna2rpGNK8B0JNdILr115hbp33/view";
+const AFTERPLAY_URL = "https://afterplay.io";
+
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const challenge = await getChallenge(slug);
+  return { title: challenge ? `Setup · ${challenge.name}` : "Setup" };
+}
+
+export default async function SetupPage({ params }: PageProps) {
+  const { slug } = await params;
+  const session = await auth();
+  const challenge = await getChallenge(slug, session?.user?.id);
+  if (!challenge) notFound();
+
+  let myTrainerId: string | null = null;
+  if (session?.user?.id && challenge.source === "database") {
+    const provisioned = await ensureTrainerForChallenge({
+      userId: session.user.id,
+      slug: challenge.slug,
+      allowAutoJoin: challenge.visibility !== "INVITE",
+    });
+    if (provisioned.ok) {
+      myTrainerId = provisioned.trainerId;
+    }
+  }
+
+  const access = challenge.id
+    ? await getAccessForChallenge(challenge.id)
+    : null;
+
+  return (
+    <ChallengeShell
+      slug={challenge.slug}
+      name={challenge.name}
+      year={challenge.year}
+      showGm={Boolean(access?.isGm)}
+      myTrainerId={myTrainerId}
+    >
+      <header className="mb-6">
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">
+          Setup
+        </h1>
+        <p className="mt-2 max-w-2xl text-muted">
+          Get {challenge.name} running on Afterplay, then keep your board in
+          sync here.
+        </p>
+      </header>
+
+      <ol className="space-y-4">
+        <li>
+          <Frame title="1. Download the game">
+            <p className="text-sm leading-relaxed text-muted">
+              Grab the Trash Pack Emerald ROM from Google Drive. This build is
+              already set up for the season (including the Gen&nbsp;1–4 Nuzlocke
+              toolkit and 2× experience).
+            </p>
+            <a
+              href={ROM_DOWNLOAD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="pressable mt-4 inline-block rounded-sm bg-accent px-4 py-2 text-sm font-bold text-white"
+            >
+              Download ROM →
+            </a>
+          </Frame>
+        </li>
+
+        <li>
+          <Frame title="2. Create an Afterplay account & load the game">
+            <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
+              <li>
+                Sign up / log in at{" "}
+                <a
+                  href={AFTERPLAY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                >
+                  afterplay.io
+                </a>
+                .
+              </li>
+              <li>Add a Game Boy Advance game and upload the ROM you downloaded.</li>
+              <li>Open the game from your Afterplay library when you&apos;re ready to play.</li>
+            </ol>
+          </Frame>
+        </li>
+
+        <li>
+          <Frame title="3. Start the game with season settings">
+            <p className="text-sm leading-relaxed text-muted">
+              When you boot into the run, confirm the pack settings match the
+              season rules:
+            </p>
+            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-muted">
+              <li>
+                <span className="font-bold text-ink">Experience:</span> 2× EXP
+                multiplier enabled.
+              </li>
+              <li>
+                <span className="font-bold text-ink">Nuzlocke toolkit:</span>{" "}
+                Gen&nbsp;1–4 Nuzlocke helpers / randomizers as configured in the
+                shared ROM (don&apos;t swap to a different patch mid-season).
+              </li>
+              <li>
+                <span className="font-bold text-ink">Core rules:</span> faint =
+                dead, first encounter only, nicknames required — see{" "}
+                <Link
+                  href={`/challenges/${challenge.slug}/rules`}
+                  className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                >
+                  Rules
+                </Link>
+                .
+              </li>
+            </ul>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              If something looks off compared to the rest of the pack, pause and
+              ask in Discord before continuing.
+            </p>
+          </Frame>
+        </li>
+
+        <li>
+          <Frame title="4. Export your save & import it here">
+            <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
+              <li>
+                In Afterplay, download / export your save state (or Gen&nbsp;3{" "}
+                <code className="rounded-sm bg-surface-2 px-1">.sav</code> /{" "}
+                <code className="rounded-sm bg-surface-2 px-1">.srm</code>).
+              </li>
+              <li>
+                {session?.user ? (
+                  <>
+                    Open{" "}
+                    <Link
+                      href={`/challenges/${challenge.slug}/me`}
+                      className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                    >
+                      your trainer board
+                    </Link>{" "}
+                    and use <span className="font-bold text-ink">Import save</span>.
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                    >
+                      Sign in with Discord
+                    </Link>
+                    , open your trainer board, and use{" "}
+                    <span className="font-bold text-ink">Import save</span>.
+                  </>
+                )}
+              </li>
+              <li>
+                Review the mapped party → Main Squad, boxes → Reserves, fainted →
+                R.I.P., then apply. You can re-import as the run progresses.
+              </li>
+            </ol>
+          </Frame>
+        </li>
+
+        <li>
+          <Frame title="5. React to milestones in the Pack feed">
+            <p className="text-sm leading-relaxed text-muted">
+              Board updates and imports show up on the{" "}
+              <Link
+                href={`/challenges/${challenge.slug}`}
+                className="font-bold text-accent-deep underline-offset-2 hover:underline"
+              >
+                Season {challenge.year} Board
+              </Link>{" "}
+              Pack feed. Sign in, then react with any emoji when someone badges
+              up, loses a mon, or hits a big moment.
+            </p>
+          </Frame>
+        </li>
+      </ol>
+    </ChallengeShell>
+  );
+}

@@ -99,3 +99,52 @@ body:has([data-modal-open]) {
 .pixelated {
   image-rendering: pixelated;
 }
+
+/* Home page infinite trainer carousel */
+@keyframes trainer-carousel-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.trainer-carousel-track {
+  animation: trainer-carousel-scroll 48s linear infinite;
+}
+
+.trainer-carousel:hover .trainer-carousel-track {
+  animation-play-state: paused;
+}
+
+.trainer-carousel-fade {
+  background: linear-gradient(to right, var(--bg) 20%, transparent);
+}
+
+.trainer-carousel-fade-right {
+  background: linear-gradient(to left, var(--bg) 20%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trainer-carousel-track {
+    animation: none;
+  }
+}
+
+/* Soften emoji-picker-react to match the board surface */
+.emoji-picker-shell .EmojiPickerReact {
+  --epr-bg-color: var(--surface);
+  --epr-category-label-bg-color: var(--surface);
+  --epr-search-input-bg-color: var(--surface-2);
+  --epr-text-color: var(--ink);
+  --epr-hover-bg-color: color-mix(in srgb, var(--accent) 15%, transparent);
+  --epr-focus-bg-color: color-mix(in srgb, var(--accent) 20%, transparent);
+  --epr-highlight-color: var(--accent);
+  --epr-search-border-color: var(--frame);
+  --epr-category-icon-active-color: var(--accent-deep);
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: var(--font-body), system-ui, sans-serif !important;
+}
