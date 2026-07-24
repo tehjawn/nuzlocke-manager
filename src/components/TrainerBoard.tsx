@@ -500,7 +500,7 @@ export function TrainerBoard({
           </Frame>
 
           <Frame title="Encountered">
-            {editing ? (
+            {canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">
