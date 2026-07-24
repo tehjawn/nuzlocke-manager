@@ -20,7 +20,7 @@ export function PokemonSlotCard({
   if (!pokemon) {
     const empty = (
       <div
-        className={`flex h-full flex-col items-center justify-center rounded-sm border-2 border-dashed border-frame/40 bg-surface-2/60 text-muted ${
+        className={`flex h-full flex-col items-center justify-center border-2 border-dashed border-frame/40 bg-surface-2/60 text-muted ${
           size === "sm" ? "min-h-20 p-2" : "min-h-36 p-3"
         }`}
       >
@@ -50,11 +50,11 @@ export function PokemonSlotCard({
 
   const body = (
     <div
-      className={`flex h-full flex-col rounded-sm border-2 border-frame bg-surface ${
+      className={`gba-inset flex h-full flex-col bg-surface ${
         memorial ? "opacity-90" : ""
       } ${
         size === "sm" ? "min-h-20 p-2" : "min-h-36 p-3"
-      } ${onSelect ? "transition hover:border-accent-deep" : ""}`}
+      } ${onSelect ? "transition hover:border-accent-2" : ""}`}
     >
       <div className="flex items-start gap-2">
         <div
