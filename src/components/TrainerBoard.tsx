@@ -89,7 +89,7 @@ function HeaderButton({
       onClick={onClick}
       className={`pressable inline-flex items-center gap-1 rounded-sm px-2 py-1 font-display text-[10px] font-bold tracking-wide uppercase disabled:opacity-60 ${
         tone === "solid"
-          ? "bg-white text-accent-deep"
+          ? "bg-[var(--on-accent)] text-[var(--accent-ink)]"
           : "bg-white/15 text-white hover:bg-white/25"
       }`}
     >

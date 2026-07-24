@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
-:root {
+:root,
+[data-theme="light"] {
   --bg: #f3ead7;
   --bg-wash: #dfe8d5;
+  --bg-glow: #efe0b8;
   --surface: #fff6e8;
   --surface-2: #f7ecda;
   --ink: #1e2a24;
@@ -15,6 +17,33 @@
   --danger: #b85c4a;
   --rip: #d9e0d6;
   --shadow: rgba(30, 42, 36, 0.18);
+  --on-accent: #f7fff5;
+  /* Deep green for light chips / solid controls (stays dark in both themes). */
+  --accent-ink: #2b6b45;
+  --scrim: rgba(30, 42, 36, 0.55);
+}
+
+/* Warm forest night — keeps the emerald clubhouse feel, not cold slate. */
+[data-theme="dark"] {
+  --bg: #121a16;
+  --bg-wash: #1a2c22;
+  --bg-glow: #2a3a28;
+  --surface: #1c2922;
+  --surface-2: #24332b;
+  --ink: #e7f0e6;
+  --muted: #9aada0;
+  --frame: #6d8f78;
+  --frame-inner: #3a4f43;
+  --accent: #4aa86a;
+  --accent-deep: #8fd4a8;
+  --accent-2: #d4a84b;
+  --danger: #d47868;
+  --rip: #2a3530;
+  --shadow: rgba(0, 0, 0, 0.45);
+  --on-accent: #f7fff5;
+  --accent-ink: #1f4d32;
+  --scrim: rgba(8, 14, 11, 0.72);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -39,7 +68,7 @@
 body {
   background:
     radial-gradient(ellipse 90% 60% at 0% 0%, var(--bg-wash) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 50% at 100% 10%, #efe0b8 0%, transparent 45%),
+    radial-gradient(ellipse 70% 50% at 100% 10%, var(--bg-glow) 0%, transparent 45%),
     var(--bg);
   color: var(--ink);
   font-family: var(--font-body), system-ui, sans-serif;
@@ -64,7 +93,7 @@ body:has([data-modal-open]) {
 
 .gba-frame-title {
   background: var(--accent);
-  color: #f7fff5;
+  color: var(--on-accent);
   border-bottom: 4px solid var(--frame);
   font-family: var(--font-display), system-ui, sans-serif;
   font-weight: 700;
