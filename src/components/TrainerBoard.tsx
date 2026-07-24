@@ -22,13 +22,14 @@ import {
 import { PartyStrip } from "@/components/PartyStrip";
 import { ReviveToken } from "@/components/ReviveToken";
 import { SaveImportModal } from "@/components/SaveImportModal";
+import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
 import type {
   BadgeDefinition,
   PokemonEntry,
   TrainerProfile,
 } from "@/lib/challenge-types";
-import { displayName, pokemonInSlot } from "@/lib/trainer-display";
+import { pokemonInSlot } from "@/lib/trainer-display";
 import { avatarImageUrl } from "@/lib/sprites";
 
 type TrainerBoardProps = {
@@ -110,8 +111,20 @@ export function TrainerBoard({
   );
 
   const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const playerSave = useSaveStatus();
+  const partySave = useSaveStatus();
+  const reviveSave = useSaveStatus();
+
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.reviveUsed}|${trainer.earnedBadgeKeys.join("|")}`;
+  const [seenStamp, setSeenStamp] = useState(serverStamp);
+
+  const [committed, setCommitted] = useState({
+    handle: trainer.handle,
+    statusText: trainer.statusText ?? "",
+    realName: trainer.realName ?? "",
+    avatarSpriteKey: trainer.avatarSpriteKey,
+    reviveUsed: trainer.reviveUsed,
+  });
 
   const [handle, setHandle] = useState(trainer.handle);
   const [statusText, setStatusText] = useState(trainer.statusText ?? "");
@@ -119,44 +132,134 @@ export function TrainerBoard({
   const [avatarSpriteKey, setAvatarSpriteKey] = useState(
     trainer.avatarSpriteKey,
   );
+  const [reviveUsed, setReviveUsed] = useState(trainer.reviveUsed);
+  const [earnedBadgeKeys, setEarnedBadgeKeys] = useState(
+    trainer.earnedBadgeKeys,
+  );
 
   const [pokemonOpen, setPokemonOpen] = useState(false);
   const [pokemonForm, setPokemonForm] =
     useState<PokemonFormState>(EMPTY_POKEMON_FORM);
   const [saveImportOpen, setSaveImportOpen] = useState(false);
 
+  if (serverStamp !== seenStamp) {
+    setSeenStamp(serverStamp);
+    setCommitted({
+      handle: trainer.handle,
+      statusText: trainer.statusText ?? "",
+      realName: trainer.realName ?? "",
+      avatarSpriteKey: trainer.avatarSpriteKey,
+      reviveUsed: trainer.reviveUsed,
+    });
+    setReviveUsed(trainer.reviveUsed);
+    setEarnedBadgeKeys(trainer.earnedBadgeKeys);
+  }
+
   const main = pokemonInSlot(trainer, "MAIN");
   const reserves = pokemonInSlot(trainer, "RESERVE");
   const graveyard = pokemonInSlot(trainer, "GRAVEYARD");
   const encountered = pokemonInSlot(trainer, "ENCOUNTERED");
 
-  function flash(
-    result: { ok: true; message?: string } | { ok: false; error: string },
-  ) {
-    if (result.ok) {
-      setError(null);
-      setMessage(result.message ?? "Saved");
-    } else {
-      setMessage(null);
-      setError(result.error);
-    }
-  }
-
-  function syncPlayerDraftFromTrainer() {
-    setHandle(trainer.handle);
-    setStatusText(trainer.statusText ?? "");
-    setRealName(trainer.realName ?? "");
-    setAvatarSpriteKey(trainer.avatarSpriteKey);
+  function syncPlayerDraftFromCommitted() {
+    setHandle(committed.handle);
+    setStatusText(committed.statusText);
+    setRealName(committed.realName);
+    setAvatarSpriteKey(committed.avatarSpriteKey);
   }
 
   function startEditingPlayer() {
-    syncPlayerDraftFromTrainer();
+    syncPlayerDraftFromCommitted();
     setEditingPlayer(true);
   }
 
   function cancelEditingPlayer() {
-    syncPlayerDraftFromTrainer();
+    syncPlayerDraftFromCommitted();
+    playerSave.reset();
     setEditingPlayer(false);
+  }
+
+  function savePlayerProfile() {
+    const next = {
+      handle: handle.trim(),
+      statusText,
+      realName: realName || "",
+      avatarSpriteKey,
+    };
+    // Optimistic: show the draft immediately in view mode.
+    setCommitted((current) => ({
+      ...current,
+      ...next,
+    }));
+    setEditingPlayer(false);
+    playerSave.markSaving();
+    startTransition(async () => {
+      const result = await updateTrainerBoardAction({
+        trainerId: trainer.id,
+        handle: next.handle,
+        statusText: next.statusText,
+        realName: next.realName || null,
+        avatarSpriteKey: next.avatarSpriteKey,
+      });
+      if (result.ok) {
+        playerSave.markSaved(result.message ?? "Profile saved");
+      } else {
+        const rollback = {
+          handle: trainer.handle,
+          statusText: trainer.statusText ?? "",
+          realName: trainer.realName ?? "",
+          avatarSpriteKey: trainer.avatarSpriteKey,
+          reviveUsed: trainer.reviveUsed,
+        };
+        setCommitted(rollback);
+        setHandle(rollback.handle);
+        setStatusText(rollback.statusText);
+        setRealName(rollback.realName);
+        setAvatarSpriteKey(rollback.avatarSpriteKey);
+        setEditingPlayer(true);
+        playerSave.markError(result.error);
+      }
+    });
+  }
+
+  function useReviveToken() {
+    if (
+      !confirm("Spend your Revive Token? This cannot be undone.")
+    ) {
+      return;
+    }
+    const previous = reviveUsed;
+    setReviveUsed(true);
+    reviveSave.markSaving("Using revive…");
+    startTransition(async () => {
+      const result = await updateTrainerBoardAction({
+        trainerId: trainer.id,
+        reviveUsed: true,
+      });
+      if (result.ok) {
+        reviveSave.markSaved("Revive used");
+      } else {
+        setReviveUsed(previous);
+        reviveSave.markError(result.error);
+      }
+    });
+  }
+
+  function resetReviveToken() {
+    const previous = reviveUsed;
+    setReviveUsed(false);
+    reviveSave.markSaving("Resetting revive…");
+    startTransition(async () => {
+      const result = await updateTrainerBoardAction({
+        trainerId: trainer.id,
+        reviveUsed: false,
+      });
+      if (result.ok) {
+        reviveSave.markSaved("Revive reset");
+      } else {
+        setReviveUsed(previous);
+        reviveSave.markError(result.error);
+      }
+    });
   }
 
   function openAddPokemon(
@@ -181,22 +284,14 @@ export function TrainerBoard({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">
-        {canEdit
-          ? "Your board — profile saves explicitly; party and badges save as you go."
-          : "Trainer board"}
-      </p>
-
-      {message ? (
-        <p className="text-sm font-semibold text-accent-deep" role="status">
-          {message}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          {canEdit
+            ? "Your board — profile saves explicitly; party and badges save as you go."
+            : "Trainer board"}
         </p>
-      ) : null}
-      {error ? (
-        <p className="text-sm font-semibold text-danger" role="alert">
-          {error}
-        </p>
-      ) : null}
+        {canEdit ? <SaveStatus status={partySave.status} /> : null}
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:items-start">
         <div className="space-y-6">
@@ -206,22 +301,11 @@ export function TrainerBoard({
               canEdit ? (
                 editingPlayer ? (
                   <>
+                    <SaveStatus status={playerSave.status} />
                     <HeaderButton
                       tone="solid"
                       disabled={pending || !handle.trim()}
-                      onClick={() => {
-                        startTransition(async () => {
-                          const result = await updateTrainerBoardAction({
-                            trainerId: trainer.id,
-                            handle: handle.trim(),
-                            statusText,
-                            realName: realName || null,
-                            avatarSpriteKey,
-                          });
-                          flash(result);
-                          if (result.ok) setEditingPlayer(false);
-                        });
-                      }}
+                      onClick={savePlayerProfile}
                     >
                       Save
                     </HeaderButton>
@@ -230,13 +314,16 @@ export function TrainerBoard({
                     </HeaderButton>
                   </>
                 ) : (
-                  <HeaderButton
-                    aria-label="Edit player profile"
-                    onClick={startEditingPlayer}
-                  >
-                    <PencilIcon />
-                    Edit
-                  </HeaderButton>
+                  <>
+                    <SaveStatus status={playerSave.status} />
+                    <HeaderButton
+                      aria-label="Edit player profile"
+                      onClick={startEditingPlayer}
+                    >
+                      <PencilIcon />
+                      Edit
+                    </HeaderButton>
+                  </>
                 )
               ) : null
             }
@@ -285,29 +372,13 @@ export function TrainerBoard({
                   />
                 </label>
                 <div className="flex flex-wrap items-center gap-2">
-                  <ReviveToken used={trainer.reviveUsed} size="sm" />
-                  {!trainer.reviveUsed ? (
+                  <ReviveToken used={reviveUsed} size="sm" />
+                  {!reviveUsed ? (
                     <button
                       type="button"
                       disabled={pending}
                       className="pressable rounded-sm bg-danger px-3 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
-                      onClick={() => {
-                        if (
-                          !confirm(
-                            "Spend your Revive Token? This cannot be undone.",
-                          )
-                        ) {
-                          return;
-                        }
-                        startTransition(async () => {
-                          flash(
-                            await updateTrainerBoardAction({
-                              trainerId: trainer.id,
-                              reviveUsed: true,
-                            }),
-                          );
-                        });
-                      }}
+                      onClick={useReviveToken}
                     >
                       Use revive
                     </button>
@@ -316,26 +387,18 @@ export function TrainerBoard({
                       type="button"
                       disabled={pending}
                       className="pressable rounded-sm bg-surface px-3 py-2 font-display text-xs font-bold tracking-wide uppercase disabled:opacity-60"
-                      onClick={() => {
-                        startTransition(async () => {
-                          flash(
-                            await updateTrainerBoardAction({
-                              trainerId: trainer.id,
-                              reviveUsed: false,
-                            }),
-                          );
-                        });
-                      }}
+                      onClick={resetReviveToken}
                     >
                       GM: reset revive
                     </button>
                   ) : null}
+                  <SaveStatus status={reviveSave.status} />
                 </div>
               </div>
             ) : (
               <div className="flex flex-wrap items-start gap-4">
                 <Image
-                  src={avatarImageUrl(trainer.avatarSpriteKey)}
+                  src={avatarImageUrl(committed.avatarSpriteKey)}
                   alt=""
                   width={96}
                   height={96}
@@ -344,10 +407,36 @@ export function TrainerBoard({
                 />
                 <div className="min-w-0 flex-1">
                   <h1 className="font-display text-3xl font-extrabold tracking-tight">
-                    {displayName(trainer)}
+                    {committed.realName
+                      ? `${committed.handle} (${committed.realName})`
+                      : committed.handle}
                   </h1>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <ReviveToken used={trainer.reviveUsed} size="sm" />
+                    <ReviveToken used={reviveUsed} size="sm" />
+                    {canEdit ? (
+                      <>
+                        {!reviveUsed ? (
+                          <button
+                            type="button"
+                            disabled={pending}
+                            className="pressable rounded-sm bg-danger px-2 py-1 font-display text-[10px] font-bold tracking-wide text-white uppercase disabled:opacity-60"
+                            onClick={useReviveToken}
+                          >
+                            Use revive
+                          </button>
+                        ) : isGm ? (
+                          <button
+                            type="button"
+                            disabled={pending}
+                            className="pressable rounded-sm bg-surface px-2 py-1 font-display text-[10px] font-bold tracking-wide uppercase disabled:opacity-60"
+                            onClick={resetReviveToken}
+                          >
+                            GM: reset
+                          </button>
+                        ) : null}
+                        <SaveStatus status={reviveSave.status} />
+                      </>
+                    ) : null}
                     {trainer.mainSquadLocked ? (
                       <span className="rounded-sm border-2 border-frame bg-accent-2/25 px-2 py-1 font-display text-[10px] font-bold tracking-wide uppercase">
                         Main Squad locked
@@ -360,7 +449,7 @@ export function TrainerBoard({
                     ) : null}
                   </div>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-                    {trainer.statusText ?? "No status update yet."}
+                    {committed.statusText || "No status update yet."}
                   </p>
                   {isDemo ? (
                     <p className="mt-3 text-sm text-muted">
@@ -536,7 +625,7 @@ export function TrainerBoard({
             <TrainerStatsSummary
               caught={trainer.pokemon.length}
               fallen={graveyard.length}
-              badgesEarned={trainer.earnedBadgeKeys.length}
+              badgesEarned={earnedBadgeKeys.length}
               badgesTotal={badges.length}
               updatedAt={trainer.updatedAt}
             />
@@ -549,14 +638,15 @@ export function TrainerBoard({
                 <BadgeCaseEditor
                   trainerId={trainer.id}
                   badges={badges}
-                  earnedKeys={trainer.earnedBadgeKeys}
+                  earnedKeys={earnedBadgeKeys}
                   layout="column"
+                  onEarnedKeysChange={setEarnedBadgeKeys}
                 />
               </div>
             ) : (
               <BadgeCase
                 badges={badges}
-                earnedKeys={trainer.earnedBadgeKeys}
+                earnedKeys={earnedBadgeKeys}
                 layout="column"
               />
             )}
@@ -572,6 +662,7 @@ export function TrainerBoard({
             pending={pending}
             onClose={() => setPokemonOpen(false)}
             onSave={(form) => {
+              partySave.markSaving("Saving Pokémon…");
               startTransition(async () => {
                 const moves = [
                   form.move1,
@@ -596,18 +687,27 @@ export function TrainerBoard({
                   moves,
                   causeOfDeath: form.causeOfDeath || null,
                 });
-                flash(result);
-                if (result.ok) setPokemonOpen(false);
+                if (result.ok) {
+                  partySave.markSaved(result.message ?? "Pokémon saved");
+                  setPokemonOpen(false);
+                } else {
+                  partySave.markError(result.error);
+                }
               });
             }}
             onDelete={(pokemonId) => {
+              partySave.markSaving("Removing Pokémon…");
               startTransition(async () => {
                 const result = await deletePokemonAction({
                   trainerId: trainer.id,
                   pokemonId,
                 });
-                flash(result);
-                if (result.ok) setPokemonOpen(false);
+                if (result.ok) {
+                  partySave.markSaved(result.message ?? "Pokémon removed");
+                  setPokemonOpen(false);
+                } else {
+                  partySave.markError(result.error);
+                }
               });
             }}
           />
@@ -616,6 +716,7 @@ export function TrainerBoard({
             pending={pending}
             onClose={() => setSaveImportOpen(false)}
             onApply={(payload) => {
+              partySave.markSaving("Importing save…");
               startTransition(async () => {
                 const result = await importFromSaveAction({
                   trainerId: trainer.id,
@@ -639,8 +740,12 @@ export function TrainerBoard({
                     "ENCOUNTERED",
                   ],
                 });
-                flash(result);
-                if (result.ok) setSaveImportOpen(false);
+                if (result.ok) {
+                  partySave.markSaved(result.message ?? "Save imported");
+                  setSaveImportOpen(false);
+                } else {
+                  partySave.markError(result.error);
+                }
               });
             }}
           />

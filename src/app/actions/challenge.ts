@@ -20,17 +20,25 @@ import {
 import { sanitizeHandle } from "@/lib/handles";
 import { parseAvatarKey } from "@/lib/sprites";
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
+import type { ActivityItem } from "@/lib/challenge-types";
+import { listChallengeActivities } from "@/lib/challenges";
 
-function revalidateChallenge(slug: string, trainerId?: string) {
+/** League board + trainer board only — avoids refreshing Setup/Rules/FAQ chrome. */
+function revalidateBoardViews(slug: string, trainerId?: string) {
   revalidatePath(`/challenges/${slug}`);
+  if (trainerId) {
+    revalidatePath(`/challenges/${slug}/trainers/${trainerId}`);
+  }
+}
+
+/** Heavier season-wide invalidation (GM/meta/join flows). */
+function revalidateChallenge(slug: string, trainerId?: string) {
+  revalidateBoardViews(slug, trainerId);
   revalidatePath(`/challenges/${slug}/setup`);
   revalidatePath(`/challenges/${slug}/rules`);
   revalidatePath(`/challenges/${slug}/faq`);
   revalidatePath(`/challenges/${slug}/gm`);
   revalidatePath(`/challenges/${slug}/join`);
-  if (trainerId) {
-    revalidatePath(`/challenges/${slug}/trainers/${trainerId}`);
-  }
 }
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -353,7 +361,8 @@ export async function updateTrainerBoardAction(input: {
       data,
     });
 
-    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    // Soft refresh: league cards + this trainer. Client keeps optimistic drafts.
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Board updated" };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Update failed" };
@@ -399,7 +408,8 @@ export async function setBadgeProgressAction(input: {
         : `${trainer.handle} lost ${badge.label}`,
     });
 
-    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    // League board only — avoid remounting the trainer editor mid-toggle.
+    revalidatePath(`/challenges/${trainer.challenge.slug}`);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Badge update failed" };
@@ -493,7 +503,7 @@ export async function upsertPokemonAction(
       });
     }
 
-    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Pokémon saved" };
   } catch (e) {
     return {
@@ -518,7 +528,7 @@ export async function deletePokemonAction(input: {
       return { ok: false, error: "Main Squad is locked" };
     }
     await prisma.pokemonEntry.delete({ where: { id: mon.id } });
-    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Pokémon removed" };
   } catch (e) {
     return {
@@ -698,7 +708,7 @@ export async function importFromSaveAction(
       message: `${handleLabel} imported save data (${rows.length} Pokémon)`,
     });
 
-    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return {
       ok: true,
       message: `Imported ${rows.length} Pokémon from save`,
@@ -952,7 +962,7 @@ export async function toggleActivityReactionAction(input: {
       });
     }
 
-    revalidateChallenge(activity.challenge.slug);
+    // No revalidate — client is optimistic; Pack feed polls for freshness.
     return { ok: true };
   } catch (e) {
     return {
@@ -960,4 +970,12 @@ export async function toggleActivityReactionAction(input: {
       error: e instanceof Error ? e.message : "Reaction failed",
     };
   }
+}
+
+/** Lightweight Pack feed poll (activities + reaction aggregates). */
+export async function fetchChallengeActivitiesAction(input: {
+  slug: string;
+}): Promise<ActivityItem[]> {
+  const session = await auth();
+  return listChallengeActivities(input.slug, session?.user?.id);
 }

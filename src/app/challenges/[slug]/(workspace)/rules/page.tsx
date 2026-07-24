@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { ChallengeShell } from "@/components/ChallengeShell";
 import { Frame } from "@/components/Frame";
 import { getChallenge } from "@/lib/challenges";
-import { getAccessForChallenge } from "@/lib/permissions";
-import { ensureTrainerForChallenge } from "@/lib/provision";
 
 export const dynamic = "force-dynamic";
 
@@ -27,34 +24,12 @@ export default async function RulesPage({ params }: PageProps) {
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
 
-  let myTrainerId: string | null = null;
-  if (session?.user?.id && challenge.source === "database") {
-    const provisioned = await ensureTrainerForChallenge({
-      userId: session.user.id,
-      slug: challenge.slug,
-      allowAutoJoin: challenge.visibility !== "INVITE",
-    });
-    if (provisioned.ok) {
-      myTrainerId = provisioned.trainerId;
-    }
-  }
-
-  const access = challenge.id
-    ? await getAccessForChallenge(challenge.id)
-    : null;
-
   return (
-    <ChallengeShell
-      slug={challenge.slug}
-      name={challenge.name}
-      year={challenge.year}
-      showGm={Boolean(access?.isGm)}
-      myTrainerId={myTrainerId}
-    >
+    <>
       <header className="mb-6">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">
+        <h2 className="font-display text-2xl font-extrabold tracking-tight">
           Rules
-        </h1>
+        </h2>
         <p className="mt-2 text-muted">
           How {challenge.name} works. Core Nuzlocke rules first, house rules
           after.
@@ -74,6 +49,6 @@ export default async function RulesPage({ params }: PageProps) {
           </li>
         ))}
       </ol>
-    </ChallengeShell>
+    </>
   );
 }

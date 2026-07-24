@@ -2,11 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { ChallengeShell } from "@/components/ChallengeShell";
 import { Frame } from "@/components/Frame";
 import { getChallenge } from "@/lib/challenges";
-import { getAccessForChallenge } from "@/lib/permissions";
-import { ensureTrainerForChallenge } from "@/lib/provision";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +20,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const challenge = await getChallenge(slug);
-  return { title: challenge ? `Setup · ${challenge.name}` : "Setup" };
+  return { title: challenge ? `Get Started · ${challenge.name}` : "Get Started" };
 }
 
 export default async function SetupPage({ params }: PageProps) {
@@ -32,35 +29,13 @@ export default async function SetupPage({ params }: PageProps) {
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
 
-  let myTrainerId: string | null = null;
-  if (session?.user?.id && challenge.source === "database") {
-    const provisioned = await ensureTrainerForChallenge({
-      userId: session.user.id,
-      slug: challenge.slug,
-      allowAutoJoin: challenge.visibility !== "INVITE",
-    });
-    if (provisioned.ok) {
-      myTrainerId = provisioned.trainerId;
-    }
-  }
-
-  const access = challenge.id
-    ? await getAccessForChallenge(challenge.id)
-    : null;
-
   return (
-    <ChallengeShell
-      slug={challenge.slug}
-      name={challenge.name}
-      year={challenge.year}
-      showGm={Boolean(access?.isGm)}
-      myTrainerId={myTrainerId}
-    >
+    <>
       <header className="mb-6">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">
-          Setup
-        </h1>
-        <p className="mt-2 max-w-2xl text-muted">
+        <h2 className="font-display text-2xl font-extrabold tracking-tight">
+          Get Started
+        </h2>
+        <p className="mt-2 text-muted">
           Get {challenge.name} running on Afterplay, then keep your board in
           sync here.
         </p>
@@ -100,8 +75,13 @@ export default async function SetupPage({ params }: PageProps) {
                 </a>
                 .
               </li>
-              <li>Add a Game Boy Advance game and upload the ROM you downloaded.</li>
-              <li>Open the game from your Afterplay library when you&apos;re ready to play.</li>
+              <li>
+                Add a Game Boy Advance game and upload the ROM you downloaded.
+              </li>
+              <li>
+                Open the game from your Afterplay library when you&apos;re ready
+                to play.
+              </li>
             </ol>
           </Frame>
         </li>
@@ -159,7 +139,8 @@ export default async function SetupPage({ params }: PageProps) {
                     >
                       your trainer board
                     </Link>{" "}
-                    and use <span className="font-bold text-ink">Import save</span>.
+                    and use{" "}
+                    <span className="font-bold text-ink">Import save</span>.
                   </>
                 ) : (
                   <>
@@ -175,8 +156,8 @@ export default async function SetupPage({ params }: PageProps) {
                 )}
               </li>
               <li>
-                Review the mapped party → Main Squad, boxes → Reserves, fainted →
-                R.I.P., then apply. You can re-import as the run progresses.
+                Review the mapped party → Main Squad, boxes → Reserves, fainted
+                → R.I.P., then apply. You can re-import as the run progresses.
               </li>
             </ol>
           </Frame>
@@ -185,19 +166,13 @@ export default async function SetupPage({ params }: PageProps) {
         <li>
           <Frame title="5. React to milestones in the Pack feed">
             <p className="text-sm leading-relaxed text-muted">
-              Board updates and imports show up on the{" "}
-              <Link
-                href={`/challenges/${challenge.slug}`}
-                className="font-bold text-accent-deep underline-offset-2 hover:underline"
-              >
-                Season {challenge.year} Board
-              </Link>{" "}
-              Pack feed. Sign in, then react with any emoji when someone badges
-              up, loses a mon, or hits a big moment.
+              Board updates and imports show up in the Pack feed on the left.
+              Sign in, then react with any emoji when someone badges up, loses a
+              mon, or hits a big moment.
             </p>
           </Frame>
         </li>
       </ol>
-    </ChallengeShell>
+    </>
   );
 }
