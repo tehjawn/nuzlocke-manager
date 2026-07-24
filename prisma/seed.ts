@@ -2,6 +2,10 @@ import "dotenv/config";
 import { trashPack2026 } from "../src/data/trash-pack-2026";
 import { getPrisma, isDatabaseConfigured } from "../src/lib/db";
 
+/**
+ * Upserts season content and replaces *unclaimed* demo trainers only.
+ * Trainers linked to real Discord users (userId set) are preserved.
+ */
 async function main() {
   if (!isDatabaseConfigured()) {
     throw new Error("Set DATABASE_URL before seeding");
@@ -12,10 +16,9 @@ async function main() {
 
   console.log(`Seeding challenge ${seed.slug}…`);
 
-  await prisma.challenge.deleteMany({ where: { slug: seed.slug } });
-
-  const challenge = await prisma.challenge.create({
-    data: {
+  const challenge = await prisma.challenge.upsert({
+    where: { slug: seed.slug },
+    create: {
       slug: seed.slug,
       name: seed.name,
       year: seed.year,
@@ -23,37 +26,75 @@ async function main() {
       description: seed.description,
       status: seed.status,
       visibility: seed.visibility,
-      playerInviteCode: seed.playerInviteCode ?? "TRASHPACK2026",
+      playerInviteCode: seed.playerInviteCode,
       gmInviteCode: seed.gmInviteCode ?? "TRASHPACK-GM",
-      badges: {
-        create: seed.badges.map((b) => ({
-          key: b.key,
-          label: b.label,
-          category: b.category,
-          sortOrder: b.sortOrder,
-          leaderName: b.leaderName ?? null,
-        })),
-      },
-      rules: {
-        create: seed.rules.map((r) => ({
-          sortOrder: r.sortOrder,
-          title: r.title,
-          body: r.body,
-          isCore: r.isCore,
-        })),
-      },
-      faqs: {
-        create: seed.faqs.map((f) => ({
-          sortOrder: f.sortOrder,
-          question: f.question,
-          answer: f.answer,
-        })),
-      },
     },
-    include: { badges: true },
+    update: {
+      name: seed.name,
+      year: seed.year,
+      game: seed.game,
+      description: seed.description,
+      status: seed.status,
+      visibility: seed.visibility,
+      playerInviteCode: seed.playerInviteCode,
+      gmInviteCode: seed.gmInviteCode ?? "TRASHPACK-GM",
+    },
   });
 
-  const badgeByKey = new Map(challenge.badges.map((b) => [b.key, b.id]));
+  // Refresh rules / faqs / badges (idempotent-ish: clear & recreate season meta)
+  await prisma.challengeRule.deleteMany({ where: { challengeId: challenge.id } });
+  await prisma.faqEntry.deleteMany({ where: { challengeId: challenge.id } });
+
+  await prisma.challengeRule.createMany({
+    data: seed.rules.map((r) => ({
+      challengeId: challenge.id,
+      sortOrder: r.sortOrder,
+      title: r.title,
+      body: r.body,
+      isCore: r.isCore,
+    })),
+  });
+  await prisma.faqEntry.createMany({
+    data: seed.faqs.map((f) => ({
+      challengeId: challenge.id,
+      sortOrder: f.sortOrder,
+      question: f.question,
+      answer: f.answer,
+    })),
+  });
+
+  for (const badge of seed.badges) {
+    await prisma.badgeDefinition.upsert({
+      where: {
+        challengeId_key: { challengeId: challenge.id, key: badge.key },
+      },
+      create: {
+        challengeId: challenge.id,
+        key: badge.key,
+        label: badge.label,
+        category: badge.category,
+        sortOrder: badge.sortOrder,
+        leaderName: badge.leaderName ?? null,
+      },
+      update: {
+        label: badge.label,
+        category: badge.category,
+        sortOrder: badge.sortOrder,
+        leaderName: badge.leaderName ?? null,
+      },
+    });
+  }
+
+  const badges = await prisma.badgeDefinition.findMany({
+    where: { challengeId: challenge.id },
+  });
+  const badgeByKey = new Map(badges.map((b) => [b.key, b.id]));
+
+  // Remove demo / unclaimed trainers only — keep real players
+  const removed = await prisma.trainerProfile.deleteMany({
+    where: { challengeId: challenge.id, userId: null },
+  });
+  console.log(`  Removed ${removed.count} unclaimed demo trainer(s)`);
 
   for (const trainer of seed.trainers) {
     const created = await prisma.trainerProfile.create({
@@ -105,13 +146,20 @@ async function main() {
     data: {
       challengeId: challenge.id,
       type: "NOTE",
-      message: "Trash Pack 2026 season seeded into the clubhouse.",
+      message:
+        "Season refreshed: Ash demo board only. Discord login auto-provisions player trainers.",
     },
   });
 
+  const kept = await prisma.trainerProfile.count({
+    where: { challengeId: challenge.id, userId: { not: null } },
+  });
+
   console.log("Seed complete.");
-  console.log(`  Player invite: ${challenge.playerInviteCode}`);
-  console.log(`  GM invite:     ${challenge.gmInviteCode}`);
+  console.log(`  Kept ${kept} player-linked trainer(s)`);
+  console.log(`  Demo: Ash (unclaimed)`);
+  console.log(`  GM invite: ${challenge.gmInviteCode}`);
+  console.log(`  Player invite: ${challenge.playerInviteCode ?? "(none — public auto-join)"}`);
 }
 
 main()

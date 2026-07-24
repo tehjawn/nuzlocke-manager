@@ -1,6 +1,5 @@
-import Link from "next/link";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
 import { JoinForm } from "@/components/JoinForm";
@@ -12,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ gm?: string }>;
 };
 
 export async function generateMetadata({
@@ -22,15 +22,21 @@ export async function generateMetadata({
   return { title: challenge ? `Join · ${challenge.name}` : "Join" };
 }
 
-export default async function JoinPage({ params }: PageProps) {
+export default async function JoinPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
-  if (!challenge) notFound();
-
+  const { gm } = await searchParams;
   const session = await auth();
+  const challenge = await getChallenge(slug);
+  if (!challenge) redirect("/challenges");
+
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
+
+  // Normal path: logged-in players go straight to their board
+  if (session?.user?.id && gm !== "1" && !access?.isGm) {
+    redirect(`/challenges/${slug}/me`);
+  }
 
   return (
     <div className="flex flex-1 flex-col">
@@ -40,59 +46,30 @@ export default async function JoinPage({ params }: PageProps) {
         showGm={Boolean(access?.isGm)}
       />
       <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-16 pt-2 sm:px-6">
-        <Link
-          href={`/challenges/${challenge.slug}`}
-          className="text-sm text-muted hover:text-ink"
-        >
-          ← League board
-        </Link>
         <h1 className="font-display mt-4 text-3xl font-extrabold tracking-tight">
-          Join {challenge.name}
+          {session?.user ? "Game Master access" : "Sign in to join"}
         </h1>
         <p className="mt-2 text-muted">
-          Enter a player or Game Master invite code after signing in with
-          Discord.
+          {session?.user
+            ? "Enter the GM invite code to manage this season."
+            : "Discord login automatically joins the 2026 league and opens your trainer board."}
         </p>
 
         <div className="mt-8 space-y-4">
           {!session?.user ? (
-            <Frame title="Sign in first">
-              <Link
+            <Frame title="Discord">
+              <a
                 href="/login"
-                className="pressable inline-block rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase"
+                className="pressable inline-block rounded-sm bg-accent px-4 py-3 font-display text-xs font-bold tracking-wide text-white uppercase"
               >
-                Discord login
-              </Link>
+                Continue with Discord
+              </a>
             </Frame>
           ) : (
-            <Frame title="Invite code">
-              {challenge.source === "database" ? (
-                <>
-                  <JoinForm slug={challenge.slug} />
-                  {access?.role ? (
-                    <p className="mt-3 text-sm text-accent-deep">
-                      Current role: {access.role}
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <p className="text-sm text-muted">
-                  Seed/demo mode — configure DATABASE_URL and run{" "}
-                  <code>npm run db:seed</code> to enable invites. Default codes
-                  after seed: <code>TRASHPACK2026</code> (player) /{" "}
-                  <code>TRASHPACK-GM</code> (GM).
-                </p>
-              )}
+            <Frame title="GM invite code">
+              <JoinForm slug={challenge.slug} mode="gm" />
             </Frame>
           )}
-
-          <Frame title="Then claim a trainer">
-            <p className="text-sm leading-relaxed text-muted">
-              Open an unclaimed trainer board and tap{" "}
-              <strong>Claim</strong>. One trainer per player unless a GM
-              reassigns.
-            </p>
-          </Frame>
         </div>
       </main>
     </div>

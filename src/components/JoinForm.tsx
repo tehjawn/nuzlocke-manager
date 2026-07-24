@@ -1,13 +1,69 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { joinChallengeAction } from "@/app/actions/challenge";
+import {
+  enterChallengeAction,
+  joinChallengeAction,
+} from "@/app/actions/challenge";
 
-export function JoinForm({ slug }: { slug: string }) {
+export function JoinForm({
+  slug,
+  mode,
+  needsInvite,
+}: {
+  slug: string;
+  mode: "enter" | "gm" | "invite";
+  needsInvite?: boolean;
+}) {
+  const router = useRouter();
   const [code, setCode] = useState("");
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  if (mode === "enter") {
+    return (
+      <div className="space-y-3">
+        <button
+          type="button"
+          disabled={pending}
+          className="pressable rounded-sm bg-accent px-4 py-3 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
+          onClick={() => {
+            startTransition(async () => {
+              const result = await enterChallengeAction({ slug });
+              if (result.ok && result.trainerId) {
+                setError(null);
+                setMessage(result.message ?? "You're in");
+                router.push(`/challenges/${slug}/trainers/${result.trainerId}`);
+                router.refresh();
+              } else if (result.ok) {
+                setMessage(result.message ?? "You're in");
+                router.push(`/challenges/${slug}`);
+                router.refresh();
+              } else {
+                setMessage(null);
+                setError(result.error);
+              }
+            });
+          }}
+        >
+          Get my trainer board
+        </button>
+        {message ? (
+          <p className="text-sm font-semibold text-accent-deep">{message}</p>
+        ) : null}
+        {error ? (
+          <p className="text-sm font-semibold text-danger">{error}</p>
+        ) : null}
+        {needsInvite ? (
+          <p className="text-xs text-muted">
+            If that fails, this season may require an invite below.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <form
@@ -19,6 +75,12 @@ export function JoinForm({ slug }: { slug: string }) {
           if (result.ok) {
             setError(null);
             setMessage(result.message ?? "Joined");
+            if (result.trainerId) {
+              router.push(`/challenges/${slug}/trainers/${result.trainerId}`);
+            } else {
+              router.push(`/challenges/${slug}`);
+            }
+            router.refresh();
           } else {
             setMessage(null);
             setError(result.error);
@@ -27,12 +89,14 @@ export function JoinForm({ slug }: { slug: string }) {
       }}
     >
       <label className="block text-sm">
-        <span className="mb-1 block font-bold text-muted">Invite code</span>
+        <span className="mb-1 block font-bold text-muted">
+          {mode === "gm" ? "GM invite code" : "Invite code"}
+        </span>
         <input
           className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="Player or GM invite"
+          placeholder={mode === "gm" ? "GM code" : "Season invite"}
           required
         />
       </label>
@@ -41,7 +105,7 @@ export function JoinForm({ slug }: { slug: string }) {
         disabled={pending}
         className="pressable rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
       >
-        Join challenge
+        {mode === "gm" ? "Become Game Master" : "Join with code"}
       </button>
       {message ? (
         <p className="text-sm font-semibold text-accent-deep">{message}</p>

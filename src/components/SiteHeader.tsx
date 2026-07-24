@@ -5,12 +5,14 @@ type SiteHeaderProps = {
   challengeSlug?: string;
   challengeName?: string;
   showGm?: boolean;
+  myTrainerId?: string | null;
 };
 
 export function SiteHeader({
   challengeSlug,
   challengeName,
   showGm = false,
+  myTrainerId = null,
 }: SiteHeaderProps) {
   return (
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
@@ -53,12 +55,21 @@ export function SiteHeader({
             >
               FAQ
             </Link>
-            <Link
-              href={`/challenges/${challengeSlug}/join`}
-              className="pressable hidden rounded-sm bg-surface px-3 py-1.5 font-medium sm:inline-block"
-            >
-              Join
-            </Link>
+            {myTrainerId ? (
+              <Link
+                href={`/challenges/${challengeSlug}/me`}
+                className="pressable rounded-sm bg-accent px-3 py-1.5 font-bold text-white"
+              >
+                My board
+              </Link>
+            ) : challengeSlug ? (
+              <Link
+                href="/login"
+                className="pressable rounded-sm bg-surface px-3 py-1.5 font-medium"
+              >
+                Login
+              </Link>
+            ) : null}
             {showGm ? (
               <Link
                 href={`/challenges/${challengeSlug}/gm`}

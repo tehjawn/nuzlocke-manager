@@ -80,7 +80,7 @@ export async function updateAccountAction(
 export async function joinChallengeAction(input: {
   slug: string;
   inviteCode: string;
-}): Promise<ActionResult> {
+}): Promise<ActionResult & { trainerId?: string }> {
   try {
     const userId = await requireUserId();
     const prisma = getPrisma();
@@ -110,6 +110,13 @@ export async function joinChallengeAction(input: {
       update: { role },
     });
 
+    const { ensureTrainerForChallenge } = await import("@/lib/provision");
+    const provisioned = await ensureTrainerForChallenge({
+      userId,
+      slug: challenge.slug,
+      allowAutoJoin: true,
+    });
+
     await logActivity({
       challengeId: challenge.id,
       actorId: userId,
@@ -118,9 +125,48 @@ export async function joinChallengeAction(input: {
     });
 
     revalidateChallenge(challenge.slug);
-    return { ok: true, message: `Joined as ${role}` };
+    return {
+      ok: true,
+      message:
+        role === "GAME_MASTER"
+          ? "You're a Game Master — open your board or the GM console."
+          : "You're in — open your trainer board.",
+      trainerId: provisioned.ok ? provisioned.trainerId : undefined,
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Join failed" };
+  }
+}
+
+/** No-code path for public seasons: membership + trainer board. */
+export async function enterChallengeAction(input: {
+  slug: string;
+}): Promise<ActionResult & { trainerId?: string }> {
+  try {
+    const userId = await requireUserId();
+    const { ensureTrainerForChallenge } = await import("@/lib/provision");
+    const result = await ensureTrainerForChallenge({
+      userId,
+      slug: input.slug,
+      allowAutoJoin: true,
+    });
+    if (!result.ok) {
+      if (result.reason === "invite_required") {
+        return {
+          ok: false,
+          error: "This season needs an invite code. Ask a GM.",
+        };
+      }
+      return { ok: false, error: "Could not enter challenge" };
+    }
+    revalidateChallenge(result.slug, result.trainerId);
+    return {
+      ok: true,
+      message: result.created ? "Trainer board created" : "Welcome back",
+      trainerId: result.trainerId,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Enter failed" };
   }
 }
 

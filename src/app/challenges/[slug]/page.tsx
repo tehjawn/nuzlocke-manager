@@ -1,12 +1,14 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { TrainerCard } from "@/components/TrainerCard";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
+import { ensureTrainerForChallenge } from "@/lib/provision";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +27,26 @@ export async function generateMetadata({
 
 export default async function LeagueBoardPage({ params }: PageProps) {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  let challenge = await getChallenge(slug);
   if (!challenge) notFound();
+
+  const session = await auth();
+  let myTrainerId: string | null = null;
+
+  if (session?.user?.id && challenge.source === "database") {
+    const provisioned = await ensureTrainerForChallenge({
+      userId: session.user.id,
+      slug: challenge.slug,
+      allowAutoJoin: challenge.visibility !== "INVITE",
+    });
+    if (provisioned.ok) {
+      myTrainerId = provisioned.trainerId;
+      // Refresh so newly created trainer appears on the board
+      if (provisioned.created) {
+        challenge = (await getChallenge(slug)) ?? challenge;
+      }
+    }
+  }
 
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
@@ -42,6 +62,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
         challengeSlug={challenge.slug}
         challengeName={challenge.name}
         showGm={Boolean(access?.isGm)}
+        myTrainerId={myTrainerId}
       />
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6">
         <DataSourceBanner source={challenge.source} />
@@ -71,12 +92,21 @@ export default async function LeagueBoardPage({ params }: PageProps) {
             >
               FAQ
             </Link>
-            <Link
-              href={`/challenges/${challenge.slug}/join`}
-              className="pressable rounded-sm bg-accent px-3 py-2 text-sm font-bold text-white"
-            >
-              Join
-            </Link>
+            {myTrainerId ? (
+              <Link
+                href={`/challenges/${challenge.slug}/me`}
+                className="pressable rounded-sm bg-accent px-3 py-2 text-sm font-bold text-white"
+              >
+                My board
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="pressable rounded-sm bg-accent px-3 py-2 text-sm font-bold text-white"
+              >
+                Discord login
+              </Link>
+            )}
           </div>
         </div>
 

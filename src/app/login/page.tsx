@@ -4,16 +4,19 @@ import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { Frame } from "@/components/Frame";
 import { SiteHeader } from "@/components/SiteHeader";
+import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { isDatabaseConfigured } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "Login",
 };
 
+const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
+
 export default async function LoginPage() {
   const session = await auth();
   if (session?.user?.id) {
-    redirect("/challenges");
+    redirect(AFTER_LOGIN);
   }
 
   const discordReady = Boolean(
@@ -28,7 +31,8 @@ export default async function LoginPage() {
           Sign in
         </h1>
         <p className="mt-2 text-muted">
-          Use Discord to join seasons, claim a trainer, and update your board.
+          Discord login drops you into the 2026 league with your own trainer
+          board.
         </p>
 
         <div className="mt-8 space-y-4">
@@ -37,7 +41,7 @@ export default async function LoginPage() {
               <form
                 action={async () => {
                   "use server";
-                  await signIn("discord", { redirectTo: "/challenges" });
+                  await signIn("discord", { redirectTo: AFTER_LOGIN });
                 }}
               >
                 <button
