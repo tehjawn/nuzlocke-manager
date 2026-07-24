@@ -64,7 +64,7 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
     <div
       role="tablist"
       aria-label="Season sections"
-      className="grid grid-cols-2 gap-1 rounded-sm border-2 border-frame bg-surface-2 p-1"
+      className="gba-inset grid grid-cols-2 gap-1 bg-surface-2 p-1"
     >
       {tabs.map((tab) => {
         const active =
@@ -79,9 +79,9 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
             role="tab"
             aria-selected={active}
             prefetch
-            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-sm px-2 py-2 text-center text-xs font-bold transition-colors sm:text-sm ${
+            className={`flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 text-center text-xs font-bold transition-colors sm:text-sm ${
               active
-                ? "bg-accent text-white"
+                ? "bg-accent text-white shadow-[inset_0_-2px_0_0_var(--accent-2)]"
                 : "text-ink hover:bg-surface"
             }`}
           >

@@ -25,7 +25,7 @@ export function SiteHeader({
       <div className="min-w-0">
         <Link
           href="/"
-          className="font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase"
+          className="site-brand font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase"
         >
           Nuzlocke Manager
         </Link>

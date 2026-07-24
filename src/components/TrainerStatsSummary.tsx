@@ -39,7 +39,7 @@ export function TrainerStatsSummary({
       {rows.map((row) => (
         <div
           key={row.label}
-          className="rounded-sm border-2 border-frame bg-surface-2/70 px-3 py-2"
+          className="gba-inset bg-surface-2/70 px-3 py-2"
         >
           <dt className="font-display text-[10px] font-bold tracking-wide text-muted uppercase">
             {row.label}

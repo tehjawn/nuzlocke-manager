@@ -71,7 +71,7 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className="pressable inline-flex h-9 items-center gap-2 rounded-sm bg-surface px-2 text-sm font-medium"
+        className="pressable inline-flex h-9 items-center gap-2 bg-surface px-2 text-sm font-medium"
         aria-label={`Account menu for ${name}`}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -102,7 +102,7 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 z-30 mt-1 w-52 overflow-hidden rounded-sm border-2 border-frame bg-surface shadow-[3px_3px_0_var(--shadow)]"
+          className="gba-frame absolute right-0 z-30 mt-1 w-52 overflow-hidden"
         >
           <Link
             href="/account"
