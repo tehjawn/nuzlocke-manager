@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { TrainerBoard } from "@/components/TrainerBoard";
-import { displayName, getTrainer } from "@/lib/challenges";
+import { getTrainer } from "@/lib/challenges";
+import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";

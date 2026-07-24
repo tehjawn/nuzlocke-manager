@@ -26,7 +26,7 @@ import type {
   PokemonEntry,
   TrainerProfile,
 } from "@/lib/challenge-types";
-import { displayName, pokemonInSlot } from "@/lib/challenges";
+import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 import { avatarImageUrl } from "@/lib/sprites";
 
 type BoardMode = "view" | "edit";
