@@ -18,6 +18,8 @@ const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const
 type ActivityFeedProps = {
   activities: ActivityItem[];
   canReact?: boolean;
+  /** When set, show this many rows first with a Show more control. */
+  previewCount?: number;
 };
 
 function mergeReaction(
@@ -42,17 +44,46 @@ function mergeReaction(
 export function ActivityFeed({
   activities,
   canReact = false,
+  previewCount,
 }: ActivityFeedProps) {
+  const [expanded, setExpanded] = useState(false);
+  const collapsible =
+    typeof previewCount === "number" && activities.length > previewCount;
+  const visible = collapsible && !expanded
+    ? activities.slice(0, previewCount)
+    : activities;
+
   return (
     <Frame title="Pack feed">
       {activities.length === 0 ? (
         <p className="text-sm text-muted">No activity yet. Updates show here.</p>
       ) : (
-        <ul className="space-y-3">
-          {activities.map((item) => (
-            <ActivityRow key={item.id} item={item} canReact={canReact} />
-          ))}
-        </ul>
+        <>
+          <div
+            className={
+              expanded && collapsible
+                ? "max-h-[28rem] overflow-y-auto pr-1"
+                : undefined
+            }
+          >
+            <ul className="space-y-3">
+              {visible.map((item) => (
+                <ActivityRow key={item.id} item={item} canReact={canReact} />
+              ))}
+            </ul>
+          </div>
+          {collapsible ? (
+            <button
+              type="button"
+              className="pressable mt-3 w-full rounded-sm bg-surface px-3 py-2 text-sm font-bold"
+              onClick={() => setExpanded((open) => !open)}
+            >
+              {expanded
+                ? "Show less"
+                : `Show more (${activities.length - previewCount} more)`}
+            </button>
+          ) : null}
+        </>
       )}
     </Frame>
   );

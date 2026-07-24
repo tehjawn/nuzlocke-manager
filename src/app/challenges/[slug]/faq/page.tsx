@@ -48,13 +48,18 @@ export default async function FaqPage({ params }: PageProps) {
       slug={challenge.slug}
       name={challenge.name}
       year={challenge.year}
+      game={challenge.game}
+      description={challenge.description}
+      activities={challenge.activities ?? []}
+      canReact={Boolean(session?.user?.id && challenge.source === "database")}
       showGm={Boolean(access?.isGm)}
       myTrainerId={myTrainerId}
+      signedIn={Boolean(session?.user)}
     >
       <header className="mb-6">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">
+        <h2 className="font-display text-2xl font-extrabold tracking-tight">
           FAQ
-        </h1>
+        </h2>
         <p className="mt-2 text-muted">
           Common questions for {challenge.name}.
         </p>
