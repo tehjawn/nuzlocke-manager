@@ -48,7 +48,7 @@ function seedAsChallenge(raw: (typeof CHALLENGES)[number]): Challenge {
 
 function logDbFallback(context: string, error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`[challenges] ${context} failed; falling back to seed.`, message);
+  console.error(`[challenges] ${context} failed.`, message);
 }
 
 /** Seed is only for local demos without DATABASE_URL — never mask a broken prod DB. */

@@ -5,6 +5,7 @@ import { GmConsole } from "@/components/GmConsole";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getChallenge } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
+import { isDatabaseServing } from "@/lib/db-health";
 import { getAccessForChallenge } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export async function generateMetadata({
 
 export default async function GmPage({ params }: PageProps) {
   const { slug } = await params;
+  if (!(await isDatabaseServing())) return null;
   const challenge = await getChallenge(slug);
   if (!challenge) notFound();
 

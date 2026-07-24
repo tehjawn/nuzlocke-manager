@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { TrainerBoard } from "@/components/TrainerBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { getTrainer } from "@/lib/challenges";
+import { isDatabaseServing } from "@/lib/db-health";
 import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { isSeasonReadOnly } from "@/lib/season-status";
@@ -27,6 +28,7 @@ export async function generateMetadata({
 
 export default async function TrainerBoardPage({ params }: PageProps) {
   const { slug, trainerId } = await params;
+  if (!(await isDatabaseServing())) return null;
   const result = await getTrainer(slug, trainerId);
   if (!result) notFound();
 

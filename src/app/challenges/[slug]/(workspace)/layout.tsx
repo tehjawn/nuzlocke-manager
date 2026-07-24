@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { ChallengeShell } from "@/components/ChallengeShell";
 import { getChallenge } from "@/lib/challenges";
+import { isDatabaseServing } from "@/lib/db-health";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { ensureTrainerForChallenge } from "@/lib/provision";
 
@@ -23,6 +24,9 @@ export default async function SeasonWorkspaceLayout({
   params,
 }: LayoutProps) {
   const { slug } = await params;
+  // Avoid notFound() while root layout is showing the maintenance screen.
+  if (!(await isDatabaseServing())) return null;
+
   const session = await auth();
   let challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();

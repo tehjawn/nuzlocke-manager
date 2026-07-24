@@ -53,9 +53,10 @@ export function isUnreachableDbError(error: unknown): boolean {
   const message = errorMessage(error).toLowerCase();
   return (
     message.includes("can't reach database") ||
-    message.includes("connection") ||
+    message.includes("databasenotreachable") ||
     message.includes("econnrefused") ||
-    message.includes("timeout")
+    message.includes("connection timed out") ||
+    message.includes("connection timeout")
   );
 }
 
@@ -105,3 +106,8 @@ export const getDatabaseHealth = cache(async (): Promise<DatabaseHealth> => {
     };
   }
 });
+
+/** False when root layout is showing the maintenance screen. */
+export async function isDatabaseServing(): Promise<boolean> {
+  return (await getDatabaseHealth()).ok;
+}
