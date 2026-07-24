@@ -18,11 +18,11 @@ export function SiteHeader({
 }: SiteHeaderProps) {
   return (
     <header
-      className={`mx-auto flex w-full items-center justify-between gap-4 px-4 py-4 sm:px-6 ${
+      className={`mx-auto flex w-full items-start justify-between gap-4 px-4 py-4 sm:px-6 ${
         wide ? "max-w-7xl" : "max-w-6xl"
       }`}
     >
-      <div className="min-w-0">
+      <div className="min-w-0 pt-0.5">
         <Link
           href="/"
           className="site-brand font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase"
@@ -40,10 +40,10 @@ export function SiteHeader({
           </p>
         ) : null}
       </div>
-      <nav className="flex shrink-0 items-center gap-2 text-sm">
+      <nav className="flex shrink-0 items-start gap-2 text-sm">
         <Link
           href="/challenges"
-          className="pressable inline-flex h-9 items-center rounded-sm bg-surface px-3 font-medium"
+          className="pressable inline-flex h-9 items-center bg-surface px-3 font-medium"
         >
           Seasons
         </Link>
@@ -52,7 +52,7 @@ export function SiteHeader({
             {myTrainerId ? (
               <Link
                 href={`/challenges/${challengeSlug}/me`}
-                className="pressable inline-flex h-9 items-center rounded-sm bg-accent px-3 font-bold text-white"
+                className="pressable inline-flex h-9 items-center bg-accent px-3 font-bold text-white"
               >
                 My Trainer
               </Link>
@@ -60,7 +60,7 @@ export function SiteHeader({
             {showGm ? (
               <Link
                 href={`/challenges/${challengeSlug}/gm`}
-                className="pressable inline-flex h-9 items-center rounded-sm bg-accent-2/40 px-3 font-medium"
+                className="pressable inline-flex h-9 items-center bg-accent-2/40 px-3 font-medium"
               >
                 GM
               </Link>

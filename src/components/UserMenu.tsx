@@ -68,7 +68,7 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
   const themeLabel = theme === "dark" ? "Light mode" : "Dark mode";
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative flex flex-col items-stretch">
       <button
         type="button"
         className="pressable inline-flex h-9 items-center gap-2 bg-surface px-2 text-sm font-medium"
@@ -102,12 +102,12 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
         <div
           id={menuId}
           role="menu"
-          className="gba-frame absolute right-0 z-30 mt-1 w-52 overflow-hidden"
+          className="gba-frame gba-frame-menu relative z-50 mt-2 min-w-[12.5rem] overflow-hidden"
         >
           <Link
             href="/account"
             role="menuitem"
-            className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium hover:bg-accent/15"
+            className="relative z-[1] flex items-center gap-2 px-3 py-2.5 text-sm font-medium hover:bg-accent/15"
             onClick={() => setOpen(false)}
           >
             <ProfileIcon />
@@ -116,14 +116,14 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-accent/15"
+            className="relative z-[1] flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-accent/15"
             onClick={onToggleTheme}
             aria-label={`Switch to ${themeLabel.toLowerCase()}`}
           >
             {theme === "dark" ? <SunIcon /> : <MoonIcon />}
             {themeLabel}
           </button>
-          <form action={signOutAction}>
+          <form action={signOutAction} className="relative z-[1]">
             <button
               type="submit"
               role="menuitem"
