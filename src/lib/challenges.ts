@@ -95,3 +95,63 @@ export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
   const challenge = await getChallenge(slug);
   return challenge?.activities ?? [];
 }
+
+/** Lean activity feed fetch for client polling (skips trainers/rules/etc.). */
+export async function listChallengeActivities(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<ActivityItem[]> {
+  if (isDatabaseConfigured()) {
+    try {
+      const prisma = getPrisma();
+      const challenge = await prisma.challenge.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+      if (!challenge) return [];
+
+      const rows = await prisma.activityEvent.findMany({
+        where: { challengeId: challenge.id },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        include: {
+          trainer: { select: { handle: true } },
+          reactions: { select: { emoji: true, userId: true } },
+        },
+      });
+
+      return rows.map((a) => {
+        const counts = new Map<
+          string,
+          { count: number; reactedByMe: boolean }
+        >();
+        for (const r of a.reactions) {
+          const cur = counts.get(r.emoji) ?? {
+            count: 0,
+            reactedByMe: false,
+          };
+          cur.count += 1;
+          if (viewerUserId && r.userId === viewerUserId) {
+            cur.reactedByMe = true;
+          }
+          counts.set(r.emoji, cur);
+        }
+        return {
+          id: a.id,
+          type: a.type,
+          message: a.message,
+          createdAt: a.createdAt.toISOString(),
+          trainerHandle: a.trainer?.handle ?? null,
+          reactions: [...counts.entries()].map(([emoji, v]) => ({
+            emoji,
+            count: v.count,
+            reactedByMe: v.reactedByMe,
+          })),
+        };
+      });
+    } catch {
+      // fall through
+    }
+  }
+  return getRecentActivity(slug);
+}

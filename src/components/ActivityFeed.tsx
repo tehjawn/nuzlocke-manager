@@ -1,12 +1,15 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 import EmojiPicker, {
   EmojiStyle,
   Theme,
   type EmojiClickData,
 } from "emoji-picker-react";
-import { toggleActivityReactionAction } from "@/app/actions/challenge";
+import {
+  fetchChallengeActivitiesAction,
+  toggleActivityReactionAction,
+} from "@/app/actions/challenge";
 import { Frame } from "@/components/Frame";
 import type {
   ActivityItem,
@@ -14,8 +17,10 @@ import type {
 } from "@/lib/challenge-types";
 
 const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
+const POLL_MS = 12_000;
 
 type ActivityFeedProps = {
+  slug: string;
   activities: ActivityItem[];
   canReact?: boolean;
   /** When set, show this many rows first with a Show more control. */
@@ -41,17 +46,65 @@ function mergeReaction(
   return [...next, { emoji, count: 1, reactedByMe: true }];
 }
 
+function activitiesKey(items: ActivityItem[]) {
+  return items
+    .map(
+      (item) =>
+        `${item.id}:${item.reactions.map((r) => `${r.emoji}${r.count}${r.reactedByMe ? 1 : 0}`).join(",")}`,
+    )
+    .join("|");
+}
+
 export function ActivityFeed({
-  activities,
+  slug,
+  activities: activitiesProp,
   canReact = false,
   previewCount,
 }: ActivityFeedProps) {
+  const propKey = activitiesKey(activitiesProp);
+  const [seenPropKey, setSeenPropKey] = useState(propKey);
+  const [polled, setPolled] = useState<ActivityItem[] | null>(null);
   const [expanded, setExpanded] = useState(false);
+
+  if (propKey !== seenPropKey) {
+    setSeenPropKey(propKey);
+    setPolled(null);
+  }
+
+  const activities = polled ?? activitiesProp;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const next = await fetchChallengeActivitiesAction({ slug });
+        if (!cancelled) setPolled(next);
+      } catch {
+        // ignore transient poll failures
+      }
+    }
+
+    const id = setInterval(poll, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [slug]);
+
   const collapsible =
     typeof previewCount === "number" && activities.length > previewCount;
-  const visible = collapsible && !expanded
-    ? activities.slice(0, previewCount)
-    : activities;
+  const visible =
+    collapsible && !expanded
+      ? activities.slice(0, previewCount)
+      : activities;
 
   return (
     <Frame title="Pack feed">
@@ -99,8 +152,20 @@ function ActivityRow({
   const [pending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const reactionKey = activitiesKey([item]);
+  const [seenReactionKey, setSeenReactionKey] = useState(reactionKey);
+  const [override, setOverride] = useState<ActivityReactionSummary[] | null>(
+    null,
+  );
+
+  if (reactionKey !== seenReactionKey) {
+    setSeenReactionKey(reactionKey);
+    setOverride(null);
+  }
+
+  const baseReactions = override ?? item.reactions ?? [];
   const [reactions, setOptimistic] = useOptimistic(
-    item.reactions ?? [],
+    baseReactions,
     (current, emoji: string) => mergeReaction(current, emoji),
   );
 
@@ -114,12 +179,17 @@ function ActivityRow({
   function react(emoji: string) {
     if (!canReact) return;
     closePicker();
+    const previous = baseReactions;
     startTransition(async () => {
       setOptimistic(emoji);
-      await toggleActivityReactionAction({
+      setOverride(mergeReaction(previous, emoji));
+      const result = await toggleActivityReactionAction({
         activityId: item.id,
         emoji,
       });
+      if (!result.ok) {
+        setOverride(previous);
+      }
     });
   }
 

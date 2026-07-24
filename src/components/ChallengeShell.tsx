@@ -73,6 +73,7 @@ export function ChallengeShell({
           <SeasonTabs slug={slug} />
 
           <ActivityFeed
+            slug={slug}
             activities={activities}
             canReact={canReact}
             previewCount={5}
