@@ -33,6 +33,8 @@ type BoardMode = "view" | "edit";
 
 type TrainerBoardProps = {
   joinHref: string;
+  /** When set, demo boards point signed-in players at their own board instead of login. */
+  myBoardHref?: string | null;
   trainer: TrainerProfile;
   badges: BadgeDefinition[];
   canEdit: boolean;
@@ -42,6 +44,7 @@ type TrainerBoardProps = {
 
 export function TrainerBoard({
   joinHref,
+  myBoardHref = null,
   trainer,
   badges,
   canEdit,
@@ -304,13 +307,27 @@ export function TrainerBoard({
                   {isDemo ? (
                     <p className="mt-3 text-sm text-muted">
                       This isn&apos;t a real player slot.{" "}
-                      <Link
-                        href={joinHref}
-                        className="font-bold text-accent-deep underline"
-                      >
-                        Sign in with Discord
-                      </Link>{" "}
-                      to get your own editable board.
+                      {myBoardHref ? (
+                        <>
+                          <Link
+                            href={myBoardHref}
+                            className="font-bold text-accent-deep underline"
+                          >
+                            Open your board
+                          </Link>{" "}
+                          to edit your own.
+                        </>
+                      ) : (
+                        <>
+                          <Link
+                            href={joinHref}
+                            className="font-bold text-accent-deep underline"
+                          >
+                            Sign in with Discord
+                          </Link>{" "}
+                          to get your own editable board.
+                        </>
+                      )}
                     </p>
                   ) : null}
                   {canEdit && trainer.pokemon.length === 0 ? (

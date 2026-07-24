@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
 import { SiteHeader } from "@/components/SiteHeader";
 import { listChallenges } from "@/lib/challenges";
 
 export default async function HomePage() {
+  const session = await auth();
   const challenges = await listChallenges();
   const active = challenges.find((c) => c.status === "ACTIVE");
 
@@ -38,12 +40,14 @@ export default async function HomePage() {
           >
             All seasons
           </Link>
-          <Link
-            href="/login"
-            className="pressable rounded-sm bg-surface px-5 py-3 font-display text-sm font-bold tracking-wide uppercase"
-          >
-            Sign in
-          </Link>
+          {!session?.user ? (
+            <Link
+              href="/login"
+              className="pressable rounded-sm bg-surface px-5 py-3 font-display text-sm font-bold tracking-wide uppercase"
+            >
+              Sign in
+            </Link>
+          ) : null}
         </div>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-3">

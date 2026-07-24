@@ -62,13 +62,6 @@ export function SiteHeader({
               >
                 My board
               </Link>
-            ) : challengeSlug ? (
-              <Link
-                href="/login"
-                className="pressable rounded-sm bg-surface px-3 py-1.5 font-medium"
-              >
-                Login
-              </Link>
             ) : null}
             {showGm ? (
               <Link
