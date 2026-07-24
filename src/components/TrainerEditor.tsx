@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useTransition } from "react";
 import {
   deletePokemonAction,
@@ -8,38 +9,25 @@ import {
   upsertPokemonAction,
 } from "@/app/actions/challenge";
 import { AvatarPicker } from "@/components/AvatarPicker";
-import { SpeciesCombobox } from "@/components/SpeciesCombobox";
+import {
+  EMPTY_POKEMON_FORM,
+  PokemonFormModal,
+  pokemonEntryToForm,
+  type PokemonFormState,
+} from "@/components/PokemonFormModal";
 import type {
   BadgeDefinition,
   PokemonEntry,
-  PokemonSlot,
   TrainerProfile,
 } from "@/lib/challenge-types";
+import { getEmeraldBadgeMeta } from "@/lib/emerald-badges";
+import { pokemonSpriteUrl, trainerSpriteUrl } from "@/lib/sprites";
 
 type TrainerEditorProps = {
   trainer: TrainerProfile;
   badges: BadgeDefinition[];
   canEdit: boolean;
   isGm: boolean;
-};
-
-const EMPTY_FORM = {
-  id: undefined as string | undefined,
-  slot: "MAIN" as PokemonSlot,
-  partyIndex: 0,
-  nickname: "",
-  species: "",
-  isShiny: false,
-  nature: "",
-  level: "",
-  ability: "",
-  catchRoute: "",
-  heldItem: "",
-  move1: "",
-  move2: "",
-  move3: "",
-  move4: "",
-  causeOfDeath: "",
 };
 
 export function TrainerEditor({
@@ -57,11 +45,15 @@ export function TrainerEditor({
   const [avatarSpriteKey, setAvatarSpriteKey] = useState(
     trainer.avatarSpriteKey,
   );
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [pokemonOpen, setPokemonOpen] = useState(false);
+  const [pokemonForm, setPokemonForm] =
+    useState<PokemonFormState>(EMPTY_POKEMON_FORM);
 
   if (!canEdit) return null;
 
-  function flash(result: { ok: true; message?: string } | { ok: false; error: string }) {
+  function flash(
+    result: { ok: true; message?: string } | { ok: false; error: string },
+  ) {
     if (result.ok) {
       setError(null);
       setMessage(result.message ?? "Saved");
@@ -71,25 +63,19 @@ export function TrainerEditor({
     }
   }
 
-  function editPokemon(mon: PokemonEntry) {
-    setForm({
-      id: mon.id,
-      slot: mon.slot,
-      partyIndex: mon.partyIndex,
-      nickname: mon.nickname ?? "",
-      species: mon.species,
-      isShiny: mon.isShiny,
-      nature: mon.nature ?? "",
-      level: mon.level != null ? String(mon.level) : "",
-      ability: mon.ability ?? "",
-      catchRoute: mon.catchRoute ?? "",
-      heldItem: mon.heldItem ?? "",
-      move1: mon.moves[0] ?? "",
-      move2: mon.moves[1] ?? "",
-      move3: mon.moves[2] ?? "",
-      move4: mon.moves[3] ?? "",
-      causeOfDeath: mon.causeOfDeath ?? "",
-    });
+  function openAddPokemon(slot: PokemonEntry["slot"] = "MAIN") {
+    const used = new Set(
+      trainer.pokemon.filter((p) => p.slot === slot).map((p) => p.partyIndex),
+    );
+    let partyIndex = 0;
+    while (used.has(partyIndex) && partyIndex < 12) partyIndex += 1;
+    setPokemonForm({ ...EMPTY_POKEMON_FORM, slot, partyIndex });
+    setPokemonOpen(true);
+  }
+
+  function openEditPokemon(mon: PokemonEntry) {
+    setPokemonForm(pokemonEntryToForm(mon));
+    setPokemonOpen(true);
   }
 
   return (
@@ -108,9 +94,6 @@ export function TrainerEditor({
               placeholder="Your league nickname"
               onChange={(e) => setHandle(e.target.value)}
             />
-            <span className="mt-1 block text-xs text-muted">
-              Shown on the league board. Letters, numbers, spaces, and hyphens.
-            </span>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-bold text-muted">Real name</span>
@@ -166,7 +149,11 @@ export function TrainerEditor({
                 disabled={pending}
                 className="pressable rounded-sm bg-danger px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
                 onClick={() => {
-                  if (!confirm("Spend your Revive Token? This cannot be undone.")) {
+                  if (
+                    !confirm(
+                      "Spend your Revive Token? This cannot be undone.",
+                    )
+                  ) {
                     return;
                   }
                   startTransition(async () => {
@@ -206,18 +193,20 @@ export function TrainerEditor({
 
       <section className="gba-frame">
         <header className="gba-frame-title px-3 py-2 text-sm">
-          Badge case
+          Emerald badge case
         </header>
-        <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 sm:p-4">
+        <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 sm:p-4">
           {badges.map((badge) => {
             const earned = trainer.earnedBadgeKeys.includes(badge.key);
+            const meta = getEmeraldBadgeMeta(badge.key);
+            const title = meta?.badgeName ?? badge.label;
             return (
               <button
                 key={badge.key}
                 type="button"
                 disabled={pending}
-                className={`rounded-sm border-2 border-frame px-2 py-3 text-left text-xs font-bold ${
-                  earned ? "bg-accent-2/35" : "bg-surface-2 opacity-70"
+                className={`flex items-center gap-3 rounded-sm border-2 border-frame px-2 py-2 text-left ${
+                  earned ? "bg-accent-2/35" : "bg-surface-2 opacity-75"
                 }`}
                 onClick={() => {
                   startTransition(async () => {
@@ -231,9 +220,35 @@ export function TrainerEditor({
                   });
                 }}
               >
-                {badge.label}
-                <span className="mt-1 block text-[10px] font-normal text-muted">
-                  {earned ? "Earned — tap to revoke" : "Tap to earn"}
+                {meta ? (
+                  <Image
+                    src={trainerSpriteUrl(meta.leaderSpriteKey)}
+                    alt=""
+                    width={56}
+                    height={56}
+                    className="pixelated h-14 w-14 shrink-0 object-contain"
+                    unoptimized
+                  />
+                ) : null}
+                <span
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 font-display text-[9px] font-bold uppercase"
+                  style={{
+                    background: earned
+                      ? `radial-gradient(circle at 35% 30%, #fff6d5, ${meta?.accent ?? "#e8c56a"})`
+                      : "var(--surface)",
+                    borderColor: meta?.accent ?? "var(--frame)",
+                  }}
+                >
+                  {(meta?.shortName ?? title).slice(0, 3)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold">{title}</span>
+                  <span className="mt-0.5 block text-[11px] text-muted">
+                    {badge.leaderName ?? meta?.shortName}
+                    {meta?.city ? ` · ${meta.city}` : ""}
+                    {" · "}
+                    {earned ? "Earned — tap to revoke" : "Tap to earn"}
+                  </span>
                 </span>
               </button>
             );
@@ -242,257 +257,134 @@ export function TrainerEditor({
       </section>
 
       <section className="gba-frame">
-        <header className="gba-frame-title px-3 py-2 text-sm">
-          {form.id ? "Edit Pokémon" : "Add Pokémon"}
+        <header className="gba-frame-title flex items-center justify-between gap-2 px-3 py-2 text-sm">
+          <span>Pokémon party</span>
+          <button
+            type="button"
+            className="pressable rounded-sm bg-white/20 px-3 py-1 text-xs font-bold uppercase"
+            onClick={() => openAddPokemon("MAIN")}
+          >
+            Add Pokémon
+          </button>
         </header>
-        <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4">
-          <label className="text-sm sm:col-span-2">
-            <span className="mb-1 block font-bold text-muted">Species</span>
-            <SpeciesCombobox
-              value={form.species}
-              onChange={(species) => setForm((f) => ({ ...f, species }))}
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-bold text-muted">Nickname</span>
-            <input
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-              value={form.nickname}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, nickname: e.target.value }))
-              }
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-bold text-muted">Slot</span>
-            <select
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-              value={form.slot}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  slot: e.target.value as PokemonSlot,
-                }))
-              }
-            >
-              <option value="MAIN">Main Squad</option>
-              <option value="RESERVE">Reserves</option>
-              <option value="GRAVEYARD">R.I.P.</option>
-            </select>
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-bold text-muted">Party index</span>
-            <input
-              type="number"
-              min={0}
-              max={11}
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-              value={form.partyIndex}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  partyIndex: Number(e.target.value) || 0,
-                }))
-              }
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-bold text-muted">Level</span>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-              value={form.level}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, level: e.target.value }))
-              }
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-bold text-muted">Nature</span>
-            <input
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-              value={form.nature}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, nature: e.target.value }))
-              }
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-bold text-muted">Ability</span>
-            <input
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-              value={form.ability}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, ability: e.target.value }))
-              }
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-bold text-muted">Route</span>
-            <input
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-              value={form.catchRoute}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, catchRoute: e.target.value }))
-              }
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-bold text-muted">Held item</span>
-            <input
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-              value={form.heldItem}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, heldItem: e.target.value }))
-              }
-            />
-          </label>
-          {(["move1", "move2", "move3", "move4"] as const).map((key, i) => (
-            <label key={key} className="text-sm">
-              <span className="mb-1 block font-bold text-muted">
-                Move {i + 1}
-              </span>
-              <input
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-                value={form[key]}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, [key]: e.target.value }))
-                }
-              />
-            </label>
-          ))}
-          {form.slot === "GRAVEYARD" ? (
-            <label className="text-sm sm:col-span-2">
-              <span className="mb-1 block font-bold text-muted">
-                Cause of death
-              </span>
-              <textarea
-                className="min-h-16 w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-                value={form.causeOfDeath}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, causeOfDeath: e.target.value }))
-                }
-              />
-            </label>
-          ) : null}
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={form.isShiny}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, isShiny: e.target.checked }))
-              }
-            />
-            <span className="font-bold">Shiny</span>
-          </label>
-          <div className="flex flex-wrap gap-2 sm:col-span-2">
+        <div className="space-y-3 p-3 sm:p-4">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={pending || !form.species.trim()}
-              className="pressable rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
-              onClick={() => {
-                startTransition(async () => {
-                  const moves = [
-                    form.move1,
-                    form.move2,
-                    form.move3,
-                    form.move4,
-                  ].filter(Boolean);
-                  flash(
-                    await upsertPokemonAction({
-                      id: form.id,
-                      trainerId: trainer.id,
-                      slot: form.slot,
-                      partyIndex: form.partyIndex,
-                      nickname: form.nickname || null,
-                      species: form.species.trim(),
-                      isShiny: form.isShiny,
-                      types: [],
-                      nature: form.nature || null,
-                      level: form.level ? Number(form.level) : null,
-                      ability: form.ability || null,
-                      catchRoute: form.catchRoute || null,
-                      heldItem: form.heldItem || null,
-                      moves,
-                      causeOfDeath: form.causeOfDeath || null,
-                    }),
-                  );
-                  setForm(EMPTY_FORM);
-                });
-              }}
+              className="pressable rounded-sm bg-accent px-3 py-2 text-xs font-bold text-white uppercase"
+              onClick={() => openAddPokemon("MAIN")}
             >
-              {form.id ? "Update Pokémon" : "Add Pokémon"}
+              + Main Squad
             </button>
-            {form.id ? (
-              <>
-                <button
-                  type="button"
-                  className="pressable rounded-sm bg-surface px-4 py-2 font-display text-xs font-bold tracking-wide uppercase"
-                  onClick={() => setForm(EMPTY_FORM)}
-                >
-                  Cancel edit
-                </button>
-                <button
-                  type="button"
-                  disabled={pending}
-                  className="pressable rounded-sm bg-danger px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
-                  onClick={() => {
-                    if (!confirm("Delete this Pokémon entry?")) return;
-                    startTransition(async () => {
-                      flash(
-                        await deletePokemonAction({
-                          trainerId: trainer.id,
-                          pokemonId: form.id!,
-                        }),
-                      );
-                      setForm(EMPTY_FORM);
-                    });
-                  }}
-                >
-                  Delete
-                </button>
-              </>
-            ) : null}
+            <button
+              type="button"
+              className="pressable rounded-sm border-2 border-frame bg-surface px-3 py-2 text-xs font-bold uppercase"
+              onClick={() => openAddPokemon("RESERVE")}
+            >
+              + Reserve
+            </button>
+            <button
+              type="button"
+              className="pressable rounded-sm border-2 border-frame bg-surface px-3 py-2 text-xs font-bold uppercase"
+              onClick={() => openAddPokemon("GRAVEYARD")}
+            >
+              + Memorial
+            </button>
           </div>
+
+          <ul className="divide-y-2 divide-frame/20 rounded-sm border-2 border-frame">
+            {trainer.pokemon.length === 0 ? (
+              <li className="px-3 py-4 text-sm text-muted">
+                No Pokémon yet — add your first catch to start the board.
+              </li>
+            ) : (
+              trainer.pokemon.map((mon) => (
+                <li
+                  key={mon.id}
+                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Image
+                      src={pokemonSpriteUrl(mon.species, {
+                        shiny: mon.isShiny,
+                        pokedexId: mon.pokedexId,
+                      })}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="pixelated h-10 w-10 object-contain"
+                      unoptimized
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate font-bold">
+                        {mon.nickname || mon.species}
+                      </span>
+                      <span className="text-xs text-muted">
+                        {mon.species} · {mon.slot.toLowerCase()} #
+                        {mon.partyIndex}
+                        {mon.level != null ? ` · Lv${mon.level}` : ""}
+                      </span>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="pressable shrink-0 rounded-sm bg-surface px-3 py-1 text-xs font-bold uppercase"
+                    onClick={() => openEditPokemon(mon)}
+                  >
+                    Edit
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
         </div>
       </section>
 
-      <section className="gba-frame">
-        <header className="gba-frame-title px-3 py-2 text-sm">
-          Quick edit existing
-        </header>
-        <ul className="divide-y-2 divide-frame/20 p-2">
-          {trainer.pokemon.length === 0 ? (
-            <li className="px-2 py-3 text-sm text-muted">
-              No Pokémon yet — add your Main Squad above.
-            </li>
-          ) : (
-            trainer.pokemon.map((mon) => (
-              <li
-                key={mon.id}
-                className="flex items-center justify-between gap-2 px-2 py-2 text-sm"
-              >
-                <span>
-                  <span className="font-bold">{mon.nickname || mon.species}</span>
-                  <span className="text-muted">
-                    {" "}
-                    · {mon.slot.toLowerCase()} #{mon.partyIndex}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  className="pressable rounded-sm bg-surface px-3 py-1 text-xs font-bold uppercase"
-                  onClick={() => editPokemon(mon)}
-                >
-                  Edit
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
-      </section>
+      <PokemonFormModal
+        open={pokemonOpen}
+        initial={pokemonForm}
+        pending={pending}
+        onClose={() => setPokemonOpen(false)}
+        onSave={(form) => {
+          startTransition(async () => {
+            const moves = [
+              form.move1,
+              form.move2,
+              form.move3,
+              form.move4,
+            ].filter(Boolean);
+            const result = await upsertPokemonAction({
+              id: form.id,
+              trainerId: trainer.id,
+              slot: form.slot,
+              partyIndex: form.partyIndex,
+              nickname: form.nickname || null,
+              species: form.species.trim(),
+              isShiny: form.isShiny,
+              types: [],
+              nature: form.nature || null,
+              level: form.level ? Number(form.level) : null,
+              ability: form.ability || null,
+              catchRoute: form.catchRoute || null,
+              heldItem: form.heldItem || null,
+              moves,
+              causeOfDeath: form.causeOfDeath || null,
+            });
+            flash(result);
+            if (result.ok) setPokemonOpen(false);
+          });
+        }}
+        onDelete={(pokemonId) => {
+          startTransition(async () => {
+            const result = await deletePokemonAction({
+              trainerId: trainer.id,
+              pokemonId,
+            });
+            flash(result);
+            if (result.ok) setPokemonOpen(false);
+          });
+        }}
+      />
 
       {message ? (
         <p className="text-sm font-semibold text-accent-deep">{message}</p>

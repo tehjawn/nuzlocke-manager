@@ -14,6 +14,7 @@ import {
 import { AccountUpdateSchema, PokemonEntryInputSchema, TrainerBoardUpdateSchema } from "@/lib/types";
 import { sanitizeHandle } from "@/lib/handles";
 import { parseAvatarKey } from "@/lib/sprites";
+import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
 
 function revalidateChallenge(slug: string, trainerId?: string) {
   revalidatePath(`/challenges/${slug}`);
@@ -425,9 +426,22 @@ export async function upsertPokemonAction(
     }
 
     const speciesMeta = findSpecies(data.species);
+    const q = data.species.trim().toLowerCase();
+    const indexHit =
+      (speciesMeta
+        ? findPokemonById(speciesMeta.pokedexId)
+        : undefined) ??
+      searchPokemonIndex(q, 8).find(
+        (p) =>
+          p.name.toLowerCase() === q ||
+          p.slug === q ||
+          p.slug === q.replace(/\s+/g, "-"),
+      );
+
     const types =
       data.types.length > 0 ? data.types : (speciesMeta?.types ?? []);
-    const pokedexId = speciesMeta?.pokedexId ?? null;
+    const pokedexId =
+      speciesMeta?.pokedexId ?? indexHit?.pokedexId ?? null;
 
     const prisma = getPrisma();
     const payload = {
