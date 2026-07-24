@@ -1,51 +1,47 @@
 # Nuzlocke Manager
 
-Group Nuzlocke tracker for friend challenges — trainer boards, graveyards, badges, seasons, and Game Master tools.
+Friend-group Nuzlocke clubhouse — league boards, graves, badges, and season archives with a warm Gen 3 feel.
 
-Built with **Next.js** for deployment on **Vercel**.
+Built with **Next.js** for **Vercel**.
 
-## Status
+## v1 (this branch)
 
-Initial scaffold + domain schema. Full product plan: [`docs/MASTER_PLAN.md`](./docs/MASTER_PLAN.md).
+Read-only Phase 1 MVP:
 
-Inspired by the Trash Pack spreadsheet workflow (Introduction, FAQ, Trainers Summary, per-trainer boards).
+- Hoenn Clubhouse design system (chunky frames, warm parchment)
+- Trash Pack 2026 seed data (rules, FAQ, 6 trainers, sample boards)
+- League board, rules, FAQ, and per-trainer boards with sprites
 
-## Stack
+Auth, editing, and Postgres-backed persistence land in Phase 2+.
 
-- Next.js 16 (App Router) + React 19 + TypeScript
-- Tailwind CSS 4
-- Prisma 7 + PostgreSQL
-- Zod validation schemas (API-ready)
+Full plan: [`docs/MASTER_PLAN.md`](./docs/MASTER_PLAN.md).
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env
-# set DATABASE_URL to a Postgres instance
-npm run db:generate
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000), then the **2026 league board**.
 
-### Useful scripts
+Optional DB (Phase 2+):
+
+```bash
+cp .env.example .env
+# set DATABASE_URL
+npm run db:generate
+```
+
+## Scripts
 
 | Script | Purpose |
 |---|---|
-| `npm run dev` | Local Next.js server |
+| `npm run dev` | Local server |
 | `npm run build` | Production build |
 | `npm run db:generate` | Generate Prisma client |
 | `npm run db:migrate` | Run migrations |
-| `npm run db:studio` | Prisma Studio |
 
 ## Deploy on Vercel
 
-1. Push this repo to GitHub
-2. Import in Vercel
-3. Add `DATABASE_URL` (Vercel Postgres / Neon / etc.)
-4. Build command: `prisma generate && next build` (add to Vercel settings or a `postinstall` later)
-
-## License
-
-Private / friend-group project unless stated otherwise.
+Import the GitHub repo, deploy. v1 is static seed data — no database required yet.
