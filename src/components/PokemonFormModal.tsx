@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { PokemonSpriteBrowser } from "@/components/SpriteBrowser";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
@@ -87,26 +87,40 @@ export function PokemonFormModal({
   onSave,
   onDelete,
 }: PokemonFormModalProps) {
+  // Remount when opened so form state is seeded from `initial` without an effect.
+  if (!open) return null;
+  return (
+    <PokemonFormModalInner
+      key={initial.id ?? `new-${initial.slot}-${initial.partyIndex}`}
+      initial={initial}
+      pending={pending}
+      onClose={onClose}
+      onSave={onSave}
+      onDelete={onDelete}
+    />
+  );
+}
+
+function PokemonFormModalInner({
+  initial,
+  pending = false,
+  onClose,
+  onSave,
+  onDelete,
+}: Omit<PokemonFormModalProps, "open">) {
   const [form, setForm] = useState(initial);
   const [browseOpen, setBrowseOpen] = useState(false);
-  const [itemQuery, setItemQuery] = useState("");
+  const [itemQuery, setItemQuery] = useState(initial.heldItem);
   const deferredItem = useDeferredValue(itemQuery);
   const itemResults = useMemo(
     () => searchHeldItems(deferredItem, 12),
     [deferredItem],
   );
 
-  useEffect(() => {
-    if (open) {
-      setForm(initial);
-      setItemQuery(initial.heldItem);
-    }
-  }, [open, initial]);
-
   return (
     <>
       <Modal
-        open={open}
+        open
         title={form.id ? "Edit Pokémon" : "Add Pokémon"}
         onClose={onClose}
         wide
