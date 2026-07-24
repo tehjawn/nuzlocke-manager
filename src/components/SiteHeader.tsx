@@ -6,6 +6,7 @@ type SiteHeaderProps = {
   challengeName?: string;
   showGm?: boolean;
   myTrainerId?: string | null;
+  wide?: boolean;
 };
 
 export function SiteHeader({
@@ -13,9 +14,14 @@ export function SiteHeader({
   challengeName,
   showGm = false,
   myTrainerId = null,
+  wide = false,
 }: SiteHeaderProps) {
   return (
-    <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+    <header
+      className={`mx-auto flex w-full items-center justify-between gap-4 px-4 py-4 sm:px-6 ${
+        wide ? "max-w-7xl" : "max-w-6xl"
+      }`}
+    >
       <div className="min-w-0">
         <Link
           href="/"

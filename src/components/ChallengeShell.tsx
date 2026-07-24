@@ -8,6 +8,8 @@ type ChallengeShellProps = {
   year: number;
   showGm?: boolean;
   myTrainerId?: string | null;
+  /** Wider canvas for the league board (trainers + feed). */
+  wide?: boolean;
   children: ReactNode;
 };
 
@@ -17,6 +19,7 @@ export function ChallengeShell({
   year,
   showGm = false,
   myTrainerId = null,
+  wide = false,
   children,
 }: ChallengeShellProps) {
   return (
@@ -26,11 +29,16 @@ export function ChallengeShell({
         challengeName={name}
         showGm={showGm}
         myTrainerId={myTrainerId}
+        wide={wide}
       />
-      <div className="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-4 pb-16 pt-2 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <div
+        className={`mx-auto grid w-full flex-1 gap-5 px-4 pb-16 pt-2 sm:px-6 lg:grid-cols-[168px_minmax(0,1fr)] lg:gap-6 ${
+          wide ? "max-w-7xl" : "max-w-6xl"
+        }`}
+      >
         <aside className="lg:sticky lg:top-4 lg:self-start">
           <p className="mb-2 hidden font-display text-[11px] font-bold tracking-[0.18em] text-muted uppercase lg:block">
-            Season menu
+            Season
           </p>
           <ChallengeNav slug={slug} year={year} />
         </aside>

@@ -64,10 +64,11 @@ export default async function LeagueBoardPage({ params }: PageProps) {
       year={challenge.year}
       showGm={Boolean(access?.isGm)}
       myTrainerId={myTrainerId}
+      wide
     >
       <DataSourceBanner source={challenge.source} />
 
-      <div className="mt-2 grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,0.9fr)]">
+      <div className="mt-2 space-y-6 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_320px] 2xl:items-start 2xl:gap-6 2xl:space-y-0">
         <section className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <h2 className="font-display text-xl font-extrabold tracking-tight">
@@ -75,7 +76,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
             </h2>
             <p className="text-xs text-muted">{trainers.length} on the board</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-2">
             {trainers.map((trainer) => (
               <TrainerCard
                 key={trainer.id}
@@ -86,7 +87,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
           </div>
         </section>
 
-        <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">
+        <aside className="grid gap-4 sm:grid-cols-2 2xl:sticky 2xl:top-4 2xl:grid-cols-1 2xl:self-start">
           <Frame title="General info">
             <p className="font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase">
               League board · {challenge.year}

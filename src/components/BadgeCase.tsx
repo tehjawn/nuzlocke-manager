@@ -9,6 +9,8 @@ type BadgeCaseProps = {
   badges: BadgeDefinition[];
   earnedKeys: string[];
   compact?: boolean;
+  /** League-card density: count + icon strip (no labels). */
+  strip?: boolean;
   /** Full layout: two columns from sm up, or a single column for sidebar. */
   layout?: "grid" | "column";
   /** When set, badges become toggle buttons (edit mode). */
@@ -20,12 +22,59 @@ export function BadgeCase({
   badges,
   earnedKeys,
   compact = false,
+  strip = false,
   layout = "grid",
   onToggle,
   pending = false,
 }: BadgeCaseProps) {
   const earned = new Set(earnedKeys);
   const interactive = Boolean(onToggle);
+  const earnedCount = badges.filter((b) => earned.has(b.key)).length;
+
+  if (strip) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="font-display text-xs font-bold tracking-wide text-muted uppercase">
+          {earnedCount}/{badges.length} badges
+        </p>
+        <ul className="flex flex-wrap gap-1" aria-label="Badge case">
+          {badges.map((badge) => {
+            const on = earned.has(badge.key);
+            const meta = getEmeraldBadgeMeta(badge.key);
+            const title = `${meta?.badgeName ?? badge.label}${
+              badge.leaderName ? ` — ${badge.leaderName}` : ""
+            }${on ? " · Earned" : ""}`;
+            return (
+              <li key={badge.key} title={title}>
+                {meta ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={meta.badgeSprite}
+                    alt=""
+                    width={22}
+                    height={22}
+                    className={`h-[22px] w-[22px] object-contain ${
+                      on ? "" : "grayscale opacity-40"
+                    }`}
+                  />
+                ) : (
+                  <span
+                    className={`inline-block h-[22px] w-[22px] rounded-sm border border-frame ${
+                      on ? "bg-accent-2/40" : "bg-surface-2"
+                    }`}
+                  />
+                )}
+                <span className="sr-only">
+                  {title}
+                  {on ? " earned" : " not earned"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
 
   if (compact) {
     return (
