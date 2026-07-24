@@ -45,6 +45,8 @@ export type TrainerProfile = {
   userId: string | null;
   earnedBadgeKeys: string[];
   pokemon: PokemonEntry[];
+  /** ISO timestamp of latest trainer or Pokémon change, when known. */
+  updatedAt: string | null;
 };
 
 export type ChallengeRule = {

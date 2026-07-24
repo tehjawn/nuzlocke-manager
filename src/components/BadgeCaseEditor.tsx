@@ -10,6 +10,7 @@ type BadgeCaseEditorProps = {
   badges: BadgeDefinition[];
   earnedKeys: string[];
   compact?: boolean;
+  layout?: "grid" | "column";
 };
 
 export function BadgeCaseEditor({
@@ -17,6 +18,7 @@ export function BadgeCaseEditor({
   badges,
   earnedKeys,
   compact,
+  layout,
 }: BadgeCaseEditorProps) {
   const [pending, startTransition] = useTransition();
 
@@ -25,6 +27,7 @@ export function BadgeCaseEditor({
       badges={badges}
       earnedKeys={earnedKeys}
       compact={compact}
+      layout={layout}
       pending={pending}
       onToggle={(badgeKey, earned) => {
         startTransition(async () => {

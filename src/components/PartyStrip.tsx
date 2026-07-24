@@ -7,6 +7,10 @@ type PartyStripProps = {
   slots?: number;
   size?: "sm" | "md";
   memorial?: boolean;
+  /** Edit mode: select a filled slot to open the editor. */
+  onSelect?: (pokemon: PokemonEntry) => void;
+  /** Edit mode: select an empty numbered slot (MAIN uses this). */
+  onSelectEmpty?: (partyIndex: number) => void;
 };
 
 export function PartyStrip({
@@ -14,6 +18,8 @@ export function PartyStrip({
   slots,
   size = "md",
   memorial = false,
+  onSelect,
+  onSelectEmpty,
 }: PartyStripProps) {
   const sorted = [...pokemon].sort((a, b) => a.partyIndex - b.partyIndex);
 
@@ -37,6 +43,13 @@ export function PartyStrip({
           pokemon={p}
           size={size}
           memorial={memorial}
+          onSelect={
+            p && onSelect
+              ? () => onSelect(p)
+              : !p && onSelectEmpty && slots
+                ? () => onSelectEmpty(i)
+                : undefined
+          }
         />
       ))}
     </div>

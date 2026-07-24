@@ -18,14 +18,16 @@ function mon(
 }
 
 function trainer(
-  partial: Omit<TrainerProfile, "pokemon" | "userId"> & {
+  partial: Omit<TrainerProfile, "pokemon" | "userId" | "updatedAt"> & {
     pokemon?: PokemonEntry[];
     userId?: string | null;
+    updatedAt?: string | null;
   },
 ): TrainerProfile {
   return {
-    userId: partial.userId ?? null,
     ...partial,
+    userId: partial.userId ?? null,
+    updatedAt: partial.updatedAt ?? null,
     pokemon: partial.pokemon ?? [],
   };
 }

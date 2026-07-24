@@ -9,6 +9,8 @@ type BadgeCaseProps = {
   badges: BadgeDefinition[];
   earnedKeys: string[];
   compact?: boolean;
+  /** Full layout: two columns from sm up, or a single column for sidebar. */
+  layout?: "grid" | "column";
   /** When set, badges become toggle buttons (edit mode). */
   onToggle?: (badgeKey: string, nextEarned: boolean) => void;
   pending?: boolean;
@@ -18,6 +20,7 @@ export function BadgeCase({
   badges,
   earnedKeys,
   compact = false,
+  layout = "grid",
   onToggle,
   pending = false,
 }: BadgeCaseProps) {
@@ -84,7 +87,9 @@ export function BadgeCase({
 
   return (
     <ul
-      className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+      className={`grid grid-cols-1 gap-2 ${
+        layout === "grid" ? "sm:grid-cols-2" : ""
+      }`}
       aria-label="Badge case"
     >
       {badges.map((badge) => {

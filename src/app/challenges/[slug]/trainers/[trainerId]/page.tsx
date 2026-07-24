@@ -1,22 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BadgeCase } from "@/components/BadgeCase";
-import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
-import { Frame } from "@/components/Frame";
-import { PartyStrip } from "@/components/PartyStrip";
-import { ReviveToken } from "@/components/ReviveToken";
 import { SiteHeader } from "@/components/SiteHeader";
-import { TrainerEditor } from "@/components/TrainerEditor";
-import {
-  displayName,
-  getTrainer,
-  pokemonInSlot,
-} from "@/lib/challenges";
+import { TrainerBoard } from "@/components/TrainerBoard";
+import { displayName, getTrainer } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
-import { avatarImageUrl } from "@/lib/sprites";
 
 export const dynamic = "force-dynamic";
 
@@ -52,10 +41,6 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         : access.userId
       : null;
 
-  const main = pokemonInSlot(trainer, "MAIN");
-  const reserves = pokemonInSlot(trainer, "RESERVE");
-  const graveyard = pokemonInSlot(trainer, "GRAVEYARD");
-
   return (
     <div className="flex flex-1 flex-col">
       <SiteHeader
@@ -64,7 +49,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         showGm={Boolean(access?.isGm)}
         myTrainerId={myTrainerId}
       />
-      <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6">
         <DataSourceBanner source={challenge.source} />
         <Link
           href={`/challenges/${challenge.slug}`}
@@ -73,118 +58,14 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           ← League board
         </Link>
 
-        <Frame>
-          <div className="flex flex-wrap items-start gap-4">
-            <Image
-              src={avatarImageUrl(trainer.avatarSpriteKey)}
-              alt=""
-              width={96}
-              height={96}
-              className="pixelated h-24 w-24 object-contain"
-              unoptimized
-            />
-            <div className="min-w-0 flex-1">
-              <h1 className="font-display text-3xl font-extrabold tracking-tight">
-                {displayName(trainer)}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-                {trainer.statusText ?? "No status update yet."}
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <ReviveToken used={trainer.reviveUsed} />
-                {trainer.mainSquadLocked ? (
-                  <span className="rounded-sm border-2 border-frame bg-accent-2/25 px-3 py-2 font-display text-xs font-bold tracking-wide uppercase">
-                    Main Squad locked
-                  </span>
-                ) : null}
-                {isDemo ? (
-                  <span className="rounded-sm border-2 border-frame bg-surface-2 px-3 py-2 font-display text-xs font-bold tracking-wide uppercase">
-                    Demo example
-                  </span>
-                ) : null}
-                {canEdit ? (
-                  <a
-                    href="#edit-board"
-                    className="pressable rounded-sm bg-accent px-3 py-2 font-display text-xs font-bold tracking-wide text-white uppercase"
-                  >
-                    Edit profile
-                  </a>
-                ) : null}
-              </div>
-              {isDemo ? (
-                <p className="mt-3 text-sm text-muted">
-                  This isn&apos;t a real player slot.{" "}
-                  <Link
-                    href={`/challenges/${challenge.slug}/join`}
-                    className="font-bold text-accent-deep underline"
-                  >
-                    Sign in with Discord
-                  </Link>{" "}
-                  to get your own editable board.
-                </p>
-              ) : null}
-              {canEdit && trainer.pokemon.length === 0 ? (
-                <p className="mt-3 text-sm text-muted">
-                  Your board is ready — set a nickname, pick an avatar, toggle
-                  badges, and fill your party below.
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </Frame>
-
-        {canEdit && trainer.pokemon.length === 0 ? (
-          <TrainerEditor
-            trainer={trainer}
-            canEdit={canEdit}
-            isGm={Boolean(access?.isGm)}
-          />
-        ) : null}
-
-        <Frame title="Badge case">
-          {canEdit ? (
-            <BadgeCaseEditor
-              trainerId={trainer.id}
-              badges={challenge.badges}
-              earnedKeys={trainer.earnedBadgeKeys}
-            />
-          ) : (
-            <BadgeCase
-              badges={challenge.badges}
-              earnedKeys={trainer.earnedBadgeKeys}
-            />
-          )}
-        </Frame>
-
-        <Frame title="Main Squad">
-          <PartyStrip pokemon={main} slots={6} />
-        </Frame>
-
-        <Frame title="The Reserves">
-          {reserves.length > 0 ? (
-            <PartyStrip pokemon={reserves} />
-          ) : (
-            <p className="text-sm text-muted">No reserves logged yet.</p>
-          )}
-        </Frame>
-
-        <Frame title="R.I.P." tone="rip">
-          {graveyard.length > 0 ? (
-            <PartyStrip pokemon={graveyard} memorial />
-          ) : (
-            <p className="mt-0 text-sm text-muted">
-              Memorial is empty. May it stay that way.
-            </p>
-          )}
-        </Frame>
-
-        {canEdit && trainer.pokemon.length > 0 ? (
-          <TrainerEditor
-            trainer={trainer}
-            canEdit={canEdit}
-            isGm={Boolean(access?.isGm)}
-          />
-        ) : null}
+        <TrainerBoard
+          joinHref={`/challenges/${challenge.slug}/join`}
+          trainer={trainer}
+          badges={challenge.badges}
+          canEdit={canEdit}
+          isGm={Boolean(access?.isGm)}
+          isDemo={isDemo}
+        />
       </main>
     </div>
   );
