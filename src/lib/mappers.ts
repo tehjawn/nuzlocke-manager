@@ -5,6 +5,7 @@ import type {
 } from "@/lib/challenge-types";
 import type { PokemonType } from "@/lib/pokemon-types";
 import { POKEMON_TYPES } from "@/lib/pokemon-types";
+import { clampEvs, clampIvs, IvsSchema, parseStatSpread } from "@/lib/stats";
 
 type DbChallenge = {
   id: string;
@@ -65,6 +66,8 @@ type DbChallenge = {
       catchRoute: string | null;
       heldItem: string | null;
       moves: string[];
+      ivs: unknown;
+      evs: unknown;
       causeOfDeath: string | null;
       updatedAt: Date;
     }>;
@@ -206,6 +209,14 @@ export function mapDbTrainer(
       catchRoute: p.catchRoute,
       heldItem: p.heldItem,
       moves: p.moves,
+      ivs: (() => {
+        if (p.ivs == null) return null;
+        const parsed = IvsSchema.safeParse(p.ivs);
+        return clampIvs(
+          parsed.success ? parsed.data : (parseStatSpread(p.ivs) ?? undefined),
+        );
+      })(),
+      evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
       causeOfDeath: p.causeOfDeath,
     })),
   };

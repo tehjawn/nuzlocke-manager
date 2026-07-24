@@ -12,6 +12,15 @@
  */
 
 import { findPokemonById } from "@/data/pokemon-index";
+import {
+  abilityForSpecies,
+  gen3ItemName,
+  gen3MetLocationName,
+  gen3MoveName,
+  natureFromPid,
+} from "@/data/pokemon-lookups";
+import type { StatSpread } from "@/lib/stats";
+import { EMPTY_EVS, EMPTY_IVS } from "@/lib/stats";
 
 export type SaveMonCategory = "party" | "box" | "rip" | "encountered";
 
@@ -22,6 +31,13 @@ export type ParsedSavePokemon = {
   pokedexId: number;
   level: number | null;
   isShiny: boolean;
+  nature: string | null;
+  ability: string | null;
+  heldItem: string | null;
+  catchRoute: string | null;
+  moves: string[];
+  ivs: StatSpread;
+  evs: StatSpread;
   category: SaveMonCategory;
 };
 
@@ -242,6 +258,13 @@ type RawMon = {
   hp: number;
   maxHp: number;
   isShiny: boolean;
+  nature: string;
+  ability: string | null;
+  heldItem: string | null;
+  catchRoute: string | null;
+  moves: string[];
+  ivs: StatSpread;
+  evs: StatSpread;
   offset: number;
   crypto: "xor32" | "lcg";
 };
@@ -287,10 +310,56 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
 
   const posOfType = POS_OF_TYPE[pid % 24]!;
   const growthPos = posOfType[0]!;
+  const attacksPos = posOfType[1]!;
+  const evPos = posOfType[2]!;
+  const miscPos = posOfType[3]!;
+
   const growthView = new DataView(dec.buffer, dec.byteOffset + growthPos * 12, 12);
+  const attacksView = new DataView(
+    dec.buffer,
+    dec.byteOffset + attacksPos * 12,
+    12,
+  );
+  const evView = new DataView(dec.buffer, dec.byteOffset + evPos * 12, 12);
+  const miscView = new DataView(dec.buffer, dec.byteOffset + miscPos * 12, 12);
+
   const speciesId = growthView.getUint16(0, true);
   if (speciesId === 0 || speciesId > 1500) return null;
   if (!findPokemonById(speciesId) && !/^[A-Z]/.test(nickname)) return null;
+
+  const itemId = growthView.getUint16(2, true);
+  const heldItem = gen3ItemName(itemId);
+
+  const moves: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    const moveId = attacksView.getUint16(i * 2, true);
+    const name = gen3MoveName(moveId);
+    if (name) moves.push(name);
+  }
+
+  const evs: StatSpread = {
+    hp: evView.getUint8(0),
+    atk: evView.getUint8(1),
+    def: evView.getUint8(2),
+    spe: evView.getUint8(3),
+    spa: evView.getUint8(4),
+    spd: evView.getUint8(5),
+  };
+
+  const metLocation = miscView.getUint8(1);
+  const catchRoute = gen3MetLocationName(metLocation);
+
+  const ivAbility = miscView.getUint32(4, true);
+  const ivs: StatSpread = {
+    hp: ivAbility & 0x1f,
+    atk: (ivAbility >>> 5) & 0x1f,
+    def: (ivAbility >>> 10) & 0x1f,
+    spe: (ivAbility >>> 15) & 0x1f,
+    spa: (ivAbility >>> 20) & 0x1f,
+    spd: (ivAbility >>> 25) & 0x1f,
+  };
+  const abilitySlot = (ivAbility >>> 31) & 1;
+  const ability = abilityForSpecies(speciesId, abilitySlot);
 
   let level: number | null = null;
   let hp = 0;
@@ -324,6 +393,13 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
     hp,
     maxHp,
     isShiny: shiny,
+    nature: natureFromPid(pid),
+    ability,
+    heldItem,
+    catchRoute,
+    moves,
+    ivs,
+    evs,
     offset,
     crypto,
   };
@@ -352,6 +428,13 @@ function toParsed(mon: RawMon, category: SaveMonCategory): ParsedSavePokemon {
     pokedexId: mon.speciesId,
     level: mon.level,
     isShiny: mon.isShiny,
+    nature: mon.nature,
+    ability: mon.ability,
+    heldItem: mon.heldItem,
+    catchRoute: mon.catchRoute,
+    moves: mon.moves,
+    ivs: mon.ivs ?? { ...EMPTY_IVS },
+    evs: mon.evs ?? { ...EMPTY_EVS },
     category,
   };
 }

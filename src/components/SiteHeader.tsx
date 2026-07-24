@@ -54,7 +54,7 @@ export function SiteHeader({
                 href={`/challenges/${challengeSlug}/me`}
                 className="pressable rounded-sm bg-accent px-3 py-1.5 font-bold text-white"
               >
-                My board
+                My Trainer
               </Link>
             ) : null}
             {showGm ? (
@@ -67,7 +67,7 @@ export function SiteHeader({
             ) : null}
           </>
         ) : null}
-        <AuthButtons hideMyBoard={Boolean(myTrainerId)} />
+        <AuthButtons hideMyTrainer={Boolean(myTrainerId)} />
       </nav>
     </header>
   );

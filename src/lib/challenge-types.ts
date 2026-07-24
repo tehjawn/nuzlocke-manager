@@ -1,4 +1,5 @@
 import type { PokemonType } from "@/lib/pokemon-types";
+import type { StatSpread } from "@/lib/stats";
 
 export type ChallengeStatus = "DRAFT" | "ACTIVE" | "TOURNAMENT" | "ARCHIVED";
 export type ChallengeVisibility = "INVITE" | "UNLISTED" | "PUBLIC";
@@ -30,6 +31,8 @@ export type PokemonEntry = {
   catchRoute: string | null;
   heldItem: string | null;
   moves: string[];
+  ivs: StatSpread | null;
+  evs: StatSpread | null;
   causeOfDeath: string | null;
 };
 

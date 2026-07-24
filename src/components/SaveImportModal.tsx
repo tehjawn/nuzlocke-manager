@@ -18,6 +18,13 @@ export type SaveImportDraft = {
   pokedexId: number;
   level: string;
   isShiny: boolean;
+  nature: string | null;
+  ability: string | null;
+  catchRoute: string | null;
+  heldItem: string | null;
+  moves: string[];
+  ivs: ParsedSavePokemon["ivs"];
+  evs: ParsedSavePokemon["evs"];
   slot: PokemonSlot;
   include: boolean;
 };
@@ -59,6 +66,13 @@ function categoryToDrafts(
     pokedexId: mon.pokedexId,
     level: mon.level != null ? String(mon.level) : "",
     isShiny: mon.isShiny,
+    nature: mon.nature,
+    ability: mon.ability,
+    catchRoute: mon.catchRoute,
+    heldItem: mon.heldItem,
+    moves: mon.moves,
+    ivs: mon.ivs,
+    evs: mon.evs,
     slot,
     include: true,
   }));
@@ -204,7 +218,7 @@ export function SaveImportModal({
           <code className="text-ink">.sav</code> /{" "}
           <code className="text-ink">.srm</code>. Party, box, R.I.P., and
           encounters are detected separately — uncheck anything you want to
-          skip.
+          skip. Nature, ability, moves, IVs, and EVs are imported when readable.
         </p>
 
         <label className="block">
@@ -378,6 +392,17 @@ export function SaveImportModal({
                               </select>
                               <span className="text-muted">#{mon.pokedexId}</span>
                             </div>
+                            <p className="truncate text-[11px] text-muted">
+                              {[
+                                mon.nature,
+                                mon.ability,
+                                mon.moves.length
+                                  ? mon.moves.join(" · ")
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ") || "No nature / ability / moves"}
+                            </p>
                           </div>
                         </li>
                       ))}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { IvsSchema, StatSpreadSchema } from "@/lib/stats";
 
 export const UserRoleSchema = z.enum(["PLAYER", "GAME_MASTER"]);
 export const ChallengeStatusSchema = z.enum([
@@ -27,6 +28,8 @@ export const PokemonEntryInputSchema = z.object({
   catchRoute: z.string().max(128).optional().nullable(),
   heldItem: z.string().max(64).optional().nullable(),
   moves: z.array(z.string().max(64)).max(4).default([]),
+  ivs: IvsSchema.optional().nullable(),
+  evs: StatSpreadSchema.optional().nullable(),
   causeOfDeath: z.string().max(500).optional().nullable(),
   notes: z.string().max(1000).optional().nullable(),
 });

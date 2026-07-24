@@ -122,6 +122,8 @@ async function main() {
             catchRoute: p.catchRoute,
             heldItem: p.heldItem,
             moves: p.moves,
+            ivs: p.ivs ?? undefined,
+            evs: p.evs ?? undefined,
             causeOfDeath: p.causeOfDeath,
           })),
         },
