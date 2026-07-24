@@ -39,7 +39,7 @@ export default async function HomePage() {
     <div className="flex flex-1 flex-col overflow-x-hidden">
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-start justify-center px-4 pb-16 pt-10 sm:px-6">
-        <h1 className="font-display max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
+        <h1 className="font-pixel max-w-2xl text-4xl font-semibold leading-[1.15] sm:text-5xl">
           <span className="block text-accent-deep">Trash Pack&apos;s</span>
           <span className="mt-1 block">Nuzlocke Challenge Manager</span>
         </h1>

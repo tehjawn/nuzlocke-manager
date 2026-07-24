@@ -23,7 +23,7 @@ export async function AuthButtons({ hideMyTrainer = false }: AuthButtonsProps) {
         {!hideMyTrainer ? (
           <Link
             href={AFTER_LOGIN}
-            className="pressable hidden h-9 items-center rounded-sm bg-accent px-3 text-sm font-bold text-white sm:inline-flex"
+            className="pressable hidden h-9 items-center bg-accent px-3 text-sm font-bold text-white sm:inline-flex"
           >
             My Trainer
           </Link>

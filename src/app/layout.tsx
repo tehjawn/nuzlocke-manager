@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { Nunito, Rubik, JetBrains_Mono } from "next/font/google";
+import { DM_Sans, JetBrains_Mono, Pixelify_Sans } from "next/font/google";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-const body = Nunito({
+/** Workhorse UI face — clean, readable, not costume. */
+const body = DM_Sans({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const display = Rubik({
-  variable: "--font-display",
+/** GBA accent only — brand + window titles, not every label. */
+const pixel = Pixelify_Sans({
+  variable: "--font-pixel",
   subsets: ["latin"],
-  weight: ["500", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const mono = JetBrains_Mono({
@@ -40,7 +42,7 @@ export default function RootLayout({
       lang="en"
       data-theme="light"
       suppressHydrationWarning
-      className={`${body.variable} ${display.variable} ${mono.variable} h-full antialiased`}
+      className={`${body.variable} ${pixel.variable} ${mono.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
