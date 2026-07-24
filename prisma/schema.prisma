@@ -1,0 +1,207 @@
+// Nuzlocke Manager — core domain schema
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  PLAYER
+  GAME_MASTER
+}
+
+enum ChallengeStatus {
+  DRAFT
+  ACTIVE
+  TOURNAMENT
+  ARCHIVED
+}
+
+enum PokemonSlot {
+  MAIN
+  RESERVE
+  GRAVEYARD
+}
+
+enum ActivityType {
+  STATUS_UPDATE
+  CATCH
+  DEATH
+  BADGE_EARNED
+  REVIVE_USED
+  MAIN_SQUAD_LOCKED
+  MEMBER_JOINED
+  NOTE
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String?  @unique
+  discordId     String?  @unique
+  name          String?
+  displayName   String?
+  image         String?
+  bio           String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  memberships   ChallengeMembership[]
+  trainers      TrainerProfile[]
+  activities    ActivityEvent[]        @relation("ActivityActor")
+}
+
+model Challenge {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  name        String
+  year        Int
+  game        String?
+  description String?
+  status      ChallengeStatus @default(DRAFT)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  rules       ChallengeRule[]
+  faqs        FaqEntry[]
+  badges      BadgeDefinition[]
+  memberships ChallengeMembership[]
+  trainers    TrainerProfile[]
+  activities  ActivityEvent[]
+}
+
+model ChallengeRule {
+  id          String    @id @default(cuid())
+  challengeId String
+  sortOrder   Int
+  title       String?
+  body        String
+  isCore      Boolean   @default(false)
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId, sortOrder])
+}
+
+model FaqEntry {
+  id          String    @id @default(cuid())
+  challengeId String
+  sortOrder   Int
+  question    String
+  answer      String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId, sortOrder])
+}
+
+model BadgeDefinition {
+  id          String    @id @default(cuid())
+  challengeId String
+  key         String
+  label       String
+  sortOrder   Int
+  category    String
+  leaderName  String?
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  progress    BadgeProgress[]
+
+  @@unique([challengeId, key])
+  @@index([challengeId, sortOrder])
+}
+
+model ChallengeMembership {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  role        UserRole @default(PLAYER)
+  inviteCode  String?
+  joinedAt    DateTime @default(now())
+
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+}
+
+model TrainerProfile {
+  id              String   @id @default(cuid())
+  challengeId     String
+  userId          String?
+  handle          String
+  realName        String?
+  avatarSpriteKey String?
+  statusText      String?
+  reviveUsed      Boolean  @default(false)
+  mainSquadLocked Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  challenge Challenge       @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  badges    BadgeProgress[]
+  pokemon   PokemonEntry[]
+
+  @@unique([challengeId, handle])
+  @@index([challengeId, sortOrder])
+  @@index([userId])
+}
+
+model BadgeProgress {
+  id        String   @id @default(cuid())
+  trainerId String
+  badgeId   String
+  earned    Boolean  @default(false)
+  earnedAt  DateTime?
+
+  trainer TrainerProfile  @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  badge   BadgeDefinition @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([trainerId, badgeId])
+}
+
+model PokemonEntry {
+  id           String      @id @default(cuid())
+  trainerId    String
+  slot         PokemonSlot
+  partyIndex   Int         @default(0)
+  nickname     String?
+  species      String
+  isShiny      Boolean     @default(false)
+  types        String[]
+  nature       String?
+  level        Int?
+  ability      String?
+  catchRoute   String?
+  heldItem     String?
+  moves        String[]
+  causeOfDeath String?
+  notes        String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@index([trainerId, slot, partyIndex])
+}
+
+model ActivityEvent {
+  id          String       @id @default(cuid())
+  challengeId String
+  actorId     String?
+  type        ActivityType
+  message     String
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  actor     User?     @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([challengeId, createdAt])
+}

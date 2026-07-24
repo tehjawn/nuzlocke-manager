@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nuzlocke Manager
 
-## Getting Started
+Group Nuzlocke tracker for friend challenges — trainer boards, graveyards, badges, seasons, and Game Master tools.
 
-First, run the development server:
+Built with **Next.js** for deployment on **Vercel**.
+
+## Status
+
+Initial scaffold + domain schema. Full product plan: [`docs/MASTER_PLAN.md`](./docs/MASTER_PLAN.md).
+
+Inspired by the Trash Pack spreadsheet workflow (Introduction, FAQ, Trainers Summary, per-trainer boards).
+
+## Stack
+
+- Next.js 16 (App Router) + React 19 + TypeScript
+- Tailwind CSS 4
+- Prisma 7 + PostgreSQL
+- Zod validation schemas (API-ready)
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env
+# set DATABASE_URL to a Postgres instance
+npm run db:generate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Useful scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Local Next.js server |
+| `npm run build` | Production build |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:migrate` | Run migrations |
+| `npm run db:studio` | Prisma Studio |
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push this repo to GitHub
+2. Import in Vercel
+3. Add `DATABASE_URL` (Vercel Postgres / Neon / etc.)
+4. Build command: `prisma generate && next build` (add to Vercel settings or a `postinstall` later)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+Private / friend-group project unless stated otherwise.
