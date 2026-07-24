@@ -7,15 +7,17 @@ type PokemonSlotCardProps = {
   pokemon?: PokemonEntry | null;
   memorial?: boolean;
   size?: "sm" | "md";
+  onSelect?: () => void;
 };
 
 export function PokemonSlotCard({
   pokemon,
   memorial = false,
   size = "md",
+  onSelect,
 }: PokemonSlotCardProps) {
   if (!pokemon) {
-    return (
+    const empty = (
       <div
         className={`flex flex-col items-center justify-center rounded-sm border-2 border-dashed border-frame/40 bg-surface-2/60 text-muted ${
           size === "sm" ? "min-h-20 p-2" : "min-h-36 p-3"
@@ -24,8 +26,14 @@ export function PokemonSlotCard({
         <span className="text-lg opacity-40" aria-hidden>
           ○
         </span>
-        <span className="text-xs">Empty</span>
+        <span className="text-xs">{onSelect ? "Tap to add" : "Empty"}</span>
       </div>
+    );
+    if (!onSelect) return empty;
+    return (
+      <button type="button" className="w-full text-left" onClick={onSelect}>
+        {empty}
+      </button>
     );
   }
 
@@ -35,11 +43,13 @@ export function PokemonSlotCard({
   });
   const label = pokemon.nickname || pokemon.species;
 
-  return (
-    <article
+  const body = (
+    <div
       className={`rounded-sm border-2 border-frame bg-surface ${
         memorial ? "opacity-90" : ""
-      } ${size === "sm" ? "p-2" : "p-3"}`}
+      } ${size === "sm" ? "p-2" : "p-3"} ${
+        onSelect ? "transition hover:border-accent-deep" : ""
+      }`}
     >
       <div className="flex items-start gap-2">
         <div
@@ -66,6 +76,7 @@ export function PokemonSlotCard({
           <p className="truncate text-xs text-muted">
             {pokemon.species}
             {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
+            {onSelect ? " · Edit" : ""}
           </p>
           {size === "md" ? (
             <div className="mt-1 flex flex-wrap gap-1">
@@ -124,6 +135,15 @@ export function PokemonSlotCard({
           {pokemon.causeOfDeath}
         </p>
       ) : null}
-    </article>
+    </div>
+  );
+
+  if (!onSelect) {
+    return <article>{body}</article>;
+  }
+  return (
+    <button type="button" className="w-full text-left" onClick={onSelect}>
+      {body}
+    </button>
   );
 }

@@ -48,6 +48,7 @@ type DbChallenge = {
     mainSquadLocked: boolean;
     sortOrder: number;
     userId: string | null;
+    updatedAt: Date;
     badges: Array<{ earned: boolean; badge: { key: string } }>;
     pokemon: Array<{
       id: string;
@@ -65,6 +66,7 @@ type DbChallenge = {
       heldItem: string | null;
       moves: string[];
       causeOfDeath: string | null;
+      updatedAt: Date;
     }>;
   }>;
   activities?: Array<{
@@ -167,6 +169,12 @@ function mapActivity(
 export function mapDbTrainer(
   trainer: DbChallenge["trainers"][number],
 ): TrainerProfile {
+  const stamps = [
+    trainer.updatedAt.getTime(),
+    ...trainer.pokemon.map((p) => p.updatedAt.getTime()),
+  ];
+  const latest = Math.max(...stamps);
+
   return {
     id: trainer.id,
     handle: trainer.handle,
@@ -180,6 +188,9 @@ export function mapDbTrainer(
     earnedBadgeKeys: trainer.badges
       .filter((b) => b.earned)
       .map((b) => b.badge.key),
+    updatedAt: Number.isFinite(latest)
+      ? new Date(latest).toISOString()
+      : null,
     pokemon: trainer.pokemon.map((p) => ({
       id: p.id,
       slot: p.slot,
