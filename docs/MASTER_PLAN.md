@@ -2,6 +2,8 @@
 
 A multiplayer Nuzlocke **ops board** for a friend group: seasons, trainer boards, graves, badges, and Game Master tools — replacing the Trash Pack spreadsheet with a warm, Gen 3–flavored web app on Vercel.
 
+**Status (Jul 2026):** Phases 0–2 shipped. Active work: **Phase 3 — Seasons & endgame** (§7 / §13).
+
 **Reference spreadsheet:** [TrashPack Nuzlocke Challenge](https://docs.google.com/spreadsheets/d/1b8WdFyNuToOaq_MBda4lSZXGqaj36VbC)
 
 **Repo:** [tehjawn/nuzlocke-manager](https://github.com/tehjawn/nuzlocke-manager)
@@ -167,7 +169,7 @@ Dark mode is **optional later**; default is warm light (matches Gen 3 menus bett
 
 | Role | Capabilities |
 |---|---|
-| **Guest** | Sees only challenges marked public; otherwise login wall |
+| **Guest** | Sees only challenges marked public; otherwise login wall *(visibility field shipped; INVITE read-gate still TODO)* |
 | **Player** | Edit own trainer board + account; read league |
 | **Game Master** | Full CRUD: season setup, rules/FAQ, roster, all boards, revive resets, Main Squad lock, invites, roles |
 | **Spectator member** (optional) | Read-only membership for friends who aren’t running |
@@ -198,30 +200,36 @@ User
 
 **Challenge lifecycle:** `DRAFT` → `ACTIVE` → `TOURNAMENT` → `ARCHIVED`
 
-**Main Squad lock:** When Championship is earned (or GM forces), Main Squad freezes for ladder use — matches the sheet FAQ (“locked in immediately after defeating the Champion”).
+**Main Squad lock:** When Championship is earned (or GM forces), Main Squad freezes for ladder use — matches the sheet FAQ (“locked in immediately after defeating the Champion”). **Shipped:** GM can lock/unlock today; **not yet:** auto-lock when Championship badge is earned, memorial season view.
 
-**Schema follow-ups (vs current scaffold):**
+**Schema status:**
 
-- Add `visibility` (`INVITE` \| `UNLISTED` \| `PUBLIC`) on `Challenge`
-- Add optional `trainerId` on `ActivityEvent`
-- Add `Tournament` / `TournamentMatch` in Phase 3 (not before needed)
-- Soft `EncounterClaim` only if group wants route transparency without leaving the season board
+| Item | Status |
+|---|---|
+| `visibility` (`INVITE` \| `UNLISTED` \| `PUBLIC`) on `Challenge` | ✅ |
+| Optional `trainerId` on `ActivityEvent` | ✅ |
+| `mainSquadLocked` on `TrainerProfile` | ✅ (manual GM toggle) |
+| `ActivityReaction` (emoji reactions on feed) | ✅ (shipped QoL; not originally planned) |
+| `Tournament` / `TournamentMatch` | Phase 3 — not before needed |
+| Soft `EncounterClaim` | Phase 4 — only if group wants route transparency without leaving the season board |
 
 ---
 
 ## 7. Feature roadmap
 
+**Status (Jul 2026):** Phases 0–2 shipped. Next work is Phase 3.
+
 ### Phase 0 — Scaffold ✅
 
 Next.js App Router, Prisma/Postgres, Zod stubs, sprite helpers, docs.
 
-### Phase 1 — Read-only league MVP
+### Phase 1 — Read-only league MVP ✅
 
 - Design tokens + framed layout shell (Trash Pack board look)
 - Challenge home (rules + FAQ)
 - League board (summary)
 - Trainer board read view with sprites
-- Seed Trash Pack 2026 structure (trainers, badges, sample rules)
+- Seed Trash Pack 2026 structure (badges, rules/FAQ, Ash demo board)
 - Warm light theme as default
 
 ### Phase 2 — Auth & editing (spreadsheet retirement) ✅
@@ -229,30 +237,40 @@ Next.js App Router, Prisma/Postgres, Zod stubs, sprite helpers, docs.
 - Discord login + auto-provision trainer boards on public seasons
 - Account editing
 - Player edits: status, revive token, badges, Pokémon CRUD (Main/Reserve/RIP)
-- Species autocomplete + shiny/forms
-- GM console for roster/rules/overrides
-- Mobile-usable edit flows
-- Basic activity log on league page
-- Simplified join UX (no claim dance; Ash demo only)
+- Species picker + shiny (national dex sprite browser; alternate formes not first-class)
+- GM console (visibility, invites, rules/FAQ, Main Squad lock, unclaim)
+- Mobile-usable edit flows (view/edit toggle + modals; further polish optional)
+- Activity log on league hub (+ emoji reactions)
+- Simplified join UX (no claim dance; Ash demo only; `/me` shortcut)
 
-### Phase 3 — Seasons & endgame
+### Phase 3 — Seasons & endgame ← next
 
-- Multi-challenge archive / year switcher
-- Main Squad lock + memorial season view
-- Tournament bracket stub (ladder after Champion)
-- Discord webhooks (death, badge, revive)
-- Export JSON/CSV backup
+Ordered by value given current state:
+
+1. **Championship auto-lock** — lock Main Squad when Championship is earned (GM override already exists)
+2. **Memorial / end-of-season view** — read-only season presentation after lock / archive
+3. **Season duplicate + archive UX** — clone challenge for next year; year switcher chrome on `/challenges` (list exists; only one season seeded)
+4. **Export JSON/CSV** — backup once the sheet is retired
+5. **Discord webhooks** — death, badge, revive → group Discord
+6. **Tournament bracket stub** — ladder after Champion (`Tournament` model + `/tournament` route)
+
+Known gaps to close in this phase (or sooner if painful):
+
+- INVITE seasons should enforce a login wall for guests (visibility exists; gate not applied on reads)
+- GM “duplicate season” is a success metric (§11) and unblocks 2027
 
 ### Phase 4 — QoL (only what the group asks for)
 
 - Light route encounter ledger
-- Duplicate / held-item warnings
+- Duplicate / held-item warnings (seeded as rule text today; no enforcement)
 - Side-by-side trainer compare
 - Type chart quick-ref drawer
 - Optional public share links
 - Soft dark theme variant (still warm, not OLED gamer)
 
-**Explicitly deprioritized:** damage calculator, save-file import, full boss scouting DB, real-time CRDT, multi-tenant billing.
+**Shipped early (outside original phase order):** Afterplay / Gen 3 **save import** — categorizes party → Main, box → Reserves, fainted → R.I.P., post-party storage → Encountered; optional trainer name + gym badge sync. Crest-style `pid⊕otId` encryption + vanilla LCG both supported.
+
+**Explicitly deprioritized:** damage calculator, full boss scouting DB, real-time CRDT, multi-tenant billing.
 
 ---
 
@@ -278,7 +296,7 @@ Caching: `next/image` remotePatterns + optional proxy; always text fallback if C
 | Styling | Tailwind CSS 4 + CSS design tokens (Trash Pack board) |
 | DB | PostgreSQL via Prisma 7 (+ `@prisma/adapter-pg`) |
 | Hosting | Vercel |
-| Auth | Auth.js (Phase 2) |
+| Auth | Auth.js + Discord ✅ |
 | Validation | Zod |
 | Images | `next/image` + sprite CDNs |
 
@@ -286,23 +304,24 @@ Keep the stack boring so the **UI personality** can carry the product.
 
 ---
 
-## 10. App routes (target)
+## 10. App routes
 
 ```
-/                                 → Warm landing + active season CTA
-/login                            → Auth
-/account                          → Account editing
-/challenges                       → Season list (active + archives)
-/challenges/[slug]                → League board (hub)
-/challenges/[slug]/rules          → Rules (Introduction parity)
-/challenges/[slug]/faq            → FAQ
-/challenges/[slug]/feed           → Activity (optional tab)
-/challenges/[slug]/trainers/[id]  → Trainer board
-/challenges/[slug]/gm             → Game Master console
-/challenges/[slug]/tournament     → Ladder (Phase 3)
+/                                 → Warm landing + active season CTA     ✅
+/login                            → Discord auth                         ✅
+/account                          → Account editing                      ✅
+/challenges                       → Season list (active + archives)      ✅ (thin; archive UX TBD)
+/challenges/[slug]                → League board (hub) + activity feed   ✅
+/challenges/[slug]/rules          → Rules (Introduction parity)          ✅
+/challenges/[slug]/faq            → FAQ                                  ✅
+/challenges/[slug]/me             → Provision + jump to own board        ✅
+/challenges/[slug]/join           → Invite / GM code                     ✅
+/challenges/[slug]/trainers/[id]  → Trainer board                        ✅
+/challenges/[slug]/gm             → Game Master console                  ✅
+/challenges/[slug]/tournament     → Ladder                               Phase 3
 ```
 
-**IA tweak vs v1:** League board is the hub (`/challenges/[slug]`), not a rules-first page. Rules/FAQ are one click away — matching how the group actually uses the sheet day-to-day.
+Activity lives on the league hub (no separate `/feed` route). League board is the hub — rules/FAQ one click away, matching how the group uses the sheet day-to-day.
 
 ---
 
@@ -320,7 +339,7 @@ Keep the stack boring so the **UI personality** can carry the product.
 ## 12. Out of scope (for now)
 
 - Full battle simulator / damage calc
-- Automated ROM or `.sav` parsing
+- Full PKHeX-grade editing / write-back to `.sav` (read/import only for now)
 - Public multi-tenant SaaS
 - Real-time collaborative cursors
 - Pixel-perfect recreation of Nintendo UI assets
@@ -328,9 +347,15 @@ Keep the stack boring so the **UI personality** can carry the product.
 
 ---
 
-## 13. Immediate build priorities (after this plan)
+## 13. Next build priorities
 
-1. Re-theme the scaffold to **Trash Pack board** tokens (warm light, chunky frames)
-2. Phase 1 read-only league + trainer boards with seed data
-3. Phase 2 Discord auth + edit paths
-4. Only then: archives, tournament, webhooks
+Phases 0–2 and Trash Pack board theming are done. Build Phase 3 in this order:
+
+1. Championship → auto-lock Main Squad (keep GM force lock/unlock)
+2. Memorial / archived season presentation
+3. Season duplicate + richer archive / year switcher on `/challenges`
+4. Export JSON/CSV backup
+5. Discord webhooks (death, badge, revive)
+6. Tournament bracket stub (last — no schema pressure yet)
+
+Opportunistic polish (not blocking Phase 3): INVITE read gate, alternate formes in species picker, sticky mobile save bar.

@@ -7,7 +7,12 @@ export const ChallengeStatusSchema = z.enum([
   "TOURNAMENT",
   "ARCHIVED",
 ]);
-export const PokemonSlotSchema = z.enum(["MAIN", "RESERVE", "GRAVEYARD"]);
+export const PokemonSlotSchema = z.enum([
+  "MAIN",
+  "RESERVE",
+  "GRAVEYARD",
+  "ENCOUNTERED",
+]);
 
 export const PokemonEntryInputSchema = z.object({
   slot: PokemonSlotSchema,

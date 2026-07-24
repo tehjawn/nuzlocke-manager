@@ -11,7 +11,12 @@ import {
   requireTrainerEditAccess,
   requireUserId,
 } from "@/lib/permissions";
-import { AccountUpdateSchema, PokemonEntryInputSchema, TrainerBoardUpdateSchema } from "@/lib/types";
+import {
+  AccountUpdateSchema,
+  PokemonEntryInputSchema,
+  PokemonSlotSchema,
+  TrainerBoardUpdateSchema,
+} from "@/lib/types";
 import { sanitizeHandle } from "@/lib/handles";
 import { parseAvatarKey } from "@/lib/sprites";
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
@@ -520,6 +525,196 @@ export async function deletePokemonAction(input: {
       error: e instanceof Error ? e.message : "Delete failed",
     };
   }
+}
+
+const SaveImportMonSchema = z.object({
+  nickname: z.string().max(32).optional().nullable(),
+  species: z.string().min(1).max(64),
+  pokedexId: z.number().int().positive().optional().nullable(),
+  level: z.number().int().min(1).max(100).optional().nullable(),
+  isShiny: z.boolean().default(false),
+  slot: PokemonSlotSchema,
+});
+
+const ImportFromSaveSchema = z.object({
+  trainerId: z.string().min(1),
+  pokemon: z.array(SaveImportMonSchema).max(80),
+  trainerName: z.string().min(1).max(32).optional().nullable(),
+  applyTrainerName: z.boolean().default(false),
+  badgeKeys: z.array(z.string().min(1).max(32)).max(16).default([]),
+  applyBadges: z.boolean().default(false),
+  /** Which board slots to overwrite from this import. */
+  replaceSlots: z
+    .array(PokemonSlotSchema)
+    .default(["MAIN", "RESERVE", "GRAVEYARD", "ENCOUNTERED"]),
+});
+
+/** Apply categorized save import (party/box/rip/encounters + optional name/badges). */
+export async function importFromSaveAction(
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const data = ImportFromSaveSchema.parse(raw);
+    const { trainer, userId, access } = await requireTrainerEditAccess(
+      data.trainerId,
+    );
+
+    if (
+      trainer.mainSquadLocked &&
+      !access.isGm &&
+      data.replaceSlots.includes("MAIN")
+    ) {
+      return {
+        ok: false,
+        error: "Main Squad is locked after Championship",
+      };
+    }
+
+    const prisma = getPrisma();
+    const indexes: Record<string, number> = {
+      MAIN: 0,
+      RESERVE: 0,
+      GRAVEYARD: 0,
+      ENCOUNTERED: 0,
+    };
+
+    const replaceSet = new Set(data.replaceSlots);
+    const rows = data.pokemon
+      .filter((mon) => replaceSet.has(mon.slot))
+      .map((mon) => {
+        const speciesMeta = findSpecies(mon.species);
+        const indexHit =
+          (mon.pokedexId ? findPokemonById(mon.pokedexId) : undefined) ??
+          (speciesMeta
+            ? findPokemonById(speciesMeta.pokedexId)
+            : undefined) ??
+          searchPokemonIndex(mon.species.trim().toLowerCase(), {
+            limit: 8,
+          }).find(
+            (p) => p.name.toLowerCase() === mon.species.trim().toLowerCase(),
+          );
+
+        const partyIndex = indexes[mon.slot] ?? 0;
+        indexes[mon.slot] = partyIndex + 1;
+
+        return {
+          trainerId: trainer.id,
+          slot: mon.slot,
+          partyIndex,
+          nickname: mon.nickname?.trim() || null,
+          species: mon.species.trim(),
+          pokedexId:
+            mon.pokedexId ??
+            speciesMeta?.pokedexId ??
+            indexHit?.pokedexId ??
+            null,
+          isShiny: mon.isShiny,
+          types: speciesMeta?.types ?? [],
+          level: mon.level ?? null,
+          nature: null,
+          ability: null,
+          catchRoute: null,
+          heldItem: null,
+          moves: [] as string[],
+          causeOfDeath:
+            mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null,
+          notes: `Imported from save (${mon.slot.toLowerCase()})`,
+        };
+      });
+
+    await prisma.$transaction(async (tx) => {
+      if (data.replaceSlots.length > 0) {
+        await tx.pokemonEntry.deleteMany({
+          where: {
+            trainerId: trainer.id,
+            slot: { in: data.replaceSlots },
+          },
+        });
+        if (rows.length > 0) {
+          await tx.pokemonEntry.createMany({ data: rows });
+        }
+      }
+
+      if (data.applyTrainerName && data.trainerName) {
+        const nextHandle = sanitizeHandle(data.trainerName);
+        if (nextHandle && nextHandle !== trainer.handle) {
+          const clash = await tx.trainerProfile.findUnique({
+            where: {
+              challengeId_handle: {
+                challengeId: trainer.challengeId,
+                handle: nextHandle,
+              },
+            },
+          });
+          if (!clash) {
+            await tx.trainerProfile.update({
+              where: { id: trainer.id },
+              data: { handle: nextHandle },
+            });
+          }
+        }
+      }
+
+      if (data.applyBadges) {
+        const defs = await tx.badgeDefinition.findMany({
+          where: { challengeId: trainer.challengeId },
+        });
+        for (const def of defs) {
+          if (!def.key.startsWith("gym-")) continue;
+          const earned = data.badgeKeys.includes(def.key);
+          await tx.badgeProgress.upsert({
+            where: {
+              trainerId_badgeId: {
+                trainerId: trainer.id,
+                badgeId: def.id,
+              },
+            },
+            create: {
+              trainerId: trainer.id,
+              badgeId: def.id,
+              earned,
+              earnedAt: earned ? new Date() : null,
+            },
+            update: {
+              earned,
+              earnedAt: earned ? new Date() : null,
+            },
+          });
+        }
+      }
+    });
+
+    const handleLabel =
+      data.applyTrainerName && data.trainerName
+        ? sanitizeHandle(data.trainerName)
+        : trainer.handle;
+
+    await logActivity({
+      challengeId: trainer.challengeId,
+      actorId: userId,
+      trainerId: trainer.id,
+      type: "NOTE",
+      message: `${handleLabel} imported save data (${rows.length} Pokémon)`,
+    });
+
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return {
+      ok: true,
+      message: `Imported ${rows.length} Pokémon from save`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Save import failed",
+    };
+  }
+}
+
+/** @deprecated Use importFromSaveAction */
+export async function replaceLivingRosterAction(
+  raw: unknown,
+): Promise<ActionResult> {
+  return importFromSaveAction(raw);
 }
 
 export async function gmUpdateRuleAction(input: {

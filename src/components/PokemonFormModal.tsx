@@ -230,6 +230,7 @@ function PokemonFormModalInner({
                 <option value="MAIN">Main Squad</option>
                 <option value="RESERVE">Reserves</option>
                 <option value="GRAVEYARD">R.I.P.</option>
+                <option value="ENCOUNTERED">Encountered</option>
               </select>
             </label>
             <label className="text-sm">

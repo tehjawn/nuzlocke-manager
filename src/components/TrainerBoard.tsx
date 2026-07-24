@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
+  importFromSaveAction,
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
@@ -20,6 +21,7 @@ import {
 } from "@/components/PokemonFormModal";
 import { PartyStrip } from "@/components/PartyStrip";
 import { ReviveToken } from "@/components/ReviveToken";
+import { SaveImportModal } from "@/components/SaveImportModal";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
 import type {
   BadgeDefinition,
@@ -121,10 +123,12 @@ export function TrainerBoard({
   const [pokemonOpen, setPokemonOpen] = useState(false);
   const [pokemonForm, setPokemonForm] =
     useState<PokemonFormState>(EMPTY_POKEMON_FORM);
+  const [saveImportOpen, setSaveImportOpen] = useState(false);
 
   const main = pokemonInSlot(trainer, "MAIN");
   const reserves = pokemonInSlot(trainer, "RESERVE");
   const graveyard = pokemonInSlot(trainer, "GRAVEYARD");
+  const encountered = pokemonInSlot(trainer, "ENCOUNTERED");
 
   function flash(
     result: { ok: true; message?: string } | { ok: false; error: string },
@@ -402,13 +406,22 @@ export function TrainerBoard({
                   <p className="text-xs text-muted">
                     Tap a slot to add or edit.
                   </p>
-                  <button
-                    type="button"
-                    className="pressable rounded-sm bg-accent px-3 py-1.5 text-xs font-bold text-white uppercase"
-                    onClick={() => openAddPokemon("MAIN")}
-                  >
-                    + Add
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="pressable rounded-sm border-2 border-frame bg-surface px-3 py-1.5 text-xs font-bold uppercase"
+                      onClick={() => setSaveImportOpen(true)}
+                    >
+                      Import save
+                    </button>
+                    <button
+                      type="button"
+                      className="pressable rounded-sm bg-accent px-3 py-1.5 text-xs font-bold text-white uppercase"
+                      onClick={() => openAddPokemon("MAIN")}
+                    >
+                      + Add
+                    </button>
+                  </div>
                 </div>
                 <PartyStrip
                   pokemon={main}
@@ -485,6 +498,37 @@ export function TrainerBoard({
               </p>
             )}
           </Frame>
+
+          <Frame title="Encountered">
+            {editing ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-muted">
+                    {encountered.length === 0
+                      ? "No extra encounters logged."
+                      : "Caught / seen outside the active party."}
+                  </p>
+                  <button
+                    type="button"
+                    className="pressable rounded-sm border-2 border-frame bg-surface px-3 py-1.5 text-xs font-bold uppercase"
+                    onClick={() => openAddPokemon("ENCOUNTERED")}
+                  >
+                    + Add
+                  </button>
+                </div>
+                {encountered.length > 0 ? (
+                  <PartyStrip
+                    pokemon={encountered}
+                    onSelect={openEditPokemon}
+                  />
+                ) : null}
+              </div>
+            ) : encountered.length > 0 ? (
+              <PartyStrip pokemon={encountered} />
+            ) : (
+              <p className="text-sm text-muted">No encounters logged yet.</p>
+            )}
+          </Frame>
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-4">
@@ -521,51 +565,86 @@ export function TrainerBoard({
       </div>
 
       {canEdit ? (
-        <PokemonFormModal
-          open={pokemonOpen}
-          initial={pokemonForm}
-          pending={pending}
-          onClose={() => setPokemonOpen(false)}
-          onSave={(form) => {
-            startTransition(async () => {
-              const moves = [
-                form.move1,
-                form.move2,
-                form.move3,
-                form.move4,
-              ].filter(Boolean);
-              const result = await upsertPokemonAction({
-                id: form.id,
-                trainerId: trainer.id,
-                slot: form.slot,
-                partyIndex: form.partyIndex,
-                nickname: form.nickname || null,
-                species: form.species.trim(),
-                isShiny: form.isShiny,
-                types: [],
-                nature: form.nature || null,
-                level: form.level ? Number(form.level) : null,
-                ability: form.ability || null,
-                catchRoute: form.catchRoute || null,
-                heldItem: form.heldItem || null,
-                moves,
-                causeOfDeath: form.causeOfDeath || null,
+        <>
+          <PokemonFormModal
+            open={pokemonOpen}
+            initial={pokemonForm}
+            pending={pending}
+            onClose={() => setPokemonOpen(false)}
+            onSave={(form) => {
+              startTransition(async () => {
+                const moves = [
+                  form.move1,
+                  form.move2,
+                  form.move3,
+                  form.move4,
+                ].filter(Boolean);
+                const result = await upsertPokemonAction({
+                  id: form.id,
+                  trainerId: trainer.id,
+                  slot: form.slot,
+                  partyIndex: form.partyIndex,
+                  nickname: form.nickname || null,
+                  species: form.species.trim(),
+                  isShiny: form.isShiny,
+                  types: [],
+                  nature: form.nature || null,
+                  level: form.level ? Number(form.level) : null,
+                  ability: form.ability || null,
+                  catchRoute: form.catchRoute || null,
+                  heldItem: form.heldItem || null,
+                  moves,
+                  causeOfDeath: form.causeOfDeath || null,
+                });
+                flash(result);
+                if (result.ok) setPokemonOpen(false);
               });
-              flash(result);
-              if (result.ok) setPokemonOpen(false);
-            });
-          }}
-          onDelete={(pokemonId) => {
-            startTransition(async () => {
-              const result = await deletePokemonAction({
-                trainerId: trainer.id,
-                pokemonId,
+            }}
+            onDelete={(pokemonId) => {
+              startTransition(async () => {
+                const result = await deletePokemonAction({
+                  trainerId: trainer.id,
+                  pokemonId,
+                });
+                flash(result);
+                if (result.ok) setPokemonOpen(false);
               });
-              flash(result);
-              if (result.ok) setPokemonOpen(false);
-            });
-          }}
-        />
+            }}
+          />
+          <SaveImportModal
+            open={saveImportOpen}
+            pending={pending}
+            onClose={() => setSaveImportOpen(false)}
+            onApply={(payload) => {
+              startTransition(async () => {
+                const result = await importFromSaveAction({
+                  trainerId: trainer.id,
+                  pokemon: payload.pokemon.map((m) => ({
+                    nickname: m.nickname || null,
+                    species: m.species.trim(),
+                    pokedexId: m.pokedexId,
+                    level: m.level ? Number(m.level) : null,
+                    isShiny: m.isShiny,
+                    slot: m.slot,
+                  })),
+                  trainerName: payload.trainerName,
+                  applyTrainerName: payload.applyTrainerName,
+                  badgeKeys: payload.badgeKeys,
+                  applyBadges: payload.applyBadges,
+                  // Full category sync: unchecked mons clear that slot group.
+                  replaceSlots: [
+                    "MAIN",
+                    "RESERVE",
+                    "GRAVEYARD",
+                    "ENCOUNTERED",
+                  ],
+                });
+                flash(result);
+                if (result.ok) setSaveImportOpen(false);
+              });
+            }}
+          />
+        </>
       ) : null}
     </div>
   );

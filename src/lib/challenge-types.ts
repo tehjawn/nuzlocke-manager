@@ -2,7 +2,7 @@ import type { PokemonType } from "@/lib/pokemon-types";
 
 export type ChallengeStatus = "DRAFT" | "ACTIVE" | "TOURNAMENT" | "ARCHIVED";
 export type ChallengeVisibility = "INVITE" | "UNLISTED" | "PUBLIC";
-export type PokemonSlot = "MAIN" | "RESERVE" | "GRAVEYARD";
+export type PokemonSlot = "MAIN" | "RESERVE" | "GRAVEYARD" | "ENCOUNTERED";
 export type MembershipRole = "PLAYER" | "GAME_MASTER" | "SPECTATOR";
 export type DataSource = "database" | "seed";
 
