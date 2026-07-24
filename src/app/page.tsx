@@ -14,7 +14,7 @@ export default async function HomePage() {
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-4 pb-16 pt-6 sm:px-6">
         <p className="font-display text-sm font-bold tracking-[0.2em] text-accent-deep uppercase">
-          Friend-group clubhouse
+          Trash Pack
         </p>
         <h1 className="font-display mt-3 max-w-2xl text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">
           Track the run.

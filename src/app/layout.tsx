@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     template: "%s · Nuzlocke Manager",
   },
   description:
-    "Friend-group Nuzlocke clubhouse — league boards, graves, badges, and season archives with a Gen 3 warm feel.",
+    "Trash Pack's Nuzlocke tracker — league boards, graves, badges, and season archives with a Gen 3 warm feel.",
 };
 
 export default function RootLayout({

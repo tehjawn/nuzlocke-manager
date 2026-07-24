@@ -1,10 +1,10 @@
 # Nuzlocke Manager
 
-Friend-group Nuzlocke clubhouse — league boards, graves, badges, seasons, Discord login, and Game Master tools.
+Trash Pack's Nuzlocke tracker — league boards, graves, badges, seasons, Discord login, and Game Master tools.
 
 ## Status
 
-Phases 0–2 shipped (Clubhouse UI, Trash Pack seed, Discord auth, board editing, GM console, activity feed). Next: Phase 3 — seasons & endgame (see plan).
+Phases 0–2 shipped (league UI, Trash Pack seed, Discord auth, board editing, GM console, Pack feed). Next: Phase 3 — seasons & endgame (see plan).
 
 - Discord login (Auth.js) → auto-provision personal trainer board
 - Invite / GM codes for gated seasons and GM elevation

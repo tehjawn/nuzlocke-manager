@@ -51,7 +51,7 @@ These are the reference points for product and feel — not features to clone wh
 
 ### One-liner
 
-**The shared clubhouse board for your group’s Nuzlocke season** — who is alive, who’s dead, who’s got which badge, and what’s happening this week.
+**The shared season board for Trash Pack’s Nuzlocke run** — who is alive, who’s dead, who’s got which badge, and what’s happening this week.
 
 ### Who it’s for
 
@@ -104,7 +104,7 @@ Nickname, species (forms + shiny), types, nature, level, ability, catch route, h
 
 ---
 
-## 4. Design system — “Hoenn Clubhouse”
+## 4. Design system — “Trash Pack board”
 
 ### Intent
 
@@ -211,7 +211,7 @@ User
 | `mainSquadLocked` on `TrainerProfile` | ✅ (manual GM toggle) |
 | `ActivityReaction` (emoji reactions on feed) | ✅ (shipped QoL; not originally planned) |
 | `Tournament` / `TournamentMatch` | Phase 3 — not before needed |
-| Soft `EncounterClaim` | Phase 4 — only if group wants route transparency |
+| Soft `EncounterClaim` | Phase 4 — only if group wants route transparency without leaving the season board |
 
 ---
 
@@ -223,9 +223,9 @@ User
 
 Next.js App Router, Prisma/Postgres, Zod stubs, sprite helpers, docs.
 
-### Phase 1 — Read-only “Clubhouse” MVP ✅
+### Phase 1 — Read-only league MVP ✅
 
-- Design tokens + framed layout shell (Hoenn Clubhouse look)
+- Design tokens + framed layout shell (Trash Pack board look)
 - Challenge home (rules + FAQ)
 - League board (summary)
 - Trainer board read view with sprites
@@ -278,7 +278,7 @@ Known gaps to close in this phase (or sooner if painful):
 
 | Asset | Source | Notes |
 |---|---|---|
-| Pokémon sprites | [PokeAPI sprites](https://github.com/PokeAPI/sprites), Showdown Dex | Prefer Gen 3–friendly static sprites for the clubhouse feel; shiny variants supported |
+| Pokémon sprites | [PokeAPI sprites](https://github.com/PokeAPI/sprites), Showdown Dex | Prefer Gen 3–friendly static sprites for the board feel; shiny variants supported |
 | Metadata | [PokeAPI](https://pokeapi.co) | Types/abilities; cache server-side |
 | Trainer avatars | [Showdown trainers](https://play.pokemonshowdown.com/sprites/trainers/) | Matches spreadsheet habit |
 | Type colors | Local tokens | Align with Index sheet + Gen 3 type hues |
@@ -293,7 +293,7 @@ Caching: `next/image` remotePatterns + optional proxy; always text fallback if C
 | Layer | Choice |
 |---|---|
 | Framework | Next.js (App Router) + React + TypeScript |
-| Styling | Tailwind CSS 4 + CSS design tokens (Clubhouse) |
+| Styling | Tailwind CSS 4 + CSS design tokens (Trash Pack board) |
 | DB | PostgreSQL via Prisma 7 (+ `@prisma/adapter-pg`) |
 | Hosting | Vercel |
 | Auth | Auth.js + Discord ✅ |
@@ -349,7 +349,7 @@ Activity lives on the league hub (no separate `/feed` route). League board is th
 
 ## 13. Next build priorities
 
-Phases 0–2 and Clubhouse theming are done. Build Phase 3 in this order:
+Phases 0–2 and Trash Pack board theming are done. Build Phase 3 in this order:
 
 1. Championship → auto-lock Main Squad (keep GM force lock/unlock)
 2. Memorial / archived season presentation
