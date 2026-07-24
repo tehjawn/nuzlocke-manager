@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { GmConsole } from "@/components/GmConsole";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getChallenge } from "@/lib/challenges";
+import { getPrisma } from "@/lib/db";
 import { getAccessForChallenge } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +35,11 @@ export default async function GmPage({ params }: PageProps) {
     redirect(`/challenges/${slug}/join`);
   }
 
+  const secrets = await getPrisma().challenge.findUnique({
+    where: { id: challenge.id },
+    select: { discordWebhookUrl: true },
+  });
+
   return (
     <div className="flex flex-1 flex-col">
       <SiteHeader
@@ -52,10 +58,16 @@ export default async function GmPage({ params }: PageProps) {
           Game Master console
         </h1>
         <p className="mt-2 text-muted">
-          Manage invites, roster locks, rules, and FAQ for this season.
+          Manage season status, invites, Discord alerts, exports, roster locks,
+          rules, and FAQ.
         </p>
         <div className="mt-8">
-          <GmConsole challenge={challenge} />
+          <GmConsole
+            challenge={{
+              ...challenge,
+              discordWebhookUrl: secrets?.discordWebhookUrl ?? null,
+            }}
+          />
         </div>
       </main>
     </div>

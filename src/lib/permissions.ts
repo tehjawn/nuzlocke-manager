@@ -65,6 +65,10 @@ export async function requireTrainerEditAccess(trainerId: string) {
   });
   if (!trainer) throw new Error("Trainer not found");
 
+  if (trainer.challenge.status === "ARCHIVED") {
+    throw new Error("This season is archived and read-only");
+  }
+
   const access = await getAccessForChallenge(trainer.challengeId);
   if (!access?.canEditTrainer(trainer.userId)) {
     throw new Error("You cannot edit this trainer board");

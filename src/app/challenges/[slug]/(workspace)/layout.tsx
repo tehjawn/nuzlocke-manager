@@ -55,6 +55,7 @@ export default async function SeasonWorkspaceLayout({
       year={challenge.year}
       game={challenge.game}
       description={challenge.description}
+      status={challenge.status}
       activities={challenge.activities ?? []}
       canReact={Boolean(session?.user?.id && challenge.source === "database")}
       showGm={Boolean(access?.isGm)}

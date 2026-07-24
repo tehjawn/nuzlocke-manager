@@ -29,6 +29,14 @@ import {
   type StatSpread,
 } from "@/lib/stats";
 import { Prisma } from "@/generated/prisma/client";
+import { dispatchDiscordWebhook } from "@/lib/discord-webhook";
+import {
+  buildChallengeCsv,
+  buildChallengeExport,
+} from "@/lib/export-challenge";
+import { getChallenge } from "@/lib/challenges";
+import { ChallengeStatusSchema } from "@/lib/types";
+import { buildFirstRoundPairings } from "@/lib/tournament";
 
 function jsonStatOrNull(
   value: StatSpread | null | undefined,
@@ -41,6 +49,7 @@ function jsonStatOrNull(
 /** League board + trainer board only — avoids refreshing Setup/Rules/FAQ chrome. */
 function revalidateBoardViews(slug: string, trainerId?: string) {
   revalidatePath(`/challenges/${slug}`);
+  revalidatePath(`/challenges/${slug}/memorial`);
   if (trainerId) {
     revalidatePath(`/challenges/${slug}/trainers/${trainerId}`);
   }
@@ -54,6 +63,8 @@ function revalidateChallenge(slug: string, trainerId?: string) {
   revalidatePath(`/challenges/${slug}/faq`);
   revalidatePath(`/challenges/${slug}/gm`);
   revalidatePath(`/challenges/${slug}/join`);
+  revalidatePath(`/challenges/${slug}/tournament`);
+  revalidatePath("/challenges");
 }
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -85,6 +96,13 @@ async function logActivity(input: {
       type: input.type,
       message: input.message,
     },
+  });
+
+  // Don't await — Discord outages must not block board saves.
+  void dispatchDiscordWebhook({
+    challengeId: input.challengeId,
+    type: input.type,
+    message: input.message,
   });
 }
 
@@ -504,6 +522,18 @@ export async function upsertPokemonAction(
         where: { id: data.id },
         data: payload,
       });
+      if (
+        existing.slot !== "GRAVEYARD" &&
+        data.slot === "GRAVEYARD"
+      ) {
+        await logActivity({
+          challengeId: trainer.challengeId,
+          actorId: userId,
+          trainerId: trainer.id,
+          type: "DEATH",
+          message: `${trainer.handle} memorialized ${data.nickname || data.species}`,
+        });
+      }
     } else {
       await prisma.pokemonEntry.create({
         data: { trainerId: trainer.id, ...payload },
@@ -866,6 +896,9 @@ export async function gmSetTrainerLockAction(input: {
       include: { challenge: true },
     });
     if (!trainer) return { ok: false, error: "Trainer not found" };
+    if (trainer.challenge.status === "ARCHIVED") {
+      return { ok: false, error: "This season is archived and read-only" };
+    }
     const { userId } = await requireGm(trainer.challengeId);
 
     await prisma.trainerProfile.update({
@@ -915,20 +948,59 @@ export async function gmUnclaimTrainerAction(input: {
 export async function gmUpdateChallengeMetaAction(input: {
   challengeId: string;
   visibility?: "INVITE" | "UNLISTED" | "PUBLIC";
+  status?: "DRAFT" | "ACTIVE" | "TOURNAMENT" | "ARCHIVED";
   playerInviteCode?: string;
   gmInviteCode?: string;
   description?: string;
+  discordWebhookUrl?: string | null;
 }): Promise<ActionResult> {
   try {
     await requireGm(input.challengeId);
     const prisma = getPrisma();
+
+    const status = input.status
+      ? ChallengeStatusSchema.parse(input.status)
+      : undefined;
+
+    let webhookUrl: string | null | undefined = undefined;
+    if (input.discordWebhookUrl !== undefined) {
+      const trimmed = (input.discordWebhookUrl ?? "").trim();
+      if (!trimmed) {
+        webhookUrl = null;
+      } else {
+        try {
+          const parsed = new URL(trimmed);
+          if (
+            parsed.protocol !== "https:" ||
+            !(
+              parsed.hostname === "discord.com" ||
+              parsed.hostname === "discordapp.com"
+            ) ||
+            !parsed.pathname.startsWith("/api/webhooks/")
+          ) {
+            return {
+              ok: false,
+              error: "Discord webhook URL must be a discord.com /api/webhooks/… link",
+            };
+          }
+          webhookUrl = trimmed;
+        } catch {
+          return { ok: false, error: "Invalid Discord webhook URL" };
+        }
+      }
+    }
+
     const challenge = await prisma.challenge.update({
       where: { id: input.challengeId },
       data: {
         visibility: input.visibility,
+        status,
         playerInviteCode: input.playerInviteCode,
         gmInviteCode: input.gmInviteCode,
         description: input.description,
+        ...(webhookUrl !== undefined
+          ? { discordWebhookUrl: webhookUrl }
+          : {}),
       },
     });
     revalidateChallenge(challenge.slug);
@@ -937,6 +1009,168 @@ export async function gmUpdateChallengeMetaAction(input: {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Settings update failed",
+    };
+  }
+}
+
+export async function gmExportChallengeAction(input: {
+  challengeId: string;
+  format: "json" | "csv";
+}): Promise<
+  | { ok: true; filename: string; content: string; mimeType: string }
+  | { ok: false; error: string }
+> {
+  try {
+    await requireGm(input.challengeId);
+    const prisma = getPrisma();
+    const row = await prisma.challenge.findUnique({
+      where: { id: input.challengeId },
+      select: { slug: true },
+    });
+    if (!row) return { ok: false, error: "Challenge not found" };
+
+    const challenge = await getChallenge(row.slug);
+    if (!challenge) return { ok: false, error: "Challenge not found" };
+
+    if (input.format === "csv") {
+      return {
+        ok: true,
+        filename: `${challenge.slug}-export.csv`,
+        content: buildChallengeCsv(challenge),
+        mimeType: "text/csv;charset=utf-8",
+      };
+    }
+
+    return {
+      ok: true,
+      filename: `${challenge.slug}-export.json`,
+      content: `${JSON.stringify(buildChallengeExport(challenge), null, 2)}\n`,
+      mimeType: "application/json;charset=utf-8",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Export failed",
+    };
+  }
+}
+
+export async function gmInitTournamentAction(input: {
+  challengeId: string;
+}): Promise<ActionResult> {
+  try {
+    await requireGm(input.challengeId);
+    const prisma = getPrisma();
+    const challenge = await prisma.challenge.findUnique({
+      where: { id: input.challengeId },
+      include: {
+        trainers: {
+          where: { mainSquadLocked: true },
+          orderBy: { sortOrder: "asc" },
+          select: { id: true, handle: true },
+        },
+      },
+    });
+    if (!challenge) return { ok: false, error: "Challenge not found" };
+    if (challenge.trainers.length < 2) {
+      return {
+        ok: false,
+        error: "Lock at least two Main Squads before seeding a bracket",
+      };
+    }
+
+    const pairings = buildFirstRoundPairings(
+      challenge.trainers.map((t) => t.id),
+    );
+
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.tournament.findUnique({
+        where: { challengeId: challenge.id },
+      });
+      if (existing) {
+        await tx.tournamentMatch.deleteMany({
+          where: { tournamentId: existing.id },
+        });
+        await tx.tournament.delete({ where: { id: existing.id } });
+      }
+
+      const tournament = await tx.tournament.create({
+        data: {
+          challengeId: challenge.id,
+          name: `${challenge.name} Ladder`,
+          status: "ACTIVE",
+        },
+      });
+
+      await tx.tournamentMatch.createMany({
+        data: pairings.map((p, index) => ({
+          tournamentId: tournament.id,
+          round: 1,
+          sortOrder: index,
+          label: p.label,
+          trainerAId: p.trainerAId,
+          trainerBId: p.trainerBId,
+          // Bye: auto-advance the lone trainer
+          winnerId: p.trainerAId && !p.trainerBId ? p.trainerAId : null,
+        })),
+      });
+    });
+
+    if (challenge.status === "ACTIVE" || challenge.status === "DRAFT") {
+      await prisma.challenge.update({
+        where: { id: challenge.id },
+        data: { status: "TOURNAMENT" },
+      });
+    }
+
+    revalidateChallenge(challenge.slug);
+    return {
+      ok: true,
+      message: `Bracket seeded with ${pairings.length} round-1 match(es)`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Tournament seed failed",
+    };
+  }
+}
+
+export async function gmSetMatchWinnerAction(input: {
+  matchId: string;
+  winnerId: string;
+}): Promise<ActionResult> {
+  try {
+    const prisma = getPrisma();
+    const match = await prisma.tournamentMatch.findUnique({
+      where: { id: input.matchId },
+      include: {
+        tournament: { include: { challenge: true } },
+      },
+    });
+    if (!match) return { ok: false, error: "Match not found" };
+    await requireGm(match.tournament.challengeId);
+
+    if (
+      input.winnerId !== match.trainerAId &&
+      input.winnerId !== match.trainerBId
+    ) {
+      return { ok: false, error: "Winner must be one of the match trainers" };
+    }
+
+    await prisma.tournamentMatch.update({
+      where: { id: match.id },
+      data: { winnerId: input.winnerId },
+    });
+
+    revalidatePath(
+      `/challenges/${match.tournament.challenge.slug}/tournament`,
+    );
+    return { ok: true, message: "Winner recorded" };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Could not set winner",
     };
   }
 }

@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
-import { TrainerCard } from "@/components/TrainerCard";
+import { TournamentBracket } from "@/components/TournamentBracket";
 import { getChallenge } from "@/lib/challenges";
+import { getAccessForChallenge } from "@/lib/permissions";
+import { getTournamentForChallenge } from "@/lib/tournament";
 
 export const dynamic = "force-dynamic";
 
@@ -17,19 +19,22 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const challenge = await getChallenge(slug);
-  if (!challenge) return { title: "Challenge" };
-  return { title: challenge.name };
+  if (!challenge) return { title: "Tournament" };
+  return { title: `Tournament · ${challenge.name}` };
 }
 
-export default async function LeagueBoardPage({ params }: PageProps) {
+export default async function TournamentPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
 
-  const trainers = [...challenge.trainers].sort(
-    (a, b) => a.sortOrder - b.sortOrder,
-  );
+  const access = challenge.id
+    ? await getAccessForChallenge(challenge.id)
+    : null;
+  const tournament = challenge.id
+    ? await getTournamentForChallenge(challenge.id)
+    : null;
 
   return (
     <>
@@ -37,24 +42,11 @@ export default async function LeagueBoardPage({ params }: PageProps) {
       <div className="mb-4">
         <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
       </div>
-
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-display text-xl font-extrabold tracking-tight">
-            Players
-          </h2>
-          <p className="text-xs text-muted">{trainers.length} on the board</p>
-        </div>
-        <div className="grid gap-4">
-          {trainers.map((trainer) => (
-            <TrainerCard
-              key={trainer.id}
-              challenge={challenge}
-              trainer={trainer}
-            />
-          ))}
-        </div>
-      </section>
+      <TournamentBracket
+        challenge={challenge}
+        tournament={tournament}
+        isGm={Boolean(access?.isGm)}
+      />
     </>
   );
 }

@@ -93,10 +93,33 @@ export type Challenge = {
   visibility: ChallengeVisibility;
   playerInviteCode?: string | null;
   gmInviteCode?: string | null;
+  /** GM-only; omitted from public challenge payloads. */
+  discordWebhookUrl?: string | null;
   badges: BadgeDefinition[];
   rules: ChallengeRule[];
   faqs: FaqEntry[];
   trainers: TrainerProfile[];
   activities?: ActivityItem[];
   source: DataSource;
+};
+
+export type TournamentMatchView = {
+  id: string;
+  round: number;
+  sortOrder: number;
+  label: string | null;
+  trainerAId: string | null;
+  trainerBId: string | null;
+  winnerId: string | null;
+  notes: string | null;
+  trainerAHandle: string | null;
+  trainerBHandle: string | null;
+  winnerHandle: string | null;
+};
+
+export type TournamentView = {
+  id: string;
+  name: string | null;
+  status: string;
+  matches: TournamentMatchView[];
 };

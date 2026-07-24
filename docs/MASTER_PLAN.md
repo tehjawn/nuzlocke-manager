@@ -2,7 +2,7 @@
 
 A multiplayer Nuzlocke **ops board** for a friend group: seasons, trainer boards, graves, badges, and Game Master tools — replacing the Trash Pack spreadsheet with a warm, Gen 3–flavored web app on Vercel.
 
-**Status (Jul 2026):** Phases 0–2 shipped. Active work: **Phase 3 — Seasons & endgame** (§7 / §13).
+**Status (Jul 2026):** Phases 0–2 shipped. Phase 3 in progress: memorial, export, Discord webhooks, tournament stub.
 
 **Reference spreadsheet:** [TrashPack Nuzlocke Challenge](https://docs.google.com/spreadsheets/d/1b8WdFyNuToOaq_MBda4lSZXGqaj36VbC)
 
@@ -169,7 +169,7 @@ Dark mode is **optional later**; default is warm light (matches Gen 3 menus bett
 
 | Role | Capabilities |
 |---|---|
-| **Guest** | Sees only challenges marked public; otherwise login wall *(visibility field shipped; INVITE read-gate still TODO)* |
+| **Guest** | Sees PUBLIC / UNLISTED seasons freely; INVITE treated as open for now *(strict guest login wall deferred)* |
 | **Player** | Edit own trainer board + account; read league |
 | **Game Master** | Full CRUD: season setup, rules/FAQ, roster, all boards, revive resets, Main Squad lock, invites, roles |
 | **Spectator member** (optional) | Read-only membership for friends who aren’t running |
@@ -200,7 +200,7 @@ User
 
 **Challenge lifecycle:** `DRAFT` → `ACTIVE` → `TOURNAMENT` → `ARCHIVED`
 
-**Main Squad lock:** When Championship is earned (or GM forces), Main Squad freezes for ladder use — matches the sheet FAQ (“locked in immediately after defeating the Champion”). **Shipped:** GM can lock/unlock today; **not yet:** auto-lock when Championship badge is earned, memorial season view.
+**Main Squad lock:** GM can lock/unlock Main Squad for ladder use (manual only — no Championship auto-lock). Memorial / archived season view is Phase 3.
 
 **Schema status:**
 
@@ -243,21 +243,20 @@ Next.js App Router, Prisma/Postgres, Zod stubs, sprite helpers, docs.
 - Activity log on league hub (+ emoji reactions)
 - Simplified join UX (no claim dance; Ash demo only; `/me` shortcut)
 
-### Phase 3 — Seasons & endgame ← next
+### Phase 3 — Seasons & endgame ✅ (core)
 
-Ordered by value given current state:
+Shipped:
 
-1. **Championship auto-lock** — lock Main Squad when Championship is earned (GM override already exists)
-2. **Memorial / end-of-season view** — read-only season presentation after lock / archive
-3. **Season duplicate + archive UX** — clone challenge for next year; year switcher chrome on `/challenges` (list exists; only one season seeded)
-4. **Export JSON/CSV** — backup once the sheet is retired
-5. **Discord webhooks** — death, badge, revive → group Discord
-6. **Tournament bracket stub** — ladder after Champion (`Tournament` model + `/tournament` route)
+1. **Memorial / end-of-season view** — `/memorial` + archive read-only boards (manual Main Squad lock)
+2. **Export JSON/CSV** — GM console downloads
+3. **Discord webhooks** — death, badge earned, revive used (GM-configured URL)
+4. **Tournament bracket stub** — `Tournament` / `TournamentMatch` + `/tournament` seed UI
 
-Known gaps to close in this phase (or sooner if painful):
+**Deferred / skipped for now:**
 
-- INVITE seasons should enforce a login wall for guests (visibility exists; gate not applied on reads)
-- GM “duplicate season” is a success metric (§11) and unblocks 2027
+- Championship auto-lock (removed — GM lock/unlock is enough)
+- Season duplicate / year switcher (ignore until 2027 setup)
+- INVITE guest login wall (treat invites as open for now)
 
 ### Phase 4 — QoL (only what the group asks for)
 
@@ -318,7 +317,8 @@ Keep the stack boring so the **UI personality** can carry the product.
 /challenges/[slug]/join           → Invite / GM code                     ✅
 /challenges/[slug]/trainers/[id]  → Trainer board                        ✅
 /challenges/[slug]/gm             → Game Master console                  ✅
-/challenges/[slug]/tournament     → Ladder                               Phase 3
+/challenges/[slug]/memorial       → Season memorial (all graves)         ✅
+/challenges/[slug]/tournament     → Ladder                               ✅ (stub)
 ```
 
 Activity lives on the league hub (no separate `/feed` route). League board is the hub — rules/FAQ one click away, matching how the group uses the sheet day-to-day.
@@ -329,9 +329,9 @@ Activity lives on the league hub (no separate `/feed` route). League board is th
 
 - Group stops editing the Google Sheet for day-to-day updates
 - A player can log a death + cause on mobile in **&lt; 60 seconds**
-- GM can spin up next year’s challenge by **duplicating** a season
 - Guests/spectators understand standings from the league board alone
 - 2026 remains readable when 2027 is active
+- *(Deferred)* GM can spin up next year’s challenge by duplicating a season
 - Design critique: “feels like Emerald menus,” not “feels like a SaaS template”
 
 ---
@@ -349,13 +349,8 @@ Activity lives on the league hub (no separate `/feed` route). League board is th
 
 ## 13. Next build priorities
 
-Phases 0–2 and Trash Pack board theming are done. Build Phase 3 in this order:
+Phase 3 core (memorial, export, Discord webhooks, tournament stub) is shipped.
 
-1. Championship → auto-lock Main Squad (keep GM force lock/unlock)
-2. Memorial / archived season presentation
-3. Season duplicate + richer archive / year switcher on `/challenges`
-4. Export JSON/CSV backup
-5. Discord webhooks (death, badge, revive)
-6. Tournament bracket stub (last — no schema pressure yet)
+Deferred: Championship auto-lock, season duplicate / year switcher, INVITE guest login wall.
 
-Opportunistic polish (not blocking Phase 3): INVITE read gate, alternate formes in species picker, sticky mobile save bar.
+Likely next: Phase 4 QoL the group actually asks for; alternate formes in species picker; sticky mobile save bar.
