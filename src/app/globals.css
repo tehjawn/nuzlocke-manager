@@ -141,10 +141,7 @@ body:has([data-modal-open]) {
   --gba-fill: var(--rip);
 }
 
-/*
-  Inline menus expand in layout near other chrome — skip bg-punch corner
-  notches so they don't paint over neighboring controls.
-*/
+/* Floating menus sit over page chrome — skip bg-punch corner notches. */
 .gba-frame-menu::before {
   content: none;
 }

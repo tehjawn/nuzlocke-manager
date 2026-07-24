@@ -68,7 +68,12 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
   const themeLabel = theme === "dark" ? "Light mode" : "Dark mode";
 
   return (
-    <div ref={rootRef} className="relative flex flex-col items-stretch">
+    <div
+      ref={rootRef}
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       <button
         type="button"
         className="pressable inline-flex h-9 items-center gap-2 bg-surface px-2 text-sm font-medium"
@@ -99,40 +104,42 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
       </button>
 
       {open ? (
-        <div
-          id={menuId}
-          role="menu"
-          className="gba-frame gba-frame-menu relative z-50 mt-2 min-w-[12.5rem] overflow-hidden"
-        >
-          <Link
-            href="/account"
-            role="menuitem"
-            className="relative z-[1] flex items-center gap-2 px-3 py-2.5 text-sm font-medium hover:bg-accent/15"
-            onClick={() => setOpen(false)}
+        <div className="absolute top-full right-0 z-50 pt-1">
+          <div
+            id={menuId}
+            role="menu"
+            className="gba-frame gba-frame-menu w-52 overflow-hidden"
           >
-            <ProfileIcon />
-            My Profile
-          </Link>
-          <button
-            type="button"
-            role="menuitem"
-            className="relative z-[1] flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-accent/15"
-            onClick={onToggleTheme}
-            aria-label={`Switch to ${themeLabel.toLowerCase()}`}
-          >
-            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-            {themeLabel}
-          </button>
-          <form action={signOutAction} className="relative z-[1]">
-            <button
-              type="submit"
+            <Link
+              href="/account"
               role="menuitem"
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-accent/15"
+              className="relative z-[1] flex items-center gap-2 px-3 py-2.5 text-sm font-medium hover:bg-accent/15"
+              onClick={() => setOpen(false)}
             >
-              <SignOutIcon />
-              Sign Out
+              <ProfileIcon />
+              My Profile
+            </Link>
+            <button
+              type="button"
+              role="menuitem"
+              className="relative z-[1] flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-accent/15"
+              onClick={onToggleTheme}
+              aria-label={`Switch to ${themeLabel.toLowerCase()}`}
+            >
+              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+              {themeLabel}
             </button>
-          </form>
+            <form action={signOutAction} className="relative z-[1]">
+              <button
+                type="submit"
+                role="menuitem"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-accent/15"
+              >
+                <SignOutIcon />
+                Sign Out
+              </button>
+            </form>
+          </div>
         </div>
       ) : null}
     </div>

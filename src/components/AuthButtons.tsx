@@ -19,7 +19,7 @@ export async function AuthButtons({ hideMyTrainer = false }: AuthButtonsProps) {
       typeof session.user.image === "string" ? session.user.image : null;
 
     return (
-      <div className="flex items-start gap-2">
+      <div className="flex items-center gap-2">
         {!hideMyTrainer ? (
           <Link
             href={AFTER_LOGIN}
