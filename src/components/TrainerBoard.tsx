@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
   importFromSaveAction,
@@ -31,8 +31,6 @@ import type {
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 import { avatarImageUrl } from "@/lib/sprites";
 
-type BoardMode = "view" | "edit";
-
 type TrainerBoardProps = {
   joinHref: string;
   /** When set, demo boards point signed-in players at their own board instead of login. */
@@ -44,6 +42,60 @@ type TrainerBoardProps = {
   isDemo: boolean;
 };
 
+function PencilIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M11.5 1.5 14.5 4.5 5.75 13.25 2.5 13.5l.25-3.25L11.5 1.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 3 13 6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function HeaderButton({
+  children,
+  onClick,
+  disabled,
+  tone = "ghost",
+  "aria-label": ariaLabel,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: "ghost" | "solid";
+  "aria-label"?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={onClick}
+      className={`pressable inline-flex items-center gap-1 rounded-sm px-2 py-1 font-display text-[10px] font-bold tracking-wide uppercase disabled:opacity-60 ${
+        tone === "solid"
+          ? "bg-white text-accent-deep"
+          : "bg-white/15 text-white hover:bg-white/25"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function TrainerBoard({
   joinHref,
   myBoardHref = null,
@@ -53,10 +105,9 @@ export function TrainerBoard({
   isGm,
   isDemo,
 }: TrainerBoardProps) {
-  const [mode, setMode] = useState<BoardMode>(
-    canEdit && trainer.pokemon.length === 0 ? "edit" : "view",
+  const [editingPlayer, setEditingPlayer] = useState(
+    canEdit && trainer.pokemon.length === 0,
   );
-  const editing = canEdit && mode === "edit";
 
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -91,6 +142,23 @@ export function TrainerBoard({
     }
   }
 
+  function syncPlayerDraftFromTrainer() {
+    setHandle(trainer.handle);
+    setStatusText(trainer.statusText ?? "");
+    setRealName(trainer.realName ?? "");
+    setAvatarSpriteKey(trainer.avatarSpriteKey);
+  }
+
+  function startEditingPlayer() {
+    syncPlayerDraftFromTrainer();
+    setEditingPlayer(true);
+  }
+
+  function cancelEditingPlayer() {
+    syncPlayerDraftFromTrainer();
+    setEditingPlayer(false);
+  }
+
   function openAddPokemon(
     slot: PokemonEntry["slot"] = "MAIN",
     partyIndex?: number,
@@ -113,45 +181,11 @@ export function TrainerBoard({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">
-          {editing
-            ? "Editing your board — changes save per section."
-            : "Trainer board"}
-        </p>
-        {canEdit ? (
-          <div
-            className="inline-flex rounded-sm border-2 border-frame bg-surface-2 p-0.5"
-            role="group"
-            aria-label="Board mode"
-          >
-            <button
-              type="button"
-              className={`pressable rounded-sm px-3 py-1.5 font-display text-xs font-bold tracking-wide uppercase ${
-                mode === "view"
-                  ? "bg-accent text-white"
-                  : "text-muted hover:text-ink"
-              }`}
-              aria-pressed={mode === "view"}
-              onClick={() => setMode("view")}
-            >
-              View
-            </button>
-            <button
-              type="button"
-              className={`pressable rounded-sm px-3 py-1.5 font-display text-xs font-bold tracking-wide uppercase ${
-                mode === "edit"
-                  ? "bg-accent text-white"
-                  : "text-muted hover:text-ink"
-              }`}
-              aria-pressed={mode === "edit"}
-              onClick={() => setMode("edit")}
-            >
-              Edit
-            </button>
-          </div>
-        ) : null}
-      </div>
+      <p className="text-sm text-muted">
+        {canEdit
+          ? "Your board — profile saves explicitly; party and badges save as you go."
+          : "Trainer board"}
+      </p>
 
       {message ? (
         <p className="text-sm font-semibold text-accent-deep" role="status">
@@ -166,8 +200,48 @@ export function TrainerBoard({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:items-start">
         <div className="space-y-6">
-          <Frame title="Player">
-            {editing ? (
+          <Frame
+            title="Player"
+            actions={
+              canEdit ? (
+                editingPlayer ? (
+                  <>
+                    <HeaderButton
+                      tone="solid"
+                      disabled={pending || !handle.trim()}
+                      onClick={() => {
+                        startTransition(async () => {
+                          const result = await updateTrainerBoardAction({
+                            trainerId: trainer.id,
+                            handle: handle.trim(),
+                            statusText,
+                            realName: realName || null,
+                            avatarSpriteKey,
+                          });
+                          flash(result);
+                          if (result.ok) setEditingPlayer(false);
+                        });
+                      }}
+                    >
+                      Save
+                    </HeaderButton>
+                    <HeaderButton onClick={cancelEditingPlayer}>
+                      Cancel
+                    </HeaderButton>
+                  </>
+                ) : (
+                  <HeaderButton
+                    aria-label="Edit player profile"
+                    onClick={startEditingPlayer}
+                  >
+                    <PencilIcon />
+                    Edit
+                  </HeaderButton>
+                )
+              ) : null
+            }
+          >
+            {editingPlayer ? (
               <div className="space-y-4">
                 <div>
                   <span className="mb-2 block text-sm font-bold text-muted">
@@ -257,26 +331,6 @@ export function TrainerBoard({
                     </button>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  disabled={pending || !handle.trim()}
-                  className="pressable rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
-                  onClick={() => {
-                    startTransition(async () => {
-                      flash(
-                        await updateTrainerBoardAction({
-                          trainerId: trainer.id,
-                          handle: handle.trim(),
-                          statusText,
-                          realName: realName || null,
-                          avatarSpriteKey,
-                        }),
-                      );
-                    });
-                  }}
-                >
-                  Save profile
-                </button>
               </div>
             ) : (
               <div className="flex flex-wrap items-start gap-4">
@@ -336,8 +390,8 @@ export function TrainerBoard({
                   ) : null}
                   {canEdit && trainer.pokemon.length === 0 ? (
                     <p className="mt-3 text-sm text-muted">
-                      Your board is ready — switch to Edit to set a nickname,
-                      avatar, badges, and party.
+                      Your board is ready — edit your profile, tap party slots
+                      to add Pokémon, and toggle badges as you earn them.
                     </p>
                   ) : null}
                 </div>
@@ -346,7 +400,7 @@ export function TrainerBoard({
           </Frame>
 
           <Frame title="Main Squad">
-            {editing ? (
+            {canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">
@@ -384,7 +438,7 @@ export function TrainerBoard({
           </Frame>
 
           <Frame title="The Reserves">
-            {editing ? (
+            {canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">
@@ -412,7 +466,7 @@ export function TrainerBoard({
           </Frame>
 
           <Frame title="R.I.P." tone="rip">
-            {editing ? (
+            {canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">
@@ -489,13 +543,16 @@ export function TrainerBoard({
           </Frame>
 
           <Frame title="Badge case">
-            {editing ? (
-              <BadgeCaseEditor
-                trainerId={trainer.id}
-                badges={badges}
-                earnedKeys={trainer.earnedBadgeKeys}
-                layout="column"
-              />
+            {canEdit ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted">Tap a badge to toggle it.</p>
+                <BadgeCaseEditor
+                  trainerId={trainer.id}
+                  badges={badges}
+                  earnedKeys={trainer.earnedBadgeKeys}
+                  layout="column"
+                />
+              </div>
             ) : (
               <BadgeCase
                 badges={badges}
@@ -507,7 +564,7 @@ export function TrainerBoard({
         </aside>
       </div>
 
-      {editing ? (
+      {canEdit ? (
         <>
           <PokemonFormModal
             open={pokemonOpen}
