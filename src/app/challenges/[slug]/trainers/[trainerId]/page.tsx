@@ -3,7 +3,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BadgeCase } from "@/components/BadgeCase";
-import { ClaimTrainerButton } from "@/components/ClaimTrainerButton";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { Frame } from "@/components/Frame";
 import { PartyStrip } from "@/components/PartyStrip";
@@ -43,10 +42,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     ? await getAccessForChallenge(challenge.id)
     : null;
   const canEdit = Boolean(access?.canEditTrainer(trainer.userId));
-  const canClaim =
-    Boolean(access?.isPlayer) &&
-    !trainer.userId &&
-    challenge.source === "database";
+  const isDemo = !trainer.userId;
 
   const main = pokemonInSlot(trainer, "MAIN");
   const reserves = pokemonInSlot(trainer, "RESERVE");
@@ -92,20 +88,23 @@ export default async function TrainerBoardPage({ params }: PageProps) {
                     Main Squad locked
                   </span>
                 ) : null}
-                {trainer.userId ? (
-                  <span className="text-xs text-muted">Claimed</span>
-                ) : (
-                  <span className="text-xs text-muted">Unclaimed</span>
-                )}
+                {isDemo ? (
+                  <span className="rounded-sm border-2 border-frame bg-surface-2 px-3 py-2 font-display text-xs font-bold tracking-wide uppercase">
+                    Demo example
+                  </span>
+                ) : null}
               </div>
-              {canClaim ? (
-                <div className="mt-4">
-                  <ClaimTrainerButton
-                    slug={challenge.slug}
-                    trainerId={trainer.id}
-                    handle={trainer.handle}
-                  />
-                </div>
+              {isDemo ? (
+                <p className="mt-3 text-sm text-muted">
+                  This isn&apos;t a real player slot.{" "}
+                  <Link
+                    href={`/challenges/${challenge.slug}/join`}
+                    className="font-bold text-accent-deep underline"
+                  >
+                    Sign in with Discord
+                  </Link>{" "}
+                  to get your own editable board.
+                </p>
               ) : null}
             </div>
           </div>

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function LoginPage() {
   const session = await auth();
   if (session?.user?.id) {
-    redirect("/challenges");
+    redirect("/challenges/2026-trash-pack");
   }
 
   const discordReady = Boolean(
@@ -28,7 +28,8 @@ export default async function LoginPage() {
           Sign in
         </h1>
         <p className="mt-2 text-muted">
-          Use Discord to join seasons, claim a trainer, and update your board.
+          Sign in with Discord — public seasons create your trainer board
+          automatically.
         </p>
 
         <div className="mt-8 space-y-4">
@@ -37,7 +38,9 @@ export default async function LoginPage() {
               <form
                 action={async () => {
                   "use server";
-                  await signIn("discord", { redirectTo: "/challenges" });
+                  await signIn("discord", {
+                    redirectTo: "/challenges/2026-trash-pack",
+                  });
                 }}
               >
                 <button

@@ -34,7 +34,9 @@ export async function AuthButtons() {
     <form
       action={async () => {
         "use server";
-        await signIn("discord", { redirectTo: "/challenges" });
+        await signIn("discord", {
+          redirectTo: "/challenges/2026-trash-pack",
+        });
       }}
     >
       <button

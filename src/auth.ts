@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Discord from "next-auth/providers/discord";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
+import { provisionForActiveSeasons } from "@/lib/provision";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -17,14 +18,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ profile }) {
       if (!isDatabaseConfigured()) {
-        // Allow login UI to load; mutations will fail clearly without DB.
         return true;
       }
       const discordId = profile?.id != null ? String(profile.id) : null;
       if (!discordId) return false;
 
       const prisma = getPrisma();
-      await prisma.user.upsert({
+      const user = await prisma.user.upsert({
         where: { discordId },
         create: {
           discordId,
@@ -49,6 +49,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 : undefined,
         },
       });
+
+      try {
+        await provisionForActiveSeasons(user.id);
+      } catch (err) {
+        console.error("Auto-provision failed", err);
+      }
+
       return true;
     },
     async jwt({ token, profile }) {
