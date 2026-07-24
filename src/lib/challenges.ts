@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { CHALLENGES } from "@/data/trash-pack-2026";
 import type {
   ActivityItem,
@@ -57,24 +58,27 @@ export async function listChallenges(): Promise<Challenge[]> {
   return CHALLENGES.map(seedAsChallenge);
 }
 
-export async function getChallenge(
-  slug: string,
-  viewerUserId?: string | null,
-): Promise<Challenge | null> {
-  if (isDatabaseConfigured()) {
-    try {
-      const row = await getPrisma().challenge.findUnique({
-        where: { slug },
-        include: challengeInclude,
-      });
-      if (row) return mapDbChallenge(row, viewerUserId);
-    } catch {
-      // fall through
+/** Request-deduped so layout + page can both call without double-fetching. */
+export const getChallenge = cache(
+  async (
+    slug: string,
+    viewerUserId?: string | null,
+  ): Promise<Challenge | null> => {
+    if (isDatabaseConfigured()) {
+      try {
+        const row = await getPrisma().challenge.findUnique({
+          where: { slug },
+          include: challengeInclude,
+        });
+        if (row) return mapDbChallenge(row, viewerUserId);
+      } catch {
+        // fall through
+      }
     }
-  }
-  const seed = CHALLENGES.find((c) => c.slug === slug);
-  return seed ? seedAsChallenge(seed) : null;
-}
+    const seed = CHALLENGES.find((c) => c.slug === slug);
+    return seed ? seedAsChallenge(seed) : null;
+  },
+);
 
 export async function getTrainer(
   slug: string,

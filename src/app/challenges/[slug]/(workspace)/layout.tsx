@@ -1,29 +1,27 @@
-import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { ChallengeShell } from "@/components/ChallengeShell";
-import { DataSourceBanner } from "@/components/DataSourceBanner";
-import { TrainerCard } from "@/components/TrainerCard";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { ensureTrainerForChallenge } from "@/lib/provision";
 
 export const dynamic = "force-dynamic";
 
-type PageProps = {
+type LayoutProps = {
+  children: ReactNode;
   params: Promise<{ slug: string }>;
 };
 
-export async function generateMetadata({
+/**
+ * Shared season chrome (header, info, tabs, feed).
+ * Soft-navigating between Players / Get Started / Rules / FAQ keeps this
+ * layout mounted — only the right-pane page segment swaps.
+ */
+export default async function SeasonWorkspaceLayout({
+  children,
   params,
-}: PageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const challenge = await getChallenge(slug);
-  if (!challenge) return { title: "Challenge" };
-  return { title: challenge.name };
-}
-
-export default async function LeagueBoardPage({ params }: PageProps) {
+}: LayoutProps) {
   const { slug } = await params;
   const session = await auth();
   let challenge = await getChallenge(slug, session?.user?.id);
@@ -50,10 +48,6 @@ export default async function LeagueBoardPage({ params }: PageProps) {
     ? await getAccessForChallenge(challenge.id)
     : null;
 
-  const trainers = [...challenge.trainers].sort(
-    (a, b) => a.sortOrder - b.sortOrder,
-  );
-
   return (
     <ChallengeShell
       slug={challenge.slug}
@@ -67,25 +61,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
       myTrainerId={myTrainerId}
       signedIn={Boolean(session?.user)}
     >
-      <DataSourceBanner source={challenge.source} />
-
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-display text-xl font-extrabold tracking-tight">
-            Players
-          </h2>
-          <p className="text-xs text-muted">{trainers.length} on the board</p>
-        </div>
-        <div className="grid gap-4">
-          {trainers.map((trainer) => (
-            <TrainerCard
-              key={trainer.id}
-              challenge={challenge}
-              trainer={trainer}
-            />
-          ))}
-        </div>
-      </section>
+      {children}
     </ChallengeShell>
   );
 }

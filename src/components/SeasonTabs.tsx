@@ -42,6 +42,7 @@ export function SeasonTabs({ slug }: SeasonTabsProps) {
             href={tab.href}
             role="tab"
             aria-selected={active}
+            prefetch
             className={`rounded-sm px-3 py-2 text-sm font-bold transition-colors ${
               active
                 ? "bg-accent text-white"

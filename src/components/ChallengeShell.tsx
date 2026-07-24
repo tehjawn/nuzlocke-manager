@@ -6,6 +6,9 @@ import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader } from "@/components/SiteHeader";
 import type { ActivityItem } from "@/lib/challenge-types";
 
+/** Fixed left rail width — keeps tab navigations from shifting columns. */
+export const SEASON_LEFT_RAIL_CLASS = "w-full lg:w-[22.5rem] lg:shrink-0";
+
 type ChallengeShellProps = {
   slug: string;
   name: string;
@@ -42,8 +45,10 @@ export function ChallengeShell({
         myTrainerId={myTrainerId}
         wide
       />
-      <div className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 pb-16 pt-2 sm:px-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-start">
-        <aside className="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:self-start lg:pr-1">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 pb-16 pt-2 sm:px-6 lg:flex-row lg:items-start">
+        <aside
+          className={`${SEASON_LEFT_RAIL_CLASS} space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:self-start lg:pr-1`}
+        >
           <Frame title={`Season ${year}`}>
             <p className="font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase">
               General info
@@ -74,7 +79,7 @@ export function ChallengeShell({
           />
         </aside>
 
-        <div className="min-w-0">{children}</div>
+        <div className="min-w-0 flex-1">{children}</div>
       </div>
     </div>
   );
