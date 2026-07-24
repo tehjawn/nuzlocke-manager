@@ -1,6 +1,6 @@
 # Nuzlocke Manager
 
-Friend-group Nuzlocke clubhouse — league boards, graves, badges, seasons, Discord login, and Game Master tools.
+Trash Pack's Nuzlocke tracker — league boards, graves, badges, seasons, Discord login, and Game Master tools.
 
 ## Phase 2
 

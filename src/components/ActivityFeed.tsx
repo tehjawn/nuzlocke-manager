@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { toggleActivityReactionAction } from "@/app/actions/challenge";
 import { Frame } from "@/components/Frame";
 import type {
@@ -39,7 +39,7 @@ export function ActivityFeed({
   canReact = false,
 }: ActivityFeedProps) {
   return (
-    <Frame title="Clubhouse feed">
+    <Frame title="Pack feed">
       {activities.length === 0 ? (
         <p className="text-sm text-muted">No activity yet. Updates show here.</p>
       ) : (
@@ -61,58 +61,151 @@ function ActivityRow({
   canReact: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [reactions, setOptimistic] = useOptimistic(
     item.reactions ?? [],
     (current, emoji: string) => mergeReaction(current, emoji),
   );
 
+  const visibleReactions = reactions.filter((r) => r.count > 0);
+
+  function react(emoji: string) {
+    if (!canReact) return;
+    setPickerOpen(false);
+    startTransition(async () => {
+      setOptimistic(emoji);
+      await toggleActivityReactionAction({
+        activityId: item.id,
+        emoji,
+      });
+    });
+  }
+
   return (
-    <li className="border-b border-frame/20 pb-3 last:border-0">
-      <p className="text-sm leading-snug">{item.message}</p>
-      <p className="mt-1 text-[11px] tracking-wide text-muted uppercase">
-        {item.type.replaceAll("_", " ")}
-        {" · "}
-        {new Date(item.createdAt).toLocaleString()}
-        {item.trainerHandle ? ` · ${item.trainerHandle}` : ""}
-      </p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {FEED_EMOJIS.map((emoji) => {
-          const summary = reactions.find((r) => r.emoji === emoji);
-          const active = Boolean(summary?.reactedByMe);
-          const count = summary?.count ?? 0;
-          if (!canReact && count === 0) return null;
-          return (
+    <li className="group relative border-b border-frame/20 pb-3 last:border-0">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm leading-snug">{item.message}</p>
+          <p className="mt-1 text-[11px] tracking-wide text-muted uppercase">
+            {item.type.replaceAll("_", " ")}
+            {" · "}
+            {new Date(item.createdAt).toLocaleString()}
+            {item.trainerHandle ? ` · ${item.trainerHandle}` : ""}
+          </p>
+        </div>
+
+        {canReact ? (
+          <div className="relative shrink-0">
             <button
-              key={emoji}
+              type="button"
+              disabled={pending}
+              aria-label="Add reaction"
+              aria-expanded={pickerOpen}
+              aria-haspopup="listbox"
+              title="Add reaction"
+              className={`rounded-sm border border-frame/40 bg-surface-2 p-1 text-muted transition-opacity pressable hover:bg-accent/10 hover:text-ink ${
+                pickerOpen
+                  ? "opacity-100"
+                  : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+              }`}
+              onClick={() => setPickerOpen((open) => !open)}
+            >
+              <AddReactionIcon />
+            </button>
+
+            {pickerOpen ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Dismiss emoji picker"
+                  className="fixed inset-0 z-10 cursor-default"
+                  onClick={() => setPickerOpen(false)}
+                />
+                <div
+                  role="listbox"
+                  aria-label="Emoji reactions"
+                  className="absolute top-full right-0 z-20 mt-1 flex gap-0.5 rounded-sm border-2 border-frame bg-surface p-1 shadow-[3px_3px_0_var(--shadow)]"
+                >
+                  {FEED_EMOJIS.map((emoji) => {
+                    const active = Boolean(
+                      reactions.find((r) => r.emoji === emoji)?.reactedByMe,
+                    );
+                    return (
+                      <button
+                        key={emoji}
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        disabled={pending}
+                        title={emoji}
+                        className={`rounded-sm px-1.5 py-1 text-base leading-none hover:bg-accent/15 ${
+                          active ? "bg-accent/20" : ""
+                        }`}
+                        onClick={() => react(emoji)}
+                      >
+                        <span aria-hidden>{emoji}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {visibleReactions.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {visibleReactions.map((summary) => (
+            <button
+              key={summary.emoji}
               type="button"
               disabled={!canReact || pending}
               title={canReact ? "Toggle reaction" : undefined}
               className={`rounded-sm border px-1.5 py-0.5 text-sm ${
-                active
+                summary.reactedByMe
                   ? "border-accent bg-accent/15"
                   : "border-frame/40 bg-surface-2"
               } ${canReact ? "pressable hover:bg-accent/10" : "cursor-default"}`}
-              onClick={() => {
-                if (!canReact) return;
-                startTransition(async () => {
-                  setOptimistic(emoji);
-                  await toggleActivityReactionAction({
-                    activityId: item.id,
-                    emoji,
-                  });
-                });
-              }}
+              onClick={() => react(summary.emoji)}
             >
-              <span aria-hidden>{emoji}</span>
-              {count > 0 ? (
-                <span className="ml-1 text-[11px] font-bold text-muted">
-                  {count}
-                </span>
-              ) : null}
+              <span aria-hidden>{summary.emoji}</span>
+              <span className="ml-1 text-[11px] font-bold text-muted">
+                {summary.count}
+              </span>
             </button>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : null}
     </li>
+  );
+}
+
+function AddReactionIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      className="block"
+    >
+      <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="5.75" cy="6.75" r="0.9" fill="currentColor" />
+      <circle cx="10.25" cy="6.75" r="0.9" fill="currentColor" />
+      <path
+        d="M5.5 9.75c.7 1 1.55 1.5 2.5 1.5s1.8-.5 2.5-1.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12.75 2.5v3M11.25 4h3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
