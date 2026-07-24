@@ -43,8 +43,13 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     : null;
   const canEdit = Boolean(access?.canEditTrainer(trainer.userId));
   const isDemo = !trainer.userId;
+  // Header only needs a truthy id to show “My board” → /me
   const myTrainerId =
-    access && trainer.userId === access.userId ? trainer.id : null;
+    access?.isPlayer
+      ? trainer.userId === access.userId
+        ? trainer.id
+        : access.userId
+      : null;
 
   const main = pokemonInSlot(trainer, "MAIN");
   const reserves = pokemonInSlot(trainer, "RESERVE");
@@ -127,6 +132,15 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           </div>
         </Frame>
 
+        {canEdit && trainer.pokemon.length === 0 ? (
+          <TrainerEditor
+            trainer={trainer}
+            badges={challenge.badges}
+            canEdit={canEdit}
+            isGm={Boolean(access?.isGm)}
+          />
+        ) : null}
+
         <Frame title="Badge case">
           <BadgeCase
             badges={challenge.badges}
@@ -156,7 +170,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           )}
         </Frame>
 
-        {canEdit ? (
+        {canEdit && trainer.pokemon.length > 0 ? (
           <TrainerEditor
             trainer={trainer}
             badges={challenge.badges}
