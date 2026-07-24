@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BadgeCase } from "@/components/BadgeCase";
+import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { Frame } from "@/components/Frame";
 import { PartyStrip } from "@/components/PartyStrip";
@@ -135,17 +136,24 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         {canEdit && trainer.pokemon.length === 0 ? (
           <TrainerEditor
             trainer={trainer}
-            badges={challenge.badges}
             canEdit={canEdit}
             isGm={Boolean(access?.isGm)}
           />
         ) : null}
 
         <Frame title="Badge case">
-          <BadgeCase
-            badges={challenge.badges}
-            earnedKeys={trainer.earnedBadgeKeys}
-          />
+          {canEdit ? (
+            <BadgeCaseEditor
+              trainerId={trainer.id}
+              badges={challenge.badges}
+              earnedKeys={trainer.earnedBadgeKeys}
+            />
+          ) : (
+            <BadgeCase
+              badges={challenge.badges}
+              earnedKeys={trainer.earnedBadgeKeys}
+            />
+          )}
         </Frame>
 
         <Frame title="Main Squad">
@@ -164,7 +172,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           {graveyard.length > 0 ? (
             <PartyStrip pokemon={graveyard} memorial />
           ) : (
-            <p className="text-sm text-muted">
+            <p className="mt-0 text-sm text-muted">
               Memorial is empty. May it stay that way.
             </p>
           )}
@@ -173,7 +181,6 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         {canEdit && trainer.pokemon.length > 0 ? (
           <TrainerEditor
             trainer={trainer}
-            badges={challenge.badges}
             canEdit={canEdit}
             isGm={Boolean(access?.isGm)}
           />

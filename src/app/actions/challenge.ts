@@ -431,7 +431,7 @@ export async function upsertPokemonAction(
       (speciesMeta
         ? findPokemonById(speciesMeta.pokedexId)
         : undefined) ??
-      searchPokemonIndex(q, 8).find(
+      searchPokemonIndex(q, { limit: 8 }).find(
         (p) =>
           p.name.toLowerCase() === q ||
           p.slug === q ||
@@ -705,6 +705,56 @@ export async function gmUpdateChallengeMetaAction(input: {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Settings update failed",
+    };
+  }
+}
+
+const FEED_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
+
+export async function toggleActivityReactionAction(input: {
+  activityId: string;
+  emoji: string;
+}): Promise<ActionResult> {
+  try {
+    if (!FEED_EMOJIS.includes(input.emoji as (typeof FEED_EMOJIS)[number])) {
+      return { ok: false, error: "Unsupported reaction" };
+    }
+    const userId = await requireUserId();
+    const prisma = getPrisma();
+    const activity = await prisma.activityEvent.findUnique({
+      where: { id: input.activityId },
+      include: { challenge: { select: { slug: true } } },
+    });
+    if (!activity) return { ok: false, error: "Activity not found" };
+
+    const existing = await prisma.activityReaction.findUnique({
+      where: {
+        activityId_userId_emoji: {
+          activityId: input.activityId,
+          userId,
+          emoji: input.emoji,
+        },
+      },
+    });
+
+    if (existing) {
+      await prisma.activityReaction.delete({ where: { id: existing.id } });
+    } else {
+      await prisma.activityReaction.create({
+        data: {
+          activityId: input.activityId,
+          userId,
+          emoji: input.emoji,
+        },
+      });
+    }
+
+    revalidateChallenge(activity.challenge.slug);
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Reaction failed",
     };
   }
 }

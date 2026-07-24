@@ -1,103 +1,118 @@
 /**
  * Emerald / Hoenn badge presentation metadata keyed by BadgeDefinition.key.
- * Leader art uses Pokémon Showdown trainer sprites.
+ * Leader art: Pokémon Showdown trainer sprites.
+ * Badge art: local SVGs in /public/badges/{key}.svg
  */
 
 export type EmeraldBadgeMeta = {
   badgeName: string;
-  shortName: string;
+  /** Compact board label, e.g. GYM 1 */
+  previewLabel: string;
   leaderSpriteKey: string;
-  /** CSS color for the badge medallion */
   accent: string;
   city?: string;
+  badgeSprite: string;
 };
 
 export const EMERALD_BADGE_META: Record<string, EmeraldBadgeMeta> = {
   "gym-1": {
     badgeName: "Stone Badge",
-    shortName: "Stone",
+    previewLabel: "GYM 1",
     leaderSpriteKey: "roxanne",
     accent: "#c4a35a",
     city: "Rustboro",
+    badgeSprite: "/badges/gym-1.svg",
   },
   "gym-2": {
     badgeName: "Knuckle Badge",
-    shortName: "Knuckle",
+    previewLabel: "GYM 2",
     leaderSpriteKey: "brawly",
     accent: "#c06048",
     city: "Dewford",
+    badgeSprite: "/badges/gym-2.svg",
   },
   "gym-3": {
     badgeName: "Dynamo Badge",
-    shortName: "Dynamo",
+    previewLabel: "GYM 3",
     leaderSpriteKey: "wattson",
     accent: "#f0d060",
     city: "Mauville",
+    badgeSprite: "/badges/gym-3.svg",
   },
   "gym-4": {
     badgeName: "Heat Badge",
-    shortName: "Heat",
+    previewLabel: "GYM 4",
     leaderSpriteKey: "flannery",
     accent: "#e07040",
     city: "Lavaridge",
+    badgeSprite: "/badges/gym-4.svg",
   },
   "gym-5": {
     badgeName: "Balance Badge",
-    shortName: "Balance",
+    previewLabel: "GYM 5",
     leaderSpriteKey: "norman",
     accent: "#a8a090",
     city: "Petalburg",
+    badgeSprite: "/badges/gym-5.svg",
   },
   "gym-6": {
     badgeName: "Feather Badge",
-    shortName: "Feather",
+    previewLabel: "GYM 6",
     leaderSpriteKey: "winona",
     accent: "#90c8e8",
     city: "Fortree",
+    badgeSprite: "/badges/gym-6.svg",
   },
   "gym-7": {
     badgeName: "Mind Badge",
-    shortName: "Mind",
+    previewLabel: "GYM 7",
     leaderSpriteKey: "tateandliza-gen3",
     accent: "#d878c0",
     city: "Mossdeep",
+    badgeSprite: "/badges/gym-7.svg",
   },
   "gym-8": {
     badgeName: "Rain Badge",
-    shortName: "Rain",
+    previewLabel: "GYM 8",
     leaderSpriteKey: "juan",
     accent: "#5090d8",
     city: "Sootopolis",
+    badgeSprite: "/badges/gym-8.svg",
   },
   "elite-1": {
-    badgeName: "Elite Four",
-    shortName: "Sidney",
+    badgeName: "Elite Four — Sidney",
+    previewLabel: "E4 1",
     leaderSpriteKey: "sidney-gen3",
     accent: "#5a4868",
+    badgeSprite: "/badges/elite-1.svg",
   },
   "elite-2": {
-    badgeName: "Elite Four",
-    shortName: "Phoebe",
+    badgeName: "Elite Four — Phoebe",
+    previewLabel: "E4 2",
     leaderSpriteKey: "phoebe-gen3",
     accent: "#7a6890",
+    badgeSprite: "/badges/elite-2.svg",
   },
   "elite-3": {
-    badgeName: "Elite Four",
-    shortName: "Glacia",
+    badgeName: "Elite Four — Glacia",
+    previewLabel: "E4 3",
     leaderSpriteKey: "glacia",
     accent: "#88c0d8",
+    badgeSprite: "/badges/elite-3.svg",
   },
   "elite-4": {
-    badgeName: "Elite Four",
-    shortName: "Drake",
+    badgeName: "Elite Four — Drake",
+    previewLabel: "E4 4",
     leaderSpriteKey: "drake-gen3",
     accent: "#687848",
+    badgeSprite: "/badges/elite-4.svg",
   },
   championship: {
     badgeName: "Champion",
-    shortName: "Champ",
+    previewLabel: "CHAMP",
     leaderSpriteKey: "wallace",
     accent: "#e8c56a",
+    badgeSprite: "/badges/championship.svg",
   },
 };
 
