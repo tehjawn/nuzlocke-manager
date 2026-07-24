@@ -21,7 +21,10 @@ const challengeInclude = {
   activities: {
     orderBy: { createdAt: "desc" as const },
     take: 20,
-    include: { trainer: { select: { handle: true } } },
+    include: {
+      trainer: { select: { handle: true } },
+      reactions: { select: { emoji: true, userId: true } },
+    },
   },
 };
 
@@ -46,7 +49,7 @@ export async function listChallenges(): Promise<Challenge[]> {
         orderBy: [{ year: "desc" }, { name: "asc" }],
       });
       if (rows.length > 0) {
-        return rows.map(mapDbChallenge);
+        return rows.map((row) => mapDbChallenge(row));
       }
     } catch {
       // fall through to seed
@@ -55,14 +58,17 @@ export async function listChallenges(): Promise<Challenge[]> {
   return CHALLENGES.map(seedAsChallenge);
 }
 
-export async function getChallenge(slug: string): Promise<Challenge | null> {
+export async function getChallenge(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
   if (isDatabaseConfigured()) {
     try {
       const row = await getPrisma().challenge.findUnique({
         where: { slug },
         include: challengeInclude,
       });
-      if (row) return mapDbChallenge(row);
+      if (row) return mapDbChallenge(row, viewerUserId);
     } catch {
       // fall through
     }

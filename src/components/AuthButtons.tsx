@@ -4,18 +4,25 @@ import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 
 const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
 
-export async function AuthButtons() {
+type AuthButtonsProps = {
+  /** When true, SiteHeader already shows My board — skip the duplicate. */
+  hideMyBoard?: boolean;
+};
+
+export async function AuthButtons({ hideMyBoard = false }: AuthButtonsProps) {
   const session = await auth();
 
   if (session?.user) {
     return (
       <div className="flex items-center gap-2">
-        <Link
-          href={AFTER_LOGIN}
-          className="pressable hidden rounded-sm bg-accent px-3 py-1.5 text-sm font-bold text-white sm:inline-block"
-        >
-          My board
-        </Link>
+        {!hideMyBoard ? (
+          <Link
+            href={AFTER_LOGIN}
+            className="pressable hidden rounded-sm bg-accent px-3 py-1.5 text-sm font-bold text-white sm:inline-block"
+          >
+            My board
+          </Link>
+        ) : null}
         <Link
           href="/account"
           className="pressable hidden rounded-sm bg-surface px-3 py-1.5 text-sm font-medium md:inline-block"

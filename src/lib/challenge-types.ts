@@ -62,12 +62,19 @@ export type FaqEntry = {
   answer: string;
 };
 
+export type ActivityReactionSummary = {
+  emoji: string;
+  count: number;
+  reactedByMe: boolean;
+};
+
 export type ActivityItem = {
   id: string;
   type: string;
   message: string;
   createdAt: string;
   trainerHandle: string | null;
+  reactions: ActivityReactionSummary[];
 };
 
 export type Challenge = {

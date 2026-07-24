@@ -73,6 +73,7 @@ type DbChallenge = {
     message: string;
     createdAt: Date;
     trainer: { handle: string } | null;
+    reactions?: Array<{ emoji: string; userId: string }>;
   }>;
 };
 
@@ -82,7 +83,10 @@ function asTypes(types: string[]): PokemonType[] {
   );
 }
 
-export function mapDbChallenge(row: DbChallenge): Challenge {
+export function mapDbChallenge(
+  row: DbChallenge,
+  viewerUserId?: string | null,
+): Challenge {
   return {
     id: row.id,
     slug: row.slug,
@@ -129,12 +133,33 @@ export function mapDbChallenge(row: DbChallenge): Challenge {
       .slice()
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(mapDbTrainer),
-    activities: row.activities?.map((a) => ({
-      id: a.id,
-      type: a.type,
-      message: a.message,
-      createdAt: a.createdAt.toISOString(),
-      trainerHandle: a.trainer?.handle ?? null,
+    activities: row.activities?.map((a) =>
+      mapActivity(a, viewerUserId),
+    ),
+  };
+}
+
+function mapActivity(
+  a: NonNullable<DbChallenge["activities"]>[number],
+  viewerUserId?: string | null,
+) {
+  const counts = new Map<string, { count: number; reactedByMe: boolean }>();
+  for (const r of a.reactions ?? []) {
+    const cur = counts.get(r.emoji) ?? { count: 0, reactedByMe: false };
+    cur.count += 1;
+    if (viewerUserId && r.userId === viewerUserId) cur.reactedByMe = true;
+    counts.set(r.emoji, cur);
+  }
+  return {
+    id: a.id,
+    type: a.type,
+    message: a.message,
+    createdAt: a.createdAt.toISOString(),
+    trainerHandle: a.trainer?.handle ?? null,
+    reactions: [...counts.entries()].map(([emoji, v]) => ({
+      emoji,
+      count: v.count,
+      reactedByMe: v.reactedByMe,
     })),
   };
 }
