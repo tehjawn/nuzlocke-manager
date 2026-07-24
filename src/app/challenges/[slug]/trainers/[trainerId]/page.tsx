@@ -34,7 +34,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     : null;
   const canEdit = Boolean(access?.canEditTrainer(trainer.userId));
   const isDemo = !trainer.userId;
-  // Header only needs a truthy id to show “My board” → /me
+  // Header only needs a truthy id to show “My Trainer” → /me
   const myTrainerId =
     access?.isPlayer
       ? trainer.userId === access.userId
@@ -57,9 +57,10 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         <DataSourceBanner source={challenge.source} />
         <Link
           href={`/challenges/${challenge.slug}`}
-          className="text-sm text-muted hover:text-ink"
+          className="pressable inline-flex items-center gap-2 rounded-sm bg-accent px-4 py-2.5 font-display text-sm font-bold tracking-wide text-white uppercase"
         >
-          ← League board
+          <span aria-hidden>←</span>
+          {challenge.year} League Board
         </Link>
 
         <TrainerBoard

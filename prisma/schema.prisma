@@ -198,6 +198,10 @@ model PokemonEntry {
   catchRoute   String?
   heldItem     String?
   moves        String[]
+  /// { hp, atk, def, spa, spd, spe } — each 0–31
+  ivs          Json?
+  /// { hp, atk, def, spa, spd, spe } — each 0–255
+  evs          Json?
   causeOfDeath String?
   notes        String?
   createdAt    DateTime    @default(now())

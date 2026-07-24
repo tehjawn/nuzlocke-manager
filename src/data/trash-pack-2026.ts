@@ -141,6 +141,8 @@ const ashKetchum = trainer({
       catchRoute: "Viridian Forest",
       heldItem: "Light Ball",
       moves: ["Thunderbolt", "Quick Attack", "Iron Tail", "Thunder Wave"],
+      ivs: null,
+      evs: null,
       causeOfDeath: null,
     }),
     mon({
@@ -158,6 +160,8 @@ const ashKetchum = trainer({
       catchRoute: "Starter",
       heldItem: null,
       moves: ["Flamethrower", "Wing Attack", "Slash", "Fire Spin"],
+      ivs: null,
+      evs: null,
       causeOfDeath: null,
     }),
     mon({
@@ -175,6 +179,8 @@ const ashKetchum = trainer({
       catchRoute: "Starter (trade)",
       heldItem: null,
       moves: ["Razor Leaf", "Sleep Powder", "Take Down", "Sweet Scent"],
+      ivs: null,
+      evs: null,
       causeOfDeath: null,
     }),
     mon({
@@ -192,6 +198,8 @@ const ashKetchum = trainer({
       catchRoute: "Viridian Forest",
       heldItem: null,
       moves: ["Confusion", "Gust", "Sleep Powder", "Stun Spore"],
+      ivs: null,
+      evs: null,
       causeOfDeath: "Released to join a flock of Butterfree. Respect.",
     }),
   ],

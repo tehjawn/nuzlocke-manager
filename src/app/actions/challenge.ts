@@ -22,6 +22,21 @@ import { parseAvatarKey } from "@/lib/sprites";
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
 import type { ActivityItem } from "@/lib/challenge-types";
 import { listChallengeActivities } from "@/lib/challenges";
+import {
+  IvsSchema,
+  isEmptySpread,
+  StatSpreadSchema,
+  type StatSpread,
+} from "@/lib/stats";
+import { Prisma } from "@/generated/prisma/client";
+
+function jsonStatOrNull(
+  value: StatSpread | null | undefined,
+): Prisma.InputJsonValue | typeof Prisma.DbNull | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || isEmptySpread(value)) return Prisma.DbNull;
+  return value;
+}
 
 /** League board + trainer board only — avoids refreshing Setup/Rules/FAQ chrome. */
 function revalidateBoardViews(slug: string, trainerId?: string) {
@@ -474,6 +489,8 @@ export async function upsertPokemonAction(
       catchRoute: data.catchRoute ?? null,
       heldItem: data.heldItem ?? null,
       moves: data.moves,
+      ivs: jsonStatOrNull(data.ivs ?? null),
+      evs: jsonStatOrNull(data.evs ?? null),
       causeOfDeath: data.causeOfDeath ?? null,
       notes: data.notes ?? null,
     };
@@ -544,6 +561,13 @@ const SaveImportMonSchema = z.object({
   pokedexId: z.number().int().positive().optional().nullable(),
   level: z.number().int().min(1).max(100).optional().nullable(),
   isShiny: z.boolean().default(false),
+  nature: z.string().max(32).optional().nullable(),
+  ability: z.string().max(64).optional().nullable(),
+  catchRoute: z.string().max(128).optional().nullable(),
+  heldItem: z.string().max(64).optional().nullable(),
+  moves: z.array(z.string().max(64)).max(4).default([]),
+  ivs: IvsSchema.optional().nullable(),
+  evs: StatSpreadSchema.optional().nullable(),
   slot: PokemonSlotSchema,
 });
 
@@ -622,11 +646,13 @@ export async function importFromSaveAction(
           isShiny: mon.isShiny,
           types: speciesMeta?.types ?? [],
           level: mon.level ?? null,
-          nature: null,
-          ability: null,
-          catchRoute: null,
-          heldItem: null,
-          moves: [] as string[],
+          nature: mon.nature?.trim() || null,
+          ability: mon.ability?.trim() || null,
+          catchRoute: mon.catchRoute?.trim() || null,
+          heldItem: mon.heldItem?.trim() || null,
+          moves: mon.moves ?? [],
+          ivs: jsonStatOrNull(mon.ivs ?? null),
+          evs: jsonStatOrNull(mon.evs ?? null),
           causeOfDeath:
             mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null,
           notes: `Imported from save (${mon.slot.toLowerCase()})`,

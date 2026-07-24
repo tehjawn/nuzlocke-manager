@@ -13,7 +13,8 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "data:pokemon": "node scripts/generate-pokemon-catalog.mjs"
+    "data:pokemon": "node scripts/generate-pokemon-catalog.mjs",
+    "data:lookups": "node scripts/generate-pokemon-lookups.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.0",

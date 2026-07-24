@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import { TypeBadge } from "@/components/TypeBadge";
 import { pokemonSpriteUrl } from "@/lib/sprites";
+import { formatSpreadShort, isEmptySpread } from "@/lib/stats";
 
 type PokemonSlotCardProps = {
   pokemon?: PokemonEntry | null;
@@ -112,6 +113,22 @@ export function PokemonSlotCard({
             <>
               <dt className="text-muted">Item</dt>
               <dd className="truncate">{pokemon.heldItem}</dd>
+            </>
+          ) : null}
+          {!isEmptySpread(pokemon.ivs) ? (
+            <>
+              <dt className="text-muted">IVs</dt>
+              <dd className="truncate font-mono text-[10px]">
+                {formatSpreadShort(pokemon.ivs)}
+              </dd>
+            </>
+          ) : null}
+          {!isEmptySpread(pokemon.evs) ? (
+            <>
+              <dt className="text-muted">EVs</dt>
+              <dd className="truncate font-mono text-[10px]">
+                {formatSpreadShort(pokemon.evs)}
+              </dd>
             </>
           ) : null}
         </dl>

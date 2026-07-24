@@ -31,6 +31,7 @@ import type {
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { avatarImageUrl } from "@/lib/sprites";
+import { isEmptySpread } from "@/lib/stats";
 
 type TrainerBoardProps = {
   joinHref: string;
@@ -685,6 +686,8 @@ export function TrainerBoard({
                   catchRoute: form.catchRoute || null,
                   heldItem: form.heldItem || null,
                   moves,
+                  ivs: isEmptySpread(form.ivs) ? null : form.ivs,
+                  evs: isEmptySpread(form.evs) ? null : form.evs,
                   causeOfDeath: form.causeOfDeath || null,
                 });
                 if (result.ok) {
@@ -726,6 +729,13 @@ export function TrainerBoard({
                     pokedexId: m.pokedexId,
                     level: m.level ? Number(m.level) : null,
                     isShiny: m.isShiny,
+                    nature: m.nature,
+                    ability: m.ability,
+                    catchRoute: m.catchRoute,
+                    heldItem: m.heldItem,
+                    moves: m.moves,
+                    ivs: m.ivs,
+                    evs: m.evs,
                     slot: m.slot,
                   })),
                   trainerName: payload.trainerName,

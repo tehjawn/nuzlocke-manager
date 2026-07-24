@@ -3,10 +3,24 @@
 import Image from "next/image";
 import { useDeferredValue, useMemo, useState } from "react";
 import { Modal } from "@/components/Modal";
+import { SearchSelect } from "@/components/SearchSelect";
 import { PokemonSpriteBrowser } from "@/components/SpriteBrowser";
+import { StatSpreadEditor } from "@/components/StatSpreadEditor";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import { heldItemSpriteUrl, searchHeldItems } from "@/data/pokemon-index";
+import {
+  searchAbilities,
+  searchCatchRoutes,
+  searchNatures,
+} from "@/data/pokemon-lookups";
 import { pokemonSpriteUrl } from "@/lib/sprites";
+import {
+  clampEvs,
+  clampIvs,
+  EMPTY_EVS,
+  EMPTY_IVS,
+  type StatSpread,
+} from "@/lib/stats";
 
 export type PokemonFormState = {
   id?: string;
@@ -25,6 +39,8 @@ export type PokemonFormState = {
   move2: string;
   move3: string;
   move4: string;
+  ivs: StatSpread;
+  evs: StatSpread;
   causeOfDeath: string;
 };
 
@@ -45,6 +61,8 @@ export const EMPTY_POKEMON_FORM: PokemonFormState = {
   move2: "",
   move3: "",
   move4: "",
+  ivs: { ...EMPTY_IVS },
+  evs: { ...EMPTY_EVS },
   causeOfDeath: "",
 };
 
@@ -66,6 +84,8 @@ export function pokemonEntryToForm(mon: PokemonEntry): PokemonFormState {
     move2: mon.moves[1] ?? "",
     move3: mon.moves[2] ?? "",
     move4: mon.moves[3] ?? "",
+    ivs: clampIvs(mon.ivs ?? undefined),
+    evs: clampEvs(mon.evs ?? undefined),
     causeOfDeath: mon.causeOfDeath ?? "",
   };
 }
@@ -262,36 +282,35 @@ function PokemonFormModalInner({
                 }
               />
             </label>
-            <label className="text-sm">
+            <div className="text-sm">
               <span className="mb-1 block font-bold text-muted">Nature</span>
-              <input
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+              <SearchSelect
                 value={form.nature}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, nature: e.target.value }))
-                }
+                onChange={(nature) => setForm((f) => ({ ...f, nature }))}
+                search={searchNatures}
+                placeholder="Search Hardy, Jolly…"
               />
-            </label>
-            <label className="text-sm">
+            </div>
+            <div className="text-sm">
               <span className="mb-1 block font-bold text-muted">Ability</span>
-              <input
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+              <SearchSelect
                 value={form.ability}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, ability: e.target.value }))
-                }
+                onChange={(ability) => setForm((f) => ({ ...f, ability }))}
+                search={searchAbilities}
+                placeholder="Search Static, Blaze…"
               />
-            </label>
-            <label className="text-sm">
+            </div>
+            <div className="text-sm">
               <span className="mb-1 block font-bold text-muted">Catch route</span>
-              <input
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+              <SearchSelect
                 value={form.catchRoute}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, catchRoute: e.target.value }))
+                onChange={(catchRoute) =>
+                  setForm((f) => ({ ...f, catchRoute }))
                 }
+                search={searchCatchRoutes}
+                placeholder="Search Route 104…"
               />
-            </label>
+            </div>
             <div className="text-sm sm:col-span-2">
               <span className="mb-1 block font-bold text-muted">Held item</span>
               <div className="flex items-center gap-2">
@@ -368,6 +387,18 @@ function PokemonFormModalInner({
                 />
               </label>
             ))}
+            <StatSpreadEditor
+              label="IVs"
+              value={form.ivs}
+              max={31}
+              onChange={(ivs) => setForm((f) => ({ ...f, ivs }))}
+            />
+            <StatSpreadEditor
+              label="EVs"
+              value={form.evs}
+              max={255}
+              onChange={(evs) => setForm((f) => ({ ...f, evs }))}
+            />
             {form.slot === "GRAVEYARD" ? (
               <label className="text-sm sm:col-span-2">
                 <span className="mb-1 block font-bold text-muted">
