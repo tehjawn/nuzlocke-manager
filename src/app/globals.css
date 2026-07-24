@@ -1,41 +1,97 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0c1210;
-  --foreground: #e8f0e9;
-  --muted: #8fa396;
-  --surface: #14201a;
-  --surface-2: #1b2c23;
-  --accent: #3dd68c;
-  --accent-2: #f0c14b;
-  --danger: #ef6b6b;
-  --border: #2a3d32;
+  --bg: #f3ead7;
+  --bg-wash: #dfe8d5;
+  --surface: #fff6e8;
+  --surface-2: #f7ecda;
+  --ink: #1e2a24;
+  --muted: #5f6f64;
+  --frame: #3d4f42;
+  --frame-inner: #c9b896;
+  --accent: #3a8f5c;
+  --accent-deep: #2b6b45;
+  --accent-2: #c9972e;
+  --danger: #b85c4a;
+  --rip: #d9e0d6;
+  --shadow: rgba(30, 42, 36, 0.18);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
+  --color-bg: var(--bg);
+  --color-bg-wash: var(--bg-wash);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-frame: var(--frame);
+  --color-frame-inner: var(--frame-inner);
   --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
   --color-accent-2: var(--accent-2);
   --color-danger: var(--danger);
-  --color-border: var(--border);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-rip: var(--rip);
+  --font-sans: var(--font-body);
   --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
 body {
   background:
-    radial-gradient(ellipse 80% 50% at 10% -10%, #1a3a2a 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 0%, #2a2410 0%, transparent 45%),
-    var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+    radial-gradient(ellipse 90% 60% at 0% 0%, var(--bg-wash) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 10%, #efe0b8 0%, transparent 45%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
 }
 
 .font-display {
-  font-family: var(--font-display), var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-display), var(--font-body), system-ui, sans-serif;
+}
+
+/* Chunky GBA-style window */
+.gba-frame {
+  background: var(--surface);
+  border: 4px solid var(--frame);
+  box-shadow:
+    inset 0 0 0 3px var(--frame-inner),
+    4px 4px 0 var(--shadow);
+}
+
+.gba-frame-title {
+  background: var(--accent);
+  color: #f7fff5;
+  border-bottom: 4px solid var(--frame);
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.pressable {
+  border: 3px solid var(--frame);
+  box-shadow: 2px 2px 0 var(--shadow);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.pressable:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--shadow);
+}
+
+.pressable:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pressable,
+  .pressable:hover,
+  .pressable:active {
+    transition: none;
+    transform: none;
+  }
+}
+
+.pixelated {
+  image-rendering: pixelated;
 }

@@ -1,25 +1,25 @@
 /** Seed-friendly badge slots matching the spreadsheet Index (Hoenn-style). */
 export const DEFAULT_BADGE_DEFINITIONS = [
-  { key: "gym-1", label: "Gym 1", category: "gym", sortOrder: 1, leaderName: "Roxanne" },
-  { key: "gym-2", label: "Gym 2", category: "gym", sortOrder: 2, leaderName: "Brawly" },
-  { key: "gym-3", label: "Gym 3", category: "gym", sortOrder: 3, leaderName: "Wattson" },
-  { key: "gym-4", label: "Gym 4", category: "gym", sortOrder: 4, leaderName: "Flannery" },
-  { key: "gym-5", label: "Gym 5", category: "gym", sortOrder: 5, leaderName: "Norman" },
-  { key: "gym-6", label: "Gym 6", category: "gym", sortOrder: 6, leaderName: "Winona" },
-  { key: "gym-7", label: "Gym 7", category: "gym", sortOrder: 7, leaderName: "Tate and Liza" },
-  { key: "gym-8", label: "Gym 8", category: "gym", sortOrder: 8, leaderName: "Wallace / Juan" },
-  { key: "elite-1", label: "Elite 1", category: "elite", sortOrder: 9, leaderName: "Sidney" },
-  { key: "elite-2", label: "Elite 2", category: "elite", sortOrder: 10, leaderName: "Phoebe" },
-  { key: "elite-3", label: "Elite 3", category: "elite", sortOrder: 11, leaderName: "Glacia" },
-  { key: "elite-4", label: "Elite 4", category: "elite", sortOrder: 12, leaderName: "Drake" },
+  { key: "gym-1", label: "Gym 1", category: "gym" as const, sortOrder: 1, leaderName: "Roxanne" },
+  { key: "gym-2", label: "Gym 2", category: "gym" as const, sortOrder: 2, leaderName: "Brawly" },
+  { key: "gym-3", label: "Gym 3", category: "gym" as const, sortOrder: 3, leaderName: "Wattson" },
+  { key: "gym-4", label: "Gym 4", category: "gym" as const, sortOrder: 4, leaderName: "Flannery" },
+  { key: "gym-5", label: "Gym 5", category: "gym" as const, sortOrder: 5, leaderName: "Norman" },
+  { key: "gym-6", label: "Gym 6", category: "gym" as const, sortOrder: 6, leaderName: "Winona" },
+  { key: "gym-7", label: "Gym 7", category: "gym" as const, sortOrder: 7, leaderName: "Tate & Liza" },
+  { key: "gym-8", label: "Gym 8", category: "gym" as const, sortOrder: 8, leaderName: "Juan" },
+  { key: "elite-1", label: "Elite 1", category: "elite" as const, sortOrder: 9, leaderName: "Sidney" },
+  { key: "elite-2", label: "Elite 2", category: "elite" as const, sortOrder: 10, leaderName: "Phoebe" },
+  { key: "elite-3", label: "Elite 3", category: "elite" as const, sortOrder: 11, leaderName: "Glacia" },
+  { key: "elite-4", label: "Elite 4", category: "elite" as const, sortOrder: 12, leaderName: "Drake" },
   {
     key: "championship",
     label: "Championship",
-    category: "championship",
+    category: "championship" as const,
     sortOrder: 13,
-    leaderName: "Steven / Wallace",
+    leaderName: "Wallace",
   },
-] as const;
+];
 
 export const POKEMON_TYPES = [
   "Normal",

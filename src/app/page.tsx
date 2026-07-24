@@ -1,98 +1,66 @@
 import Link from "next/link";
+import { Frame } from "@/components/Frame";
+import { SiteHeader } from "@/components/SiteHeader";
+import { listChallenges } from "@/lib/challenges";
 
-const planned = [
-  {
-    title: "Trainer boards",
-    body: "Status, revive token, gym/Elite badges, Main Squad, Reserves, and R.I.P. with full Pokémon details.",
-  },
-  {
-    title: "Seasons & archives",
-    body: "Run Trash Pack 2026, then keep 2027+ as separate challenge records with shared history.",
-  },
-  {
-    title: "Players + Game Masters",
-    body: "Players edit their own boards and accounts. GMs own rules, FAQ, roster, and full override control.",
-  },
-  {
-    title: "Sprites that just work",
-    body: "Open Pokémon sprites + Showdown trainer avatars — type a species, get the art.",
-  },
-];
+export default function HomePage() {
+  const active = listChallenges().find((c) => c.status === "ACTIVE");
 
-export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-6">
-        <p className="font-display text-sm font-semibold tracking-[0.2em] text-accent uppercase">
-          Nuzlocke Manager
+      <SiteHeader />
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-4 pb-16 pt-6 sm:px-6">
+        <p className="font-display text-sm font-bold tracking-[0.2em] text-accent-deep uppercase">
+          Friend-group clubhouse
         </p>
-        <nav className="flex gap-4 text-sm text-muted">
-          <Link href="/challenges" className="transition hover:text-foreground">
-            Challenges
-          </Link>
-          <a
-            href="https://github.com/tehjawn/nuzlocke-manager"
-            className="transition hover:text-foreground"
-            target="_blank"
-            rel="noreferrer"
-          >
-            GitHub
-          </a>
-        </nav>
-      </header>
-
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-6 pb-20 pt-8">
-        <p className="mb-4 text-sm font-medium tracking-wide text-accent-2">
-          Friend-group Nuzlocke ops
-        </p>
-        <h1 className="font-display max-w-3xl text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-6xl">
+        <h1 className="font-display mt-3 max-w-2xl text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">
           Track the run.
-          <span className="block text-accent">Honor the fallen.</span>
+          <span className="mt-1 block text-accent-deep">Honor the fallen.</span>
         </h1>
-        <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
-          A Vercel-ready replacement for the Trash Pack spreadsheet — live
-          trainer boards, challenge history, and GM tools for your crew&apos;s
-          next Nuzlocke season.
+        <p className="mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+          A warm, Gen 3–flavored board for your crew&apos;s Nuzlocke season —
+          league standings, trainer boards, badges, and memorials. Built to
+          retire the shared spreadsheet.
         </p>
 
-        <div className="mt-10 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-wrap gap-3">
+          {active ? (
+            <Link
+              href={`/challenges/${active.slug}`}
+              className="pressable rounded-sm bg-accent px-5 py-3 font-display text-sm font-bold tracking-wide text-white uppercase"
+            >
+              Open {active.year} league
+            </Link>
+          ) : null}
           <Link
             href="/challenges"
-            className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-background transition hover:brightness-110"
+            className="pressable rounded-sm bg-surface px-5 py-3 font-display text-sm font-bold tracking-wide uppercase"
           >
-            View challenges
+            All seasons
           </Link>
-          <a
-            href="https://github.com/tehjawn/nuzlocke-manager/blob/main/docs/MASTER_PLAN.md"
-            className="rounded-md border border-border bg-surface px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-surface-2"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Read the master plan
-          </a>
         </div>
 
-        <section className="mt-16 grid gap-6 sm:grid-cols-2">
-          {planned.map((item) => (
-            <article
-              key={item.title}
-              className="border-t border-border pt-4"
-            >
-              <h2 className="font-display text-lg font-semibold text-foreground">
-                {item.title}
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {item.body}
-              </p>
-            </article>
+        <div className="mt-12 grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              title: "League board",
+              body: "See every trainer’s status, badges, and Main Squad at a glance.",
+            },
+            {
+              title: "Trainer boards",
+              body: "Party slots, reserves, revive token, and a proper R.I.P. memorial.",
+            },
+            {
+              title: "Season archives",
+              body: "Trash Pack 2026 stays readable when 2027 starts.",
+            },
+          ].map((item) => (
+            <Frame key={item.title} title={item.title}>
+              <p className="text-sm leading-relaxed text-muted">{item.body}</p>
+            </Frame>
           ))}
-        </section>
+        </div>
       </main>
-
-      <footer className="mx-auto w-full max-w-5xl px-6 py-8 text-xs text-muted">
-        Scaffolded for Vercel · See{" "}
-        <code className="text-foreground/80">docs/MASTER_PLAN.md</code>
-      </footer>
     </div>
   );
 }
