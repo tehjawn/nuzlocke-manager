@@ -46,11 +46,11 @@ npm run dev
 
 After seed:
 
-- Public season: Discord login auto-creates your trainer board
+- Discord login auto-joins **Trash Pack 2026** and opens your board (`/challenges/2026-trash-pack/me`)
 - Demo trainer: Ash Ketchum (example only)
-- GM invite (optional): `TRASHPACK-GM`
+- GM invite (optional): `TRASHPACK-GM` via `/challenges/2026-trash-pack/join?gm=1`
 
-Flow: Discord login → land on league board → **My board** → edit.
+Flow: Discord login → your trainer board. Done.
 
 Without DB/Discord env, the app still serves **seed read-only** pages.
 

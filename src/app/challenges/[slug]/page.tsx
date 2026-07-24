@@ -94,17 +94,17 @@ export default async function LeagueBoardPage({ params }: PageProps) {
             </Link>
             {myTrainerId ? (
               <Link
-                href={`/challenges/${challenge.slug}/trainers/${myTrainerId}`}
+                href={`/challenges/${challenge.slug}/me`}
                 className="pressable rounded-sm bg-accent px-3 py-2 text-sm font-bold text-white"
               >
                 My board
               </Link>
             ) : (
               <Link
-                href={`/challenges/${challenge.slug}/join`}
+                href="/login"
                 className="pressable rounded-sm bg-accent px-3 py-2 text-sm font-bold text-white"
               >
-                Get my board
+                Discord login
               </Link>
             )}
           </div>

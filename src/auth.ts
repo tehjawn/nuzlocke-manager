@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Discord from "next-auth/providers/discord";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
-import { provisionForActiveSeasons } from "@/lib/provision";
+import { provisionForDefaultLeague } from "@/lib/provision";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -50,8 +50,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       });
 
+      // Always auto-join Trash Pack 2026 for now
       try {
-        await provisionForActiveSeasons(user.id);
+        await provisionForDefaultLeague(user.id);
       } catch (err) {
         console.error("Auto-provision failed", err);
       }

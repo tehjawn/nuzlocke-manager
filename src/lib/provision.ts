@@ -1,3 +1,4 @@
+import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { getPrisma } from "@/lib/db";
 
 function sanitizeHandle(raw: string): string {
@@ -44,7 +45,7 @@ export type ProvisionResult =
 
 /**
  * Ensure a Discord user is a PLAYER (or existing role) with a personal trainer board.
- * PUBLIC / UNLISTED seasons auto-join. INVITE seasons require prior membership.
+ * Trash Pack 2026 always auto-joins. Other INVITE seasons still need membership.
  */
 export async function ensureTrainerForChallenge(input: {
   userId: string;
@@ -69,9 +70,12 @@ export async function ensureTrainerForChallenge(input: {
     },
   });
 
+  const isDefaultLeague = challenge.slug === DEFAULT_CHALLENGE_SLUG;
   const autoJoin =
     input.allowAutoJoin !== false &&
-    (challenge.visibility === "PUBLIC" || challenge.visibility === "UNLISTED");
+    (isDefaultLeague ||
+      challenge.visibility === "PUBLIC" ||
+      challenge.visibility === "UNLISTED");
 
   if (!existingMembership && !autoJoin) {
     return { ok: false, reason: "invite_required" };
@@ -121,7 +125,9 @@ export async function ensureTrainerForChallenge(input: {
   }
 
   const preferred =
-    user.displayName ?? user.name ?? `Trainer-${user.discordId?.slice(-4) ?? "new"}`;
+    user.displayName ??
+    user.name ??
+    `Trainer-${user.discordId?.slice(-4) ?? "new"}`;
   const handle = await uniqueHandle(challenge.id, preferred);
   const maxSort = await prisma.trainerProfile.aggregate({
     where: { challengeId: challenge.id },
@@ -140,7 +146,6 @@ export async function ensureTrainerForChallenge(input: {
     },
   });
 
-  // Seed empty badge progress rows so the case is ready to toggle
   const badges = await prisma.badgeDefinition.findMany({
     where: { challengeId: challenge.id },
   });
@@ -174,26 +179,11 @@ export async function ensureTrainerForChallenge(input: {
   };
 }
 
-/** Auto-provision into every ACTIVE public/unlisted season (called after Discord login). */
-export async function provisionForActiveSeasons(userId: string) {
-  const prisma = getPrisma();
-  const seasons = await prisma.challenge.findMany({
-    where: {
-      status: "ACTIVE",
-      visibility: { in: ["PUBLIC", "UNLISTED"] },
-    },
-    select: { slug: true },
+/** Always join Trash Pack 2026 for now. */
+export async function provisionForDefaultLeague(userId: string) {
+  return ensureTrainerForChallenge({
+    userId,
+    slug: DEFAULT_CHALLENGE_SLUG,
+    allowAutoJoin: true,
   });
-
-  const results = [];
-  for (const season of seasons) {
-    results.push(
-      await ensureTrainerForChallenge({
-        userId,
-        slug: season.slug,
-        allowAutoJoin: true,
-      }),
-    );
-  }
-  return results;
 }

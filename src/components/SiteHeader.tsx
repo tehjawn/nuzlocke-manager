@@ -57,19 +57,19 @@ export function SiteHeader({
             </Link>
             {myTrainerId ? (
               <Link
-                href={`/challenges/${challengeSlug}/trainers/${myTrainerId}`}
+                href={`/challenges/${challengeSlug}/me`}
                 className="pressable rounded-sm bg-accent px-3 py-1.5 font-bold text-white"
               >
                 My board
               </Link>
-            ) : (
+            ) : challengeSlug ? (
               <Link
-                href={`/challenges/${challengeSlug}/join`}
+                href="/login"
                 className="pressable rounded-sm bg-surface px-3 py-1.5 font-medium"
               >
-                Get board
+                Login
               </Link>
-            )}
+            ) : null}
             {showGm ? (
               <Link
                 href={`/challenges/${challengeSlug}/gm`}

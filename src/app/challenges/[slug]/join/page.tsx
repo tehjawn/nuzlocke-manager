@@ -1,19 +1,17 @@
-import Link from "next/link";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
 import { JoinForm } from "@/components/JoinForm";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getChallenge } from "@/lib/challenges";
-import { isDatabaseConfigured } from "@/lib/db";
 import { getAccessForChallenge } from "@/lib/permissions";
-import { ensureTrainerForChallenge } from "@/lib/provision";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ gm?: string }>;
 };
 
 export async function generateMetadata({
@@ -24,30 +22,21 @@ export async function generateMetadata({
   return { title: challenge ? `Join · ${challenge.name}` : "Join" };
 }
 
-export default async function JoinPage({ params }: PageProps) {
+export default async function JoinPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
-  if (!challenge) notFound();
-
+  const { gm } = await searchParams;
   const session = await auth();
+  const challenge = await getChallenge(slug);
+  if (!challenge) redirect("/challenges");
+
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
 
-  let myTrainerId: string | null = null;
-  if (session?.user?.id && challenge.source === "database") {
-    const provisioned = await ensureTrainerForChallenge({
-      userId: session.user.id,
-      slug: challenge.slug,
-      allowAutoJoin: challenge.visibility !== "INVITE",
-    });
-    if (provisioned.ok) {
-      myTrainerId = provisioned.trainerId;
-    }
+  // Normal path: logged-in players go straight to their board
+  if (session?.user?.id && gm !== "1" && !access?.isGm) {
+    redirect(`/challenges/${slug}/me`);
   }
-
-  const isPublic =
-    challenge.visibility === "PUBLIC" || challenge.visibility === "UNLISTED";
 
   return (
     <div className="flex flex-1 flex-col">
@@ -57,78 +46,30 @@ export default async function JoinPage({ params }: PageProps) {
         showGm={Boolean(access?.isGm)}
       />
       <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-16 pt-2 sm:px-6">
-        <Link
-          href={`/challenges/${challenge.slug}`}
-          className="text-sm text-muted hover:text-ink"
-        >
-          ← League board
-        </Link>
         <h1 className="font-display mt-4 text-3xl font-extrabold tracking-tight">
-          {myTrainerId ? "Your trainer board" : `Join ${challenge.name}`}
+          {session?.user ? "Game Master access" : "Sign in to join"}
         </h1>
         <p className="mt-2 text-muted">
-          {myTrainerId
-            ? "You’re in this season. Edit your board anytime."
-            : isPublic
-              ? "Sign in with Discord and we’ll create your trainer board automatically."
-              : "This season needs an invite code from a Game Master."}
+          {session?.user
+            ? "Enter the GM invite code to manage this season."
+            : "Discord login automatically joins the 2026 league and opens your trainer board."}
         </p>
 
         <div className="mt-8 space-y-4">
           {!session?.user ? (
-            <Frame title="Sign in">
-              <Link
+            <Frame title="Discord">
+              <a
                 href="/login"
-                className="pressable inline-block rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase"
-              >
-                Discord login
-              </Link>
-            </Frame>
-          ) : myTrainerId ? (
-            <Frame title="Ready">
-              <p className="mb-3 text-sm text-muted">
-                Role: {access?.role ?? "PLAYER"}
-              </p>
-              <Link
-                href={`/challenges/${challenge.slug}/trainers/${myTrainerId}`}
                 className="pressable inline-block rounded-sm bg-accent px-4 py-3 font-display text-xs font-bold tracking-wide text-white uppercase"
               >
-                Open my board
-              </Link>
-            </Frame>
-          ) : challenge.source !== "database" || !isDatabaseConfigured() ? (
-            <Frame title="Database required">
-              <p className="text-sm text-muted">
-                Trainer provisioning needs a live database. Demo seed mode is
-                read-only.
-              </p>
+                Continue with Discord
+              </a>
             </Frame>
           ) : (
-            <Frame title={isPublic ? "Get started" : "Invite code"}>
-              {isPublic ? (
-                <JoinForm slug={challenge.slug} mode="enter" />
-              ) : (
-                <JoinForm slug={challenge.slug} mode="invite" needsInvite />
-              )}
-            </Frame>
-          )}
-
-          {session?.user && !access?.isGm ? (
-            <Frame title="Game Master?">
-              <p className="mb-3 text-sm text-muted">
-                Optional — elevate with a GM code if you run the season.
-              </p>
+            <Frame title="GM invite code">
               <JoinForm slug={challenge.slug} mode="gm" />
             </Frame>
-          ) : null}
-
-          <Frame title="About Ash">
-            <p className="text-sm leading-relaxed text-muted">
-              <strong>Ash Ketchum</strong> on the league board is a demo
-              example only — not a claimable slot. Your Discord login creates{" "}
-              <em>your</em> trainer.
-            </p>
-          </Frame>
+          )}
         </div>
       </main>
     </div>
