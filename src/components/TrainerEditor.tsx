@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useState, useTransition } from "react";
 import {
   deletePokemonAction,
-  setBadgeProgressAction,
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
@@ -15,27 +14,16 @@ import {
   pokemonEntryToForm,
   type PokemonFormState,
 } from "@/components/PokemonFormModal";
-import type {
-  BadgeDefinition,
-  PokemonEntry,
-  TrainerProfile,
-} from "@/lib/challenge-types";
-import { getEmeraldBadgeMeta } from "@/lib/emerald-badges";
-import { pokemonSpriteUrl, trainerSpriteUrl } from "@/lib/sprites";
+import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import { pokemonSpriteUrl } from "@/lib/sprites";
 
 type TrainerEditorProps = {
   trainer: TrainerProfile;
-  badges: BadgeDefinition[];
   canEdit: boolean;
   isGm: boolean;
 };
 
-export function TrainerEditor({
-  trainer,
-  badges,
-  canEdit,
-  isGm,
-}: TrainerEditorProps) {
+export function TrainerEditor({ trainer, canEdit, isGm }: TrainerEditorProps) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -192,71 +180,6 @@ export function TrainerEditor({
       </section>
 
       <section className="gba-frame">
-        <header className="gba-frame-title px-3 py-2 text-sm">
-          Emerald badge case
-        </header>
-        <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 sm:p-4">
-          {badges.map((badge) => {
-            const earned = trainer.earnedBadgeKeys.includes(badge.key);
-            const meta = getEmeraldBadgeMeta(badge.key);
-            const title = meta?.badgeName ?? badge.label;
-            return (
-              <button
-                key={badge.key}
-                type="button"
-                disabled={pending}
-                className={`flex items-center gap-3 rounded-sm border-2 border-frame px-2 py-2 text-left ${
-                  earned ? "bg-accent-2/35" : "bg-surface-2 opacity-75"
-                }`}
-                onClick={() => {
-                  startTransition(async () => {
-                    flash(
-                      await setBadgeProgressAction({
-                        trainerId: trainer.id,
-                        badgeKey: badge.key,
-                        earned: !earned,
-                      }),
-                    );
-                  });
-                }}
-              >
-                {meta ? (
-                  <Image
-                    src={trainerSpriteUrl(meta.leaderSpriteKey)}
-                    alt=""
-                    width={56}
-                    height={56}
-                    className="pixelated h-14 w-14 shrink-0 object-contain"
-                    unoptimized
-                  />
-                ) : null}
-                <span
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 font-display text-[9px] font-bold uppercase"
-                  style={{
-                    background: earned
-                      ? `radial-gradient(circle at 35% 30%, #fff6d5, ${meta?.accent ?? "#e8c56a"})`
-                      : "var(--surface)",
-                    borderColor: meta?.accent ?? "var(--frame)",
-                  }}
-                >
-                  {(meta?.shortName ?? title).slice(0, 3)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold">{title}</span>
-                  <span className="mt-0.5 block text-[11px] text-muted">
-                    {badge.leaderName ?? meta?.shortName}
-                    {meta?.city ? ` · ${meta.city}` : ""}
-                    {" · "}
-                    {earned ? "Earned — tap to revoke" : "Tap to earn"}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="gba-frame">
         <header className="gba-frame-title flex items-center justify-between gap-2 px-3 py-2 text-sm">
           <span>Pokémon party</span>
           <button
@@ -323,6 +246,7 @@ export function TrainerEditor({
                         {mon.species} · {mon.slot.toLowerCase()} #
                         {mon.partyIndex}
                         {mon.level != null ? ` · Lv${mon.level}` : ""}
+                        {mon.heldItem ? ` · ${mon.heldItem}` : ""}
                       </span>
                     </span>
                   </div>

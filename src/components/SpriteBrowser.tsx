@@ -9,6 +9,7 @@ import {
 } from "@/data/trainer-sprites";
 import {
   findPokemonById,
+  POKEMON_GENERATIONS,
   searchPokemonIndex,
   type PokemonIndexEntry,
 } from "@/data/pokemon-index";
@@ -96,8 +97,7 @@ export function TrainerSpriteBrowser({
       </label>
       <p className="mb-2 text-xs text-muted">
         Showing {results.length}
-        {deferred.trim() ? " matches" : " (type to search the full catalog)"} ·
-        sprites from Pokémon Showdown
+        {deferred.trim() ? " matches" : " (type to search the full catalog)"}
       </p>
       <div className="grid max-h-[50vh] grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6 md:grid-cols-8">
         {results.map((key) => {
@@ -153,17 +153,28 @@ export function PokemonSpriteBrowser({
   onSelect,
 }: PokemonBrowserProps) {
   const [query, setQuery] = useState("");
+  const [generation, setGeneration] = useState<number | null>(3);
   const deferred = useDeferredValue(query);
   const results = useMemo(
-    () => searchPokemonIndex(deferred, deferred.trim() ? 120 : 60),
-    [deferred],
+    () =>
+      searchPokemonIndex(deferred, {
+        generation,
+        limit: deferred.trim() ? 160 : 80,
+      }),
+    [deferred, generation],
   );
   const [draft, setDraft] = useState<PokemonIndexEntry | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setQuery("");
-    setDraft(selectedId ? (findPokemonById(selectedId) ?? null) : null);
+    const selected = selectedId ? findPokemonById(selectedId) : null;
+    if (selected) {
+      setGeneration(selected.generation);
+      setDraft(selected);
+    } else {
+      setDraft(null);
+    }
   }, [open, selectedId]);
 
   return (
@@ -189,6 +200,9 @@ export function PokemonSpriteBrowser({
                 />
                 <span className="font-bold">
                   #{draft.pokedexId} {draft.name}
+                  <span className="ml-1 text-xs font-normal text-muted">
+                    Gen {draft.generation}
+                  </span>
                 </span>
               </>
             ) : (
@@ -219,6 +233,33 @@ export function PokemonSpriteBrowser({
         </div>
       }
     >
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          className={`pressable rounded-sm px-2.5 py-1.5 text-[11px] font-bold uppercase ${
+            generation == null
+              ? "bg-accent text-white"
+              : "border-2 border-frame bg-surface"
+          }`}
+          onClick={() => setGeneration(null)}
+        >
+          All
+        </button>
+        {POKEMON_GENERATIONS.map((g) => (
+          <button
+            key={g}
+            type="button"
+            className={`pressable rounded-sm px-2.5 py-1.5 text-[11px] font-bold uppercase ${
+              generation === g
+                ? "bg-accent text-white"
+                : "border-2 border-frame bg-surface"
+            }`}
+            onClick={() => setGeneration(g)}
+          >
+            Gen {g}
+          </button>
+        ))}
+      </div>
       <label className="mb-3 block text-sm">
         <span className="mb-1 block font-bold text-muted">
           Search National Dex
@@ -233,11 +274,10 @@ export function PokemonSpriteBrowser({
       </label>
       <p className="mb-2 text-xs text-muted">
         Showing {results.length}
-        {deferred.trim()
-          ? " matches"
-          : " — search by name or number for the full dex"}
+        {generation != null ? ` in Gen ${generation}` : ""}
+        {deferred.trim() ? " matches" : ""}
       </p>
-      <div className="grid max-h-[50vh] grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6 md:grid-cols-8">
+      <div className="grid max-h-[45vh] grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6 md:grid-cols-8">
         {results.map((mon) => {
           const selected = draft?.pokedexId === mon.pokedexId;
           return (

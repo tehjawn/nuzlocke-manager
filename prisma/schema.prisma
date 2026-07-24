@@ -64,6 +64,7 @@ model User {
   memberships ChallengeMembership[]
   trainers    TrainerProfile[]
   activities  ActivityEvent[]       @relation("ActivityActor")
+  reactions   ActivityReaction[]
 }
 
 model Challenge {
@@ -216,9 +217,24 @@ model ActivityEvent {
   metadata    Json?
   createdAt   DateTime     @default(now())
 
-  challenge Challenge      @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  actor     User?          @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
-  trainer   TrainerProfile? @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  challenge Challenge          @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  actor     User?              @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+  trainer   TrainerProfile?    @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  reactions ActivityReaction[]
 
   @@index([challengeId, createdAt])
+}
+
+model ActivityReaction {
+  id         String   @id @default(cuid())
+  activityId String
+  userId     String
+  emoji      String
+  createdAt  DateTime @default(now())
+
+  activity ActivityEvent @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, userId, emoji])
+  @@index([activityId])
 }

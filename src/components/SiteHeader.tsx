@@ -80,7 +80,7 @@ export function SiteHeader({
             ) : null}
           </>
         ) : null}
-        <AuthButtons />
+        <AuthButtons hideMyBoard={Boolean(myTrainerId)} />
       </nav>
     </header>
   );

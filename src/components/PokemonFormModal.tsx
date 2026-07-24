@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { PokemonSpriteBrowser } from "@/components/SpriteBrowser";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
+import { heldItemSpriteUrl, searchHeldItems } from "@/data/pokemon-index";
 import { pokemonSpriteUrl } from "@/lib/sprites";
 
 export type PokemonFormState = {
@@ -88,9 +89,18 @@ export function PokemonFormModal({
 }: PokemonFormModalProps) {
   const [form, setForm] = useState(initial);
   const [browseOpen, setBrowseOpen] = useState(false);
+  const [itemQuery, setItemQuery] = useState("");
+  const deferredItem = useDeferredValue(itemQuery);
+  const itemResults = useMemo(
+    () => searchHeldItems(deferredItem, 12),
+    [deferredItem],
+  );
 
   useEffect(() => {
-    if (open) setForm(initial);
+    if (open) {
+      setForm(initial);
+      setItemQuery(initial.heldItem);
+    }
   }, [open, initial]);
 
   return (
@@ -267,16 +277,68 @@ export function PokemonFormModal({
                 }
               />
             </label>
-            <label className="text-sm">
+            <div className="text-sm sm:col-span-2">
               <span className="mb-1 block font-bold text-muted">Held item</span>
-              <input
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
-                value={form.heldItem}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, heldItem: e.target.value }))
-                }
-              />
-            </label>
+              <div className="flex items-center gap-2">
+                {form.heldItem ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={heldItemSpriteUrl(form.heldItem)}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="pixelated h-8 w-8 object-contain"
+                  />
+                ) : null}
+                <input
+                  className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+                  value={itemQuery}
+                  placeholder="Search leftovers, life orb…"
+                  onChange={(e) => {
+                    setItemQuery(e.target.value);
+                    setForm((f) => ({ ...f, heldItem: e.target.value }));
+                  }}
+                />
+                {form.heldItem ? (
+                  <button
+                    type="button"
+                    className="pressable shrink-0 rounded-sm bg-surface px-2 py-2 text-xs font-bold uppercase"
+                    onClick={() => {
+                      setItemQuery("");
+                      setForm((f) => ({ ...f, heldItem: "" }));
+                    }}
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+              {itemResults.length > 0 && itemQuery.trim() ? (
+                <ul className="mt-2 max-h-36 overflow-auto rounded-sm border-2 border-frame bg-surface">
+                  {itemResults.map((item) => (
+                    <li key={item.slug}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-accent/15"
+                        onClick={() => {
+                          setItemQuery(item.name);
+                          setForm((f) => ({ ...f, heldItem: item.name }));
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={heldItemSpriteUrl(item.slug)}
+                          alt=""
+                          width={24}
+                          height={24}
+                          className="pixelated h-6 w-6 object-contain"
+                        />
+                        {item.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
             {(["move1", "move2", "move3", "move4"] as const).map((key, i) => (
               <label key={key} className="text-sm">
                 <span className="mb-1 block font-bold text-muted">
