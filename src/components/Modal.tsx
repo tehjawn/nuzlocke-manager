@@ -34,7 +34,7 @@ export function Modal({
       <button
         type="button"
         aria-label="Close dialog"
-        className="absolute inset-0 bg-[#1e2a24]/55"
+        className="absolute inset-0 bg-[var(--scrim)]"
         onClick={onClose}
       />
       <div

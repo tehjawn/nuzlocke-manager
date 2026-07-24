@@ -3,6 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import {
+  THEME_STORAGE_KEY,
+  applyTheme,
+  resolveTheme,
+  toggleTheme,
+  type Theme,
+} from "@/lib/theme";
 
 type UserMenuProps = {
   name: string;
@@ -12,8 +19,29 @@ type UserMenuProps = {
 
 export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof document === "undefined") return "light";
+    const attr = document.documentElement.getAttribute("data-theme");
+    return attr === "dark" ? "dark" : "light";
+  });
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    function onSystemThemeChange() {
+      try {
+        if (localStorage.getItem(THEME_STORAGE_KEY)) return;
+      } catch {
+        return;
+      }
+      const next = resolveTheme();
+      applyTheme(next);
+      setTheme(next);
+    }
+    media.addEventListener("change", onSystemThemeChange);
+    return () => media.removeEventListener("change", onSystemThemeChange);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -32,6 +60,12 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
+
+  function onToggleTheme() {
+    setTheme((current) => toggleTheme(current));
+  }
+
+  const themeLabel = theme === "dark" ? "Light mode" : "Dark mode";
 
   return (
     <div ref={rootRef} className="relative">
@@ -68,7 +102,7 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 z-30 mt-1 w-48 overflow-hidden rounded-sm border-2 border-frame bg-surface shadow-[3px_3px_0_var(--shadow)]"
+          className="absolute right-0 z-30 mt-1 w-52 overflow-hidden rounded-sm border-2 border-frame bg-surface shadow-[3px_3px_0_var(--shadow)]"
         >
           <Link
             href="/account"
@@ -79,6 +113,16 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
             <ProfileIcon />
             My Profile
           </Link>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-accent/15"
+            onClick={onToggleTheme}
+            aria-label={`Switch to ${themeLabel.toLowerCase()}`}
+          >
+            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+            {themeLabel}
+          </button>
           <form action={signOutAction}>
             <button
               type="submit"
@@ -138,6 +182,43 @@ function SignOutIcon() {
     >
       <path d="M8 4H4.5A1.5 1.5 0 003 5.5v9A1.5 1.5 0 004.5 16H8" strokeLinecap="round" />
       <path d="M11 10h6M14 7l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      className="h-4 w-4 text-accent-deep"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <circle cx="10" cy="10" r="3.25" />
+      <path
+        d="M10 2.5v1.5M10 16v1.5M2.5 10H4M16 10h1.5M4.7 4.7l1.1 1.1M14.2 14.2l1.1 1.1M15.3 4.7l-1.1 1.1M5.8 14.2l-1.1 1.1"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      className="h-4 w-4 text-accent-deep"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <path
+        d="M12.5 3.2A6.5 6.5 0 1016.8 12 5.2 5.2 0 0112.5 3.2z"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
