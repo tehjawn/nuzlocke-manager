@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 type ModalProps = {
   open: boolean;
@@ -20,27 +20,17 @@ export function Modal({
   wide = false,
 }: ModalProps) {
   const titleId = useId();
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    panelRef.current?.focus();
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open, onClose]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+    <div
+      data-modal-open=""
+      className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+    >
       <button
         type="button"
         aria-label="Close dialog"
@@ -48,11 +38,11 @@ export function Modal({
         onClick={onClose}
       />
       <div
-        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
+        autoFocus
         className={`relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-md border-4 border-frame bg-surface shadow-[6px_6px_0_var(--shadow)] outline-none sm:rounded-sm ${
           wide ? "sm:max-w-3xl" : "sm:max-w-xl"
         }`}

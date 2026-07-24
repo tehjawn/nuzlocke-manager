@@ -4,7 +4,7 @@ import type { Challenge, TrainerProfile } from "@/lib/challenge-types";
 import { BadgeCase } from "@/components/BadgeCase";
 import { Frame } from "@/components/Frame";
 import { ReviveToken } from "@/components/ReviveToken";
-import { displayName, pokemonInSlot } from "@/lib/challenges";
+import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 import { avatarImageUrl, pokemonSpriteUrl } from "@/lib/sprites";
 
 type TrainerCardProps = {

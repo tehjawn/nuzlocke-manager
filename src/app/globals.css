@@ -45,6 +45,10 @@ body {
   font-family: var(--font-body), system-ui, sans-serif;
 }
 
+body:has([data-modal-open]) {
+  overflow: hidden;
+}
+
 .font-display {
   font-family: var(--font-display), var(--font-body), system-ui, sans-serif;
 }

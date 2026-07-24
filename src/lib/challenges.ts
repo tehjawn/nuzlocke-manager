@@ -2,7 +2,6 @@ import { CHALLENGES } from "@/data/trash-pack-2026";
 import type {
   ActivityItem,
   Challenge,
-  PokemonEntry,
   TrainerProfile,
 } from "@/lib/challenge-types";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
@@ -86,21 +85,6 @@ export async function getTrainer(
   const trainer = challenge.trainers.find((t) => t.id === trainerId);
   if (!trainer) return null;
   return { challenge, trainer };
-}
-
-export function pokemonInSlot(
-  trainer: TrainerProfile,
-  slot: PokemonEntry["slot"],
-): PokemonEntry[] {
-  return trainer.pokemon
-    .filter((p) => p.slot === slot)
-    .sort((a, b) => a.partyIndex - b.partyIndex);
-}
-
-export function displayName(trainer: TrainerProfile): string {
-  return trainer.realName
-    ? `${trainer.handle} (${trainer.realName})`
-    : trainer.handle;
 }
 
 export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Modal } from "@/components/Modal";
 import {
   formatTrainerSpriteLabel,
@@ -28,6 +28,23 @@ export function TrainerSpriteBrowser({
   onClose,
   onSelect,
 }: TrainerBrowserProps) {
+  // Remount when opened so draft/query reset from props without an effect.
+  if (!open) return null;
+  return (
+    <TrainerSpriteBrowserInner
+      key={selectedKey}
+      selectedKey={selectedKey}
+      onClose={onClose}
+      onSelect={onSelect}
+    />
+  );
+}
+
+function TrainerSpriteBrowserInner({
+  selectedKey,
+  onClose,
+  onSelect,
+}: Omit<TrainerBrowserProps, "open">) {
   const [query, setQuery] = useState("");
   const deferred = useDeferredValue(query);
   const results = useMemo(
@@ -36,15 +53,9 @@ export function TrainerSpriteBrowser({
   );
   const [draft, setDraft] = useState(selectedKey);
 
-  useEffect(() => {
-    if (!open) return;
-    setDraft(selectedKey);
-    setQuery("");
-  }, [open, selectedKey]);
-
   return (
     <Modal
-      open={open}
+      open
       title="Choose trainer sprite"
       onClose={onClose}
       wide
@@ -146,14 +157,38 @@ type PokemonBrowserProps = {
   onSelect: (entry: PokemonIndexEntry) => void;
 };
 
+function initialPokemonDraft(selectedId: number | null): PokemonIndexEntry | null {
+  return selectedId ? (findPokemonById(selectedId) ?? null) : null;
+}
+
 export function PokemonSpriteBrowser({
   open,
   selectedId,
   onClose,
   onSelect,
 }: PokemonBrowserProps) {
+  // Remount when opened so draft/query/generation reset without an effect.
+  if (!open) return null;
+  return (
+    <PokemonSpriteBrowserInner
+      key={selectedId ?? "none"}
+      selectedId={selectedId}
+      onClose={onClose}
+      onSelect={onSelect}
+    />
+  );
+}
+
+function PokemonSpriteBrowserInner({
+  selectedId,
+  onClose,
+  onSelect,
+}: Omit<PokemonBrowserProps, "open">) {
+  const selected = initialPokemonDraft(selectedId);
   const [query, setQuery] = useState("");
-  const [generation, setGeneration] = useState<number | null>(3);
+  const [generation, setGeneration] = useState<number | null>(
+    selected?.generation ?? 3,
+  );
   const deferred = useDeferredValue(query);
   const results = useMemo(
     () =>
@@ -163,23 +198,11 @@ export function PokemonSpriteBrowser({
       }),
     [deferred, generation],
   );
-  const [draft, setDraft] = useState<PokemonIndexEntry | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    setQuery("");
-    const selected = selectedId ? findPokemonById(selectedId) : null;
-    if (selected) {
-      setGeneration(selected.generation);
-      setDraft(selected);
-    } else {
-      setDraft(null);
-    }
-  }, [open, selectedId]);
+  const [draft, setDraft] = useState<PokemonIndexEntry | null>(selected);
 
   return (
     <Modal
-      open={open}
+      open
       title="Choose Pokémon"
       onClose={onClose}
       wide
@@ -279,15 +302,15 @@ export function PokemonSpriteBrowser({
       </p>
       <div className="grid max-h-[45vh] grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6 md:grid-cols-8">
         {results.map((mon) => {
-          const selected = draft?.pokedexId === mon.pokedexId;
+          const selectedRow = draft?.pokedexId === mon.pokedexId;
           return (
             <button
               key={mon.pokedexId}
               type="button"
               title={`#${mon.pokedexId} ${mon.name}`}
-              aria-pressed={selected}
+              aria-pressed={selectedRow}
               className={`flex flex-col items-center gap-1 rounded-sm border-2 p-1.5 ${
-                selected
+                selectedRow
                   ? "border-accent bg-accent/15"
                   : "border-frame bg-surface-2 hover:bg-accent/10"
               }`}
