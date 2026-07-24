@@ -4,7 +4,8 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { Frame } from "@/components/Frame";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader } from "@/components/SiteHeader";
-import type { ActivityItem } from "@/lib/challenge-types";
+import type { ActivityItem, ChallengeStatus } from "@/lib/challenge-types";
+import { seasonStatusLabel } from "@/lib/season-status";
 
 /** Fixed left rail width — keeps tab navigations from shifting columns. */
 export const SEASON_LEFT_RAIL_CLASS = "w-full lg:w-[22.5rem] lg:shrink-0";
@@ -15,6 +16,7 @@ type ChallengeShellProps = {
   year: number;
   game?: string | null;
   description: string;
+  status?: ChallengeStatus;
   activities?: ActivityItem[];
   canReact?: boolean;
   showGm?: boolean;
@@ -29,6 +31,7 @@ export function ChallengeShell({
   year,
   game,
   description,
+  status = "ACTIVE",
   activities = [],
   canReact = false,
   showGm = false,
@@ -51,7 +54,7 @@ export function ChallengeShell({
         >
           <Frame title={`Season ${year}`}>
             <p className="font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase">
-              General info
+              General info · {seasonStatusLabel(status)}
             </p>
             <h1 className="font-display mt-1 text-2xl font-extrabold tracking-tight">
               {name}
@@ -70,7 +73,7 @@ export function ChallengeShell({
             ) : null}
           </Frame>
 
-          <SeasonTabs slug={slug} />
+          <SeasonTabs slug={slug} status={status} />
 
           <ActivityFeed
             slug={slug}

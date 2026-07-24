@@ -2,7 +2,7 @@
 
 A multiplayer Nuzlocke **ops board** for a friend group: seasons, trainer boards, graves, badges, and Game Master tools — replacing the Trash Pack spreadsheet with a warm, Gen 3–flavored web app on Vercel.
 
-**Status (Jul 2026):** Phases 0–2 shipped. Active work: **Phase 3 — Seasons & endgame** (§7 / §13).
+**Status (Jul 2026):** Phases 0–2 shipped. Phase 3 in progress: memorial, export, Discord webhooks, tournament stub.
 
 **Reference spreadsheet:** [TrashPack Nuzlocke Challenge](https://docs.google.com/spreadsheets/d/1b8WdFyNuToOaq_MBda4lSZXGqaj36VbC)
 
@@ -243,14 +243,14 @@ Next.js App Router, Prisma/Postgres, Zod stubs, sprite helpers, docs.
 - Activity log on league hub (+ emoji reactions)
 - Simplified join UX (no claim dance; Ash demo only; `/me` shortcut)
 
-### Phase 3 — Seasons & endgame ← next
+### Phase 3 — Seasons & endgame ✅ (core)
 
-Ordered by value given current state:
+Shipped:
 
-1. **Memorial / end-of-season view** — read-only season presentation after archive (manual Main Squad lock already exists)
-2. **Export JSON/CSV** — backup once the sheet is retired
-3. **Discord webhooks** — death, badge, revive → group Discord
-4. **Tournament bracket stub** — ladder after Champion (`Tournament` model + `/tournament` route)
+1. **Memorial / end-of-season view** — `/memorial` + archive read-only boards (manual Main Squad lock)
+2. **Export JSON/CSV** — GM console downloads
+3. **Discord webhooks** — death, badge earned, revive used (GM-configured URL)
+4. **Tournament bracket stub** — `Tournament` / `TournamentMatch` + `/tournament` seed UI
 
 **Deferred / skipped for now:**
 
@@ -317,8 +317,8 @@ Keep the stack boring so the **UI personality** can carry the product.
 /challenges/[slug]/join           → Invite / GM code                     ✅
 /challenges/[slug]/trainers/[id]  → Trainer board                        ✅
 /challenges/[slug]/gm             → Game Master console                  ✅
-/challenges/[slug]/memorial       → Season memorial (all graves)         Phase 3
-/challenges/[slug]/tournament     → Ladder                               Phase 3
+/challenges/[slug]/memorial       → Season memorial (all graves)         ✅
+/challenges/[slug]/tournament     → Ladder                               ✅ (stub)
 ```
 
 Activity lives on the league hub (no separate `/feed` route). League board is the hub — rules/FAQ one click away, matching how the group uses the sheet day-to-day.
@@ -349,13 +349,8 @@ Activity lives on the league hub (no separate `/feed` route). League board is th
 
 ## 13. Next build priorities
 
-Phases 0–2 and Trash Pack board theming are done. Build Phase 3 in this order:
-
-1. Memorial / archived season presentation
-2. Export JSON/CSV backup
-3. Discord webhooks (death, badge, revive)
-4. Tournament bracket stub (last)
+Phase 3 core (memorial, export, Discord webhooks, tournament stub) is shipped.
 
 Deferred: Championship auto-lock, season duplicate / year switcher, INVITE guest login wall.
 
-Opportunistic polish (not blocking Phase 3): alternate formes in species picker, sticky mobile save bar.
+Likely next: Phase 4 QoL the group actually asks for; alternate formes in species picker; sticky mobile save bar.

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
+import { MemorialBoard } from "@/components/MemorialBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
-import { TrainerCard } from "@/components/TrainerCard";
 import { getChallenge } from "@/lib/challenges";
 
 export const dynamic = "force-dynamic";
@@ -17,19 +17,15 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const challenge = await getChallenge(slug);
-  if (!challenge) return { title: "Challenge" };
-  return { title: challenge.name };
+  if (!challenge) return { title: "Memorial" };
+  return { title: `Memorial · ${challenge.name}` };
 }
 
-export default async function LeagueBoardPage({ params }: PageProps) {
+export default async function MemorialPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
-
-  const trainers = [...challenge.trainers].sort(
-    (a, b) => a.sortOrder - b.sortOrder,
-  );
 
   return (
     <>
@@ -37,24 +33,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
       <div className="mb-4">
         <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
       </div>
-
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-display text-xl font-extrabold tracking-tight">
-            Players
-          </h2>
-          <p className="text-xs text-muted">{trainers.length} on the board</p>
-        </div>
-        <div className="grid gap-4">
-          {trainers.map((trainer) => (
-            <TrainerCard
-              key={trainer.id}
-              challenge={challenge}
-              trainer={trainer}
-            />
-          ))}
-        </div>
-      </section>
+      <MemorialBoard challenge={challenge} />
     </>
   );
 }

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import type { ChallengeStatus } from "@/lib/challenge-types";
 
 type SeasonTabsProps = {
   slug: string;
+  status?: ChallengeStatus;
 };
 
 type Tab = {
@@ -15,7 +17,7 @@ type Tab = {
   icon: ReactNode;
 };
 
-export function SeasonTabs({ slug }: SeasonTabsProps) {
+export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
   const pathname = usePathname();
   const base = `/challenges/${slug}`;
 
@@ -43,6 +45,18 @@ export function SeasonTabs({ slug }: SeasonTabsProps) {
       label: "FAQ",
       match: "prefix",
       icon: <FaqIcon />,
+    },
+    {
+      href: `${base}/memorial`,
+      label: "Memorial",
+      match: "prefix",
+      icon: <MemorialIcon />,
+    },
+    {
+      href: `${base}/tournament`,
+      label: status === "TOURNAMENT" ? "Ladder" : "Tournament",
+      match: "prefix",
+      icon: <TournamentIcon />,
     },
   ];
 
@@ -121,6 +135,28 @@ function FaqIcon() {
       <circle cx="12" cy="12" r="8.25" />
       <path d="M9.75 9.5a2.25 2.25 0 114.1 1.3c-.5.7-1.35 1.05-1.85 1.7-.2.25-.25.5-.25.9" strokeLinecap="round" />
       <circle cx="12" cy="16.75" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function MemorialIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M8 20V9.5a4 4 0 018 0V20" strokeLinecap="round" />
+      <path d="M6 20h12" strokeLinecap="round" />
+      <path d="M12 5.5V4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TournamentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M7 4h10v3a5 5 0 01-5 5 5 5 0 01-5-5V4z" strokeLinejoin="round" />
+      <path d="M12 12v4" strokeLinecap="round" />
+      <path d="M8 20h8" strokeLinecap="round" />
+      <path d="M5 7H3.5A1.5 1.5 0 012 5.5V5" strokeLinecap="round" />
+      <path d="M19 7h1.5A1.5 1.5 0 0022 5.5V5" strokeLinecap="round" />
     </svg>
   );
 }

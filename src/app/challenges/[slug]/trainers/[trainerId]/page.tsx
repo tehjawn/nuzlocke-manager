@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { TrainerBoard } from "@/components/TrainerBoard";
+import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { getTrainer } from "@/lib/challenges";
 import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
+import { isSeasonReadOnly } from "@/lib/season-status";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +34,9 @@ export default async function TrainerBoardPage({ params }: PageProps) {
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
-  const canEdit = Boolean(access?.canEditTrainer(trainer.userId));
+  const canEdit =
+    Boolean(access?.canEditTrainer(trainer.userId)) &&
+    !isSeasonReadOnly(challenge.status);
   const isDemo = !trainer.userId;
   // Header only needs a truthy id to show “My Trainer” → /me
   const myTrainerId =
@@ -55,6 +59,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
       />
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6">
         <DataSourceBanner source={challenge.source} />
+        <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
         <Link
           href={`/challenges/${challenge.slug}`}
           className="pressable inline-flex items-center gap-2 rounded-sm bg-accent px-4 py-2.5 font-display text-sm font-bold tracking-wide text-white uppercase"
