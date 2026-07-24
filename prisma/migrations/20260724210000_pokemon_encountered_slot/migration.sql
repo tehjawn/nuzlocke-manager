@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "PokemonSlot" ADD VALUE 'ENCOUNTERED';

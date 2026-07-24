@@ -2,14 +2,16 @@
 
 Friend-group Nuzlocke clubhouse — league boards, graves, badges, seasons, Discord login, and Game Master tools.
 
-## Phase 2
+## Status
 
-- Discord login (Auth.js)
-- Invite codes → membership (player / GM)
-- Claim trainer slots
+Phases 0–2 shipped (Clubhouse UI, Trash Pack seed, Discord auth, board editing, GM console, activity feed). Next: Phase 3 — seasons & endgame (see plan).
+
+- Discord login (Auth.js) → auto-provision personal trainer board
+- Invite / GM codes for gated seasons and GM elevation
 - Player board editing (status, revive, badges, Pokémon CRUD)
-- Species autocomplete (Gen 1–3 focused index)
-- GM console (settings, roster, rules, FAQ)
+- Species + shiny sprite picker
+- Import from Afterplay / Gen 3 saves (party, box, R.I.P., encounters + optional name/badges)
+- GM console (settings, rules, FAQ, Main Squad lock)
 - Activity feed on the league board
 - Postgres-backed data with seed fallback for read-only demo
 
