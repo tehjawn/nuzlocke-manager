@@ -40,6 +40,9 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         ? trainer.id
         : access.userId
       : null;
+  const myBoardHref = access
+    ? `/challenges/${challenge.slug}/me`
+    : null;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -60,6 +63,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
 
         <TrainerBoard
           joinHref={`/challenges/${challenge.slug}/join`}
+          myBoardHref={myBoardHref}
           trainer={trainer}
           badges={challenge.badges}
           canEdit={canEdit}
