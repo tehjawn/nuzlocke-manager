@@ -112,7 +112,7 @@ export function BadgeCase({
             ) : null}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={meta?.badgeSprite ?? "/badges/gym-1.svg"}
+              src={meta?.badgeSprite ?? "/badges/gym-1.png"}
               alt=""
               width={40}
               height={40}
