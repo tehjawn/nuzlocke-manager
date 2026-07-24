@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   deletePokemonAction,
+  replaceLivingRosterAction,
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
@@ -20,6 +21,10 @@ import {
 } from "@/components/PokemonFormModal";
 import { PartyStrip } from "@/components/PartyStrip";
 import { ReviveToken } from "@/components/ReviveToken";
+import {
+  SaveImportModal,
+  type SaveImportDraft,
+} from "@/components/SaveImportModal";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
 import type {
   BadgeDefinition,
@@ -70,6 +75,7 @@ export function TrainerBoard({
   const [pokemonOpen, setPokemonOpen] = useState(false);
   const [pokemonForm, setPokemonForm] =
     useState<PokemonFormState>(EMPTY_POKEMON_FORM);
+  const [saveImportOpen, setSaveImportOpen] = useState(false);
 
   const main = pokemonInSlot(trainer, "MAIN");
   const reserves = pokemonInSlot(trainer, "RESERVE");
@@ -348,13 +354,22 @@ export function TrainerBoard({
                   <p className="text-xs text-muted">
                     Tap a slot to add or edit.
                   </p>
-                  <button
-                    type="button"
-                    className="pressable rounded-sm bg-accent px-3 py-1.5 text-xs font-bold text-white uppercase"
-                    onClick={() => openAddPokemon("MAIN")}
-                  >
-                    + Add
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="pressable rounded-sm border-2 border-frame bg-surface px-3 py-1.5 text-xs font-bold uppercase"
+                      onClick={() => setSaveImportOpen(true)}
+                    >
+                      Import save
+                    </button>
+                    <button
+                      type="button"
+                      className="pressable rounded-sm bg-accent px-3 py-1.5 text-xs font-bold text-white uppercase"
+                      onClick={() => openAddPokemon("MAIN")}
+                    >
+                      + Add
+                    </button>
+                  </div>
                 </div>
                 <PartyStrip
                   pokemon={main}
@@ -464,51 +479,75 @@ export function TrainerBoard({
       </div>
 
       {editing ? (
-        <PokemonFormModal
-          open={pokemonOpen}
-          initial={pokemonForm}
-          pending={pending}
-          onClose={() => setPokemonOpen(false)}
-          onSave={(form) => {
-            startTransition(async () => {
-              const moves = [
-                form.move1,
-                form.move2,
-                form.move3,
-                form.move4,
-              ].filter(Boolean);
-              const result = await upsertPokemonAction({
-                id: form.id,
-                trainerId: trainer.id,
-                slot: form.slot,
-                partyIndex: form.partyIndex,
-                nickname: form.nickname || null,
-                species: form.species.trim(),
-                isShiny: form.isShiny,
-                types: [],
-                nature: form.nature || null,
-                level: form.level ? Number(form.level) : null,
-                ability: form.ability || null,
-                catchRoute: form.catchRoute || null,
-                heldItem: form.heldItem || null,
-                moves,
-                causeOfDeath: form.causeOfDeath || null,
+        <>
+          <PokemonFormModal
+            open={pokemonOpen}
+            initial={pokemonForm}
+            pending={pending}
+            onClose={() => setPokemonOpen(false)}
+            onSave={(form) => {
+              startTransition(async () => {
+                const moves = [
+                  form.move1,
+                  form.move2,
+                  form.move3,
+                  form.move4,
+                ].filter(Boolean);
+                const result = await upsertPokemonAction({
+                  id: form.id,
+                  trainerId: trainer.id,
+                  slot: form.slot,
+                  partyIndex: form.partyIndex,
+                  nickname: form.nickname || null,
+                  species: form.species.trim(),
+                  isShiny: form.isShiny,
+                  types: [],
+                  nature: form.nature || null,
+                  level: form.level ? Number(form.level) : null,
+                  ability: form.ability || null,
+                  catchRoute: form.catchRoute || null,
+                  heldItem: form.heldItem || null,
+                  moves,
+                  causeOfDeath: form.causeOfDeath || null,
+                });
+                flash(result);
+                if (result.ok) setPokemonOpen(false);
               });
-              flash(result);
-              if (result.ok) setPokemonOpen(false);
-            });
-          }}
-          onDelete={(pokemonId) => {
-            startTransition(async () => {
-              const result = await deletePokemonAction({
-                trainerId: trainer.id,
-                pokemonId,
+            }}
+            onDelete={(pokemonId) => {
+              startTransition(async () => {
+                const result = await deletePokemonAction({
+                  trainerId: trainer.id,
+                  pokemonId,
+                });
+                flash(result);
+                if (result.ok) setPokemonOpen(false);
               });
-              flash(result);
-              if (result.ok) setPokemonOpen(false);
-            });
-          }}
-        />
+            }}
+          />
+          <SaveImportModal
+            open={saveImportOpen}
+            pending={pending}
+            onClose={() => setSaveImportOpen(false)}
+            onApply={(mons: SaveImportDraft[]) => {
+              startTransition(async () => {
+                const result = await replaceLivingRosterAction({
+                  trainerId: trainer.id,
+                  pokemon: mons.map((m) => ({
+                    nickname: m.nickname || null,
+                    species: m.species.trim(),
+                    pokedexId: m.pokedexId,
+                    level: m.level ? Number(m.level) : null,
+                    isShiny: m.isShiny,
+                    slot: m.slot,
+                  })),
+                });
+                flash(result);
+                if (result.ok) setSaveImportOpen(false);
+              });
+            }}
+          />
+        </>
       ) : null}
     </div>
   );

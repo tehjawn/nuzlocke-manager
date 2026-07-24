@@ -522,6 +522,108 @@ export async function deletePokemonAction(input: {
   }
 }
 
+const SaveImportMonSchema = z.object({
+  nickname: z.string().max(32).optional().nullable(),
+  species: z.string().min(1).max(64),
+  pokedexId: z.number().int().positive().optional().nullable(),
+  level: z.number().int().min(1).max(100).optional().nullable(),
+  isShiny: z.boolean().default(false),
+  slot: z.enum(["MAIN", "RESERVE"]),
+});
+
+const ReplaceLivingRosterSchema = z.object({
+  trainerId: z.string().min(1),
+  pokemon: z.array(SaveImportMonSchema).max(36),
+});
+
+/** Replace Main + Reserve with imported save Pokémon; preserve graveyard. */
+export async function replaceLivingRosterAction(
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const data = ReplaceLivingRosterSchema.parse(raw);
+    const { trainer, userId, access } = await requireTrainerEditAccess(
+      data.trainerId,
+    );
+
+    if (trainer.mainSquadLocked && !access.isGm) {
+      return {
+        ok: false,
+        error: "Main Squad is locked after Championship",
+      };
+    }
+
+    const prisma = getPrisma();
+    const mainIndex = { n: 0 };
+    const reserveIndex = { n: 0 };
+
+    const rows = data.pokemon.map((mon) => {
+      const speciesMeta = findSpecies(mon.species);
+      const indexHit =
+        (mon.pokedexId ? findPokemonById(mon.pokedexId) : undefined) ??
+        (speciesMeta
+          ? findPokemonById(speciesMeta.pokedexId)
+          : undefined) ??
+        searchPokemonIndex(mon.species.trim().toLowerCase(), { limit: 8 }).find(
+          (p) => p.name.toLowerCase() === mon.species.trim().toLowerCase(),
+        );
+
+      const partyIndex =
+        mon.slot === "MAIN" ? mainIndex.n++ : reserveIndex.n++;
+
+      return {
+        trainerId: trainer.id,
+        slot: mon.slot,
+        partyIndex,
+        nickname: mon.nickname?.trim() || null,
+        species: mon.species.trim(),
+        pokedexId: mon.pokedexId ?? speciesMeta?.pokedexId ?? indexHit?.pokedexId ?? null,
+        isShiny: mon.isShiny,
+        types: speciesMeta?.types ?? [],
+        level: mon.level ?? null,
+        nature: null,
+        ability: null,
+        catchRoute: null,
+        heldItem: null,
+        moves: [] as string[],
+        causeOfDeath: null,
+        notes: "Imported from save file",
+      };
+    });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.pokemonEntry.deleteMany({
+        where: {
+          trainerId: trainer.id,
+          slot: { in: ["MAIN", "RESERVE"] },
+        },
+      });
+      if (rows.length > 0) {
+        await tx.pokemonEntry.createMany({ data: rows });
+      }
+    });
+
+    await logActivity({
+      challengeId: trainer.challengeId,
+      actorId: userId,
+      trainerId: trainer.id,
+      type: "NOTE",
+      message: `${trainer.handle} imported ${rows.length} Pokémon from a save file`,
+    });
+
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return {
+      ok: true,
+      message: `Imported ${rows.length} Pokémon (R.I.P. kept)`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Save import failed",
+    };
+  }
+}
+
 export async function gmUpdateRuleAction(input: {
   challengeId: string;
   ruleId?: string;
