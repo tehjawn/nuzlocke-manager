@@ -41,6 +41,11 @@ function seedAsChallenge(raw: (typeof CHALLENGES)[number]): Challenge {
   };
 }
 
+function logDbFallback(context: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[challenges] ${context} failed; falling back to seed.`, message);
+}
+
 export async function listChallenges(): Promise<Challenge[]> {
   if (isDatabaseConfigured()) {
     try {
@@ -51,8 +56,8 @@ export async function listChallenges(): Promise<Challenge[]> {
       if (rows.length > 0) {
         return rows.map((row) => mapDbChallenge(row));
       }
-    } catch {
-      // fall through to seed
+    } catch (error) {
+      logDbFallback("listChallenges", error);
     }
   }
   return CHALLENGES.map(seedAsChallenge);
@@ -71,8 +76,8 @@ export const getChallenge = cache(
           include: challengeInclude,
         });
         if (row) return mapDbChallenge(row, viewerUserId);
-      } catch {
-        // fall through
+      } catch (error) {
+        logDbFallback(`getChallenge(${slug})`, error);
       }
     }
     const seed = CHALLENGES.find((c) => c.slug === slug);
