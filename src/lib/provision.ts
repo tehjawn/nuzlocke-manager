@@ -1,35 +1,18 @@
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { getPrisma } from "@/lib/db";
-
-function sanitizeHandle(raw: string): string {
-  const cleaned = raw
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, " ")
-    .slice(0, 24);
-  return cleaned || "Trainer";
-}
+import { allocateUniqueHandle } from "@/lib/handles";
 
 async function uniqueHandle(
   challengeId: string,
   preferred: string,
 ): Promise<string> {
   const prisma = getPrisma();
-  const base = sanitizeHandle(preferred);
-  const existing = await prisma.trainerProfile.findUnique({
-    where: { challengeId_handle: { challengeId, handle: base } },
-  });
-  if (!existing) return base;
-
-  for (let i = 2; i < 100; i++) {
-    const candidate = `${base.slice(0, 20)} ${i}`;
+  return allocateUniqueHandle(challengeId, preferred, async (handle) => {
     const taken = await prisma.trainerProfile.findUnique({
-      where: { challengeId_handle: { challengeId, handle: candidate } },
+      where: { challengeId_handle: { challengeId, handle } },
     });
-    if (!taken) return candidate;
-  }
-
-  return `${base.slice(0, 16)}-${Date.now().toString(36).slice(-4)}`;
+    return Boolean(taken);
+  });
 }
 
 export type ProvisionResult =

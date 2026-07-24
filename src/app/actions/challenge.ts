@@ -11,7 +11,9 @@ import {
   requireTrainerEditAccess,
   requireUserId,
 } from "@/lib/permissions";
-import { AccountUpdateSchema, PokemonEntryInputSchema } from "@/lib/types";
+import { AccountUpdateSchema, PokemonEntryInputSchema, TrainerBoardUpdateSchema } from "@/lib/types";
+import { sanitizeHandle } from "@/lib/handles";
+import { parseAvatarKey } from "@/lib/sprites";
 
 function revalidateChallenge(slug: string, trainerId?: string) {
   revalidatePath(`/challenges/${slug}`);
@@ -231,62 +233,112 @@ export async function updateTrainerBoardAction(input: {
   statusText?: string | null;
   avatarSpriteKey?: string | null;
   reviveUsed?: boolean;
+  handle?: string;
   realName?: string | null;
 }): Promise<ActionResult> {
   try {
+    const parsed = TrainerBoardUpdateSchema.safeParse({
+      statusText: input.statusText,
+      avatarSpriteKey: input.avatarSpriteKey,
+      reviveUsed: input.reviveUsed,
+      handle: input.handle,
+      realName: input.realName,
+    });
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    }
+
     const { trainer, access, userId } = await requireTrainerEditAccess(
       input.trainerId,
     );
     const prisma = getPrisma();
+    const updates = parsed.data;
 
     const data: {
       statusText?: string | null;
       avatarSpriteKey?: string | null;
       reviveUsed?: boolean;
       realName?: string | null;
+      handle?: string;
     } = {};
 
-    if (input.statusText !== undefined) data.statusText = input.statusText;
-    if (input.avatarSpriteKey !== undefined) {
-      data.avatarSpriteKey = input.avatarSpriteKey;
+    if (updates.statusText !== undefined) data.statusText = updates.statusText;
+    if (updates.avatarSpriteKey !== undefined) {
+      const avatar = parseAvatarKey(updates.avatarSpriteKey);
+      data.avatarSpriteKey =
+        avatar.kind === "pokemon"
+          ? updates.avatarSpriteKey
+          : avatar.key;
     }
-    if (input.realName !== undefined) data.realName = input.realName;
-    if (input.reviveUsed !== undefined) {
-      if (input.reviveUsed && !trainer.reviveUsed) {
+    if (updates.realName !== undefined) data.realName = updates.realName;
+
+    if (updates.handle !== undefined) {
+      const nextHandle = sanitizeHandle(updates.handle);
+      if (!nextHandle) {
+        return { ok: false, error: "Nickname can’t be empty" };
+      }
+      if (nextHandle !== trainer.handle) {
+        const clash = await prisma.trainerProfile.findUnique({
+          where: {
+            challengeId_handle: {
+              challengeId: trainer.challengeId,
+              handle: nextHandle,
+            },
+          },
+        });
+        if (clash && clash.id !== trainer.id) {
+          return {
+            ok: false,
+            error: `Nickname “${nextHandle}” is already taken this season`,
+          };
+        }
+        data.handle = nextHandle;
+      }
+    }
+
+    if (updates.reviveUsed !== undefined) {
+      if (updates.reviveUsed && !trainer.reviveUsed) {
         data.reviveUsed = true;
         await logActivity({
           challengeId: trainer.challengeId,
           actorId: userId,
           trainerId: trainer.id,
           type: "REVIVE_USED",
-          message: `${trainer.handle} used their Revive Token`,
+          message: `${data.handle ?? trainer.handle} used their Revive Token`,
         });
-      } else if (!input.reviveUsed && trainer.reviveUsed && access.isGm) {
+      } else if (!updates.reviveUsed && trainer.reviveUsed && access.isGm) {
         data.reviveUsed = false;
         await logActivity({
           challengeId: trainer.challengeId,
           actorId: userId,
           trainerId: trainer.id,
           type: "REVIVE_RESET",
-          message: `GM reset Revive Token for ${trainer.handle}`,
+          message: `GM reset Revive Token for ${data.handle ?? trainer.handle}`,
         });
-      } else if (input.reviveUsed === trainer.reviveUsed) {
+      } else if (updates.reviveUsed === trainer.reviveUsed) {
         // no-op
-      } else if (!access.isGm && !input.reviveUsed) {
+      } else if (!access.isGm && !updates.reviveUsed) {
         return { ok: false, error: "Only a GM can reset a used Revive Token" };
       } else {
-        data.reviveUsed = input.reviveUsed;
+        data.reviveUsed = updates.reviveUsed;
       }
     }
 
-    if (input.statusText !== undefined && input.statusText !== trainer.statusText) {
+    if (
+      updates.statusText !== undefined &&
+      updates.statusText !== trainer.statusText
+    ) {
       await logActivity({
         challengeId: trainer.challengeId,
         actorId: userId,
         trainerId: trainer.id,
         type: "STATUS_UPDATE",
-        message: `${trainer.handle} updated status`,
+        message: `${data.handle ?? trainer.handle} updated status`,
       });
+    }
+
+    if (Object.keys(data).length === 0) {
+      return { ok: true, message: "Nothing to update" };
     }
 
     await prisma.trainerProfile.update({

@@ -76,3 +76,44 @@ export const DEFAULT_TRAINER_SPRITES = [
   "nate",
   "rosa",
 ] as const;
+
+/** Prefix for Pokémon species avatars stored in `avatarSpriteKey`. */
+export const POKEMON_AVATAR_PREFIX = "poke:";
+
+export type AvatarKind = "trainer" | "pokemon";
+
+export type ParsedAvatar =
+  | { kind: "trainer"; key: string }
+  | { kind: "pokemon"; pokedexId: number | null; species: string };
+
+export function trainerAvatarKey(key: string): string {
+  return key.replace(/\.png$/i, "").replace(/^.*\//, "").toLowerCase();
+}
+
+export function pokemonAvatarKey(pokedexId: number, species?: string): string {
+  if (pokedexId > 0) return `${POKEMON_AVATAR_PREFIX}${pokedexId}`;
+  const slug = (species ?? "pikachu").trim() || "pikachu";
+  return `${POKEMON_AVATAR_PREFIX}${slug}`;
+}
+
+export function parseAvatarKey(raw: string | null | undefined): ParsedAvatar {
+  const value = (raw ?? "brendan").trim() || "brendan";
+  if (value.toLowerCase().startsWith(POKEMON_AVATAR_PREFIX)) {
+    const rest = value.slice(POKEMON_AVATAR_PREFIX.length).trim();
+    const asId = Number(rest);
+    if (Number.isFinite(asId) && asId > 0) {
+      return { kind: "pokemon", pokedexId: asId, species: rest };
+    }
+    return { kind: "pokemon", pokedexId: null, species: rest || "Pikachu" };
+  }
+  return { kind: "trainer", key: trainerAvatarKey(value) };
+}
+
+/** Resolve board/card avatar URL for either trainer or Pokémon sprites. */
+export function avatarImageUrl(raw: string | null | undefined): string {
+  const parsed = parseAvatarKey(raw);
+  if (parsed.kind === "pokemon") {
+    return pokemonSpriteUrl(parsed.species, { pokedexId: parsed.pokedexId });
+  }
+  return trainerSpriteUrl(parsed.key);
+}

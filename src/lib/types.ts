@@ -30,7 +30,7 @@ export const TrainerBoardUpdateSchema = z.object({
   statusText: z.string().max(500).optional().nullable(),
   avatarSpriteKey: z.string().max(64).optional().nullable(),
   reviveUsed: z.boolean().optional(),
-  displayHandle: z.string().min(1).max(32).optional(),
+  handle: z.string().min(1).max(32).optional(),
   realName: z.string().max(64).optional().nullable(),
 });
 
