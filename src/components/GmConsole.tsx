@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
+  gmExportChallengeAction,
   gmSetTrainerLockAction,
   gmUnclaimTrainerAction,
   gmUpdateChallengeMetaAction,
@@ -9,6 +10,16 @@ import {
   gmUpdateRuleAction,
 } from "@/app/actions/challenge";
 import type { Challenge } from "@/lib/challenge-types";
+
+function downloadTextFile(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function GmConsole({ challenge }: { challenge: Challenge }) {
   const [pending, startTransition] = useTransition();
@@ -49,6 +60,11 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
               flash(
                 await gmUpdateChallengeMetaAction({
                   challengeId,
+                  status: String(fd.get("status")) as
+                    | "DRAFT"
+                    | "ACTIVE"
+                    | "TOURNAMENT"
+                    | "ARCHIVED",
                   visibility: String(fd.get("visibility")) as
                     | "INVITE"
                     | "UNLISTED"
@@ -56,11 +72,25 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   playerInviteCode: String(fd.get("playerInviteCode") ?? ""),
                   gmInviteCode: String(fd.get("gmInviteCode") ?? ""),
                   description: String(fd.get("description") ?? ""),
+                  discordWebhookUrl: String(fd.get("discordWebhookUrl") ?? ""),
                 }),
               );
             });
           }}
         >
+          <label className="text-sm">
+            <span className="mb-1 block font-bold text-muted">Status</span>
+            <select
+              name="status"
+              defaultValue={challenge.status}
+              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+            >
+              <option value="DRAFT">Draft</option>
+              <option value="ACTIVE">Active</option>
+              <option value="TOURNAMENT">Tournament</option>
+              <option value="ARCHIVED">Archived (read-only)</option>
+            </select>
+          </label>
           <label className="text-sm">
             <span className="mb-1 block font-bold text-muted">Visibility</span>
             <select
@@ -99,6 +129,21 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
               className="min-h-20 w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
             />
           </label>
+          <label className="text-sm sm:col-span-2">
+            <span className="mb-1 block font-bold text-muted">
+              Discord webhook URL
+            </span>
+            <input
+              name="discordWebhookUrl"
+              type="url"
+              placeholder="https://discord.com/api/webhooks/…"
+              defaultValue={challenge.discordWebhookUrl ?? ""}
+              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+            />
+            <span className="mt-1 block text-xs text-muted">
+              Posts deaths, badges earned, and revive uses. Leave blank to disable.
+            </span>
+          </label>
           <button
             type="submit"
             disabled={pending}
@@ -107,6 +152,65 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             Save settings
           </button>
         </form>
+      </section>
+
+      <section className="gba-frame">
+        <header className="gba-frame-title px-3 py-2 text-sm">Export</header>
+        <div className="flex flex-wrap gap-2 p-3 sm:p-4">
+          <button
+            type="button"
+            disabled={pending}
+            className="pressable rounded-sm bg-accent px-4 py-2 text-xs font-bold text-white uppercase disabled:opacity-60"
+            onClick={() => {
+              startTransition(async () => {
+                const result = await gmExportChallengeAction({
+                  challengeId,
+                  format: "json",
+                });
+                if (!result.ok) {
+                  flash(result);
+                  return;
+                }
+                downloadTextFile(
+                  result.filename,
+                  result.content,
+                  result.mimeType,
+                );
+                flash({ ok: true, message: "JSON export downloaded" });
+              });
+            }}
+          >
+            Download JSON
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            className="pressable rounded-sm bg-surface px-4 py-2 text-xs font-bold uppercase disabled:opacity-60"
+            onClick={() => {
+              startTransition(async () => {
+                const result = await gmExportChallengeAction({
+                  challengeId,
+                  format: "csv",
+                });
+                if (!result.ok) {
+                  flash(result);
+                  return;
+                }
+                downloadTextFile(
+                  result.filename,
+                  result.content,
+                  result.mimeType,
+                );
+                flash({ ok: true, message: "CSV export downloaded" });
+              });
+            }}
+          >
+            Download CSV
+          </button>
+          <p className="basis-full text-xs text-muted">
+            Full season backup — trainers, badges, Pokémon, rules, and FAQ.
+          </p>
+        </div>
       </section>
 
       <section className="gba-frame">
