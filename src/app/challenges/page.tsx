@@ -8,8 +8,8 @@ export const metadata: Metadata = {
   title: "Seasons",
 };
 
-export default function ChallengesPage() {
-  const challenges = listChallenges();
+export default async function ChallengesPage() {
+  const challenges = await listChallenges();
 
   return (
     <div className="flex flex-1 flex-col">
@@ -33,7 +33,7 @@ export default function ChallengesPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-muted">
-                  {c.year} · {c.game} · <code>{c.slug}</code>
+                  {c.year} · {c.game} · <code>{c.slug}</code> · {c.source}
                 </p>
                 <p className="mt-3 text-sm leading-relaxed">{c.description}</p>
                 <Link

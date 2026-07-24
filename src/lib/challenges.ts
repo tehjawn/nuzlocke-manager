@@ -1,22 +1,84 @@
 import { CHALLENGES } from "@/data/trash-pack-2026";
-import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import type {
+  ActivityItem,
+  Challenge,
+  PokemonEntry,
+  TrainerProfile,
+} from "@/lib/challenge-types";
+import { getPrisma, isDatabaseConfigured } from "@/lib/db";
+import { mapDbChallenge } from "@/lib/mappers";
 
-export function listChallenges(): Challenge[] {
-  return CHALLENGES;
+const challengeInclude = {
+  badges: true,
+  rules: true,
+  faqs: true,
+  trainers: {
+    include: {
+      badges: { include: { badge: true } },
+      pokemon: true,
+    },
+  },
+  activities: {
+    orderBy: { createdAt: "desc" as const },
+    take: 20,
+    include: { trainer: { select: { handle: true } } },
+  },
+};
+
+function seedAsChallenge(raw: (typeof CHALLENGES)[number]): Challenge {
+  return {
+    ...raw,
+    source: "seed" as const,
+    visibility: raw.visibility ?? "PUBLIC",
+    trainers: raw.trainers.map((t) => ({
+      ...t,
+      userId: null,
+    })),
+    activities: [],
+  };
 }
 
-export function getChallenge(slug: string): Challenge | undefined {
-  return CHALLENGES.find((c) => c.slug === slug);
+export async function listChallenges(): Promise<Challenge[]> {
+  if (isDatabaseConfigured()) {
+    try {
+      const rows = await getPrisma().challenge.findMany({
+        include: challengeInclude,
+        orderBy: [{ year: "desc" }, { name: "asc" }],
+      });
+      if (rows.length > 0) {
+        return rows.map(mapDbChallenge);
+      }
+    } catch {
+      // fall through to seed
+    }
+  }
+  return CHALLENGES.map(seedAsChallenge);
 }
 
-export function getTrainer(
+export async function getChallenge(slug: string): Promise<Challenge | null> {
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await getPrisma().challenge.findUnique({
+        where: { slug },
+        include: challengeInclude,
+      });
+      if (row) return mapDbChallenge(row);
+    } catch {
+      // fall through
+    }
+  }
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  return seed ? seedAsChallenge(seed) : null;
+}
+
+export async function getTrainer(
   slug: string,
   trainerId: string,
-): { challenge: Challenge; trainer: TrainerProfile } | undefined {
-  const challenge = getChallenge(slug);
-  if (!challenge) return undefined;
+): Promise<{ challenge: Challenge; trainer: TrainerProfile } | null> {
+  const challenge = await getChallenge(slug);
+  if (!challenge) return null;
   const trainer = challenge.trainers.find((t) => t.id === trainerId);
-  if (!trainer) return undefined;
+  if (!trainer) return null;
   return { challenge, trainer };
 }
 
@@ -29,17 +91,13 @@ export function pokemonInSlot(
     .sort((a, b) => a.partyIndex - b.partyIndex);
 }
 
-export function mainSquad(trainer: TrainerProfile): PokemonEntry[] {
-  const mains = pokemonInSlot(trainer, "MAIN");
-  const slots: (PokemonEntry | null)[] = Array.from({ length: 6 }, (_, i) => {
-    return mains.find((p) => p.partyIndex === i) ?? null;
-  });
-  // If partyIndex gaps, still show existing mons packed left for display helpers
-  return slots.filter(Boolean) as PokemonEntry[];
-}
-
 export function displayName(trainer: TrainerProfile): string {
   return trainer.realName
     ? `${trainer.handle} (${trainer.realName})`
     : trainer.handle;
+}
+
+export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
+  const challenge = await getChallenge(slug);
+  return challenge?.activities ?? [];
 }

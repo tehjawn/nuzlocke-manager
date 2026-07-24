@@ -3,13 +3,16 @@ import type { PokemonType } from "@/lib/pokemon-types";
 export type ChallengeStatus = "DRAFT" | "ACTIVE" | "TOURNAMENT" | "ARCHIVED";
 export type ChallengeVisibility = "INVITE" | "UNLISTED" | "PUBLIC";
 export type PokemonSlot = "MAIN" | "RESERVE" | "GRAVEYARD";
+export type MembershipRole = "PLAYER" | "GAME_MASTER" | "SPECTATOR";
+export type DataSource = "database" | "seed";
 
 export type BadgeDefinition = {
+  id?: string;
   key: string;
   label: string;
-  category: "gym" | "elite" | "championship";
+  category: "gym" | "elite" | "championship" | string;
   sortOrder: number;
-  leaderName?: string;
+  leaderName?: string | null;
 };
 
 export type PokemonEntry = {
@@ -39,6 +42,7 @@ export type TrainerProfile = {
   reviveUsed: boolean;
   mainSquadLocked: boolean;
   sortOrder: number;
+  userId: string | null;
   earnedBadgeKeys: string[];
   pokemon: PokemonEntry[];
 };
@@ -58,7 +62,16 @@ export type FaqEntry = {
   answer: string;
 };
 
+export type ActivityItem = {
+  id: string;
+  type: string;
+  message: string;
+  createdAt: string;
+  trainerHandle: string | null;
+};
+
 export type Challenge = {
+  id?: string;
   slug: string;
   name: string;
   year: number;
@@ -66,8 +79,12 @@ export type Challenge = {
   description: string;
   status: ChallengeStatus;
   visibility: ChallengeVisibility;
+  playerInviteCode?: string | null;
+  gmInviteCode?: string | null;
   badges: BadgeDefinition[];
   rules: ChallengeRule[];
   faqs: FaqEntry[];
   trainers: TrainerProfile[];
+  activities?: ActivityItem[];
+  source: DataSource;
 };

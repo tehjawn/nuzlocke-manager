@@ -1,0 +1,598 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { auth } from "@/auth";
+import { findSpecies } from "@/data/species";
+import { getPrisma } from "@/lib/db";
+import {
+  getAccessForChallenge,
+  requireGm,
+  requireTrainerEditAccess,
+  requireUserId,
+} from "@/lib/permissions";
+import { AccountUpdateSchema, PokemonEntryInputSchema } from "@/lib/types";
+
+function revalidateChallenge(slug: string, trainerId?: string) {
+  revalidatePath(`/challenges/${slug}`);
+  revalidatePath(`/challenges/${slug}/rules`);
+  revalidatePath(`/challenges/${slug}/faq`);
+  revalidatePath(`/challenges/${slug}/gm`);
+  revalidatePath(`/challenges/${slug}/join`);
+  if (trainerId) {
+    revalidatePath(`/challenges/${slug}/trainers/${trainerId}`);
+  }
+}
+
+export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
+
+async function logActivity(input: {
+  challengeId: string;
+  actorId?: string;
+  trainerId?: string;
+  type:
+    | "STATUS_UPDATE"
+    | "CATCH"
+    | "DEATH"
+    | "BADGE_EARNED"
+    | "BADGE_REVOKED"
+    | "REVIVE_USED"
+    | "REVIVE_RESET"
+    | "MAIN_SQUAD_LOCKED"
+    | "MEMBER_JOINED"
+    | "TRAINER_CLAIMED"
+    | "RULE_UPDATED"
+    | "NOTE";
+  message: string;
+}) {
+  await getPrisma().activityEvent.create({
+    data: {
+      challengeId: input.challengeId,
+      actorId: input.actorId,
+      trainerId: input.trainerId,
+      type: input.type,
+      message: input.message,
+    },
+  });
+}
+
+export async function updateAccountAction(
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId();
+    const data = AccountUpdateSchema.parse(raw);
+    await getPrisma().user.update({
+      where: { id: userId },
+      data: {
+        displayName: data.displayName,
+        bio: data.bio ?? null,
+        image: data.image ?? undefined,
+      },
+    });
+    revalidatePath("/account");
+    return { ok: true, message: "Account updated" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Update failed" };
+  }
+}
+
+export async function joinChallengeAction(input: {
+  slug: string;
+  inviteCode: string;
+}): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId();
+    const prisma = getPrisma();
+    const challenge = await prisma.challenge.findUnique({
+      where: { slug: input.slug },
+    });
+    if (!challenge) return { ok: false, error: "Challenge not found" };
+
+    const code = input.inviteCode.trim();
+    let role: "PLAYER" | "GAME_MASTER" | "SPECTATOR" = "PLAYER";
+    if (challenge.gmInviteCode && code === challenge.gmInviteCode) {
+      role = "GAME_MASTER";
+    } else if (
+      challenge.playerInviteCode &&
+      code === challenge.playerInviteCode
+    ) {
+      role = "PLAYER";
+    } else {
+      return { ok: false, error: "Invalid invite code" };
+    }
+
+    await prisma.challengeMembership.upsert({
+      where: {
+        challengeId_userId: { challengeId: challenge.id, userId },
+      },
+      create: { challengeId: challenge.id, userId, role },
+      update: { role },
+    });
+
+    await logActivity({
+      challengeId: challenge.id,
+      actorId: userId,
+      type: "MEMBER_JOINED",
+      message: `Joined as ${role.replace("_", " ").toLowerCase()}`,
+    });
+
+    revalidateChallenge(challenge.slug);
+    return { ok: true, message: `Joined as ${role}` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Join failed" };
+  }
+}
+
+export async function claimTrainerAction(input: {
+  slug: string;
+  trainerId: string;
+}): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId();
+    const prisma = getPrisma();
+    const trainer = await prisma.trainerProfile.findFirst({
+      where: { id: input.trainerId, challenge: { slug: input.slug } },
+      include: { challenge: true },
+    });
+    if (!trainer) return { ok: false, error: "Trainer not found" };
+
+    const access = await getAccessForChallenge(trainer.challengeId);
+    if (!access || (access.role !== "PLAYER" && !access.isGm)) {
+      return { ok: false, error: "Join the challenge before claiming a trainer" };
+    }
+
+    if (trainer.userId && trainer.userId !== userId && !access.isGm) {
+      return { ok: false, error: "Trainer already claimed" };
+    }
+
+    const existing = await prisma.trainerProfile.findFirst({
+      where: {
+        challengeId: trainer.challengeId,
+        userId,
+        NOT: { id: trainer.id },
+      },
+    });
+    if (existing && !access.isGm) {
+      return {
+        ok: false,
+        error: `You already claimed ${existing.handle}. Ask a GM to reassign.`,
+      };
+    }
+
+    await prisma.trainerProfile.update({
+      where: { id: trainer.id },
+      data: { userId },
+    });
+
+    await logActivity({
+      challengeId: trainer.challengeId,
+      actorId: userId,
+      trainerId: trainer.id,
+      type: "TRAINER_CLAIMED",
+      message: `Claimed trainer ${trainer.handle}`,
+    });
+
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: `Claimed ${trainer.handle}` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Claim failed" };
+  }
+}
+
+export async function updateTrainerBoardAction(input: {
+  trainerId: string;
+  statusText?: string | null;
+  avatarSpriteKey?: string | null;
+  reviveUsed?: boolean;
+  realName?: string | null;
+}): Promise<ActionResult> {
+  try {
+    const { trainer, access, userId } = await requireTrainerEditAccess(
+      input.trainerId,
+    );
+    const prisma = getPrisma();
+
+    const data: {
+      statusText?: string | null;
+      avatarSpriteKey?: string | null;
+      reviveUsed?: boolean;
+      realName?: string | null;
+    } = {};
+
+    if (input.statusText !== undefined) data.statusText = input.statusText;
+    if (input.avatarSpriteKey !== undefined) {
+      data.avatarSpriteKey = input.avatarSpriteKey;
+    }
+    if (input.realName !== undefined) data.realName = input.realName;
+    if (input.reviveUsed !== undefined) {
+      if (input.reviveUsed && !trainer.reviveUsed) {
+        data.reviveUsed = true;
+        await logActivity({
+          challengeId: trainer.challengeId,
+          actorId: userId,
+          trainerId: trainer.id,
+          type: "REVIVE_USED",
+          message: `${trainer.handle} used their Revive Token`,
+        });
+      } else if (!input.reviveUsed && trainer.reviveUsed && access.isGm) {
+        data.reviveUsed = false;
+        await logActivity({
+          challengeId: trainer.challengeId,
+          actorId: userId,
+          trainerId: trainer.id,
+          type: "REVIVE_RESET",
+          message: `GM reset Revive Token for ${trainer.handle}`,
+        });
+      } else if (input.reviveUsed === trainer.reviveUsed) {
+        // no-op
+      } else if (!access.isGm && !input.reviveUsed) {
+        return { ok: false, error: "Only a GM can reset a used Revive Token" };
+      } else {
+        data.reviveUsed = input.reviveUsed;
+      }
+    }
+
+    if (input.statusText !== undefined && input.statusText !== trainer.statusText) {
+      await logActivity({
+        challengeId: trainer.challengeId,
+        actorId: userId,
+        trainerId: trainer.id,
+        type: "STATUS_UPDATE",
+        message: `${trainer.handle} updated status`,
+      });
+    }
+
+    await prisma.trainerProfile.update({
+      where: { id: trainer.id },
+      data,
+    });
+
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: "Board updated" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Update failed" };
+  }
+}
+
+export async function setBadgeProgressAction(input: {
+  trainerId: string;
+  badgeKey: string;
+  earned: boolean;
+}): Promise<ActionResult> {
+  try {
+    const { trainer, userId } = await requireTrainerEditAccess(input.trainerId);
+    const prisma = getPrisma();
+    const badge = await prisma.badgeDefinition.findFirst({
+      where: { challengeId: trainer.challengeId, key: input.badgeKey },
+    });
+    if (!badge) return { ok: false, error: "Badge not found" };
+
+    await prisma.badgeProgress.upsert({
+      where: {
+        trainerId_badgeId: { trainerId: trainer.id, badgeId: badge.id },
+      },
+      create: {
+        trainerId: trainer.id,
+        badgeId: badge.id,
+        earned: input.earned,
+        earnedAt: input.earned ? new Date() : null,
+      },
+      update: {
+        earned: input.earned,
+        earnedAt: input.earned ? new Date() : null,
+      },
+    });
+
+    await logActivity({
+      challengeId: trainer.challengeId,
+      actorId: userId,
+      trainerId: trainer.id,
+      type: input.earned ? "BADGE_EARNED" : "BADGE_REVOKED",
+      message: input.earned
+        ? `${trainer.handle} earned ${badge.label}`
+        : `${trainer.handle} lost ${badge.label}`,
+    });
+
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Badge update failed" };
+  }
+}
+
+const UpsertPokemonSchema = PokemonEntryInputSchema.extend({
+  id: z.string().optional(),
+  trainerId: z.string().min(1),
+});
+
+export async function upsertPokemonAction(
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const data = UpsertPokemonSchema.parse(raw);
+    const { trainer, userId, access } = await requireTrainerEditAccess(
+      data.trainerId,
+    );
+
+    if (
+      data.slot === "MAIN" &&
+      trainer.mainSquadLocked &&
+      !access.isGm
+    ) {
+      return {
+        ok: false,
+        error: "Main Squad is locked after Championship",
+      };
+    }
+
+    const speciesMeta = findSpecies(data.species);
+    const types =
+      data.types.length > 0 ? data.types : (speciesMeta?.types ?? []);
+    const pokedexId = speciesMeta?.pokedexId ?? null;
+
+    const prisma = getPrisma();
+    const payload = {
+      slot: data.slot,
+      partyIndex: data.partyIndex,
+      nickname: data.nickname ?? null,
+      species: data.species,
+      pokedexId,
+      isShiny: data.isShiny,
+      types,
+      nature: data.nature ?? null,
+      level: data.level ?? null,
+      ability: data.ability ?? null,
+      catchRoute: data.catchRoute ?? null,
+      heldItem: data.heldItem ?? null,
+      moves: data.moves,
+      causeOfDeath: data.causeOfDeath ?? null,
+      notes: data.notes ?? null,
+    };
+
+    if (data.id) {
+      const existing = await prisma.pokemonEntry.findFirst({
+        where: { id: data.id, trainerId: trainer.id },
+      });
+      if (!existing) return { ok: false, error: "Pokémon not found" };
+      await prisma.pokemonEntry.update({
+        where: { id: data.id },
+        data: payload,
+      });
+    } else {
+      await prisma.pokemonEntry.create({
+        data: { trainerId: trainer.id, ...payload },
+      });
+      await logActivity({
+        challengeId: trainer.challengeId,
+        actorId: userId,
+        trainerId: trainer.id,
+        type: data.slot === "GRAVEYARD" ? "DEATH" : "CATCH",
+        message:
+          data.slot === "GRAVEYARD"
+            ? `${trainer.handle} memorialized ${data.nickname || data.species}`
+            : `${trainer.handle} logged ${data.nickname || data.species}`,
+      });
+    }
+
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: "Pokémon saved" };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Pokémon save failed",
+    };
+  }
+}
+
+export async function deletePokemonAction(input: {
+  trainerId: string;
+  pokemonId: string;
+}): Promise<ActionResult> {
+  try {
+    const { trainer, access } = await requireTrainerEditAccess(input.trainerId);
+    const prisma = getPrisma();
+    const mon = await prisma.pokemonEntry.findFirst({
+      where: { id: input.pokemonId, trainerId: trainer.id },
+    });
+    if (!mon) return { ok: false, error: "Pokémon not found" };
+    if (mon.slot === "MAIN" && trainer.mainSquadLocked && !access.isGm) {
+      return { ok: false, error: "Main Squad is locked" };
+    }
+    await prisma.pokemonEntry.delete({ where: { id: mon.id } });
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: "Pokémon removed" };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Delete failed",
+    };
+  }
+}
+
+export async function gmUpdateRuleAction(input: {
+  challengeId: string;
+  ruleId?: string;
+  sortOrder: number;
+  title: string;
+  body: string;
+  isCore: boolean;
+  delete?: boolean;
+}): Promise<ActionResult> {
+  try {
+    await requireGm(input.challengeId);
+    const prisma = getPrisma();
+    const challenge = await prisma.challenge.findUnique({
+      where: { id: input.challengeId },
+    });
+    if (!challenge) return { ok: false, error: "Challenge not found" };
+
+    if (input.delete && input.ruleId) {
+      await prisma.challengeRule.delete({ where: { id: input.ruleId } });
+    } else if (input.ruleId) {
+      await prisma.challengeRule.update({
+        where: { id: input.ruleId },
+        data: {
+          sortOrder: input.sortOrder,
+          title: input.title,
+          body: input.body,
+          isCore: input.isCore,
+        },
+      });
+    } else {
+      await prisma.challengeRule.create({
+        data: {
+          challengeId: input.challengeId,
+          sortOrder: input.sortOrder,
+          title: input.title,
+          body: input.body,
+          isCore: input.isCore,
+        },
+      });
+    }
+
+    const session = await auth();
+    await logActivity({
+      challengeId: input.challengeId,
+      actorId: session?.user?.id,
+      type: "RULE_UPDATED",
+      message: "Rules updated by Game Master",
+    });
+
+    revalidateChallenge(challenge.slug);
+    return { ok: true, message: "Rules saved" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Rule update failed" };
+  }
+}
+
+export async function gmUpdateFaqAction(input: {
+  challengeId: string;
+  faqId?: string;
+  sortOrder: number;
+  question: string;
+  answer: string;
+  delete?: boolean;
+}): Promise<ActionResult> {
+  try {
+    await requireGm(input.challengeId);
+    const prisma = getPrisma();
+    const challenge = await prisma.challenge.findUnique({
+      where: { id: input.challengeId },
+    });
+    if (!challenge) return { ok: false, error: "Challenge not found" };
+
+    if (input.delete && input.faqId) {
+      await prisma.faqEntry.delete({ where: { id: input.faqId } });
+    } else if (input.faqId) {
+      await prisma.faqEntry.update({
+        where: { id: input.faqId },
+        data: {
+          sortOrder: input.sortOrder,
+          question: input.question,
+          answer: input.answer,
+        },
+      });
+    } else {
+      await prisma.faqEntry.create({
+        data: {
+          challengeId: input.challengeId,
+          sortOrder: input.sortOrder,
+          question: input.question,
+          answer: input.answer,
+        },
+      });
+    }
+
+    revalidateChallenge(challenge.slug);
+    return { ok: true, message: "FAQ saved" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "FAQ update failed" };
+  }
+}
+
+export async function gmSetTrainerLockAction(input: {
+  trainerId: string;
+  locked: boolean;
+}): Promise<ActionResult> {
+  try {
+    const prisma = getPrisma();
+    const trainer = await prisma.trainerProfile.findUnique({
+      where: { id: input.trainerId },
+      include: { challenge: true },
+    });
+    if (!trainer) return { ok: false, error: "Trainer not found" };
+    const { userId } = await requireGm(trainer.challengeId);
+
+    await prisma.trainerProfile.update({
+      where: { id: trainer.id },
+      data: { mainSquadLocked: input.locked },
+    });
+
+    if (input.locked) {
+      await logActivity({
+        challengeId: trainer.challengeId,
+        actorId: userId,
+        trainerId: trainer.id,
+        type: "MAIN_SQUAD_LOCKED",
+        message: `${trainer.handle}'s Main Squad locked`,
+      });
+    }
+
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Lock failed" };
+  }
+}
+
+export async function gmUnclaimTrainerAction(input: {
+  trainerId: string;
+}): Promise<ActionResult> {
+  try {
+    const prisma = getPrisma();
+    const trainer = await prisma.trainerProfile.findUnique({
+      where: { id: input.trainerId },
+      include: { challenge: true },
+    });
+    if (!trainer) return { ok: false, error: "Trainer not found" };
+    await requireGm(trainer.challengeId);
+    await prisma.trainerProfile.update({
+      where: { id: trainer.id },
+      data: { userId: null },
+    });
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: "Trainer unclaimed" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unclaim failed" };
+  }
+}
+
+export async function gmUpdateChallengeMetaAction(input: {
+  challengeId: string;
+  visibility?: "INVITE" | "UNLISTED" | "PUBLIC";
+  playerInviteCode?: string;
+  gmInviteCode?: string;
+  description?: string;
+}): Promise<ActionResult> {
+  try {
+    await requireGm(input.challengeId);
+    const prisma = getPrisma();
+    const challenge = await prisma.challenge.update({
+      where: { id: input.challengeId },
+      data: {
+        visibility: input.visibility,
+        playerInviteCode: input.playerInviteCode,
+        gmInviteCode: input.gmInviteCode,
+        description: input.description,
+      },
+    });
+    revalidateChallenge(challenge.slug);
+    return { ok: true, message: "Challenge settings saved" };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Settings update failed",
+    };
+  }
+}

@@ -65,8 +65,8 @@ export function trainerSpriteUrl(spriteKey: string): string {
 export const DEFAULT_TRAINER_SPRITES = [
   "brendan",
   "may",
-  "brendan-2",
-  "may-2",
+  "wally",
+  "steven",
   "red",
   "leaf",
   "lucas",

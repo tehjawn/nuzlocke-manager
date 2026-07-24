@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         hostname: "play.pokemonshowdown.com",
         pathname: "/sprites/**",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.discordapp.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "media.discordapp.net",
+        pathname: "/**",
+      },
     ],
   },
 };

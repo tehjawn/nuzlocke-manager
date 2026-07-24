@@ -37,7 +37,12 @@ export const TrainerBoardUpdateSchema = z.object({
 export const AccountUpdateSchema = z.object({
   displayName: z.string().min(1).max(64),
   bio: z.string().max(500).optional().nullable(),
-  image: z.string().url().optional().nullable(),
+  image: z
+    .string()
+    .max(500)
+    .optional()
+    .nullable()
+    .transform((v) => (v === "" ? null : v)),
 });
 
 export type PokemonEntryInput = z.infer<typeof PokemonEntryInputSchema>;
