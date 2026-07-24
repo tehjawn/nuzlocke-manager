@@ -298,6 +298,7 @@ Caching: `next/image` remotePatterns + optional proxy; always text fallback if C
 | Auth | Auth.js + Discord ✅ |
 | Validation | Zod |
 | Images | `next/image` + sprite CDNs |
+| Schema guard | `getDatabaseHealth()` probe — deploy-ahead-of-migrate shows maintenance UI (message jawn), never silent seed fallback |
 
 Keep the stack boring so the **UI personality** can carry the product.
 

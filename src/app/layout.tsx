@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Nunito, Rubik, JetBrains_Mono } from "next/font/google";
+import { MaintenanceScreen } from "@/components/MaintenanceScreen";
+import { getDatabaseHealth } from "@/lib/db-health";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -30,11 +32,16 @@ export const metadata: Metadata = {
     "Trash Pack's Nuzlocke Challenge Manager — league boards, graves, badges, and season archives.",
 };
 
-export default function RootLayout({
+/** Always hit the live DB health probe — never bake a stale maintenance page. */
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const health = await getDatabaseHealth();
+
   return (
     <html
       lang="en"
@@ -46,7 +53,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col font-sans text-ink">
-        {children}
+        {health.ok ? children : <MaintenanceScreen health={health} />}
       </body>
     </html>
   );

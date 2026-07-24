@@ -6,6 +6,11 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
+import {
+  getDatabaseHealth,
+  isSchemaMismatchError,
+  isUnreachableDbError,
+} from "@/lib/db-health";
 import { mapDbChallenge } from "@/lib/mappers";
 
 const challengeInclude = {
@@ -46,8 +51,19 @@ function logDbFallback(context: string, error: unknown) {
   console.error(`[challenges] ${context} failed; falling back to seed.`, message);
 }
 
+/** Seed is only for local demos without DATABASE_URL — never mask a broken prod DB. */
+async function shouldUseSeedData(): Promise<boolean> {
+  if (!isDatabaseConfigured()) return true;
+  const health = await getDatabaseHealth();
+  return health.ok && health.mode === "unconfigured";
+}
+
 export async function listChallenges(): Promise<Challenge[]> {
-  if (isDatabaseConfigured()) {
+  const health = await getDatabaseHealth();
+  // Layout shows MaintenanceScreen; avoid throwing during prerender/build.
+  if (!health.ok) return [];
+
+  if (health.mode === "database") {
     try {
       const rows = await getPrisma().challenge.findMany({
         include: challengeInclude,
@@ -56,11 +72,21 @@ export async function listChallenges(): Promise<Challenge[]> {
       if (rows.length > 0) {
         return rows.map((row) => mapDbChallenge(row));
       }
+      // Configured DB with zero seasons — empty list, not Ash demo.
+      return [];
     } catch (error) {
+      if (isSchemaMismatchError(error) || isUnreachableDbError(error)) {
+        console.error("[challenges] listChallenges hard failure", error);
+        return [];
+      }
       logDbFallback("listChallenges", error);
     }
   }
-  return CHALLENGES.map(seedAsChallenge);
+
+  if (await shouldUseSeedData()) {
+    return CHALLENGES.map(seedAsChallenge);
+  }
+  return [];
 }
 
 /** Request-deduped so layout + page can both call without double-fetching. */
@@ -69,19 +95,31 @@ export const getChallenge = cache(
     slug: string,
     viewerUserId?: string | null,
   ): Promise<Challenge | null> => {
-    if (isDatabaseConfigured()) {
+    const health = await getDatabaseHealth();
+    if (!health.ok) return null;
+
+    if (health.mode === "database") {
       try {
         const row = await getPrisma().challenge.findUnique({
           where: { slug },
           include: challengeInclude,
         });
         if (row) return mapDbChallenge(row, viewerUserId);
+        return null;
       } catch (error) {
+        if (isSchemaMismatchError(error) || isUnreachableDbError(error)) {
+          console.error(`[challenges] getChallenge(${slug}) hard failure`, error);
+          return null;
+        }
         logDbFallback(`getChallenge(${slug})`, error);
       }
     }
-    const seed = CHALLENGES.find((c) => c.slug === slug);
-    return seed ? seedAsChallenge(seed) : null;
+
+    if (await shouldUseSeedData()) {
+      const seed = CHALLENGES.find((c) => c.slug === slug);
+      return seed ? seedAsChallenge(seed) : null;
+    }
+    return null;
   },
 );
 
@@ -106,7 +144,10 @@ export async function listChallengeActivities(
   slug: string,
   viewerUserId?: string | null,
 ): Promise<ActivityItem[]> {
-  if (isDatabaseConfigured()) {
+  const health = await getDatabaseHealth();
+  if (!health.ok) return [];
+
+  if (health.mode === "database") {
     try {
       const prisma = getPrisma();
       const challenge = await prisma.challenge.findUnique({
@@ -154,8 +195,10 @@ export async function listChallengeActivities(
           })),
         };
       });
-    } catch {
-      // fall through
+    } catch (error) {
+      // Soft-fail feed poll — empty is better than crashing the hub.
+      console.error("[challenges] listChallengeActivities failed", error);
+      return [];
     }
   }
   return getRecentActivity(slug);
