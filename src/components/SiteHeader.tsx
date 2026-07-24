@@ -1,11 +1,17 @@
 import Link from "next/link";
+import { AuthButtons } from "@/components/AuthButtons";
 
 type SiteHeaderProps = {
   challengeSlug?: string;
   challengeName?: string;
+  showGm?: boolean;
 };
 
-export function SiteHeader({ challengeSlug, challengeName }: SiteHeaderProps) {
+export function SiteHeader({
+  challengeSlug,
+  challengeName,
+  showGm = false,
+}: SiteHeaderProps) {
   return (
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
       <div className="min-w-0">
@@ -47,8 +53,23 @@ export function SiteHeader({ challengeSlug, challengeName }: SiteHeaderProps) {
             >
               FAQ
             </Link>
+            <Link
+              href={`/challenges/${challengeSlug}/join`}
+              className="pressable hidden rounded-sm bg-surface px-3 py-1.5 font-medium sm:inline-block"
+            >
+              Join
+            </Link>
+            {showGm ? (
+              <Link
+                href={`/challenges/${challengeSlug}/gm`}
+                className="pressable rounded-sm bg-accent-2/40 px-3 py-1.5 font-medium"
+              >
+                GM
+              </Link>
+            ) : null}
           </>
         ) : null}
+        <AuthButtons />
       </nav>
     </header>
   );

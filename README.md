@@ -1,37 +1,57 @@
 # Nuzlocke Manager
 
-Friend-group Nuzlocke clubhouse — league boards, graves, badges, and season archives with a warm Gen 3 feel.
+Friend-group Nuzlocke clubhouse — league boards, graves, badges, seasons, Discord login, and Game Master tools.
 
-Built with **Next.js** for **Vercel**.
+## Phase 2
 
-## v1 (this branch)
+- Discord login (Auth.js)
+- Invite codes → membership (player / GM)
+- Claim trainer slots
+- Player board editing (status, revive, badges, Pokémon CRUD)
+- Species autocomplete (Gen 1–3 focused index)
+- GM console (settings, roster, rules, FAQ)
+- Activity feed on the league board
+- Postgres-backed data with seed fallback for read-only demo
 
-Read-only Phase 1 MVP:
+Plan: [`docs/MASTER_PLAN.md`](./docs/MASTER_PLAN.md).
 
-- Hoenn Clubhouse design system (chunky frames, warm parchment)
-- Trash Pack 2026 seed data (rules, FAQ, 6 trainers, sample boards)
-- League board, rules, FAQ, and per-trainer boards with sprites
-
-Auth, editing, and Postgres-backed persistence land in Phase 2+.
-
-Full plan: [`docs/MASTER_PLAN.md`](./docs/MASTER_PLAN.md).
-
-## Getting started
+## Local setup
 
 ```bash
 npm install
+cp .env.example .env
+```
+
+Fill in:
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Postgres connection |
+| `AUTH_SECRET` | Auth.js secret (`openssl rand -base64 32`) |
+| `AUTH_DISCORD_ID` / `AUTH_DISCORD_SECRET` | Discord OAuth app |
+| `AUTH_URL` / `NEXT_PUBLIC_APP_URL` | e.g. `http://localhost:3000` |
+
+Discord redirect URL:
+
+`http://localhost:3000/api/auth/callback/discord`
+
+Then:
+
+```bash
+npm run db:generate
+npx prisma db push
+npm run db:seed
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), then the **2026 league board**.
+After seed:
 
-Optional DB (Phase 2+):
+- Player invite: `TRASHPACK2026`
+- GM invite: `TRASHPACK-GM`
 
-```bash
-cp .env.example .env
-# set DATABASE_URL
-npm run db:generate
-```
+Flow: Discord login → Join with code → open an unclaimed trainer → Claim → edit board.
+
+Without DB/Discord env, the app still serves **seed read-only** pages.
 
 ## Scripts
 
@@ -39,9 +59,16 @@ npm run db:generate
 |---|---|
 | `npm run dev` | Local server |
 | `npm run build` | Production build |
-| `npm run db:generate` | Generate Prisma client |
-| `npm run db:migrate` | Run migrations |
+| `npm run db:generate` | Prisma client |
+| `npm run db:migrate` | Migrations |
+| `npm run db:push` | Push schema (dev) |
+| `npm run db:seed` | Seed Trash Pack 2026 |
+| `npm run db:studio` | Prisma Studio |
 
 ## Deploy on Vercel
 
-Import the GitHub repo, deploy. v1 is static seed data — no database required yet.
+1. Import repo
+2. Set env vars above (use production Discord redirect + `AUTH_URL`)
+3. Provision Postgres (Vercel / Neon / etc.)
+4. Build runs `prisma generate && next build`
+5. Run `db push` / migrate + `db:seed` once against production DB

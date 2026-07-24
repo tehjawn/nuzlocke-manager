@@ -3,46 +3,51 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BadgeCase } from "@/components/BadgeCase";
+import { ClaimTrainerButton } from "@/components/ClaimTrainerButton";
+import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { Frame } from "@/components/Frame";
 import { PartyStrip } from "@/components/PartyStrip";
 import { ReviveToken } from "@/components/ReviveToken";
 import { SiteHeader } from "@/components/SiteHeader";
+import { TrainerEditor } from "@/components/TrainerEditor";
 import {
   displayName,
-  getChallenge,
   getTrainer,
   pokemonInSlot,
 } from "@/lib/challenges";
+import { getAccessForChallenge } from "@/lib/permissions";
 import { trainerSpriteUrl } from "@/lib/sprites";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string; trainerId: string }>;
 };
 
-export async function generateStaticParams() {
-  const challenge = getChallenge("2026-trash-pack");
-  if (!challenge) return [];
-  return challenge.trainers.map((t) => ({
-    slug: challenge.slug,
-    trainerId: t.id,
-  }));
-}
-
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug, trainerId } = await params;
-  const result = getTrainer(slug, trainerId);
+  const result = await getTrainer(slug, trainerId);
   if (!result) return { title: "Trainer" };
   return { title: displayName(result.trainer) };
 }
 
 export default async function TrainerBoardPage({ params }: PageProps) {
   const { slug, trainerId } = await params;
-  const result = getTrainer(slug, trainerId);
+  const result = await getTrainer(slug, trainerId);
   if (!result) notFound();
 
   const { challenge, trainer } = result;
+  const access = challenge.id
+    ? await getAccessForChallenge(challenge.id)
+    : null;
+  const canEdit = Boolean(access?.canEditTrainer(trainer.userId));
+  const canClaim =
+    Boolean(access?.isPlayer) &&
+    !trainer.userId &&
+    challenge.source === "database";
+
   const main = pokemonInSlot(trainer, "MAIN");
   const reserves = pokemonInSlot(trainer, "RESERVE");
   const graveyard = pokemonInSlot(trainer, "GRAVEYARD");
@@ -52,8 +57,10 @@ export default async function TrainerBoardPage({ params }: PageProps) {
       <SiteHeader
         challengeSlug={challenge.slug}
         challengeName={challenge.name}
+        showGm={Boolean(access?.isGm)}
       />
       <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6">
+        <DataSourceBanner source={challenge.source} />
         <Link
           href={`/challenges/${challenge.slug}`}
           className="text-sm text-muted hover:text-ink"
@@ -85,7 +92,21 @@ export default async function TrainerBoardPage({ params }: PageProps) {
                     Main Squad locked
                   </span>
                 ) : null}
+                {trainer.userId ? (
+                  <span className="text-xs text-muted">Claimed</span>
+                ) : (
+                  <span className="text-xs text-muted">Unclaimed</span>
+                )}
               </div>
+              {canClaim ? (
+                <div className="mt-4">
+                  <ClaimTrainerButton
+                    slug={challenge.slug}
+                    trainerId={trainer.id}
+                    handle={trainer.handle}
+                  />
+                </div>
+              ) : null}
             </div>
           </div>
         </Frame>
@@ -118,6 +139,15 @@ export default async function TrainerBoardPage({ params }: PageProps) {
             </p>
           )}
         </Frame>
+
+        {canEdit ? (
+          <TrainerEditor
+            trainer={trainer}
+            badges={challenge.badges}
+            canEdit={canEdit}
+            isGm={Boolean(access?.isGm)}
+          />
+        ) : null}
       </main>
     </div>
   );

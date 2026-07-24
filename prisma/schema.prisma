@@ -10,9 +10,10 @@ datasource db {
   provider = "postgresql"
 }
 
-enum UserRole {
+enum MembershipRole {
   PLAYER
   GAME_MASTER
+  SPECTATOR
 }
 
 enum ChallengeStatus {
@@ -20,6 +21,12 @@ enum ChallengeStatus {
   ACTIVE
   TOURNAMENT
   ARCHIVED
+}
+
+enum ChallengeVisibility {
+  INVITE
+  UNLISTED
+  PUBLIC
 }
 
 enum PokemonSlot {
@@ -33,40 +40,47 @@ enum ActivityType {
   CATCH
   DEATH
   BADGE_EARNED
+  BADGE_REVOKED
   REVIVE_USED
+  REVIVE_RESET
   MAIN_SQUAD_LOCKED
   MEMBER_JOINED
+  TRAINER_CLAIMED
+  RULE_UPDATED
   NOTE
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String?  @unique
-  discordId     String?  @unique
-  name          String?
-  displayName   String?
-  image         String?
-  bio           String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(cuid())
+  email       String?  @unique
+  discordId   String?  @unique
+  name        String?
+  displayName String?
+  image       String?
+  bio         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  memberships   ChallengeMembership[]
-  trainers      TrainerProfile[]
-  activities    ActivityEvent[]        @relation("ActivityActor")
+  memberships ChallengeMembership[]
+  trainers    TrainerProfile[]
+  activities  ActivityEvent[]       @relation("ActivityActor")
 }
 
 model Challenge {
-  id          String          @id @default(cuid())
-  slug        String          @unique
-  name        String
-  year        Int
-  game        String?
-  description String?
-  status      ChallengeStatus @default(DRAFT)
-  startsAt    DateTime?
-  endsAt      DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id               String              @id @default(cuid())
+  slug             String              @unique
+  name             String
+  year             Int
+  game             String?
+  description      String?
+  status           ChallengeStatus     @default(DRAFT)
+  visibility       ChallengeVisibility @default(INVITE)
+  playerInviteCode String?
+  gmInviteCode     String?
+  startsAt         DateTime?
+  endsAt           DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   rules       ChallengeRule[]
   faqs        FaqEntry[]
@@ -115,15 +129,14 @@ model BadgeDefinition {
 }
 
 model ChallengeMembership {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   challengeId String
   userId      String
-  role        UserRole @default(PLAYER)
-  inviteCode  String?
-  joinedAt    DateTime @default(now())
+  role        MembershipRole @default(PLAYER)
+  joinedAt    DateTime       @default(now())
 
-  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([challengeId, userId])
   @@index([userId])
@@ -143,10 +156,11 @@ model TrainerProfile {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  challenge Challenge       @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  user      User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  badges    BadgeProgress[]
-  pokemon   PokemonEntry[]
+  challenge  Challenge       @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user       User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  badges     BadgeProgress[]
+  pokemon    PokemonEntry[]
+  activities ActivityEvent[]
 
   @@unique([challengeId, handle])
   @@index([challengeId, sortOrder])
@@ -154,10 +168,10 @@ model TrainerProfile {
 }
 
 model BadgeProgress {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   trainerId String
   badgeId   String
-  earned    Boolean  @default(false)
+  earned    Boolean   @default(false)
   earnedAt  DateTime?
 
   trainer TrainerProfile  @relation(fields: [trainerId], references: [id], onDelete: Cascade)
@@ -173,6 +187,7 @@ model PokemonEntry {
   partyIndex   Int         @default(0)
   nickname     String?
   species      String
+  pokedexId    Int?
   isShiny      Boolean     @default(false)
   types        String[]
   nature       String?
@@ -195,13 +210,15 @@ model ActivityEvent {
   id          String       @id @default(cuid())
   challengeId String
   actorId     String?
+  trainerId   String?
   type        ActivityType
   message     String
   metadata    Json?
   createdAt   DateTime     @default(now())
 
-  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  actor     User?     @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+  challenge Challenge      @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  actor     User?          @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+  trainer   TrainerProfile? @relation(fields: [trainerId], references: [id], onDelete: SetNull)
 
   @@index([challengeId, createdAt])
 }

@@ -3,8 +3,9 @@ import { Frame } from "@/components/Frame";
 import { SiteHeader } from "@/components/SiteHeader";
 import { listChallenges } from "@/lib/challenges";
 
-export default function HomePage() {
-  const active = listChallenges().find((c) => c.status === "ACTIVE");
+export default async function HomePage() {
+  const challenges = await listChallenges();
+  const active = challenges.find((c) => c.status === "ACTIVE");
 
   return (
     <div className="flex flex-1 flex-col">
@@ -19,8 +20,7 @@ export default function HomePage() {
         </h1>
         <p className="mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
           A warm, Gen 3–flavored board for your crew&apos;s Nuzlocke season —
-          league standings, trainer boards, badges, and memorials. Built to
-          retire the shared spreadsheet.
+          league standings, trainer boards, badges, and memorials.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
@@ -38,6 +38,12 @@ export default function HomePage() {
           >
             All seasons
           </Link>
+          <Link
+            href="/login"
+            className="pressable rounded-sm bg-surface px-5 py-3 font-display text-sm font-bold tracking-wide uppercase"
+          >
+            Sign in
+          </Link>
         </div>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-3">
@@ -47,8 +53,8 @@ export default function HomePage() {
               body: "See every trainer’s status, badges, and Main Squad at a glance.",
             },
             {
-              title: "Trainer boards",
-              body: "Party slots, reserves, revive token, and a proper R.I.P. memorial.",
+              title: "Live editing",
+              body: "Players update boards; GMs own rules, roster, and overrides.",
             },
             {
               title: "Season archives",

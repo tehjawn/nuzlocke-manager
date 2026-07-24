@@ -4,33 +4,36 @@ import { notFound } from "next/navigation";
 import { Frame } from "@/components/Frame";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getChallenge } from "@/lib/challenges";
+import { getAccessForChallenge } from "@/lib/permissions";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export async function generateStaticParams() {
-  return [{ slug: "2026-trash-pack" }];
-}
-
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = getChallenge(slug);
+  const challenge = await getChallenge(slug);
   return { title: challenge ? `Rules · ${challenge.name}` : "Rules" };
 }
 
 export default async function RulesPage({ params }: PageProps) {
   const { slug } = await params;
-  const challenge = getChallenge(slug);
+  const challenge = await getChallenge(slug);
   if (!challenge) notFound();
+  const access = challenge.id
+    ? await getAccessForChallenge(challenge.id)
+    : null;
 
   return (
     <div className="flex flex-1 flex-col">
       <SiteHeader
         challengeSlug={challenge.slug}
         challengeName={challenge.name}
+        showGm={Boolean(access?.isGm)}
       />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-2 sm:px-6">
         <Link

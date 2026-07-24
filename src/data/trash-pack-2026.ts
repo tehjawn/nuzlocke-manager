@@ -6,6 +6,8 @@ import type {
 import { DEFAULT_BADGE_DEFINITIONS } from "@/lib/constants";
 import type { PokemonType } from "@/lib/pokemon-types";
 
+type SeedChallenge = Omit<Challenge, "source" | "activities" | "id">;
+
 function mon(
   partial: Omit<PokemonEntry, "id"> & { id?: string },
 ): PokemonEntry {
@@ -16,9 +18,13 @@ function mon(
 }
 
 function trainer(
-  partial: Omit<TrainerProfile, "pokemon"> & { pokemon?: PokemonEntry[] },
+  partial: Omit<TrainerProfile, "pokemon" | "userId"> & {
+    pokemon?: PokemonEntry[];
+    userId?: string | null;
+  },
 ): TrainerProfile {
   return {
+    userId: partial.userId ?? null,
     ...partial,
     pokemon: partial.pokemon ?? [],
   };
@@ -144,7 +150,7 @@ function sampleMain(opts: {
   );
 }
 
-export const trashPack2026: Challenge = {
+export const trashPack2026: SeedChallenge = {
   slug: "2026-trash-pack",
   name: "Trash Pack Pokémon Nuzlocke",
   year: 2026,
@@ -153,6 +159,8 @@ export const trashPack2026: Challenge = {
     "Friend-group Hoenn Nuzlocke. Keep boards honest, honor the fallen, lock Main Squads after the Champion, then ladder.",
   status: "ACTIVE",
   visibility: "PUBLIC",
+  playerInviteCode: "TRASHPACK2026",
+  gmInviteCode: "TRASHPACK-GM",
   badges: DEFAULT_BADGE_DEFINITIONS,
   rules,
   faqs,
@@ -470,4 +478,4 @@ export const trashPack2026: Challenge = {
   ],
 };
 
-export const CHALLENGES: Challenge[] = [trashPack2026];
+export const CHALLENGES: SeedChallenge[] = [trashPack2026];
