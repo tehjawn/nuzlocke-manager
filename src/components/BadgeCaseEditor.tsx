@@ -15,7 +15,8 @@ type BadgeCaseEditorProps = {
   onEarnedKeysChange?: (keys: string[]) => void;
 };
 
-const DEBOUNCE_MS = 280;
+/** Debounce server writes; keep UI optimistic from a local keys ref. */
+const DEBOUNCE_MS = 450;
 
 function toggleKey(keys: string[], badgeKey: string, earned: boolean) {
   const set = new Set(keys);
@@ -35,12 +36,19 @@ export function BadgeCaseEditor({
   const [, startTransition] = useTransition();
   const { status, markSaving, markSaved, markError } = useSaveStatus();
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /** Latest keys including optimistic toggles — avoids stale-prop rubber banding. */
+  const latestKeysRef = useRef(earnedKeys);
+  const inFlightRef = useRef(0);
 
   const [optimisticKeys, setOptimistic] = useOptimistic(
     earnedKeys,
     (current, update: { badgeKey: string; earned: boolean }) =>
       toggleKey(current, update.badgeKey, update.earned),
   );
+
+  useEffect(() => {
+    latestKeysRef.current = earnedKeys;
+  }, [earnedKeys]);
 
   useEffect(() => {
     const timersMap = timers.current;
@@ -51,10 +59,12 @@ export function BadgeCaseEditor({
   }, []);
 
   function onToggle(badgeKey: string, earned: boolean) {
+    const next = toggleKey(latestKeysRef.current, badgeKey, earned);
+    latestKeysRef.current = next;
+
     startTransition(() => {
       setOptimistic({ badgeKey, earned });
     });
-    const next = toggleKey(earnedKeys, badgeKey, earned);
     onEarnedKeysChange?.(next);
 
     const existing = timers.current.get(badgeKey);
@@ -65,18 +75,22 @@ export function BadgeCaseEditor({
       badgeKey,
       setTimeout(() => {
         timers.current.delete(badgeKey);
+        inFlightRef.current += 1;
         void (async () => {
           const result = await setBadgeProgressAction({
             trainerId,
             badgeKey,
             earned,
           });
+          inFlightRef.current -= 1;
           if (!result.ok) {
-            onEarnedKeysChange?.(toggleKey(next, badgeKey, !earned));
+            const rolled = toggleKey(latestKeysRef.current, badgeKey, !earned);
+            latestKeysRef.current = rolled;
+            onEarnedKeysChange?.(rolled);
             markError(result.error);
             return;
           }
-          if (timers.current.size === 0) {
+          if (timers.current.size === 0 && inFlightRef.current === 0) {
             markSaved("Badges saved");
           }
         })();

@@ -38,19 +38,20 @@ export function PartyStrip({
       }`}
     >
       {(display.length > 0 ? display : [null]).map((p, i) => (
-        <PokemonSlotCard
-          key={p?.id ?? `empty-${i}`}
-          pokemon={p}
-          size={size}
-          memorial={memorial}
-          onSelect={
-            p && onSelect
-              ? () => onSelect(p)
-              : !p && onSelectEmpty && slots
-                ? () => onSelectEmpty(i)
-                : undefined
-          }
-        />
+        <div key={p?.id ?? `empty-${i}`} className="h-full min-h-0">
+          <PokemonSlotCard
+            pokemon={p}
+            size={size}
+            memorial={memorial}
+            onSelect={
+              p && onSelect
+                ? () => onSelect(p)
+                : !p && onSelectEmpty && slots
+                  ? () => onSelectEmpty(i)
+                  : undefined
+            }
+          />
+        </div>
       ))}
     </div>
   );

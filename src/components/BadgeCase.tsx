@@ -54,7 +54,7 @@ export function BadgeCase({
                     width={22}
                     height={22}
                     className={`h-[22px] w-[22px] object-contain ${
-                      on ? "" : "grayscale opacity-40"
+                      on ? "" : "pixelated blur-[1px] grayscale opacity-45"
                     }`}
                   />
                 ) : (
@@ -95,7 +95,9 @@ export function BadgeCase({
                   alt=""
                   width={28}
                   height={28}
-                  className={`h-7 w-7 object-contain ${on ? "" : "grayscale opacity-50"}`}
+                  className={`h-7 w-7 object-contain ${
+                    on ? "" : "pixelated blur-[1px] grayscale opacity-50"
+                  }`}
                 />
               ) : null}
               <span
@@ -152,6 +154,9 @@ export function BadgeCase({
             ? "bg-accent-2/30 shadow-[inset_0_0_0_2px_#e8c56a]"
             : "bg-surface-2 opacity-70"
         }`;
+        const mysterySprite = on
+          ? ""
+          : "pixelated blur-[1.5px] grayscale opacity-55";
         const body = (
           <>
             {meta ? (
@@ -160,7 +165,7 @@ export function BadgeCase({
                 alt=""
                 width={56}
                 height={56}
-                className="pixelated h-14 w-14 shrink-0 object-contain"
+                className={`pixelated h-14 w-14 shrink-0 object-contain ${mysterySprite}`}
                 unoptimized
               />
             ) : null}
@@ -170,7 +175,9 @@ export function BadgeCase({
               alt=""
               width={40}
               height={40}
-              className={`h-10 w-10 shrink-0 object-contain ${on ? "" : "grayscale opacity-50"}`}
+              className={`h-10 w-10 shrink-0 object-contain ${
+                on ? "" : mysterySprite
+              }`}
             />
             <span className="min-w-0 flex-1">
               <span className="block font-display text-xs font-bold tracking-wide uppercase">
@@ -182,13 +189,7 @@ export function BadgeCase({
               <span className="mt-0.5 block truncate text-[11px] text-muted">
                 {leader}
                 {meta?.city ? ` · ${meta.city}` : ""}
-                {interactive
-                  ? on
-                    ? " · Earned — tap to revoke"
-                    : " · Tap to earn"
-                  : on
-                    ? " · Earned"
-                    : ""}
+                {on ? " · Earned" : ""}
               </span>
             </span>
             <span className="sr-only">{on ? "earned" : "not earned"}</span>

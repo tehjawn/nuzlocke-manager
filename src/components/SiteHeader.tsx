@@ -43,7 +43,7 @@ export function SiteHeader({
       <nav className="flex shrink-0 items-center gap-2 text-sm">
         <Link
           href="/challenges"
-          className="pressable rounded-sm bg-surface px-3 py-1.5 font-medium"
+          className="pressable inline-flex h-9 items-center rounded-sm bg-surface px-3 font-medium"
         >
           Seasons
         </Link>
@@ -52,7 +52,7 @@ export function SiteHeader({
             {myTrainerId ? (
               <Link
                 href={`/challenges/${challengeSlug}/me`}
-                className="pressable rounded-sm bg-accent px-3 py-1.5 font-bold text-white"
+                className="pressable inline-flex h-9 items-center rounded-sm bg-accent px-3 font-bold text-white"
               >
                 My Trainer
               </Link>
@@ -60,7 +60,7 @@ export function SiteHeader({
             {showGm ? (
               <Link
                 href={`/challenges/${challengeSlug}/gm`}
-                className="pressable rounded-sm bg-accent-2/40 px-3 py-1.5 font-medium"
+                className="pressable inline-flex h-9 items-center rounded-sm bg-accent-2/40 px-3 font-medium"
               >
                 GM
               </Link>

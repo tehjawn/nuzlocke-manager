@@ -37,25 +37,25 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className="pressable flex items-center gap-2 rounded-sm bg-surface px-2 py-1.5 text-sm font-medium"
+        className="pressable inline-flex h-9 items-center gap-2 rounded-sm bg-surface px-2 text-sm font-medium"
         aria-label={`Account menu for ${name}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="relative h-7 w-7 shrink-0 overflow-hidden rounded-sm border-2 border-frame bg-surface-2">
+        <span className="relative h-5 w-5 shrink-0 overflow-hidden rounded-sm border-2 border-frame bg-surface-2">
           {image ? (
             <Image
               src={image}
               alt=""
-              width={28}
-              height={28}
+              width={20}
+              height={20}
               className="h-full w-full object-cover"
               unoptimized
             />
           ) : (
-            <span className="flex h-full w-full items-center justify-center text-xs font-bold text-muted">
+            <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted">
               {name.slice(0, 1).toUpperCase()}
             </span>
           )}
