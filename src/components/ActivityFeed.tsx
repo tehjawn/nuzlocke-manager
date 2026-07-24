@@ -115,7 +115,7 @@ export function ActivityFeed({
           <div
             className={
               expanded && collapsible
-                ? "max-h-[28rem] overflow-y-auto pr-1"
+                ? "max-h-[28rem] overflow-y-auto pr-2 [scrollbar-gutter:stable]"
                 : undefined
             }
           >
@@ -243,9 +243,9 @@ function ActivityRow({
                 <div
                   role="dialog"
                   aria-label="Emoji reactions"
-                  className="absolute top-full right-0 z-20 mt-1 rounded-sm border-2 border-frame bg-surface p-1.5 shadow-[3px_3px_0_var(--shadow)]"
+                  className="absolute top-full right-0 z-20 mt-1 max-w-[min(100vw-2rem,20rem)] rounded-sm border-2 border-frame bg-surface p-1.5 shadow-[3px_3px_0_var(--shadow)]"
                 >
-                  <div className="flex items-center gap-0.5">
+                  <div className="flex flex-wrap items-center gap-0.5 pr-0.5">
                     {QUICK_EMOJIS.map((emoji) => {
                       const active = Boolean(
                         reactions.find((r) => r.emoji === emoji)?.reactedByMe,
@@ -271,7 +271,7 @@ function ActivityRow({
                       aria-label="More emojis"
                       aria-expanded={moreOpen}
                       title="More emojis"
-                      className={`ml-0.5 rounded-sm border border-frame/40 px-2 py-1 font-display text-sm font-bold leading-none hover:bg-accent/15 ${
+                      className={`ml-0.5 shrink-0 rounded-sm border border-frame/40 px-2 py-1 font-display text-sm font-bold leading-none hover:bg-accent/15 ${
                         moreOpen
                           ? "border-accent bg-accent/20 text-accent-deep"
                           : "bg-surface-2 text-muted"
@@ -288,7 +288,7 @@ function ActivityRow({
                         onEmojiClick={onEmojiClick}
                         theme={Theme.LIGHT}
                         emojiStyle={EmojiStyle.NATIVE}
-                        width={300}
+                        width="100%"
                         height={360}
                         searchPlaceHolder="Search emoji…"
                         previewConfig={{ showPreview: false }}

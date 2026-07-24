@@ -47,7 +47,7 @@ export function ChallengeShell({
       />
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 pb-16 pt-2 sm:px-6 lg:flex-row lg:items-start">
         <aside
-          className={`${SEASON_LEFT_RAIL_CLASS} space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:self-start lg:pr-1`}
+          className={`${SEASON_LEFT_RAIL_CLASS} space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:self-start lg:pr-2 lg:[scrollbar-gutter:stable]`}
         >
           <Frame title={`Season ${year}`}>
             <p className="font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase">

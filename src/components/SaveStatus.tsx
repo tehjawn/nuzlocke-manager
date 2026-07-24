@@ -45,11 +45,22 @@ export function useSaveStatus() {
   return { status, markSaving, markSaved, markError, reset };
 }
 
-export function SaveStatus({ status }: { status: SaveStatusState }) {
+type SaveStatusProps = {
+  status: SaveStatusState;
+  /** Use on green frame titles where accent-deep / danger lack contrast. */
+  onAccent?: boolean;
+};
+
+export function SaveStatus({ status, onAccent = false }: SaveStatusProps) {
   if (status.kind === "idle") return null;
 
-  const tone =
-    status.kind === "error"
+  const tone = onAccent
+    ? status.kind === "error"
+      ? "text-[#ffd4c8]"
+      : status.kind === "saving"
+        ? "text-white/75"
+        : "text-[#d4f5e0]"
+    : status.kind === "error"
       ? "text-danger"
       : status.kind === "saving"
         ? "text-muted"

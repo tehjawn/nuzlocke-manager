@@ -302,7 +302,7 @@ export function TrainerBoard({
               canEdit ? (
                 editingPlayer ? (
                   <>
-                    <SaveStatus status={playerSave.status} />
+                    <SaveStatus status={playerSave.status} onAccent />
                     <HeaderButton
                       tone="solid"
                       disabled={pending || !handle.trim()}
@@ -316,7 +316,7 @@ export function TrainerBoard({
                   </>
                 ) : (
                   <>
-                    <SaveStatus status={playerSave.status} />
+                    <SaveStatus status={playerSave.status} onAccent />
                     <HeaderButton
                       aria-label="Edit player profile"
                       onClick={startEditingPlayer}
@@ -378,7 +378,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="pressable rounded-sm bg-danger px-3 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
+                      className="inline-flex items-center rounded-sm border-2 border-frame bg-danger px-2 py-1 font-display text-[10px] font-bold tracking-wide text-white uppercase disabled:opacity-60"
                       onClick={useReviveToken}
                     >
                       Use revive
@@ -387,7 +387,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="pressable rounded-sm bg-surface px-3 py-2 font-display text-xs font-bold tracking-wide uppercase disabled:opacity-60"
+                      className="inline-flex items-center rounded-sm border-2 border-frame bg-surface px-2 py-1 font-display text-[10px] font-bold tracking-wide uppercase disabled:opacity-60"
                       onClick={resetReviveToken}
                     >
                       GM: reset revive
@@ -420,7 +420,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="pressable rounded-sm bg-danger px-2 py-1 font-display text-[10px] font-bold tracking-wide text-white uppercase disabled:opacity-60"
+                            className="inline-flex items-center rounded-sm border-2 border-frame bg-danger px-2 py-1 font-display text-[10px] font-bold tracking-wide text-white uppercase disabled:opacity-60"
                             onClick={useReviveToken}
                           >
                             Use revive
@@ -429,7 +429,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="pressable rounded-sm bg-surface px-2 py-1 font-display text-[10px] font-bold tracking-wide uppercase disabled:opacity-60"
+                            className="inline-flex items-center rounded-sm border-2 border-frame bg-surface px-2 py-1 font-display text-[10px] font-bold tracking-wide uppercase disabled:opacity-60"
                             onClick={resetReviveToken}
                           >
                             GM: reset

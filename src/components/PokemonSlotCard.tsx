@@ -20,7 +20,7 @@ export function PokemonSlotCard({
   if (!pokemon) {
     const empty = (
       <div
-        className={`flex flex-col items-center justify-center rounded-sm border-2 border-dashed border-frame/40 bg-surface-2/60 text-muted ${
+        className={`flex h-full flex-col items-center justify-center rounded-sm border-2 border-dashed border-frame/40 bg-surface-2/60 text-muted ${
           size === "sm" ? "min-h-20 p-2" : "min-h-36 p-3"
         }`}
       >
@@ -32,7 +32,11 @@ export function PokemonSlotCard({
     );
     if (!onSelect) return empty;
     return (
-      <button type="button" className="w-full text-left" onClick={onSelect}>
+      <button
+        type="button"
+        className="h-full w-full text-left"
+        onClick={onSelect}
+      >
         {empty}
       </button>
     );
@@ -46,21 +50,21 @@ export function PokemonSlotCard({
 
   const body = (
     <div
-      className={`rounded-sm border-2 border-frame bg-surface ${
+      className={`flex h-full flex-col rounded-sm border-2 border-frame bg-surface ${
         memorial ? "opacity-90" : ""
-      } ${size === "sm" ? "p-2" : "p-3"} ${
-        onSelect ? "transition hover:border-accent-deep" : ""
-      }`}
+      } ${
+        size === "sm" ? "min-h-20 p-2" : "min-h-36 p-3"
+      } ${onSelect ? "transition hover:border-accent-deep" : ""}`}
     >
       <div className="flex items-start gap-2">
         <div
-          className={`relative shrink-0 ${size === "sm" ? "h-10 w-10" : "h-14 w-14"}`}
+          className={`relative shrink-0 ${size === "sm" ? "h-10 w-10" : "h-20 w-20"}`}
         >
           <Image
             src={sprite}
             alt=""
-            width={size === "sm" ? 40 : 56}
-            height={size === "sm" ? 40 : 56}
+            width={size === "sm" ? 40 : 80}
+            height={size === "sm" ? 40 : 80}
             className="pixelated h-full w-full object-contain"
             unoptimized
           />
@@ -135,7 +139,7 @@ export function PokemonSlotCard({
       ) : null}
 
       {size === "md" && pokemon.moves.length > 0 ? (
-        <ul className="mt-3 grid grid-cols-2 gap-1">
+        <ul className="mt-auto grid grid-cols-2 gap-1 pt-3">
           {pokemon.moves.map((move) => (
             <li
               key={move}
@@ -145,6 +149,8 @@ export function PokemonSlotCard({
             </li>
           ))}
         </ul>
+      ) : size === "md" ? (
+        <div className="mt-auto pt-3" aria-hidden />
       ) : null}
 
       {memorial && pokemon.causeOfDeath ? (
@@ -156,10 +162,10 @@ export function PokemonSlotCard({
   );
 
   if (!onSelect) {
-    return <article>{body}</article>;
+    return <article className="h-full">{body}</article>;
   }
   return (
-    <button type="button" className="w-full text-left" onClick={onSelect}>
+    <button type="button" className="h-full w-full text-left" onClick={onSelect}>
       {body}
     </button>
   );
