@@ -3,7 +3,14 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   clearRecentJumps,
@@ -47,7 +54,7 @@ function HighlightedText({
 }) {
   if (!indices?.length) return <>{text}</>;
 
-  const parts: React.ReactNode[] = [];
+  const parts: ReactNode[] = [];
   let last = 0;
   indices.forEach(([start, end], i) => {
     if (start > last) {

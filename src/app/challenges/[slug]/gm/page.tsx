@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { GmConsole } from "@/components/GmConsole";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
+import { SeasonJumpRegistrar } from "@/features/jump";
 import { getChallenge } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -42,6 +43,7 @@ export default async function GmPage({ params }: PageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
+      <SeasonJumpRegistrar challenge={challenge} showGm />
       <SiteHeader
         challengeSlug={challenge.slug}
         challengeYear={challenge.year}
