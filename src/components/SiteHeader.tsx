@@ -46,6 +46,12 @@ export function SiteHeader({
         >
           Seasons
         </Link>
+        <Link
+          href="/about"
+          className="pressable inline-flex h-9 items-center border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
+        >
+          About
+        </Link>
         {challengeSlug ? (
           <>
             {myTrainerId ? (
