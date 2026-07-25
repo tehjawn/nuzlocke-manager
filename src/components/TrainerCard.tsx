@@ -203,7 +203,7 @@ export function TrainerCard({
             className="absolute inset-0 z-1"
             aria-label={boardLabel}
           />
-          <div className="relative flex gap-3 sm:gap-4">
+          <div className="relative flex items-center gap-3 sm:gap-4">
             <div className="flex w-24 shrink-0 flex-col items-center gap-1.5 text-center sm:w-28 md:w-32">
               <Image
                 src={avatarImageUrl(trainer.avatarSpriteKey)}
