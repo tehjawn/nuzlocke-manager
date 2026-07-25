@@ -186,6 +186,7 @@ export function TrainerCard({
                   badges={challenge.badges}
                   earnedKeys={trainer.earnedBadgeKeys}
                   strip
+                  hideCount
                 />
               </div>
             </div>
