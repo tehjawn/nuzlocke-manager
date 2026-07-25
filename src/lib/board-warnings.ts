@@ -1,7 +1,7 @@
 import type { PokemonEntry } from "@/lib/challenge-types";
 
 /** Slots that count toward held-item / species dupe soft warnings. */
-const ACTIVE_SLOTS = new Set(["MAIN", "RESERVES"]);
+const ACTIVE_SLOTS = new Set(["MAIN", "RESERVE"]);
 
 function normalizeItem(item: string | null | undefined): string | null {
   const t = item?.trim().toLowerCase();

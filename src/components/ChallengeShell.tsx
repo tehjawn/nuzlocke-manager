@@ -5,9 +5,14 @@ import { DiscordIcon } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader } from "@/components/SiteHeader";
+import { ShareSeasonLink } from "@/components/ShareSeasonLink";
 import { TypeChartDrawer } from "@/components/TypeChartDrawer";
 import { WelcomeSeasonCta } from "@/components/WelcomeSeasonCta";
-import type { ActivityItem, ChallengeStatus } from "@/lib/challenge-types";
+import type {
+  ActivityItem,
+  ChallengeStatus,
+  ChallengeVisibility,
+} from "@/lib/challenge-types";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { seasonStatusLabel } from "@/lib/season-status";
 
@@ -21,6 +26,7 @@ type ChallengeShellProps = {
   game?: string | null;
   description: string;
   status?: ChallengeStatus;
+  visibility?: ChallengeVisibility;
   activities?: ActivityItem[];
   canReact?: boolean;
   showGm?: boolean;
@@ -36,6 +42,7 @@ export function ChallengeShell({
   game,
   description,
   status = "ACTIVE",
+  visibility = "INVITE",
   activities = [],
   canReact = false,
   showGm = false,
@@ -92,10 +99,13 @@ export function ChallengeShell({
               </div>
             </dl>
             {slug === DEFAULT_CHALLENGE_SLUG ? <WelcomeSeasonCta /> : null}
+            <div className="mt-4">
+              <ShareSeasonLink slug={slug} visibility={visibility} />
+            </div>
             {!signedIn ? (
               <Link
                 href="/login"
-                className="pressable mt-4 inline-flex items-center gap-2 rounded-lg border-frame bg-surface px-3.5 py-2 text-sm font-semibold hover:border-interactive/50"
+                className="pressable mt-3 inline-flex items-center gap-2 rounded-lg border-frame bg-surface px-3.5 py-2 text-sm font-semibold hover:border-interactive/50"
               >
                 <DiscordIcon className="h-4 w-4" />
                 Discord login

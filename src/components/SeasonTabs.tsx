@@ -47,6 +47,18 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
       icon: <FaqIcon />,
     },
     {
+      href: `${base}/encounters`,
+      label: "Encounters",
+      match: "prefix",
+      icon: <EncountersIcon />,
+    },
+    {
+      href: `${base}/compare`,
+      label: "Compare",
+      match: "prefix",
+      icon: <CompareIcon />,
+    },
+    {
       href: `${base}/memorial`,
       label: "Memorial",
       match: "prefix",
@@ -135,6 +147,24 @@ function FaqIcon() {
       <circle cx="12" cy="12" r="8.25" />
       <path d="M9.75 9.5a2.25 2.25 0 114.1 1.3c-.5.7-1.35 1.05-1.85 1.7-.2.25-.25.5-.25.9" strokeLinecap="round" />
       <circle cx="12" cy="16.75" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function EncountersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M4 7h16M4 12h10M4 17h13" strokeLinecap="round" />
+      <circle cx="18.5" cy="12" r="2.25" />
+    </svg>
+  );
+}
+
+function CompareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <rect x="3.5" y="5" width="7" height="14" rx="1.5" />
+      <rect x="13.5" y="5" width="7" height="14" rx="1.5" />
     </svg>
   );
 }
