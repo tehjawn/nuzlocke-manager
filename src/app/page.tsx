@@ -59,8 +59,9 @@ export default async function HomePage() {
               Open {active.year} League →
             </Link>
           ) : (
-            <Link href="/challenges" className={CTA_PRIMARY_LG}>
-              Browse seasons →
+            // TEMP: Seasons index hidden while only one season exists
+            <Link href="/about" className={CTA_PRIMARY_LG}>
+              About →
             </Link>
           )}
           {!session?.user ? (

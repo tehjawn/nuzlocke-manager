@@ -5,12 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import {
-  AboutIcon,
-  GmIcon,
-  MyTrainerIcon,
-  SeasonsIcon,
-} from "@/components/nav-icons";
+import { AboutIcon, GmIcon, MyTrainerIcon } from "@/components/nav-icons";
 
 type NavLink = { href: string; label: string; icon: ReactNode };
 
@@ -53,7 +48,8 @@ export function MobileNavDrawer({
   }
 
   const links: NavLink[] = [
-    { href: "/challenges", label: "Seasons", icon: <SeasonsIcon /> },
+    // TEMP: Seasons index hidden while only one season exists
+    // { href: "/challenges", label: "Seasons", icon: <SeasonsIcon /> },
     { href: "/about", label: "About", icon: <AboutIcon /> },
   ];
   if (challengeSlug && myTrainerId) {
