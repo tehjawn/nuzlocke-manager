@@ -12,6 +12,12 @@ const POKEAPI_SPRITE_BASE =
 
 const SHOWDOWN_POKE_BASE = "https://play.pokemonshowdown.com/sprites/gen5";
 
+/** Browseable Showdown sprite indexes (open in a new tab from pickers). */
+export const SHOWDOWN_TRAINER_SPRITES_DIR =
+  "https://play.pokemonshowdown.com/sprites/trainers/?sort=name&view=dir";
+export const SHOWDOWN_POKEMON_SPRITES_DIR =
+  "https://play.pokemonshowdown.com/sprites/gen5/?sort=name&view=dir";
+
 /** Normalize spreadsheet-style names like "(Shiny) Charizard" or "Nidoran-M". */
 export function parseSpeciesInput(raw: string): {
   species: string;

@@ -26,10 +26,11 @@ export function searchPokemonIndex(
     generation?: number | null;
     /** When true, only alternate formes. When false, exclude formes. */
     formesOnly?: boolean | null;
+    /** Omit to return the full filtered set. */
     limit?: number;
   },
 ): PokemonIndexEntry[] {
-  const limit = options?.limit ?? 80;
+  const limit = options?.limit;
   const gen = options?.generation ?? null;
   const formesOnly = options?.formesOnly ?? null;
   const q = query.trim().toLowerCase();
@@ -38,22 +39,24 @@ export function searchPokemonIndex(
   if (formesOnly === true) pool = pool.filter((p) => p.isForme);
   if (formesOnly === false) pool = pool.filter((p) => !p.isForme);
 
+  let hits: PokemonIndexEntry[];
   if (!q) {
     // Prefer base species when browsing; formes still appear when filtering/searching.
-    const ordered =
+    hits =
       formesOnly == null
         ? [...pool].sort((a, b) => Number(a.isForme) - Number(b.isForme))
         : pool;
-    return ordered.slice(0, limit);
+  } else {
+    const asNum = Number(q);
+    hits =
+      Number.isFinite(asNum) && asNum > 0
+        ? pool.filter((p) => p.pokedexId === asNum)
+        : pool.filter(
+            (p) => p.name.toLowerCase().includes(q) || p.slug.includes(q),
+          );
   }
 
-  const asNum = Number(q);
-  if (Number.isFinite(asNum) && asNum > 0) {
-    return pool.filter((p) => p.pokedexId === asNum).slice(0, limit);
-  }
-  return pool
-    .filter((p) => p.name.toLowerCase().includes(q) || p.slug.includes(q))
-    .slice(0, limit);
+  return limit == null ? hits : hits.slice(0, limit);
 }
 
 export function findPokemonById(id: number): PokemonIndexEntry | undefined {
