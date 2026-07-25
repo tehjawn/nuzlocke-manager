@@ -601,7 +601,7 @@ export function TrainerBoard({
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">
-                    Tap a slot to add or edit.
+                    Tap a Pokémon to view or edit; empty slots to add.
                   </p>
                   <button
                     type="button"
@@ -614,7 +614,7 @@ export function TrainerBoard({
                 <PartyStrip
                   pokemon={main}
                   slots={6}
-                  selectHint="Edit"
+                  selectHint="View"
                   onSelect={openPokemon}
                   onSelectEmpty={(partyIndex) =>
                     openAddPokemon("MAIN", partyIndex)
@@ -638,7 +638,7 @@ export function TrainerBoard({
                   <p className="text-xs text-muted">
                     {reserves.length === 0
                       ? "No reserves yet."
-                      : "Tap a Pokémon to edit."}
+                      : "Tap a Pokémon to view or edit."}
                   </p>
                   <button
                     type="button"
@@ -651,7 +651,7 @@ export function TrainerBoard({
                 {reserves.length > 0 ? (
                   <PartyStrip
                     pokemon={reserves}
-                    selectHint="Edit"
+                    selectHint="View"
                     onSelect={openPokemon}
                   />
                 ) : null}
@@ -674,7 +674,7 @@ export function TrainerBoard({
                   <p className="text-xs text-muted">
                     {graveyard.length === 0
                       ? "Memorial is empty."
-                      : "Tap a Pokémon to edit."}
+                      : "Tap a Pokémon to view or edit."}
                   </p>
                   <button
                     type="button"
@@ -688,7 +688,7 @@ export function TrainerBoard({
                   <PartyStrip
                     pokemon={graveyard}
                     memorial
-                    selectHint="Edit"
+                    selectHint="View"
                     onSelect={openPokemon}
                   />
                 ) : null}
@@ -727,7 +727,7 @@ export function TrainerBoard({
                 {encountered.length > 0 ? (
                   <PartyStrip
                     pokemon={encountered}
-                    selectHint="Edit"
+                    selectHint="View"
                     onSelect={openPokemon}
                   />
                 ) : null}
@@ -747,7 +747,7 @@ export function TrainerBoard({
         <aside className="space-y-6 lg:sticky lg:top-4">
           <Frame title="Stats">
             <TrainerStatsSummary
-              caught={trainer.pokemon.length}
+              caught={main.length + reserves.length}
               fallen={graveyard.length}
               badgesEarned={earnedBadgeKeys.length}
               badgesTotal={badges.length}
