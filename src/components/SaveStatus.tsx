@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { pushSnackbar } from "@/components/Snackbar";
 
 export type SaveStatusKind = "idle" | "saving" | "saved" | "error";
 
@@ -27,14 +28,16 @@ export function useSaveStatus() {
   function markSaved(message = "Saved") {
     if (clearTimer.current) clearTimeout(clearTimer.current);
     setStatus({ kind: "saved", message });
+    pushSnackbar(message, "success");
     clearTimer.current = setTimeout(() => {
       setStatus({ kind: "idle" });
-    }, 2200);
+    }, 400);
   }
 
   function markError(message: string) {
     if (clearTimer.current) clearTimeout(clearTimer.current);
     setStatus({ kind: "error", message });
+    pushSnackbar(message, "error");
   }
 
   function reset() {
@@ -51,29 +54,17 @@ type SaveStatusProps = {
   onAccent?: boolean;
 };
 
+/**
+ * Inline working state only — success/error surface via snackbar.
+ */
 export function SaveStatus({ status, onAccent = false }: SaveStatusProps) {
-  if (status.kind === "idle") return null;
+  if (status.kind !== "saving") return null;
 
-  const tone = onAccent
-    ? status.kind === "error"
-      ? "text-[#ffd4c8]"
-      : status.kind === "saving"
-        ? "text-white/75"
-        : "text-[#d4f5e0]"
-    : status.kind === "error"
-      ? "text-danger"
-      : status.kind === "saving"
-        ? "text-muted"
-        : "text-accent-deep";
+  const tone = onAccent ? "text-white/80" : "text-muted";
 
   return (
     <p className={`text-xs font-bold ${tone}`} role="status" aria-live="polite">
-      {status.message ??
-        (status.kind === "saving"
-          ? "Saving…"
-          : status.kind === "saved"
-            ? "Saved"
-            : "Error")}
+      {status.message ?? "Saving…"}
     </p>
   );
 }

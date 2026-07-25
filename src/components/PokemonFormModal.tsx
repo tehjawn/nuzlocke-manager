@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useDeferredValue, useMemo, useState } from "react";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { Modal } from "@/components/Modal";
 import { SearchSelect } from "@/components/SearchSelect";
 import { PokemonSpriteBrowser } from "@/components/SpriteBrowser";
@@ -185,6 +186,7 @@ function PokemonFormModalInner({
 }: Omit<PokemonFormModalProps, "open">) {
   const [form, setForm] = useState(initial);
   const [browseOpen, setBrowseOpen] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [itemQuery, setItemQuery] = useState(initial.heldItem);
   const deferredItem = useDeferredValue(itemQuery);
   const itemResults = useMemo(
@@ -272,9 +274,16 @@ function PokemonFormModalInner({
               <button
                 type="button"
                 disabled={pending}
-                className="pressable ml-auto rounded-lg bg-danger px-4 py-2 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
-                onClick={() => {
-                  if (!confirm("Delete this Pokémon entry?")) return;
+                className="pressable ml-auto rounded-lg bg-danger px-4 py-2 text-xs font-semibold tracking-tight text-white disabled:opacity-60"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Delete this Pokémon?",
+                    description:
+                      "Removes it from your board. You can add it again later if needed.",
+                    confirmLabel: "Delete",
+                    tone: "danger",
+                  });
+                  if (!ok) return;
                   onDelete(form.id!);
                 }}
               >
@@ -284,6 +293,7 @@ function PokemonFormModalInner({
           </div>
         }
       >
+        {confirmDialog}
         <div className="space-y-4">
           {(itemWarnings.length > 0 || speciesWarnings.length > 0) && (
             <div className="space-y-1.5 rounded-lg border border-accent-2/40 bg-accent-2/10 px-3 py-2 text-sm">

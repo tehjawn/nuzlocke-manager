@@ -22,6 +22,7 @@ import {
 } from "@/components/PokemonFormModal";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PartyStrip } from "@/components/PartyStrip";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { ReviveControl } from "@/components/ReviveControl";
 import { SaveImportModal } from "@/components/SaveImportModal";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
@@ -35,7 +36,7 @@ import type {
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
-import { CTA_PRIMARY, CTA_SECONDARY } from "@/lib/cta";
+import { CTA_PRIMARY, CTA_PRIMARY_SM, CTA_SECONDARY } from "@/lib/cta";
 import { isEmptySpread } from "@/lib/stats";
 
 type TrainerBoardProps = {
@@ -106,6 +107,36 @@ function ImportSaveIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+function SaveIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M3 2.5h8.5L13.5 5v8.5H3V2.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 2.5v4h5v-4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 11h6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function HeaderButton({
   children,
   onClick,
@@ -116,7 +147,7 @@ function HeaderButton({
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
-  tone?: "ghost" | "solid";
+  tone?: "ghost" | "primary";
   "aria-label"?: string;
 }) {
   return (
@@ -125,11 +156,11 @@ function HeaderButton({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className={`pressable inline-flex items-center gap-1 px-2.5 py-1.5 font-display text-[11px] font-semibold tracking-tight disabled:opacity-60 ${
-        tone === "solid"
-          ? "bg-[var(--accent-2)] text-[var(--accent-ink)]"
-          : "bg-black/25 text-white hover:bg-black/40"
-      }`}
+      className={
+        tone === "primary"
+          ? `${CTA_PRIMARY_SM} gap-1.5 disabled:opacity-60`
+          : "pressable inline-flex items-center gap-1 border-white/25 bg-black/30 px-2.5 py-1.5 text-[11px] font-semibold tracking-tight text-white hover:bg-black/45 disabled:opacity-60"
+      }
     >
       {children}
     </button>
@@ -155,6 +186,7 @@ export function TrainerBoard({
   const playerSave = useSaveStatus();
   const partySave = useSaveStatus();
   const reviveSave = useSaveStatus();
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.reviveUsed}|${trainer.earnedBadgeKeys.join("|")}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
@@ -278,12 +310,15 @@ export function TrainerBoard({
     });
   }
 
-  function useReviveToken() {
-    if (
-      !confirm("Spend your Revive Token? This cannot be undone.")
-    ) {
-      return;
-    }
+  async function useReviveToken() {
+    const ok = await confirm({
+      title: "Use revive token?",
+      description:
+        "This spends your one revive for the season. You can’t undo it without a GM reset.",
+      confirmLabel: "Use revive",
+      tone: "danger",
+    });
+    if (!ok) return;
     const previous = reviveUsed;
     setReviveUsed(true);
     reviveSave.markSaving("Using revive…");
@@ -301,7 +336,14 @@ export function TrainerBoard({
     });
   }
 
-  function resetReviveToken() {
+  async function resetReviveToken() {
+    const ok = await confirm({
+      title: "Reset revive token?",
+      description: "This restores the trainer’s revive so they can use it again.",
+      confirmLabel: "Reset revive",
+      tone: "primary",
+    });
+    if (!ok) return;
     const previous = reviveUsed;
     setReviveUsed(false);
     reviveSave.markSaving("Resetting revive…");
@@ -416,10 +458,11 @@ export function TrainerBoard({
                   <>
                     <SaveStatus status={playerSave.status} onAccent />
                     <HeaderButton
-                      tone="solid"
+                      tone="primary"
                       disabled={pending || !handle.trim()}
                       onClick={savePlayerProfile}
                     >
+                      <SaveIcon />
                       Save
                     </HeaderButton>
                     <HeaderButton onClick={cancelEditingPlayer}>
@@ -922,15 +965,18 @@ export function TrainerBoard({
               <button
                 type="button"
                 disabled={pending || !handle.trim()}
-                className="pressable shrink-0 rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
+                className={`${CTA_PRIMARY_SM} shrink-0 gap-1.5 disabled:opacity-60`}
                 onClick={savePlayerProfile}
               >
+                <SaveIcon />
                 Save profile
               </button>
             ) : null}
           </div>
         </div>
       ) : null}
+
+      {confirmDialog}
     </div>
   );
 }
