@@ -3,13 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import {
-  THEME_STORAGE_KEY,
-  applyTheme,
-  resolveTheme,
-  toggleTheme,
-  type Theme,
-} from "@/lib/theme";
+import { toggleTheme, type Theme } from "@/lib/theme";
 
 type UserMenuProps = {
   name: string;
@@ -21,27 +15,12 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof document === "undefined") return "light";
+    // Init script already applied + persisted; mirror the DOM.
     const attr = document.documentElement.getAttribute("data-theme");
     return attr === "dark" ? "dark" : "light";
   });
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    function onSystemThemeChange() {
-      try {
-        if (localStorage.getItem(THEME_STORAGE_KEY)) return;
-      } catch {
-        return;
-      }
-      const next = resolveTheme();
-      applyTheme(next);
-      setTheme(next);
-    }
-    media.addEventListener("change", onSystemThemeChange);
-    return () => media.removeEventListener("change", onSystemThemeChange);
-  }, []);
 
   useEffect(() => {
     if (!open) return;

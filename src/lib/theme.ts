@@ -28,7 +28,7 @@ export function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme;
 }
 
-/** Persist an explicit choice and apply it. */
+/** Persist a theme choice and apply it. */
 export function setStoredTheme(theme: Theme) {
   applyTheme(theme);
   try {
@@ -38,11 +38,25 @@ export function setStoredTheme(theme: Theme) {
   }
 }
 
+/**
+ * Apply the resolved theme and snapshot it into localStorage when missing.
+ * First visit locks to the current OS preference so later OS flips don't
+ * silently change the app.
+ */
+export function ensureStoredTheme(): Theme {
+  const theme = resolveTheme();
+  setStoredTheme(theme);
+  return theme;
+}
+
 export function toggleTheme(current: Theme): Theme {
   const next: Theme = current === "dark" ? "light" : "dark";
   setStoredTheme(next);
   return next;
 }
 
-/** Inline script: apply theme before first paint to avoid a flash. */
-export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var t=localStorage.getItem(k);if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t}catch(e){}})();`;
+/**
+ * Inline script: apply theme before first paint, and persist the resolved
+ * value when nothing is stored yet (OS snapshot on first load).
+ */
+export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var t=localStorage.getItem(k);if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";localStorage.setItem(k,t)}document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t}catch(e){}})();`;
