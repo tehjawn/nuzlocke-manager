@@ -6,6 +6,8 @@ export type PokemonIndexEntry = {
   pokedexId: number;
   slug: string;
   generation: number;
+  /** True for PokeAPI alternate formes (IDs ≥ 10000). */
+  isForme?: boolean;
 };
 
 export type HeldItemEntry = {
@@ -20,15 +22,30 @@ export const POKEMON_GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export function searchPokemonIndex(
   query: string,
-  options?: { generation?: number | null; limit?: number },
+  options?: {
+    generation?: number | null;
+    /** When true, only alternate formes. When false, exclude formes. */
+    formesOnly?: boolean | null;
+    limit?: number;
+  },
 ): PokemonIndexEntry[] {
   const limit = options?.limit ?? 80;
   const gen = options?.generation ?? null;
+  const formesOnly = options?.formesOnly ?? null;
   const q = query.trim().toLowerCase();
   let pool = POKEMON_INDEX;
   if (gen != null) pool = pool.filter((p) => p.generation === gen);
+  if (formesOnly === true) pool = pool.filter((p) => p.isForme);
+  if (formesOnly === false) pool = pool.filter((p) => !p.isForme);
 
-  if (!q) return pool.slice(0, limit);
+  if (!q) {
+    // Prefer base species when browsing; formes still appear when filtering/searching.
+    const ordered =
+      formesOnly == null
+        ? [...pool].sort((a, b) => Number(a.isForme) - Number(b.isForme))
+        : pool;
+    return ordered.slice(0, limit);
+  }
 
   const asNum = Number(q);
   if (Number.isFinite(asNum) && asNum > 0) {

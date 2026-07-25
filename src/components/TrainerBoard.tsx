@@ -292,15 +292,26 @@ export function TrainerBoard({
     else setDetailsPokemon(mon);
   }
 
+  const mobileSaveStatus =
+    partySave.status.kind !== "idle"
+      ? partySave.status
+      : playerSave.status.kind !== "idle"
+        ? playerSave.status
+        : reviveSave.status;
+
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${canEdit ? "pb-20 sm:pb-0" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
           {canEdit
             ? "Your board — profile saves explicitly; party and badges save as you go."
             : "Trainer board"}
         </p>
-        {canEdit ? <SaveStatus status={partySave.status} /> : null}
+        {canEdit ? (
+          <div className="hidden sm:block">
+            <SaveStatus status={partySave.status} />
+          </div>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:items-start">
@@ -694,6 +705,7 @@ export function TrainerBoard({
           <PokemonFormModal
             open={pokemonOpen}
             initial={pokemonForm}
+            teamPokemon={trainer.pokemon}
             pending={pending}
             onClose={() => setPokemonOpen(false)}
             onSave={(form) => {
@@ -801,6 +813,32 @@ export function TrainerBoard({
         pokemon={detailsPokemon}
         onClose={() => setDetailsPokemon(null)}
       />
+
+      {canEdit ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-frame bg-surface/95 px-4 py-3 shadow-[0_-8px_24px_var(--shadow)] backdrop-blur-md sm:hidden">
+          <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
+            <div className="min-w-0">
+              {mobileSaveStatus.kind === "idle" ? (
+                <p className="text-xs text-muted">
+                  Party & badges save as you go
+                </p>
+              ) : (
+                <SaveStatus status={mobileSaveStatus} />
+              )}
+            </div>
+            {editingPlayer ? (
+              <button
+                type="button"
+                disabled={pending || !handle.trim()}
+                className="pressable shrink-0 rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
+                onClick={savePlayerProfile}
+              >
+                Save profile
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
