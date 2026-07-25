@@ -11,9 +11,14 @@ const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
 type AuthButtonsProps = {
   /** When true, SiteHeader already shows My Trainer — skip the duplicate. */
   hideMyTrainer?: boolean;
+  /** Desktop profile menu GM link; mobile keeps GM in the hamburger drawer. */
+  gmHref?: string | null;
 };
 
-export async function AuthButtons({ hideMyTrainer = false }: AuthButtonsProps) {
+export async function AuthButtons({
+  hideMyTrainer = false,
+  gmHref = null,
+}: AuthButtonsProps) {
   const session = await auth();
 
   if (session?.user) {
@@ -40,6 +45,7 @@ export async function AuthButtons({ hideMyTrainer = false }: AuthButtonsProps) {
           name={name}
           image={image}
           notifications={notifications}
+          gmHref={gmHref}
           signOutAction={async () => {
             "use server";
             await signOut({ redirectTo: "/" });

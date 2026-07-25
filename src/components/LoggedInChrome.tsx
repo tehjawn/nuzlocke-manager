@@ -23,6 +23,8 @@ type LoggedInChromeProps = {
   image: string | null;
   notifications: NotificationItem[];
   signOutAction: () => Promise<void>;
+  /** Desktop profile-menu GM entry (mobile uses the hamburger drawer). */
+  gmHref?: string | null;
 };
 
 function hasUnreadWelcome(items: NotificationItem[]) {
@@ -38,6 +40,7 @@ export function LoggedInChrome({
   image,
   notifications: initialNotifications,
   signOutAction,
+  gmHref = null,
 }: LoggedInChromeProps) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -131,7 +134,12 @@ export function LoggedInChrome({
         />
         {/* On mobile the account actions live in the nav drawer instead. */}
         <span className="hidden sm:block">
-          <UserMenu name={name} image={image} signOutAction={signOutAction} />
+          <UserMenu
+            name={name}
+            image={image}
+            gmHref={gmHref}
+            signOutAction={signOutAction}
+          />
         </span>
       </div>
       <OnboardingTour open={tourOpen} onDismiss={dismissTour} />

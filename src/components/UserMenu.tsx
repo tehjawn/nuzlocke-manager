@@ -3,14 +3,22 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { GmIcon } from "@/components/nav-icons";
 
 type UserMenuProps = {
   name: string;
   image: string | null;
   signOutAction: () => Promise<void>;
+  /** When set, show a GM console link in the profile menu (desktop). */
+  gmHref?: string | null;
 };
 
-export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
+export function UserMenu({
+  name,
+  image,
+  signOutAction,
+  gmHref = null,
+}: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -85,6 +93,17 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
               <ProfileIcon />
               My Profile
             </Link>
+            {gmHref ? (
+              <Link
+                href={gmHref}
+                role="menuitem"
+                className="relative z-[1] flex items-center gap-2 px-3 py-2.5 text-sm font-medium hover:bg-accent/15"
+                onClick={() => setOpen(false)}
+              >
+                <GmIcon className="h-4 w-4 text-accent-deep" />
+                GM
+              </Link>
+            ) : null}
             <form action={signOutAction} className="relative z-[1]">
               <button
                 type="submit"
