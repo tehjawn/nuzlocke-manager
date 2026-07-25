@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { GmConsole } from "@/components/GmConsole";
-import { SiteHeader } from "@/components/SiteHeader";
+import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { getChallenge } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -32,7 +32,7 @@ export default async function GmPage({ params }: PageProps) {
 
   const access = await getAccessForChallenge(challenge.id);
   if (!access?.isGm) {
-    redirect(`/challenges/${slug}/join`);
+    redirect(`/challenges/${slug}/join?gm=1`);
   }
 
   const secrets = await getPrisma().challenge.findUnique({
@@ -47,7 +47,9 @@ export default async function GmPage({ params }: PageProps) {
         challengeYear={challenge.year}
         showGm
       />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-2 sm:px-6">
+      <main
+        className={`mx-auto w-full flex-1 px-4 pb-16 pt-2 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
+      >
         <Link
           href={`/challenges/${challenge.slug}`}
           className="text-sm text-muted hover:text-ink"

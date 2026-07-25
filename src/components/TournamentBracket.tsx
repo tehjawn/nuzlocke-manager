@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   gmInitTournamentAction,
@@ -19,6 +20,7 @@ export function TournamentBracket({
   tournament,
   isGm,
 }: TournamentBracketProps) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +42,9 @@ export function TournamentBracket({
           Tournament
         </h2>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Stub bracket for post-Champion play. Lock Main Squads from the GM
-          console, then seed a single-elimination ladder.
+          Post-Champion ladder. Lock Main Squads from the GM console, seed a
+          single-elimination bracket, then pick winners — each finished round
+          advances automatically.
         </p>
       </header>
 
@@ -76,6 +79,7 @@ export function TournamentBracket({
                 if (result.ok) {
                   setError(null);
                   setMessage(result.message ?? "Tournament seeded");
+                  router.refresh();
                 } else {
                   setMessage(null);
                   setError(result.error);
@@ -99,6 +103,11 @@ export function TournamentBracket({
         </Frame>
       ) : (
         <div className="space-y-4">
+          {tournament.status === "COMPLETE" ? (
+            <p className="text-sm font-semibold text-accent-deep">
+              Bracket complete — champion decided.
+            </p>
+          ) : null}
           {rounds.map((round) => {
             const matches = tournament.matches
               .filter((m) => m.round === round)
@@ -136,6 +145,7 @@ export function TournamentBracket({
                               if (result.ok) {
                                 setError(null);
                                 setMessage(result.message ?? "Winner set");
+                                router.refresh();
                               } else {
                                 setMessage(null);
                                 setError(result.error);
@@ -164,6 +174,7 @@ export function TournamentBracket({
                               if (result.ok) {
                                 setError(null);
                                 setMessage(result.message ?? "Winner set");
+                                router.refresh();
                               } else {
                                 setMessage(null);
                                 setError(result.error);

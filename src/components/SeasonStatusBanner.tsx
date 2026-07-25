@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ChallengeStatus } from "@/lib/challenge-types";
+import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { seasonStatusLabel } from "@/lib/season-status";
 
 type SeasonStatusBannerProps = {
@@ -21,7 +22,7 @@ export function SeasonStatusBanner({ slug, status }: SeasonStatusBannerProps) {
         </p>
         <Link
           href={`/challenges/${slug}/memorial`}
-          className="pressable mt-3 inline-block rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
+          className={`${CTA_PRIMARY_SM} mt-3`}
         >
           Open memorial
         </Link>
@@ -39,7 +40,7 @@ export function SeasonStatusBanner({ slug, status }: SeasonStatusBannerProps) {
       </p>
       <Link
         href={`/challenges/${slug}/tournament`}
-        className="pressable mt-3 inline-block rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
+        className={`${CTA_PRIMARY_SM} mt-3`}
       >
         Open tournament
       </Link>

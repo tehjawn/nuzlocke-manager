@@ -2,6 +2,10 @@ type DiscordIconProps = {
   className?: string;
 };
 
+/** Shared Discord CTA surface (blurple) — size/spacing added at call sites. */
+export const DISCORD_BTN_CLASS =
+  "pressable inline-flex items-center gap-2 rounded-lg border border-discord/40 bg-discord font-semibold text-on-discord hover:bg-discord-hover";
+
 /** Official-style Discord mark (Clyde). */
 export function DiscordIcon({ className = "h-4 w-4" }: DiscordIconProps) {
   return (

@@ -5,6 +5,7 @@ import type {
 } from "@/lib/challenge-types";
 import type { PokemonType } from "@/lib/pokemon-types";
 import { POKEMON_TYPES } from "@/lib/pokemon-types";
+import { avatarImageUrl } from "@/lib/sprites";
 import { clampEvs, clampIvs, IvsSchema, parseStatSpread } from "@/lib/stats";
 
 type DbChallenge = {
@@ -45,6 +46,7 @@ type DbChallenge = {
     realName: string | null;
     avatarSpriteKey: string | null;
     statusText: string | null;
+    statusEmoji: string | null;
     reviveUsed: boolean;
     mainSquadLocked: boolean;
     sortOrder: number;
@@ -77,10 +79,23 @@ type DbChallenge = {
     type: string;
     message: string;
     createdAt: Date;
-    trainer: { handle: string } | null;
+    trainer: { handle: string; avatarSpriteKey: string | null } | null;
+    actor: { image: string | null } | null;
     reactions?: Array<{ emoji: string; userId: string }>;
   }>;
 };
+
+/** Prefer linked trainer sprite, then Discord actor image. */
+export function resolveActivityAvatarSrc(input: {
+  trainerAvatarSpriteKey?: string | null;
+  actorImage?: string | null;
+}): string | null {
+  const sprite = input.trainerAvatarSpriteKey?.trim();
+  if (sprite) return avatarImageUrl(sprite);
+  const image = input.actorImage?.trim();
+  if (image) return image;
+  return null;
+}
 
 function asTypes(types: string[]): PokemonType[] {
   return types.filter((t): t is PokemonType =>
@@ -161,6 +176,10 @@ function mapActivity(
     message: a.message,
     createdAt: a.createdAt.toISOString(),
     trainerHandle: a.trainer?.handle ?? null,
+    avatarSrc: resolveActivityAvatarSrc({
+      trainerAvatarSpriteKey: a.trainer?.avatarSpriteKey,
+      actorImage: a.actor?.image,
+    }),
     reactions: [...counts.entries()].map(([emoji, v]) => ({
       emoji,
       count: v.count,
@@ -184,6 +203,7 @@ export function mapDbTrainer(
     realName: trainer.realName,
     avatarSpriteKey: trainer.avatarSpriteKey ?? "brendan",
     statusText: trainer.statusText,
+    statusEmoji: trainer.statusEmoji,
     reviveUsed: trainer.reviveUsed,
     mainSquadLocked: trainer.mainSquadLocked,
     sortOrder: trainer.sortOrder,

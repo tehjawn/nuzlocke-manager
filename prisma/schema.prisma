@@ -175,6 +175,7 @@ model TrainerProfile {
   realName        String?
   avatarSpriteKey String?
   statusText      String?
+  statusEmoji     String?
   reviveUsed      Boolean  @default(false)
   mainSquadLocked Boolean  @default(false)
   sortOrder       Int      @default(0)

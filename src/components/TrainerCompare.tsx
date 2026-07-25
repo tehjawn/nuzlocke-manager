@@ -49,7 +49,7 @@ export function TrainerCompare({
     if (nextB) params.set("b", nextB);
     const qs = params.toString();
     router.replace(
-      qs ? `/challenges/${slug}/compare?${qs}` : `/challenges/${slug}/compare`,
+      qs ? `/challenges/${slug}/tools?${qs}` : `/challenges/${slug}/tools`,
       { scroll: false },
     );
   }
@@ -151,8 +151,13 @@ function CompareColumn({
             {trainer.earnedBadgeKeys.length === 1 ? "" : "s"} · {graves.length}{" "}
             fallen
           </p>
-          {trainer.statusText ? (
+          {trainer.statusEmoji || trainer.statusText ? (
             <p className="mt-1 line-clamp-2 text-xs text-muted">
+              {trainer.statusEmoji ? (
+                <span className="mr-1" aria-hidden>
+                  {trainer.statusEmoji}
+                </span>
+              ) : null}
               {trainer.statusText}
             </p>
           ) : null}

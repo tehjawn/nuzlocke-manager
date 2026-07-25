@@ -2,7 +2,7 @@
 
 /*
   Crest Pulse — color roles
-  - accent (emerald): primary CTAs only
+  - accent (emerald): primary CTAs only (see .btn-cta*)
   - accent-2 (gold): informational chrome / highlights
   - interactive (sky): hover affordances on clickable surfaces
   - info (cool gray wash): read-only value chips
@@ -34,6 +34,10 @@
   --shadow-md: rgba(18, 22, 18, 0.2);
   --on-accent: #f4fff7;
   --accent-ink: #14532d;
+  /* Discord brand — same in light/dark */
+  --discord: #5865f2;
+  --discord-hover: #4752c4;
+  --on-discord: #ffffff;
   --scrim: rgba(18, 22, 18, 0.5);
   --radius: 8px;
   --radius-sm: 6px;
@@ -70,6 +74,9 @@
   --shadow-md: rgba(0, 0, 0, 0.6);
   --on-accent: #061209;
   --accent-ink: #d8ffe6;
+  --discord: #5865f2;
+  --discord-hover: #4752c4;
+  --on-discord: #ffffff;
   --scrim: rgba(0, 0, 0, 0.7);
   --radius: 8px;
   --radius-sm: 6px;
@@ -98,6 +105,9 @@
   --color-accent-ink: var(--accent-ink);
   --color-interactive: var(--interactive);
   --color-interactive-soft: var(--interactive-soft);
+  --color-discord: var(--discord);
+  --color-discord-hover: var(--discord-hover);
+  --color-on-discord: var(--on-discord);
   --color-info: var(--info);
   --color-info-ink: var(--info-ink);
   --color-iv: var(--iv);
@@ -308,6 +318,53 @@ button:disabled,
 .pressable:active {
   transform: translateY(0);
   box-shadow: 0 1px 2px var(--shadow);
+}
+
+/*
+  Content CTAs — shared sizes. Tone is separate from size.
+  Compose: pressable btn-cta btn-cta-primary (+ btn-cta-sm | btn-cta-lg)
+  Nav chrome stays on h-9; dense form/tool actions use btn-cta-sm.
+*/
+.pressable.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.pressable.btn-cta.btn-cta-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.pressable.btn-cta.btn-cta-lg {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.btn-cta-primary {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--frame));
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn-cta-primary:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--frame));
+  filter: brightness(1.04);
+}
+
+.btn-cta-secondary {
+  background: var(--surface);
+  color: var(--ink);
 }
 
 @media (prefers-reduced-motion: reduce) {

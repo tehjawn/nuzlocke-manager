@@ -4,15 +4,16 @@ Trash Pack's Nuzlocke tracker — league boards, graves, badges, seasons, Discor
 
 ## Status
 
-Phases 0–2 shipped (league UI, Trash Pack seed, Discord auth, board editing, GM console, Pack feed). Next: Phase 3 — seasons & endgame (see plan).
+Phases 0–4 shipped. Next: Phase 5 — season ops polish (archive UX, invite wall, welcome video, tournament advance). See plan.
 
 - Discord login (Auth.js) → auto-provision personal trainer board
 - Invite / GM codes for gated seasons and GM elevation
 - Player board editing (status, revive, badges, Pokémon CRUD)
-- Species + shiny sprite picker
+- Species + shiny + forme sprite picker
 - Import from Afterplay / Gen 3 saves (party, box, R.I.P., encounters + optional name/badges)
-- GM console (settings, rules, FAQ, Main Squad lock)
-- Activity feed on the league board
+- GM console (settings, rules, FAQ, Main Squad lock, export, Discord webhooks)
+- Memorial, tournament stub, encounter ledger, trainer compare, type chart, share links
+- Activity feed on the league board + notifications / welcome modal
 - Postgres-backed data with seed fallback for read-only demo
 
 Plan: [`docs/MASTER_PLAN.md`](./docs/MASTER_PLAN.md).

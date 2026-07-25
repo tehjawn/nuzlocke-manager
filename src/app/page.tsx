@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { SiteHeader } from "@/components/SiteHeader";
+import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import {
   TrainerCarousel,
   type CarouselTrainer,
 } from "@/components/TrainerCarousel";
 import { listChallenges } from "@/lib/challenges";
+import { CTA_PRIMARY_LG, CTA_SECONDARY_LG } from "@/lib/cta";
 import { pokemonInSlot } from "@/lib/trainer-display";
 
 export default async function HomePage() {
@@ -38,7 +39,9 @@ export default async function HomePage() {
   return (
     <div className="flex flex-1 flex-col overflow-x-hidden">
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-start justify-center px-4 pb-16 pt-10 sm:px-6">
+      <main
+        className={`mx-auto flex w-full flex-1 flex-col items-start justify-center px-4 pb-16 pt-10 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
+      >
         <h1 className="max-w-2xl text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl">
           <span className="block text-accent-deep">Trash Pack&apos;s</span>
           <span className="mt-1 block">Nuzlocke Challenge Manager</span>
@@ -51,23 +54,17 @@ export default async function HomePage() {
           {active ? (
             <Link
               href={`/challenges/${active.slug}`}
-              className="pressable inline-flex items-center rounded-lg border-accent/30 bg-accent px-5 py-3 text-sm font-semibold text-[var(--on-accent)]"
+              className={CTA_PRIMARY_LG}
             >
               Open {active.year} League →
             </Link>
           ) : (
-            <Link
-              href="/challenges"
-              className="pressable inline-flex items-center rounded-lg border-accent/30 bg-accent px-5 py-3 text-sm font-semibold text-[var(--on-accent)]"
-            >
+            <Link href="/challenges" className={CTA_PRIMARY_LG}>
               Browse seasons →
             </Link>
           )}
           {!session?.user ? (
-            <Link
-              href="/login"
-              className="pressable inline-flex items-center rounded-lg bg-surface px-5 py-3 text-sm font-semibold"
-            >
+            <Link href="/login" className={CTA_SECONDARY_LG}>
               Sign in
             </Link>
           ) : null}

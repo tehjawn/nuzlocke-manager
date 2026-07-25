@@ -45,16 +45,26 @@ export async function getTournamentForChallenge(
   }
 }
 
-/** Build single-elim first-round pairings; byes when odd count. */
+export type BracketPairing = {
+  trainerAId: string | null;
+  trainerBId: string | null;
+  label: string;
+};
+
+/** Build single-elim pairings; byes when odd count. */
 export function buildFirstRoundPairings(
   trainerIds: string[],
-): Array<{ trainerAId: string | null; trainerBId: string | null; label: string }> {
+): BracketPairing[] {
+  return buildRoundPairings(trainerIds, "Match");
+}
+
+/** Pair winners (or any ordered trainer list) into the next round. */
+export function buildRoundPairings(
+  trainerIds: string[],
+  labelPrefix = "Match",
+): BracketPairing[] {
   const ids = [...trainerIds];
-  const pairings: Array<{
-    trainerAId: string | null;
-    trainerBId: string | null;
-    label: string;
-  }> = [];
+  const pairings: BracketPairing[] = [];
 
   let matchNum = 1;
   while (ids.length > 0) {
@@ -63,10 +73,19 @@ export function buildFirstRoundPairings(
     pairings.push({
       trainerAId: a,
       trainerBId: b,
-      label: b ? `Match ${matchNum}` : `Match ${matchNum} (bye)`,
+      label: b ? `${labelPrefix} ${matchNum}` : `${labelPrefix} ${matchNum} (bye)`,
     });
     matchNum += 1;
   }
 
   return pairings;
+}
+
+/** True when every match in `round` has a winner. */
+export function roundIsComplete(
+  matches: Array<{ round: number; winnerId: string | null }>,
+  round: number,
+): boolean {
+  const inRound = matches.filter((m) => m.round === round);
+  return inRound.length > 0 && inRound.every((m) => Boolean(m.winnerId));
 }

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ChallengeShell } from "@/components/ChallengeShell";
+import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { ensureTrainerForChallenge } from "@/lib/provision";
@@ -15,8 +16,8 @@ type LayoutProps = {
 
 /**
  * Shared season chrome (header, info, tabs, feed).
- * Soft-navigating between Trainers / Get Started / Rules / FAQ keeps this
- * layout mounted — only the right-pane page segment swaps.
+ * Soft-navigating between season tabs keeps this layout mounted — only the
+ * right-pane page segment swaps.
  */
 export default async function SeasonWorkspaceLayout({
   children,
@@ -48,6 +49,16 @@ export default async function SeasonWorkspaceLayout({
     ? await getAccessForChallenge(challenge.id)
     : null;
 
+  if (
+    !canViewChallenge({
+      visibility: challenge.visibility,
+      source: challenge.source,
+      hasMembership: Boolean(access?.role),
+    })
+  ) {
+    redirect(`/challenges/${slug}/join`);
+  }
+
   return (
     <ChallengeShell
       slug={challenge.slug}
@@ -56,7 +67,6 @@ export default async function SeasonWorkspaceLayout({
       game={challenge.game}
       description={challenge.description}
       status={challenge.status}
-      visibility={challenge.visibility}
       activities={challenge.activities ?? []}
       canReact={Boolean(session?.user?.id && challenge.source === "database")}
       showGm={Boolean(access?.isGm)}

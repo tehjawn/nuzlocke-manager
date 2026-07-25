@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
-import { SiteHeader } from "@/components/SiteHeader";
+import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { TrainerBoard } from "@/components/TrainerBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
+import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
+import { CTA_PRIMARY } from "@/lib/cta";
 import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { isSeasonReadOnly } from "@/lib/season-status";
@@ -34,6 +36,17 @@ export default async function TrainerBoardPage({ params }: PageProps) {
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
+
+  if (
+    !canViewChallenge({
+      visibility: challenge.visibility,
+      source: challenge.source,
+      hasMembership: Boolean(access?.role),
+    })
+  ) {
+    redirect(`/challenges/${slug}/join`);
+  }
+
   const canEdit =
     Boolean(access?.canEditTrainer(trainer.userId)) &&
     !isSeasonReadOnly(challenge.status);
@@ -57,12 +70,14 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         showGm={Boolean(access?.isGm)}
         myTrainerId={myTrainerId}
       />
-      <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6">
+      <main
+        className={`mx-auto w-full flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
+      >
         <DataSourceBanner source={challenge.source} />
         <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
         <Link
           href={`/challenges/${challenge.slug}`}
-          className="pressable inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold tracking-tight text-[var(--on-accent)]"
+          className={CTA_PRIMARY}
         >
           <span aria-hidden>←</span>
           {challenge.year} League Board

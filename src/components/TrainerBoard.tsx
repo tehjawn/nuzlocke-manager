@@ -24,6 +24,8 @@ import { PartyStrip } from "@/components/PartyStrip";
 import { ReviveToken } from "@/components/ReviveToken";
 import { SaveImportModal } from "@/components/SaveImportModal";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
+import { StatusEmojiPicker } from "@/components/StatusEmojiPicker";
+import { StatusLine } from "@/components/StatusLine";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
 import type {
   BadgeDefinition,
@@ -117,12 +119,13 @@ export function TrainerBoard({
   const partySave = useSaveStatus();
   const reviveSave = useSaveStatus();
 
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.reviveUsed}|${trainer.earnedBadgeKeys.join("|")}`;
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.reviveUsed}|${trainer.earnedBadgeKeys.join("|")}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
   const [committed, setCommitted] = useState({
     handle: trainer.handle,
     statusText: trainer.statusText ?? "",
+    statusEmoji: trainer.statusEmoji ?? null,
     realName: trainer.realName ?? "",
     avatarSpriteKey: trainer.avatarSpriteKey,
     reviveUsed: trainer.reviveUsed,
@@ -130,6 +133,9 @@ export function TrainerBoard({
 
   const [handle, setHandle] = useState(trainer.handle);
   const [statusText, setStatusText] = useState(trainer.statusText ?? "");
+  const [statusEmoji, setStatusEmoji] = useState<string | null>(
+    trainer.statusEmoji ?? null,
+  );
   const [realName, setRealName] = useState(trainer.realName ?? "");
   const [avatarSpriteKey, setAvatarSpriteKey] = useState(
     trainer.avatarSpriteKey,
@@ -152,6 +158,7 @@ export function TrainerBoard({
     setCommitted({
       handle: trainer.handle,
       statusText: trainer.statusText ?? "",
+      statusEmoji: trainer.statusEmoji ?? null,
       realName: trainer.realName ?? "",
       avatarSpriteKey: trainer.avatarSpriteKey,
       reviveUsed: trainer.reviveUsed,
@@ -168,6 +175,7 @@ export function TrainerBoard({
   function syncPlayerDraftFromCommitted() {
     setHandle(committed.handle);
     setStatusText(committed.statusText);
+    setStatusEmoji(committed.statusEmoji);
     setRealName(committed.realName);
     setAvatarSpriteKey(committed.avatarSpriteKey);
   }
@@ -187,6 +195,7 @@ export function TrainerBoard({
     const next = {
       handle: handle.trim(),
       statusText,
+      statusEmoji,
       realName: realName || "",
       avatarSpriteKey,
     };
@@ -202,6 +211,7 @@ export function TrainerBoard({
         trainerId: trainer.id,
         handle: next.handle,
         statusText: next.statusText,
+        statusEmoji: next.statusEmoji,
         realName: next.realName || null,
         avatarSpriteKey: next.avatarSpriteKey,
       });
@@ -211,6 +221,7 @@ export function TrainerBoard({
         const rollback = {
           handle: trainer.handle,
           statusText: trainer.statusText ?? "",
+          statusEmoji: trainer.statusEmoji ?? null,
           realName: trainer.realName ?? "",
           avatarSpriteKey: trainer.avatarSpriteKey,
           reviveUsed: trainer.reviveUsed,
@@ -218,6 +229,7 @@ export function TrainerBoard({
         setCommitted(rollback);
         setHandle(rollback.handle);
         setStatusText(rollback.statusText);
+        setStatusEmoji(rollback.statusEmoji);
         setRealName(rollback.realName);
         setAvatarSpriteKey(rollback.avatarSpriteKey);
         setEditingPlayer(true);
@@ -383,6 +395,11 @@ export function TrainerBoard({
                     onChange={(e) => setRealName(e.target.value)}
                   />
                 </label>
+                <StatusEmojiPicker
+                  value={statusEmoji}
+                  onChange={setStatusEmoji}
+                  disabled={pending}
+                />
                 <label className="block text-sm">
                   <span className="mb-1 block font-bold text-muted">Status</span>
                   <textarea
@@ -469,9 +486,11 @@ export function TrainerBoard({
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-                    {committed.statusText || "No status update yet."}
-                  </p>
+                  <StatusLine
+                    emoji={committed.statusEmoji}
+                    text={committed.statusText}
+                    className="mt-3 max-w-2xl text-sm leading-relaxed text-muted sm:text-base"
+                  />
                   {isDemo ? (
                     <p className="mt-3 text-sm text-muted">
                       This isn&apos;t a real player slot.{" "}

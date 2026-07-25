@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
-import { DiscordIcon } from "@/components/DiscordIcon";
+import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
 import { LoggedInChrome } from "@/components/LoggedInChrome";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { isDatabaseConfigured } from "@/lib/db";
@@ -58,7 +58,7 @@ export async function AuthButtons({ hideMyTrainer = false }: AuthButtonsProps) {
     >
       <button
         type="submit"
-        className="pressable inline-flex h-9 items-center gap-2 rounded-lg border-accent/40 bg-accent px-3 text-sm font-semibold text-[var(--on-accent)]"
+        className={`${DISCORD_BTN_CLASS} h-9 px-3 text-sm`}
       >
         <DiscordIcon className="h-4 w-4" />
         Discord login
