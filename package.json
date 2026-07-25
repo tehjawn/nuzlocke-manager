@@ -16,7 +16,8 @@
     "data:pokemon": "node scripts/generate-pokemon-catalog.mjs",
     "data:lookups": "node scripts/generate-pokemon-lookups.mjs",
     "data:moves": "node scripts/generate-expansion-moves.mjs",
-    "data:base-stats": "node scripts/generate-base-stats.mjs"
+    "data:base-stats": "node scripts/generate-base-stats.mjs",
+    "data:types": "node scripts/generate-pokemon-types.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.0",

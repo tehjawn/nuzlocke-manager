@@ -27,6 +27,7 @@ import {
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
 import type { ActivityItem } from "@/lib/challenge-types";
 import { listChallengeActivities } from "@/lib/challenges";
+import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import {
   IvsSchema,
   isEmptySpread,
@@ -529,10 +530,13 @@ export async function upsertPokemonAction(
           p.slug === q.replace(/\s+/g, "-"),
       );
 
-    const types =
-      data.types.length > 0 ? data.types : (speciesMeta?.types ?? []);
     const pokedexId =
       speciesMeta?.pokedexId ?? indexHit?.pokedexId ?? null;
+    const types = resolvePokemonTypes({
+      types: data.types,
+      pokedexId,
+      species: data.species,
+    });
 
     const prisma = getPrisma();
     const payload = {
@@ -704,19 +708,24 @@ export async function importFromSaveAction(
         const partyIndex = indexes[mon.slot] ?? 0;
         indexes[mon.slot] = partyIndex + 1;
 
+        const pokedexId =
+          mon.pokedexId ??
+          speciesMeta?.pokedexId ??
+          indexHit?.pokedexId ??
+          null;
+
         return {
           trainerId: trainer.id,
           slot: mon.slot,
           partyIndex,
           nickname: mon.nickname?.trim() || null,
           species: mon.species.trim(),
-          pokedexId:
-            mon.pokedexId ??
-            speciesMeta?.pokedexId ??
-            indexHit?.pokedexId ??
-            null,
+          pokedexId,
           isShiny: mon.isShiny,
-          types: speciesMeta?.types ?? [],
+          types: resolvePokemonTypes({
+            pokedexId,
+            species: mon.species,
+          }),
           level: mon.level ?? null,
           nature: mon.nature?.trim() || null,
           ability: mon.ability?.trim() || null,

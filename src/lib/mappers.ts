@@ -3,9 +3,8 @@ import type {
   PokemonEntry,
   TrainerProfile,
 } from "@/lib/challenge-types";
-import type { PokemonType } from "@/lib/pokemon-types";
-import { POKEMON_TYPES } from "@/lib/pokemon-types";
 import { avatarImageUrl } from "@/lib/sprites";
+import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import { clampEvs, clampIvs, IvsSchema, parseStatSpread } from "@/lib/stats";
 
 type DbChallenge = {
@@ -95,12 +94,6 @@ export function resolveActivityAvatarSrc(input: {
   const image = input.actorImage?.trim();
   if (image) return image;
   return null;
-}
-
-function asTypes(types: string[]): PokemonType[] {
-  return types.filter((t): t is PokemonType =>
-    (POKEMON_TYPES as readonly string[]).includes(t),
-  );
 }
 
 export function mapDbChallenge(
@@ -222,7 +215,11 @@ export function mapDbTrainer(
       species: p.species,
       pokedexId: p.pokedexId,
       isShiny: p.isShiny,
-      types: asTypes(p.types),
+      types: resolvePokemonTypes({
+        types: p.types,
+        pokedexId: p.pokedexId,
+        species: p.species,
+      }),
       nature: p.nature,
       level: p.level,
       ability: p.ability,

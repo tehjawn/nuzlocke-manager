@@ -46,7 +46,7 @@ export function Modal({
         tabIndex={-1}
         autoFocus
         className={`gba-frame relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden outline-none sm:rounded-xl ${
-          wide ? "sm:max-w-3xl" : "sm:max-w-xl"
+          wide ? "sm:max-w-4xl" : "sm:max-w-xl"
         }`}
       >
         <header className="gba-frame-title relative z-[1] flex items-center justify-between gap-3 px-4 py-3">
@@ -61,7 +61,7 @@ export function Modal({
             Close
           </button>
         </header>
-        <div className="relative z-[1] min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+        <div className="relative z-[1] flex min-h-0 flex-1 flex-col overflow-y-auto p-4 sm:p-5">
           {children}
         </div>
         {footer ? (

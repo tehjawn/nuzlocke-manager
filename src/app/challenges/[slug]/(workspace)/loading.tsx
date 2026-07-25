@@ -4,9 +4,9 @@ export default function SeasonWorkspaceLoading() {
       <div className="h-8 w-40 rounded-lg bg-frame/15" />
       <div className="h-4 w-2/3 max-w-md rounded-lg bg-frame/10" />
       <div className="space-y-3 pt-2">
-        <div className="h-36 rounded-lg border border-frame/20 bg-surface" />
-        <div className="h-36 rounded-lg border border-frame/20 bg-surface" />
-        <div className="h-36 rounded-lg border border-frame/20 bg-surface" />
+        <div className="h-28 rounded-lg border border-frame/20 bg-surface sm:h-36" />
+        <div className="h-28 rounded-lg border border-frame/20 bg-surface sm:h-36" />
+        <div className="h-28 rounded-lg border border-frame/20 bg-surface sm:h-36" />
       </div>
     </div>
   );

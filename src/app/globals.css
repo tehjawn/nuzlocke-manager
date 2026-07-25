@@ -28,6 +28,13 @@
   --info-ink: #2a332a;
   --iv: #dceaf5;
   --ev: #f5e6c8;
+  /* Showdown-inspired stat hues, muted for Crest Pulse */
+  --stat-hp: #c45c5c;
+  --stat-atk: #c48452;
+  --stat-def: #c4a83a;
+  --stat-spa: #5a96c4;
+  --stat-spd: #4f9a62;
+  --stat-spe: #c46a8e;
   --danger: #d04a38;
   --rip: #e4eadc;
   --shadow: rgba(18, 22, 18, 0.12);
@@ -68,6 +75,12 @@
   --info-ink: #e8eee6;
   --iv: #1a2c38;
   --ev: #332714;
+  --stat-hp: #e07878;
+  --stat-atk: #e09a68;
+  --stat-def: #d4b84a;
+  --stat-spa: #6eb0e0;
+  --stat-spd: #62c47a;
+  --stat-spe: #e088a8;
   --danger: #ef6b55;
   --rip: #101611;
   --shadow: rgba(0, 0, 0, 0.45);
@@ -112,6 +125,12 @@
   --color-info-ink: var(--info-ink);
   --color-iv: var(--iv);
   --color-ev: var(--ev);
+  --color-stat-hp: var(--stat-hp);
+  --color-stat-atk: var(--stat-atk);
+  --color-stat-def: var(--stat-def);
+  --color-stat-spa: var(--stat-spa);
+  --color-stat-spd: var(--stat-spd);
+  --color-stat-spe: var(--stat-spe);
   --color-danger: var(--danger);
   --color-rip: var(--rip);
   --font-sans: var(--font-body);
@@ -300,6 +319,89 @@ button:disabled,
   --gba-fill: var(--rip);
 }
 
+/* “Your” trainer on the league board — soft revolving rainbow edge */
+@property --you-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.trainer-you-ring {
+  --you-angle: 0deg;
+  position: relative;
+  border-radius: calc(var(--radius) + 2px);
+  padding: 2px;
+  background: conic-gradient(
+    from var(--you-angle),
+    color-mix(in srgb, #ef6b6b 70%, transparent),
+    color-mix(in srgb, #e0b04a 65%, transparent),
+    color-mix(in srgb, #6bcf8a 65%, transparent),
+    color-mix(in srgb, #5eb4e8 70%, transparent),
+    color-mix(in srgb, #c48ad4 65%, transparent),
+    color-mix(in srgb, #ef6b6b 70%, transparent)
+  );
+  animation:
+    trainer-you-revolve 7s linear infinite,
+    trainer-you-rgb-glow 4.5s ease-in-out infinite;
+}
+
+.trainer-you-ring > .gba-frame {
+  border-color: color-mix(in srgb, var(--frame) 70%, transparent);
+}
+
+@keyframes trainer-you-revolve {
+  to {
+    --you-angle: 360deg;
+  }
+}
+
+/* Persistent soft RGB pulse (same palette as Import save, always on). */
+@keyframes trainer-you-rgb-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--frame) 35%, transparent),
+      0 0 10px 1px color-mix(in srgb, #ef6b6b 32%, transparent);
+  }
+  20% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--frame) 35%, transparent),
+      0 0 16px 3px color-mix(in srgb, #e0b04a 36%, transparent);
+  }
+  40% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--frame) 35%, transparent),
+      0 0 18px 3px color-mix(in srgb, #6bcf8a 38%, transparent);
+  }
+  60% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--frame) 35%, transparent),
+      0 0 16px 3px color-mix(in srgb, #5eb4e8 40%, transparent);
+  }
+  80% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--frame) 35%, transparent),
+      0 0 14px 2px color-mix(in srgb, #c48ad4 34%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trainer-you-ring {
+    animation: none;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, #ef6b6b 45%, var(--frame)),
+      color-mix(in srgb, #e0b04a 40%, var(--frame)),
+      color-mix(in srgb, #6bcf8a 40%, var(--frame)),
+      color-mix(in srgb, #5eb4e8 45%, var(--frame)),
+      color-mix(in srgb, #c48ad4 40%, var(--frame))
+    );
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--frame) 35%, transparent),
+      0 0 12px 2px color-mix(in srgb, #5eb4e8 28%, transparent);
+  }
+}
+
 .gba-frame-menu::before,
 .gba-frame::before {
   content: none;
@@ -409,12 +511,160 @@ button:disabled,
   color: var(--ink);
 }
 
+/* Import save — occasional soft RGB glow + hover shine */
+.cta-import-save {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--frame);
+  animation: cta-import-rgb-glow 9s ease-in-out infinite;
+}
+
+.cta-import-save > * {
+  position: relative;
+  z-index: 1;
+}
+
+.cta-import-save::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    color-mix(in srgb, #fff 42%, transparent) 50%,
+    transparent 65%
+  );
+  transform: translateX(-140%);
+  opacity: 0;
+}
+
+.cta-import-save:hover::after {
+  opacity: 1;
+  animation: cta-import-shine 0.75s ease-out;
+}
+
+@keyframes cta-import-rgb-glow {
+  0%,
+  68%,
+  100% {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 0 0 transparent;
+  }
+  74% {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 14px 2px color-mix(in srgb, #ef6b6b 40%, transparent);
+  }
+  80% {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 16px 3px color-mix(in srgb, #6bcf8a 38%, transparent);
+  }
+  86% {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 16px 3px color-mix(in srgb, #5eb4e8 40%, transparent);
+  }
+  92% {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 12px 2px color-mix(in srgb, #c48ad4 32%, transparent);
+  }
+}
+
+@keyframes cta-import-shine {
+  from {
+    transform: translateX(-140%);
+  }
+  to {
+    transform: translateX(140%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pressable,
   .pressable:hover,
   .pressable:active {
     transition: none;
     transform: none;
+  }
+
+  .cta-import-save {
+    animation: none;
+  }
+
+  .cta-import-save:hover::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* App Router navigation — top progress (instant click feedback) */
+.nav-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 9999;
+  height: 3px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.nav-progress.is-visible {
+  opacity: 1;
+}
+
+.nav-progress-bar {
+  height: 100%;
+  width: 0;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--interactive) 55%,
+    var(--accent-2) 100%
+  );
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.nav-progress.is-visible:not(.is-done) .nav-progress-bar {
+  animation: nav-progress-indeterminate 2.2s ease-out forwards;
+}
+
+.nav-progress.is-done .nav-progress-bar {
+  width: 100%;
+  animation: none;
+  transition: width 180ms ease-out;
+}
+
+@keyframes nav-progress-indeterminate {
+  0% {
+    width: 0%;
+  }
+  15% {
+    width: 28%;
+  }
+  100% {
+    width: 82%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress {
+    transition: none;
+  }
+
+  .nav-progress.is-visible:not(.is-done) .nav-progress-bar {
+    animation: none;
+    width: 55%;
+  }
+
+  .nav-progress.is-done .nav-progress-bar {
+    transition: none;
   }
 }
 
@@ -427,6 +677,20 @@ button:disabled,
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface-2) 94%, var(--accent-2));
   box-shadow: inset 0 1px 2px color-mix(in srgb, var(--shadow) 60%, transparent);
+}
+
+/* Battle / IV / EV stat meter track (Showdown-style rows) */
+.stat-meter-track {
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--frame) 35%, transparent);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--shadow) 35%, transparent);
+}
+
+.stat-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 280ms ease;
 }
 
 /* Read-only value chip */

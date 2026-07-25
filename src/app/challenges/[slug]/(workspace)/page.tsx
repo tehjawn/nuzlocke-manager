@@ -30,6 +30,8 @@ export default async function LeagueBoardPage({ params }: PageProps) {
   const trainers = [...challenge.trainers].sort(
     (a, b) => a.sortOrder - b.sortOrder,
   );
+  const myTrainerId =
+    challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
 
   return (
     <>
@@ -38,7 +40,11 @@ export default async function LeagueBoardPage({ params }: PageProps) {
         <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
       </div>
 
-      <TrainersSection challenge={challenge} trainers={trainers} />
+      <TrainersSection
+        challenge={challenge}
+        trainers={trainers}
+        myTrainerId={myTrainerId}
+      />
     </>
   );
 }

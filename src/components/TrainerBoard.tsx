@@ -34,9 +34,12 @@ import type {
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
+import { CTA_PRIMARY, CTA_SECONDARY } from "@/lib/cta";
 import { isEmptySpread } from "@/lib/stats";
 
 type TrainerBoardProps = {
+  leagueBoardHref: string;
+  leagueBoardLabel: string;
   joinHref: string;
   /** When set, demo boards point signed-in players at their own board instead of login. */
   myBoardHref?: string | null;
@@ -63,6 +66,37 @@ function PencilIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
       />
       <path
         d="M10 3 13 6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ImportSaveIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M8 2.5v7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.5 7 8 9.5 10.5 7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3 11.5v1a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 12.5v-1"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
@@ -102,6 +136,8 @@ function HeaderButton({
 }
 
 export function TrainerBoard({
+  leagueBoardHref,
+  leagueBoardLabel,
   joinHref,
   myBoardHref = null,
   trainer,
@@ -314,6 +350,24 @@ export function TrainerBoard({
   return (
     <div className={`space-y-4 ${canEdit ? "pb-20 sm:pb-0" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href={leagueBoardHref} className={CTA_PRIMARY}>
+          <span aria-hidden>←</span>
+          {leagueBoardLabel}
+        </Link>
+        {canEdit ? (
+          <button
+            type="button"
+            data-tour="import-save"
+            className={`${CTA_SECONDARY} cta-import-save`}
+            onClick={() => setSaveImportOpen(true)}
+          >
+            <ImportSaveIcon />
+            <span>Import save</span>
+          </button>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
           {canEdit
             ? "Your board — profile saves explicitly; party and badges save as you go."
@@ -416,7 +470,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="inline-flex items-center rounded-lg border border-frame bg-danger px-2.5 py-1.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
+                      className="inline-flex h-8 items-center rounded-lg border border-frame bg-danger px-2.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
                       onClick={useReviveToken}
                     >
                       Use revive
@@ -425,7 +479,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="inline-flex items-center rounded-lg border border-frame bg-surface px-2.5 py-1.5 font-display text-[11px] font-semibold tracking-tight disabled:opacity-60"
+                      className="inline-flex h-8 items-center rounded-lg border border-frame bg-surface px-2.5 text-[11px] font-semibold tracking-tight disabled:opacity-60"
                       onClick={resetReviveToken}
                     >
                       GM: reset revive
@@ -461,7 +515,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="inline-flex items-center rounded-lg border border-frame bg-danger px-2.5 py-1.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
+                            className="inline-flex h-8 items-center rounded-lg border border-frame bg-danger px-2.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
                             onClick={useReviveToken}
                           >
                             Use revive
@@ -470,7 +524,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="inline-flex items-center rounded-lg border border-frame bg-surface px-2.5 py-1.5 font-display text-[11px] font-semibold tracking-tight disabled:opacity-60"
+                            className="inline-flex h-8 items-center rounded-lg border border-frame bg-surface px-2.5 text-[11px] font-semibold tracking-tight disabled:opacity-60"
                             onClick={resetReviveToken}
                           >
                             GM: reset
@@ -525,8 +579,8 @@ export function TrainerBoard({
                     <p className="mt-3 text-sm text-muted">
                       Your board is ready — edit your profile, then use{" "}
                       <span className="font-semibold text-ink">Import save</span>{" "}
-                      under Main Squad once you have a file from Afterplay. You
-                      can also tap party slots and badges by hand.
+                      at the top once you have a file from Afterplay. You can
+                      also tap party slots and badges by hand.
                     </p>
                   ) : null}
                 </div>
@@ -541,33 +595,13 @@ export function TrainerBoard({
                   <p className="text-xs text-muted">
                     Tap a slot to add or edit.
                   </p>
-                  <div
-                    data-tour="pokemon-actions"
-                    className="flex flex-wrap gap-2"
+                  <button
+                    type="button"
+                    className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold tracking-tight text-[var(--on-accent)]"
+                    onClick={() => openAddPokemon("MAIN")}
                   >
-                    <button
-                      type="button"
-                      className={`pressable rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight ${
-                        trainer.pokemon.length === 0
-                          ? "bg-accent text-[var(--on-accent)]"
-                          : "border border-frame bg-surface"
-                      }`}
-                      onClick={() => setSaveImportOpen(true)}
-                    >
-                      Import save
-                    </button>
-                    <button
-                      type="button"
-                      className={`pressable rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight ${
-                        trainer.pokemon.length === 0
-                          ? "border border-frame bg-surface"
-                          : "bg-accent text-[var(--on-accent)]"
-                      }`}
-                      onClick={() => openAddPokemon("MAIN")}
-                    >
-                      + Add
-                    </button>
-                  </div>
+                    + Add
+                  </button>
                 </div>
                 <PartyStrip
                   pokemon={main}

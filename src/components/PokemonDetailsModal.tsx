@@ -7,7 +7,11 @@ import { TypeBadge } from "@/components/TypeBadge";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
-import { calcBattleStats, isEmptySpread } from "@/lib/stats";
+import {
+  calcBattleStats,
+  calcMaxBattleStats,
+  isEmptySpread,
+} from "@/lib/stats";
 
 type PokemonDetailsModalProps = {
   open: boolean;
@@ -52,6 +56,10 @@ export function PokemonDetailsModal({
     ivs: pokemon.ivs,
     evs: pokemon.evs,
     nature: pokemon.nature,
+  });
+  const battleMax = calcMaxBattleStats({
+    pokedexId: pokemon.pokedexId,
+    level: pokemon.level,
   });
   const moves = pokemon.moves.map(resolveMoveName).filter(Boolean);
   const ivs = pokemon.ivs;
@@ -120,10 +128,9 @@ export function PokemonDetailsModal({
                 Battle stats
               </p>
               <p className="mb-2 text-[11px] leading-snug text-muted">
-                Calculated from base stats, IVs, EVs, level, and nature — not
-                IV + EV.
+                Value vs species max at this level.
               </p>
-              <StatGrid spread={battle} />
+              <StatGrid spread={battle} maxSpread={battleMax} showMax />
             </div>
           ) : null}
 
@@ -132,7 +139,7 @@ export function PokemonDetailsModal({
               <p className="mb-2 text-xs font-semibold tracking-tight text-muted">
                 IVs
               </p>
-              <StatGrid spread={ivs} tone="iv" />
+              <StatGrid spread={ivs} tone="iv" showMax />
             </div>
           ) : null}
 
@@ -141,7 +148,7 @@ export function PokemonDetailsModal({
               <p className="mb-2 text-xs font-semibold tracking-tight text-muted">
                 EVs
               </p>
-              <StatGrid spread={evs} tone="ev" />
+              <StatGrid spread={evs} tone="ev" showMax />
             </div>
           ) : null}
 
