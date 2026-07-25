@@ -4,6 +4,7 @@ import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { TrainerBoard } from "@/components/TrainerBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
+import { SeasonJumpRegistrar } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
 import { displayName } from "@/lib/trainer-display";
@@ -75,12 +76,19 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     ? `/challenges/${challenge.slug}/me`
     : null;
 
+  const showGm = Boolean(access?.isGm);
+
   return (
     <div className="flex flex-1 flex-col">
+      <SeasonJumpRegistrar
+        challenge={challenge}
+        showGm={showGm}
+        myTrainerId={myTrainerId}
+      />
       <SiteHeader
         challengeSlug={challenge.slug}
         challengeYear={challenge.year}
-        showGm={Boolean(access?.isGm)}
+        showGm={showGm}
         myTrainerId={myTrainerId}
       />
       <main
@@ -97,7 +105,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           trainer={trainer}
           badges={challenge.badges}
           canEdit={canEdit}
-          isGm={Boolean(access?.isGm)}
+          isGm={showGm}
           isDemo={isDemo}
         />
       </main>

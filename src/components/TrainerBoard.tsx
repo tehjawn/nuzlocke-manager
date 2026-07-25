@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
@@ -224,6 +225,11 @@ export function TrainerBoard({
     null,
   );
   const [saveImportOpen, setSaveImportOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const jumpPokemonId = searchParams.get("pokemon");
+  const [openedJumpPokemonId, setOpenedJumpPokemonId] = useState<string | null>(
+    null,
+  );
 
   if (serverStamp !== seenStamp) {
     setSeenStamp(serverStamp);
@@ -388,6 +394,24 @@ export function TrainerBoard({
       return;
     }
     setDetailsPokemon(mon);
+  }
+
+  // League Jump deep-link: /trainers/:id?pokemon=:pokemonId opens that mon.
+  if (!jumpPokemonId && openedJumpPokemonId) {
+    setOpenedJumpPokemonId(null);
+  } else if (jumpPokemonId && jumpPokemonId !== openedJumpPokemonId) {
+    const mon = trainer.pokemon.find((p) => p.id === jumpPokemonId) ?? null;
+    setOpenedJumpPokemonId(jumpPokemonId);
+    if (mon) {
+      if (canEdit) {
+        setPokemonInspect({
+          mode: "view",
+          form: pokemonEntryToForm(mon),
+        });
+      } else {
+        setDetailsPokemon(mon);
+      }
+    }
   }
 
   const mobileSaveStatus =
