@@ -125,10 +125,19 @@ export function isAllowedCustomAvatarUrl(url: string): boolean {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;
     const host = parsed.hostname.toLowerCase();
-    return (
-      host.endsWith(".public.blob.vercel-storage.com") ||
-      host === "public.blob.vercel-storage.com"
-    );
+    return host.endsWith(".public.blob.vercel-storage.com");
+  } catch {
+    return false;
+  }
+}
+
+/** True when the blob path was uploaded under this user's avatar folder. */
+export function isOwnedCustomAvatarUrl(url: string, userId: string): boolean {
+  if (!userId || !isAllowedCustomAvatarUrl(url)) return false;
+  try {
+    const path = decodeURIComponent(new URL(url).pathname);
+    const marker = `/avatars/${userId}/`;
+    return path.includes(marker) || path.startsWith(marker.slice(1));
   } catch {
     return false;
   }

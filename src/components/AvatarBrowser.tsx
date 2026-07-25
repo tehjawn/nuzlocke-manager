@@ -46,22 +46,22 @@ function AvatarBrowserInner({
     parsed.kind === "pokemon" ? "pokemon" : "trainer",
   );
 
-  const selectedTrainer =
-    parsed.kind === "trainer" ? parsed.key : trainerAvatarKey("brendan");
+  // Don't invent a trainer draft for custom/pokemon values — Use stays disabled
+  // until the user actually picks a sprite (avoids overwriting custom uploads).
+  const selectedTrainer = parsed.kind === "trainer" ? parsed.key : null;
   const selectedPokedexId =
     parsed.kind === "pokemon" ? parsed.pokedexId : null;
 
   return (
     <Modal open title="Browse avatars" onClose={onClose} wide>
       <div
-        role="tablist"
+        role="group"
         aria-label="Avatar catalog"
         className="mb-4 flex gap-2"
       >
         <button
           type="button"
-          role="tab"
-          aria-selected={tab === "trainer"}
+          aria-pressed={tab === "trainer"}
           className={`pressable rounded-lg px-3 py-2 font-display text-xs font-semibold tracking-tight ${
             tab === "trainer"
               ? "bg-accent text-[var(--on-accent)]"
@@ -73,8 +73,7 @@ function AvatarBrowserInner({
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={tab === "pokemon"}
+          aria-pressed={tab === "pokemon"}
           className={`pressable rounded-lg px-3 py-2 font-display text-xs font-semibold tracking-tight ${
             tab === "pokemon"
               ? "bg-accent text-[var(--on-accent)]"

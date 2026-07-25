@@ -21,6 +21,7 @@ import { sanitizeHandle } from "@/lib/handles";
 import {
   CUSTOM_AVATAR_PREFIX,
   customAvatarKey,
+  isOwnedCustomAvatarUrl,
   parseAvatarKey,
 } from "@/lib/sprites";
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
@@ -337,6 +338,12 @@ export async function updateTrainerBoardAction(input: {
       if (raw.toLowerCase().startsWith(CUSTOM_AVATAR_PREFIX)) {
         const avatar = parseAvatarKey(raw);
         if (avatar.kind !== "custom") {
+          return { ok: false, error: "Invalid custom avatar" };
+        }
+        const current = parseAvatarKey(trainer.avatarSpriteKey);
+        const alreadySaved =
+          current.kind === "custom" && current.url === avatar.url;
+        if (!alreadySaved && !isOwnedCustomAvatarUrl(avatar.url, userId)) {
           return { ok: false, error: "Invalid custom avatar" };
         }
         data.avatarSpriteKey = customAvatarKey(avatar.url);

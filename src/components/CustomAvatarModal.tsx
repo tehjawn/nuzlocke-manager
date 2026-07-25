@@ -18,6 +18,7 @@ export function CustomAvatarModal({
   onSelect,
 }: CustomAvatarModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,8 +26,15 @@ export function CustomAvatarModal({
 
   if (!open) return null;
 
+  function revokePreview() {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+  }
+
   function resetLocal() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    revokePreview();
     setPreviewUrl(null);
     setPendingFile(null);
     setError(null);
@@ -44,12 +52,14 @@ export function CustomAvatarModal({
     if (!file) return;
     try {
       const prepared = await prepareAvatarFile(file);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      revokePreview();
+      const next = URL.createObjectURL(prepared);
+      previewUrlRef.current = next;
       setPendingFile(prepared);
-      setPreviewUrl(URL.createObjectURL(prepared));
+      setPreviewUrl(next);
     } catch (err) {
       setPendingFile(null);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      revokePreview();
       setPreviewUrl(null);
       setError(err instanceof Error ? err.message : "Could not read image");
     }

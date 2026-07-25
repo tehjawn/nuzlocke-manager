@@ -39,7 +39,8 @@ const PREVIEW_GAP = 12;
 
 type TrainerBrowserProps = {
   open: boolean;
-  selectedKey: string;
+  /** When null, no sprite is preselected (Use stays disabled until a pick). */
+  selectedKey: string | null;
   onClose: () => void;
   onSelect: (key: string) => void;
   /** Render panel content only (parent owns the modal chrome). */
@@ -57,7 +58,7 @@ export function TrainerSpriteBrowser({
   if (!open) return null;
   return (
     <TrainerSpriteBrowserInner
-      key={selectedKey}
+      key={selectedKey ?? "none"}
       selectedKey={selectedKey}
       onClose={onClose}
       onSelect={onSelect}
@@ -79,20 +80,26 @@ function TrainerSpriteBrowserInner({
     useInfiniteReveal(allResults, deferred);
   const preview = useSpriteHoverPreview(scrollRef);
   const coarse = useCoarsePointer();
-  const [draft, setDraft] = useState(selectedKey);
+  const [draft, setDraft] = useState<string | null>(selectedKey);
 
   const footer = (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-2 text-sm">
-        <Image
-          src={trainerSpriteUrl(draft)}
-          alt=""
-          width={48}
-          height={48}
-          className="pixelated h-12 w-12 object-contain"
-          unoptimized
-        />
-        <span className="font-bold">{formatTrainerSpriteLabel(draft)}</span>
+        {draft ? (
+          <>
+            <Image
+              src={trainerSpriteUrl(draft)}
+              alt=""
+              width={48}
+              height={48}
+              className="pixelated h-12 w-12 object-contain"
+              unoptimized
+            />
+            <span className="font-bold">{formatTrainerSpriteLabel(draft)}</span>
+          </>
+        ) : (
+          <span className="text-muted">Pick a trainer sprite</span>
+        )}
       </div>
       <div className="flex gap-2">
         <button
@@ -104,8 +111,10 @@ function TrainerSpriteBrowserInner({
         </button>
         <button
           type="button"
-          className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)]"
+          disabled={!draft}
+          className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
           onClick={() => {
+            if (!draft) return;
             onSelect(draft);
             onClose();
           }}
