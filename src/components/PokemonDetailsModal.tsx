@@ -2,54 +2,18 @@
 
 import Image from "next/image";
 import { Modal } from "@/components/Modal";
+import { StatGrid } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
-import {
-  calcBattleStats,
-  isEmptySpread,
-  STAT_KEYS,
-  STAT_LABELS,
-  type StatSpread,
-} from "@/lib/stats";
+import { calcBattleStats, isEmptySpread } from "@/lib/stats";
 
 type PokemonDetailsModalProps = {
   open: boolean;
   pokemon: PokemonEntry | null;
   onClose: () => void;
 };
-
-function StatGrid({
-  spread,
-  tone = "neutral",
-}: {
-  spread: StatSpread;
-  tone?: "neutral" | "iv" | "ev";
-}) {
-  const toneClass =
-    tone === "iv"
-      ? "border-interactive/25 bg-iv"
-      : tone === "ev"
-        ? "border-accent-2/30 bg-ev"
-        : "border-frame/40 bg-surface-2";
-
-  return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-      {STAT_KEYS.map((key) => (
-        <div
-          key={key}
-          className={`rounded-lg border px-2 py-1.5 text-center ${toneClass}`}
-        >
-          <p className="text-[10px] font-semibold tracking-tight text-muted">
-            {STAT_LABELS[key]}
-          </p>
-          <p className="font-mono text-sm font-bold">{spread[key]}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function MetaRow({
   label,
