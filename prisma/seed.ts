@@ -103,6 +103,7 @@ async function main() {
         realName: trainer.realName,
         avatarSpriteKey: trainer.avatarSpriteKey,
         statusText: trainer.statusText,
+        statusEmoji: trainer.statusEmoji,
         reviveUsed: trainer.reviveUsed,
         mainSquadLocked: trainer.mainSquadLocked,
         sortOrder: trainer.sortOrder,

@@ -150,6 +150,7 @@ const ashKetchum = trainer({
   avatarSpriteKey: "red",
   statusText:
     "Champion clear — Main Squad locked for the tournament. This is the board to beat.",
+  statusEmoji: "👑",
   reviveUsed: true,
   mainSquadLocked: true,
   sortOrder: 0,

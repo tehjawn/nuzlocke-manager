@@ -36,6 +36,16 @@ export const PokemonEntryInputSchema = z.object({
 
 export const TrainerBoardUpdateSchema = z.object({
   statusText: z.string().max(500).optional().nullable(),
+  statusEmoji: z
+    .string()
+    .max(16)
+    .optional()
+    .nullable()
+    .transform((v) => {
+      if (v == null) return v;
+      const trimmed = v.trim();
+      return trimmed === "" ? null : trimmed;
+    }),
   avatarSpriteKey: z.string().max(64).optional().nullable(),
   reviveUsed: z.boolean().optional(),
   handle: z.string().min(1).max(32).optional(),

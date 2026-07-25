@@ -1,7 +1,8 @@
 import Image from "next/image";
 import type { Metadata } from "next";
 import { Frame } from "@/components/Frame";
-import { SiteHeader } from "@/components/SiteHeader";
+import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
+import { CTA_PRIMARY, CTA_SECONDARY } from "@/lib/cta";
 
 export const metadata: Metadata = {
   title: "About",
@@ -18,7 +19,9 @@ export default function AboutPage() {
   return (
     <div className="flex flex-1 flex-col">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
+      <main
+        className={`mx-auto w-full flex-1 px-4 py-8 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
+      >
         <h1 className="text-3xl font-bold tracking-tight">About</h1>
         <p className="mt-2 text-muted">
           The project, the challenge format, and the crew behind the season.
@@ -48,7 +51,7 @@ export default function AboutPage() {
               href={PROJECT_GITHUB}
               target="_blank"
               rel="noopener noreferrer"
-              className="pressable mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-[var(--on-accent)]"
+              className={`${CTA_PRIMARY} mt-4`}
             >
               View on GitHub →
             </a>
@@ -91,7 +94,7 @@ export default function AboutPage() {
                   href={TRASH_PACK_YT}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="pressable mt-4 inline-block rounded-lg border-frame bg-surface px-4 py-2 text-sm font-semibold hover:border-interactive/50"
+                  className={`${CTA_SECONDARY} mt-4`}
                 >
                   Trash Pack on YouTube →
                 </a>

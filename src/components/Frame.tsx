@@ -6,6 +6,8 @@ type FrameProps = {
   children: ReactNode;
   className?: string;
   tone?: "default" | "rip";
+  /** Tighter padding for compact cards (e.g. trainers grid). */
+  dense?: boolean;
 };
 
 export function Frame({
@@ -14,6 +16,7 @@ export function Frame({
   children,
   className = "",
   tone = "default",
+  dense = false,
 }: FrameProps) {
   return (
     <section
@@ -29,7 +32,11 @@ export function Frame({
           ) : null}
         </header>
       ) : null}
-      <div className="relative z-[1] p-4 sm:p-5">{children}</div>
+      <div
+        className={`relative z-[1] ${dense ? "p-2.5 sm:p-3" : "p-4 sm:p-5"}`}
+      >
+        {children}
+      </div>
     </section>
   );
 }

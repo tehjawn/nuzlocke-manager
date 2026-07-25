@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useOptimistic, useState, useTransition } from "react";
 import EmojiPicker, {
   EmojiStyle,
@@ -15,6 +16,8 @@ import type {
   ActivityItem,
   ActivityReactionSummary,
 } from "@/lib/challenge-types";
+
+const APP_MARK = "/nuzlocke-mark.png";
 
 const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
 const POLL_MS = 12_000;
@@ -197,9 +200,36 @@ function ActivityRow({
     react(data.emoji);
   }
 
+  const avatarSrc = item.avatarSrc ?? APP_MARK;
+  const avatarLabel = item.trainerHandle
+    ? `${item.trainerHandle}'s avatar`
+    : "Nuzlocke Manager";
+  const isSpriteAvatar = Boolean(
+    item.avatarSrc &&
+      !item.avatarSrc.startsWith("/") &&
+      !item.avatarSrc.includes("discord"),
+  );
+
   return (
     <li className="group relative border-b border-frame/20 pb-3 last:border-0">
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2.5">
+        <span
+          className="relative mt-0.5 h-8 w-8 shrink-0 overflow-hidden rounded-full border border-frame bg-surface-2"
+          title={avatarLabel}
+        >
+          <Image
+            src={avatarSrc}
+            alt=""
+            width={32}
+            height={32}
+            className={
+              isSpriteAvatar
+                ? "pixelated h-full w-full object-contain p-0.5"
+                : "h-full w-full object-cover"
+            }
+            unoptimized
+          />
+        </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm leading-snug">{item.message}</p>
           <p className="mt-1 text-[11px] tracking-tight text-muted">
@@ -286,7 +316,7 @@ function ActivityRow({
                     <div className="emoji-picker-shell mt-1.5 overflow-hidden rounded-lg border border-frame/30">
                       <EmojiPicker
                         onEmojiClick={onEmojiClick}
-                        theme={Theme.LIGHT}
+                        theme={Theme.AUTO}
                         emojiStyle={EmojiStyle.NATIVE}
                         width="100%"
                         height={360}

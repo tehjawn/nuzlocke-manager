@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
 import { getChallenge } from "@/lib/challenges";
+import { CTA_PRIMARY } from "@/lib/cta";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,7 @@ export default async function SetupPage({ params }: PageProps) {
               href={ROM_DOWNLOAD_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="pressable mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-[var(--on-accent)]"
+              className={`${CTA_PRIMARY} mt-4`}
             >
               Download ROM →
             </a>

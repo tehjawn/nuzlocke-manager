@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AccountForm } from "@/components/AccountForm";
 import { Frame } from "@/components/Frame";
-import { SiteHeader } from "@/components/SiteHeader";
+import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 
 export const metadata: Metadata = {
@@ -36,27 +36,29 @@ export default async function AccountPage() {
   return (
     <div className="flex flex-1 flex-col">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-10 sm:px-6">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Account
-        </h1>
-        <p className="mt-2 text-muted">
-          Edit how you appear across challenges.
-        </p>
-        <div className="mt-8">
-          <Frame title="Profile">
-            {isDatabaseConfigured() ? (
-              <AccountForm
-                displayName={displayName}
-                bio={bio}
-                image={image}
-              />
-            ) : (
-              <p className="text-sm text-muted">
-                Database required to save account changes.
-              </p>
-            )}
-          </Frame>
+      <main
+        className={`mx-auto w-full flex-1 px-4 py-10 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
+      >
+        <div className="max-w-lg">
+          <h1 className="text-3xl font-bold tracking-tight">Account</h1>
+          <p className="mt-2 text-muted">
+            Edit how you appear across challenges.
+          </p>
+          <div className="mt-8">
+            <Frame title="Profile">
+              {isDatabaseConfigured() ? (
+                <AccountForm
+                  displayName={displayName}
+                  bio={bio}
+                  image={image}
+                />
+              ) : (
+                <p className="text-sm text-muted">
+                  Database required to save account changes.
+                </p>
+              )}
+            </Frame>
+          </div>
         </div>
       </main>
     </div>

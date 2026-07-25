@@ -11,6 +11,12 @@ type BadgeCaseProps = {
   compact?: boolean;
   /** League-card density: count + icon strip (no labels). */
   strip?: boolean;
+  /** With strip: only show earned badge icons (no count / unearned slots). */
+  earnedOnly?: boolean;
+  /** With earnedOnly strip: lay icons out in N columns. */
+  earnedColumns?: 2 | 3;
+  /** Smaller badge icons + tighter gaps (grid card left rail). */
+  dense?: boolean;
   /** Full layout: two columns from sm up, or a single column for sidebar. */
   layout?: "grid" | "column";
   /** When set, badges become toggle buttons (edit mode). */
@@ -23,6 +29,9 @@ export function BadgeCase({
   earnedKeys,
   compact = false,
   strip = false,
+  earnedOnly = false,
+  earnedColumns,
+  dense = false,
   layout = "grid",
   onToggle,
   pending = false,
@@ -30,8 +39,66 @@ export function BadgeCase({
   const earned = new Set(earnedKeys);
   const interactive = Boolean(onToggle);
   const earnedCount = badges.filter((b) => earned.has(b.key)).length;
+  const stripBadges = earnedOnly
+    ? badges.filter((b) => earned.has(b.key))
+    : badges;
 
   if (strip) {
+    if (earnedOnly) {
+      if (stripBadges.length === 0) {
+        return (
+          <p
+            className={`font-semibold tracking-tight text-muted ${
+              dense ? "text-[10px] leading-tight" : "text-[11px]"
+            }`}
+          >
+            No badges yet
+          </p>
+        );
+      }
+      const iconPx = dense ? 16 : 22;
+      return (
+        <ul
+          className={
+            earnedColumns === 2
+              ? `grid grid-cols-2 ${dense ? "gap-0.5" : "gap-1"}`
+              : earnedColumns === 3
+                ? `grid grid-cols-3 ${dense ? "gap-0.5" : "gap-1"}`
+                : `flex flex-wrap ${dense ? "gap-px" : "gap-0.5"}`
+          }
+          aria-label={`${stripBadges.length} badges earned`}
+        >
+          {stripBadges.map((badge) => {
+            const meta = getEmeraldBadgeMeta(badge.key);
+            const title = `${meta?.badgeName ?? badge.label}${
+              badge.leaderName ? ` — ${badge.leaderName}` : ""
+            }`;
+            return (
+              <li key={badge.key} title={title} className="flex justify-center">
+                {meta ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={meta.badgeSprite}
+                    alt=""
+                    width={iconPx}
+                    height={iconPx}
+                    className="object-contain"
+                    style={{ width: iconPx, height: iconPx }}
+                  />
+                ) : (
+                  <span
+                    className="inline-block rounded border border-frame bg-accent-2/40"
+                    style={{ width: iconPx, height: iconPx }}
+                  />
+                )}
+                <span className="sr-only">{title}</span>
+              </li>
+            );
+          })}
+        </ul>
+      );
+    }
+
     return (
       <div className="flex flex-wrap items-center gap-2">
         <p className="font-display text-xs font-semibold tracking-tight text-muted">

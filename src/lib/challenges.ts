@@ -6,7 +6,7 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
-import { mapDbChallenge } from "@/lib/mappers";
+import { mapDbChallenge, resolveActivityAvatarSrc } from "@/lib/mappers";
 
 const challengeInclude = {
   badges: true,
@@ -22,7 +22,8 @@ const challengeInclude = {
     orderBy: { createdAt: "desc" as const },
     take: 20,
     include: {
-      trainer: { select: { handle: true } },
+      trainer: { select: { handle: true, avatarSpriteKey: true } },
+      actor: { select: { image: true } },
       reactions: { select: { emoji: true, userId: true } },
     },
   },
@@ -115,7 +116,8 @@ export async function listChallengeActivities(
         orderBy: { createdAt: "desc" },
         take: 20,
         include: {
-          trainer: { select: { handle: true } },
+          trainer: { select: { handle: true, avatarSpriteKey: true } },
+          actor: { select: { image: true } },
           reactions: { select: { emoji: true, userId: true } },
         },
       });
@@ -142,6 +144,10 @@ export async function listChallengeActivities(
           message: a.message,
           createdAt: a.createdAt.toISOString(),
           trainerHandle: a.trainer?.handle ?? null,
+          avatarSrc: resolveActivityAvatarSrc({
+            trainerAvatarSpriteKey: a.trainer?.avatarSpriteKey,
+            actorImage: a.actor?.image,
+          }),
           reactions: [...counts.entries()].map(([emoji, v]) => ({
             emoji,
             count: v.count,

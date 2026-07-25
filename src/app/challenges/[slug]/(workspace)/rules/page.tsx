@@ -1,54 +1,55 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { Frame } from "@/components/Frame";
+import { RulesFaqView } from "@/components/RulesFaqView";
 import { getChallenge } from "@/lib/challenges";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
 };
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  const { tab } = await searchParams;
   const challenge = await getChallenge(slug);
-  return { title: challenge ? `Rules · ${challenge.name}` : "Rules" };
+  if (!challenge) return { title: "Rules / FAQ" };
+  return {
+    title:
+      tab === "faq"
+        ? `FAQ · ${challenge.name}`
+        : `Rules · ${challenge.name}`,
+  };
 }
 
-export default async function RulesPage({ params }: PageProps) {
+export default async function RulesPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const { tab } = await searchParams;
   const session = await auth();
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
 
-  return (
-    <>
-      <header className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight">
-          Rules
-        </h2>
-        <p className="mt-2 text-muted">
-          How {challenge.name} works. Core Nuzlocke rules first, house rules
-          after.
-        </p>
-      </header>
+  const initialTab = tab === "faq" ? "faq" : "rules";
 
-      <ol className="space-y-4">
-        {challenge.rules.map((rule) => (
-          <li key={rule.id}>
-            <Frame
-              title={`${rule.sortOrder}. ${rule.title ?? "Rule"}${rule.isCore ? " · Core" : ""}`}
-            >
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                {rule.body}
-              </p>
-            </Frame>
-          </li>
-        ))}
-      </ol>
-    </>
+  return (
+    <Suspense
+      fallback={
+        <p className="text-sm text-muted">Loading rules & FAQ…</p>
+      }
+    >
+      <RulesFaqView
+        slug={challenge.slug}
+        challengeName={challenge.name}
+        rules={challenge.rules}
+        faqs={challenge.faqs}
+        initialTab={initialTab}
+      />
+    </Suspense>
   );
 }

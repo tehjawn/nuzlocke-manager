@@ -1,9 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AuthButtons } from "@/components/AuthButtons";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
-/** Shared shell width for the site header on every page. */
-export const SITE_HEADER_MAX_CLASS = "max-w-7xl";
+/** Shared shell width for the site header and page content on every page. */
+export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
 
 type SiteHeaderProps = {
   challengeSlug?: string;
@@ -20,7 +21,7 @@ export function SiteHeader({
 }: SiteHeaderProps) {
   return (
     <header
-      className={`relative z-40 mx-auto flex w-full items-center justify-between gap-4 px-4 py-4 sm:px-6 ${SITE_HEADER_MAX_CLASS}`}
+      className={`relative z-40 mx-auto flex w-full items-center justify-between gap-4 px-4 py-4 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
     >
       <div className="min-w-0">
         <Link
@@ -82,6 +83,7 @@ export function SiteHeader({
           </>
         ) : null}
         <AuthButtons hideMyTrainer={Boolean(myTrainerId)} />
+        <ThemeToggle />
       </nav>
     </header>
   );

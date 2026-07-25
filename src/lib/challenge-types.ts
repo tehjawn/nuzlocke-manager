@@ -42,6 +42,7 @@ export type TrainerProfile = {
   realName: string | null;
   avatarSpriteKey: string;
   statusText: string | null;
+  statusEmoji: string | null;
   reviveUsed: boolean;
   mainSquadLocked: boolean;
   sortOrder: number;
@@ -79,6 +80,8 @@ export type ActivityItem = {
   message: string;
   createdAt: string;
   trainerHandle: string | null;
+  /** Player avatar URL when a trainer/actor is linked; null → app mark. */
+  avatarSrc: string | null;
   reactions: ActivityReactionSummary[];
 };
 

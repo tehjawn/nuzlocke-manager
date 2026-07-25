@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
-import { TrainerCard } from "@/components/TrainerCard";
+import { TrainersSection } from "@/components/TrainersSection";
 import { getChallenge } from "@/lib/challenges";
 
 export const dynamic = "force-dynamic";
@@ -38,26 +38,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
         <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
       </div>
 
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-xl font-bold tracking-tight">
-            This Season&apos;s Trainers
-          </h2>
-          <p className="text-xs text-muted">
-            {trainers.length} trainer{trainers.length === 1 ? " has" : "s have"}{" "}
-            joined this league!
-          </p>
-        </div>
-        <div className="grid gap-4">
-          {trainers.map((trainer) => (
-            <TrainerCard
-              key={trainer.id}
-              challenge={challenge}
-              trainer={trainer}
-            />
-          ))}
-        </div>
-      </section>
+      <TrainersSection challenge={challenge} trainers={trainers} />
     </>
   );
 }

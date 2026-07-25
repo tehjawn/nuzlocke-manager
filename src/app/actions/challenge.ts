@@ -34,9 +34,14 @@ import {
   buildChallengeCsv,
   buildChallengeExport,
 } from "@/lib/export-challenge";
+import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallenge } from "@/lib/challenges";
 import { ChallengeStatusSchema } from "@/lib/types";
-import { buildFirstRoundPairings } from "@/lib/tournament";
+import {
+  buildFirstRoundPairings,
+  buildRoundPairings,
+  roundIsComplete,
+} from "@/lib/tournament";
 
 function jsonStatOrNull(
   value: StatSpread | null | undefined,
@@ -60,7 +65,7 @@ function revalidateChallenge(slug: string, trainerId?: string) {
   revalidateBoardViews(slug, trainerId);
   revalidatePath(`/challenges/${slug}/setup`);
   revalidatePath(`/challenges/${slug}/rules`);
-  revalidatePath(`/challenges/${slug}/faq`);
+  revalidatePath(`/challenges/${slug}/tools`);
   revalidatePath(`/challenges/${slug}/gm`);
   revalidatePath(`/challenges/${slug}/join`);
   revalidatePath(`/challenges/${slug}/tournament`);
@@ -279,6 +284,7 @@ export async function claimTrainerAction(input: {
 export async function updateTrainerBoardAction(input: {
   trainerId: string;
   statusText?: string | null;
+  statusEmoji?: string | null;
   avatarSpriteKey?: string | null;
   reviveUsed?: boolean;
   handle?: string;
@@ -287,6 +293,7 @@ export async function updateTrainerBoardAction(input: {
   try {
     const parsed = TrainerBoardUpdateSchema.safeParse({
       statusText: input.statusText,
+      statusEmoji: input.statusEmoji,
       avatarSpriteKey: input.avatarSpriteKey,
       reviveUsed: input.reviveUsed,
       handle: input.handle,
@@ -302,8 +309,17 @@ export async function updateTrainerBoardAction(input: {
     const prisma = getPrisma();
     const updates = parsed.data;
 
+    if (
+      updates.statusEmoji !== undefined &&
+      updates.statusEmoji != null &&
+      !isValidStatusEmoji(updates.statusEmoji)
+    ) {
+      return { ok: false, error: "Pick a single emoji for your status" };
+    }
+
     const data: {
       statusText?: string | null;
+      statusEmoji?: string | null;
       avatarSpriteKey?: string | null;
       reviveUsed?: boolean;
       realName?: string | null;
@@ -311,6 +327,7 @@ export async function updateTrainerBoardAction(input: {
     } = {};
 
     if (updates.statusText !== undefined) data.statusText = updates.statusText;
+    if (updates.statusEmoji !== undefined) data.statusEmoji = updates.statusEmoji;
     if (updates.avatarSpriteKey !== undefined) {
       const avatar = parseAvatarKey(updates.avatarSpriteKey);
       data.avatarSpriteKey =
@@ -372,10 +389,12 @@ export async function updateTrainerBoardAction(input: {
       }
     }
 
-    if (
-      updates.statusText !== undefined &&
-      updates.statusText !== trainer.statusText
-    ) {
+    const statusChanged =
+      (updates.statusText !== undefined &&
+        updates.statusText !== trainer.statusText) ||
+      (updates.statusEmoji !== undefined &&
+        updates.statusEmoji !== trainer.statusEmoji);
+    if (statusChanged) {
       await logActivity({
         challengeId: trainer.challengeId,
         actorId: userId,
@@ -1158,15 +1177,26 @@ export async function gmSetMatchWinnerAction(input: {
       return { ok: false, error: "Winner must be one of the match trainers" };
     }
 
-    await prisma.tournamentMatch.update({
-      where: { id: match.id },
-      data: { winnerId: input.winnerId },
+    const advanceMessage = await prisma.$transaction(async (tx) => {
+      // Serialize winner writes + round advance for this bracket.
+      await tx.$executeRaw`SELECT 1 FROM "Tournament" WHERE id = ${match.tournamentId} FOR UPDATE`;
+
+      await tx.tournamentMatch.update({
+        where: { id: match.id },
+        data: { winnerId: input.winnerId },
+      });
+
+      return advanceTournamentRoundLocked(tx, match.tournamentId, match.round);
     });
 
     revalidatePath(
       `/challenges/${match.tournament.challenge.slug}/tournament`,
     );
-    return { ok: true, message: "Winner recorded" };
+    revalidateChallenge(match.tournament.challenge.slug);
+    return {
+      ok: true,
+      message: advanceMessage ?? "Winner recorded",
+    };
   } catch (e) {
     return {
       ok: false,
@@ -1175,10 +1205,87 @@ export async function gmSetMatchWinnerAction(input: {
   }
 }
 
+type TournamentTx = Parameters<
+  Parameters<ReturnType<typeof getPrisma>["$transaction"]>[0]
+>[0];
+
+/**
+ * Advance while holding a tournament row lock (caller must FOR UPDATE first).
+ * Cascades through bye-only rounds inside the same transaction.
+ */
+async function advanceTournamentRoundLocked(
+  tx: TournamentTx,
+  tournamentId: string,
+  startRound: number,
+): Promise<string | null> {
+  let round = startRound;
+  let lastSeeded: number | null = null;
+
+  for (;;) {
+    const matches = await tx.tournamentMatch.findMany({
+      where: { tournamentId },
+      orderBy: [{ round: "asc" }, { sortOrder: "asc" }],
+    });
+
+    if (!roundIsComplete(matches, round)) {
+      break;
+    }
+
+    // Already advanced past this round (idempotent under concurrent picks)
+    if (matches.some((m) => m.round > round)) {
+      break;
+    }
+
+    const winners = matches
+      .filter((m) => m.round === round && m.winnerId)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((m) => m.winnerId)
+      .filter((id): id is string => Boolean(id));
+
+    if (winners.length === 0) break;
+
+    if (winners.length === 1) {
+      await tx.tournament.update({
+        where: { id: tournamentId },
+        data: { status: "COMPLETE" },
+      });
+      return "Winner recorded — champion crowned";
+    }
+
+    const nextRound = round + 1;
+    const pairings = buildRoundPairings(winners, `R${nextRound}`);
+    await tx.tournamentMatch.createMany({
+      data: pairings.map((p, index) => ({
+        tournamentId,
+        round: nextRound,
+        sortOrder: index,
+        label: p.label,
+        trainerAId: p.trainerAId,
+        trainerBId: p.trainerBId,
+        winnerId: p.trainerAId && !p.trainerBId ? p.trainerAId : null,
+      })),
+    });
+
+    lastSeeded = nextRound;
+    round = nextRound;
+  }
+
+  if (lastSeeded == null) return null;
+  return `Winner recorded — round ${lastSeeded} seeded`;
+}
+
 function isValidReactionEmoji(emoji: string): boolean {
   const trimmed = emoji.trim();
   // Allow any single emoji / ZWJ sequence; reject blanks and junk payloads.
   if (!trimmed || trimmed.length > 32) return false;
+  if (/\s/.test(trimmed)) return false;
+  if (/[\u0000-\u001F\u007F]/.test(trimmed)) return false;
+  return true;
+}
+
+function isValidStatusEmoji(emoji: string): boolean {
+  const trimmed = emoji.trim();
+  if (!trimmed || trimmed.length > 16) return false;
   if (/\s/.test(trimmed)) return false;
   if (/[\u0000-\u001F\u007F]/.test(trimmed)) return false;
   return true;
@@ -1196,9 +1303,22 @@ export async function toggleActivityReactionAction(input: {
     const prisma = getPrisma();
     const activity = await prisma.activityEvent.findUnique({
       where: { id: input.activityId },
-      include: { challenge: { select: { slug: true } } },
+      include: {
+        challenge: { select: { slug: true, visibility: true } },
+      },
     });
     if (!activity) return { ok: false, error: "Activity not found" };
+
+    const access = await getAccessForChallenge(activity.challengeId);
+    if (
+      !canViewChallenge({
+        visibility: activity.challenge.visibility,
+        source: "database",
+        hasMembership: Boolean(access?.role),
+      })
+    ) {
+      return { ok: false, error: "Not allowed" };
+    }
 
     const existing = await prisma.activityReaction.findUnique({
       where: {
@@ -1237,5 +1357,21 @@ export async function fetchChallengeActivitiesAction(input: {
   slug: string;
 }): Promise<ActivityItem[]> {
   const session = await auth();
+  const challenge = await getChallenge(input.slug, session?.user?.id);
+  if (!challenge) return [];
+
+  const access = challenge.id
+    ? await getAccessForChallenge(challenge.id)
+    : null;
+  if (
+    !canViewChallenge({
+      visibility: challenge.visibility,
+      source: challenge.source,
+      hasMembership: Boolean(access?.role),
+    })
+  ) {
+    return [];
+  }
+
   return listChallengeActivities(input.slug, session?.user?.id);
 }

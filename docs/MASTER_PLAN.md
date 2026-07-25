@@ -2,7 +2,7 @@
 
 A multiplayer Nuzlocke **ops board** for a friend group: seasons, trainer boards, graves, badges, and Game Master tools — replacing the Trash Pack spreadsheet with a warm, Gen 3–flavored web app on Vercel.
 
-**Status (Jul 2026):** Phases 0–2 shipped. Phase 3 in progress: memorial, export, Discord webhooks, tournament stub.
+**Status (Jul 2026):** Phases 0–4 shipped. Phase 5 in progress: season ops polish (archive UX, invite wall, welcome video, tournament advance).
 
 **Reference spreadsheet:** [TrashPack Nuzlocke Challenge](https://docs.google.com/spreadsheets/d/1b8WdFyNuToOaq_MBda4lSZXGqaj36VbC)
 
@@ -169,7 +169,7 @@ Dark mode is **optional later**; default is warm light (matches Gen 3 menus bett
 
 | Role | Capabilities |
 |---|---|
-| **Guest** | Sees PUBLIC / UNLISTED seasons freely; INVITE treated as open for now *(strict guest login wall deferred)* |
+| **Guest** | Sees PUBLIC / UNLISTED seasons freely; INVITE seasons require login + membership (Phase 5 wall) |
 | **Player** | Edit own trainer board + account; read league |
 | **Game Master** | Full CRUD: season setup, rules/FAQ, roster, all boards, revive resets, Main Squad lock, invites, roles |
 | **Spectator member** (optional) | Read-only membership for friends who aren’t running |
@@ -210,14 +210,14 @@ User
 | Optional `trainerId` on `ActivityEvent` | ✅ |
 | `mainSquadLocked` on `TrainerProfile` | ✅ (manual GM toggle) |
 | `ActivityReaction` (emoji reactions on feed) | ✅ (shipped QoL; not originally planned) |
-| `Tournament` / `TournamentMatch` | Phase 3 — not before needed |
+| `Tournament` / `TournamentMatch` | ✅ stub + winner pick (Phase 3); round advance in Phase 5 |
 | Soft `EncounterClaim` | Phase 4 — only if group wants route transparency without leaving the season board |
 
 ---
 
 ## 7. Feature roadmap
 
-**Status (Jul 2026):** Phases 0–2 shipped. Next work is Phase 3.
+**Status (Jul 2026):** Phases 0–4 shipped. Next work is Phase 5.
 
 ### Phase 0 — Scaffold ✅
 
@@ -252,22 +252,36 @@ Shipped:
 3. **Discord webhooks** — death, badge earned, revive used (GM-configured URL)
 4. **Tournament bracket stub** — `Tournament` / `TournamentMatch` + `/tournament` seed UI
 
-**Deferred / skipped for now:**
+**Deferred / skipped:**
 
 - Championship auto-lock (removed — GM lock/unlock is enough)
 - Season duplicate / year switcher (ignore until 2027 setup)
-- INVITE guest login wall (treat invites as open for now)
 
-### Phase 4 — QoL (only what the group asks for)
+### Phase 4 — QoL ✅
+
+Shipped:
 
 - Light route encounter ledger
-- Duplicate / held-item warnings (seeded as rule text today; no enforcement)
+- Duplicate / held-item warnings (soft UI, not rule enforcement)
 - Side-by-side trainer compare
-- Type chart quick-ref drawer
+- Type chart quick-ref (Tools tab)
 - Optional public share links
-- Soft dark theme variant (still warm, not OLED gamer)
+- Alternate formes in the species picker
+- Sticky mobile save bar
+- Soft dark theme (kept prior palette after brief dusk experiment)
 
 **Shipped early (outside original phase order):** Afterplay / Gen 3 **save import** — categorizes party → Main, box → Reserves, fainted → R.I.P., post-party storage → Encountered; optional trainer name + gym badge sync. Crest-style `pid⊕otId` encryption + vanilla LCG both supported.
+
+### Phase 5 — Season ops polish (current)
+
+Close the half-built season-lifecycle gaps so testing → archive → next year stays clean:
+
+1. **Archive-aware seasons list** — Active vs Archived sections; archived CTAs lean memorial-first
+2. **INVITE guest login wall** — non-members cannot read invite-gated seasons; join/login required
+3. **Welcome video embed** — replace placeholder in welcome modal when a video URL is configured
+4. **Tournament advance** — when a round completes, seed the next round from winners (beyond pick-winner stub)
+
+**Still deferred:** season duplicate / year switcher (2027 setup). Championship auto-lock stays out.
 
 **Explicitly deprioritized:** damage calculator, full boss scouting DB, real-time CRDT, multi-tenant billing.
 
@@ -309,10 +323,12 @@ Keep the stack boring so the **UI personality** can carry the product.
 /                                 → Warm landing + active season CTA     ✅
 /login                            → Discord auth                         ✅
 /account                          → Account editing                      ✅
-/challenges                       → Season list (active + archives)      ✅ (thin; archive UX TBD)
+/challenges                       → Season list (active + archives)      ✅ (Phase 5 archive UX)
 /challenges/[slug]                → League board (hub) + activity feed   ✅
-/challenges/[slug]/rules          → Rules (Introduction parity)          ✅
-/challenges/[slug]/faq            → FAQ                                  ✅
+/challenges/[slug]/rules          → Rules / FAQ (tabbed)                 ✅
+/challenges/[slug]/faq            → Redirect → /rules?tab=faq            ✅
+/challenges/[slug]/tools          → Type chart + trainer compare         ✅
+/challenges/[slug]/compare        → Redirect → /tools                    ✅
 /challenges/[slug]/me             → Provision + jump to own board        ✅
 /challenges/[slug]/join           → Invite / GM code                     ✅
 /challenges/[slug]/trainers/[id]  → Trainer board                        ✅
@@ -349,8 +365,8 @@ Activity lives on the league hub (no separate `/feed` route). League board is th
 
 ## 13. Next build priorities
 
-Phase 3 core (memorial, export, Discord webhooks, tournament stub) is shipped.
+Phases 0–4 shipped (including Phase 4 QoL + early save import).
 
-Deferred: Championship auto-lock, season duplicate / year switcher, INVITE guest login wall.
+**Now:** Phase 5 season ops — archive UX, INVITE guest wall, welcome video embed, tournament round advance.
 
-Likely next: Phase 4 QoL the group actually asks for; alternate formes in species picker; sticky mobile save bar.
+**Deferred:** Championship auto-lock, season duplicate / year switcher (2027).
