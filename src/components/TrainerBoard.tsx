@@ -329,6 +329,7 @@ export function TrainerBoard({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:items-start">
         <div className="space-y-6">
           <Frame
+            data-tour="player"
             title="Player"
             actions={
               canEdit ? (
@@ -530,17 +531,19 @@ export function TrainerBoard({
             )}
           </Frame>
 
-          <Frame title="Main Squad">
+          <Frame data-tour="pokemon" title="Main Squad">
             {canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">
                     Tap a slot to add or edit.
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div
+                    data-tour="pokemon-actions"
+                    className="flex flex-wrap gap-2"
+                  >
                     <button
                       type="button"
-                      data-onboarding="import-save"
                       className={`pressable rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight ${
                         trainer.pokemon.length === 0
                           ? "bg-accent text-[var(--on-accent)]"

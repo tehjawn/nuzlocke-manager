@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
+import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { getChallenge } from "@/lib/challenges";
 import { CTA_PRIMARY } from "@/lib/cta";
 
@@ -43,6 +44,16 @@ export default async function SetupPage({ params }: PageProps) {
           then import it on your trainer board.
         </p>
       </header>
+
+      <div className="mb-4">
+        <Frame data-tour="setup-welcome" title="Welcome">
+          <p className="mb-4 text-sm leading-relaxed text-muted">
+            A message from Jason (@Oubori) to kick off Season 2026 — then follow
+            the steps below to get your run online.
+          </p>
+          <WelcomeVideoPanel />
+        </Frame>
+      </div>
 
       <ol className="space-y-4">
         <li>

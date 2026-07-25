@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { markNotificationReadAction } from "@/app/actions/notifications";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { UserMenu } from "@/components/UserMenu";
-import { ONBOARDING_STEPS } from "@/lib/onboarding";
+import {
+  ONBOARDING_STEPS,
+  readOnboardingActive,
+  writeOnboardingActive,
+  writeOnboardingStep,
+} from "@/lib/onboarding";
 import type { NotificationItem } from "@/lib/notification-types";
 import {
   isWelcomeNotification,
@@ -35,12 +40,19 @@ export function LoggedInChrome({
   signOutAction,
 }: LoggedInChromeProps) {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const [notifications, setNotifications] = useState(() =>
     withPinnedWelcome(initialNotifications),
   );
-  const [tourOpen, setTourOpen] = useState(() =>
-    hasUnreadWelcome(withPinnedWelcome(initialNotifications)),
-  );
+  const [tourOpen, setTourOpen] = useState(() => {
+    const unread = hasUnreadWelcome(withPinnedWelcome(initialNotifications));
+    const active = readOnboardingActive();
+    if (unread || active) {
+      writeOnboardingActive(true);
+      return true;
+    }
+    return false;
+  });
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
@@ -83,6 +95,7 @@ export function LoggedInChrome({
   }
 
   async function dismissTour() {
+    writeOnboardingActive(false);
     const welcome = findWelcome(notifications);
     if (welcome) {
       await markRead(welcome);
@@ -90,11 +103,19 @@ export function LoggedInChrome({
     setTourOpen(false);
   }
 
+  function startTour() {
+    writeOnboardingStep(0);
+    writeOnboardingActive(true);
+    setTourOpen(true);
+    // Avoid a useless /me bounce if we're already on a trainer board.
+    if (!ONBOARDING_STEPS[0].match(pathname)) {
+      router.push(ONBOARDING_STEPS[0].href);
+    }
+  }
+
   async function onSelectNotification(notification: NotificationItem) {
     if (isWelcomeNotification(notification)) {
-      // Re-open the page tour; video stays on the season "Welcome" CTA.
-      setTourOpen(true);
-      router.push(ONBOARDING_STEPS[0].href);
+      startTour();
       return;
     }
     await markRead(notification);
