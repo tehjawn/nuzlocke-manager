@@ -16,8 +16,11 @@ export function TypeChartPanel() {
         Attacking type down the left · defending type across the top. Empty =
         neutral · ½ = resist · 2 = super · 0 = immune.
       </p>
-      <div className="overflow-x-auto">
-        <table className="border-collapse text-[10px] leading-none sm:text-[11px]">
+      <p className="text-[11px] text-muted/80 sm:hidden" aria-hidden>
+        Swipe the grid sideways to see every type →
+      </p>
+      <div className="overflow-x-auto [scrollbar-gutter:stable]">
+        <table className="border-collapse text-[11px] leading-none sm:text-xs">
           <thead>
             <tr>
               <th className="sticky left-0 z-[1] bg-surface p-0.5" />
