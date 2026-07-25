@@ -150,14 +150,14 @@ function PokemonFormModalInner({
             <button
               type="button"
               disabled={pending || !form.species.trim()}
-              className="pressable rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
+              className="pressable rounded-lg bg-accent px-4 py-2 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
               onClick={() => onSave(form)}
             >
               {form.id ? "Save changes" : "Add to board"}
             </button>
             <button
               type="button"
-              className="pressable rounded-sm bg-surface px-4 py-2 font-display text-xs font-bold tracking-wide uppercase"
+              className="pressable rounded-lg bg-surface px-4 py-2 font-display text-xs font-semibold tracking-tight"
               onClick={onClose}
             >
               Cancel
@@ -166,7 +166,7 @@ function PokemonFormModalInner({
               <button
                 type="button"
                 disabled={pending}
-                className="pressable ml-auto rounded-sm bg-danger px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
+                className="pressable ml-auto rounded-lg bg-danger px-4 py-2 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
                 onClick={() => {
                   if (!confirm("Delete this Pokémon entry?")) return;
                   onDelete(form.id!);
@@ -180,7 +180,7 @@ function PokemonFormModalInner({
       >
         <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
           <div className="flex flex-col items-center gap-2">
-            <div className="flex h-28 w-28 items-center justify-center rounded-sm border-2 border-frame bg-surface-2">
+            <div className="flex h-28 w-28 items-center justify-center rounded-lg border border-frame bg-surface-2">
               {form.species ? (
                 <Image
                   src={pokemonSpriteUrl(form.species, {
@@ -199,7 +199,7 @@ function PokemonFormModalInner({
             </div>
             <button
               type="button"
-              className="pressable rounded-sm bg-accent px-3 py-2 text-xs font-bold text-white uppercase"
+              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)]"
               onClick={() => setBrowseOpen(true)}
             >
               {form.species ? "Change species" : "Pick species"}
@@ -220,7 +220,7 @@ function PokemonFormModalInner({
             <label className="text-sm sm:col-span-2">
               <span className="mb-1 block font-bold text-muted">Species</span>
               <input
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
                 value={form.species}
                 readOnly
                 placeholder="Use Pick species…"
@@ -229,7 +229,7 @@ function PokemonFormModalInner({
             <label className="text-sm">
               <span className="mb-1 block font-bold text-muted">Nickname</span>
               <input
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
                 value={form.nickname}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, nickname: e.target.value }))
@@ -239,7 +239,7 @@ function PokemonFormModalInner({
             <label className="text-sm">
               <span className="mb-1 block font-bold text-muted">Slot</span>
               <select
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
                 value={form.slot}
                 onChange={(e) =>
                   setForm((f) => ({
@@ -260,7 +260,7 @@ function PokemonFormModalInner({
                 type="number"
                 min={0}
                 max={11}
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
                 value={form.partyIndex}
                 onChange={(e) =>
                   setForm((f) => ({
@@ -276,7 +276,7 @@ function PokemonFormModalInner({
                 type="number"
                 min={1}
                 max={100}
-                className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
                 value={form.level}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, level: e.target.value }))
@@ -326,7 +326,7 @@ function PokemonFormModalInner({
                   />
                 ) : null}
                 <input
-                  className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+                  className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
                   value={itemQuery}
                   placeholder="Search leftovers, life orb…"
                   onChange={(e) => {
@@ -337,7 +337,7 @@ function PokemonFormModalInner({
                 {form.heldItem ? (
                   <button
                     type="button"
-                    className="pressable shrink-0 rounded-sm bg-surface px-2 py-2 text-xs font-bold uppercase"
+                    className="pressable shrink-0 rounded-lg bg-surface px-2 py-2 text-xs font-semibold tracking-tight"
                     onClick={() => {
                       setItemQuery("");
                       setForm((f) => ({ ...f, heldItem: "" }));
@@ -348,7 +348,7 @@ function PokemonFormModalInner({
                 ) : null}
               </div>
               {itemResults.length > 0 && itemQuery.trim() ? (
-                <ul className="mt-2 max-h-36 overflow-auto rounded-sm border-2 border-frame bg-surface">
+                <ul className="mt-2 max-h-36 overflow-auto rounded-lg border border-frame bg-surface">
                   {itemResults.map((item) => (
                     <li key={item.slug}>
                       <button
@@ -380,7 +380,7 @@ function PokemonFormModalInner({
                   Move {i + 1}
                 </span>
                 <input
-                  className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+                  className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
                   value={form[key]}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -406,7 +406,7 @@ function PokemonFormModalInner({
                   Cause of death
                 </span>
                 <textarea
-                  className="min-h-16 w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+                  className="min-h-16 w-full rounded-lg border border-frame bg-surface px-3 py-2"
                   value={form.causeOfDeath}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, causeOfDeath: e.target.value }))

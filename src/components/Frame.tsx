@@ -20,8 +20,8 @@ export function Frame({
       className={`gba-frame overflow-hidden ${tone === "rip" ? "bg-rip" : ""} ${className}`}
     >
       {title ? (
-        <header className="gba-frame-title flex items-center justify-between gap-3 px-3 py-2 text-sm sm:text-base">
-          <span className="min-w-0 truncate">{title}</span>
+        <header className="gba-frame-title relative z-[1] flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base">
+          <span className="min-w-0 truncate font-semibold">{title}</span>
           {actions ? (
             <div className="relative z-[1] flex shrink-0 items-center gap-1.5">
               {actions}
@@ -29,7 +29,7 @@ export function Frame({
           ) : null}
         </header>
       ) : null}
-      <div className="relative z-[1] p-3 sm:p-4">{children}</div>
+      <div className="relative z-[1] p-4 sm:p-5">{children}</div>
     </section>
   );
 }

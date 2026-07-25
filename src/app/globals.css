@@ -1,57 +1,65 @@
 @import "tailwindcss";
 
+/*
+  Crest Pulse — modern + gamer.
+  Punchier olive/emerald + gold, tighter radii, grainy atmosphere.
+  Still Champions/TCG-clean — just less washed out.
+*/
 :root,
 [data-theme="light"] {
-  --bg: #f3ead7;
-  --bg-wash: #dfe8d5;
-  --bg-glow: #efe0b8;
-  --surface: #fff6e8;
-  --surface-2: #f7ecda;
-  --ink: #1e2a24;
-  --muted: #5f6f64;
-  --frame: #3d4f42;
-  --frame-outer: #2a3830;
-  --frame-inner: #c9b896;
-  --accent: #3a8f5c;
-  --accent-deep: #2b6b45;
-  --accent-2: #c9972e;
-  --danger: #b85c4a;
-  --rip: #d9e0d6;
-  --shadow: rgba(30, 42, 36, 0.18);
-  --on-accent: #f7fff5;
-  /* Deep green for light chips / solid controls (stays dark in both themes). */
-  --accent-ink: #2b6b45;
-  --scrim: rgba(30, 42, 36, 0.55);
-  --pixel: 3px;
-  --grain-opacity: 0.035;
+  --bg: #eef2e6;
+  --bg-wash: #c8e0b0;
+  --bg-glow: #f0d9a0;
+  --surface: #fffdf8;
+  --surface-2: #eef3e4;
+  --ink: #121612;
+  --muted: #4d5a4c;
+  --frame: #b7c4aa;
+  --frame-outer: #9aab8c;
+  --frame-inner: #ffffff;
+  --accent: #2f9a52;
+  --accent-deep: #1f7a3d;
+  --accent-2: #d4a017;
+  --danger: #d04a38;
+  --rip: #e4eadc;
+  --shadow: rgba(18, 22, 18, 0.12);
+  --shadow-md: rgba(18, 22, 18, 0.2);
+  --on-accent: #f4fff7;
+  --accent-ink: #14532d;
+  --scrim: rgba(18, 22, 18, 0.5);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-lg: 12px;
+  --grain-opacity: 0.14;
+  --grain-card: 0.08;
 }
 
-/*
-  Emerald night — off-black chassis with green + gold accents.
-  Surfaces stay near-black; emerald/yellow punch through frames and CTAs.
-*/
 [data-theme="dark"] {
-  --bg: #090b0a;
-  --bg-wash: #0f1713;
-  --bg-glow: #1a160c;
-  --surface: #121614;
-  --surface-2: #181d1a;
-  --ink: #e9ece8;
-  --muted: #8b948c;
-  --frame: #3f6b4e;
-  --frame-outer: #c9a227;
-  --frame-inner: #0c0f0d;
-  --accent: #3d9b5f;
-  --accent-deep: #6fd492;
-  --accent-2: #e2b53a;
-  --danger: #d47868;
-  --rip: #151816;
-  --shadow: rgba(0, 0, 0, 0.72);
-  --on-accent: #f4fff7;
-  --accent-ink: #0c1610;
-  --scrim: rgba(0, 0, 0, 0.78);
-  --pixel: 3px;
-  --grain-opacity: 0.055;
+  --bg: #0a0e0b;
+  --bg-wash: #163820;
+  --bg-glow: #2a1f0c;
+  --surface: #141a15;
+  --surface-2: #1c241e;
+  --ink: #f3f7f1;
+  --muted: #a3b3a4;
+  --frame: #3a4a3c;
+  --frame-outer: #2c382e;
+  --frame-inner: #1a211b;
+  --accent: #3ecf6a;
+  --accent-deep: #6aeba0;
+  --accent-2: #f0c040;
+  --danger: #ef6b55;
+  --rip: #101611;
+  --shadow: rgba(0, 0, 0, 0.45);
+  --shadow-md: rgba(0, 0, 0, 0.6);
+  --on-accent: #061209;
+  --accent-ink: #d8ffe6;
+  --scrim: rgba(0, 0, 0, 0.7);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-lg: 12px;
+  --grain-opacity: 0.18;
+  --grain-card: 0.12;
   color-scheme: dark;
 }
 
@@ -69,26 +77,44 @@
   --color-accent: var(--accent);
   --color-accent-deep: var(--accent-deep);
   --color-accent-2: var(--accent-2);
+  --color-accent-ink: var(--accent-ink);
   --color-danger: var(--danger);
   --color-rip: var(--rip);
   --font-sans: var(--font-body);
-  /* Headings/labels stay on the workhorse face; pixel is opt-in. */
   --font-display: var(--font-body);
-  --font-pixel: var(--font-pixel);
+  --font-pixel: var(--font-body);
   --font-mono: var(--font-mono);
+  --radius-ui: var(--radius);
+  --radius-ui-sm: var(--radius-sm);
+  --radius-ui-lg: var(--radius-lg);
 }
 
 body {
   position: relative;
-  background:
-    radial-gradient(ellipse 70% 45% at 0% 0%, var(--bg-wash) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 40% at 100% 0%, var(--bg-glow) 0%, transparent 50%),
-    var(--bg);
   color: var(--ink);
-  font-family: var(--font-body), system-ui, sans-serif;
+  font-family: var(--font-body), "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.011em;
+  /* Gradients stay viewport-locked; no tiling seams. */
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 90% 55% at 0% 0%, var(--bg-wash) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, var(--bg-glow) 0%, transparent 52%),
+    radial-gradient(
+      ellipse 55% 40% at 50% 110%,
+      color-mix(in srgb, var(--accent) 22%, transparent) 0%,
+      transparent 60%
+    );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-attachment: fixed;
 }
 
-/* Fine dither / film grain — GBA-adjacent texture without fighting sprites */
+/*
+  Grain stack (CSS-Tricks grainy-gradients vibe):
+  1) SVG turbulence for organic grit
+  2) PNG tile for denser film grain
+  Fixed to the viewport so it never scrolls as a repeating band.
+*/
 body::before {
   content: "";
   position: fixed;
@@ -96,126 +122,140 @@ body::before {
   pointer-events: none;
   z-index: 80;
   opacity: var(--grain-opacity);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 128 128' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image:
+    url("/textures/noise.svg"),
+    url("/textures/noise.png");
   background-repeat: repeat;
-  background-size: 180px 180px;
+  background-size: 180px 180px, 100px 100px;
+  background-attachment: fixed;
   mix-blend-mode: soft-light;
 }
 
 [data-theme="dark"] body::before {
   mix-blend-mode: overlay;
+  opacity: calc(var(--grain-opacity) + 0.04);
 }
 
 body:has([data-modal-open]) {
   overflow: hidden;
 }
 
-.font-display {
-  font-family: var(--font-body), system-ui, sans-serif;
-}
-
-/* Sparse GBA accent — brand, window titles, the occasional hero. */
+.font-display,
 .font-pixel,
 .site-brand,
 .gba-frame-title {
-  font-family: var(--font-pixel), var(--font-body), system-ui, sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-family: var(--font-body), "Segoe UI", system-ui, sans-serif;
 }
 
-[data-theme="dark"] .site-brand {
+.site-brand {
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--accent-deep);
-  text-shadow: 1px 1px 0 color-mix(in srgb, var(--accent-2) 85%, transparent);
 }
 
 /*
-  Chunky GBA-style window:
-  - hard outer rim (gold in dark)
-  - emerald mid frame
-  - inset bevel
-  - pixel-notched corners
+  Card frame — tighter radius, brighter edge, light grain wash.
 */
 .gba-frame {
   --gba-fill: var(--surface);
   position: relative;
-  background: var(--gba-fill);
-  border: var(--pixel) solid var(--frame);
-  border-radius: 0;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--accent) 7%, var(--surface)) 0%,
+      var(--gba-fill) 42%,
+      color-mix(in srgb, var(--accent-2) 6%, var(--gba-fill)) 100%
+    );
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, var(--accent));
+  border-radius: var(--radius);
   box-shadow:
-    0 0 0 var(--pixel) var(--frame-outer),
-    inset 0 0 0 var(--pixel) var(--frame-inner),
-    inset 0 0 0 calc(var(--pixel) * 2) color-mix(in srgb, var(--frame) 45%, transparent),
-    calc(var(--pixel) + 1px) calc(var(--pixel) + 1px) 0 0 var(--shadow);
+    0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
+    0 10px 28px -14px var(--shadow-md),
+    0 2px 8px -2px var(--shadow);
+}
+
+.gba-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--grain-card);
+  background-image: url("/textures/noise.png");
+  background-repeat: repeat;
+  background-size: 100px 100px;
+  mix-blend-mode: soft-light;
+}
+
+[data-theme="dark"] .gba-frame::after {
+  mix-blend-mode: overlay;
 }
 
 .gba-frame.bg-rip {
   --gba-fill: var(--rip);
 }
 
-/* Floating menus sit over page chrome — skip bg-punch corner notches. */
 .gba-frame-menu::before {
   content: none;
 }
 
-/* Stair-step corner notches — reads as pixel UI, not soft radius */
 .gba-frame::before {
-  content: "";
-  position: absolute;
-  inset: calc(var(--pixel) * -2);
-  pointer-events: none;
-  z-index: 2;
-  background:
-    linear-gradient(var(--bg), var(--bg)) 0 0 / calc(var(--pixel) * 2) calc(var(--pixel) * 2) no-repeat,
-    linear-gradient(var(--bg), var(--bg)) 100% 0 / calc(var(--pixel) * 2) calc(var(--pixel) * 2) no-repeat,
-    linear-gradient(var(--bg), var(--bg)) 0 100% / calc(var(--pixel) * 2) calc(var(--pixel) * 2) no-repeat,
-    linear-gradient(var(--bg), var(--bg)) 100% 100% / calc(var(--pixel) * 2) calc(var(--pixel) * 2) no-repeat,
-    linear-gradient(var(--frame-outer), var(--frame-outer)) var(--pixel) 0 / var(--pixel) var(--pixel) no-repeat,
-    linear-gradient(var(--frame-outer), var(--frame-outer)) calc(100% - var(--pixel)) 0 / var(--pixel) var(--pixel) no-repeat,
-    linear-gradient(var(--frame-outer), var(--frame-outer)) var(--pixel) calc(100% - 0px) / var(--pixel) var(--pixel) no-repeat,
-    linear-gradient(var(--frame-outer), var(--frame-outer)) calc(100% - var(--pixel)) calc(100% - 0px) / var(--pixel) var(--pixel) no-repeat,
-    linear-gradient(var(--frame-outer), var(--frame-outer)) 0 var(--pixel) / var(--pixel) var(--pixel) no-repeat,
-    linear-gradient(var(--frame-outer), var(--frame-outer)) calc(100% - 0px) var(--pixel) / var(--pixel) var(--pixel) no-repeat,
-    linear-gradient(var(--frame-outer), var(--frame-outer)) 0 calc(100% - var(--pixel)) / var(--pixel) var(--pixel) no-repeat,
-    linear-gradient(var(--frame-outer), var(--frame-outer)) calc(100% - 0px) calc(100% - var(--pixel)) / var(--pixel) var(--pixel) no-repeat;
+  content: none;
 }
 
 .gba-frame-title {
   position: relative;
   z-index: 1;
-  background: var(--accent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 88%, #fff) 0%,
+    var(--accent) 55%,
+    var(--accent-deep) 100%
+  );
   color: var(--on-accent);
-  border-bottom: var(--pixel) solid var(--frame);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-2) 55%, transparent);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--accent-deep) 45%, transparent);
 }
 
 [data-theme="dark"] .gba-frame-title {
-  background: linear-gradient(180deg, #2f7a4a 0%, #1f5a36 100%);
-  border-bottom-color: var(--accent-2);
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 75%, #1a2a1c) 0%,
+    color-mix(in srgb, var(--accent) 55%, #0f1811) 100%
+  );
+  color: var(--on-accent);
+  border-bottom-color: color-mix(in srgb, var(--accent-2) 65%, transparent);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .pressable {
-  border: var(--pixel) solid var(--frame);
-  border-radius: 0;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--frame-outer) 55%, transparent),
-    2px 2px 0 var(--shadow);
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
-}
-
-[data-theme="dark"] .pressable:hover {
-  border-color: var(--accent-2);
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 2px var(--shadow);
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    filter 140ms ease;
 }
 
 .pressable:hover {
-  transform: translate(1px, 1px);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--frame-outer) 40%, transparent),
-    1px 1px 0 var(--shadow);
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--frame));
+  box-shadow: 0 8px 18px -10px var(--shadow-md);
+  filter: saturate(1.08);
 }
 
 .pressable:active {
-  transform: translate(2px, 2px);
-  box-shadow: none;
+  transform: translateY(0);
+  box-shadow: 0 1px 2px var(--shadow);
+  filter: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -224,6 +264,7 @@ body:has([data-modal-open]) {
   .pressable:active {
     transition: none;
     transform: none;
+    filter: none;
   }
 }
 
@@ -231,20 +272,11 @@ body:has([data-modal-open]) {
   image-rendering: pixelated;
 }
 
-/* Compact inset panels (stats chips, slots) — same language, lighter weight */
 .gba-inset {
-  border: 2px solid var(--frame);
-  border-radius: 0;
-  box-shadow:
-    inset 0 0 0 1px var(--frame-inner),
-    inset 2px 2px 0 color-mix(in srgb, var(--shadow) 35%, transparent);
-}
-
-[data-theme="dark"] .gba-inset {
-  border-color: color-mix(in srgb, var(--frame) 80%, #000);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 28%, transparent),
-    inset 2px 2px 0 rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 92%, var(--accent));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--shadow) 60%, transparent);
 }
 
 /* Home page infinite trainer carousel */
@@ -278,12 +310,12 @@ body:has([data-modal-open]) {
     animation: none;
   }
 
-  body::before {
+  body::before,
+  .gba-frame::after {
     opacity: 0;
   }
 }
 
-/* Soften emoji-picker-react to match the board surface */
 .emoji-picker-shell .EmojiPickerReact {
   --epr-bg-color: var(--surface);
   --epr-category-label-bg-color: var(--surface);
@@ -295,7 +327,7 @@ body:has([data-modal-open]) {
   --epr-search-border-color: var(--frame);
   --epr-category-icon-active-color: var(--accent-deep);
   border: none !important;
-  border-radius: 0 !important;
+  border-radius: var(--radius-sm) !important;
   box-shadow: none !important;
-  font-family: var(--font-body), system-ui, sans-serif !important;
+  font-family: var(--font-body), "Segoe UI", system-ui, sans-serif !important;
 }

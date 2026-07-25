@@ -36,7 +36,7 @@ export function SearchSelect({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
-          className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+          className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
           value={value}
           autoComplete="off"
           placeholder={placeholder}
@@ -55,7 +55,7 @@ export function SearchSelect({
         {value ? (
           <button
             type="button"
-            className="pressable shrink-0 rounded-sm bg-surface px-2 py-2 text-xs font-bold uppercase"
+            className="pressable shrink-0 rounded-lg bg-surface px-2 py-2 text-xs font-semibold tracking-tight"
             onClick={() => onChange("")}
           >
             Clear
@@ -66,7 +66,7 @@ export function SearchSelect({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-sm border-2 border-frame bg-surface shadow-[3px_3px_0_var(--shadow)]"
+          className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-frame bg-surface shadow-lg"
         >
           {results.length > 0 ? (
             results.map((item) => (

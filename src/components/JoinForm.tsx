@@ -28,7 +28,7 @@ export function JoinForm({
         <button
           type="button"
           disabled={pending}
-          className="pressable rounded-sm bg-accent px-4 py-3 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
+          className="pressable rounded-lg bg-accent px-4 py-3 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
           onClick={() => {
             startTransition(async () => {
               const result = await enterChallengeAction({ slug });
@@ -93,7 +93,7 @@ export function JoinForm({
           {mode === "gm" ? "GM invite code" : "Invite code"}
         </span>
         <input
-          className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+          className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder={mode === "gm" ? "GM code" : "Season invite"}
@@ -103,7 +103,7 @@ export function JoinForm({
       <button
         type="submit"
         disabled={pending}
-        className="pressable rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
+        className="pressable rounded-lg bg-accent px-4 py-2 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
       >
         {mode === "gm" ? "Become Game Master" : "Join with code"}
       </button>

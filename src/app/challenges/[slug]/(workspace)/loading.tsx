@@ -1,12 +1,12 @@
 export default function SeasonWorkspaceLoading() {
   return (
     <div className="animate-pulse space-y-4" aria-hidden>
-      <div className="h-8 w-40 rounded-sm bg-frame/15" />
-      <div className="h-4 w-2/3 max-w-md rounded-sm bg-frame/10" />
+      <div className="h-8 w-40 rounded-lg bg-frame/15" />
+      <div className="h-4 w-2/3 max-w-md rounded-lg bg-frame/10" />
       <div className="space-y-3 pt-2">
-        <div className="h-36 rounded-sm border-2 border-frame/20 bg-surface" />
-        <div className="h-36 rounded-sm border-2 border-frame/20 bg-surface" />
-        <div className="h-36 rounded-sm border-2 border-frame/20 bg-surface" />
+        <div className="h-36 rounded-lg border border-frame/20 bg-surface" />
+        <div className="h-36 rounded-lg border border-frame/20 bg-surface" />
+        <div className="h-36 rounded-lg border border-frame/20 bg-surface" />
       </div>
     </div>
   );

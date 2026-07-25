@@ -39,10 +39,10 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <p className="font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase">
+        <p className="text-xs font-semibold tracking-tight text-accent-deep">
           End of season
         </p>
-        <h2 className="font-display text-2xl font-extrabold tracking-tight">
+        <h2 className="text-2xl font-bold tracking-tight">
           Memorial
         </h2>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
@@ -87,7 +87,7 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
                   return (
                     <li
                       key={pokemon.id}
-                      className="flex gap-3 rounded-sm border-2 border-frame/40 bg-surface/70 p-3"
+                      className="flex gap-3 rounded-lg border border-frame/40 bg-surface/70 p-3"
                     >
                       <div className="relative h-16 w-16 shrink-0">
                         <Image

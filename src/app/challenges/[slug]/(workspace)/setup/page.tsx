@@ -32,7 +32,7 @@ export default async function SetupPage({ params }: PageProps) {
   return (
     <>
       <header className="mb-6">
-        <h2 className="font-display text-2xl font-extrabold tracking-tight">
+        <h2 className="text-2xl font-bold tracking-tight">
           Get Started
         </h2>
         <p className="mt-2 text-muted">
@@ -53,7 +53,7 @@ export default async function SetupPage({ params }: PageProps) {
               href={ROM_DOWNLOAD_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="pressable mt-4 inline-block rounded-sm bg-accent px-4 py-2 text-sm font-bold text-white"
+              className="pressable mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-[var(--on-accent)]"
             >
               Download ROM →
             </a>
@@ -126,8 +126,8 @@ export default async function SetupPage({ params }: PageProps) {
             <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
               <li>
                 In Afterplay, download / export your save state (or Gen&nbsp;3{" "}
-                <code className="rounded-sm bg-surface-2 px-1">.sav</code> /{" "}
-                <code className="rounded-sm bg-surface-2 px-1">.srm</code>).
+                <code className="rounded-lg bg-surface-2 px-1">.sav</code> /{" "}
+                <code className="rounded-lg bg-surface-2 px-1">.srm</code>).
               </li>
               <li>
                 {session?.user ? (

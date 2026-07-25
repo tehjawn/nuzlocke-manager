@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
+import { DiscordIcon } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { SiteHeader } from "@/components/SiteHeader";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
@@ -27,7 +28,7 @@ export default async function LoginPage() {
     <div className="flex flex-1 flex-col">
       <SiteHeader />
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-10 sm:px-6">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">
+        <h1 className="text-3xl font-bold tracking-tight">
           Sign in
         </h1>
         <p className="mt-2 text-muted">
@@ -46,8 +47,9 @@ export default async function LoginPage() {
               >
                 <button
                   type="submit"
-                  className="pressable rounded-sm bg-accent px-5 py-3 font-display text-sm font-bold tracking-wide text-white uppercase"
+                  className="pressable inline-flex items-center gap-2.5 rounded-lg border-accent/40 bg-accent px-5 py-3 text-sm font-semibold tracking-tight text-[var(--on-accent)]"
                 >
+                  <DiscordIcon className="h-5 w-5" />
                   Continue with Discord
                 </button>
               </form>

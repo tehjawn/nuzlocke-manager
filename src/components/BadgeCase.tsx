@@ -34,7 +34,7 @@ export function BadgeCase({
   if (strip) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <p className="font-display text-xs font-bold tracking-wide text-muted uppercase">
+        <p className="font-display text-xs font-semibold tracking-tight text-muted">
           {earnedCount}/{badges.length} badges
         </p>
         <ul className="flex flex-wrap gap-1" aria-label="Badge case">
@@ -59,7 +59,7 @@ export function BadgeCase({
                   />
                 ) : (
                   <span
-                    className={`inline-block h-[22px] w-[22px] rounded-sm border border-frame ${
+                    className={`inline-block h-[22px] w-[22px] rounded-lg border border-frame ${
                       on ? "bg-accent-2/40" : "bg-surface-2"
                     }`}
                   />
@@ -110,9 +110,9 @@ export function BadgeCase({
               <span className="sr-only">{on ? "earned" : "not earned"}</span>
             </>
           );
-          const className = `flex flex-col items-center justify-center rounded-sm border-2 border-frame px-0.5 py-1.5 ${
+          const className = `flex flex-col items-center justify-center rounded-lg border border-frame px-0.5 py-1.5 ${
             on
-              ? "bg-accent-2/30 shadow-[inset_0_0_0_2px_#e8c56a]"
+              ? "bg-accent-2/30 ring-2 ring-accent-2/50"
               : "bg-surface-2 opacity-70"
           }`;
           return (
@@ -149,9 +149,9 @@ export function BadgeCase({
         const title = meta?.badgeName ?? badge.label;
         const preview = meta?.previewLabel ?? badge.label;
         const leader = badge.leaderName ?? meta?.previewLabel;
-        const className = `flex w-full items-center gap-3 rounded-sm border-2 border-frame p-2 text-left ${
+        const className = `flex w-full items-center gap-3 rounded-lg border border-frame p-2 text-left ${
           on
-            ? "bg-accent-2/30 shadow-[inset_0_0_0_2px_#e8c56a]"
+            ? "bg-accent-2/30 ring-2 ring-accent-2/50"
             : "bg-surface-2 opacity-70"
         }`;
         const mysterySprite = on
@@ -180,7 +180,7 @@ export function BadgeCase({
               }`}
             />
             <span className="min-w-0 flex-1">
-              <span className="block font-display text-xs font-bold tracking-wide uppercase">
+              <span className="block font-display text-xs font-semibold tracking-tight">
                 {preview}
               </span>
               <span className="mt-0.5 block truncate text-sm font-bold">

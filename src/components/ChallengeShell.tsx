@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { DiscordIcon } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -53,10 +54,10 @@ export function ChallengeShell({
           className={`${SEASON_LEFT_RAIL_CLASS} space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:self-start lg:pr-2 lg:[scrollbar-gutter:stable]`}
         >
           <Frame title={`Season ${year}`}>
-            <p className="font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase">
+            <p className="text-xs font-semibold tracking-tight text-accent-deep">
               General info · {seasonStatusLabel(status)}
             </p>
-            <h1 className="font-display mt-1 text-2xl font-extrabold tracking-tight">
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">
               {name}
             </h1>
             {game ? <p className="mt-1 text-sm text-muted">{game}</p> : null}
@@ -66,8 +67,9 @@ export function ChallengeShell({
             {!signedIn ? (
               <Link
                 href="/login"
-                className="pressable mt-4 inline-block rounded-sm bg-accent px-3 py-2 text-sm font-bold text-white"
+                className="pressable mt-4 inline-flex items-center gap-2 rounded-lg border-accent/40 bg-accent px-3.5 py-2 text-sm font-semibold text-[var(--on-accent)]"
               >
+                <DiscordIcon className="h-4 w-4" />
                 Discord login
               </Link>
             ) : null}

@@ -54,7 +54,7 @@ export default async function GmPage({ params }: PageProps) {
         >
           ← League board
         </Link>
-        <h1 className="font-display mt-4 text-3xl font-extrabold tracking-tight">
+        <h1 className="mt-4 text-3xl font-bold tracking-tight">
           Game Master console
         </h1>
         <p className="mt-2 text-muted">

@@ -41,7 +41,7 @@ export function StatSpreadEditor({
               type="number"
               min={0}
               max={max}
-              className="w-full rounded-sm border-2 border-frame bg-surface px-2 py-1.5 font-mono text-sm"
+              className="w-full rounded-lg border border-frame bg-surface px-2 py-1.5 font-mono text-sm"
               value={value[key]}
               onChange={(e) => {
                 const n = Number(e.target.value);

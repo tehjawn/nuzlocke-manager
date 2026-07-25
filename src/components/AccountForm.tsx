@@ -43,7 +43,7 @@ export function AccountForm({
       <label className="block text-sm">
         <span className="mb-1 block font-bold text-muted">Display name</span>
         <input
-          className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+          className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -52,7 +52,7 @@ export function AccountForm({
       <label className="block text-sm">
         <span className="mb-1 block font-bold text-muted">Bio</span>
         <textarea
-          className="min-h-24 w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+          className="min-h-24 w-full rounded-lg border border-frame bg-surface px-3 py-2"
           value={bioValue}
           onChange={(e) => setBio(e.target.value)}
         />
@@ -60,7 +60,7 @@ export function AccountForm({
       <label className="block text-sm">
         <span className="mb-1 block font-bold text-muted">Avatar URL</span>
         <input
-          className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+          className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
           value={imageValue}
           onChange={(e) => setImage(e.target.value)}
         />
@@ -68,7 +68,7 @@ export function AccountForm({
       <button
         type="submit"
         disabled={pending}
-        className="pressable rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60"
+        className="pressable rounded-lg bg-accent px-4 py-2 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
       >
         Save account
       </button>

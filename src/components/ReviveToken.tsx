@@ -7,22 +7,24 @@ export function ReviveToken({ used, size = "md" }: ReviveTokenProps) {
   const compact = size === "sm";
   return (
     <div
-      className={`inline-flex items-center gap-1.5 rounded-sm border-frame ${
-        compact
-          ? "border-2 px-2 py-1"
-          : "gap-2 border-[3px] px-3 py-2"
-      } ${used ? "bg-danger/15 text-danger" : "bg-accent/15 text-accent-deep"}`}
+      className={`inline-flex items-center gap-1.5 rounded-lg border ${
+        compact ? "px-2.5 py-1" : "gap-2 px-3 py-1.5"
+      } ${
+        used
+          ? "border-danger/25 bg-danger/10 text-danger"
+          : "border-accent/30 bg-accent/10 text-accent-deep"
+      }`}
       role="status"
     >
       <span
-        className={`rounded-full border-2 border-frame ${
-          compact ? "h-2 w-2" : "h-3 w-3"
-        } ${used ? "bg-danger" : "bg-accent"}`}
+        className={`rounded-full ${compact ? "h-2 w-2" : "h-2.5 w-2.5"} ${
+          used ? "bg-danger" : "bg-accent"
+        }`}
         aria-hidden
       />
       <span
-        className={`font-display font-bold tracking-wide uppercase ${
-          compact ? "text-[10px]" : "text-sm"
+        className={`font-semibold tracking-tight ${
+          compact ? "text-[11px]" : "text-sm"
         }`}
       >
         Revive {used ? "used" : "ready"}

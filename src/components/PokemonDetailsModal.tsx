@@ -45,7 +45,7 @@ export function PokemonDetailsModal({
     <Modal open title={label} onClose={onClose} wide>
       <div className="grid gap-5 sm:grid-cols-[auto_1fr]">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex h-36 w-36 items-center justify-center rounded-sm border-2 border-frame bg-surface-2 sm:h-40 sm:w-40">
+          <div className="flex h-36 w-36 items-center justify-center rounded-lg border border-frame bg-surface-2 sm:h-40 sm:w-40">
             <Image
               src={sprite}
               alt=""
@@ -67,7 +67,7 @@ export function PokemonDetailsModal({
 
         <div className="space-y-4">
           <div>
-            <p className="font-display text-xl font-extrabold leading-tight">
+            <p className="text-xl font-bold leading-tight tracking-tight">
               {label}
             </p>
             <p className="text-sm text-muted">
@@ -105,16 +105,16 @@ export function PokemonDetailsModal({
 
           {battle ? (
             <div>
-              <p className="mb-2 font-display text-xs font-bold tracking-wide text-muted uppercase">
+              <p className="mb-2 font-display text-xs font-semibold tracking-tight text-muted">
                 Stats
               </p>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {STAT_KEYS.map((key) => (
                   <div
                     key={key}
-                    className="rounded-sm border border-frame/30 bg-surface-2 px-2 py-1.5 text-center"
+                    className="rounded-lg border border-frame/30 bg-surface-2 px-2 py-1.5 text-center"
                   >
-                    <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
+                    <p className="text-[10px] font-semibold tracking-tight text-muted">
                       {STAT_LABELS[key]}
                     </p>
                     <p className="font-mono text-sm font-bold">{battle[key]}</p>
@@ -147,14 +147,14 @@ export function PokemonDetailsModal({
 
           {moves.length > 0 ? (
             <div>
-              <p className="mb-2 font-display text-xs font-bold tracking-wide text-muted uppercase">
+              <p className="mb-2 font-display text-xs font-semibold tracking-tight text-muted">
                 Moves
               </p>
               <ul className="grid grid-cols-2 gap-1.5">
                 {moves.map((move, index) => (
                   <li
                     key={`${index}-${move}`}
-                    className="rounded-sm border border-frame/30 bg-surface-2 px-2 py-1.5 text-sm"
+                    className="rounded-lg border border-frame/30 bg-surface-2 px-2 py-1.5 text-sm"
                   >
                     {move}
                   </li>
@@ -164,7 +164,7 @@ export function PokemonDetailsModal({
           ) : null}
 
           {pokemon.causeOfDeath ? (
-            <p className="border-t-2 border-frame/20 pt-3 text-sm leading-relaxed text-muted italic">
+            <p className="border-t border-frame/20 pt-3 text-sm leading-relaxed text-muted italic">
               {pokemon.causeOfDeath}
             </p>
           ) : null}

@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
-import { DM_Sans, JetBrains_Mono, Pixelify_Sans } from "next/font/google";
+import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-/** Workhorse UI face — clean, readable, not costume. */
+/** Single modern face for the whole app. */
 const body = DM_Sans({
   variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-/** GBA accent only — brand + window titles, not every label. */
-const pixel = Pixelify_Sans({
-  variable: "--font-pixel",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -42,7 +35,7 @@ export default function RootLayout({
       lang="en"
       data-theme="light"
       suppressHydrationWarning
-      className={`${body.variable} ${pixel.variable} ${mono.variable} h-full antialiased`}
+      className={`${body.variable} ${mono.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />

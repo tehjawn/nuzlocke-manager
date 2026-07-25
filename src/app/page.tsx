@@ -39,23 +39,27 @@ export default async function HomePage() {
     <div className="flex flex-1 flex-col overflow-x-hidden">
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-start justify-center px-4 pb-16 pt-10 sm:px-6">
-        <h1 className="font-pixel max-w-2xl text-4xl font-semibold leading-[1.15] sm:text-5xl">
+        <h1 className="max-w-2xl text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl">
           <span className="block text-accent-deep">Trash Pack&apos;s</span>
           <span className="mt-1 block">Nuzlocke Challenge Manager</span>
         </h1>
+        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
+          Track squads, badges, and memorials with your league — clean boards
+          built for every run.
+        </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           {active ? (
             <Link
               href={`/challenges/${active.slug}`}
-              className="pressable rounded-sm bg-accent px-5 py-3 font-display text-sm font-bold tracking-wide text-white uppercase"
+              className="pressable inline-flex items-center rounded-lg border-accent/30 bg-accent px-5 py-3 text-sm font-semibold text-[var(--on-accent)]"
             >
               Open {active.year} League →
             </Link>
           ) : (
             <Link
               href="/challenges"
-              className="pressable rounded-sm bg-accent px-5 py-3 font-display text-sm font-bold tracking-wide text-white uppercase"
+              className="pressable inline-flex items-center rounded-lg border-accent/30 bg-accent px-5 py-3 text-sm font-semibold text-[var(--on-accent)]"
             >
               Browse seasons →
             </Link>
@@ -63,7 +67,7 @@ export default async function HomePage() {
           {!session?.user ? (
             <Link
               href="/login"
-              className="pressable rounded-sm bg-surface px-5 py-3 font-display text-sm font-bold tracking-wide uppercase"
+              className="pressable inline-flex items-center rounded-lg bg-surface px-5 py-3 text-sm font-semibold"
             >
               Sign in
             </Link>

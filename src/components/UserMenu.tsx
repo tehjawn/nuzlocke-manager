@@ -83,13 +83,13 @@ export function UserMenu({ name, image, signOutAction }: UserMenuProps) {
         aria-controls={menuId}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="relative h-5 w-5 shrink-0 overflow-hidden rounded-sm border-2 border-frame bg-surface-2">
+        <span className="relative h-6 w-6 shrink-0 overflow-hidden rounded-lg border border-frame bg-surface-2">
           {image ? (
             <Image
               src={image}
               alt=""
-              width={20}
-              height={20}
+              width={24}
+              height={24}
               className="h-full w-full object-cover"
               unoptimized
             />

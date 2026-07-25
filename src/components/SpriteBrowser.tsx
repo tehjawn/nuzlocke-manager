@@ -75,14 +75,14 @@ function TrainerSpriteBrowserInner({
           <div className="flex gap-2">
             <button
               type="button"
-              className="pressable rounded-sm bg-surface px-3 py-2 text-xs font-bold uppercase"
+              className="pressable rounded-lg bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
               onClick={onClose}
             >
               Cancel
             </button>
             <button
               type="button"
-              className="pressable rounded-sm bg-accent px-3 py-2 text-xs font-bold text-white uppercase"
+              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)]"
               onClick={() => {
                 onSelect(draft);
                 onClose();
@@ -100,7 +100,7 @@ function TrainerSpriteBrowserInner({
         </span>
         <input
           autoFocus
-          className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+          className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
           placeholder="brendan, may, roxanne…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -119,7 +119,7 @@ function TrainerSpriteBrowserInner({
               type="button"
               title={formatTrainerSpriteLabel(key)}
               aria-pressed={selected}
-              className={`flex flex-col items-center gap-1 rounded-sm border-2 p-1.5 ${
+              className={`flex flex-col items-center gap-1 rounded-lg border p-1.5 ${
                 selected
                   ? "border-accent bg-accent/15"
                   : "border-frame bg-surface-2 hover:bg-accent/10"
@@ -235,7 +235,7 @@ function PokemonSpriteBrowserInner({
           <div className="flex gap-2">
             <button
               type="button"
-              className="pressable rounded-sm bg-surface px-3 py-2 text-xs font-bold uppercase"
+              className="pressable rounded-lg bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
               onClick={onClose}
             >
               Cancel
@@ -243,7 +243,7 @@ function PokemonSpriteBrowserInner({
             <button
               type="button"
               disabled={!draft}
-              className="pressable rounded-sm bg-accent px-3 py-2 text-xs font-bold text-white uppercase disabled:opacity-60"
+              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
               onClick={() => {
                 if (!draft) return;
                 onSelect(draft);
@@ -259,10 +259,10 @@ function PokemonSpriteBrowserInner({
       <div className="mb-3 flex flex-wrap gap-1.5">
         <button
           type="button"
-          className={`pressable rounded-sm px-2.5 py-1.5 text-[11px] font-bold uppercase ${
+          className={`pressable rounded-lg px-2.5 py-1.5 text-[11px] font-semibold tracking-tight ${
             generation == null
-              ? "bg-accent text-white"
-              : "border-2 border-frame bg-surface"
+              ? "bg-accent text-[var(--on-accent)]"
+              : "border border-frame bg-surface"
           }`}
           onClick={() => setGeneration(null)}
         >
@@ -272,10 +272,10 @@ function PokemonSpriteBrowserInner({
           <button
             key={g}
             type="button"
-            className={`pressable rounded-sm px-2.5 py-1.5 text-[11px] font-bold uppercase ${
+            className={`pressable rounded-lg px-2.5 py-1.5 text-[11px] font-semibold tracking-tight ${
               generation === g
-                ? "bg-accent text-white"
-                : "border-2 border-frame bg-surface"
+                ? "bg-accent text-[var(--on-accent)]"
+                : "border border-frame bg-surface"
             }`}
             onClick={() => setGeneration(g)}
           >
@@ -289,7 +289,7 @@ function PokemonSpriteBrowserInner({
         </span>
         <input
           autoFocus
-          className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+          className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
           placeholder="Name or Pokédex #"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -309,7 +309,7 @@ function PokemonSpriteBrowserInner({
               type="button"
               title={`#${mon.pokedexId} ${mon.name}`}
               aria-pressed={selectedRow}
-              className={`flex flex-col items-center gap-1 rounded-sm border-2 p-1.5 ${
+              className={`flex flex-col items-center gap-1 rounded-lg border p-1.5 ${
                 selectedRow
                   ? "border-accent bg-accent/15"
                   : "border-frame bg-surface-2 hover:bg-accent/10"
