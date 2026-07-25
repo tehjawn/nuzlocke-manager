@@ -225,7 +225,7 @@ export function TrainerCard({
                     emoji={trainer.statusEmoji}
                     text={trainer.statusText}
                     empty=""
-                    className="truncate text-xs text-muted"
+                    className="line-clamp-3 text-xs leading-snug text-muted"
                   />
                 </div>
               ) : null}
