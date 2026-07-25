@@ -5,11 +5,11 @@ import { markNotificationReadAction } from "@/app/actions/notifications";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { UserMenu } from "@/components/UserMenu";
 import { WelcomeModal } from "@/components/WelcomeModal";
-import type { NotificationItem } from "@/lib/notifications";
+import type { NotificationItem } from "@/lib/notification-types";
 import {
   NOTIFICATION_ACTION_WELCOME,
   NOTIFICATION_TYPE_WELCOME,
-} from "@/lib/notifications";
+} from "@/lib/notification-types";
 
 type LoggedInChromeProps = {
   name: string;

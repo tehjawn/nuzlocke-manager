@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import type { NotificationItem } from "@/lib/notifications";
+import type { NotificationItem } from "@/lib/notification-types";
 import {
   NOTIFICATION_ACTION_WELCOME,
   NOTIFICATION_TYPE_WELCOME,
-} from "@/lib/notifications";
+} from "@/lib/notification-types";
 
 type NotificationsMenuProps = {
   notifications: NotificationItem[];
