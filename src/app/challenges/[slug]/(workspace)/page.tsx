@@ -43,7 +43,10 @@ export default async function LeagueBoardPage({ params }: PageProps) {
           <h2 className="font-display text-xl font-extrabold tracking-tight">
             Players
           </h2>
-          <p className="text-xs text-muted">{trainers.length} on the board</p>
+          <p className="text-xs text-muted">
+            {trainers.length} trainer{trainers.length === 1 ? " has" : "s have"}{" "}
+            joined this league!
+          </p>
         </div>
         <div className="grid gap-4">
           {trainers.map((trainer) => (

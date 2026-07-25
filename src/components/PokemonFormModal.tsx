@@ -9,6 +9,7 @@ import { StatSpreadEditor } from "@/components/StatSpreadEditor";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import { heldItemSpriteUrl, searchHeldItems } from "@/data/pokemon-index";
 import {
+  resolveMoveName,
   searchAbilities,
   searchCatchRoutes,
   searchNatures,
@@ -80,10 +81,10 @@ export function pokemonEntryToForm(mon: PokemonEntry): PokemonFormState {
     ability: mon.ability ?? "",
     catchRoute: mon.catchRoute ?? "",
     heldItem: mon.heldItem ?? "",
-    move1: mon.moves[0] ?? "",
-    move2: mon.moves[1] ?? "",
-    move3: mon.moves[2] ?? "",
-    move4: mon.moves[3] ?? "",
+    move1: resolveMoveName(mon.moves[0] ?? ""),
+    move2: resolveMoveName(mon.moves[1] ?? ""),
+    move3: resolveMoveName(mon.moves[2] ?? ""),
+    move4: resolveMoveName(mon.moves[3] ?? ""),
     ivs: clampIvs(mon.ivs ?? undefined),
     evs: clampEvs(mon.evs ?? undefined),
     causeOfDeath: mon.causeOfDeath ?? "",
