@@ -335,7 +335,7 @@ export function SaveImportModal({
                               <input
                                 value={mon.nickname}
                                 placeholder="Nickname"
-                                className="min-w-[6rem] flex-1 rounded-lg border border-frame bg-surface px-2 py-1 text-sm"
+                                className="w-full rounded-lg border border-frame bg-surface px-2 py-1 text-sm sm:w-auto sm:min-w-[6rem] sm:flex-1"
                                 onChange={(e) =>
                                   updateDraft(key, index, {
                                     nickname: e.target.value,
@@ -345,7 +345,7 @@ export function SaveImportModal({
                               <input
                                 value={mon.species}
                                 placeholder="Species"
-                                className="min-w-[7rem] flex-1 rounded-lg border border-frame bg-surface px-2 py-1 text-sm"
+                                className="w-full rounded-lg border border-frame bg-surface px-2 py-1 text-sm sm:w-auto sm:min-w-[6rem] sm:flex-1"
                                 onChange={(e) =>
                                   updateDraft(key, index, {
                                     species: e.target.value,

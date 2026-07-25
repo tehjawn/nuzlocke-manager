@@ -45,17 +45,31 @@ const noopSubscribe = () => () => {};
 const getIsClient = () => true;
 const getIsServer = () => false;
 
+/**
+ * Prefer a *visible* match. Some anchors (e.g. the season tabs) render once per
+ * breakpoint with the off-breakpoint copy hidden via `display:none`, which has
+ * no client rects — picking it would spotlight an empty 0×0 box.
+ */
+function queryTarget(selector: string): Element | null {
+  const matches = document.querySelectorAll(selector);
+  if (matches.length <= 1) return matches[0] ?? null;
+  for (const el of matches) {
+    if (el.getClientRects().length > 0) return el;
+  }
+  return matches[0] ?? null;
+}
+
 function waitForElement(
   selector: string,
   timeoutMs = 5000,
 ): Promise<Element | null> {
-  const existing = document.querySelector(selector);
+  const existing = queryTarget(selector);
   if (existing) return Promise.resolve(existing);
 
   return new Promise((resolve) => {
     const start = Date.now();
     const tick = () => {
-      const el = document.querySelector(selector);
+      const el = queryTarget(selector);
       if (el) {
         resolve(el);
         return;
@@ -281,7 +295,7 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
     if (!open || !ready || !step?.element) return;
 
     const update = () => {
-      const el = document.querySelector(step.element!);
+      const el = queryTarget(step.element!);
       if (el) setTarget(measureElement(el));
     };
 

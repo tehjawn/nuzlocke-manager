@@ -36,7 +36,7 @@ export function TrainerCard({
     <div data-tour={isDemo ? "demo-trainer" : undefined}>
       {variant === "grid" ? (
         <Frame className="h-full">
-          <div className="grid h-full grid-cols-[7rem_minmax(0,1fr)] gap-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-4">
+          <div className="grid h-full grid-cols-[6rem_minmax(0,1fr)] gap-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-4">
             <div className="flex min-w-0 flex-col items-center gap-2 text-center">
               <div className="relative w-full">
                 <Image

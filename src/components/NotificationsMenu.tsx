@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { NotificationItem } from "@/lib/notification-types";
 import { isWelcomeNotification } from "@/lib/notification-types";
+import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 
 type NotificationsMenuProps = {
   notifications: NotificationItem[];
@@ -16,6 +17,7 @@ export function NotificationsMenu({
   onSelect,
 }: NotificationsMenuProps) {
   const [open, setOpen] = useState(false);
+  const coarse = useCoarsePointer();
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const badgeLabel =
@@ -43,8 +45,10 @@ export function NotificationsMenu({
     <div
       ref={rootRef}
       className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      // Hover-open is a desktop affordance only. On touch the emulated
+      // mouseenter would fight the click toggle, so tap drives it there.
+      onMouseEnter={coarse ? undefined : () => setOpen(true)}
+      onMouseLeave={coarse ? undefined : () => setOpen(false)}
     >
       <button
         type="button"

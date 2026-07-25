@@ -8,6 +8,8 @@ import type { ChallengeStatus } from "@/lib/challenge-types";
 type SeasonTabsProps = {
   slug: string;
   status?: ChallengeStatus;
+  /** "vertical" is the desktop rail list; "horizontal" is the mobile tab bar. */
+  orientation?: "vertical" | "horizontal";
 };
 
 type Tab = {
@@ -17,9 +19,14 @@ type Tab = {
   icon: ReactNode;
 };
 
-export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
+export function SeasonTabs({
+  slug,
+  status = "ACTIVE",
+  orientation = "vertical",
+}: SeasonTabsProps) {
   const pathname = usePathname();
   const base = `/challenges/${slug}`;
+  const horizontal = orientation === "horizontal";
 
   const tabs: Tab[] = [
     {
@@ -58,7 +65,11 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
     <div
       role="tablist"
       aria-label="Season sections"
-      className="gba-inset flex flex-col gap-1 bg-surface-2/80 p-1.5"
+      className={`gba-inset flex gap-1 bg-surface-2/80 p-1.5 ${
+        horizontal
+          ? "flex-row overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          : "flex-col"
+      }`}
     >
       {tabs.map((tab) => {
         const active =
@@ -75,6 +86,8 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
             prefetch
             data-tour={tab.label === "Trainers" ? "tab-trainers" : undefined}
             className={`flex items-center gap-3 rounded-[calc(var(--radius-sm)-2px)] border px-3 py-2.5 text-sm font-semibold transition-colors ${
+              horizontal ? "shrink-0 whitespace-nowrap" : ""
+            } ${
               active
                 ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
                 : "border-transparent text-ink hover:bg-surface"

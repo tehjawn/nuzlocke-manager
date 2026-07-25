@@ -59,8 +59,16 @@ export function ChallengeShell({
       <div
         className={`mx-auto flex w-full flex-1 flex-col gap-6 px-4 pb-16 pt-2 sm:px-6 lg:flex-row lg:items-start ${SITE_SHELL_MAX_CLASS}`}
       >
+        {/*
+          Mobile section nav: a compact horizontal tab bar at the very top so
+          the board isn't buried under the whole info rail. Desktop keeps the
+          vertical tabs inside the sticky left rail below.
+        */}
+        <div className="lg:hidden">
+          <SeasonTabs slug={slug} status={status} orientation="horizontal" />
+        </div>
         <ScrollFadeRail
-          className={`${SEASON_LEFT_RAIL_CLASS} lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start`}
+          className={`order-2 ${SEASON_LEFT_RAIL_CLASS} lg:order-none lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start`}
           scrollClassName="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]"
         >
           <Frame title="General info">
@@ -113,7 +121,9 @@ export function ChallengeShell({
             ) : null}
           </Frame>
 
-          <SeasonTabs slug={slug} status={status} />
+          <div className="hidden lg:block">
+            <SeasonTabs slug={slug} status={status} />
+          </div>
 
           <ActivityFeed
             slug={slug}
@@ -123,7 +133,7 @@ export function ChallengeShell({
           />
         </ScrollFadeRail>
 
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="order-1 min-w-0 flex-1 lg:order-none">{children}</div>
       </div>
     </div>
   );
