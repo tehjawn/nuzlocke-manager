@@ -6,14 +6,14 @@ export const SITE_HEADER_MAX_CLASS = "max-w-7xl";
 
 type SiteHeaderProps = {
   challengeSlug?: string;
-  challengeName?: string;
+  challengeYear?: number;
   showGm?: boolean;
   myTrainerId?: string | null;
 };
 
 export function SiteHeader({
   challengeSlug,
-  challengeName,
+  challengeYear,
   showGm = false,
   myTrainerId = null,
 }: SiteHeaderProps) {
@@ -28,13 +28,13 @@ export function SiteHeader({
         >
           Nuzlocke Manager
         </Link>
-        {challengeName && challengeSlug ? (
+        {challengeYear != null && challengeSlug ? (
           <p className="truncate text-sm text-muted">
             <Link
               href={`/challenges/${challengeSlug}`}
               className="hover:text-ink"
             >
-              {challengeName}
+              Season {challengeYear} League
             </Link>
           </p>
         ) : null}

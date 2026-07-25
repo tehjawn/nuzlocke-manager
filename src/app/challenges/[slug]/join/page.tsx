@@ -43,7 +43,7 @@ export default async function JoinPage({ params, searchParams }: PageProps) {
     <div className="flex flex-1 flex-col">
       <SiteHeader
         challengeSlug={challenge.slug}
-        challengeName={challenge.name}
+        challengeYear={challenge.year}
         showGm={Boolean(access?.isGm)}
       />
       <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-16 pt-2 sm:px-6">

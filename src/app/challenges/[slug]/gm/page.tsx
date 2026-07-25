@@ -44,7 +44,7 @@ export default async function GmPage({ params }: PageProps) {
     <div className="flex flex-1 flex-col">
       <SiteHeader
         challengeSlug={challenge.slug}
-        challengeName={challenge.name}
+        challengeYear={challenge.year}
         showGm
       />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-2 sm:px-6">

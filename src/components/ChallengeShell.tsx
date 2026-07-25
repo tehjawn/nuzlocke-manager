@@ -44,7 +44,7 @@ export function ChallengeShell({
     <div className="flex flex-1 flex-col">
       <SiteHeader
         challengeSlug={slug}
-        challengeName={name}
+        challengeYear={year}
         showGm={showGm}
         myTrainerId={myTrainerId}
       />
