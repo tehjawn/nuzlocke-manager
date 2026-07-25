@@ -90,7 +90,7 @@ function HeaderButton({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className={`pressable inline-flex items-center gap-1 px-2 py-1 font-display text-[10px] font-semibold tracking-tight disabled:opacity-60 ${
+      className={`pressable inline-flex items-center gap-1 px-2.5 py-1.5 font-display text-[11px] font-semibold tracking-tight disabled:opacity-60 ${
         tone === "solid"
           ? "bg-[var(--accent-2)] text-[var(--accent-ink)]"
           : "bg-black/25 text-white hover:bg-black/40"
@@ -416,7 +416,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="inline-flex items-center rounded-lg border border-frame bg-danger px-2 py-1 text-[10px] font-semibold tracking-tight text-white disabled:opacity-60"
+                      className="inline-flex items-center rounded-lg border border-frame bg-danger px-2.5 py-1.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
                       onClick={useReviveToken}
                     >
                       Use revive
@@ -425,7 +425,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="inline-flex items-center rounded-lg border border-frame bg-surface px-2 py-1 font-display text-[10px] font-semibold tracking-tight disabled:opacity-60"
+                      className="inline-flex items-center rounded-lg border border-frame bg-surface px-2.5 py-1.5 font-display text-[11px] font-semibold tracking-tight disabled:opacity-60"
                       onClick={resetReviveToken}
                     >
                       GM: reset revive
@@ -458,7 +458,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="inline-flex items-center rounded-lg border border-frame bg-danger px-2 py-1 text-[10px] font-semibold tracking-tight text-white disabled:opacity-60"
+                            className="inline-flex items-center rounded-lg border border-frame bg-danger px-2.5 py-1.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
                             onClick={useReviveToken}
                           >
                             Use revive
@@ -467,7 +467,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="inline-flex items-center rounded-lg border border-frame bg-surface px-2 py-1 font-display text-[10px] font-semibold tracking-tight disabled:opacity-60"
+                            className="inline-flex items-center rounded-lg border border-frame bg-surface px-2.5 py-1.5 font-display text-[11px] font-semibold tracking-tight disabled:opacity-60"
                             onClick={resetReviveToken}
                           >
                             GM: reset

@@ -10,24 +10,21 @@ type SeasonTabsProps = {
   status?: ChallengeStatus;
 };
 
-type Tab = {
+export type SeasonTab = {
   href: string;
   label: string;
   match: "exact" | "prefix";
   icon: ReactNode;
 };
 
-export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
-  const pathname = usePathname();
+/** Section-tab config, shared by the desktop rail and the mobile tab bar. */
+export function getSeasonTabs(
+  slug: string,
+  status: ChallengeStatus = "ACTIVE",
+): SeasonTab[] {
   const base = `/challenges/${slug}`;
-
-  const tabs: Tab[] = [
-    {
-      href: base,
-      label: "Trainers",
-      match: "exact",
-      icon: <PlayersIcon />,
-    },
+  return [
+    { href: base, label: "Trainers", match: "exact", icon: <PlayersIcon /> },
     {
       href: `${base}/encounters`,
       label: "Encounters",
@@ -53,6 +50,17 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
       icon: <TournamentIcon />,
     },
   ];
+}
+
+export function isSeasonTabActive(tab: SeasonTab, pathname: string): boolean {
+  return tab.match === "exact"
+    ? pathname === tab.href
+    : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+}
+
+export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
+  const pathname = usePathname();
+  const tabs = getSeasonTabs(slug, status);
 
   return (
     <div
@@ -61,10 +69,7 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
       className="gba-inset flex flex-col gap-1 bg-surface-2/80 p-1.5"
     >
       {tabs.map((tab) => {
-        const active =
-          tab.match === "exact"
-            ? pathname === tab.href
-            : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+        const active = isSeasonTabActive(tab, pathname);
 
         return (
           <Link

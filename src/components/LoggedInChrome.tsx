@@ -129,11 +129,10 @@ export function LoggedInChrome({
           unreadCount={unreadCount}
           onSelect={onSelectNotification}
         />
-        <UserMenu
-          name={name}
-          image={image}
-          signOutAction={signOutAction}
-        />
+        {/* On mobile the account actions live in the nav drawer instead. */}
+        <span className="hidden sm:block">
+          <UserMenu name={name} image={image} signOutAction={signOutAction} />
+        </span>
       </div>
       <OnboardingTour open={tourOpen} onDismiss={dismissTour} />
     </>

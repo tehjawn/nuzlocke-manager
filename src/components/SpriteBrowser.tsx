@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Modal } from "@/components/Modal";
+import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 import {
   formatTrainerSpriteLabel,
   searchTrainerSprites,
@@ -72,6 +73,7 @@ function TrainerSpriteBrowserInner({
   const { visible, total, hasMore, scrollRef, sentinelRef, loadMore } =
     useInfiniteReveal(allResults, deferred);
   const preview = useSpriteHoverPreview(scrollRef);
+  const coarse = useCoarsePointer();
   const [draft, setDraft] = useState(selectedKey);
 
   return (
@@ -145,6 +147,7 @@ function TrainerSpriteBrowserInner({
               name={key}
               label={label}
               selected={selected}
+              coarse={coarse}
               onSelect={() => setDraft(key)}
               onConfirm={() => {
                 onSelect(key);
@@ -220,6 +223,7 @@ function PokemonSpriteBrowserInner({
   const { visible, total, hasMore, scrollRef, sentinelRef, loadMore } =
     useInfiniteReveal(allResults, resetKey);
   const preview = useSpriteHoverPreview(scrollRef);
+  const coarse = useCoarsePointer();
   const [draft, setDraft] = useState<PokemonIndexEntry | null>(selected);
 
   return (
@@ -378,6 +382,7 @@ function PokemonSpriteBrowserInner({
               name={mon.name}
               label={label}
               selected={selectedRow}
+              coarse={coarse}
               onSelect={() => setDraft(mon)}
               onConfirm={() => {
                 onSelect(mon);
@@ -444,6 +449,7 @@ function SpriteTile({
   name,
   label,
   selected,
+  coarse = false,
   onSelect,
   onConfirm,
   onPreviewShow,
@@ -453,6 +459,7 @@ function SpriteTile({
   name: string;
   label: string;
   selected: boolean;
+  coarse?: boolean;
   onSelect: () => void;
   onConfirm: () => void;
   onPreviewShow: (el: HTMLElement, src: string, label: string) => void;
@@ -468,7 +475,10 @@ function SpriteTile({
           ? "border-accent bg-accent/15"
           : "border-frame bg-surface-2 hover:bg-accent/10"
       }`}
-      onClick={onSelect}
+      // Touch has no reliable double-click: a tap on the already-selected tile
+      // confirms, so it acts as a fast double-tap. Desktop keeps select + the
+      // native double-click shortcut below.
+      onClick={coarse && selected ? onConfirm : onSelect}
       onDoubleClick={onConfirm}
       onMouseEnter={(e) => onPreviewShow(e.currentTarget, src, label)}
       onMouseLeave={onPreviewHide}
@@ -484,7 +494,7 @@ function SpriteTile({
         unoptimized
         loading="lazy"
       />
-      <span className="w-full truncate text-[9px] font-bold text-muted">
+      <span className="w-full truncate text-[10px] font-bold text-muted">
         {name}
       </span>
     </button>

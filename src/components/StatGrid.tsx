@@ -30,7 +30,7 @@ export function StatGrid({
         >
           <p
             className={`font-semibold tracking-tight text-muted ${
-              compact ? "text-[9px]" : "text-[10px]"
+              compact ? "text-[10px]" : "text-[11px]"
             }`}
           >
             {STAT_LABELS[key]}

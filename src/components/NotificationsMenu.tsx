@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { NotificationItem } from "@/lib/notification-types";
 import { isWelcomeNotification } from "@/lib/notification-types";
+import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 
 type NotificationsMenuProps = {
   notifications: NotificationItem[];
@@ -16,6 +17,7 @@ export function NotificationsMenu({
   onSelect,
 }: NotificationsMenuProps) {
   const [open, setOpen] = useState(false);
+  const coarse = useCoarsePointer();
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const badgeLabel =
@@ -43,8 +45,10 @@ export function NotificationsMenu({
     <div
       ref={rootRef}
       className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      // Hover-open is a desktop affordance only. On touch the emulated
+      // mouseenter would fight the click toggle, so tap drives it there.
+      onMouseEnter={coarse ? undefined : () => setOpen(true)}
+      onMouseLeave={coarse ? undefined : () => setOpen(false)}
     >
       <button
         type="button"
@@ -68,11 +72,11 @@ export function NotificationsMenu({
       </button>
 
       {open ? (
-        <div className="absolute top-full right-0 z-50 pt-1">
+        <div className="fixed inset-x-2 top-16 z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:pt-1">
           <div
             id={menuId}
             role="menu"
-            className="gba-frame gba-frame-menu w-72 overflow-hidden sm:w-80"
+            className="gba-frame gba-frame-menu w-full overflow-hidden sm:w-80"
           >
             <div className="relative z-[1] border-b border-frame/60 px-3 py-2">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">
