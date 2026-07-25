@@ -420,9 +420,14 @@ export function TrainerBoard({
       : playerSave.status.kind !== "idle"
         ? playerSave.status
         : reviveSave.status;
+  // Only pin a bottom bar when it has a job — save feedback or profile save.
+  // The idle "save as you go" hint felt redundant on mobile.
+  const showMobileSaveBar =
+    canEdit &&
+    (editingPlayer || mobileSaveStatus.kind !== "idle");
 
   return (
-    <div className={`space-y-4 ${canEdit ? "pb-20 sm:pb-0" : ""}`}>
+    <div className={`space-y-4 ${showMobileSaveBar ? "pb-20 sm:pb-0" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={leagueBoardHref} className={CTA_PRIMARY}>
           <span aria-hidden>←</span>
@@ -981,17 +986,13 @@ export function TrainerBoard({
         />
       ) : null}
 
-      {canEdit ? (
+      {showMobileSaveBar ? (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-frame bg-surface/95 px-4 py-3 shadow-[0_-8px_24px_var(--shadow)] backdrop-blur-md sm:hidden">
           <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
             <div className="min-w-0">
-              {mobileSaveStatus.kind === "idle" ? (
-                <p className="text-xs text-muted">
-                  Party & badges save as you go
-                </p>
-              ) : (
+              {mobileSaveStatus.kind !== "idle" ? (
                 <SaveStatus status={mobileSaveStatus} />
-              )}
+              ) : null}
             </div>
             {editingPlayer ? (
               <button
