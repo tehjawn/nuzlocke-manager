@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ChallengeShell } from "@/components/ChallengeShell";
+import { SeasonJumpRegistrar } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -59,21 +60,30 @@ export default async function SeasonWorkspaceLayout({
     redirect(`/challenges/${slug}/join`);
   }
 
+  const showGm = Boolean(access?.isGm);
+
   return (
-    <ChallengeShell
-      slug={challenge.slug}
-      name={challenge.name}
-      year={challenge.year}
-      game={challenge.game}
-      description={challenge.description}
-      status={challenge.status}
-      activities={challenge.activities ?? []}
-      canReact={Boolean(session?.user?.id && challenge.source === "database")}
-      showGm={Boolean(access?.isGm)}
-      myTrainerId={myTrainerId}
-      signedIn={Boolean(session?.user)}
-    >
-      {children}
-    </ChallengeShell>
+    <>
+      <SeasonJumpRegistrar
+        challenge={challenge}
+        showGm={showGm}
+        myTrainerId={myTrainerId}
+      />
+      <ChallengeShell
+        slug={challenge.slug}
+        name={challenge.name}
+        year={challenge.year}
+        game={challenge.game}
+        description={challenge.description}
+        status={challenge.status}
+        activities={challenge.activities ?? []}
+        canReact={Boolean(session?.user?.id && challenge.source === "database")}
+        showGm={showGm}
+        myTrainerId={myTrainerId}
+        signedIn={Boolean(session?.user)}
+      >
+        {children}
+      </ChallengeShell>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AboutIcon, GmIcon, MyTrainerIcon } from "@/components/nav-icons";
+import { JumpTrigger } from "@/features/jump";
 
 type NavLink = { href: string; label: string; icon: ReactNode };
 
@@ -176,6 +177,15 @@ export function MobileNavDrawer({
                       </Link>
                     ))}
                   </nav>
+
+                  <div className="flex items-center justify-between rounded-md border border-frame bg-surface px-3 py-2">
+                    <span className="text-sm font-medium">Jump</span>
+                    <JumpTrigger
+                      showShortcut={false}
+                      onBeforeOpen={() => setOpen(false)}
+                      className="h-8 border-interactive/35 bg-interactive-soft"
+                    />
+                  </div>
 
                   <div className="flex items-center justify-between rounded-md border border-frame bg-surface px-3 py-2">
                     <span className="text-sm font-medium">Theme</span>

@@ -5,6 +5,7 @@ import { MobileMenuAuth } from "@/components/MobileMenuAuth";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { AboutIcon, MyTrainerIcon } from "@/components/nav-icons";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { JumpTrigger } from "@/features/jump";
 
 /** Shared shell width for the site header and page content on every page. */
 export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
@@ -56,6 +57,7 @@ export function SiteHeader({
         ) : null}
       </div>
       <nav className="relative flex shrink-0 items-center gap-2 text-sm">
+        <JumpTrigger />
         {/* Inline pills at sm+; below that they collapse into the drawer. */}
         <div className="hidden items-center gap-2 sm:flex">
           {/* TEMP: Seasons index + SeasonsIcon hidden while only one season exists

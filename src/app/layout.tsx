@@ -3,6 +3,7 @@ import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { SnackbarHost } from "@/components/Snackbar";
+import { JumpHost } from "@/features/jump";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -60,8 +61,10 @@ export default function RootLayout({
           {THEME_INIT_SCRIPT}
         </Script>
         <NavigationProgress />
-        {children}
-        <SnackbarHost />
+        <JumpHost>
+          {children}
+          <SnackbarHost />
+        </JumpHost>
       </body>
     </html>
   );
