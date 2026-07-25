@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
@@ -85,13 +84,15 @@ function matchIndices(
 
 function ResultIcon({ item }: { item: JumpResult }) {
   if (item.imageUrl) {
+    // Plain img: Jump icons come from Showdown / PokeAPI / Blob and must not
+    // depend on next/image remotePatterns (custom avatars break search in prod).
     return (
-      <Image
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
         src={item.imageUrl}
         alt=""
         width={28}
         height={28}
-        unoptimized
         className="pixelated h-7 w-7 shrink-0 object-contain"
       />
     );
@@ -120,7 +121,6 @@ export function JumpPalette() {
   const { open, setOpen, results, index } = useJump();
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<JumpFuseHit[]>([]);
   const [recents, setRecents] = useState<string[]>([]);
   const [seenOpen, setSeenOpen] = useState(open);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -130,7 +130,6 @@ export function JumpPalette() {
     setSeenOpen(open);
     if (open) {
       setQuery("");
-      setHits([]);
       setRecents(getRecentJumps());
     }
   }
@@ -142,6 +141,13 @@ export function JumpPalette() {
   }, [open]);
 
   const suggestions = useMemo(() => defaultSuggestions(results), [results]);
+
+  // Derive from the live index so hits refresh when season registration lands
+  // after hydration (stale hits were empty forever in prod until retyping).
+  const hits = useMemo(() => {
+    if (!query.trim()) return [] as JumpFuseHit[];
+    return searchJumpIndex(index, query);
+  }, [index, query]);
 
   const groupedHits = useMemo(() => {
     const groups = new Map<JumpCategory, JumpFuseHit[]>();
@@ -157,22 +163,13 @@ export function JumpPalette() {
     });
   }, [hits]);
 
-  const onQueryChange = useCallback(
-    (value: string) => {
-      setQuery(value);
-      if (!value.trim()) {
-        setHits([]);
-        return;
-      }
-      setHits(searchJumpIndex(index, value));
-    },
-    [index],
-  );
+  const onQueryChange = useCallback((value: string) => {
+    setQuery(value);
+  }, []);
 
   const close = useCallback(() => {
     setOpen(false);
     setQuery("");
-    setHits([]);
   }, [setOpen]);
 
   const runResult = useCallback(
@@ -340,7 +337,7 @@ function JumpItem({
 }) {
   return (
     <Command.Item
-      value={item.id}
+      value={`${item.id} ${item.title} ${item.subtitle}`}
       onSelect={onSelect}
       className="flex cursor-pointer items-center gap-2.5 rounded-[calc(var(--radius-sm)-1px)] border border-transparent px-2 py-2 text-sm aria-selected:border-interactive/35 aria-selected:bg-interactive-soft"
     >

@@ -101,6 +101,36 @@ export async function getTrainer(
   return { challenge, trainer };
 }
 
+/**
+ * Active (else newest) season for omnipresent Jump on global pages.
+ * Request-deduped; prefers ACTIVE to match the homepage league CTA.
+ */
+export const getDefaultJumpChallenge = cache(async (): Promise<Challenge | null> => {
+  if (isDatabaseConfigured()) {
+    try {
+      const prisma = getPrisma();
+      const active = await prisma.challenge.findFirst({
+        where: { status: "ACTIVE" },
+        orderBy: { year: "desc" },
+        select: { slug: true },
+      });
+      if (active) return getChallenge(active.slug);
+
+      const newest = await prisma.challenge.findFirst({
+        orderBy: { year: "desc" },
+        select: { slug: true },
+      });
+      if (newest) return getChallenge(newest.slug);
+    } catch {
+      // fall through to seed
+    }
+  }
+
+  const seed =
+    CHALLENGES.find((c) => c.status === "ACTIVE") ?? CHALLENGES[0] ?? null;
+  return seed ? seedAsChallenge(seed) : null;
+});
+
 export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
   const challenge = await getChallenge(slug);
   return challenge?.activities ?? [];

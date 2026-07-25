@@ -5,7 +5,10 @@ import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { JoinForm } from "@/components/JoinForm";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
-import { SeasonJumpRegistrar } from "@/features/jump";
+import {
+  SeasonJumpRegistrar,
+  challengeToJumpSeasonContext,
+} from "@/features/jump";
 import { isInviteOnly } from "@/lib/challenge-access";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -69,8 +72,9 @@ export default async function JoinPage({ params, searchParams }: PageProps) {
   return (
     <div className="flex flex-1 flex-col">
       <SeasonJumpRegistrar
-        challenge={challenge}
-        showGm={Boolean(access?.isGm)}
+        season={challengeToJumpSeasonContext(challenge, {
+          showGm: Boolean(access?.isGm),
+        })}
       />
       <SiteHeader
         challengeSlug={challenge.slug}

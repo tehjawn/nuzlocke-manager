@@ -1,75 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { useJump } from "@/features/jump/JumpProvider";
 import type { JumpSeasonContext } from "@/features/jump/jump-types";
-import type { Challenge } from "@/lib/challenge-types";
 
 type SeasonJumpRegistrarProps = {
-  challenge: Challenge;
-  showGm?: boolean;
-  myTrainerId?: string | null;
+  season: JumpSeasonContext;
 };
 
 /**
- * Registers the loaded season graph with Jump while this tree is mounted.
- * Clears on unmount so leaving a season drops trainer/Pokémon results.
+ * Registers the slim season Jump index while mounted.
+ * Uses layout effect + owner-token unregister so a previous page's cleanup
+ * cannot wipe a newer registration after soft-navigation.
  */
-export function SeasonJumpRegistrar({
-  challenge,
-  showGm = false,
-  myTrainerId = null,
-}: SeasonJumpRegistrarProps) {
-  const { registerSeason } = useJump();
+export function SeasonJumpRegistrar({ season }: SeasonJumpRegistrarProps) {
+  const { registerSeason, unregisterSeason } = useJump();
 
-  useEffect(() => {
-    const ctx: JumpSeasonContext = {
-      slug: challenge.slug,
-      name: challenge.name,
-      year: challenge.year,
-      status: challenge.status,
-      showGm,
-      myTrainerId,
-      trainers: challenge.trainers.map((t) => ({
-        id: t.id,
-        handle: t.handle,
-        realName: t.realName,
-        discordUsername: t.discordUsername,
-        avatarSpriteKey: t.avatarSpriteKey,
-        earnedBadgeKeys: t.earnedBadgeKeys,
-        statusText: t.statusText,
-        pokemon: t.pokemon.map((p) => ({
-          id: p.id,
-          slot: p.slot,
-          nickname: p.nickname,
-          species: p.species,
-          pokedexId: p.pokedexId,
-          isShiny: p.isShiny,
-          catchRoute: p.catchRoute,
-          level: p.level,
-        })),
-      })),
-      badges: challenge.badges.map((b) => ({
-        key: b.key,
-        label: b.label,
-        category: b.category,
-        leaderName: b.leaderName,
-      })),
-      rules: challenge.rules.map((r) => ({
-        id: r.id,
-        title: r.title,
-        body: r.body,
-      })),
-      faqs: challenge.faqs.map((f) => ({
-        id: f.id,
-        question: f.question,
-        answer: f.answer,
-      })),
-    };
-
-    registerSeason(ctx);
-    return () => registerSeason(null);
-  }, [challenge, showGm, myTrainerId, registerSeason]);
+  useLayoutEffect(() => {
+    const ownerId = registerSeason(season);
+    return () => unregisterSeason(ownerId);
+  }, [season, registerSeason, unregisterSeason]);
 
   return null;
 }

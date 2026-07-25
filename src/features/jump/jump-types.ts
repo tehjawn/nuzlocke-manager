@@ -32,6 +32,7 @@ export type JumpSeasonContext = {
     handle: string;
     realName: string | null;
     discordUsername: string | null;
+    discordDisplayName: string | null;
     avatarSpriteKey: string;
     earnedBadgeKeys: string[];
     statusText: string | null;

@@ -159,10 +159,12 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
   }
 
   const trainers: JumpResult[] = ctx.trainers.map((t) => {
-    const badgeCount = t.earnedBadgeKeys.length;
-    const monCount = t.pokemon.length;
+    const badges = t.earnedBadgeKeys ?? [];
+    const mons = t.pokemon ?? [];
+    const badgeCount = badges.length;
+    const monCount = mons.length;
     const subtitleParts = [
-      t.realName?.trim() || null,
+      t.realName?.trim() || t.discordDisplayName?.trim() || null,
       badgeCount ? `${badgeCount} badge${badgeCount === 1 ? "" : "s"}` : null,
       monCount ? `${monCount} Pokémon` : null,
       t.statusText?.trim() || null,
@@ -178,6 +180,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
         t.handle,
         t.realName ?? "",
         t.discordUsername ?? "",
+        t.discordDisplayName ?? "",
         "trainer",
         "player",
       ].filter(Boolean),
@@ -186,7 +189,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
   });
 
   const pokemon: JumpResult[] = ctx.trainers.flatMap((t) =>
-    t.pokemon.map((mon) => {
+    (t.pokemon ?? []).map((mon) => {
       const label = mon.nickname?.trim() || mon.species;
       const slot = SLOT_LABEL[mon.slot] ?? mon.slot;
       const bits = [

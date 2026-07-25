@@ -3,7 +3,9 @@ import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { SnackbarHost } from "@/components/Snackbar";
-import { JumpHost } from "@/features/jump";
+import { JumpHost } from "@/features/jump/JumpHost";
+import { challengeToJumpSeasonContext } from "@/features/jump/jump-season";
+import { getDefaultJumpChallenge } from "@/lib/challenges";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -44,11 +46,16 @@ export const metadata: Metadata = {
     "Trash Pack's Nuzlocke Challenge Manager — league boards, graves, badges, and season archives.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const defaultChallenge = await getDefaultJumpChallenge();
+  const defaultSeason = defaultChallenge
+    ? challengeToJumpSeasonContext(defaultChallenge)
+    : null;
+
   return (
     <html
       lang="en"
@@ -61,7 +68,7 @@ export default function RootLayout({
           {THEME_INIT_SCRIPT}
         </Script>
         <NavigationProgress />
-        <JumpHost>
+        <JumpHost defaultSeason={defaultSeason}>
           {children}
           <SnackbarHost />
         </JumpHost>
