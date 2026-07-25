@@ -194,9 +194,9 @@ export function TrainerCard({
       ) : (
         <Frame className="group transition-[border-color,box-shadow] duration-200 hover:border-interactive/45">
           {/*
-            List layout: slim identity rail | name + status, badges, squad,
-            footer stats/revive. Whole card opens the board; squad slots stay
-            interactive above the stretched link.
+            List layout: identity rail (avatar + name + status) | badges,
+            squad, footer stats/revive. Whole card opens the board; squad
+            slots stay interactive above the stretched link.
           */}
           <Link
             href={boardHref}
@@ -204,7 +204,7 @@ export function TrainerCard({
             aria-label={boardLabel}
           />
           <div className="relative flex gap-3 sm:gap-4">
-            <div className="flex w-20 shrink-0 flex-col items-center sm:w-24 md:w-28">
+            <div className="flex w-24 shrink-0 flex-col items-center gap-1.5 text-center sm:w-28 md:w-32">
               <Image
                 src={avatarImageUrl(trainer.avatarSpriteKey)}
                 alt=""
@@ -216,25 +216,22 @@ export function TrainerCard({
                 )}
                 unoptimized
               />
+              <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep sm:text-base">
+                {displayName(trainer)}
+              </h2>
+              {hasStatus ? (
+                <div title={statusTitle} className="w-full min-w-0">
+                  <StatusLine
+                    emoji={trainer.statusEmoji}
+                    text={trainer.statusText}
+                    empty=""
+                    className="truncate text-xs text-muted"
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className="min-w-0 flex-1 space-y-2.5">
-              <div className="min-w-0">
-                <h2 className="truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep sm:text-base">
-                  {displayName(trainer)}
-                </h2>
-                {hasStatus ? (
-                  <div title={statusTitle} className="mt-0.5 min-w-0">
-                    <StatusLine
-                      emoji={trainer.statusEmoji}
-                      text={trainer.statusText}
-                      empty=""
-                      className="truncate text-xs text-muted"
-                    />
-                  </div>
-                ) : null}
-              </div>
-
               <BadgeCase
                 badges={challenge.badges}
                 earnedKeys={trainer.earnedBadgeKeys}
