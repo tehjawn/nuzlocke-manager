@@ -52,17 +52,40 @@ export function ChallengeShell({
         <aside
           className={`${SEASON_LEFT_RAIL_CLASS} space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:self-start lg:pr-2 lg:[scrollbar-gutter:stable]`}
         >
-          <Frame title={`Season ${year}`}>
-            <p className="text-xs font-semibold tracking-tight text-accent-deep">
-              General info · {seasonStatusLabel(status)}
-            </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">
-              {name}
-            </h1>
-            {game ? <p className="mt-1 text-sm text-muted">{game}</p> : null}
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              {description}
-            </p>
+          <Frame title="General info">
+            <dl className="space-y-3 text-sm">
+              <div>
+                <dt className="text-xs font-semibold tracking-tight text-muted">
+                  Season Status
+                </dt>
+                <dd className="mt-0.5 font-semibold text-accent-deep">
+                  {seasonStatusLabel(status)}
+                </dd>
+              </div>
+              <div>
+                <dt className="sr-only">Season title</dt>
+                <dd>
+                  <h1 className="text-2xl font-bold tracking-tight">
+                    {name}{" "}
+                    <span className="font-semibold text-muted">
+                      (Season {year})
+                    </span>
+                  </h1>
+                </dd>
+              </div>
+              {game ? (
+                <div>
+                  <dt className="text-xs font-semibold tracking-tight text-muted">
+                    Game
+                  </dt>
+                  <dd className="mt-0.5 font-medium">{game}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt className="sr-only">Description</dt>
+                <dd className="leading-relaxed text-muted">{description}</dd>
+              </div>
+            </dl>
             {!signedIn ? (
               <Link
                 href="/login"
