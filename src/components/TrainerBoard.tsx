@@ -17,6 +17,7 @@ import {
   EMPTY_POKEMON_FORM,
   PokemonFormModal,
   pokemonEntryToForm,
+  pokemonFormToEntry,
   type PokemonFormState,
 } from "@/components/PokemonFormModal";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
@@ -181,9 +182,12 @@ export function TrainerBoard({
     trainer.earnedBadgeKeys,
   );
 
-  const [pokemonOpen, setPokemonOpen] = useState(false);
-  const [pokemonForm, setPokemonForm] =
-    useState<PokemonFormState>(EMPTY_POKEMON_FORM);
+  /** Own board: shared draft between Preview (view) and Edit. */
+  const [pokemonInspect, setPokemonInspect] = useState<{
+    mode: "view" | "edit";
+    form: PokemonFormState;
+  } | null>(null);
+  /** Other trainers' boards: read-only details only. */
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );
@@ -326,18 +330,22 @@ export function TrainerBoard({
       partyIndex = 0;
       while (used.has(partyIndex) && partyIndex < 12) partyIndex += 1;
     }
-    setPokemonForm({ ...EMPTY_POKEMON_FORM, slot, partyIndex });
-    setPokemonOpen(true);
-  }
-
-  function openEditPokemon(mon: PokemonEntry) {
-    setPokemonForm(pokemonEntryToForm(mon));
-    setPokemonOpen(true);
+    setPokemonInspect({
+      mode: "edit",
+      form: { ...EMPTY_POKEMON_FORM, slot, partyIndex },
+    });
   }
 
   function openPokemon(mon: PokemonEntry) {
-    if (canEdit) openEditPokemon(mon);
-    else setDetailsPokemon(mon);
+    if (canEdit) {
+      // Start in preview — Edit is one click; draft survives Preview ↔ Edit.
+      setPokemonInspect({
+        mode: "view",
+        form: pokemonEntryToForm(mon),
+      });
+      return;
+    }
+    setDetailsPokemon(mon);
   }
 
   const mobileSaveStatus =
@@ -770,119 +778,136 @@ export function TrainerBoard({
         </aside>
       </div>
 
-      {canEdit ? (
-        <>
-          <PokemonFormModal
-            open={pokemonOpen}
-            initial={pokemonForm}
-            teamPokemon={trainer.pokemon}
-            pending={pending}
-            onClose={() => setPokemonOpen(false)}
-            onSave={(form) => {
-              partySave.markSaving("Saving Pokémon…");
-              startTransition(async () => {
-                const moves = [
-                  form.move1,
-                  form.move2,
-                  form.move3,
-                  form.move4,
-                ].filter(Boolean);
-                const result = await upsertPokemonAction({
-                  id: form.id,
-                  trainerId: trainer.id,
-                  slot: form.slot,
-                  partyIndex: form.partyIndex,
-                  nickname: form.nickname || null,
-                  species: form.species.trim(),
-                  isShiny: form.isShiny,
-                  types: [],
-                  nature: form.nature || null,
-                  level: form.level ? Number(form.level) : null,
-                  ability: form.ability || null,
-                  catchRoute: form.catchRoute || null,
-                  heldItem: form.heldItem || null,
-                  moves,
-                  ivs: isEmptySpread(form.ivs) ? null : form.ivs,
-                  evs: isEmptySpread(form.evs) ? null : form.evs,
-                  causeOfDeath: form.causeOfDeath || null,
-                });
-                if (result.ok) {
-                  partySave.markSaved(result.message ?? "Pokémon saved");
-                  setPokemonOpen(false);
-                } else {
-                  partySave.markError(result.error);
-                }
-              });
-            }}
-            onDelete={(pokemonId) => {
-              partySave.markSaving("Removing Pokémon…");
-              startTransition(async () => {
-                const result = await deletePokemonAction({
-                  trainerId: trainer.id,
-                  pokemonId,
-                });
-                if (result.ok) {
-                  partySave.markSaved(result.message ?? "Pokémon removed");
-                  setPokemonOpen(false);
-                } else {
-                  partySave.markError(result.error);
-                }
-              });
-            }}
-          />
-          <SaveImportModal
-            open={saveImportOpen}
-            pending={pending}
-            onClose={() => setSaveImportOpen(false)}
-            onApply={(payload) => {
-              partySave.markSaving("Importing save…");
-              startTransition(async () => {
-                const result = await importFromSaveAction({
-                  trainerId: trainer.id,
-                  pokemon: payload.pokemon.map((m) => ({
-                    nickname: m.nickname || null,
-                    species: m.species.trim(),
-                    pokedexId: m.pokedexId,
-                    level: m.level ? Number(m.level) : null,
-                    isShiny: m.isShiny,
-                    nature: m.nature,
-                    ability: m.ability,
-                    catchRoute: m.catchRoute,
-                    heldItem: m.heldItem,
-                    moves: m.moves,
-                    ivs: m.ivs,
-                    evs: m.evs,
-                    slot: m.slot,
-                  })),
-                  trainerName: payload.trainerName,
-                  applyTrainerName: payload.applyTrainerName,
-                  badgeKeys: payload.badgeKeys,
-                  applyBadges: payload.applyBadges,
-                  // Full category sync: unchecked mons clear that slot group.
-                  replaceSlots: [
-                    "MAIN",
-                    "RESERVE",
-                    "GRAVEYARD",
-                    "ENCOUNTERED",
-                  ],
-                });
-                if (result.ok) {
-                  partySave.markSaved(result.message ?? "Save imported");
-                  setSaveImportOpen(false);
-                } else {
-                  partySave.markError(result.error);
-                }
-              });
-            }}
-          />
-        </>
+      {canEdit && pokemonInspect?.mode === "view" ? (
+        <PokemonDetailsModal
+          open
+          pokemon={pokemonFormToEntry(pokemonInspect.form)}
+          onClose={() => setPokemonInspect(null)}
+          onEdit={() =>
+            setPokemonInspect({ ...pokemonInspect, mode: "edit" })
+          }
+        />
       ) : null}
 
-      <PokemonDetailsModal
-        open={detailsPokemon != null}
-        pokemon={detailsPokemon}
-        onClose={() => setDetailsPokemon(null)}
-      />
+      {canEdit && pokemonInspect?.mode === "edit" ? (
+        <PokemonFormModal
+          open
+          initial={pokemonInspect.form}
+          teamPokemon={trainer.pokemon}
+          pending={pending}
+          onClose={() => setPokemonInspect(null)}
+          onPreview={(form) =>
+            setPokemonInspect({ mode: "view", form })
+          }
+          onSave={(form) => {
+            partySave.markSaving("Saving Pokémon…");
+            startTransition(async () => {
+              const moves = [
+                form.move1,
+                form.move2,
+                form.move3,
+                form.move4,
+              ].filter(Boolean);
+              const result = await upsertPokemonAction({
+                id: form.id,
+                trainerId: trainer.id,
+                slot: form.slot,
+                partyIndex: form.partyIndex,
+                nickname: form.nickname || null,
+                species: form.species.trim(),
+                isShiny: form.isShiny,
+                types: [],
+                nature: form.nature || null,
+                level: form.level ? Number(form.level) : null,
+                ability: form.ability || null,
+                catchRoute: form.catchRoute || null,
+                heldItem: form.heldItem || null,
+                moves,
+                ivs: isEmptySpread(form.ivs) ? null : form.ivs,
+                evs: isEmptySpread(form.evs) ? null : form.evs,
+                causeOfDeath: form.causeOfDeath || null,
+              });
+              if (result.ok) {
+                partySave.markSaved(result.message ?? "Pokémon saved");
+                setPokemonInspect(null);
+              } else {
+                partySave.markError(result.error);
+              }
+            });
+          }}
+          onDelete={(pokemonId) => {
+            partySave.markSaving("Removing Pokémon…");
+            startTransition(async () => {
+              const result = await deletePokemonAction({
+                trainerId: trainer.id,
+                pokemonId,
+              });
+              if (result.ok) {
+                partySave.markSaved(result.message ?? "Pokémon removed");
+                setPokemonInspect(null);
+              } else {
+                partySave.markError(result.error);
+              }
+            });
+          }}
+        />
+      ) : null}
+
+      {canEdit ? (
+        <SaveImportModal
+          open={saveImportOpen}
+          pending={pending}
+          onClose={() => setSaveImportOpen(false)}
+          onApply={(payload) => {
+            partySave.markSaving("Importing save…");
+            startTransition(async () => {
+              const result = await importFromSaveAction({
+                trainerId: trainer.id,
+                pokemon: payload.pokemon.map((m) => ({
+                  nickname: m.nickname || null,
+                  species: m.species.trim(),
+                  pokedexId: m.pokedexId,
+                  level: m.level ? Number(m.level) : null,
+                  isShiny: m.isShiny,
+                  nature: m.nature,
+                  ability: m.ability,
+                  catchRoute: m.catchRoute,
+                  heldItem: m.heldItem,
+                  moves: m.moves,
+                  ivs: m.ivs,
+                  evs: m.evs,
+                  slot: m.slot,
+                })),
+                trainerName: payload.trainerName,
+                applyTrainerName: payload.applyTrainerName,
+                badgeKeys: payload.badgeKeys,
+                applyBadges: payload.applyBadges,
+                // Full category sync: unchecked mons clear that slot group.
+                replaceSlots: [
+                  "MAIN",
+                  "RESERVE",
+                  "GRAVEYARD",
+                  "ENCOUNTERED",
+                ],
+              });
+              if (result.ok) {
+                partySave.markSaved(result.message ?? "Save imported");
+                setSaveImportOpen(false);
+              } else {
+                partySave.markError(result.error);
+              }
+            });
+          }}
+        />
+      ) : null}
+
+      {!canEdit ? (
+        <PokemonDetailsModal
+          open={detailsPokemon != null}
+          pokemon={detailsPokemon}
+          onClose={() => setDetailsPokemon(null)}
+        />
+      ) : null}
 
       {canEdit ? (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-frame bg-surface/95 px-4 py-3 shadow-[0_-8px_24px_var(--shadow)] backdrop-blur-md sm:hidden">

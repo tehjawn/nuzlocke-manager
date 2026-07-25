@@ -6,6 +6,7 @@ import { Modal } from "@/components/Modal";
 import { SearchSelect } from "@/components/SearchSelect";
 import { PokemonSpriteBrowser } from "@/components/SpriteBrowser";
 import { StatSpreadEditor } from "@/components/StatSpreadEditor";
+import { TypeBadge } from "@/components/TypeBadge";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import { heldItemSpriteUrl, searchHeldItems } from "@/data/pokemon-index";
 import {
@@ -19,11 +20,13 @@ import {
   findDuplicateHeldItems,
   findDuplicateSpecies,
 } from "@/lib/board-warnings";
+import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import {
   clampEvs,
   clampIvs,
   EMPTY_EVS,
   EMPTY_IVS,
+  isEmptySpread,
   type StatSpread,
 } from "@/lib/stats";
 
@@ -71,6 +74,11 @@ export const EMPTY_POKEMON_FORM: PokemonFormState = {
   causeOfDeath: "",
 };
 
+const LABEL =
+  "mb-1 block text-[10px] font-semibold tracking-tight text-muted";
+const INPUT =
+  "w-full rounded-lg border border-frame bg-surface px-2.5 py-1.5 text-sm";
+
 export function pokemonEntryToForm(mon: PokemonEntry): PokemonFormState {
   return {
     id: mon.id,
@@ -95,6 +103,38 @@ export function pokemonEntryToForm(mon: PokemonEntry): PokemonFormState {
   };
 }
 
+/** Draft form → entry shape for the read-only details preview. */
+export function pokemonFormToEntry(form: PokemonFormState): PokemonEntry {
+  const levelNum = form.level.trim() ? Number(form.level) : NaN;
+  const moves = [form.move1, form.move2, form.move3, form.move4]
+    .map((m) => m.trim())
+    .filter(Boolean);
+
+  const species = form.species.trim() || "Unknown";
+  return {
+    id: form.id ?? "draft",
+    slot: form.slot,
+    partyIndex: form.partyIndex,
+    nickname: form.nickname.trim() || null,
+    species,
+    pokedexId: form.pokedexId,
+    isShiny: form.isShiny,
+    types: resolvePokemonTypes({
+      pokedexId: form.pokedexId,
+      species,
+    }),
+    nature: form.nature.trim() || null,
+    level: Number.isFinite(levelNum) ? levelNum : null,
+    ability: form.ability.trim() || null,
+    catchRoute: form.catchRoute.trim() || null,
+    heldItem: form.heldItem.trim() || null,
+    moves,
+    ivs: isEmptySpread(form.ivs) ? null : form.ivs,
+    evs: isEmptySpread(form.evs) ? null : form.evs,
+    causeOfDeath: form.causeOfDeath.trim() || null,
+  };
+}
+
 type PokemonFormModalProps = {
   open: boolean;
   initial: PokemonFormState;
@@ -104,6 +144,8 @@ type PokemonFormModalProps = {
   onClose: () => void;
   onSave: (form: PokemonFormState) => void;
   onDelete?: (pokemonId: string) => void;
+  /** Switch to read-only details using the current draft. */
+  onPreview?: (form: PokemonFormState) => void;
 };
 
 export function PokemonFormModal({
@@ -114,6 +156,7 @@ export function PokemonFormModal({
   onClose,
   onSave,
   onDelete,
+  onPreview,
 }: PokemonFormModalProps) {
   // Remount when opened so form state is seeded from `initial` without an effect.
   if (!open) return null;
@@ -126,6 +169,7 @@ export function PokemonFormModal({
       onClose={onClose}
       onSave={onSave}
       onDelete={onDelete}
+      onPreview={onPreview}
     />
   );
 }
@@ -137,6 +181,7 @@ function PokemonFormModalInner({
   onClose,
   onSave,
   onDelete,
+  onPreview,
 }: Omit<PokemonFormModalProps, "open">) {
   const [form, setForm] = useState(initial);
   const [browseOpen, setBrowseOpen] = useState(false);
@@ -163,18 +208,54 @@ function PokemonFormModalInner({
     [teamPokemon, form.id, form.species],
   );
 
+  const nickname = form.nickname.trim();
+  const species = form.species.trim();
+  const title = nickname || species || (form.id ? "Edit Pokémon" : "Add Pokémon");
+  const types = resolvePokemonTypes({
+    pokedexId: form.pokedexId,
+    species: species || null,
+  });
+
+  const subtitleParts: string[] = [];
+  if (form.id) subtitleParts.push("Editing");
+  else subtitleParts.push("New");
+  if (nickname && species) subtitleParts.push(species);
+  if (form.level.trim()) subtitleParts.push(`Lv ${form.level.trim()}`);
+  const subtitleText = subtitleParts.join(" · ");
+
   return (
     <>
       <Modal
         open
-        title={form.id ? "Edit Pokémon" : "Add Pokémon"}
+        title={title}
+        subtitle={
+          <>
+            {subtitleText}
+            {form.isShiny ? (
+              <span className="ml-1.5 font-semibold text-accent-2">
+                Shiny ✦
+              </span>
+            ) : null}
+          </>
+        }
         onClose={onClose}
-        wide
+        size="md"
+        headerActions={
+          onPreview && species ? (
+            <button
+              type="button"
+              className="pressable border-frame bg-surface px-2.5 py-1 text-xs font-semibold text-ink"
+              onClick={() => onPreview(form)}
+            >
+              Preview
+            </button>
+          ) : null
+        }
         footer={
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={pending || !form.species.trim()}
+              disabled={pending || !species}
               className="pressable rounded-lg bg-accent px-4 py-2 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
               onClick={() => onSave(form)}
             >
@@ -182,7 +263,7 @@ function PokemonFormModalInner({
             </button>
             <button
               type="button"
-              className="pressable rounded-lg bg-surface px-4 py-2 font-display text-xs font-semibold tracking-tight"
+              className="pressable rounded-lg border border-frame bg-surface px-4 py-2 text-xs font-semibold tracking-tight"
               onClick={onClose}
             >
               Cancel
@@ -203,9 +284,9 @@ function PokemonFormModalInner({
           </div>
         }
       >
-        <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
+        <div className="space-y-4">
           {(itemWarnings.length > 0 || speciesWarnings.length > 0) && (
-            <div className="space-y-2 rounded-lg border border-accent-2/40 bg-accent-2/10 px-3 py-2 text-sm sm:col-span-2">
+            <div className="space-y-1.5 rounded-lg border border-accent-2/40 bg-accent-2/10 px-3 py-2 text-sm">
               {itemWarnings.map((w) => (
                 <p key={`item-${w.item}`}>
                   <span className="font-semibold text-accent-ink">
@@ -227,246 +308,267 @@ function PokemonFormModalInner({
                   </span>
                 </p>
               ))}
-              <p className="text-xs text-muted">
+              <p className="text-[11px] text-muted">
                 Soft warning only — you can still save.
               </p>
             </div>
           )}
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex h-28 w-28 items-center justify-center rounded-lg border border-frame bg-surface-2">
-              {form.species ? (
-                <Image
-                  src={pokemonSpriteUrl(form.species, {
-                    shiny: form.isShiny,
-                    pokedexId: form.pokedexId,
-                  })}
-                  alt=""
-                  width={96}
-                  height={96}
-                  className="pixelated h-24 w-24 object-contain"
-                  unoptimized
-                />
-              ) : (
-                <span className="text-sm text-muted">?</span>
-              )}
-            </div>
-            <button
-              type="button"
-              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)]"
-              onClick={() => setBrowseOpen(true)}
-            >
-              {form.species ? "Change species" : "Pick species"}
-            </button>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.isShiny}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, isShiny: e.target.checked }))
-                }
-              />
-              <span className="font-bold">Shiny</span>
-            </label>
-          </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm sm:col-span-2">
-              <span className="mb-1 block font-bold text-muted">Species</span>
-              <input
-                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
-                value={form.species}
-                readOnly
-                placeholder="Use Pick species…"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-bold text-muted">Nickname</span>
-              <input
-                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
-                value={form.nickname}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, nickname: e.target.value }))
-                }
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-bold text-muted">Slot</span>
-              <select
-                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
-                value={form.slot}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    slot: e.target.value as PokemonSlot,
-                  }))
-                }
-              >
-                <option value="MAIN">Main Squad</option>
-                <option value="RESERVE">Reserves</option>
-                <option value="GRAVEYARD">R.I.P.</option>
-                <option value="ENCOUNTERED">Encountered</option>
-              </select>
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-bold text-muted">Party index</span>
-              <input
-                type="number"
-                min={0}
-                max={11}
-                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
-                value={form.partyIndex}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    partyIndex: Number(e.target.value) || 0,
-                  }))
-                }
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-bold text-muted">Level</span>
-              <input
-                type="number"
-                min={1}
-                max={100}
-                className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
-                value={form.level}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, level: e.target.value }))
-                }
-              />
-            </label>
-            <div className="text-sm">
-              <span className="mb-1 block font-bold text-muted">Nature</span>
-              <SearchSelect
-                value={form.nature}
-                onChange={(nature) => setForm((f) => ({ ...f, nature }))}
-                search={searchNatures}
-                placeholder="Search Hardy, Jolly…"
-              />
-            </div>
-            <div className="text-sm">
-              <span className="mb-1 block font-bold text-muted">Ability</span>
-              <SearchSelect
-                value={form.ability}
-                onChange={(ability) => setForm((f) => ({ ...f, ability }))}
-                search={searchAbilities}
-                placeholder="Search Static, Blaze…"
-              />
-            </div>
-            <div className="text-sm">
-              <span className="mb-1 block font-bold text-muted">Catch route</span>
-              <SearchSelect
-                value={form.catchRoute}
-                onChange={(catchRoute) =>
-                  setForm((f) => ({ ...f, catchRoute }))
-                }
-                search={searchCatchRoutes}
-                placeholder="Search Route 104…"
-              />
-            </div>
-            <div className="text-sm sm:col-span-2">
-              <span className="mb-1 block font-bold text-muted">Held item</span>
-              <div className="flex items-center gap-2">
-                {form.heldItem ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={heldItemSpriteUrl(form.heldItem)}
+          <div className="grid gap-4 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:items-start">
+            {/* Identity rail — mirrors details modal */}
+            <div className="flex flex-col items-center gap-2 sm:items-stretch">
+              <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-lg border border-frame bg-surface-2 sm:mx-0 sm:aspect-square sm:h-auto sm:w-full">
+                {species ? (
+                  <Image
+                    src={pokemonSpriteUrl(species, {
+                      shiny: form.isShiny,
+                      pokedexId: form.pokedexId,
+                    })}
                     alt=""
-                    width={32}
-                    height={32}
-                    className="pixelated h-8 w-8 object-contain"
+                    width={144}
+                    height={144}
+                    className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"
+                    unoptimized
                   />
-                ) : null}
-                <input
-                  className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
-                  value={itemQuery}
-                  placeholder="Search leftovers, life orb…"
-                  onChange={(e) => {
-                    setItemQuery(e.target.value);
-                    setForm((f) => ({ ...f, heldItem: e.target.value }));
-                  }}
-                />
-                {form.heldItem ? (
-                  <button
-                    type="button"
-                    className="pressable shrink-0 rounded-lg bg-surface px-2 py-2 text-xs font-semibold tracking-tight"
-                    onClick={() => {
-                      setItemQuery("");
-                      setForm((f) => ({ ...f, heldItem: "" }));
-                    }}
-                  >
-                    Clear
-                  </button>
-                ) : null}
+                ) : (
+                  <span className="text-sm text-muted">?</span>
+                )}
               </div>
-              {itemResults.length > 0 && itemQuery.trim() ? (
-                <ul className="mt-2 max-h-36 overflow-auto rounded-lg border border-frame bg-surface">
-                  {itemResults.map((item) => (
-                    <li key={item.slug}>
+
+              {types.length > 0 ? (
+                <div className="flex flex-wrap justify-center gap-1 sm:justify-start">
+                  {types.map((t) => (
+                    <TypeBadge key={t} type={t} />
+                  ))}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                className="pressable w-full rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)]"
+                onClick={() => setBrowseOpen(true)}
+              >
+                {species ? "Change species" : "Pick species"}
+              </button>
+
+              <label className="flex items-center justify-center gap-2 text-sm sm:justify-start">
+                <input
+                  type="checkbox"
+                  checked={form.isShiny}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, isShiny: e.target.checked }))
+                  }
+                />
+                <span className="font-semibold">Shiny</span>
+              </label>
+            </div>
+
+            <div className="min-w-0 space-y-4">
+              <div className="grid grid-cols-2 gap-2.5">
+                <label className="col-span-2 text-sm sm:col-span-1">
+                  <span className={LABEL}>Nickname</span>
+                  <input
+                    className={INPUT}
+                    value={form.nickname}
+                    placeholder={species || "Nickname"}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, nickname: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="text-sm">
+                  <span className={LABEL}>Level</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    className={INPUT}
+                    value={form.level}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, level: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="text-sm">
+                  <span className={LABEL}>Slot</span>
+                  <select
+                    className={INPUT}
+                    value={form.slot}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        slot: e.target.value as PokemonSlot,
+                      }))
+                    }
+                  >
+                    <option value="MAIN">Main Squad</option>
+                    <option value="RESERVE">Reserves</option>
+                    <option value="GRAVEYARD">R.I.P.</option>
+                    <option value="ENCOUNTERED">Encountered</option>
+                  </select>
+                </label>
+                <label className="text-sm">
+                  <span className={LABEL}>Party index</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={11}
+                    className={INPUT}
+                    value={form.partyIndex}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        partyIndex: Number(e.target.value) || 0,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div className="text-sm">
+                  <span className={LABEL}>Nature</span>
+                  <SearchSelect
+                    value={form.nature}
+                    onChange={(nature) => setForm((f) => ({ ...f, nature }))}
+                    search={searchNatures}
+                    placeholder="Hardy, Jolly…"
+                  />
+                </div>
+                <div className="text-sm">
+                  <span className={LABEL}>Ability</span>
+                  <SearchSelect
+                    value={form.ability}
+                    onChange={(ability) => setForm((f) => ({ ...f, ability }))}
+                    search={searchAbilities}
+                    placeholder="Static, Blaze…"
+                  />
+                </div>
+                <div className="text-sm">
+                  <span className={LABEL}>Catch route</span>
+                  <SearchSelect
+                    value={form.catchRoute}
+                    onChange={(catchRoute) =>
+                      setForm((f) => ({ ...f, catchRoute }))
+                    }
+                    search={searchCatchRoutes}
+                    placeholder="Route 104…"
+                  />
+                </div>
+                <div className="text-sm">
+                  <span className={LABEL}>Held item</span>
+                  <div className="flex items-center gap-1.5">
+                    {form.heldItem ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={heldItemSpriteUrl(form.heldItem)}
+                        alt=""
+                        width={28}
+                        height={28}
+                        className="pixelated h-7 w-7 shrink-0 object-contain"
+                      />
+                    ) : null}
+                    <input
+                      className={INPUT}
+                      value={itemQuery}
+                      placeholder="Leftovers, Life Orb…"
+                      onChange={(e) => {
+                        setItemQuery(e.target.value);
+                        setForm((f) => ({ ...f, heldItem: e.target.value }));
+                      }}
+                    />
+                    {form.heldItem ? (
                       <button
                         type="button"
-                        className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-accent/15"
+                        className="pressable shrink-0 rounded-lg border border-frame bg-surface px-2 py-1.5 text-[11px] font-semibold"
                         onClick={() => {
-                          setItemQuery(item.name);
-                          setForm((f) => ({ ...f, heldItem: item.name }));
+                          setItemQuery("");
+                          setForm((f) => ({ ...f, heldItem: "" }));
                         }}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={heldItemSpriteUrl(item.slug)}
-                          alt=""
-                          width={24}
-                          height={24}
-                          className="pixelated h-6 w-6 object-contain"
-                        />
-                        {item.name}
+                        Clear
                       </button>
-                    </li>
-                  ))}
-                </ul>
+                    ) : null}
+                  </div>
+                  {itemResults.length > 0 && itemQuery.trim() ? (
+                    <ul className="mt-1.5 max-h-32 overflow-auto rounded-lg border border-frame bg-surface">
+                      {itemResults.map((item) => (
+                        <li key={item.slug}>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-interactive-soft/50"
+                            onClick={() => {
+                              setItemQuery(item.name);
+                              setForm((f) => ({ ...f, heldItem: item.name }));
+                            }}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={heldItemSpriteUrl(item.slug)}
+                              alt=""
+                              width={24}
+                              height={24}
+                              className="pixelated h-6 w-6 object-contain"
+                            />
+                            {item.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
+                  Moves
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["move1", "move2", "move3", "move4"] as const).map(
+                    (key, i) => (
+                      <label key={key} className="text-sm">
+                        <span className={LABEL}>Move {i + 1}</span>
+                        <input
+                          className={INPUT}
+                          value={form[key]}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, [key]: e.target.value }))
+                          }
+                        />
+                      </label>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <StatSpreadEditor
+                  label="IVs"
+                  value={form.ivs}
+                  max={31}
+                  onChange={(ivs) => setForm((f) => ({ ...f, ivs }))}
+                />
+                <StatSpreadEditor
+                  label="EVs"
+                  value={form.evs}
+                  max={255}
+                  onChange={(evs) => setForm((f) => ({ ...f, evs }))}
+                />
+              </div>
+
+              {form.slot === "GRAVEYARD" ? (
+                <label className="block text-sm">
+                  <span className={LABEL}>Cause of death</span>
+                  <textarea
+                    className={`${INPUT} min-h-16`}
+                    value={form.causeOfDeath}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, causeOfDeath: e.target.value }))
+                    }
+                  />
+                </label>
               ) : null}
             </div>
-            {(["move1", "move2", "move3", "move4"] as const).map((key, i) => (
-              <label key={key} className="text-sm">
-                <span className="mb-1 block font-bold text-muted">
-                  Move {i + 1}
-                </span>
-                <input
-                  className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
-                  value={form[key]}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, [key]: e.target.value }))
-                  }
-                />
-              </label>
-            ))}
-            <StatSpreadEditor
-              label="IVs"
-              value={form.ivs}
-              max={31}
-              onChange={(ivs) => setForm((f) => ({ ...f, ivs }))}
-            />
-            <StatSpreadEditor
-              label="EVs"
-              value={form.evs}
-              max={255}
-              onChange={(evs) => setForm((f) => ({ ...f, evs }))}
-            />
-            {form.slot === "GRAVEYARD" ? (
-              <label className="text-sm sm:col-span-2">
-                <span className="mb-1 block font-bold text-muted">
-                  Cause of death
-                </span>
-                <textarea
-                  className="min-h-16 w-full rounded-lg border border-frame bg-surface px-3 py-2"
-                  value={form.causeOfDeath}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, causeOfDeath: e.target.value }))
-                  }
-                />
-              </label>
-            ) : null}
           </div>
         </div>
       </Modal>
