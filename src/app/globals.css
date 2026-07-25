@@ -489,16 +489,6 @@ button:disabled,
   animation-play-state: paused;
 }
 
-/*
-  Touch has no hover to pause the marquee, so it would animate forever — endless
-  compositor work and battery drain. Stop it on coarse pointers.
-*/
-@media (hover: none) {
-  .trainer-carousel-track {
-    animation-play-state: paused;
-  }
-}
-
 .trainer-carousel-fade {
   background: linear-gradient(to right, var(--bg) 20%, transparent);
 }

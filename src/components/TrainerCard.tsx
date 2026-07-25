@@ -31,11 +31,60 @@ export function TrainerCard({
   );
   const boardHref = `/challenges/${challenge.slug}/trainers/${trainer.id}`;
   const isDemo = !trainer.userId;
+  const firstMon = main.find((p) => p.partyIndex === 0) ?? main[0] ?? null;
+  const earnedCount = trainer.earnedBadgeKeys.length;
 
   return (
     <div data-tour={isDemo ? "demo-trainer" : undefined}>
       {variant === "grid" ? (
-        <Frame className="h-full">
+        <>
+          {/*
+            Compact card — mobile two-column grid. Mirrors the homepage
+            carousel: avatar with the lead squad Pokémon peeking top-right,
+            trainer name, then badge count.
+          */}
+          <Link
+            href={boardHref}
+            className="group block h-full sm:hidden"
+            aria-label={`Open ${trainer.handle}'s board`}
+          >
+            <Frame dense className="h-full">
+              <div className="flex h-full flex-col items-center text-center">
+                <div className="relative flex h-24 w-full items-end justify-center">
+                  {firstMon ? (
+                    <Image
+                      src={pokemonSpriteUrl(firstMon.species, {
+                        shiny: firstMon.isShiny,
+                        pokedexId: firstMon.pokedexId,
+                      })}
+                      alt=""
+                      width={96}
+                      height={96}
+                      className="pixelated absolute top-0 left-1/2 h-14 w-14 -translate-x-[15%] object-contain opacity-80"
+                      unoptimized
+                    />
+                  ) : null}
+                  <Image
+                    src={avatarImageUrl(trainer.avatarSpriteKey)}
+                    alt=""
+                    width={96}
+                    height={96}
+                    className="pixelated relative z-[1] h-16 w-16 object-contain drop-shadow-[0_6px_12px_var(--shadow-md)]"
+                    unoptimized
+                  />
+                </div>
+                <p className="mt-1.5 w-full truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep">
+                  {trainer.handle}
+                </p>
+                <p className="mt-0.5 text-xs text-muted">
+                  {earnedCount} {earnedCount === 1 ? "badge" : "badges"}
+                </p>
+              </div>
+            </Frame>
+          </Link>
+
+          {/* Full card — sm and up */}
+          <Frame className="hidden h-full sm:block">
           <div className="grid h-full grid-cols-[6rem_minmax(0,1fr)] gap-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-4">
             <div className="flex min-w-0 flex-col items-center gap-2 text-center">
               <Image
@@ -110,7 +159,8 @@ export function TrainerCard({
               })}
             </div>
           </div>
-        </Frame>
+          </Frame>
+        </>
       ) : (
         <Frame>
           <div className="flex items-start gap-3">

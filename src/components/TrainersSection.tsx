@@ -88,7 +88,7 @@ export function TrainersSection({ challenge, trainers }: TrainersSectionProps) {
       <div
         className={
           view === "grid"
-            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            ? "grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4"
             : "grid gap-4"
         }
       >
