@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 type ModalProps = {
   open: boolean;
@@ -21,12 +22,13 @@ export function Modal({
 }: ModalProps) {
   const titleId = useId();
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // Portal above sticky rails / overflow parents; sit above body grain (z-80).
+  return createPortal(
     <div
       data-modal-open=""
-      className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4"
       onKeyDown={(e) => {
         if (e.key === "Escape") onClose();
       }}
@@ -68,6 +70,7 @@ export function Modal({
           </footer>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
