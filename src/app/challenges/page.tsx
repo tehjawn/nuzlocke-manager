@@ -15,7 +15,7 @@ export default async function ChallengesPage() {
     <div className="flex flex-1 flex-col">
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">
+        <h1 className="text-3xl font-bold tracking-tight">
           Seasons
         </h1>
         <p className="mt-2 text-muted">
@@ -27,8 +27,8 @@ export default async function ChallengesPage() {
             <li key={c.slug}>
               <Frame>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 className="font-display text-xl font-bold">{c.name}</h2>
-                  <span className="font-display text-xs font-bold tracking-wide text-accent-2 uppercase">
+                  <h2 className="text-xl font-bold tracking-tight">{c.name}</h2>
+                  <span className="rounded-lg bg-accent-2/20 px-2 py-0.5 text-xs font-semibold tracking-tight text-accent-ink">
                     {c.status}
                   </span>
                 </div>
@@ -38,7 +38,7 @@ export default async function ChallengesPage() {
                 <p className="mt-3 text-sm leading-relaxed">{c.description}</p>
                 <Link
                   href={`/challenges/${c.slug}`}
-                  className="pressable mt-4 inline-block rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase"
+                  className="pressable mt-4 inline-block rounded-xl bg-accent px-4 py-2 text-xs font-semibold tracking-tight text-[var(--on-accent)]"
                 >
                   Enter league board
                 </Link>

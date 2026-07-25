@@ -27,7 +27,7 @@ export default async function RulesPage({ params }: PageProps) {
   return (
     <>
       <header className="mb-6">
-        <h2 className="font-display text-2xl font-extrabold tracking-tight">
+        <h2 className="text-2xl font-bold tracking-tight">
           Rules
         </h2>
         <p className="mt-2 text-muted">

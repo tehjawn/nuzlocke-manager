@@ -41,10 +41,10 @@ export function TrainerStatsSummary({
           key={row.label}
           className="gba-inset bg-surface-2/70 px-3 py-2"
         >
-          <dt className="font-display text-[10px] font-bold tracking-wide text-muted uppercase">
+          <dt className="text-[10px] font-semibold tracking-tight text-muted">
             {row.label}
           </dt>
-          <dd className="mt-0.5 font-display text-lg font-extrabold leading-tight">
+          <dd className="mt-0.5 text-lg font-bold leading-tight tracking-tight">
             {row.value}
           </dd>
         </div>

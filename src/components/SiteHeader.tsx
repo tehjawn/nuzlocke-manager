@@ -25,7 +25,7 @@ export function SiteHeader({
       <div className="min-w-0">
         <Link
           href="/"
-          className="site-brand font-display text-xs font-bold tracking-[0.18em] text-accent-deep uppercase"
+          className="site-brand text-base font-bold tracking-tight sm:text-lg"
         >
           Nuzlocke Manager
         </Link>
@@ -43,7 +43,7 @@ export function SiteHeader({
       <nav className="relative flex shrink-0 items-center gap-2 text-sm">
         <Link
           href="/challenges"
-          className="pressable inline-flex h-9 items-center bg-surface px-3 font-medium"
+          className="pressable inline-flex h-9 items-center bg-surface px-3.5 font-medium"
         >
           Seasons
         </Link>
@@ -52,7 +52,7 @@ export function SiteHeader({
             {myTrainerId ? (
               <Link
                 href={`/challenges/${challengeSlug}/me`}
-                className="pressable inline-flex h-9 items-center bg-accent px-3 font-bold text-white"
+                className="pressable inline-flex h-9 items-center border-accent/30 bg-accent px-3.5 font-semibold text-[var(--on-accent)]"
               >
                 My Trainer
               </Link>
@@ -60,7 +60,7 @@ export function SiteHeader({
             {showGm ? (
               <Link
                 href={`/challenges/${challengeSlug}/gm`}
-                className="pressable inline-flex h-9 items-center bg-accent-2/40 px-3 font-medium"
+                className="pressable inline-flex h-9 items-center bg-accent-2/25 px-3.5 font-medium"
               >
                 GM
               </Link>

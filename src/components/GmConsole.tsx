@@ -83,7 +83,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             <select
               name="status"
               defaultValue={challenge.status}
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+              className="w-full rounded-xl border border-frame bg-surface px-3 py-2"
             >
               <option value="DRAFT">Draft</option>
               <option value="ACTIVE">Active</option>
@@ -96,7 +96,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             <select
               name="visibility"
               defaultValue={challenge.visibility}
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+              className="w-full rounded-xl border border-frame bg-surface px-3 py-2"
             >
               <option value="INVITE">Invite only</option>
               <option value="UNLISTED">Unlisted</option>
@@ -110,7 +110,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             <input
               name="playerInviteCode"
               defaultValue={challenge.playerInviteCode ?? ""}
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+              className="w-full rounded-xl border border-frame bg-surface px-3 py-2"
             />
           </label>
           <label className="text-sm">
@@ -118,7 +118,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             <input
               name="gmInviteCode"
               defaultValue={challenge.gmInviteCode ?? ""}
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+              className="w-full rounded-xl border border-frame bg-surface px-3 py-2"
             />
           </label>
           <label className="text-sm sm:col-span-2">
@@ -126,7 +126,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             <textarea
               name="description"
               defaultValue={challenge.description}
-              className="min-h-20 w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+              className="min-h-20 w-full rounded-xl border border-frame bg-surface px-3 py-2"
             />
           </label>
           <label className="text-sm sm:col-span-2">
@@ -138,7 +138,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
               type="url"
               placeholder="https://discord.com/api/webhooks/…"
               defaultValue={challenge.discordWebhookUrl ?? ""}
-              className="w-full rounded-sm border-2 border-frame bg-surface px-3 py-2"
+              className="w-full rounded-xl border border-frame bg-surface px-3 py-2"
             />
             <span className="mt-1 block text-xs text-muted">
               Posts deaths, badges earned, and revive uses. Leave blank to disable.
@@ -147,7 +147,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
           <button
             type="submit"
             disabled={pending}
-            className="pressable rounded-sm bg-accent px-4 py-2 font-display text-xs font-bold tracking-wide text-white uppercase disabled:opacity-60 sm:col-span-2"
+            className="pressable rounded-xl bg-accent px-4 py-2 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60 sm:col-span-2"
           >
             Save settings
           </button>
@@ -160,7 +160,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
           <button
             type="button"
             disabled={pending}
-            className="pressable rounded-sm bg-accent px-4 py-2 text-xs font-bold text-white uppercase disabled:opacity-60"
+            className="pressable rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
             onClick={() => {
               startTransition(async () => {
                 const result = await gmExportChallengeAction({
@@ -185,7 +185,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
           <button
             type="button"
             disabled={pending}
-            className="pressable rounded-sm bg-surface px-4 py-2 text-xs font-bold uppercase disabled:opacity-60"
+            className="pressable rounded-xl bg-surface px-4 py-2 text-xs font-semibold tracking-tight disabled:opacity-60"
             onClick={() => {
               startTransition(async () => {
                 const result = await gmExportChallengeAction({
@@ -232,7 +232,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                 <button
                   type="button"
                   disabled={pending}
-                  className="pressable rounded-sm bg-surface px-3 py-1 text-xs font-bold uppercase"
+                  className="pressable rounded-xl bg-surface px-3 py-1 text-xs font-semibold tracking-tight"
                   onClick={() => {
                     startTransition(async () => {
                       flash(
@@ -250,7 +250,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   <button
                     type="button"
                     disabled={pending}
-                    className="pressable rounded-sm bg-danger px-3 py-1 text-xs font-bold text-white uppercase"
+                    className="pressable rounded-xl bg-danger px-3 py-1 text-xs font-semibold text-white tracking-tight"
                     onClick={() => {
                       startTransition(async () => {
                         flash(
@@ -274,7 +274,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
           {challenge.rules.map((rule) => (
             <form
               key={rule.id}
-              className="grid gap-2 rounded-sm border-2 border-frame/30 p-3"
+              className="grid gap-2 rounded-xl border border-frame/30 p-3"
               onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
@@ -297,18 +297,18 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   name="sortOrder"
                   type="number"
                   defaultValue={rule.sortOrder}
-                  className="w-20 rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+                  className="w-20 rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
                 />
                 <input
                   name="title"
                   defaultValue={rule.title ?? ""}
-                  className="flex-1 rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+                  className="flex-1 rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
                 />
               </div>
               <textarea
                 name="body"
                 defaultValue={rule.body}
-                className="min-h-16 w-full rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+                className="min-h-16 w-full rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
               />
               <label className="flex items-center gap-2 text-xs">
                 <input name="isCore" type="checkbox" defaultChecked={rule.isCore} />
@@ -318,14 +318,14 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                 <button
                   type="submit"
                   disabled={pending}
-                  className="pressable rounded-sm bg-accent px-3 py-1 text-xs font-bold text-white uppercase"
+                  className="pressable rounded-xl bg-accent px-3 py-1 text-xs font-semibold text-[var(--on-accent)]"
                 >
                   Save
                 </button>
                 <button
                   type="button"
                   disabled={pending}
-                  className="pressable rounded-sm bg-danger px-3 py-1 text-xs font-bold text-white uppercase"
+                  className="pressable rounded-xl bg-danger px-3 py-1 text-xs font-semibold text-white tracking-tight"
                   onClick={() => {
                     startTransition(async () => {
                       flash(
@@ -348,7 +348,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             </form>
           ))}
           <form
-            className="grid gap-2 rounded-sm border-2 border-dashed border-frame/40 p-3"
+            className="grid gap-2 rounded-xl border border-dashed border-frame/40 p-3"
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
@@ -366,24 +366,24 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
               });
             }}
           >
-            <p className="font-display text-xs font-bold uppercase">Add rule</p>
+            <p className="font-display text-xs font-semibold tracking-tight">Add rule</p>
             <input
               name="sortOrder"
               type="number"
               placeholder="Order"
-              className="rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+              className="rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
             />
             <input
               name="title"
               placeholder="Title"
               required
-              className="rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+              className="rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
             />
             <textarea
               name="body"
               placeholder="Body"
               required
-              className="min-h-16 rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+              className="min-h-16 rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
             />
             <label className="flex items-center gap-2 text-xs">
               <input name="isCore" type="checkbox" /> Core rule
@@ -391,7 +391,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             <button
               type="submit"
               disabled={pending}
-              className="pressable w-fit rounded-sm bg-accent px-3 py-1 text-xs font-bold text-white uppercase"
+              className="pressable w-fit rounded-xl bg-accent px-3 py-1 text-xs font-semibold text-[var(--on-accent)]"
             >
               Add
             </button>
@@ -405,7 +405,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
           {challenge.faqs.map((faq) => (
             <form
               key={faq.id}
-              className="grid gap-2 rounded-sm border-2 border-frame/30 p-3"
+              className="grid gap-2 rounded-xl border border-frame/30 p-3"
               onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
@@ -426,28 +426,28 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                 name="sortOrder"
                 type="number"
                 defaultValue={faq.sortOrder}
-                className="w-20 rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+                className="w-20 rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
               />
               <input
                 name="question"
                 defaultValue={faq.question}
-                className="rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+                className="rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
               />
               <textarea
                 name="answer"
                 defaultValue={faq.answer}
-                className="min-h-16 rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+                className="min-h-16 rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
               />
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="pressable rounded-sm bg-accent px-3 py-1 text-xs font-bold text-white uppercase"
+                  className="pressable rounded-xl bg-accent px-3 py-1 text-xs font-semibold text-[var(--on-accent)]"
                 >
                   Save
                 </button>
                 <button
                   type="button"
-                  className="pressable rounded-sm bg-danger px-3 py-1 text-xs font-bold text-white uppercase"
+                  className="pressable rounded-xl bg-danger px-3 py-1 text-xs font-semibold text-white tracking-tight"
                   onClick={() => {
                     startTransition(async () => {
                       flash(
@@ -469,7 +469,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             </form>
           ))}
           <form
-            className="grid gap-2 rounded-sm border-2 border-dashed border-frame/40 p-3"
+            className="grid gap-2 rounded-xl border border-dashed border-frame/40 p-3"
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
@@ -488,22 +488,22 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
               });
             }}
           >
-            <p className="font-display text-xs font-bold uppercase">Add FAQ</p>
+            <p className="font-display text-xs font-semibold tracking-tight">Add FAQ</p>
             <input
               name="question"
               placeholder="Question"
               required
-              className="rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+              className="rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
             />
             <textarea
               name="answer"
               placeholder="Answer"
               required
-              className="min-h-16 rounded-sm border-2 border-frame bg-surface px-2 py-1 text-sm"
+              className="min-h-16 rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
             />
             <button
               type="submit"
-              className="pressable w-fit rounded-sm bg-accent px-3 py-1 text-xs font-bold text-white uppercase"
+              className="pressable w-fit rounded-xl bg-accent px-3 py-1 text-xs font-semibold text-[var(--on-accent)]"
             >
               Add
             </button>

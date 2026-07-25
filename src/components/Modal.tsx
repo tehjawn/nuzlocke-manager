@@ -34,7 +34,7 @@ export function Modal({
       <button
         type="button"
         aria-label="Close dialog"
-        className="absolute inset-0 bg-[var(--scrim)]"
+        className="absolute inset-0 bg-[var(--scrim)] backdrop-blur-[2px]"
         onClick={onClose}
       />
       <div
@@ -43,27 +43,27 @@ export function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         autoFocus
-        className={`gba-frame relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden outline-none ${
+        className={`gba-frame relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden outline-none sm:rounded-[var(--radius-lg)] ${
           wide ? "sm:max-w-3xl" : "sm:max-w-xl"
         }`}
       >
-        <header className="gba-frame-title relative z-[1] flex items-center justify-between gap-3 px-3 py-2">
-          <h2 id={titleId} className="text-sm font-bold tracking-wide">
+        <header className="gba-frame-title relative z-[1] flex items-center justify-between gap-3 px-4 py-3">
+          <h2 id={titleId} className="text-base font-semibold tracking-tight">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="pressable bg-white/15 px-2 py-1 text-xs font-bold uppercase"
+            className="pressable bg-white/15 px-2.5 py-1 text-xs font-semibold"
           >
             Close
           </button>
         </header>
-        <div className="relative z-[1] min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
+        <div className="relative z-[1] min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
           {children}
         </div>
         {footer ? (
-          <footer className="relative z-[1] shrink-0 border-t-2 border-frame/30 bg-surface-2 px-3 py-3 sm:px-4">
+          <footer className="relative z-[1] shrink-0 border-t border-frame/60 bg-surface-2/80 px-4 py-3 sm:px-5">
             {footer}
           </footer>
         ) : null}

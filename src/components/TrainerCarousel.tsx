@@ -80,7 +80,7 @@ export function TrainerCarousel({
                 alt=""
                 width={96}
                 height={96}
-                className="pixelated relative z-[1] h-[88px] w-[88px] object-contain drop-shadow-[2px_3px_0_var(--shadow)] transition-transform duration-300 group-hover:translate-y-[-2px] sm:h-[104px] sm:w-[104px]"
+                className="pixelated relative z-[1] h-[88px] w-[88px] object-contain drop-shadow-[0_8px_16px_var(--shadow-md)] transition-transform duration-300 group-hover:translate-y-[-2px] sm:h-[104px] sm:w-[104px]"
                 unoptimized
               />
             </div>
