@@ -1,4 +1,5 @@
 export const THEME_STORAGE_KEY = "nuzlocke-theme";
+export const THEME_CHANGE_EVENT = "nuzlocke-theme-change";
 
 export type Theme = "light" | "dark";
 
@@ -28,6 +29,18 @@ export function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme;
 }
 
+/** Read the theme currently applied on `<html>` (post init-script). */
+export function getAppliedTheme(): Theme {
+  if (typeof document === "undefined") return "light";
+  return document.documentElement.getAttribute("data-theme") === "dark"
+    ? "dark"
+    : "light";
+}
+
+function notifyThemeListeners() {
+  window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+}
+
 /** Persist a theme choice and apply it. */
 export function setStoredTheme(theme: Theme) {
   applyTheme(theme);
@@ -36,6 +49,7 @@ export function setStoredTheme(theme: Theme) {
   } catch {
     // ignore write failures
   }
+  notifyThemeListeners();
 }
 
 /**
@@ -53,6 +67,25 @@ export function toggleTheme(current: Theme): Theme {
   const next: Theme = current === "dark" ? "light" : "dark";
   setStoredTheme(next);
   return next;
+}
+
+/**
+ * Subscribe to theme changes (same-tab toggles + other-tab storage writes).
+ * For use with `useSyncExternalStore`.
+ */
+export function subscribeTheme(onStoreChange: () => void): () => void {
+  function onStorage(event: StorageEvent) {
+    if (event.key !== THEME_STORAGE_KEY) return;
+    const next = isTheme(event.newValue) ? event.newValue : getSystemTheme();
+    applyTheme(next);
+    onStoreChange();
+  }
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(THEME_CHANGE_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(THEME_CHANGE_EVENT, onStoreChange);
+  };
 }
 
 /**

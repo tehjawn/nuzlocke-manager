@@ -24,6 +24,21 @@ export async function generateMetadata({
   const { slug, trainerId } = await params;
   const result = await getTrainer(slug, trainerId);
   if (!result) return { title: "Trainer" };
+
+  const access = result.challenge.id
+    ? await getAccessForChallenge(result.challenge.id)
+    : null;
+  if (
+    !canViewChallenge({
+      visibility: result.challenge.visibility,
+      source: result.challenge.source,
+      hasMembership: Boolean(access?.role),
+    })
+  ) {
+    // Don't leak trainer names for invite-gated seasons.
+    return { title: "Trainer" };
+  }
+
   return { title: displayName(result.trainer) };
 }
 

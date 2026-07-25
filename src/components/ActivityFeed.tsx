@@ -316,7 +316,7 @@ function ActivityRow({
                     <div className="emoji-picker-shell mt-1.5 overflow-hidden rounded-lg border border-frame/30">
                       <EmojiPicker
                         onEmojiClick={onEmojiClick}
-                        theme={Theme.LIGHT}
+                        theme={Theme.AUTO}
                         emojiStyle={EmojiStyle.NATIVE}
                         width="100%"
                         height={360}

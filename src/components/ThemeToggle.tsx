@@ -1,23 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import { toggleTheme, type Theme } from "@/lib/theme";
+import { useSyncExternalStore } from "react";
+import {
+  getAppliedTheme,
+  subscribeTheme,
+  toggleTheme,
+  type Theme,
+} from "@/lib/theme";
 
+/**
+ * Header theme control.
+ *
+ * Init script in root layout applies + persists theme before paint
+ * (stored preference, else OS snapshot on first visit). Server snapshot is
+ * always "light" to match `<html data-theme="light">`; the client store
+ * reads the live DOM after the init script.
+ */
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof document === "undefined") return "light";
-    const attr = document.documentElement.getAttribute("data-theme");
-    return attr === "dark" ? "dark" : "light";
-  });
+  const theme = useSyncExternalStore<Theme>(
+    subscribeTheme,
+    getAppliedTheme,
+    () => "light",
+  );
 
   const nextLabel = theme === "dark" ? "light" : "dark";
 
   return (
     <button
       type="button"
-      onClick={() => setTheme((current) => toggleTheme(current))}
+      onClick={() => toggleTheme(theme)}
       aria-label={`Switch to ${nextLabel} mode`}
       title={`Switch to ${nextLabel} mode`}
+      aria-pressed={theme === "dark"}
       className="pressable inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-frame bg-surface text-ink hover:border-interactive/50"
     >
       {theme === "dark" ? <SunIcon /> : <MoonIcon />}
