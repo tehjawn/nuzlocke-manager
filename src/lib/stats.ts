@@ -1,4 +1,5 @@
 import { z } from "zod";
+import baseStatsData from "@/data/base-stats.json";
 
 export const STAT_KEYS = ["hp", "atk", "def", "spa", "spd", "spe"] as const;
 export type StatKey = (typeof STAT_KEYS)[number];
@@ -24,6 +25,100 @@ export const EMPTY_IVS: StatSpread = {
 };
 
 export const EMPTY_EVS: StatSpread = { ...EMPTY_IVS };
+
+const SPECIES_BASE_STATS = baseStatsData.stats as Record<string, StatSpread>;
+
+/** Nature → raised / lowered attack stats (neutral natures omitted). */
+const NATURE_MODS: Record<string, { up: StatKey; down: StatKey }> = {
+  Lonely: { up: "atk", down: "def" },
+  Brave: { up: "atk", down: "spe" },
+  Adamant: { up: "atk", down: "spa" },
+  Naughty: { up: "atk", down: "spd" },
+  Bold: { up: "def", down: "atk" },
+  Relaxed: { up: "def", down: "spe" },
+  Impish: { up: "def", down: "spa" },
+  Lax: { up: "def", down: "spd" },
+  Timid: { up: "spe", down: "atk" },
+  Hasty: { up: "spe", down: "def" },
+  Jolly: { up: "spe", down: "spa" },
+  Naive: { up: "spe", down: "spd" },
+  Modest: { up: "spa", down: "atk" },
+  Mild: { up: "spa", down: "def" },
+  Quiet: { up: "spa", down: "spe" },
+  Rash: { up: "spa", down: "spd" },
+  Calm: { up: "spd", down: "atk" },
+  Gentle: { up: "spd", down: "def" },
+  Sassy: { up: "spd", down: "spe" },
+  Careful: { up: "spd", down: "spa" },
+};
+
+const NATURE_MODS_LOOKUP: Record<string, { up: StatKey; down: StatKey }> =
+  Object.fromEntries(
+    Object.entries(NATURE_MODS).flatMap(([name, mod]) => [
+      [name, mod],
+      [name.toLowerCase(), mod],
+    ]),
+  );
+
+export function baseStatsForSpecies(
+  pokedexId: number | null | undefined,
+): StatSpread | null {
+  if (pokedexId == null || pokedexId <= 0) return null;
+  return SPECIES_BASE_STATS[String(pokedexId)] ?? null;
+}
+
+function natureMultiplier(
+  nature: string | null | undefined,
+  key: StatKey,
+): number {
+  if (!nature || key === "hp") return 1;
+  const mod = NATURE_MODS_LOOKUP[nature] ?? NATURE_MODS_LOOKUP[nature.toLowerCase()];
+  if (!mod) return 1;
+  if (mod.up === key) return 1.1;
+  if (mod.down === key) return 0.9;
+  return 1;
+}
+
+/**
+ * Gen 3+ battle stats from base / IV / EV / level / nature.
+ * Returns null when level, IVs, or species base stats are missing — avoids
+ * implying 0 IVs for manually logged Pokémon that never recorded them.
+ */
+export function calcBattleStats(input: {
+  pokedexId: number | null | undefined;
+  level: number | null | undefined;
+  ivs?: StatSpread | null;
+  evs?: StatSpread | null;
+  nature?: string | null;
+}): StatSpread | null {
+  const base = baseStatsForSpecies(input.pokedexId);
+  const level = input.level;
+  if (!base || level == null || level < 1 || level > 100) return null;
+  if (input.ivs == null) return null;
+
+  const ivs = input.ivs;
+  const evs = input.evs ?? EMPTY_EVS;
+  const out = { ...EMPTY_IVS };
+
+  for (const key of STAT_KEYS) {
+    const iv = ivs[key] ?? 0;
+    const ev = evs[key] ?? 0;
+    if (key === "hp") {
+      // Shedinja (base 1) always has 1 HP.
+      out.hp =
+        base.hp === 1
+          ? 1
+          : Math.floor(((2 * base.hp + iv + Math.floor(ev / 4)) * level) / 100) +
+            level +
+            10;
+    } else {
+      const raw =
+        Math.floor(((2 * base[key] + iv + Math.floor(ev / 4)) * level) / 100) + 5;
+      out[key] = Math.floor(raw * natureMultiplier(input.nature, key));
+    }
+  }
+  return out;
+}
 
 export const StatSpreadSchema = z.object({
   hp: z.number().int().min(0).max(255),
@@ -76,5 +171,13 @@ export function isEmptySpread(spread: StatSpread | null | undefined): boolean {
 
 export function formatSpreadShort(spread: StatSpread | null | undefined): string {
   if (!spread || isEmptySpread(spread)) return "";
+  return STAT_KEYS.map((k) => `${STAT_LABELS[k]} ${spread[k]}`).join(" · ");
+}
+
+/** Compact battle-stat line for card previews (e.g. "HP 22 · Atk 12 · …"). */
+export function formatBattleStatsShort(
+  spread: StatSpread | null | undefined,
+): string {
+  if (!spread) return "";
   return STAT_KEYS.map((k) => `${STAT_LABELS[k]} ${spread[k]}`).join(" · ");
 }

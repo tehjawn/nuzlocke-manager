@@ -16,9 +16,9 @@ import {
   abilityForSpecies,
   gen3ItemName,
   gen3MetLocationName,
-  gen3MoveName,
   natureFromPid,
 } from "@/data/pokemon-lookups";
+import { gen3MoveName } from "@/lib/move-names";
 import type { StatSpread } from "@/lib/stats";
 import { EMPTY_EVS, EMPTY_IVS } from "@/lib/stats";
 

@@ -19,6 +19,7 @@ import {
   pokemonEntryToForm,
   type PokemonFormState,
 } from "@/components/PokemonFormModal";
+import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PartyStrip } from "@/components/PartyStrip";
 import { ReviveToken } from "@/components/ReviveToken";
 import { SaveImportModal } from "@/components/SaveImportModal";
@@ -141,6 +142,9 @@ export function TrainerBoard({
   const [pokemonOpen, setPokemonOpen] = useState(false);
   const [pokemonForm, setPokemonForm] =
     useState<PokemonFormState>(EMPTY_POKEMON_FORM);
+  const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
+    null,
+  );
   const [saveImportOpen, setSaveImportOpen] = useState(false);
 
   if (serverStamp !== seenStamp) {
@@ -281,6 +285,11 @@ export function TrainerBoard({
   function openEditPokemon(mon: PokemonEntry) {
     setPokemonForm(pokemonEntryToForm(mon));
     setPokemonOpen(true);
+  }
+
+  function openPokemon(mon: PokemonEntry) {
+    if (canEdit) openEditPokemon(mon);
+    else setDetailsPokemon(mon);
   }
 
   return (
@@ -516,14 +525,20 @@ export function TrainerBoard({
                 <PartyStrip
                   pokemon={main}
                   slots={6}
-                  onSelect={openEditPokemon}
+                  selectHint="Edit"
+                  onSelect={openPokemon}
                   onSelectEmpty={(partyIndex) =>
                     openAddPokemon("MAIN", partyIndex)
                   }
                 />
               </div>
             ) : (
-              <PartyStrip pokemon={main} slots={6} />
+              <PartyStrip
+                pokemon={main}
+                slots={6}
+                selectHint="Details"
+                onSelect={openPokemon}
+              />
             )}
           </Frame>
 
@@ -545,11 +560,19 @@ export function TrainerBoard({
                   </button>
                 </div>
                 {reserves.length > 0 ? (
-                  <PartyStrip pokemon={reserves} onSelect={openEditPokemon} />
+                  <PartyStrip
+                    pokemon={reserves}
+                    selectHint="Edit"
+                    onSelect={openPokemon}
+                  />
                 ) : null}
               </div>
             ) : reserves.length > 0 ? (
-              <PartyStrip pokemon={reserves} />
+              <PartyStrip
+                pokemon={reserves}
+                selectHint="Details"
+                onSelect={openPokemon}
+              />
             ) : (
               <p className="text-sm text-muted">No reserves logged yet.</p>
             )}
@@ -576,12 +599,18 @@ export function TrainerBoard({
                   <PartyStrip
                     pokemon={graveyard}
                     memorial
-                    onSelect={openEditPokemon}
+                    selectHint="Edit"
+                    onSelect={openPokemon}
                   />
                 ) : null}
               </div>
             ) : graveyard.length > 0 ? (
-              <PartyStrip pokemon={graveyard} memorial />
+              <PartyStrip
+                pokemon={graveyard}
+                memorial
+                selectHint="Details"
+                onSelect={openPokemon}
+              />
             ) : (
               <p className="mt-0 text-sm text-muted">
                 Memorial is empty. May it stay that way.
@@ -609,12 +638,17 @@ export function TrainerBoard({
                 {encountered.length > 0 ? (
                   <PartyStrip
                     pokemon={encountered}
-                    onSelect={openEditPokemon}
+                    selectHint="Edit"
+                    onSelect={openPokemon}
                   />
                 ) : null}
               </div>
             ) : encountered.length > 0 ? (
-              <PartyStrip pokemon={encountered} />
+              <PartyStrip
+                pokemon={encountered}
+                selectHint="Details"
+                onSelect={openPokemon}
+              />
             ) : (
               <p className="text-sm text-muted">No encounters logged yet.</p>
             )}
@@ -761,6 +795,12 @@ export function TrainerBoard({
           />
         </>
       ) : null}
+
+      <PokemonDetailsModal
+        open={detailsPokemon != null}
+        pokemon={detailsPokemon}
+        onClose={() => setDetailsPokemon(null)}
+      />
     </div>
   );
 }

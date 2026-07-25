@@ -117,14 +117,6 @@ const abilities = abilityList.results
   .filter((a) => a.id > 0 && a.id < 10000)
   .sort((a, b) => a.name.localeCompare(b.name));
 
-console.log("Fetching Gen 3 moves…");
-const moveList = await fetchJson("https://pokeapi.co/api/v2/move?limit=354");
-const moves = new Array(355).fill(null);
-for (const r of moveList.results) {
-  const id = Number(r.url.split("/").filter(Boolean).pop());
-  if (id >= 1 && id <= 354) moves[id] = titleCaseSlug(r.name);
-}
-
 console.log("Fetching species abilities (Gen 3–aware, 1–1025)…");
 const speciesAbilities = {};
 const batchSize = 40;
@@ -153,14 +145,10 @@ writeFileSync(
   JSON.stringify({ version: 1, count: abilities.length, abilities }),
 );
 writeFileSync(
-  join(dataDir, "gen3-moves.json"),
-  JSON.stringify({ version: 1, moves }),
-);
-writeFileSync(
   join(dataDir, "species-abilities.json"),
   JSON.stringify({ version: 1, generationHint: "iii-for-1-386", species: speciesAbilities }),
 );
 
 console.log(
-  `Wrote natures (${NATURES.length}), abilities (${abilities.length}), moves, species-abilities.`,
+  `Wrote natures (${NATURES.length}), abilities (${abilities.length}), species-abilities. Run npm run data:moves for Crest move names.`,
 );

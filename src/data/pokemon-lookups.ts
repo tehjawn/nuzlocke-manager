@@ -1,6 +1,5 @@
 import abilitiesData from "@/data/abilities.json";
 import gen3ItemsData from "@/data/gen3-items.json";
-import gen3MovesData from "@/data/gen3-moves.json";
 import naturesData from "@/data/natures.json";
 import speciesAbilitiesData from "@/data/species-abilities.json";
 import { CATCH_ROUTES, searchCatchRoutes } from "@/data/catch-routes";
@@ -14,7 +13,6 @@ export type AbilityEntry = {
 
 export const NATURES = naturesData.natures as string[];
 export const ABILITIES = abilitiesData.abilities as AbilityEntry[];
-export const GEN3_MOVES = gen3MovesData.moves as (string | null)[];
 
 const SPECIES_ABILITIES = speciesAbilitiesData.species as Record<
   string,
@@ -22,6 +20,12 @@ const SPECIES_ABILITIES = speciesAbilitiesData.species as Record<
 >;
 
 export { CATCH_ROUTES, searchCatchRoutes, HELD_ITEMS, searchHeldItems };
+export {
+  GEN3_MOVES,
+  gen3MoveName,
+  resolveMoveName,
+  resolveMoveNames,
+} from "@/lib/move-names";
 
 export function natureFromPid(pid: number): string {
   return NATURES[pid % 25] ?? "Hardy";
@@ -41,11 +45,6 @@ export function searchAbilities(query: string, limit = 40): string[] {
   )
     .slice(0, limit)
     .map((a) => a.name);
-}
-
-export function gen3MoveName(moveId: number): string | null {
-  if (moveId <= 0) return null;
-  return GEN3_MOVES[moveId] ?? `Move #${moveId}`;
 }
 
 export function abilityForSpecies(

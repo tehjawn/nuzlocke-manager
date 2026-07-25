@@ -9,6 +9,7 @@ import {
   type SaveMonCategory,
 } from "@/lib/gen3-save";
 import type { PokemonSlot } from "@/lib/challenge-types";
+import { resolveMoveNames } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
 
 export type SaveImportDraft = {
@@ -397,7 +398,7 @@ export function SaveImportModal({
                                 mon.nature,
                                 mon.ability,
                                 mon.moves.length
-                                  ? mon.moves.join(" · ")
+                                  ? resolveMoveNames(mon.moves).join(" · ")
                                   : null,
                               ]
                                 .filter(Boolean)

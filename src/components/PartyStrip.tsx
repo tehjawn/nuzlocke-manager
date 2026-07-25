@@ -7,8 +7,10 @@ type PartyStripProps = {
   slots?: number;
   size?: "sm" | "md";
   memorial?: boolean;
-  /** Edit mode: select a filled slot to open the editor. */
+  /** Select a filled slot (edit or view details). */
   onSelect?: (pokemon: PokemonEntry) => void;
+  /** Soft hint under species when slots are selectable. */
+  selectHint?: string;
   /** Edit mode: select an empty numbered slot (MAIN uses this). */
   onSelectEmpty?: (partyIndex: number) => void;
 };
@@ -19,6 +21,7 @@ export function PartyStrip({
   size = "md",
   memorial = false,
   onSelect,
+  selectHint,
   onSelectEmpty,
 }: PartyStripProps) {
   const sorted = [...pokemon].sort((a, b) => a.partyIndex - b.partyIndex);
@@ -43,6 +46,7 @@ export function PartyStrip({
             pokemon={p}
             size={size}
             memorial={memorial}
+            selectHint={p && onSelect ? selectHint : undefined}
             onSelect={
               p && onSelect
                 ? () => onSelect(p)

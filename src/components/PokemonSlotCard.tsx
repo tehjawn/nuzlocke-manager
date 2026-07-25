@@ -1,14 +1,17 @@
 import Image from "next/image";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import { TypeBadge } from "@/components/TypeBadge";
+import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
-import { formatSpreadShort, isEmptySpread } from "@/lib/stats";
+import { calcBattleStats, formatBattleStatsShort } from "@/lib/stats";
 
 type PokemonSlotCardProps = {
   pokemon?: PokemonEntry | null;
   memorial?: boolean;
   size?: "sm" | "md";
   onSelect?: () => void;
+  /** Soft hint under species line when the card is interactive. */
+  selectHint?: string;
 };
 
 export function PokemonSlotCard({
@@ -16,12 +19,13 @@ export function PokemonSlotCard({
   memorial = false,
   size = "md",
   onSelect,
+  selectHint,
 }: PokemonSlotCardProps) {
   if (!pokemon) {
     const empty = (
       <div
-        className={`flex h-full flex-col items-center justify-center border-2 border-dashed border-frame/40 bg-surface-2/60 text-muted ${
-          size === "sm" ? "min-h-20 p-2" : "min-h-36 p-3"
+        className={`flex h-full flex-col items-center justify-center rounded-sm border-2 border-dashed border-frame/40 bg-surface-2/60 text-muted ${
+          size === "sm" ? "min-h-20 p-2" : "min-h-40 p-3"
         }`}
       >
         <span className="text-lg opacity-40" aria-hidden>
@@ -47,24 +51,32 @@ export function PokemonSlotCard({
     pokedexId: pokemon.pokedexId,
   });
   const label = pokemon.nickname || pokemon.species;
+  const battle = calcBattleStats({
+    pokedexId: pokemon.pokedexId,
+    level: pokemon.level,
+    ivs: pokemon.ivs,
+    evs: pokemon.evs,
+    nature: pokemon.nature,
+  });
+  const moves = pokemon.moves.map(resolveMoveName).filter(Boolean);
 
   const body = (
     <div
-      className={`gba-inset flex h-full flex-col bg-surface ${
+      className={`flex h-full flex-col rounded-sm border-2 border-frame bg-surface ${
         memorial ? "opacity-90" : ""
       } ${
-        size === "sm" ? "min-h-20 p-2" : "min-h-36 p-3"
-      } ${onSelect ? "transition hover:border-accent-2" : ""}`}
+        size === "sm" ? "min-h-20 p-2" : "min-h-40 p-3"
+      } ${onSelect ? "transition hover:border-accent-deep" : ""}`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-3">
         <div
-          className={`relative shrink-0 ${size === "sm" ? "h-10 w-10" : "h-20 w-20"}`}
+          className={`relative shrink-0 ${size === "sm" ? "h-12 w-12" : "h-24 w-24"}`}
         >
           <Image
             src={sprite}
             alt=""
-            width={size === "sm" ? 40 : 80}
-            height={size === "sm" ? 40 : 80}
+            width={size === "sm" ? 48 : 96}
+            height={size === "sm" ? 48 : 96}
             className="pixelated h-full w-full object-contain"
             unoptimized
           />
@@ -81,7 +93,7 @@ export function PokemonSlotCard({
           <p className="truncate text-xs text-muted">
             {pokemon.species}
             {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
-            {onSelect ? " · Edit" : ""}
+            {selectHint ? ` · ${selectHint}` : ""}
           </p>
           {size === "md" ? (
             <div className="mt-1 flex flex-wrap gap-1">
@@ -119,30 +131,22 @@ export function PokemonSlotCard({
               <dd className="truncate">{pokemon.heldItem}</dd>
             </>
           ) : null}
-          {!isEmptySpread(pokemon.ivs) ? (
+          {battle ? (
             <>
-              <dt className="text-muted">IVs</dt>
+              <dt className="text-muted">Stats</dt>
               <dd className="truncate font-mono text-[10px]">
-                {formatSpreadShort(pokemon.ivs)}
-              </dd>
-            </>
-          ) : null}
-          {!isEmptySpread(pokemon.evs) ? (
-            <>
-              <dt className="text-muted">EVs</dt>
-              <dd className="truncate font-mono text-[10px]">
-                {formatSpreadShort(pokemon.evs)}
+                {formatBattleStatsShort(battle)}
               </dd>
             </>
           ) : null}
         </dl>
       ) : null}
 
-      {size === "md" && pokemon.moves.length > 0 ? (
+      {size === "md" && moves.length > 0 ? (
         <ul className="mt-auto grid grid-cols-2 gap-1 pt-3">
-          {pokemon.moves.map((move) => (
+          {moves.map((move, index) => (
             <li
-              key={move}
+              key={`${index}-${move}`}
               className="rounded-sm border border-frame/30 bg-surface-2 px-1.5 py-1 text-[11px]"
             >
               {move}
