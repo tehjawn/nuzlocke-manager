@@ -42,6 +42,8 @@ type TrainerBrowserProps = {
   selectedKey: string;
   onClose: () => void;
   onSelect: (key: string) => void;
+  /** Render panel content only (parent owns the modal chrome). */
+  embedded?: boolean;
 };
 
 export function TrainerSpriteBrowser({
@@ -49,6 +51,7 @@ export function TrainerSpriteBrowser({
   selectedKey,
   onClose,
   onSelect,
+  embedded = false,
 }: TrainerBrowserProps) {
   // Remount when opened so draft/query reset from props without an effect.
   if (!open) return null;
@@ -58,6 +61,7 @@ export function TrainerSpriteBrowser({
       selectedKey={selectedKey}
       onClose={onClose}
       onSelect={onSelect}
+      embedded={embedded}
     />
   );
 }
@@ -66,6 +70,7 @@ function TrainerSpriteBrowserInner({
   selectedKey,
   onClose,
   onSelect,
+  embedded,
 }: Omit<TrainerBrowserProps, "open">) {
   const [query, setQuery] = useState("");
   const deferred = useDeferredValue(query);
@@ -76,47 +81,43 @@ function TrainerSpriteBrowserInner({
   const coarse = useCoarsePointer();
   const [draft, setDraft] = useState(selectedKey);
 
-  return (
-    <Modal
-      open
-      title="Choose trainer sprite"
-      onClose={onClose}
-      wide
-      footer={
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-sm">
-            <Image
-              src={trainerSpriteUrl(draft)}
-              alt=""
-              width={48}
-              height={48}
-              className="pixelated h-12 w-12 object-contain"
-              unoptimized
-            />
-            <span className="font-bold">{formatTrainerSpriteLabel(draft)}</span>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="pressable rounded-lg bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)]"
-              onClick={() => {
-                onSelect(draft);
-                onClose();
-              }}
-            >
-              Use sprite
-            </button>
-          </div>
-        </div>
-      }
-    >
+  const footer = (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2 text-sm">
+        <Image
+          src={trainerSpriteUrl(draft)}
+          alt=""
+          width={48}
+          height={48}
+          className="pixelated h-12 w-12 object-contain"
+          unoptimized
+        />
+        <span className="font-bold">{formatTrainerSpriteLabel(draft)}</span>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="pressable rounded-lg bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
+          onClick={onClose}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)]"
+          onClick={() => {
+            onSelect(draft);
+            onClose();
+          }}
+        >
+          Use sprite
+        </button>
+      </div>
+    </div>
+  );
+
+  const body = (
+    <>
       <label className="mb-3 block text-sm">
         <span className="mb-1 block font-bold text-muted">
           Search Showdown trainers
@@ -166,6 +167,23 @@ function TrainerSpriteBrowserInner({
         />
       </SpriteScrollGrid>
       <SpriteHoverPreview preview={preview.preview} />
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div>
+        {body}
+        <div className="sticky bottom-0 z-[1] -mx-1 mt-4 border-t border-frame/60 bg-surface px-1 pt-3 pb-1">
+          {footer}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Modal open title="Choose trainer sprite" onClose={onClose} wide footer={footer}>
+      {body}
     </Modal>
   );
 }
@@ -175,6 +193,8 @@ type PokemonBrowserProps = {
   selectedId: number | null;
   onClose: () => void;
   onSelect: (entry: PokemonIndexEntry) => void;
+  /** Render panel content only (parent owns the modal chrome). */
+  embedded?: boolean;
 };
 
 function initialPokemonDraft(selectedId: number | null): PokemonIndexEntry | null {
@@ -186,6 +206,7 @@ export function PokemonSpriteBrowser({
   selectedId,
   onClose,
   onSelect,
+  embedded = false,
 }: PokemonBrowserProps) {
   // Remount when opened so draft/query/generation reset without an effect.
   if (!open) return null;
@@ -195,6 +216,7 @@ export function PokemonSpriteBrowser({
       selectedId={selectedId}
       onClose={onClose}
       onSelect={onSelect}
+      embedded={embedded}
     />
   );
 }
@@ -203,6 +225,7 @@ function PokemonSpriteBrowserInner({
   selectedId,
   onClose,
   onSelect,
+  embedded,
 }: Omit<PokemonBrowserProps, "open">) {
   const selected = initialPokemonDraft(selectedId);
   const [query, setQuery] = useState("");
@@ -226,63 +249,59 @@ function PokemonSpriteBrowserInner({
   const coarse = useCoarsePointer();
   const [draft, setDraft] = useState<PokemonIndexEntry | null>(selected);
 
-  return (
-    <Modal
-      open
-      title="Choose Pokémon"
-      onClose={onClose}
-      wide
-      footer={
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-sm">
-            {draft ? (
-              <>
-                <Image
-                  src={pokemonSpriteUrl(draft.name, {
-                    pokedexId: draft.pokedexId,
-                  })}
-                  alt=""
-                  width={48}
-                  height={48}
-                  className="pixelated h-12 w-12 object-contain"
-                  unoptimized
-                />
-                <span className="font-bold">
-                  #{draft.pokedexId} {draft.name}
-                  <span className="ml-1 text-xs font-normal text-muted">
-                    Gen {draft.generation}
-                    {draft.isForme ? " · forme" : ""}
-                  </span>
-                </span>
-              </>
-            ) : (
-              <span className="text-muted">Pick a species</span>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="pressable rounded-lg bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={!draft}
-              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
-              onClick={() => {
-                if (!draft) return;
-                onSelect(draft);
-                onClose();
-              }}
-            >
-              Use Pokémon
-            </button>
-          </div>
-        </div>
-      }
-    >
+  const footer = (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2 text-sm">
+        {draft ? (
+          <>
+            <Image
+              src={pokemonSpriteUrl(draft.name, {
+                pokedexId: draft.pokedexId,
+              })}
+              alt=""
+              width={48}
+              height={48}
+              className="pixelated h-12 w-12 object-contain"
+              unoptimized
+            />
+            <span className="font-bold">
+              #{draft.pokedexId} {draft.name}
+              <span className="ml-1 text-xs font-normal text-muted">
+                Gen {draft.generation}
+                {draft.isForme ? " · forme" : ""}
+              </span>
+            </span>
+          </>
+        ) : (
+          <span className="text-muted">Pick a species</span>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="pressable rounded-lg bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
+          onClick={onClose}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={!draft}
+          className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
+          onClick={() => {
+            if (!draft) return;
+            onSelect(draft);
+            onClose();
+          }}
+        >
+          Use Pokémon
+        </button>
+      </div>
+    </div>
+  );
+
+  const body = (
+    <>
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <div
           role="group"
@@ -401,6 +420,23 @@ function PokemonSpriteBrowserInner({
         />
       </SpriteScrollGrid>
       <SpriteHoverPreview preview={preview.preview} />
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div>
+        {body}
+        <div className="sticky bottom-0 z-[1] -mx-1 mt-4 border-t border-frame/60 bg-surface px-1 pt-3 pb-1">
+          {footer}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Modal open title="Choose Pokémon" onClose={onClose} wide footer={footer}>
+      {body}
     </Modal>
   );
 }

@@ -2,7 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { avatarImageUrl, pokemonSpriteUrl } from "@/lib/sprites";
+import {
+  avatarImageClassName,
+  avatarImageUrl,
+  pokemonSpriteUrl,
+} from "@/lib/sprites";
 
 export type CarouselTrainer = {
   id: string;
@@ -80,7 +84,7 @@ export function TrainerCarousel({
                 alt=""
                 width={96}
                 height={96}
-                className="pixelated relative z-[1] h-[88px] w-[88px] object-contain drop-shadow-[0_8px_16px_var(--shadow-md)] transition-transform duration-300 group-hover:translate-y-[-2px] sm:h-[104px] sm:w-[104px]"
+                className={`${avatarImageClassName(trainer.avatarSpriteKey, "relative z-[1] h-[88px] w-[88px] sm:h-[104px] sm:w-[104px]")} drop-shadow-[0_8px_16px_var(--shadow-md)] transition-transform duration-300 group-hover:translate-y-[-2px]`}
                 unoptimized
               />
             </div>

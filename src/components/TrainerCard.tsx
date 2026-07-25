@@ -11,7 +11,11 @@ import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
-import { avatarImageUrl, pokemonSpriteUrl } from "@/lib/sprites";
+import {
+  avatarImageClassName,
+  avatarImageUrl,
+  pokemonSpriteUrl,
+} from "@/lib/sprites";
 
 type TrainerCardProps = {
   challenge: Challenge;
@@ -69,7 +73,7 @@ export function TrainerCard({
                     alt=""
                     width={96}
                     height={96}
-                    className="pixelated relative z-[1] h-16 w-16 object-contain drop-shadow-[0_6px_12px_var(--shadow-md)]"
+                    className={`${avatarImageClassName(trainer.avatarSpriteKey, "relative z-[1] h-16 w-16")} drop-shadow-[0_6px_12px_var(--shadow-md)]`}
                     unoptimized
                   />
                 </div>
@@ -92,7 +96,10 @@ export function TrainerCard({
                 alt=""
                 width={72}
                 height={72}
-                className="pixelated mx-auto h-[4.5rem] w-[4.5rem] object-contain"
+                className={avatarImageClassName(
+                  trainer.avatarSpriteKey,
+                  "mx-auto h-[4.5rem] w-[4.5rem]",
+                )}
                 unoptimized
               />
               <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight">
@@ -169,7 +176,10 @@ export function TrainerCard({
               alt=""
               width={64}
               height={64}
-              className="pixelated h-16 w-16 object-contain"
+              className={avatarImageClassName(
+                trainer.avatarSpriteKey,
+                "h-16 w-16",
+              )}
               unoptimized
             />
             <div className="min-w-0 flex-1">

@@ -18,7 +18,11 @@ import {
   TrainerBoardUpdateSchema,
 } from "@/lib/types";
 import { sanitizeHandle } from "@/lib/handles";
-import { parseAvatarKey } from "@/lib/sprites";
+import {
+  CUSTOM_AVATAR_PREFIX,
+  customAvatarKey,
+  parseAvatarKey,
+} from "@/lib/sprites";
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
 import type { ActivityItem } from "@/lib/challenge-types";
 import { listChallengeActivities } from "@/lib/challenges";
@@ -329,11 +333,23 @@ export async function updateTrainerBoardAction(input: {
     if (updates.statusText !== undefined) data.statusText = updates.statusText;
     if (updates.statusEmoji !== undefined) data.statusEmoji = updates.statusEmoji;
     if (updates.avatarSpriteKey !== undefined) {
-      const avatar = parseAvatarKey(updates.avatarSpriteKey);
-      data.avatarSpriteKey =
-        avatar.kind === "pokemon"
-          ? updates.avatarSpriteKey
-          : avatar.key;
+      const raw = updates.avatarSpriteKey ?? "";
+      if (raw.toLowerCase().startsWith(CUSTOM_AVATAR_PREFIX)) {
+        const avatar = parseAvatarKey(raw);
+        if (avatar.kind !== "custom") {
+          return { ok: false, error: "Invalid custom avatar" };
+        }
+        data.avatarSpriteKey = customAvatarKey(avatar.url);
+      } else {
+        const avatar = parseAvatarKey(raw);
+        if (avatar.kind === "pokemon") {
+          data.avatarSpriteKey = raw;
+        } else if (avatar.kind === "trainer") {
+          data.avatarSpriteKey = avatar.key;
+        } else {
+          return { ok: false, error: "Invalid custom avatar" };
+        }
+      }
     }
     if (updates.realName !== undefined) data.realName = updates.realName;
 

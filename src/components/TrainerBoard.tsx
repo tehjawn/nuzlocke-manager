@@ -33,7 +33,7 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
-import { avatarImageUrl } from "@/lib/sprites";
+import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
 import { isEmptySpread } from "@/lib/stats";
 
 type TrainerBoardProps = {
@@ -441,7 +441,10 @@ export function TrainerBoard({
                   alt=""
                   width={96}
                   height={96}
-                  className="pixelated h-24 w-24 object-contain"
+                  className={avatarImageClassName(
+                    committed.avatarSpriteKey,
+                    "h-24 w-24",
+                  )}
                   unoptimized
                 />
                 <div className="min-w-0 flex-1">

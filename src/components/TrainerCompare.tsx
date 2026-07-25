@@ -10,7 +10,11 @@ import type {
   BadgeDefinition,
   TrainerProfile,
 } from "@/lib/challenge-types";
-import { avatarImageUrl, pokemonSpriteUrl } from "@/lib/sprites";
+import {
+  avatarImageClassName,
+  avatarImageUrl,
+  pokemonSpriteUrl,
+} from "@/lib/sprites";
 import { pokemonInSlot } from "@/lib/trainer-display";
 
 type TrainerCompareProps = {
@@ -139,7 +143,7 @@ function CompareColumn({
           alt=""
           width={56}
           height={56}
-          className="pixelated h-14 w-14 object-contain"
+          className={avatarImageClassName(trainer.avatarSpriteKey, "h-14 w-14")}
           unoptimized
         />
         <div className="min-w-0">
