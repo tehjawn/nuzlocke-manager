@@ -38,7 +38,7 @@ export function PokemonSlotCard({
     return (
       <button
         type="button"
-        className="h-full w-full text-left"
+        className="h-full w-full cursor-pointer text-left"
         onClick={onSelect}
       >
         {empty}
@@ -66,7 +66,7 @@ export function PokemonSlotCard({
         memorial ? "opacity-90" : ""
       } ${
         size === "sm" ? "min-h-20 p-2" : "min-h-40 p-3"
-      } ${onSelect ? "transition hover:border-accent-deep" : ""}`}
+      } ${onSelect ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
     >
       <div className="flex items-start gap-3">
         <div
@@ -169,7 +169,11 @@ export function PokemonSlotCard({
     return <article className="h-full">{body}</article>;
   }
   return (
-    <button type="button" className="h-full w-full text-left" onClick={onSelect}>
+    <button
+      type="button"
+      className="h-full w-full cursor-pointer text-left"
+      onClick={onSelect}
+    >
       {body}
     </button>
   );

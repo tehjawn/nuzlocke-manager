@@ -8,10 +8,10 @@ import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
 import {
   calcBattleStats,
-  formatSpreadShort,
   isEmptySpread,
   STAT_KEYS,
   STAT_LABELS,
+  type StatSpread,
 } from "@/lib/stats";
 
 type PokemonDetailsModalProps = {
@@ -19,6 +19,56 @@ type PokemonDetailsModalProps = {
   pokemon: PokemonEntry | null;
   onClose: () => void;
 };
+
+function StatGrid({
+  spread,
+  tone = "neutral",
+}: {
+  spread: StatSpread;
+  tone?: "neutral" | "iv" | "ev";
+}) {
+  const toneClass =
+    tone === "iv"
+      ? "border-interactive/25 bg-iv"
+      : tone === "ev"
+        ? "border-accent-2/30 bg-ev"
+        : "border-frame/40 bg-surface-2";
+
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      {STAT_KEYS.map((key) => (
+        <div
+          key={key}
+          className={`rounded-lg border px-2 py-1.5 text-center ${toneClass}`}
+        >
+          <p className="text-[10px] font-semibold tracking-tight text-muted">
+            {STAT_LABELS[key]}
+          </p>
+          <p className="font-mono text-sm font-bold">{spread[key]}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MetaRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <dt className="text-[11px] font-semibold tracking-tight text-muted">
+        {label}
+      </dt>
+      <dd>
+        <span className="info-chip text-sm">{value}</span>
+      </dd>
+    </div>
+  );
+}
 
 export function PokemonDetailsModal({
   open,
@@ -40,6 +90,10 @@ export function PokemonDetailsModal({
     nature: pokemon.nature,
   });
   const moves = pokemon.moves.map(resolveMoveName).filter(Boolean);
+  const ivs = pokemon.ivs;
+  const evs = pokemon.evs;
+  const showIvs = !isEmptySpread(ivs);
+  const showEvs = !isEmptySpread(evs);
 
   return (
     <Modal open title={label} onClose={onClose} wide>
@@ -66,95 +120,77 @@ export function PokemonDetailsModal({
         </div>
 
         <div className="space-y-4">
-          <div>
-            <p className="text-xl font-bold leading-tight tracking-tight">
-              {label}
-            </p>
+          <div className="space-y-2">
+            <div>
+              <p className="text-[11px] font-semibold tracking-tight text-muted">
+                Name
+              </p>
+              <p className="mt-1">
+                <span className="info-chip text-base font-semibold">{label}</span>
+              </p>
+            </div>
             <p className="text-sm text-muted">
               {pokemon.species}
               {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
             </p>
           </div>
 
-          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {pokemon.nature ? (
-              <>
-                <dt className="text-muted">Nature</dt>
-                <dd>{pokemon.nature}</dd>
-              </>
+              <MetaRow label="Nature" value={pokemon.nature} />
             ) : null}
             {pokemon.ability ? (
-              <>
-                <dt className="text-muted">Ability</dt>
-                <dd>{pokemon.ability}</dd>
-              </>
+              <MetaRow label="Ability" value={pokemon.ability} />
             ) : null}
             {pokemon.catchRoute ? (
-              <>
-                <dt className="text-muted">Route</dt>
-                <dd>{pokemon.catchRoute}</dd>
-              </>
+              <MetaRow label="Route" value={pokemon.catchRoute} />
             ) : null}
             {pokemon.heldItem ? (
-              <>
-                <dt className="text-muted">Item</dt>
-                <dd>{pokemon.heldItem}</dd>
-              </>
+              <MetaRow label="Item" value={pokemon.heldItem} />
             ) : null}
           </dl>
 
           {battle ? (
             <div>
-              <p className="mb-2 font-display text-xs font-semibold tracking-tight text-muted">
-                Stats
+              <p className="mb-1 text-xs font-semibold tracking-tight text-muted">
+                Battle stats
               </p>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                {STAT_KEYS.map((key) => (
-                  <div
-                    key={key}
-                    className="rounded-lg border border-frame/30 bg-surface-2 px-2 py-1.5 text-center"
-                  >
-                    <p className="text-[10px] font-semibold tracking-tight text-muted">
-                      {STAT_LABELS[key]}
-                    </p>
-                    <p className="font-mono text-sm font-bold">{battle[key]}</p>
-                  </div>
-                ))}
-              </div>
+              <p className="mb-2 text-[11px] leading-snug text-muted">
+                Calculated from base stats, IVs, EVs, level, and nature — not
+                IV + EV.
+              </p>
+              <StatGrid spread={battle} />
             </div>
           ) : null}
 
-          {!isEmptySpread(pokemon.ivs) || !isEmptySpread(pokemon.evs) ? (
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-              {!isEmptySpread(pokemon.ivs) ? (
-                <>
-                  <dt className="text-muted">IVs</dt>
-                  <dd className="font-mono break-words">
-                    {formatSpreadShort(pokemon.ivs)}
-                  </dd>
-                </>
-              ) : null}
-              {!isEmptySpread(pokemon.evs) ? (
-                <>
-                  <dt className="text-muted">EVs</dt>
-                  <dd className="font-mono break-words">
-                    {formatSpreadShort(pokemon.evs)}
-                  </dd>
-                </>
-              ) : null}
-            </dl>
+          {showIvs && ivs ? (
+            <div>
+              <p className="mb-2 text-xs font-semibold tracking-tight text-muted">
+                IVs
+              </p>
+              <StatGrid spread={ivs} tone="iv" />
+            </div>
+          ) : null}
+
+          {showEvs && evs ? (
+            <div>
+              <p className="mb-2 text-xs font-semibold tracking-tight text-muted">
+                EVs
+              </p>
+              <StatGrid spread={evs} tone="ev" />
+            </div>
           ) : null}
 
           {moves.length > 0 ? (
             <div>
-              <p className="mb-2 font-display text-xs font-semibold tracking-tight text-muted">
+              <p className="mb-2 text-xs font-semibold tracking-tight text-muted">
                 Moves
               </p>
               <ul className="grid grid-cols-2 gap-1.5">
                 {moves.map((move, index) => (
                   <li
                     key={`${index}-${move}`}
-                    className="rounded-lg border border-frame/30 bg-surface-2 px-2 py-1.5 text-sm"
+                    className="rounded-lg border border-frame/40 bg-info px-2 py-1.5 text-sm text-info-ink"
                   >
                     {move}
                   </li>

@@ -34,7 +34,7 @@ export function Modal({
       <button
         type="button"
         aria-label="Close dialog"
-        className="absolute inset-0 bg-[var(--scrim)] backdrop-blur-[2px]"
+        className="absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px]"
         onClick={onClose}
       />
       <div
@@ -54,7 +54,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="pressable bg-white/15 px-2.5 py-1 text-xs font-semibold"
+            className="pressable border-interactive/35 bg-interactive-soft px-2.5 py-1 text-xs font-semibold text-ink"
           >
             Close
           </button>

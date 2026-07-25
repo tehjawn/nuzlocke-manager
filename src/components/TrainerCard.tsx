@@ -86,7 +86,7 @@ export function TrainerCard({ challenge, trainer }: TrainerCardProps) {
                   type="button"
                   title={label}
                   aria-label={`View ${label}`}
-                  className="pressable group flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border border-frame bg-surface-2 p-1.5 transition hover:border-accent/50 hover:bg-surface"
+                  className="pressable group flex aspect-square cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame bg-surface-2 p-1.5 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
                   onClick={() => setDetailsPokemon(mon)}
                 >
                   <Image

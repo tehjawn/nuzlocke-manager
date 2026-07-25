@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
 /*
-  Crest Pulse — modern + gamer.
-  Punchier olive/emerald + gold, tighter radii, grainy atmosphere.
-  Still Champions/TCG-clean — just less washed out.
+  Crest Pulse — color roles
+  - accent (emerald): primary CTAs only
+  - accent-2 (gold): informational chrome / highlights
+  - interactive (sky): hover affordances on clickable surfaces
+  - info (cool gray wash): read-only value chips
 */
 :root,
 [data-theme="light"] {
@@ -20,6 +22,12 @@
   --accent: #2f9a52;
   --accent-deep: #1f7a3d;
   --accent-2: #d4a017;
+  --interactive: #2f8fbf;
+  --interactive-soft: #d7eef8;
+  --info: #e7ebe3;
+  --info-ink: #2a332a;
+  --iv: #dceaf5;
+  --ev: #f5e6c8;
   --danger: #d04a38;
   --rip: #e4eadc;
   --shadow: rgba(18, 22, 18, 0.12);
@@ -48,6 +56,12 @@
   --accent: #3ecf6a;
   --accent-deep: #6aeba0;
   --accent-2: #f0c040;
+  --interactive: #5ec4e8;
+  --interactive-soft: #17303a;
+  --info: #222a24;
+  --info-ink: #e8eee6;
+  --iv: #1a2c38;
+  --ev: #332714;
   --danger: #ef6b55;
   --rip: #101611;
   --shadow: rgba(0, 0, 0, 0.45);
@@ -78,6 +92,12 @@
   --color-accent-deep: var(--accent-deep);
   --color-accent-2: var(--accent-2);
   --color-accent-ink: var(--accent-ink);
+  --color-interactive: var(--interactive);
+  --color-interactive-soft: var(--interactive-soft);
+  --color-info: var(--info);
+  --color-info-ink: var(--info-ink);
+  --color-iv: var(--iv);
+  --color-ev: var(--ev);
   --color-danger: var(--danger);
   --color-rip: var(--rip);
   --font-sans: var(--font-body);
@@ -94,7 +114,6 @@ body {
   color: var(--ink);
   font-family: var(--font-body), "Segoe UI", system-ui, sans-serif;
   letter-spacing: -0.011em;
-  /* Gradients stay viewport-locked; no tiling seams. */
   background-color: var(--bg);
   background-image:
     radial-gradient(ellipse 90% 55% at 0% 0%, var(--bg-wash) 0%, transparent 58%),
@@ -109,12 +128,6 @@ body {
   background-attachment: fixed;
 }
 
-/*
-  Grain stack (CSS-Tricks grainy-gradients vibe):
-  1) SVG turbulence for organic grit
-  2) PNG tile for denser film grain
-  Fixed to the viewport so it never scrolls as a repeating band.
-*/
 body::before {
   content: "";
   position: fixed;
@@ -140,6 +153,13 @@ body:has([data-modal-open]) {
   overflow: hidden;
 }
 
+/* Kill any leftover glow/lift on text. */
+*,
+*::before,
+*::after {
+  text-shadow: none !important;
+}
+
 .font-display,
 .font-pixel,
 .site-brand,
@@ -153,9 +173,23 @@ body:has([data-modal-open]) {
   color: var(--accent-deep);
 }
 
-/*
-  Card frame — tighter radius, brighter edge, light grain wash.
-*/
+/* Pointer on real interactables (not disabled). */
+a[href],
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"],
+summary,
+.pressable:not(:disabled),
+label[for] {
+  cursor: pointer;
+}
+
+button:disabled,
+.pressable:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 .gba-frame {
   --gba-fill: var(--surface);
   position: relative;
@@ -164,11 +198,11 @@ body:has([data-modal-open]) {
   background:
     linear-gradient(
       160deg,
-      color-mix(in srgb, var(--accent) 7%, var(--surface)) 0%,
-      var(--gba-fill) 42%,
-      color-mix(in srgb, var(--accent-2) 6%, var(--gba-fill)) 100%
+      color-mix(in srgb, var(--accent-2) 5%, var(--surface)) 0%,
+      var(--gba-fill) 48%,
+      color-mix(in srgb, var(--interactive) 4%, var(--gba-fill)) 100%
     );
-  border: 1px solid color-mix(in srgb, var(--frame) 80%, var(--accent));
+  border: 1px solid var(--frame);
   border-radius: var(--radius);
   box-shadow:
     0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
@@ -198,45 +232,31 @@ body:has([data-modal-open]) {
   --gba-fill: var(--rip);
 }
 
-.gba-frame-menu::before {
-  content: none;
-}
-
+.gba-frame-menu::before,
 .gba-frame::before {
   content: none;
 }
 
+/* Informational chrome — gold, not CTA green */
 .gba-frame-title {
   position: relative;
   z-index: 1;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--accent) 88%, #fff) 0%,
-    var(--accent) 55%,
-    var(--accent-deep) 100%
+    color-mix(in srgb, var(--accent-2) 22%, var(--surface-2)) 0%,
+    var(--surface-2) 100%
   );
-  color: var(--on-accent);
-  border-bottom: 1px solid color-mix(in srgb, var(--accent-2) 55%, transparent);
+  color: var(--ink);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-2) 45%, var(--frame));
   font-weight: 600;
   letter-spacing: -0.01em;
-  text-shadow: 0 1px 0 color-mix(in srgb, var(--accent-deep) 45%, transparent);
-}
-
-[data-theme="dark"] .gba-frame-title {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--accent) 75%, #1a2a1c) 0%,
-    color-mix(in srgb, var(--accent) 55%, #0f1811) 100%
-  );
-  color: var(--on-accent);
-  border-bottom-color: color-mix(in srgb, var(--accent-2) 65%, transparent);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .pressable {
   border: 1px solid var(--frame);
   border-radius: var(--radius-sm);
   box-shadow: 0 1px 2px var(--shadow);
+  cursor: pointer;
   transition:
     transform 140ms ease,
     box-shadow 140ms ease,
@@ -247,15 +267,13 @@ body:has([data-modal-open]) {
 
 .pressable:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--frame));
+  border-color: color-mix(in srgb, var(--interactive) 55%, var(--frame));
   box-shadow: 0 8px 18px -10px var(--shadow-md);
-  filter: saturate(1.08);
 }
 
 .pressable:active {
   transform: translateY(0);
   box-shadow: 0 1px 2px var(--shadow);
-  filter: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -264,7 +282,6 @@ body:has([data-modal-open]) {
   .pressable:active {
     transition: none;
     transform: none;
-    filter: none;
   }
 }
 
@@ -275,11 +292,24 @@ body:has([data-modal-open]) {
 .gba-inset {
   border: 1px solid var(--frame);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface-2) 92%, var(--accent));
+  background: color-mix(in srgb, var(--surface-2) 94%, var(--accent-2));
   box-shadow: inset 0 1px 2px color-mix(in srgb, var(--shadow) 60%, transparent);
 }
 
-/* Home page infinite trainer carousel */
+/* Read-only value chip */
+.info-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: var(--info);
+  color: var(--info-ink);
+  padding: 0.2rem 0.55rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
 @keyframes trainer-carousel-scroll {
   from {
     transform: translateX(0);
@@ -321,9 +351,9 @@ body:has([data-modal-open]) {
   --epr-category-label-bg-color: var(--surface);
   --epr-search-input-bg-color: var(--surface-2);
   --epr-text-color: var(--ink);
-  --epr-hover-bg-color: color-mix(in srgb, var(--accent) 15%, transparent);
-  --epr-focus-bg-color: color-mix(in srgb, var(--accent) 20%, transparent);
-  --epr-highlight-color: var(--accent);
+  --epr-hover-bg-color: color-mix(in srgb, var(--interactive) 15%, transparent);
+  --epr-focus-bg-color: color-mix(in srgb, var(--interactive) 20%, transparent);
+  --epr-highlight-color: var(--interactive);
   --epr-search-border-color: var(--frame);
   --epr-category-icon-active-color: var(--accent-deep);
   border: none !important;

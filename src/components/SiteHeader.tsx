@@ -43,7 +43,7 @@ export function SiteHeader({
       <nav className="relative flex shrink-0 items-center gap-2 text-sm">
         <Link
           href="/challenges"
-          className="pressable inline-flex h-9 items-center bg-surface px-3.5 font-medium"
+          className="pressable inline-flex h-9 items-center border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
         >
           Seasons
         </Link>
