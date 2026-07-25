@@ -30,9 +30,10 @@ export function TrainerCard({
     null,
   );
   const boardHref = `/challenges/${challenge.slug}/trainers/${trainer.id}`;
+  const isDemo = !trainer.userId;
 
   return (
-    <>
+    <div data-tour={isDemo ? "demo-trainer" : undefined}>
       {variant === "grid" ? (
         <Frame className="h-full">
           <div className="grid h-full grid-cols-[7rem_minmax(0,1fr)] gap-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-4">
@@ -221,7 +222,7 @@ export function TrainerCard({
         pokemon={detailsPokemon}
         onClose={() => setDetailsPokemon(null)}
       />
-    </>
+    </div>
   );
 }
 

@@ -6,19 +6,18 @@ import { Frame } from "@/components/Frame";
 import { ScrollFadeRail } from "@/components/ScrollFadeRail";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
-import { WelcomeSeasonCta } from "@/components/WelcomeSeasonCta";
+import { GetStartedSeasonCta } from "@/components/GetStartedSeasonCta";
 import type {
   ActivityItem,
   ChallengeStatus,
 } from "@/lib/challenge-types";
-import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import {
   seasonStatusChipClass,
   seasonStatusLabel,
 } from "@/lib/season-status";
 
 /** Fixed left rail width — keeps tab navigations from shifting columns. */
-export const SEASON_LEFT_RAIL_CLASS = "w-full lg:w-[22.5rem] lg:shrink-0";
+export const SEASON_LEFT_RAIL_CLASS = "w-full lg:w-[19.5rem] lg:shrink-0";
 
 type ChallengeShellProps = {
   slug: string;
@@ -102,7 +101,7 @@ export function ChallengeShell({
                 <dd className="leading-relaxed text-muted">{description}</dd>
               </div>
             </dl>
-            {slug === DEFAULT_CHALLENGE_SLUG ? <WelcomeSeasonCta /> : null}
+            <GetStartedSeasonCta slug={slug} />
             {!signedIn ? (
               <Link
                 href="/login"

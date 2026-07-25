@@ -36,7 +36,7 @@ export default async function ChallengesPage() {
         <SeasonGroup
           title="Archives"
           seasons={archived}
-          empty="No archived seasons yet — when a year closes, it lands here."
+          empty="No archived seasons yet — when a season closes, it lands here."
           className="mt-10"
         />
       </main>

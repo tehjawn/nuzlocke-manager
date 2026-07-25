@@ -60,7 +60,14 @@ export function RulesFaqView({
           {rules.map((rule) => (
             <li key={rule.id}>
               <Frame
-                title={`${rule.sortOrder}. ${rule.title ?? "Rule"}${rule.isCore ? " · Core" : ""}`}
+                title={`${rule.sortOrder}. ${rule.title ?? "Rule"}`}
+                actions={
+                  rule.isCore ? (
+                    <span className="info-chip text-[11px] font-semibold tracking-tight">
+                      Core
+                    </span>
+                  ) : null
+                }
               >
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">
                   {rule.body}

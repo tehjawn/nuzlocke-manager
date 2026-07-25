@@ -8,6 +8,8 @@ type FrameProps = {
   tone?: "default" | "rip";
   /** Tighter padding for compact cards (e.g. trainers grid). */
   dense?: boolean;
+  /** Spotlight target for the first-run onboarding tour. */
+  "data-tour"?: string;
 };
 
 export function Frame({
@@ -17,9 +19,11 @@ export function Frame({
   className = "",
   tone = "default",
   dense = false,
+  "data-tour": dataTour,
 }: FrameProps) {
   return (
     <section
+      data-tour={dataTour}
       className={`gba-frame overflow-hidden ${tone === "rip" ? "bg-rip" : ""} ${className}`}
     >
       {title ? (

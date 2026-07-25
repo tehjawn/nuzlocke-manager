@@ -329,6 +329,7 @@ export function TrainerBoard({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:items-start">
         <div className="space-y-6">
           <Frame
+            data-tour="player"
             title="Player"
             actions={
               canEdit ? (
@@ -519,8 +520,10 @@ export function TrainerBoard({
                   ) : null}
                   {canEdit && trainer.pokemon.length === 0 ? (
                     <p className="mt-3 text-sm text-muted">
-                      Your board is ready — edit your profile, tap party slots
-                      to add Pokémon, and toggle badges as you earn them.
+                      Your board is ready — edit your profile, then use{" "}
+                      <span className="font-semibold text-ink">Import save</span>{" "}
+                      under Main Squad once you have a file from Afterplay. You
+                      can also tap party slots and badges by hand.
                     </p>
                   ) : null}
                 </div>
@@ -528,24 +531,35 @@ export function TrainerBoard({
             )}
           </Frame>
 
-          <Frame title="Main Squad">
+          <Frame data-tour="pokemon" title="Main Squad">
             {canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">
                     Tap a slot to add or edit.
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div
+                    data-tour="pokemon-actions"
+                    className="flex flex-wrap gap-2"
+                  >
                     <button
                       type="button"
-                      className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                      className={`pressable rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight ${
+                        trainer.pokemon.length === 0
+                          ? "bg-accent text-[var(--on-accent)]"
+                          : "border border-frame bg-surface"
+                      }`}
                       onClick={() => setSaveImportOpen(true)}
                     >
                       Import save
                     </button>
                     <button
                       type="button"
-                      className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
+                      className={`pressable rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight ${
+                        trainer.pokemon.length === 0
+                          ? "border border-frame bg-surface"
+                          : "bg-accent text-[var(--on-accent)]"
+                      }`}
                       onClick={() => openAddPokemon("MAIN")}
                     >
                       + Add

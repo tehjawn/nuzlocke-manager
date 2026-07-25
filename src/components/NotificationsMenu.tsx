@@ -120,7 +120,7 @@ export function NotificationsMenu({
                             ) : null}
                             {isWelcomeNotification(notification) ? (
                               <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
-                                Open welcome →
+                                Start tour →
                               </span>
                             ) : null}
                           </span>

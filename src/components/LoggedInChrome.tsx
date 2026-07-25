@@ -1,10 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { markNotificationReadAction } from "@/app/actions/notifications";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import { UserMenu } from "@/components/UserMenu";
-import { WelcomeModal } from "@/components/WelcomeModal";
+import {
+  ONBOARDING_STEPS,
+  readOnboardingActive,
+  writeOnboardingActive,
+  writeOnboardingStep,
+} from "@/lib/onboarding";
 import type { NotificationItem } from "@/lib/notification-types";
 import {
   isWelcomeNotification,
@@ -32,12 +39,20 @@ export function LoggedInChrome({
   notifications: initialNotifications,
   signOutAction,
 }: LoggedInChromeProps) {
+  const router = useRouter();
+  const pathname = usePathname() ?? "";
   const [notifications, setNotifications] = useState(() =>
     withPinnedWelcome(initialNotifications),
   );
-  const [welcomeOpen, setWelcomeOpen] = useState(() =>
-    hasUnreadWelcome(withPinnedWelcome(initialNotifications)),
-  );
+  const [tourOpen, setTourOpen] = useState(() => {
+    const unread = hasUnreadWelcome(withPinnedWelcome(initialNotifications));
+    const active = readOnboardingActive();
+    if (unread || active) {
+      writeOnboardingActive(true);
+      return true;
+    }
+    return false;
+  });
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
@@ -79,19 +94,31 @@ export function LoggedInChrome({
     }
   }
 
-  async function dismissWelcome() {
+  async function dismissTour() {
+    writeOnboardingActive(false);
     const welcome = findWelcome(notifications);
     if (welcome) {
       await markRead(welcome);
     }
-    setWelcomeOpen(false);
+    setTourOpen(false);
+  }
+
+  function startTour() {
+    writeOnboardingStep(0);
+    writeOnboardingActive(true);
+    setTourOpen(true);
+    // Avoid a useless /me bounce if we're already on a trainer board.
+    if (!ONBOARDING_STEPS[0].match(pathname)) {
+      router.push(ONBOARDING_STEPS[0].href);
+    }
   }
 
   async function onSelectNotification(notification: NotificationItem) {
-    await markRead(notification);
     if (isWelcomeNotification(notification)) {
-      setWelcomeOpen(true);
+      startTour();
+      return;
     }
+    await markRead(notification);
   }
 
   return (
@@ -108,7 +135,7 @@ export function LoggedInChrome({
           signOutAction={signOutAction}
         />
       </div>
-      <WelcomeModal open={welcomeOpen} onDismiss={dismissWelcome} />
+      <OnboardingTour open={tourOpen} onDismiss={dismissTour} />
     </>
   );
 }

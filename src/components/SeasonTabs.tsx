@@ -29,18 +29,6 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
       icon: <PlayersIcon />,
     },
     {
-      href: `${base}/setup`,
-      label: "Get Started",
-      match: "prefix",
-      icon: <GetStartedIcon />,
-    },
-    {
-      href: `${base}/rules`,
-      label: "Rules / FAQ",
-      match: "prefix",
-      icon: <RulesIcon />,
-    },
-    {
       href: `${base}/encounters`,
       label: "Encounters",
       match: "prefix",
@@ -70,7 +58,7 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
     <div
       role="tablist"
       aria-label="Season sections"
-      className="gba-inset grid grid-cols-2 gap-1.5 bg-surface-2/80 p-1.5"
+      className="gba-inset flex flex-col gap-1 bg-surface-2/80 p-1.5"
     >
       {tabs.map((tab) => {
         const active =
@@ -85,19 +73,20 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
             role="tab"
             aria-selected={active}
             prefetch
-            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-[calc(var(--radius-sm)-2px)] border px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
+            data-tour={tab.label === "Trainers" ? "tab-trainers" : undefined}
+            className={`flex items-center gap-3 rounded-[calc(var(--radius-sm)-2px)] border px-3 py-2.5 text-sm font-semibold transition-colors ${
               active
                 ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
                 : "border-transparent text-ink hover:bg-surface"
             }`}
           >
             <span
-              className={active ? "text-interactive" : "text-ink/70"}
+              className={`shrink-0 ${active ? "text-interactive" : "text-ink/70"}`}
               aria-hidden
             >
               {tab.icon}
             </span>
-            {tab.label}
+            <span className="min-w-0">{tab.label}</span>
           </Link>
         );
       })}
@@ -112,25 +101,6 @@ function PlayersIcon() {
       <circle cx="16.5" cy="9" r="2.25" />
       <path d="M3.5 18.5c.9-2.6 2.8-4 5.5-4s4.6 1.4 5.5 4" strokeLinecap="round" />
       <path d="M14 18.5c.5-1.5 1.6-2.5 3.5-2.5 1.4 0 2.4.6 3 1.7" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function GetStartedIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
-      <path d="M5 12h9" strokeLinecap="round" />
-      <path d="M12 7l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M19 5v14" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function RulesIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
-      <path d="M6 4.5h9.5A2.5 2.5 0 0118 7v12.5H8A2 2 0 016 17.5v-13z" strokeLinejoin="round" />
-      <path d="M9 9h6M9 12.5h6M9 16h4" strokeLinecap="round" />
     </svg>
   );
 }
