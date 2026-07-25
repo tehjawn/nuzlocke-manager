@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { DiscordIcon } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
+import { ScrollFadeRail } from "@/components/ScrollFadeRail";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareSeasonLink } from "@/components/ShareSeasonLink";
@@ -59,8 +60,9 @@ export function ChallengeShell({
         myTrainerId={myTrainerId}
       />
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 pb-16 pt-2 sm:px-6 lg:flex-row lg:items-start">
-        <aside
-          className={`${SEASON_LEFT_RAIL_CLASS} space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:self-start lg:pr-2 lg:[scrollbar-gutter:stable]`}
+        <ScrollFadeRail
+          className={`${SEASON_LEFT_RAIL_CLASS} lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start`}
+          scrollClassName="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]"
         >
           <Frame title="General info">
             <dl className="space-y-3 text-sm">
@@ -123,7 +125,7 @@ export function ChallengeShell({
             canReact={canReact}
             previewCount={5}
           />
-        </aside>
+        </ScrollFadeRail>
 
         <div className="min-w-0 flex-1">{children}</div>
       </div>
