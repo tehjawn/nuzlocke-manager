@@ -2,13 +2,9 @@
 
 import Image from "next/image";
 import { useRef, useState } from "react";
-import { upload } from "@vercel/blob/client";
+import { uploadCustomAvatarAction } from "@/app/actions/avatar";
 import { Modal } from "@/components/Modal";
-import {
-  AVATAR_ACCEPT,
-  prepareAvatarFile,
-} from "@/lib/avatar-upload";
-import { customAvatarKey } from "@/lib/sprites";
+import { AVATAR_ACCEPT, prepareAvatarFile } from "@/lib/avatar-upload";
 
 type CustomAvatarModalProps = {
   open: boolean;
@@ -64,22 +60,19 @@ export function CustomAvatarModal({
     setUploading(true);
     setError(null);
     try {
-      const blob = await upload(`avatars/${pendingFile.name}`, pendingFile, {
-        access: "public",
-        handleUploadUrl: "/api/avatar/upload",
-        contentType: pendingFile.type,
-      });
-      onSelect(customAvatarKey(blob.url));
+      const formData = new FormData();
+      formData.set("file", pendingFile);
+      const result = await uploadCustomAvatarAction(formData);
+      if (!result.ok) {
+        setError(result.error);
+        setUploading(false);
+        return;
+      }
+      onSelect(result.avatarSpriteKey);
       resetLocal();
       onClose();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Upload failed — try again";
-      setError(
-        message.includes("not configured")
-          ? "Custom uploads aren’t set up on this environment yet."
-          : message,
-      );
+      setError(err instanceof Error ? err.message : "Upload failed — try again");
       setUploading(false);
     }
   }
