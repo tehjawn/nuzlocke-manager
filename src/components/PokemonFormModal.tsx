@@ -16,6 +16,10 @@ import {
 import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
 import {
+  findDuplicateHeldItems,
+  findDuplicateSpecies,
+} from "@/lib/board-warnings";
+import {
   clampEvs,
   clampIvs,
   EMPTY_EVS,
@@ -94,6 +98,8 @@ export function pokemonEntryToForm(mon: PokemonEntry): PokemonFormState {
 type PokemonFormModalProps = {
   open: boolean;
   initial: PokemonFormState;
+  /** Board roster used for soft dupe / held-item warnings. */
+  teamPokemon?: PokemonEntry[];
   pending?: boolean;
   onClose: () => void;
   onSave: (form: PokemonFormState) => void;
@@ -103,6 +109,7 @@ type PokemonFormModalProps = {
 export function PokemonFormModal({
   open,
   initial,
+  teamPokemon = [],
   pending = false,
   onClose,
   onSave,
@@ -114,6 +121,7 @@ export function PokemonFormModal({
     <PokemonFormModalInner
       key={initial.id ?? `new-${initial.slot}-${initial.partyIndex}`}
       initial={initial}
+      teamPokemon={teamPokemon}
       pending={pending}
       onClose={onClose}
       onSave={onSave}
@@ -124,6 +132,7 @@ export function PokemonFormModal({
 
 function PokemonFormModalInner({
   initial,
+  teamPokemon = [],
   pending = false,
   onClose,
   onSave,
@@ -136,6 +145,22 @@ function PokemonFormModalInner({
   const itemResults = useMemo(
     () => searchHeldItems(deferredItem, 12),
     [deferredItem],
+  );
+  const itemWarnings = useMemo(
+    () =>
+      findDuplicateHeldItems(teamPokemon, {
+        excludeId: form.id,
+        draftItem: form.heldItem,
+      }),
+    [teamPokemon, form.id, form.heldItem],
+  );
+  const speciesWarnings = useMemo(
+    () =>
+      findDuplicateSpecies(teamPokemon, {
+        excludeId: form.id,
+        draftSpecies: form.species,
+      }),
+    [teamPokemon, form.id, form.species],
   );
 
   return (
@@ -179,6 +204,34 @@ function PokemonFormModalInner({
         }
       >
         <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
+          {(itemWarnings.length > 0 || speciesWarnings.length > 0) && (
+            <div className="space-y-2 rounded-lg border border-accent-2/40 bg-accent-2/10 px-3 py-2 text-sm sm:col-span-2">
+              {itemWarnings.map((w) => (
+                <p key={`item-${w.item}`}>
+                  <span className="font-semibold text-accent-ink">
+                    Duplicate held item:
+                  </span>{" "}
+                  <span className="text-muted">
+                    {w.item} already on{" "}
+                    {w.holders.map((h) => h.label).join(", ")}.
+                  </span>
+                </p>
+              ))}
+              {speciesWarnings.map((w) => (
+                <p key={`sp-${w.species}`}>
+                  <span className="font-semibold text-accent-ink">
+                    Species already on board:
+                  </span>{" "}
+                  <span className="text-muted">
+                    {w.species} ({w.holders.map((h) => h.label).join(", ")}).
+                  </span>
+                </p>
+              ))}
+              <p className="text-xs text-muted">
+                Soft warning only — you can still save.
+              </p>
+            </div>
+          )}
           <div className="flex flex-col items-center gap-2">
             <div className="flex h-28 w-28 items-center justify-center rounded-lg border border-frame bg-surface-2">
               {form.species ? (

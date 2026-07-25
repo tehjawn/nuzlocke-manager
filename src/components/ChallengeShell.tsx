@@ -5,6 +5,7 @@ import { DiscordIcon } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader } from "@/components/SiteHeader";
+import { TypeChartDrawer } from "@/components/TypeChartDrawer";
 import { WelcomeSeasonCta } from "@/components/WelcomeSeasonCta";
 import type { ActivityItem, ChallengeStatus } from "@/lib/challenge-types";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
@@ -103,6 +104,8 @@ export function ChallengeShell({
           </Frame>
 
           <SeasonTabs slug={slug} status={status} />
+
+          <TypeChartDrawer />
 
           <ActivityFeed
             slug={slug}
