@@ -79,14 +79,14 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
             role="tab"
             aria-selected={active}
             prefetch
-            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-[calc(var(--radius-sm)-2px)] px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
+            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-[calc(var(--radius-sm)-2px)] border px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
               active
-                ? "border border-interactive/40 bg-interactive-soft text-ink shadow-sm"
-                : "border border-transparent text-ink hover:bg-surface"
+                ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
+                : "border-transparent text-ink hover:bg-surface"
             }`}
           >
             <span
-              className={active ? "text-interactive" : "text-muted"}
+              className={active ? "text-interactive" : "text-ink/70"}
               aria-hidden
             >
               {tab.icon}
