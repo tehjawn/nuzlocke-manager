@@ -24,19 +24,32 @@ type JumpContextValue = {
   toggle: () => void;
   results: JumpResult[];
   index: Fuse<JumpResult>;
-  /** Register season results; returns an owner id for safe unregister. */
+  /** Route-level season overlay; returns an owner id for safe unregister. */
   registerSeason: (ctx: JumpSeasonContext) => number;
-  /** Clear season only if this owner still owns the active registration. */
+  /** Clear route overlay only if this owner still owns it. */
   unregisterSeason: (ownerId: number) => void;
 };
 
 const JumpContext = createContext<JumpContextValue | null>(null);
 
-export function JumpProvider({ children }: { children: ReactNode }) {
+export function JumpProvider({
+  children,
+  defaultSeason = null,
+}: {
+  children: ReactNode;
+  /** Active season index for global pages (home, about, login, …). */
+  defaultSeason?: JumpSeasonContext | null;
+}) {
   const [open, setOpen] = useState(false);
-  const [season, setSeason] = useState<JumpSeasonContext | null>(null);
+  const [routeSeason, setRouteSeason] = useState<JumpSeasonContext | null>(
+    null,
+  );
   const generationRef = useRef(0);
   const activeOwnerRef = useRef<number | null>(null);
+
+  // In-season pages overlay richer context (GM / my board); elsewhere fall back
+  // to the active season so Jump still finds trainers from the homepage.
+  const season = routeSeason ?? defaultSeason;
 
   const results = useMemo(() => {
     const global = buildGlobalResults();
@@ -49,16 +62,14 @@ export function JumpProvider({ children }: { children: ReactNode }) {
   const registerSeason = useCallback((ctx: JumpSeasonContext) => {
     const ownerId = ++generationRef.current;
     activeOwnerRef.current = ownerId;
-    setSeason(ctx);
+    setRouteSeason(ctx);
     return ownerId;
   }, []);
 
   const unregisterSeason = useCallback((ownerId: number) => {
-    // Soft-nav can mount the next registrar before the previous cleanup runs.
-    // Only clear if we still own the active registration.
     if (activeOwnerRef.current !== ownerId) return;
     activeOwnerRef.current = null;
-    setSeason(null);
+    setRouteSeason(null);
   }, []);
 
   const toggle = useCallback(() => {
