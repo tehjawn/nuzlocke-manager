@@ -164,7 +164,7 @@ function CompareColumn({
       </p>
       <ul className="mb-4 grid grid-cols-3 gap-2">
         {Array.from({ length: 6 }, (_, i) => {
-          const mon = main.find((m) => m.partyIndex === i) ?? main[i];
+          const mon = main.find((m) => m.partyIndex === i) ?? null;
           return (
             <li
               key={i}
