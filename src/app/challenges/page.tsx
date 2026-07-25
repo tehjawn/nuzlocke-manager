@@ -1,3 +1,14 @@
+import { redirect } from "next/navigation";
+
+/**
+ * TEMP: Seasons index is hidden while only one season exists.
+ * Restore the listing UI below when multi-season navigation returns.
+ */
+export default function ChallengesPage() {
+  redirect("/");
+}
+
+/*
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Frame } from "@/components/Frame";
@@ -106,3 +117,4 @@ function SeasonCard({ challenge: c }: { challenge: Challenge }) {
     </Frame>
   );
 }
+*/

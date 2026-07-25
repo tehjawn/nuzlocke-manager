@@ -47,6 +47,10 @@ export type TrainerProfile = {
   mainSquadLocked: boolean;
   sortOrder: number;
   userId: string | null;
+  /** Discord login username for @mentions (no leading @). */
+  discordUsername: string | null;
+  /** Discord global display name, when known. */
+  discordDisplayName: string | null;
   earnedBadgeKeys: string[];
   pokemon: PokemonEntry[];
   /** ISO timestamp of latest trainer or Pokémon change, when known. */

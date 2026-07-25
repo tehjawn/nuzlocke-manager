@@ -10,7 +10,6 @@ import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
-import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 import {
   avatarImageClassName,
@@ -45,6 +44,12 @@ export function TrainerCard({
   const isDemo = !trainer.userId;
   const firstMon = main.find((p) => p.partyIndex === 0) ?? main[0] ?? null;
   const earnedCount = trainer.earnedBadgeKeys.length;
+  const statusTrimmed = trainer.statusText?.trim() ?? "";
+  const hasStatus = Boolean(trainer.statusEmoji || statusTrimmed);
+  const statusTitle = [trainer.statusEmoji, statusTrimmed]
+    .filter(Boolean)
+    .join(" ");
+  const boardLabel = `Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`;
 
   return (
     <div
@@ -54,14 +59,14 @@ export function TrainerCard({
       {variant === "grid" ? (
         <>
           {/*
-            Compact card — mobile two-column grid. Mirrors the homepage
-            carousel: avatar with the lead squad Pokémon peeking top-right,
-            trainer name, then badge count.
+            Compact card — below md. Mirrors the homepage carousel: avatar
+            with the lead squad Pokémon peeking top-right, trainer name,
+            then badge count.
           */}
           <Link
             href={boardHref}
-            className="group block h-full sm:hidden"
-            aria-label={`Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`}
+            className="group block h-full md:hidden"
+            aria-label={boardLabel}
           >
             <Frame dense className="h-full">
               <div className="flex h-full flex-col items-center text-center">
@@ -84,7 +89,7 @@ export function TrainerCard({
                     alt=""
                     width={96}
                     height={96}
-                    className={`${avatarImageClassName(trainer.avatarSpriteKey, "relative z-[1] h-20 w-20")} drop-shadow-[0_6px_12px_var(--shadow-md)]`}
+                    className={`${avatarImageClassName(trainer.avatarSpriteKey, "relative z-1 h-20 w-20")} drop-shadow-[0_6px_12px_var(--shadow-md)]`}
                     unoptimized
                   />
                 </div>
@@ -98,11 +103,11 @@ export function TrainerCard({
             </Frame>
           </Link>
 
-          {/* Full card — sm and up */}
-          <Frame className="hidden h-full sm:block">
-            <div className="flex h-full flex-col gap-3">
-              <div className="grid min-h-0 flex-1 grid-cols-[7.5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:gap-4">
-                <div className="flex min-w-0 flex-col items-center gap-2 text-center">
+          {/* Full card — md and up; compact 3×2 squad grid */}
+          <Frame className="hidden h-full md:block">
+            <div className="flex h-full flex-col gap-2.5">
+              <div className="grid min-h-0 flex-1 grid-cols-[6.5rem_minmax(0,1fr)] gap-3 lg:grid-cols-[7.5rem_minmax(0,1fr)]">
+                <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
                   <Image
                     src={avatarImageUrl(trainer.avatarSpriteKey)}
                     alt=""
@@ -110,7 +115,7 @@ export function TrainerCard({
                     height={112}
                     className={avatarImageClassName(
                       trainer.avatarSpriteKey,
-                      "mx-auto h-24 w-24 sm:h-28 sm:w-28",
+                      "mx-auto h-20 w-20 lg:h-24 lg:w-24",
                     )}
                     unoptimized
                   />
@@ -123,7 +128,7 @@ export function TrainerCard({
                       {trainer.handle}
                     </Link>
                   </h2>
-                  {trainer.statusEmoji || trainer.statusText?.trim() ? (
+                  {hasStatus ? (
                     <StatusLine
                       emoji={trainer.statusEmoji}
                       text={trainer.statusText}
@@ -133,14 +138,14 @@ export function TrainerCard({
                   ) : null}
                 </div>
 
-                <div className="grid min-h-[13.5rem] grid-cols-2 grid-rows-3 gap-2 sm:min-h-[16rem]">
+                <div className="grid min-h-0 grid-cols-3 grid-rows-2 gap-1.5">
                   {Array.from({ length: 6 }).map((_, i) => {
                     const mon = main.find((p) => p.partyIndex === i);
                     if (!mon) {
                       return (
                         <div
                           key={`slot-${i}`}
-                          className="flex min-h-0 items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50"
+                          className="flex aspect-square min-h-0 items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50"
                           title="Empty"
                         >
                           <span className="text-muted/35">·</span>
@@ -154,7 +159,7 @@ export function TrainerCard({
                           type="button"
                           title={label}
                           aria-label={`View ${label}`}
-                          className="pressable flex h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1.5 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
+                          className="pressable flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
                           onClick={() => setDetailsPokemon(mon)}
                         >
                           <Image
@@ -165,7 +170,7 @@ export function TrainerCard({
                             alt={label}
                             width={96}
                             height={96}
-                            className="pixelated h-full w-full max-h-20 object-contain sm:max-h-24"
+                            className="pixelated h-full w-full max-h-14 object-contain lg:max-h-16"
                             unoptimized
                           />
                         </button>
@@ -176,130 +181,123 @@ export function TrainerCard({
               </div>
 
               {/* Full-width strip: same as list — earned clear, unearned blurred */}
-              <div className="shrink-0 border-t border-frame/40 pt-2.5">
+              <div className="shrink-0 border-t border-frame/40 pt-2">
                 <BadgeCase
                   badges={challenge.badges}
                   earnedKeys={trainer.earnedBadgeKeys}
                   strip
+                  hideCount
                 />
               </div>
             </div>
           </Frame>
         </>
       ) : (
-        <Frame>
+        <Frame className="group transition-[border-color,box-shadow] duration-200 hover:border-interactive/45">
           {/*
-            List layout: identity rail (avatar + name + revive) | status, badges,
-            squad on the right.
+            List layout: identity rail (avatar + name + status) | badges,
+            squad, footer stats/revive. Whole card opens the board; squad
+            slots stay interactive above the stretched link.
           */}
-          <div className="flex gap-3 sm:gap-5">
-            <div className="flex w-24 shrink-0 flex-col items-center gap-2 sm:w-28 md:w-32">
-              <Link
-                href={boardHref}
-                className="hover:opacity-90"
-                aria-label={`Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`}
-              >
-                <Image
-                  src={avatarImageUrl(trainer.avatarSpriteKey)}
-                  alt=""
-                  width={128}
-                  height={128}
-                  className={avatarImageClassName(
-                    trainer.avatarSpriteKey,
-                    "h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32",
-                  )}
-                  unoptimized
-                />
-              </Link>
-              <h2 className="w-full text-center text-sm font-bold leading-tight tracking-tight sm:text-base">
-                <Link
-                  href={boardHref}
-                  className="hover:text-accent-deep"
-                  aria-label={`${displayName(trainer)}${isYou ? " (you)" : ""}`}
-                >
-                  {displayName(trainer)}
-                </Link>
-              </h2>
-              <ReviveToken
-                used={trainer.reviveUsed}
-                size="sm"
-                className="w-full justify-center"
+          <Link
+            href={boardHref}
+            className="absolute inset-0 z-1"
+            aria-label={boardLabel}
+          />
+          <div className="relative flex items-center gap-3 sm:gap-4">
+            <div className="flex w-24 shrink-0 flex-col items-center gap-1.5 text-center sm:w-28 md:w-32">
+              <Image
+                src={avatarImageUrl(trainer.avatarSpriteKey)}
+                alt=""
+                width={112}
+                height={112}
+                className={avatarImageClassName(
+                  trainer.avatarSpriteKey,
+                  "h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28",
+                )}
+                unoptimized
               />
-              <Link
-                href={boardHref}
-                className={`${CTA_PRIMARY_SM} w-full text-center`}
-                aria-label={`Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`}
-              >
-                Open board
-              </Link>
+              <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep sm:text-base">
+                {displayName(trainer)}
+              </h2>
+              {hasStatus ? (
+                <div title={statusTitle} className="w-full min-w-0">
+                  <StatusLine
+                    emoji={trainer.statusEmoji}
+                    text={trainer.statusText}
+                    empty=""
+                    className="line-clamp-3 text-xs leading-snug text-muted"
+                  />
+                </div>
+              ) : null}
             </div>
 
-            <div className="min-w-0 flex-1 space-y-3">
-              <StatusLine
-                emoji={trainer.statusEmoji}
-                text={trainer.statusText}
-                className="line-clamp-2 text-sm text-muted"
-              />
-
+            <div className="min-w-0 flex-1 space-y-2.5">
               <BadgeCase
                 badges={challenge.badges}
                 earnedKeys={trainer.earnedBadgeKeys}
                 strip
               />
 
-              <div>
-                <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
-                  Main Squad
-                </p>
-                <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
-                  {Array.from({ length: 6 }).map((_, i) => {
-                    const mon = main.find((p) => p.partyIndex === i);
-                    if (!mon) {
-                      return (
-                        <div
-                          key={`slot-${i}`}
-                          className="flex h-[5.25rem] items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50 sm:h-24"
-                          title="Empty"
-                        >
-                          <span className="text-muted/35">·</span>
-                        </div>
-                      );
-                    }
-                    const label = mon.nickname || mon.species;
+              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
+                {Array.from({ length: 6 }).map((_, i) => {
+                  const mon = main.find((p) => p.partyIndex === i);
+                  if (!mon) {
                     return (
-                      <PokemonHoverPreview key={mon.id} pokemon={mon}>
-                        <button
-                          type="button"
-                          title={label}
-                          aria-label={`View ${label}`}
-                          className="pressable group flex h-[5.25rem] w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
-                          onClick={() => setDetailsPokemon(mon)}
-                        >
-                          <Image
-                            src={pokemonSpriteUrl(mon.species, {
-                              shiny: mon.isShiny,
-                              pokedexId: mon.pokedexId,
-                            })}
-                            alt={label}
-                            width={80}
-                            height={80}
-                            className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
-                            unoptimized
-                          />
-                          <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover:text-ink">
-                            {label}
-                          </span>
-                        </button>
-                      </PokemonHoverPreview>
+                      <div
+                        key={`slot-${i}`}
+                        className="flex h-[5.25rem] items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50 sm:h-24"
+                        title="Empty"
+                      >
+                        <span className="text-muted/35">·</span>
+                      </div>
                     );
-                  })}
-                </div>
+                  }
+                  const label = mon.nickname || mon.species;
+                  return (
+                    <PokemonHoverPreview
+                      key={mon.id}
+                      pokemon={mon}
+                      className="relative z-2"
+                    >
+                      <button
+                        type="button"
+                        title={label}
+                        aria-label={`View ${label}`}
+                        className="pressable group/slot flex h-[5.25rem] w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
+                        onClick={() => setDetailsPokemon(mon)}
+                      >
+                        <Image
+                          src={pokemonSpriteUrl(mon.species, {
+                            shiny: mon.isShiny,
+                            pokedexId: mon.pokedexId,
+                          })}
+                          alt={label}
+                          width={80}
+                          height={80}
+                          className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+                          unoptimized
+                        />
+                        <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover/slot:text-ink">
+                          {label}
+                        </span>
+                      </button>
+                    </PokemonHoverPreview>
+                  );
+                })}
               </div>
 
-              <p className="text-xs text-muted">
-                {caughtCount} caught • {encounteredCount} encountered •{" "}
-                {ripCount} R.I.P.
-              </p>
+              <div className="flex items-center justify-between gap-3 pt-0.5">
+                <p className="min-w-0 truncate text-xs text-muted">
+                  {caughtCount} caught • {encounteredCount} encountered •{" "}
+                  {ripCount} R.I.P.
+                </p>
+                <ReviveToken
+                  used={trainer.reviveUsed}
+                  size="chip"
+                  className="shrink-0"
+                />
+              </div>
             </div>
           </div>
         </Frame>

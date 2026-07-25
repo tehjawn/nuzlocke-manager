@@ -11,6 +11,8 @@ type BadgeCaseProps = {
   compact?: boolean;
   /** League-card density: count + icon strip (no labels). */
   strip?: boolean;
+  /** With strip: omit the `x/n badges` text (icons + aria-label only). */
+  hideCount?: boolean;
   /** With strip: only show earned badge icons (no count / unearned slots). */
   earnedOnly?: boolean;
   /**
@@ -32,6 +34,7 @@ export function BadgeCase({
   earnedKeys,
   compact = false,
   strip = false,
+  hideCount = false,
   earnedOnly = false,
   earnedColumns,
   dense = false,
@@ -150,10 +153,15 @@ export function BadgeCase({
 
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <p className="font-display text-xs font-semibold tracking-tight text-muted">
-          {earnedCount}/{badges.length} badges
-        </p>
-        <ul className="flex flex-wrap gap-1" aria-label="Badge case">
+        {hideCount ? null : (
+          <p className="font-display text-xs font-semibold tracking-tight text-muted">
+            {earnedCount}/{badges.length} badges
+          </p>
+        )}
+        <ul
+          className="flex flex-wrap gap-1"
+          aria-label={`${earnedCount} of ${badges.length} badges earned`}
+        >
           {badges.map((badge) => {
             const on = earned.has(badge.key);
             const meta = getEmeraldBadgeMeta(badge.key);

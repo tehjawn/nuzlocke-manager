@@ -110,14 +110,19 @@ export function TrainerStatsSummary({
   return (
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-1">
       {rows.map((row) => (
-        <div key={row.label} className="gba-inset bg-surface-2/70 px-3 py-2">
-          <dt className="flex items-center gap-1.5 text-[10px] font-semibold tracking-tight text-muted">
-            <span className="text-muted/80">{row.icon}</span>
-            {row.label}
-          </dt>
-          <dd className="mt-0.5 text-lg font-bold leading-tight tracking-tight">
-            {row.value}
-          </dd>
+        <div
+          key={row.label}
+          className="gba-inset flex items-center gap-2.5 bg-surface-2/70 px-3 py-2"
+        >
+          <span className="shrink-0 text-muted/80">{row.icon}</span>
+          <div className="min-w-0">
+            <dt className="text-[10px] font-semibold tracking-tight text-muted">
+              {row.label}
+            </dt>
+            <dd className="text-lg font-bold leading-tight tracking-tight">
+              {row.value}
+            </dd>
+          </div>
         </div>
       ))}
     </dl>

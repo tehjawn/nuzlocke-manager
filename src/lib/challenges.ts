@@ -16,6 +16,13 @@ const challengeInclude = {
     include: {
       badges: { include: { badge: true } },
       pokemon: true,
+      user: {
+        select: {
+          discordUsername: true,
+          displayName: true,
+          name: true,
+        },
+      },
     },
   },
   activities: {
@@ -37,6 +44,8 @@ function seedAsChallenge(raw: (typeof CHALLENGES)[number]): Challenge {
     trainers: raw.trainers.map((t) => ({
       ...t,
       userId: null,
+      discordUsername: t.discordUsername ?? null,
+      discordDisplayName: t.discordDisplayName ?? null,
     })),
     activities: [],
   };

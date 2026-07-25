@@ -108,9 +108,11 @@ export async function ensureTrainerForChallenge(input: {
     };
   }
 
+  // Prefer Discord display name, then @username — never a bare id slug.
   const preferred =
-    user.displayName ??
-    user.name ??
+    user.displayName?.trim() ||
+    user.name?.trim() ||
+    user.discordUsername?.trim() ||
     `Trainer-${user.discordId?.slice(-4) ?? "new"}`;
   const handle = await uniqueHandle(challenge.id, preferred);
   const maxSort = await prisma.trainerProfile.aggregate({

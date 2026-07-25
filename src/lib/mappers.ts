@@ -51,6 +51,11 @@ type DbChallenge = {
     sortOrder: number;
     userId: string | null;
     updatedAt: Date;
+    user?: {
+      discordUsername: string | null;
+      displayName: string | null;
+      name: string | null;
+    } | null;
     badges: Array<{ earned: boolean; badge: { key: string } }>;
     pokemon: Array<{
       id: string;
@@ -201,6 +206,9 @@ export function mapDbTrainer(
     mainSquadLocked: trainer.mainSquadLocked,
     sortOrder: trainer.sortOrder,
     userId: trainer.userId,
+    discordUsername: trainer.user?.discordUsername ?? null,
+    discordDisplayName:
+      trainer.user?.displayName ?? trainer.user?.name ?? null,
     earnedBadgeKeys: trainer.badges
       .filter((b) => b.earned)
       .map((b) => b.badge.key),

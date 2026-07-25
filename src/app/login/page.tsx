@@ -92,8 +92,9 @@ export default async function LoginPage({ searchParams }: PageProps) {
             ) : null}
 
             <p className="text-sm text-muted">
-              <Link href="/challenges" className="underline hover:text-ink">
-                Browse seasons without signing in
+              {/* TEMP: pointed home while Seasons index is hidden */}
+              <Link href="/" className="underline hover:text-ink">
+                Continue without signing in
               </Link>
             </p>
           </div>

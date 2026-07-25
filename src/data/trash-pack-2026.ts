@@ -43,16 +43,27 @@ function mon(
 }
 
 function trainer(
-  partial: Omit<TrainerProfile, "pokemon" | "userId" | "updatedAt"> & {
+  partial: Omit<
+    TrainerProfile,
+    | "pokemon"
+    | "userId"
+    | "updatedAt"
+    | "discordUsername"
+    | "discordDisplayName"
+  > & {
     pokemon?: PokemonEntry[];
     userId?: string | null;
     updatedAt?: string | null;
+    discordUsername?: string | null;
+    discordDisplayName?: string | null;
   },
 ): TrainerProfile {
   return {
     ...partial,
     userId: partial.userId ?? null,
     updatedAt: partial.updatedAt ?? null,
+    discordUsername: partial.discordUsername ?? null,
+    discordDisplayName: partial.discordDisplayName ?? null,
     pokemon: partial.pokemon ?? [],
   };
 }
