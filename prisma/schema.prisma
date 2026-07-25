@@ -52,15 +52,17 @@ enum ActivityType {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String?  @unique
-  discordId   String?  @unique
-  name        String?
-  displayName String?
-  image       String?
-  bio         String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String?  @unique
+  discordId       String?  @unique
+  /// Discord login username (for @mentions); not the global display name.
+  discordUsername String?
+  name            String?
+  displayName     String?
+  image           String?
+  bio             String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   memberships   ChallengeMembership[]
   trainers      TrainerProfile[]

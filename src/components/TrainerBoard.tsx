@@ -22,7 +22,7 @@ import {
 } from "@/components/PokemonFormModal";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PartyStrip } from "@/components/PartyStrip";
-import { ReviveToken } from "@/components/ReviveToken";
+import { ReviveControl } from "@/components/ReviveControl";
 import { SaveImportModal } from "@/components/SaveImportModal";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
 import { StatusEmojiPicker } from "@/components/StatusEmojiPicker";
@@ -362,17 +362,34 @@ export function TrainerBoard({
           <span aria-hidden>←</span>
           {leagueBoardLabel}
         </Link>
-        {canEdit ? (
-          <button
-            type="button"
-            data-tour="import-save"
-            className={`${CTA_SECONDARY} cta-import-save`}
-            onClick={() => setSaveImportOpen(true)}
-          >
-            <ImportSaveIcon />
-            <span>Import save</span>
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {!isDemo ? (
+            <ReviveControl
+              used={reviveUsed}
+              canUse={canEdit}
+              canReset={isGm}
+              disabled={pending}
+              onUse={useReviveToken}
+              onReset={resetReviveToken}
+              status={
+                canEdit || isGm ? (
+                  <SaveStatus status={reviveSave.status} />
+                ) : null
+              }
+            />
+          ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              data-tour="import-save"
+              className={`${CTA_SECONDARY} cta-import-save`}
+              onClick={() => setSaveImportOpen(true)}
+            >
+              <ImportSaveIcon />
+              <span>Import save</span>
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -447,6 +464,16 @@ export function TrainerBoard({
                     onChange={(e) => setHandle(e.target.value)}
                   />
                 </label>
+                {trainer.discordUsername || trainer.discordDisplayName ? (
+                  <p className="text-sm text-muted">
+                    Discord{" "}
+                    <span className="font-semibold text-ink">
+                      {trainer.discordUsername
+                        ? `@${trainer.discordUsername}`
+                        : trainer.discordDisplayName}
+                    </span>
+                  </p>
+                ) : null}
                 <label className="block text-sm">
                   <span className="mb-1 block font-bold text-muted">
                     Real name
@@ -472,29 +499,6 @@ export function TrainerBoard({
                     onChange={(e) => setStatusText(e.target.value)}
                   />
                 </label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <ReviveToken used={reviveUsed} size="sm" />
-                  {!reviveUsed ? (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      className="inline-flex h-8 items-center rounded-lg border border-frame bg-danger px-2.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
-                      onClick={useReviveToken}
-                    >
-                      Use revive
-                    </button>
-                  ) : isGm ? (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      className="inline-flex h-8 items-center rounded-lg border border-frame bg-surface px-2.5 text-[11px] font-semibold tracking-tight disabled:opacity-60"
-                      onClick={resetReviveToken}
-                    >
-                      GM: reset revive
-                    </button>
-                  ) : null}
-                  <SaveStatus status={reviveSave.status} />
-                </div>
               </div>
             ) : (
               <div className="flex flex-wrap items-start gap-4">
@@ -515,43 +519,36 @@ export function TrainerBoard({
                       ? `${committed.handle} (${committed.realName})`
                       : committed.handle}
                   </h1>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <ReviveToken used={reviveUsed} size="sm" />
-                    {canEdit ? (
-                      <>
-                        {!reviveUsed ? (
-                          <button
-                            type="button"
-                            disabled={pending}
-                            className="inline-flex h-8 items-center rounded-lg border border-frame bg-danger px-2.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
-                            onClick={useReviveToken}
-                          >
-                            Use revive
-                          </button>
-                        ) : isGm ? (
-                          <button
-                            type="button"
-                            disabled={pending}
-                            className="inline-flex h-8 items-center rounded-lg border border-frame bg-surface px-2.5 text-[11px] font-semibold tracking-tight disabled:opacity-60"
-                            onClick={resetReviveToken}
-                          >
-                            GM: reset
-                          </button>
-                        ) : null}
-                        <SaveStatus status={reviveSave.status} />
-                      </>
-                    ) : null}
-                    {trainer.mainSquadLocked ? (
-                      <span className="rounded-lg border border-frame bg-accent-2/25 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
-                        Main Squad locked
+                  {trainer.discordUsername || trainer.discordDisplayName ? (
+                    <p className="mt-1 text-sm text-muted">
+                      Discord{" "}
+                      <span className="font-semibold text-ink">
+                        {trainer.discordUsername
+                          ? `@${trainer.discordUsername}`
+                          : trainer.discordDisplayName}
                       </span>
-                    ) : null}
-                    {isDemo ? (
-                      <span className="rounded-lg border border-frame bg-surface-2 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
-                        Demo example
-                      </span>
-                    ) : null}
-                  </div>
+                      {trainer.discordUsername &&
+                      trainer.discordDisplayName &&
+                      trainer.discordDisplayName.toLowerCase() !==
+                        trainer.discordUsername.toLowerCase() ? (
+                        <span> · {trainer.discordDisplayName}</span>
+                      ) : null}
+                    </p>
+                  ) : null}
+                  {(trainer.mainSquadLocked || isDemo) ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {trainer.mainSquadLocked ? (
+                        <span className="rounded-lg border border-frame bg-accent-2/25 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
+                          Main Squad locked
+                        </span>
+                      ) : null}
+                      {isDemo ? (
+                        <span className="rounded-lg border border-frame bg-surface-2 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
+                          Demo example
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <StatusLine
                     emoji={committed.statusEmoji}
                     text={committed.statusText}
