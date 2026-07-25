@@ -5,7 +5,9 @@ import { DiscordIcon } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader } from "@/components/SiteHeader";
+import { WelcomeSeasonCta } from "@/components/WelcomeSeasonCta";
 import type { ActivityItem, ChallengeStatus } from "@/lib/challenge-types";
+import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { seasonStatusLabel } from "@/lib/season-status";
 
 /** Fixed left rail width — keeps tab navigations from shifting columns. */
@@ -88,10 +90,11 @@ export function ChallengeShell({
                 <dd className="leading-relaxed text-muted">{description}</dd>
               </div>
             </dl>
+            {slug === DEFAULT_CHALLENGE_SLUG ? <WelcomeSeasonCta /> : null}
             {!signedIn ? (
               <Link
                 href="/login"
-                className="pressable mt-4 inline-flex items-center gap-2 rounded-lg border-accent/40 bg-accent px-3.5 py-2 text-sm font-semibold text-[var(--on-accent)]"
+                className="pressable mt-4 inline-flex items-center gap-2 rounded-lg border-frame bg-surface px-3.5 py-2 text-sm font-semibold hover:border-interactive/50"
               >
                 <DiscordIcon className="h-4 w-4" />
                 Discord login
