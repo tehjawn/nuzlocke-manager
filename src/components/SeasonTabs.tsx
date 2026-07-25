@@ -24,7 +24,7 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
   const tabs: Tab[] = [
     {
       href: base,
-      label: "Players",
+      label: "This Season's Trainers",
       match: "exact",
       icon: <PlayersIcon />,
     },
@@ -79,14 +79,14 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
             role="tab"
             aria-selected={active}
             prefetch
-            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-[calc(var(--radius-sm)-2px)] px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
+            className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-[calc(var(--radius-sm)-2px)] border px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
               active
-                ? "bg-accent text-[var(--on-accent)] shadow-sm"
-                : "text-ink hover:bg-surface"
+                ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
+                : "border-transparent text-ink hover:bg-surface"
             }`}
           >
             <span
-              className={active ? "text-[var(--on-accent)]" : "text-accent-deep"}
+              className={active ? "text-interactive" : "text-ink/70"}
               aria-hidden
             >
               {tab.icon}

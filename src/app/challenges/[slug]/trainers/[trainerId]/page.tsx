@@ -53,7 +53,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     <div className="flex flex-1 flex-col">
       <SiteHeader
         challengeSlug={challenge.slug}
-        challengeName={challenge.name}
+        challengeYear={challenge.year}
         showGm={Boolean(access?.isGm)}
         myTrainerId={myTrainerId}
       />
