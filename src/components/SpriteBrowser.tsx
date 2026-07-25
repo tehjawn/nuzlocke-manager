@@ -189,14 +189,16 @@ function PokemonSpriteBrowserInner({
   const [generation, setGeneration] = useState<number | null>(
     selected?.generation ?? 3,
   );
+  const [formesOnly, setFormesOnly] = useState(Boolean(selected?.isForme));
   const deferred = useDeferredValue(query);
   const results = useMemo(
     () =>
       searchPokemonIndex(deferred, {
         generation,
+        formesOnly: formesOnly ? true : null,
         limit: deferred.trim() ? 160 : 80,
       }),
-    [deferred, generation],
+    [deferred, generation, formesOnly],
   );
   const [draft, setDraft] = useState<PokemonIndexEntry | null>(selected);
 
@@ -225,6 +227,7 @@ function PokemonSpriteBrowserInner({
                   #{draft.pokedexId} {draft.name}
                   <span className="ml-1 text-xs font-normal text-muted">
                     Gen {draft.generation}
+                    {draft.isForme ? " · forme" : ""}
                   </span>
                 </span>
               </>
@@ -282,15 +285,27 @@ function PokemonSpriteBrowserInner({
             Gen {g}
           </button>
         ))}
+        <button
+          type="button"
+          className={`pressable rounded-lg px-2.5 py-1.5 text-[11px] font-semibold tracking-tight ${
+            formesOnly
+              ? "bg-accent-2/30 text-accent-ink"
+              : "border border-frame bg-surface"
+          }`}
+          aria-pressed={formesOnly}
+          onClick={() => setFormesOnly((v) => !v)}
+        >
+          Formes
+        </button>
       </div>
       <label className="mb-3 block text-sm">
         <span className="mb-1 block font-bold text-muted">
-          Search National Dex
+          Search species & formes
         </span>
         <input
           autoFocus
           className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
-          placeholder="Name or Pokédex #"
+          placeholder="Deoxys, Castform, Alola…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -298,6 +313,7 @@ function PokemonSpriteBrowserInner({
       <p className="mb-2 text-xs text-muted">
         Showing {results.length}
         {generation != null ? ` in Gen ${generation}` : ""}
+        {formesOnly ? " formes" : ""}
         {deferred.trim() ? " matches" : ""}
       </p>
       <div className="grid max-h-[45vh] grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6 md:grid-cols-8">
