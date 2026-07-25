@@ -15,7 +15,7 @@ type LayoutProps = {
 
 /**
  * Shared season chrome (header, info, tabs, feed).
- * Soft-navigating between Players / Get Started / Rules / FAQ keeps this
+ * Soft-navigating between Trainers / Get Started / Rules / FAQ keeps this
  * layout mounted — only the right-pane page segment swaps.
  */
 export default async function SeasonWorkspaceLayout({

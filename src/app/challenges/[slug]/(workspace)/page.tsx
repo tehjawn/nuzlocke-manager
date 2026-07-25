@@ -41,7 +41,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 className="text-xl font-bold tracking-tight">
-            Players
+            This Season&apos;s Trainers
           </h2>
           <p className="text-xs text-muted">
             {trainers.length} trainer{trainers.length === 1 ? " has" : "s have"}{" "}
