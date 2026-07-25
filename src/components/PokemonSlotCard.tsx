@@ -4,7 +4,7 @@ import { StatGrid } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
 import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
-import { calcBattleStats } from "@/lib/stats";
+import { calcBattleStats, calcMaxBattleStats } from "@/lib/stats";
 
 type PokemonSlotCardProps = {
   pokemon?: PokemonEntry | null;
@@ -58,6 +58,10 @@ export function PokemonSlotCard({
     ivs: pokemon.ivs,
     evs: pokemon.evs,
     nature: pokemon.nature,
+  });
+  const battleMax = calcMaxBattleStats({
+    pokedexId: pokemon.pokedexId,
+    level: pokemon.level,
   });
   const moves = pokemon.moves.map(resolveMoveName).filter(Boolean);
 
@@ -148,63 +152,65 @@ export function PokemonSlotCard({
         </div>
       </div>
 
-      <dl className="grid grid-cols-2 gap-2">
-        {pokemon.nature ? (
-          <div className="min-w-0">
-            <dt className="text-[10px] font-semibold tracking-tight text-muted">
-              Nature
-            </dt>
-            <dd className="mt-0.5">
-              <span className="info-chip text-xs">{pokemon.nature}</span>
-            </dd>
-          </div>
-        ) : null}
-        {pokemon.ability ? (
-          <div className="min-w-0">
-            <dt className="text-[10px] font-semibold tracking-tight text-muted">
-              Ability
-            </dt>
-            <dd className="mt-0.5">
-              <span className="info-chip max-w-full truncate text-xs">
-                {pokemon.ability}
-              </span>
-            </dd>
-          </div>
-        ) : null}
-        {pokemon.catchRoute ? (
-          <div className="min-w-0">
-            <dt className="text-[10px] font-semibold tracking-tight text-muted">
-              Route
-            </dt>
-            <dd className="mt-0.5">
-              <span className="info-chip max-w-full truncate text-xs">
-                {pokemon.catchRoute}
-              </span>
-            </dd>
-          </div>
-        ) : null}
-        {pokemon.heldItem ? (
-          <div className="min-w-0">
-            <dt className="text-[10px] font-semibold tracking-tight text-muted">
-              Item
-            </dt>
-            <dd className="mt-0.5">
-              <span className="info-chip max-w-full truncate text-xs">
-                {pokemon.heldItem}
-              </span>
-            </dd>
-          </div>
-        ) : null}
-      </dl>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-2.5">
+        <dl className="flex min-w-0 flex-col gap-1.5">
+          {pokemon.nature ? (
+            <div className="min-w-0">
+              <dt className="text-[10px] font-semibold tracking-tight text-muted">
+                Nature
+              </dt>
+              <dd className="mt-0.5">
+                <span className="info-chip text-xs">{pokemon.nature}</span>
+              </dd>
+            </div>
+          ) : null}
+          {pokemon.ability ? (
+            <div className="min-w-0">
+              <dt className="text-[10px] font-semibold tracking-tight text-muted">
+                Ability
+              </dt>
+              <dd className="mt-0.5">
+                <span className="info-chip max-w-full truncate text-xs">
+                  {pokemon.ability}
+                </span>
+              </dd>
+            </div>
+          ) : null}
+          {pokemon.catchRoute ? (
+            <div className="min-w-0">
+              <dt className="text-[10px] font-semibold tracking-tight text-muted">
+                Route
+              </dt>
+              <dd className="mt-0.5">
+                <span className="info-chip max-w-full truncate text-xs">
+                  {pokemon.catchRoute}
+                </span>
+              </dd>
+            </div>
+          ) : null}
+          {pokemon.heldItem ? (
+            <div className="min-w-0">
+              <dt className="text-[10px] font-semibold tracking-tight text-muted">
+                Item
+              </dt>
+              <dd className="mt-0.5">
+                <span className="info-chip max-w-full truncate text-xs">
+                  {pokemon.heldItem}
+                </span>
+              </dd>
+            </div>
+          ) : null}
+        </dl>
 
-      {battle ? (
-        <div>
-          <p className="mb-1.5 text-[10px] font-semibold tracking-tight text-muted">
-            Battle stats
-          </p>
-          <StatGrid spread={battle} compact />
-        </div>
-      ) : null}
+        {battle ? (
+          <div className="min-w-0">
+            <p className="mb-1 text-[10px] font-semibold tracking-tight text-muted">
+              Battle stats
+            </p>
+            <StatGrid spread={battle} maxSpread={battleMax} compact />
+          </div>
+        ) : null}
+      </div>
 
       {moves.length > 0 ? (
         <div className="mt-auto">

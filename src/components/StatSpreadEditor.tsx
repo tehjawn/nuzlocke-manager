@@ -23,25 +23,27 @@ export function StatSpreadEditor({
   const total = STAT_KEYS.reduce((sum, key) => sum + value[key], 0);
 
   return (
-    <div className="sm:col-span-2">
-      <div className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="block font-bold text-muted">{label}</span>
-        <span className="font-mono text-xs text-muted">
-          Total {total}
+    <div className="min-w-0">
+      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <span className="text-xs font-semibold tracking-tight text-muted">
+          {label}
+        </span>
+        <span className="font-mono text-[10px] text-muted">
+          {total}
           {max === 255 ? " / 510" : ""}
         </span>
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      <div className="grid grid-cols-3 gap-1.5">
         {STAT_KEYS.map((key: StatKey) => (
-          <label key={key} className="text-sm">
-            <span className="mb-1 block text-xs font-bold text-muted">
+          <label key={key} className="min-w-0 text-sm">
+            <span className="mb-0.5 block text-[10px] font-semibold tracking-tight text-muted">
               {STAT_LABELS[key]}
             </span>
             <input
               type="number"
               min={0}
               max={max}
-              className="w-full rounded-lg border border-frame bg-surface px-2 py-1.5 font-mono text-sm"
+              className="w-full rounded-lg border border-frame bg-surface px-1.5 py-1 font-mono text-sm tabular-nums"
               value={value[key]}
               onChange={(e) => {
                 const n = Number(e.target.value);

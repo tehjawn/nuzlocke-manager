@@ -12,6 +12,8 @@ type TrainersView = "list" | "grid";
 type TrainersSectionProps = {
   challenge: Challenge;
   trainers: TrainerProfile[];
+  /** Highlight the signed-in player's card. */
+  myTrainerId?: string | null;
 };
 
 function readView(): TrainersView {
@@ -46,7 +48,11 @@ function writeView(next: TrainersView) {
   window.dispatchEvent(new Event(VIEW_CHANGE_EVENT));
 }
 
-export function TrainersSection({ challenge, trainers }: TrainersSectionProps) {
+export function TrainersSection({
+  challenge,
+  trainers,
+  myTrainerId = null,
+}: TrainersSectionProps) {
   const view = useSyncExternalStore<TrainersView>(
     subscribeView,
     readView,
@@ -98,6 +104,7 @@ export function TrainersSection({ challenge, trainers }: TrainersSectionProps) {
             challenge={challenge}
             trainer={trainer}
             variant={view}
+            isYou={myTrainerId != null && trainer.id === myTrainerId}
           />
         ))}
       </div>

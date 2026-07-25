@@ -68,29 +68,18 @@ export function trainerSpriteUrl(spriteKey: string): string {
   return `${SHOWDOWN_TRAINER_BASE}/${key}.png`;
 }
 
-export const DEFAULT_TRAINER_SPRITES = [
-  "brendan",
-  "may",
-  "wally",
-  "steven",
-  "red",
-  "leaf",
-  "lucas",
-  "dawn",
-  "hilbert",
-  "hilda",
-  "nate",
-  "rosa",
-] as const;
-
 /** Prefix for Pokémon species avatars stored in `avatarSpriteKey`. */
 export const POKEMON_AVATAR_PREFIX = "poke:";
 
-export type AvatarKind = "trainer" | "pokemon";
+/** Prefix for user-uploaded avatars (`custom:https://…`). */
+export const CUSTOM_AVATAR_PREFIX = "custom:";
+
+export type AvatarKind = "trainer" | "pokemon" | "custom";
 
 export type ParsedAvatar =
   | { kind: "trainer"; key: string }
-  | { kind: "pokemon"; pokedexId: number | null; species: string };
+  | { kind: "pokemon"; pokedexId: number | null; species: string }
+  | { kind: "custom"; url: string };
 
 export function trainerAvatarKey(key: string): string {
   return key.replace(/\.png$/i, "").replace(/^.*\//, "").toLowerCase();
@@ -102,9 +91,23 @@ export function pokemonAvatarKey(pokedexId: number, species?: string): string {
   return `${POKEMON_AVATAR_PREFIX}${slug}`;
 }
 
+export function customAvatarKey(url: string): string {
+  return `${CUSTOM_AVATAR_PREFIX}${url.trim()}`;
+}
+
 export function parseAvatarKey(raw: string | null | undefined): ParsedAvatar {
   const value = (raw ?? "brendan").trim() || "brendan";
-  if (value.toLowerCase().startsWith(POKEMON_AVATAR_PREFIX)) {
+  const lower = value.toLowerCase();
+
+  if (lower.startsWith(CUSTOM_AVATAR_PREFIX)) {
+    const url = value.slice(CUSTOM_AVATAR_PREFIX.length).trim();
+    if (isAllowedCustomAvatarUrl(url)) {
+      return { kind: "custom", url };
+    }
+    return { kind: "trainer", key: "brendan" };
+  }
+
+  if (lower.startsWith(POKEMON_AVATAR_PREFIX)) {
     const rest = value.slice(POKEMON_AVATAR_PREFIX.length).trim();
     const asId = Number(rest);
     if (Number.isFinite(asId) && asId > 0) {
@@ -112,14 +115,52 @@ export function parseAvatarKey(raw: string | null | undefined): ParsedAvatar {
     }
     return { kind: "pokemon", pokedexId: null, species: rest || "Pikachu" };
   }
+
   return { kind: "trainer", key: trainerAvatarKey(value) };
 }
 
-/** Resolve board/card avatar URL for either trainer or Pokémon sprites. */
+/** Public HTTPS URLs we accept for uploaded trainer avatars. */
+export function isAllowedCustomAvatarUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    const host = parsed.hostname.toLowerCase();
+    return host.endsWith(".public.blob.vercel-storage.com");
+  } catch {
+    return false;
+  }
+}
+
+/** True when the blob path was uploaded under this user's avatar folder. */
+export function isOwnedCustomAvatarUrl(url: string, userId: string): boolean {
+  if (!userId || !isAllowedCustomAvatarUrl(url)) return false;
+  try {
+    const path = decodeURIComponent(new URL(url).pathname);
+    const marker = `/avatars/${userId}/`;
+    return path.includes(marker) || path.startsWith(marker.slice(1));
+  } catch {
+    return false;
+  }
+}
+
+/** Resolve board/card avatar URL for trainer, Pokémon, or custom uploads. */
 export function avatarImageUrl(raw: string | null | undefined): string {
   const parsed = parseAvatarKey(raw);
+  if (parsed.kind === "custom") return parsed.url;
   if (parsed.kind === "pokemon") {
     return pokemonSpriteUrl(parsed.species, { pokedexId: parsed.pokedexId });
   }
   return trainerSpriteUrl(parsed.key);
+}
+
+/** Tailwind classes for avatar images — custom uploads aren't pixel art. */
+export function avatarImageClassName(
+  raw: string | null | undefined,
+  sizeClass: string,
+): string {
+  const custom = parseAvatarKey(raw).kind === "custom";
+  if (custom) {
+    return `${sizeClass} rounded-lg object-cover`;
+  }
+  return `pixelated ${sizeClass} object-contain`;
 }

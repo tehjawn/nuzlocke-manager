@@ -7,25 +7,37 @@ import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-ty
 import { BadgeCase } from "@/components/BadgeCase";
 import { Frame } from "@/components/Frame";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
+import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
-import { avatarImageUrl, pokemonSpriteUrl } from "@/lib/sprites";
+import {
+  avatarImageClassName,
+  avatarImageUrl,
+  pokemonSpriteUrl,
+} from "@/lib/sprites";
 
 type TrainerCardProps = {
   challenge: Challenge;
   trainer: TrainerProfile;
   variant?: "list" | "grid";
+  /** Signed-in player's own card — soft revolving rainbow edge. */
+  isYou?: boolean;
 };
 
 export function TrainerCard({
   challenge,
   trainer,
   variant = "list",
+  isYou = false,
 }: TrainerCardProps) {
   const main = pokemonInSlot(trainer, "MAIN").slice(0, 6);
-  const deaths = pokemonInSlot(trainer, "GRAVEYARD").length;
+  const caughtCount =
+    pokemonInSlot(trainer, "MAIN").length +
+    pokemonInSlot(trainer, "RESERVE").length;
+  const encounteredCount = pokemonInSlot(trainer, "ENCOUNTERED").length;
+  const ripCount = pokemonInSlot(trainer, "GRAVEYARD").length;
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );
@@ -35,7 +47,10 @@ export function TrainerCard({
   const earnedCount = trainer.earnedBadgeKeys.length;
 
   return (
-    <div data-tour={isDemo ? "demo-trainer" : undefined}>
+    <div
+      data-tour={isDemo ? "demo-trainer" : undefined}
+      className={isYou ? "trainer-you-ring" : undefined}
+    >
       {variant === "grid" ? (
         <>
           {/*
@@ -46,11 +61,11 @@ export function TrainerCard({
           <Link
             href={boardHref}
             className="group block h-full sm:hidden"
-            aria-label={`Open ${trainer.handle}'s board`}
+            aria-label={`Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`}
           >
             <Frame dense className="h-full">
               <div className="flex h-full flex-col items-center text-center">
-                <div className="relative flex h-24 w-full items-end justify-center">
+                <div className="relative flex h-28 w-full items-end justify-center">
                   {firstMon ? (
                     <Image
                       src={pokemonSpriteUrl(firstMon.species, {
@@ -60,7 +75,7 @@ export function TrainerCard({
                       alt=""
                       width={96}
                       height={96}
-                      className="pixelated absolute top-0 left-1/2 h-14 w-14 -translate-x-[15%] object-contain opacity-80"
+                      className="pixelated absolute top-0 left-1/2 h-16 w-16 -translate-x-[15%] object-contain opacity-80"
                       unoptimized
                     />
                   ) : null}
@@ -69,7 +84,7 @@ export function TrainerCard({
                     alt=""
                     width={96}
                     height={96}
-                    className="pixelated relative z-[1] h-16 w-16 object-contain drop-shadow-[0_6px_12px_var(--shadow-md)]"
+                    className={`${avatarImageClassName(trainer.avatarSpriteKey, "relative z-[1] h-20 w-20")} drop-shadow-[0_6px_12px_var(--shadow-md)]`}
                     unoptimized
                   />
                 </div>
@@ -85,174 +100,207 @@ export function TrainerCard({
 
           {/* Full card — sm and up */}
           <Frame className="hidden h-full sm:block">
-          <div className="grid h-full grid-cols-[6rem_minmax(0,1fr)] gap-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-4">
-            <div className="flex min-w-0 flex-col items-center gap-2 text-center">
-              <Image
-                src={avatarImageUrl(trainer.avatarSpriteKey)}
-                alt=""
-                width={72}
-                height={72}
-                className="pixelated mx-auto h-[4.5rem] w-[4.5rem] object-contain"
-                unoptimized
-              />
-              <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight">
-                <Link href={boardHref} className="hover:text-accent-deep">
-                  {trainer.handle}
-                </Link>
-              </h2>
-              {trainer.statusEmoji || trainer.statusText?.trim() ? (
-                <StatusLine
-                  emoji={trainer.statusEmoji}
-                  text={trainer.statusText}
-                  empty=""
-                  className="w-full line-clamp-2 text-[11px] leading-snug text-muted"
-                />
-              ) : null}
-              <div className="w-full min-w-0">
+            <div className="flex h-full flex-col gap-3">
+              <div className="grid min-h-0 flex-1 grid-cols-[7.5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:gap-4">
+                <div className="flex min-w-0 flex-col items-center gap-2 text-center">
+                  <Image
+                    src={avatarImageUrl(trainer.avatarSpriteKey)}
+                    alt=""
+                    width={112}
+                    height={112}
+                    className={avatarImageClassName(
+                      trainer.avatarSpriteKey,
+                      "mx-auto h-24 w-24 sm:h-28 sm:w-28",
+                    )}
+                    unoptimized
+                  />
+                  <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight">
+                    <Link
+                      href={boardHref}
+                      className="hover:text-accent-deep"
+                      aria-label={`${trainer.handle}${isYou ? " (you)" : ""}`}
+                    >
+                      {trainer.handle}
+                    </Link>
+                  </h2>
+                  {trainer.statusEmoji || trainer.statusText?.trim() ? (
+                    <StatusLine
+                      emoji={trainer.statusEmoji}
+                      text={trainer.statusText}
+                      empty=""
+                      className="w-full line-clamp-2 text-[11px] leading-snug text-muted"
+                    />
+                  ) : null}
+                </div>
+
+                <div className="grid min-h-[13.5rem] grid-cols-2 grid-rows-3 gap-2 sm:min-h-[16rem]">
+                  {Array.from({ length: 6 }).map((_, i) => {
+                    const mon = main.find((p) => p.partyIndex === i);
+                    if (!mon) {
+                      return (
+                        <div
+                          key={`slot-${i}`}
+                          className="flex min-h-0 items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50"
+                          title="Empty"
+                        >
+                          <span className="text-muted/35">·</span>
+                        </div>
+                      );
+                    }
+                    const label = mon.nickname || mon.species;
+                    return (
+                      <PokemonHoverPreview key={mon.id} pokemon={mon} className="min-h-0">
+                        <button
+                          type="button"
+                          title={label}
+                          aria-label={`View ${label}`}
+                          className="pressable flex h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1.5 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
+                          onClick={() => setDetailsPokemon(mon)}
+                        >
+                          <Image
+                            src={pokemonSpriteUrl(mon.species, {
+                              shiny: mon.isShiny,
+                              pokedexId: mon.pokedexId,
+                            })}
+                            alt={label}
+                            width={96}
+                            height={96}
+                            className="pixelated h-full w-full max-h-20 object-contain sm:max-h-24"
+                            unoptimized
+                          />
+                        </button>
+                      </PokemonHoverPreview>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Full-width strip: same as list — earned clear, unearned blurred */}
+              <div className="shrink-0 border-t border-frame/40 pt-2.5">
                 <BadgeCase
                   badges={challenge.badges}
                   earnedKeys={trainer.earnedBadgeKeys}
                   strip
-                  earnedOnly
-                  earnedColumns={2}
                 />
               </div>
             </div>
-
-            <div className="grid min-h-[13.5rem] grid-cols-2 grid-rows-3 gap-2 sm:min-h-[16rem]">
-              {Array.from({ length: 6 }).map((_, i) => {
-                const mon = main.find((p) => p.partyIndex === i);
-                if (!mon) {
-                  return (
-                    <div
-                      key={`slot-${i}`}
-                      className="flex min-h-0 items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50"
-                      title="Empty"
-                    >
-                      <span className="text-muted/35">·</span>
-                    </div>
-                  );
-                }
-                const label = mon.nickname || mon.species;
-                return (
-                  <button
-                    key={mon.id}
-                    type="button"
-                    title={label}
-                    aria-label={`View ${label}`}
-                    className="pressable flex min-h-0 cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1.5 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
-                    onClick={() => setDetailsPokemon(mon)}
-                  >
-                    <Image
-                      src={pokemonSpriteUrl(mon.species, {
-                        shiny: mon.isShiny,
-                        pokedexId: mon.pokedexId,
-                      })}
-                      alt={label}
-                      width={96}
-                      height={96}
-                      className="pixelated h-full w-full max-h-20 object-contain sm:max-h-24"
-                      unoptimized
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
           </Frame>
         </>
       ) : (
         <Frame>
-          <div className="flex items-start gap-3">
-            <Image
-              src={avatarImageUrl(trainer.avatarSpriteKey)}
-              alt=""
-              width={64}
-              height={64}
-              className="pixelated h-16 w-16 object-contain"
-              unoptimized
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <h2 className="text-lg font-bold leading-tight tracking-tight">
-                  <Link href={boardHref} className="hover:text-accent-deep">
-                    {displayName(trainer)}
-                  </Link>
-                </h2>
-                <ReviveToken used={trainer.reviveUsed} />
-              </div>
+          {/*
+            List layout: identity rail (avatar + name + revive) | status, badges,
+            squad on the right.
+          */}
+          <div className="flex gap-3 sm:gap-5">
+            <div className="flex w-24 shrink-0 flex-col items-center gap-2 sm:w-28 md:w-32">
+              <Link
+                href={boardHref}
+                className="hover:opacity-90"
+                aria-label={`Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`}
+              >
+                <Image
+                  src={avatarImageUrl(trainer.avatarSpriteKey)}
+                  alt=""
+                  width={128}
+                  height={128}
+                  className={avatarImageClassName(
+                    trainer.avatarSpriteKey,
+                    "h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32",
+                  )}
+                  unoptimized
+                />
+              </Link>
+              <h2 className="w-full text-center text-sm font-bold leading-tight tracking-tight sm:text-base">
+                <Link
+                  href={boardHref}
+                  className="hover:text-accent-deep"
+                  aria-label={`${displayName(trainer)}${isYou ? " (you)" : ""}`}
+                >
+                  {displayName(trainer)}
+                </Link>
+              </h2>
+              <ReviveToken
+                used={trainer.reviveUsed}
+                size="sm"
+                className="w-full justify-center"
+              />
+              <Link
+                href={boardHref}
+                className={`${CTA_PRIMARY_SM} w-full text-center`}
+                aria-label={`Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`}
+              >
+                Open board
+              </Link>
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-3">
               <StatusLine
                 emoji={trainer.statusEmoji}
                 text={trainer.statusText}
-                className="mt-1 line-clamp-2 text-sm text-muted"
+                className="line-clamp-2 text-sm text-muted"
               />
+
+              <BadgeCase
+                badges={challenge.badges}
+                earnedKeys={trainer.earnedBadgeKeys}
+                strip
+              />
+
+              <div>
+                <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
+                  Main Squad
+                </p>
+                <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
+                  {Array.from({ length: 6 }).map((_, i) => {
+                    const mon = main.find((p) => p.partyIndex === i);
+                    if (!mon) {
+                      return (
+                        <div
+                          key={`slot-${i}`}
+                          className="flex h-[5.25rem] items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50 sm:h-24"
+                          title="Empty"
+                        >
+                          <span className="text-muted/35">·</span>
+                        </div>
+                      );
+                    }
+                    const label = mon.nickname || mon.species;
+                    return (
+                      <PokemonHoverPreview key={mon.id} pokemon={mon}>
+                        <button
+                          type="button"
+                          title={label}
+                          aria-label={`View ${label}`}
+                          className="pressable group flex h-[5.25rem] w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
+                          onClick={() => setDetailsPokemon(mon)}
+                        >
+                          <Image
+                            src={pokemonSpriteUrl(mon.species, {
+                              shiny: mon.isShiny,
+                              pokedexId: mon.pokedexId,
+                            })}
+                            alt={label}
+                            width={80}
+                            height={80}
+                            className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+                            unoptimized
+                          />
+                          <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover:text-ink">
+                            {label}
+                          </span>
+                        </button>
+                      </PokemonHoverPreview>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <p className="text-xs text-muted">
+                {caughtCount} caught • {encounteredCount} encountered •{" "}
+                {ripCount} R.I.P.
+              </p>
             </div>
-          </div>
-
-          <div className="mt-4">
-            <BadgeCase
-              badges={challenge.badges}
-              earnedKeys={trainer.earnedBadgeKeys}
-              strip
-            />
-          </div>
-
-          <div className="mt-4">
-            <p className="mb-2 text-xs font-semibold tracking-tight text-muted">
-              Main Squad
-            </p>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {Array.from({ length: 6 }).map((_, i) => {
-                const mon = main.find((p) => p.partyIndex === i);
-                if (!mon) {
-                  return (
-                    <div
-                      key={`slot-${i}`}
-                      className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-frame/50 bg-surface-2/60"
-                      title="Empty"
-                    >
-                      <span className="text-muted/40">·</span>
-                    </div>
-                  );
-                }
-                const label = mon.nickname || mon.species;
-                return (
-                  <button
-                    key={mon.id}
-                    type="button"
-                    title={label}
-                    aria-label={`View ${label}`}
-                    className="pressable group flex aspect-square cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame bg-surface-2 p-1.5 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
-                    onClick={() => setDetailsPokemon(mon)}
-                  >
-                    <Image
-                      src={pokemonSpriteUrl(mon.species, {
-                        shiny: mon.isShiny,
-                        pokedexId: mon.pokedexId,
-                      })}
-                      alt={label}
-                      width={72}
-                      height={72}
-                      className="pixelated h-14 w-14 object-contain sm:h-16 sm:w-16"
-                      unoptimized
-                    />
-                    <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover:text-ink">
-                      {label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between text-xs text-muted">
-            <span>{deaths} in memorial</span>
-            <Link
-              href={boardHref}
-              className={CTA_PRIMARY_SM}
-            >
-              Open board
-            </Link>
           </div>
         </Frame>
       )}

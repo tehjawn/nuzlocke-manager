@@ -2,181 +2,101 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import {
-  PokemonSpriteBrowser,
-  TrainerSpriteBrowser,
-} from "@/components/SpriteBrowser";
-import { DEFAULT_TRAINER_SPRITES } from "@/lib/sprites";
-import {
-  avatarImageUrl,
-  parseAvatarKey,
-  pokemonAvatarKey,
-  pokemonSpriteUrl,
-  trainerAvatarKey,
-  trainerSpriteUrl,
-  type AvatarKind,
-} from "@/lib/sprites";
-import { findPokemonById } from "@/data/pokemon-index";
+import { AvatarBrowser } from "@/components/AvatarBrowser";
+import { CustomAvatarModal } from "@/components/CustomAvatarModal";
+import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
 
 type AvatarPickerProps = {
   value: string;
   onChange: (avatarSpriteKey: string) => void;
 };
 
-const QUICK_TRAINERS = DEFAULT_TRAINER_SPRITES;
-const QUICK_POKEMON_IDS = [252, 255, 258, 25, 6, 94, 254, 257, 260, 376];
+function PencilIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M11.5 1.5 14.5 4.5 5.75 13.25 2.5 13.5l.25-3.25L11.5 1.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 3 13 6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 export function AvatarPicker({ value, onChange }: AvatarPickerProps) {
-  const parsed = parseAvatarKey(value);
-  const [tab, setTab] = useState<AvatarKind>(parsed.kind);
-  const [trainerOpen, setTrainerOpen] = useState(false);
-  const [pokemonOpen, setPokemonOpen] = useState(false);
-
-  const selectedTrainer =
-    parsed.kind === "trainer" ? parsed.key : trainerAvatarKey("brendan");
-  const selectedPokedexId =
-    parsed.kind === "pokemon" ? parsed.pokedexId : null;
+  const [browseOpen, setBrowseOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        aria-label="Browse avatars"
+        title="Browse avatars"
+        className="group relative shrink-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        onClick={() => setBrowseOpen(true)}
+      >
         <Image
+          key={value}
           src={avatarImageUrl(value)}
           alt=""
           width={72}
           height={72}
-          className="pixelated h-[72px] w-[72px] rounded-lg border border-frame bg-surface-2 object-contain p-1"
+          className={`${avatarImageClassName(value, "h-[72px] w-[72px]")} rounded-lg border border-frame bg-surface-2 p-1`}
           unoptimized
         />
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={`pressable rounded-lg px-3 py-2 font-display text-xs font-semibold tracking-tight ${
-                tab === "trainer"
-                  ? "bg-accent text-[var(--on-accent)]"
-                  : "border border-frame bg-surface"
-              }`}
-              onClick={() => setTab("trainer")}
-            >
-              Trainer
-            </button>
-            <button
-              type="button"
-              className={`pressable rounded-lg px-3 py-2 font-display text-xs font-semibold tracking-tight ${
-                tab === "pokemon"
-                  ? "bg-accent text-[var(--on-accent)]"
-                  : "border border-frame bg-surface"
-              }`}
-              onClick={() => setTab("pokemon")}
-            >
-              Pokémon
-            </button>
-          </div>
-          <button
-            type="button"
-            className="pressable rounded-lg border border-frame bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
-            onClick={() =>
-              tab === "trainer" ? setTrainerOpen(true) : setPokemonOpen(true)
-            }
-          >
-            Browse all…
-          </button>
-        </div>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-ink/55 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          <PencilIcon />
+        </span>
+      </button>
+
+      <div className="flex min-w-0 flex-col gap-2">
+        <button
+          type="button"
+          className="pressable rounded-lg border border-frame bg-surface px-3 py-2 text-left text-xs font-semibold tracking-tight"
+          onClick={() => setBrowseOpen(true)}
+        >
+          Browse Avatars
+        </button>
+        <button
+          type="button"
+          className="pressable rounded-lg border border-frame bg-surface-2 px-3 py-2 text-left text-xs font-semibold tracking-tight text-muted"
+          onClick={() => setImportOpen(true)}
+        >
+          Import Custom Avatar
+        </button>
       </div>
 
-      {tab === "trainer" ? (
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-          {QUICK_TRAINERS.map((key) => {
-            const selected =
-              selectedTrainer === key && parsed.kind === "trainer";
-            return (
-              <button
-                key={key}
-                type="button"
-                title={key}
-                aria-label={`Choose ${key}`}
-                aria-pressed={selected}
-                className={`flex flex-col items-center gap-1 rounded-lg border p-2 ${
-                  selected
-                    ? "border-accent bg-accent/15"
-                    : "border-frame bg-surface-2 hover:bg-accent/10"
-                }`}
-                onClick={() => onChange(trainerAvatarKey(key))}
-              >
-                <Image
-                  src={trainerSpriteUrl(key)}
-                  alt=""
-                  width={48}
-                  height={48}
-                  className="pixelated h-12 w-12 object-contain"
-                  unoptimized
-                />
-                <span className="truncate text-[10px] font-bold capitalize text-muted">
-                  {key}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-          {QUICK_POKEMON_IDS.map((id) => {
-            const mon = findPokemonById(id);
-            if (!mon) return null;
-            const selected =
-              parsed.kind === "pokemon" && selectedPokedexId === mon.pokedexId;
-            return (
-              <button
-                key={mon.pokedexId}
-                type="button"
-                title={mon.name}
-                aria-label={`Choose ${mon.name}`}
-                aria-pressed={selected}
-                className={`flex flex-col items-center gap-1 rounded-lg border p-2 ${
-                  selected
-                    ? "border-accent bg-accent/15"
-                    : "border-frame bg-surface-2 hover:bg-accent/10"
-                }`}
-                onClick={() =>
-                  onChange(pokemonAvatarKey(mon.pokedexId, mon.name))
-                }
-              >
-                <Image
-                  src={pokemonSpriteUrl(mon.name, {
-                    pokedexId: mon.pokedexId,
-                  })}
-                  alt=""
-                  width={48}
-                  height={48}
-                  className="pixelated h-12 w-12 object-contain"
-                  unoptimized
-                />
-                <span className="truncate text-[10px] font-bold text-muted">
-                  {mon.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <TrainerSpriteBrowser
-        open={trainerOpen}
-        selectedKey={selectedTrainer}
-        onClose={() => setTrainerOpen(false)}
+      <AvatarBrowser
+        open={browseOpen}
+        value={value}
+        onClose={() => setBrowseOpen(false)}
         onSelect={(key) => {
-          onChange(trainerAvatarKey(key));
-          setTab("trainer");
+          onChange(key);
+          setBrowseOpen(false);
         }}
       />
-      <PokemonSpriteBrowser
-        open={pokemonOpen}
-        selectedId={selectedPokedexId}
-        onClose={() => setPokemonOpen(false)}
-        onSelect={(entry) => {
-          onChange(pokemonAvatarKey(entry.pokedexId, entry.name));
-          setTab("pokemon");
+      <CustomAvatarModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSelect={(key) => {
+          onChange(key);
+          setImportOpen(false);
         }}
       />
     </div>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
@@ -7,7 +6,6 @@ import { TrainerBoard } from "@/components/TrainerBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
-import { CTA_PRIMARY } from "@/lib/cta";
 import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { isSeasonReadOnly } from "@/lib/season-status";
@@ -90,15 +88,10 @@ export default async function TrainerBoardPage({ params }: PageProps) {
       >
         <DataSourceBanner source={challenge.source} />
         <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
-        <Link
-          href={`/challenges/${challenge.slug}`}
-          className={CTA_PRIMARY}
-        >
-          <span aria-hidden>←</span>
-          {challenge.year} League Board
-        </Link>
 
         <TrainerBoard
+          leagueBoardHref={`/challenges/${challenge.slug}`}
+          leagueBoardLabel={`${challenge.year} League Board`}
           joinHref={`/challenges/${challenge.slug}/join`}
           myBoardHref={myBoardHref}
           trainer={trainer}

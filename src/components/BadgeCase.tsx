@@ -13,7 +13,10 @@ type BadgeCaseProps = {
   strip?: boolean;
   /** With strip: only show earned badge icons (no count / unearned slots). */
   earnedOnly?: boolean;
-  /** With earnedOnly strip: lay icons out in N columns. */
+  /**
+   * With strip: lay icons in N columns. When set without earnedOnly, shows every
+   * badge (unearned blurred) so card heights stay consistent.
+   */
   earnedColumns?: 2 | 3;
   /** Smaller badge icons + tighter gaps (grid card left rail). */
   dense?: boolean;
@@ -44,6 +47,58 @@ export function BadgeCase({
     : badges;
 
   if (strip) {
+    // Narrow left-rail layout (grid cards): fixed columns of every badge,
+    // unearned blurred — keeps card heights consistent.
+    if (earnedColumns && !earnedOnly) {
+      const iconPx = dense ? 16 : 20;
+      return (
+        <ul
+          className={
+            earnedColumns === 2
+              ? `grid grid-cols-2 ${dense ? "gap-0.5" : "gap-1"}`
+              : `grid grid-cols-3 ${dense ? "gap-0.5" : "gap-1"}`
+          }
+          aria-label={`${earnedCount} of ${badges.length} badges earned`}
+        >
+          {badges.map((badge) => {
+            const on = earned.has(badge.key);
+            const meta = getEmeraldBadgeMeta(badge.key);
+            const title = `${meta?.badgeName ?? badge.label}${
+              badge.leaderName ? ` — ${badge.leaderName}` : ""
+            }${on ? " · Earned" : ""}`;
+            return (
+              <li key={badge.key} title={title} className="flex justify-center">
+                {meta ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={meta.badgeSprite}
+                    alt=""
+                    width={iconPx}
+                    height={iconPx}
+                    className={`object-contain ${
+                      on ? "" : "pixelated blur-[1px] grayscale opacity-45"
+                    }`}
+                    style={{ width: iconPx, height: iconPx }}
+                  />
+                ) : (
+                  <span
+                    className={`inline-block rounded border border-frame ${
+                      on ? "bg-accent-2/40" : "bg-surface-2"
+                    }`}
+                    style={{ width: iconPx, height: iconPx }}
+                  />
+                )}
+                <span className="sr-only">
+                  {title}
+                  {on ? " earned" : " not earned"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      );
+    }
+
     if (earnedOnly) {
       if (stripBadges.length === 0) {
         return (
@@ -59,13 +114,7 @@ export function BadgeCase({
       const iconPx = dense ? 16 : 22;
       return (
         <ul
-          className={
-            earnedColumns === 2
-              ? `grid grid-cols-2 ${dense ? "gap-0.5" : "gap-1"}`
-              : earnedColumns === 3
-                ? `grid grid-cols-3 ${dense ? "gap-0.5" : "gap-1"}`
-                : `flex flex-wrap ${dense ? "gap-px" : "gap-0.5"}`
-          }
+          className={`flex flex-wrap ${dense ? "gap-px" : "gap-0.5"}`}
           aria-label={`${stripBadges.length} badges earned`}
         >
           {stripBadges.map((badge) => {

@@ -1,19 +1,24 @@
 type ReviveTokenProps = {
   used: boolean;
   size?: "sm" | "md";
+  className?: string;
 };
 
-export function ReviveToken({ used, size = "md" }: ReviveTokenProps) {
+export function ReviveToken({
+  used,
+  size = "md",
+  className = "",
+}: ReviveTokenProps) {
   const compact = size === "sm";
   return (
     <div
-      className={`inline-flex items-center gap-1.5 rounded-lg border ${
-        compact ? "px-2.5 py-1" : "gap-2 px-3 py-1.5"
+      className={`inline-flex h-8 items-center gap-1.5 rounded-lg border ${
+        compact ? "px-2.5" : "gap-2 px-3"
       } ${
         used
           ? "border-danger/25 bg-danger/10 text-danger"
           : "border-accent/30 bg-accent/10 text-accent-deep"
-      }`}
+      } ${className}`}
       role="status"
     >
       <span

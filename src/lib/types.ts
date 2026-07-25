@@ -46,7 +46,7 @@ export const TrainerBoardUpdateSchema = z.object({
       const trimmed = v.trim();
       return trimmed === "" ? null : trimmed;
     }),
-  avatarSpriteKey: z.string().max(64).optional().nullable(),
+  avatarSpriteKey: z.string().max(512).optional().nullable(),
   reviveUsed: z.boolean().optional(),
   handle: z.string().min(1).max(32).optional(),
   realName: z.string().max(64).optional().nullable(),

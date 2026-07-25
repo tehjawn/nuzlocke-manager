@@ -17,6 +17,7 @@ import {
   EMPTY_POKEMON_FORM,
   PokemonFormModal,
   pokemonEntryToForm,
+  pokemonFormToEntry,
   type PokemonFormState,
 } from "@/components/PokemonFormModal";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
@@ -33,10 +34,13 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
-import { avatarImageUrl } from "@/lib/sprites";
+import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
+import { CTA_PRIMARY, CTA_SECONDARY } from "@/lib/cta";
 import { isEmptySpread } from "@/lib/stats";
 
 type TrainerBoardProps = {
+  leagueBoardHref: string;
+  leagueBoardLabel: string;
   joinHref: string;
   /** When set, demo boards point signed-in players at their own board instead of login. */
   myBoardHref?: string | null;
@@ -63,6 +67,37 @@ function PencilIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
       />
       <path
         d="M10 3 13 6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ImportSaveIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M8 2.5v7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.5 7 8 9.5 10.5 7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3 11.5v1a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 12.5v-1"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
@@ -102,6 +137,8 @@ function HeaderButton({
 }
 
 export function TrainerBoard({
+  leagueBoardHref,
+  leagueBoardLabel,
   joinHref,
   myBoardHref = null,
   trainer,
@@ -145,9 +182,12 @@ export function TrainerBoard({
     trainer.earnedBadgeKeys,
   );
 
-  const [pokemonOpen, setPokemonOpen] = useState(false);
-  const [pokemonForm, setPokemonForm] =
-    useState<PokemonFormState>(EMPTY_POKEMON_FORM);
+  /** Own board: shared draft between Preview (view) and Edit. */
+  const [pokemonInspect, setPokemonInspect] = useState<{
+    mode: "view" | "edit";
+    form: PokemonFormState;
+  } | null>(null);
+  /** Other trainers' boards: read-only details only. */
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );
@@ -290,18 +330,22 @@ export function TrainerBoard({
       partyIndex = 0;
       while (used.has(partyIndex) && partyIndex < 12) partyIndex += 1;
     }
-    setPokemonForm({ ...EMPTY_POKEMON_FORM, slot, partyIndex });
-    setPokemonOpen(true);
-  }
-
-  function openEditPokemon(mon: PokemonEntry) {
-    setPokemonForm(pokemonEntryToForm(mon));
-    setPokemonOpen(true);
+    setPokemonInspect({
+      mode: "edit",
+      form: { ...EMPTY_POKEMON_FORM, slot, partyIndex },
+    });
   }
 
   function openPokemon(mon: PokemonEntry) {
-    if (canEdit) openEditPokemon(mon);
-    else setDetailsPokemon(mon);
+    if (canEdit) {
+      // Start in preview — Edit is one click; draft survives Preview ↔ Edit.
+      setPokemonInspect({
+        mode: "view",
+        form: pokemonEntryToForm(mon),
+      });
+      return;
+    }
+    setDetailsPokemon(mon);
   }
 
   const mobileSaveStatus =
@@ -313,6 +357,24 @@ export function TrainerBoard({
 
   return (
     <div className={`space-y-4 ${canEdit ? "pb-20 sm:pb-0" : ""}`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href={leagueBoardHref} className={CTA_PRIMARY}>
+          <span aria-hidden>←</span>
+          {leagueBoardLabel}
+        </Link>
+        {canEdit ? (
+          <button
+            type="button"
+            data-tour="import-save"
+            className={`${CTA_SECONDARY} cta-import-save`}
+            onClick={() => setSaveImportOpen(true)}
+          >
+            <ImportSaveIcon />
+            <span>Import save</span>
+          </button>
+        ) : null}
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
           {canEdit
@@ -416,7 +478,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="inline-flex items-center rounded-lg border border-frame bg-danger px-2.5 py-1.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
+                      className="inline-flex h-8 items-center rounded-lg border border-frame bg-danger px-2.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
                       onClick={useReviveToken}
                     >
                       Use revive
@@ -425,7 +487,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="inline-flex items-center rounded-lg border border-frame bg-surface px-2.5 py-1.5 font-display text-[11px] font-semibold tracking-tight disabled:opacity-60"
+                      className="inline-flex h-8 items-center rounded-lg border border-frame bg-surface px-2.5 text-[11px] font-semibold tracking-tight disabled:opacity-60"
                       onClick={resetReviveToken}
                     >
                       GM: reset revive
@@ -441,7 +503,10 @@ export function TrainerBoard({
                   alt=""
                   width={96}
                   height={96}
-                  className="pixelated h-24 w-24 object-contain"
+                  className={avatarImageClassName(
+                    committed.avatarSpriteKey,
+                    "h-24 w-24",
+                  )}
                   unoptimized
                 />
                 <div className="min-w-0 flex-1">
@@ -458,7 +523,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="inline-flex items-center rounded-lg border border-frame bg-danger px-2.5 py-1.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
+                            className="inline-flex h-8 items-center rounded-lg border border-frame bg-danger px-2.5 text-[11px] font-semibold tracking-tight text-white disabled:opacity-60"
                             onClick={useReviveToken}
                           >
                             Use revive
@@ -467,7 +532,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="inline-flex items-center rounded-lg border border-frame bg-surface px-2.5 py-1.5 font-display text-[11px] font-semibold tracking-tight disabled:opacity-60"
+                            className="inline-flex h-8 items-center rounded-lg border border-frame bg-surface px-2.5 text-[11px] font-semibold tracking-tight disabled:opacity-60"
                             onClick={resetReviveToken}
                           >
                             GM: reset
@@ -522,8 +587,8 @@ export function TrainerBoard({
                     <p className="mt-3 text-sm text-muted">
                       Your board is ready — edit your profile, then use{" "}
                       <span className="font-semibold text-ink">Import save</span>{" "}
-                      under Main Squad once you have a file from Afterplay. You
-                      can also tap party slots and badges by hand.
+                      at the top once you have a file from Afterplay. You can
+                      also tap party slots and badges by hand.
                     </p>
                   ) : null}
                 </div>
@@ -536,40 +601,20 @@ export function TrainerBoard({
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">
-                    Tap a slot to add or edit.
+                    Tap a Pokémon to view or edit; empty slots to add.
                   </p>
-                  <div
-                    data-tour="pokemon-actions"
-                    className="flex flex-wrap gap-2"
+                  <button
+                    type="button"
+                    className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold tracking-tight text-[var(--on-accent)]"
+                    onClick={() => openAddPokemon("MAIN")}
                   >
-                    <button
-                      type="button"
-                      className={`pressable rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight ${
-                        trainer.pokemon.length === 0
-                          ? "bg-accent text-[var(--on-accent)]"
-                          : "border border-frame bg-surface"
-                      }`}
-                      onClick={() => setSaveImportOpen(true)}
-                    >
-                      Import save
-                    </button>
-                    <button
-                      type="button"
-                      className={`pressable rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight ${
-                        trainer.pokemon.length === 0
-                          ? "border border-frame bg-surface"
-                          : "bg-accent text-[var(--on-accent)]"
-                      }`}
-                      onClick={() => openAddPokemon("MAIN")}
-                    >
-                      + Add
-                    </button>
-                  </div>
+                    + Add
+                  </button>
                 </div>
                 <PartyStrip
                   pokemon={main}
                   slots={6}
-                  selectHint="Edit"
+                  selectHint="View"
                   onSelect={openPokemon}
                   onSelectEmpty={(partyIndex) =>
                     openAddPokemon("MAIN", partyIndex)
@@ -593,7 +638,7 @@ export function TrainerBoard({
                   <p className="text-xs text-muted">
                     {reserves.length === 0
                       ? "No reserves yet."
-                      : "Tap a Pokémon to edit."}
+                      : "Tap a Pokémon to view or edit."}
                   </p>
                   <button
                     type="button"
@@ -606,7 +651,7 @@ export function TrainerBoard({
                 {reserves.length > 0 ? (
                   <PartyStrip
                     pokemon={reserves}
-                    selectHint="Edit"
+                    selectHint="View"
                     onSelect={openPokemon}
                   />
                 ) : null}
@@ -629,7 +674,7 @@ export function TrainerBoard({
                   <p className="text-xs text-muted">
                     {graveyard.length === 0
                       ? "Memorial is empty."
-                      : "Tap a Pokémon to edit."}
+                      : "Tap a Pokémon to view or edit."}
                   </p>
                   <button
                     type="button"
@@ -643,7 +688,7 @@ export function TrainerBoard({
                   <PartyStrip
                     pokemon={graveyard}
                     memorial
-                    selectHint="Edit"
+                    selectHint="View"
                     onSelect={openPokemon}
                   />
                 ) : null}
@@ -682,7 +727,7 @@ export function TrainerBoard({
                 {encountered.length > 0 ? (
                   <PartyStrip
                     pokemon={encountered}
-                    selectHint="Edit"
+                    selectHint="View"
                     onSelect={openPokemon}
                   />
                 ) : null}
@@ -702,7 +747,7 @@ export function TrainerBoard({
         <aside className="space-y-6 lg:sticky lg:top-4">
           <Frame title="Stats">
             <TrainerStatsSummary
-              caught={trainer.pokemon.length}
+              caught={main.length + reserves.length}
               fallen={graveyard.length}
               badgesEarned={earnedBadgeKeys.length}
               badgesTotal={badges.length}
@@ -733,119 +778,136 @@ export function TrainerBoard({
         </aside>
       </div>
 
-      {canEdit ? (
-        <>
-          <PokemonFormModal
-            open={pokemonOpen}
-            initial={pokemonForm}
-            teamPokemon={trainer.pokemon}
-            pending={pending}
-            onClose={() => setPokemonOpen(false)}
-            onSave={(form) => {
-              partySave.markSaving("Saving Pokémon…");
-              startTransition(async () => {
-                const moves = [
-                  form.move1,
-                  form.move2,
-                  form.move3,
-                  form.move4,
-                ].filter(Boolean);
-                const result = await upsertPokemonAction({
-                  id: form.id,
-                  trainerId: trainer.id,
-                  slot: form.slot,
-                  partyIndex: form.partyIndex,
-                  nickname: form.nickname || null,
-                  species: form.species.trim(),
-                  isShiny: form.isShiny,
-                  types: [],
-                  nature: form.nature || null,
-                  level: form.level ? Number(form.level) : null,
-                  ability: form.ability || null,
-                  catchRoute: form.catchRoute || null,
-                  heldItem: form.heldItem || null,
-                  moves,
-                  ivs: isEmptySpread(form.ivs) ? null : form.ivs,
-                  evs: isEmptySpread(form.evs) ? null : form.evs,
-                  causeOfDeath: form.causeOfDeath || null,
-                });
-                if (result.ok) {
-                  partySave.markSaved(result.message ?? "Pokémon saved");
-                  setPokemonOpen(false);
-                } else {
-                  partySave.markError(result.error);
-                }
-              });
-            }}
-            onDelete={(pokemonId) => {
-              partySave.markSaving("Removing Pokémon…");
-              startTransition(async () => {
-                const result = await deletePokemonAction({
-                  trainerId: trainer.id,
-                  pokemonId,
-                });
-                if (result.ok) {
-                  partySave.markSaved(result.message ?? "Pokémon removed");
-                  setPokemonOpen(false);
-                } else {
-                  partySave.markError(result.error);
-                }
-              });
-            }}
-          />
-          <SaveImportModal
-            open={saveImportOpen}
-            pending={pending}
-            onClose={() => setSaveImportOpen(false)}
-            onApply={(payload) => {
-              partySave.markSaving("Importing save…");
-              startTransition(async () => {
-                const result = await importFromSaveAction({
-                  trainerId: trainer.id,
-                  pokemon: payload.pokemon.map((m) => ({
-                    nickname: m.nickname || null,
-                    species: m.species.trim(),
-                    pokedexId: m.pokedexId,
-                    level: m.level ? Number(m.level) : null,
-                    isShiny: m.isShiny,
-                    nature: m.nature,
-                    ability: m.ability,
-                    catchRoute: m.catchRoute,
-                    heldItem: m.heldItem,
-                    moves: m.moves,
-                    ivs: m.ivs,
-                    evs: m.evs,
-                    slot: m.slot,
-                  })),
-                  trainerName: payload.trainerName,
-                  applyTrainerName: payload.applyTrainerName,
-                  badgeKeys: payload.badgeKeys,
-                  applyBadges: payload.applyBadges,
-                  // Full category sync: unchecked mons clear that slot group.
-                  replaceSlots: [
-                    "MAIN",
-                    "RESERVE",
-                    "GRAVEYARD",
-                    "ENCOUNTERED",
-                  ],
-                });
-                if (result.ok) {
-                  partySave.markSaved(result.message ?? "Save imported");
-                  setSaveImportOpen(false);
-                } else {
-                  partySave.markError(result.error);
-                }
-              });
-            }}
-          />
-        </>
+      {canEdit && pokemonInspect?.mode === "view" ? (
+        <PokemonDetailsModal
+          open
+          pokemon={pokemonFormToEntry(pokemonInspect.form)}
+          onClose={() => setPokemonInspect(null)}
+          onEdit={() =>
+            setPokemonInspect({ ...pokemonInspect, mode: "edit" })
+          }
+        />
       ) : null}
 
-      <PokemonDetailsModal
-        open={detailsPokemon != null}
-        pokemon={detailsPokemon}
-        onClose={() => setDetailsPokemon(null)}
-      />
+      {canEdit && pokemonInspect?.mode === "edit" ? (
+        <PokemonFormModal
+          open
+          initial={pokemonInspect.form}
+          teamPokemon={trainer.pokemon}
+          pending={pending}
+          onClose={() => setPokemonInspect(null)}
+          onPreview={(form) =>
+            setPokemonInspect({ mode: "view", form })
+          }
+          onSave={(form) => {
+            partySave.markSaving("Saving Pokémon…");
+            startTransition(async () => {
+              const moves = [
+                form.move1,
+                form.move2,
+                form.move3,
+                form.move4,
+              ].filter(Boolean);
+              const result = await upsertPokemonAction({
+                id: form.id,
+                trainerId: trainer.id,
+                slot: form.slot,
+                partyIndex: form.partyIndex,
+                nickname: form.nickname || null,
+                species: form.species.trim(),
+                isShiny: form.isShiny,
+                types: [],
+                nature: form.nature || null,
+                level: form.level ? Number(form.level) : null,
+                ability: form.ability || null,
+                catchRoute: form.catchRoute || null,
+                heldItem: form.heldItem || null,
+                moves,
+                ivs: isEmptySpread(form.ivs) ? null : form.ivs,
+                evs: isEmptySpread(form.evs) ? null : form.evs,
+                causeOfDeath: form.causeOfDeath || null,
+              });
+              if (result.ok) {
+                partySave.markSaved(result.message ?? "Pokémon saved");
+                setPokemonInspect(null);
+              } else {
+                partySave.markError(result.error);
+              }
+            });
+          }}
+          onDelete={(pokemonId) => {
+            partySave.markSaving("Removing Pokémon…");
+            startTransition(async () => {
+              const result = await deletePokemonAction({
+                trainerId: trainer.id,
+                pokemonId,
+              });
+              if (result.ok) {
+                partySave.markSaved(result.message ?? "Pokémon removed");
+                setPokemonInspect(null);
+              } else {
+                partySave.markError(result.error);
+              }
+            });
+          }}
+        />
+      ) : null}
+
+      {canEdit ? (
+        <SaveImportModal
+          open={saveImportOpen}
+          pending={pending}
+          onClose={() => setSaveImportOpen(false)}
+          onApply={(payload) => {
+            partySave.markSaving("Importing save…");
+            startTransition(async () => {
+              const result = await importFromSaveAction({
+                trainerId: trainer.id,
+                pokemon: payload.pokemon.map((m) => ({
+                  nickname: m.nickname || null,
+                  species: m.species.trim(),
+                  pokedexId: m.pokedexId,
+                  level: m.level ? Number(m.level) : null,
+                  isShiny: m.isShiny,
+                  nature: m.nature,
+                  ability: m.ability,
+                  catchRoute: m.catchRoute,
+                  heldItem: m.heldItem,
+                  moves: m.moves,
+                  ivs: m.ivs,
+                  evs: m.evs,
+                  slot: m.slot,
+                })),
+                trainerName: payload.trainerName,
+                applyTrainerName: payload.applyTrainerName,
+                badgeKeys: payload.badgeKeys,
+                applyBadges: payload.applyBadges,
+                // Full category sync: unchecked mons clear that slot group.
+                replaceSlots: [
+                  "MAIN",
+                  "RESERVE",
+                  "GRAVEYARD",
+                  "ENCOUNTERED",
+                ],
+              });
+              if (result.ok) {
+                partySave.markSaved(result.message ?? "Save imported");
+                setSaveImportOpen(false);
+              } else {
+                partySave.markError(result.error);
+              }
+            });
+          }}
+        />
+      ) : null}
+
+      {!canEdit ? (
+        <PokemonDetailsModal
+          open={detailsPokemon != null}
+          pokemon={detailsPokemon}
+          onClose={() => setDetailsPokemon(null)}
+        />
+      ) : null}
 
       {canEdit ? (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-frame bg-surface/95 px-4 py-3 shadow-[0_-8px_24px_var(--shadow)] backdrop-blur-md sm:hidden">

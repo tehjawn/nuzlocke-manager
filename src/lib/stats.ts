@@ -120,6 +120,54 @@ export function calcBattleStats(input: {
   return out;
 }
 
+const PERFECT_IVS: StatSpread = {
+  hp: 31,
+  atk: 31,
+  def: 31,
+  spa: 31,
+  spd: 31,
+  spe: 31,
+};
+
+/** Nature that maximizes each non-HP battle stat (used for per-stat ceilings). */
+const MAX_STAT_NATURE: Record<Exclude<StatKey, "hp">, string> = {
+  atk: "Adamant",
+  def: "Bold",
+  spa: "Modest",
+  spd: "Calm",
+  spe: "Jolly",
+};
+
+/**
+ * Theoretical max battle stat for each key at the given level: 31 IV, 252 EV
+ * in that stat, and a boosting nature (HP has no nature). Other EVs are 0 —
+ * they do not affect that stat's formula.
+ */
+export function calcMaxBattleStats(input: {
+  pokedexId: number | null | undefined;
+  level: number | null | undefined;
+}): StatSpread | null {
+  const base = baseStatsForSpecies(input.pokedexId);
+  const level = input.level;
+  if (!base || level == null || level < 1 || level > 100) return null;
+
+  const out = { ...EMPTY_IVS };
+  for (const key of STAT_KEYS) {
+    const evs = { ...EMPTY_EVS, [key]: 252 };
+    const nature = key === "hp" ? null : MAX_STAT_NATURE[key];
+    const single = calcBattleStats({
+      pokedexId: input.pokedexId,
+      level,
+      ivs: PERFECT_IVS,
+      evs,
+      nature,
+    });
+    if (!single) return null;
+    out[key] = single[key];
+  }
+  return out;
+}
+
 export const StatSpreadSchema = z.object({
   hp: z.number().int().min(0).max(255),
   atk: z.number().int().min(0).max(255),

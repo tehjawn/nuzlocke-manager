@@ -207,7 +207,8 @@ function ActivityRow({
   const isSpriteAvatar = Boolean(
     item.avatarSrc &&
       !item.avatarSrc.startsWith("/") &&
-      !item.avatarSrc.includes("discord"),
+      !item.avatarSrc.includes("discord") &&
+      !item.avatarSrc.includes("blob.vercel-storage.com"),
   );
 
   return (
