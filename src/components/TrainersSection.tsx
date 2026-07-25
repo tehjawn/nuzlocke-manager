@@ -94,7 +94,7 @@ export function TrainersSection({
       <div
         className={
           view === "grid"
-            ? "grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4"
+            ? "grid grid-cols-2 gap-3 md:gap-4"
             : "grid gap-4"
         }
       >

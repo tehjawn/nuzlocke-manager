@@ -59,13 +59,13 @@ export function TrainerCard({
       {variant === "grid" ? (
         <>
           {/*
-            Compact card — mobile two-column grid. Mirrors the homepage
-            carousel: avatar with the lead squad Pokémon peeking top-right,
-            trainer name, then badge count.
+            Compact card — below md. Mirrors the homepage carousel: avatar
+            with the lead squad Pokémon peeking top-right, trainer name,
+            then badge count.
           */}
           <Link
             href={boardHref}
-            className="group block h-full sm:hidden"
+            className="group block h-full md:hidden"
             aria-label={boardLabel}
           >
             <Frame dense className="h-full">
@@ -89,7 +89,7 @@ export function TrainerCard({
                     alt=""
                     width={96}
                     height={96}
-                    className={`${avatarImageClassName(trainer.avatarSpriteKey, "relative z-[1] h-20 w-20")} drop-shadow-[0_6px_12px_var(--shadow-md)]`}
+                    className={`${avatarImageClassName(trainer.avatarSpriteKey, "relative z-1 h-20 w-20")} drop-shadow-[0_6px_12px_var(--shadow-md)]`}
                     unoptimized
                   />
                 </div>
@@ -103,11 +103,11 @@ export function TrainerCard({
             </Frame>
           </Link>
 
-          {/* Full card — sm and up */}
-          <Frame className="hidden h-full sm:block">
-            <div className="flex h-full flex-col gap-3">
-              <div className="grid min-h-0 flex-1 grid-cols-[7.5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:gap-4">
-                <div className="flex min-w-0 flex-col items-center gap-2 text-center">
+          {/* Full card — md and up; compact 3×2 squad grid */}
+          <Frame className="hidden h-full md:block">
+            <div className="flex h-full flex-col gap-2.5">
+              <div className="grid min-h-0 flex-1 grid-cols-[6.5rem_minmax(0,1fr)] gap-3 lg:grid-cols-[7.5rem_minmax(0,1fr)]">
+                <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
                   <Image
                     src={avatarImageUrl(trainer.avatarSpriteKey)}
                     alt=""
@@ -115,7 +115,7 @@ export function TrainerCard({
                     height={112}
                     className={avatarImageClassName(
                       trainer.avatarSpriteKey,
-                      "mx-auto h-24 w-24 sm:h-28 sm:w-28",
+                      "mx-auto h-20 w-20 lg:h-24 lg:w-24",
                     )}
                     unoptimized
                   />
@@ -138,14 +138,14 @@ export function TrainerCard({
                   ) : null}
                 </div>
 
-                <div className="grid min-h-[13.5rem] grid-cols-2 grid-rows-3 gap-2 sm:min-h-[16rem]">
+                <div className="grid min-h-0 grid-cols-3 grid-rows-2 gap-1.5">
                   {Array.from({ length: 6 }).map((_, i) => {
                     const mon = main.find((p) => p.partyIndex === i);
                     if (!mon) {
                       return (
                         <div
                           key={`slot-${i}`}
-                          className="flex min-h-0 items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50"
+                          className="flex aspect-square min-h-0 items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50"
                           title="Empty"
                         >
                           <span className="text-muted/35">·</span>
@@ -159,7 +159,7 @@ export function TrainerCard({
                           type="button"
                           title={label}
                           aria-label={`View ${label}`}
-                          className="pressable flex h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1.5 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
+                          className="pressable flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
                           onClick={() => setDetailsPokemon(mon)}
                         >
                           <Image
@@ -170,7 +170,7 @@ export function TrainerCard({
                             alt={label}
                             width={96}
                             height={96}
-                            className="pixelated h-full w-full max-h-20 object-contain sm:max-h-24"
+                            className="pixelated h-full w-full max-h-14 object-contain lg:max-h-16"
                             unoptimized
                           />
                         </button>
@@ -181,7 +181,7 @@ export function TrainerCard({
               </div>
 
               {/* Full-width strip: same as list — earned clear, unearned blurred */}
-              <div className="shrink-0 border-t border-frame/40 pt-2.5">
+              <div className="shrink-0 border-t border-frame/40 pt-2">
                 <BadgeCase
                   badges={challenge.badges}
                   earnedKeys={trainer.earnedBadgeKeys}
