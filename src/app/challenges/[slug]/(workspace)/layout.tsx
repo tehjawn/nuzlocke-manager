@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ChallengeShell } from "@/components/ChallengeShell";
-import { SeasonJumpRegistrar } from "@/features/jump";
+import {
+  SeasonJumpRegistrar,
+  challengeToJumpSeasonContext,
+} from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -65,9 +68,10 @@ export default async function SeasonWorkspaceLayout({
   return (
     <>
       <SeasonJumpRegistrar
-        challenge={challenge}
-        showGm={showGm}
-        myTrainerId={myTrainerId}
+        season={challengeToJumpSeasonContext(challenge, {
+          showGm,
+          myTrainerId,
+        })}
       />
       <ChallengeShell
         slug={challenge.slug}

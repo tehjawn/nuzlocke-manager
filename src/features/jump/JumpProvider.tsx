@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -23,7 +24,10 @@ type JumpContextValue = {
   toggle: () => void;
   results: JumpResult[];
   index: Fuse<JumpResult>;
-  registerSeason: (ctx: JumpSeasonContext | null) => void;
+  /** Register season results; returns an owner id for safe unregister. */
+  registerSeason: (ctx: JumpSeasonContext) => number;
+  /** Clear season only if this owner still owns the active registration. */
+  unregisterSeason: (ownerId: number) => void;
 };
 
 const JumpContext = createContext<JumpContextValue | null>(null);
@@ -31,6 +35,8 @@ const JumpContext = createContext<JumpContextValue | null>(null);
 export function JumpProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [season, setSeason] = useState<JumpSeasonContext | null>(null);
+  const generationRef = useRef(0);
+  const activeOwnerRef = useRef<number | null>(null);
 
   const results = useMemo(() => {
     const global = buildGlobalResults();
@@ -40,8 +46,19 @@ export function JumpProvider({ children }: { children: ReactNode }) {
 
   const index = useMemo(() => createJumpIndex(results), [results]);
 
-  const registerSeason = useCallback((ctx: JumpSeasonContext | null) => {
+  const registerSeason = useCallback((ctx: JumpSeasonContext) => {
+    const ownerId = ++generationRef.current;
+    activeOwnerRef.current = ownerId;
     setSeason(ctx);
+    return ownerId;
+  }, []);
+
+  const unregisterSeason = useCallback((ownerId: number) => {
+    // Soft-nav can mount the next registrar before the previous cleanup runs.
+    // Only clear if we still own the active registration.
+    if (activeOwnerRef.current !== ownerId) return;
+    activeOwnerRef.current = null;
+    setSeason(null);
   }, []);
 
   const toggle = useCallback(() => {
@@ -51,7 +68,6 @@ export function JumpProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey)) return;
-      // Allow ⌘K even in inputs — universal jump shortcut.
       if (e.isComposing) return;
       e.preventDefault();
       setOpen((prev) => !prev);
@@ -61,8 +77,16 @@ export function JumpProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ open, setOpen, toggle, results, index, registerSeason }),
-    [open, toggle, results, index, registerSeason],
+    () => ({
+      open,
+      setOpen,
+      toggle,
+      results,
+      index,
+      registerSeason,
+      unregisterSeason,
+    }),
+    [open, toggle, results, index, registerSeason, unregisterSeason],
   );
 
   return <JumpContext.Provider value={value}>{children}</JumpContext.Provider>;

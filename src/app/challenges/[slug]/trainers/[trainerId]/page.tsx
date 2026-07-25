@@ -4,7 +4,10 @@ import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { TrainerBoard } from "@/components/TrainerBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
-import { SeasonJumpRegistrar } from "@/features/jump";
+import {
+  SeasonJumpRegistrar,
+  challengeToJumpSeasonContext,
+} from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
 import { displayName } from "@/lib/trainer-display";
@@ -81,9 +84,10 @@ export default async function TrainerBoardPage({ params }: PageProps) {
   return (
     <div className="flex flex-1 flex-col">
       <SeasonJumpRegistrar
-        challenge={challenge}
-        showGm={showGm}
-        myTrainerId={myTrainerId}
+        season={challengeToJumpSeasonContext(challenge, {
+          showGm,
+          myTrainerId,
+        })}
       />
       <SiteHeader
         challengeSlug={challenge.slug}
