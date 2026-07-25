@@ -50,7 +50,6 @@ export function TrainerCard({
     <div
       data-tour={isDemo ? "demo-trainer" : undefined}
       className={isYou ? "trainer-you-ring" : undefined}
-      aria-label={isYou ? `${displayName(trainer)} (you)` : undefined}
     >
       {variant === "grid" ? (
         <>
@@ -116,7 +115,11 @@ export function TrainerCard({
                     unoptimized
                   />
                   <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight">
-                    <Link href={boardHref} className="hover:text-accent-deep">
+                    <Link
+                      href={boardHref}
+                      className="hover:text-accent-deep"
+                      aria-label={`${trainer.handle}${isYou ? " (you)" : ""}`}
+                    >
                       {trainer.handle}
                     </Link>
                   </h2>
@@ -194,7 +197,7 @@ export function TrainerCard({
               <Link
                 href={boardHref}
                 className="hover:opacity-90"
-                aria-label={`Open ${trainer.handle}'s board`}
+                aria-label={`Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`}
               >
                 <Image
                   src={avatarImageUrl(trainer.avatarSpriteKey)}
@@ -209,7 +212,11 @@ export function TrainerCard({
                 />
               </Link>
               <h2 className="w-full text-center text-sm font-bold leading-tight tracking-tight sm:text-base">
-                <Link href={boardHref} className="hover:text-accent-deep">
+                <Link
+                  href={boardHref}
+                  className="hover:text-accent-deep"
+                  aria-label={`${displayName(trainer)}${isYou ? " (you)" : ""}`}
+                >
                   {displayName(trainer)}
                 </Link>
               </h2>
@@ -218,7 +225,11 @@ export function TrainerCard({
                 size="sm"
                 className="w-full justify-center"
               />
-              <Link href={boardHref} className={`${CTA_PRIMARY_SM} w-full text-center`}>
+              <Link
+                href={boardHref}
+                className={`${CTA_PRIMARY_SM} w-full text-center`}
+                aria-label={`Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`}
+              >
                 Open board
               </Link>
             </div>

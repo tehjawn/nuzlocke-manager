@@ -7,8 +7,10 @@ type Phase = "idle" | "pending" | "active" | "done";
 
 /**
  * Top progress bar for App Router navigations.
- * Starts on same-origin <a> clicks; completes when the pathname changes.
- * Delayed show avoids a flash on fast (prefetched) transitions.
+ * Starts on same-origin <a> clicks that change the pathname; completes when
+ * the pathname updates. Query/hash-only links are ignored so the bar cannot
+ * stick after a search-param navigation. Delayed show avoids a flash on
+ * fast (prefetched) transitions.
  */
 export function NavigationProgress() {
   const pathname = usePathname();
@@ -48,6 +50,7 @@ export function NavigationProgress() {
     }
 
     function onClick(event: MouseEvent) {
+      // Bubble phase: target handlers have already run, so defaultPrevented is reliable.
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
         return;
@@ -68,12 +71,8 @@ export function NavigationProgress() {
         return;
       }
       if (url.origin !== window.location.origin) return;
-      if (
-        url.pathname === window.location.pathname &&
-        url.search === window.location.search
-      ) {
-        return;
-      }
+      // Pathname-only: query/hash changes must not leave the bar stuck "active".
+      if (url.pathname === window.location.pathname) return;
 
       clearShowTimer();
       setPhase("pending");
@@ -83,9 +82,9 @@ export function NavigationProgress() {
       }, 120);
     }
 
-    document.addEventListener("click", onClick, true);
+    document.addEventListener("click", onClick);
     return () => {
-      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("click", onClick);
       clearShowTimer();
     };
   }, []);

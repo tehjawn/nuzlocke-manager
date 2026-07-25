@@ -49,7 +49,7 @@ export function BadgeCase({
   if (strip) {
     // Narrow left-rail layout (grid cards): fixed columns of every badge,
     // unearned blurred — keeps card heights consistent.
-    if (earnedColumns) {
+    if (earnedColumns && !earnedOnly) {
       const iconPx = dense ? 16 : 20;
       return (
         <ul

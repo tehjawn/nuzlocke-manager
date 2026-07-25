@@ -63,7 +63,10 @@ export async function prepareAvatarFile(file: File): Promise<File> {
       if (!png) throw new Error("Could not process image");
       return new File([png], "avatar.png", { type: "image/png" });
     }
-    return new File([blob], "avatar.webp", { type: "image/webp" });
+    // Browsers without WebP encoding may still return a non-null PNG blob.
+    const type = blob.type || "image/png";
+    const ext = type === "image/webp" ? "webp" : "png";
+    return new File([blob], `avatar.${ext}`, { type });
   } finally {
     bitmap.close();
   }

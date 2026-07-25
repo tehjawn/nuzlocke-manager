@@ -21,7 +21,7 @@ type PokemonHoverPreviewProps = {
   className?: string;
 };
 
-type PreviewPos = { top: number; left: number };
+type PreviewPos = { top: number; left: number; above: boolean };
 
 /**
  * Desktop hover glance: larger sprite + nickname / species / level / types.
@@ -38,11 +38,6 @@ export function PokemonHoverPreview({
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<PreviewPos | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const clearTimers = useCallback(() => {
     if (showTimer.current) {
@@ -65,7 +60,7 @@ export function PokemonHoverPreview({
     left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
     const above = rect.top > 200;
     const top = above ? rect.top - gap : rect.bottom + gap;
-    setPos({ top, left });
+    setPos({ top, left, above });
   }, []);
 
   const scheduleShow = useCallback(() => {
@@ -119,7 +114,7 @@ export function PokemonHoverPreview({
       onBlur={scheduleHide}
     >
       {children}
-      {mounted && open && pos
+      {open && pos && typeof document !== "undefined"
         ? createPortal(
             <div
               id={panelId}
@@ -128,11 +123,7 @@ export function PokemonHoverPreview({
               style={{
                 top: pos.top,
                 left: pos.left,
-                transform:
-                  pos.top <
-                  (wrapRef.current?.getBoundingClientRect().top ?? 0)
-                    ? "translateY(-100%)"
-                    : undefined,
+                transform: pos.above ? "translateY(-100%)" : undefined,
               }}
             >
               <div className="flex flex-col items-center gap-1.5 text-center">

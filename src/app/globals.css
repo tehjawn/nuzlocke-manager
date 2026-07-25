@@ -328,6 +328,7 @@ button:disabled,
 
 .trainer-you-ring {
   --you-angle: 0deg;
+
   position: relative;
   border-radius: calc(var(--radius) + 2px);
   padding: 2px;
