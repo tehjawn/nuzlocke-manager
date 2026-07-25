@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 import { DiscordIcon } from "@/components/DiscordIcon";
-import { UserMenu } from "@/components/UserMenu";
+import { LoggedInChrome } from "@/components/LoggedInChrome";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
+import { isDatabaseConfigured } from "@/lib/db";
+import { listNotificationsForUser } from "@/lib/notifications";
 
 const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
 
@@ -18,6 +20,11 @@ export async function AuthButtons({ hideMyTrainer = false }: AuthButtonsProps) {
     const name = session.user.name ?? "Account";
     const image =
       typeof session.user.image === "string" ? session.user.image : null;
+    const userId = session.user.id;
+    const notifications =
+      userId && isDatabaseConfigured()
+        ? await listNotificationsForUser(userId)
+        : [];
 
     return (
       <div className="flex items-center gap-2">
@@ -29,9 +36,10 @@ export async function AuthButtons({ hideMyTrainer = false }: AuthButtonsProps) {
             My Trainer
           </Link>
         ) : null}
-        <UserMenu
+        <LoggedInChrome
           name={name}
           image={image}
+          notifications={notifications}
           signOutAction={async () => {
             "use server";
             await signOut({ redirectTo: "/" });

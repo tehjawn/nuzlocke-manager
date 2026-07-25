@@ -62,10 +62,30 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  memberships ChallengeMembership[]
-  trainers    TrainerProfile[]
-  activities  ActivityEvent[]       @relation("ActivityActor")
-  reactions   ActivityReaction[]
+  memberships   ChallengeMembership[]
+  trainers      TrainerProfile[]
+  activities    ActivityEvent[]       @relation("ActivityActor")
+  reactions     ActivityReaction[]
+  notifications Notification[]
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  /// WELCOME | SYSTEM | …
+  type      String
+  title     String
+  body      String?
+  /// Client action key (e.g. "welcome") for opening modals / deep links
+  actionKey String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@unique([userId, type, actionKey])
 }
 
 model Challenge {
