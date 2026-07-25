@@ -18,10 +18,12 @@ export async function uploadCustomAvatarAction(
   try {
     const userId = await requireUserId();
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) {
       return {
         ok: false,
-        error: "Custom uploads aren’t set up on this environment yet.",
+        error:
+          "Missing BLOB_READ_WRITE_TOKEN. Add it to .env.local and restart the dev server.",
       };
     }
 
@@ -49,7 +51,7 @@ export async function uploadCustomAvatarAction(
       access: "public",
       addRandomSuffix: true,
       contentType: file.type,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
+      token,
     });
 
     return { ok: true, avatarSpriteKey: customAvatarKey(blob.url) };
