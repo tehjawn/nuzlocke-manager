@@ -18,6 +18,7 @@ export type ChallengeExportPayload = {
     handle: string;
     realName: string | null;
     statusText: string | null;
+    statusEmoji: string | null;
     reviveUsed: boolean;
     mainSquadLocked: boolean;
     earnedBadgeKeys: string[];
@@ -44,6 +45,7 @@ export function buildChallengeExport(challenge: Challenge): ChallengeExportPaylo
       handle: t.handle,
       realName: t.realName,
       statusText: t.statusText,
+      statusEmoji: t.statusEmoji,
       reviveUsed: t.reviveUsed,
       mainSquadLocked: t.mainSquadLocked,
       earnedBadgeKeys: t.earnedBadgeKeys,
@@ -85,6 +87,7 @@ export function buildChallengeCsv(challenge: Challenge): string {
     "reviveUsed",
     "mainSquadLocked",
     "statusText",
+    "statusEmoji",
   ];
 
   const rows: string[][] = [header];
@@ -117,6 +120,7 @@ export function buildChallengeCsv(challenge: Challenge): string {
         trainer.reviveUsed ? "yes" : "no",
         trainer.mainSquadLocked ? "yes" : "no",
         trainer.statusText ?? "",
+        trainer.statusEmoji ?? "",
       ]);
     }
   }

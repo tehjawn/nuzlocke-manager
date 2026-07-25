@@ -57,14 +57,17 @@ export function TrainerCard({
               </div>
               <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight">
                 <Link href={boardHref} className="hover:text-accent-deep">
-                  {trainer.statusEmoji ? (
-                    <span className="mr-1" aria-hidden>
-                      {trainer.statusEmoji}
-                    </span>
-                  ) : null}
                   {trainer.handle}
                 </Link>
               </h2>
+              {trainer.statusEmoji || trainer.statusText?.trim() ? (
+                <StatusLine
+                  emoji={trainer.statusEmoji}
+                  text={trainer.statusText}
+                  empty=""
+                  className="w-full line-clamp-2 text-[11px] leading-snug text-muted"
+                />
+              ) : null}
               <div className="w-full min-w-0">
                 <BadgeCase
                   badges={challenge.badges}
