@@ -72,7 +72,7 @@ export function TrainerCard({ challenge, trainer }: TrainerCardProps) {
                 return (
                   <div
                     key={`slot-${i}`}
-                    className="flex aspect-square items-center justify-center rounded-xl border border-dashed border-frame/50 bg-surface-2/60"
+                    className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-frame/50 bg-surface-2/60"
                     title="Empty"
                   >
                     <span className="text-muted/40">·</span>
@@ -86,7 +86,7 @@ export function TrainerCard({ challenge, trainer }: TrainerCardProps) {
                   type="button"
                   title={label}
                   aria-label={`View ${label}`}
-                  className="pressable group flex aspect-square flex-col items-center justify-center gap-0.5 rounded-xl border border-frame bg-surface-2 p-1.5 transition hover:border-accent/50 hover:bg-surface"
+                  className="pressable group flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border border-frame bg-surface-2 p-1.5 transition hover:border-accent/50 hover:bg-surface"
                   onClick={() => setDetailsPokemon(mon)}
                 >
                   <Image
@@ -113,7 +113,7 @@ export function TrainerCard({ challenge, trainer }: TrainerCardProps) {
           <span>{deaths} in memorial</span>
           <Link
             href={`/challenges/${challenge.slug}/trainers/${trainer.id}`}
-            className="pressable rounded-[var(--radius-sm)] border-accent/30 bg-accent px-3.5 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
+            className="pressable rounded-lg border-accent/30 bg-accent px-3.5 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
           >
             Open board
           </Link>

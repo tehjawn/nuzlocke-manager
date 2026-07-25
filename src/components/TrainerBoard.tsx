@@ -354,7 +354,7 @@ export function TrainerBoard({
                     Nickname
                   </span>
                   <input
-                    className="w-full rounded-xl border border-frame bg-surface px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
                     value={handle}
                     maxLength={24}
                     placeholder="Your league nickname"
@@ -366,7 +366,7 @@ export function TrainerBoard({
                     Real name
                   </span>
                   <input
-                    className="w-full rounded-xl border border-frame bg-surface px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
                     value={realName}
                     placeholder="Optional — e.g. John"
                     onChange={(e) => setRealName(e.target.value)}
@@ -375,7 +375,7 @@ export function TrainerBoard({
                 <label className="block text-sm">
                   <span className="mb-1 block font-bold text-muted">Status</span>
                   <textarea
-                    className="min-h-20 w-full rounded-xl border border-frame bg-surface px-3 py-2 text-sm"
+                    className="min-h-20 w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
                     value={statusText}
                     placeholder="Where you are in the run…"
                     onChange={(e) => setStatusText(e.target.value)}
@@ -387,7 +387,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="inline-flex items-center rounded-xl border border-frame bg-danger px-2 py-1 text-[10px] font-semibold tracking-tight text-white disabled:opacity-60"
+                      className="inline-flex items-center rounded-lg border border-frame bg-danger px-2 py-1 text-[10px] font-semibold tracking-tight text-white disabled:opacity-60"
                       onClick={useReviveToken}
                     >
                       Use revive
@@ -396,7 +396,7 @@ export function TrainerBoard({
                     <button
                       type="button"
                       disabled={pending}
-                      className="inline-flex items-center rounded-xl border border-frame bg-surface px-2 py-1 font-display text-[10px] font-semibold tracking-tight disabled:opacity-60"
+                      className="inline-flex items-center rounded-lg border border-frame bg-surface px-2 py-1 font-display text-[10px] font-semibold tracking-tight disabled:opacity-60"
                       onClick={resetReviveToken}
                     >
                       GM: reset revive
@@ -429,7 +429,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="inline-flex items-center rounded-xl border border-frame bg-danger px-2 py-1 text-[10px] font-semibold tracking-tight text-white disabled:opacity-60"
+                            className="inline-flex items-center rounded-lg border border-frame bg-danger px-2 py-1 text-[10px] font-semibold tracking-tight text-white disabled:opacity-60"
                             onClick={useReviveToken}
                           >
                             Use revive
@@ -438,7 +438,7 @@ export function TrainerBoard({
                           <button
                             type="button"
                             disabled={pending}
-                            className="inline-flex items-center rounded-xl border border-frame bg-surface px-2 py-1 font-display text-[10px] font-semibold tracking-tight disabled:opacity-60"
+                            className="inline-flex items-center rounded-lg border border-frame bg-surface px-2 py-1 font-display text-[10px] font-semibold tracking-tight disabled:opacity-60"
                             onClick={resetReviveToken}
                           >
                             GM: reset
@@ -448,12 +448,12 @@ export function TrainerBoard({
                       </>
                     ) : null}
                     {trainer.mainSquadLocked ? (
-                      <span className="rounded-xl border border-frame bg-accent-2/25 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
+                      <span className="rounded-lg border border-frame bg-accent-2/25 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
                         Main Squad locked
                       </span>
                     ) : null}
                     {isDemo ? (
-                      <span className="rounded-xl border border-frame bg-surface-2 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
+                      <span className="rounded-lg border border-frame bg-surface-2 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
                         Demo example
                       </span>
                     ) : null}
@@ -508,14 +508,14 @@ export function TrainerBoard({
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="pressable rounded-xl border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                      className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
                       onClick={() => setSaveImportOpen(true)}
                     >
                       Import save
                     </button>
                     <button
                       type="button"
-                      className="pressable rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
+                      className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
                       onClick={() => openAddPokemon("MAIN")}
                     >
                       + Add
@@ -553,7 +553,7 @@ export function TrainerBoard({
                   </p>
                   <button
                     type="button"
-                    className="pressable rounded-xl border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                    className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
                     onClick={() => openAddPokemon("RESERVE")}
                   >
                     + Add
@@ -589,7 +589,7 @@ export function TrainerBoard({
                   </p>
                   <button
                     type="button"
-                    className="pressable rounded-xl border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                    className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
                     onClick={() => openAddPokemon("GRAVEYARD")}
                   >
                     + Add
@@ -629,7 +629,7 @@ export function TrainerBoard({
                   </p>
                   <button
                     type="button"
-                    className="pressable rounded-xl border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                    className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
                     onClick={() => openAddPokemon("ENCOUNTERED")}
                   >
                     + Add

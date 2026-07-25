@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
+import { DiscordIcon } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { SiteHeader } from "@/components/SiteHeader";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
@@ -46,8 +47,9 @@ export default async function LoginPage() {
               >
                 <button
                   type="submit"
-                  className="pressable rounded-xl bg-accent px-5 py-3 text-sm font-semibold tracking-tight text-[var(--on-accent)]"
+                  className="pressable inline-flex items-center gap-2.5 rounded-lg border-accent/40 bg-accent px-5 py-3 text-sm font-semibold tracking-tight text-[var(--on-accent)]"
                 >
+                  <DiscordIcon className="h-5 w-5" />
                   Continue with Discord
                 </button>
               </form>

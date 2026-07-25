@@ -7,7 +7,7 @@ export function ReviveToken({ used, size = "md" }: ReviveTokenProps) {
   const compact = size === "sm";
   return (
     <div
-      className={`inline-flex items-center gap-1.5 rounded-xl border ${
+      className={`inline-flex items-center gap-1.5 rounded-lg border ${
         compact ? "px-2.5 py-1" : "gap-2 px-3 py-1.5"
       } ${
         used

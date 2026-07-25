@@ -87,7 +87,7 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
                   return (
                     <li
                       key={pokemon.id}
-                      className="flex gap-3 rounded-xl border border-frame/40 bg-surface/70 p-3"
+                      className="flex gap-3 rounded-lg border border-frame/40 bg-surface/70 p-3"
                     >
                       <div className="relative h-16 w-16 shrink-0">
                         <Image

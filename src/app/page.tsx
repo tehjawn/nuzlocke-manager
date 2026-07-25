@@ -52,14 +52,14 @@ export default async function HomePage() {
           {active ? (
             <Link
               href={`/challenges/${active.slug}`}
-              className="pressable inline-flex items-center rounded-[var(--radius-sm)] border-accent/30 bg-accent px-5 py-3 text-sm font-semibold text-[var(--on-accent)]"
+              className="pressable inline-flex items-center rounded-lg border-accent/30 bg-accent px-5 py-3 text-sm font-semibold text-[var(--on-accent)]"
             >
               Open {active.year} League →
             </Link>
           ) : (
             <Link
               href="/challenges"
-              className="pressable inline-flex items-center rounded-[var(--radius-sm)] border-accent/30 bg-accent px-5 py-3 text-sm font-semibold text-[var(--on-accent)]"
+              className="pressable inline-flex items-center rounded-lg border-accent/30 bg-accent px-5 py-3 text-sm font-semibold text-[var(--on-accent)]"
             >
               Browse seasons →
             </Link>
@@ -67,7 +67,7 @@ export default async function HomePage() {
           {!session?.user ? (
             <Link
               href="/login"
-              className="pressable inline-flex items-center rounded-[var(--radius-sm)] bg-surface px-5 py-3 text-sm font-semibold"
+              className="pressable inline-flex items-center rounded-lg bg-surface px-5 py-3 text-sm font-semibold"
             >
               Sign in
             </Link>

@@ -62,7 +62,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
         <Link
           href={`/challenges/${challenge.slug}`}
-          className="pressable inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold tracking-tight text-[var(--on-accent)]"
+          className="pressable inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold tracking-tight text-[var(--on-accent)]"
         >
           <span aria-hidden>←</span>
           {challenge.year} League Board

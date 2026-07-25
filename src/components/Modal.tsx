@@ -43,7 +43,7 @@ export function Modal({
         aria-labelledby={titleId}
         tabIndex={-1}
         autoFocus
-        className={`gba-frame relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden outline-none sm:rounded-[var(--radius-lg)] ${
+        className={`gba-frame relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden outline-none sm:rounded-xl ${
           wide ? "sm:max-w-3xl" : "sm:max-w-xl"
         }`}
       >

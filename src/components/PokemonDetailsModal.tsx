@@ -45,7 +45,7 @@ export function PokemonDetailsModal({
     <Modal open title={label} onClose={onClose} wide>
       <div className="grid gap-5 sm:grid-cols-[auto_1fr]">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex h-36 w-36 items-center justify-center rounded-xl border border-frame bg-surface-2 sm:h-40 sm:w-40">
+          <div className="flex h-36 w-36 items-center justify-center rounded-lg border border-frame bg-surface-2 sm:h-40 sm:w-40">
             <Image
               src={sprite}
               alt=""
@@ -112,7 +112,7 @@ export function PokemonDetailsModal({
                 {STAT_KEYS.map((key) => (
                   <div
                     key={key}
-                    className="rounded-xl border border-frame/30 bg-surface-2 px-2 py-1.5 text-center"
+                    className="rounded-lg border border-frame/30 bg-surface-2 px-2 py-1.5 text-center"
                   >
                     <p className="text-[10px] font-semibold tracking-tight text-muted">
                       {STAT_LABELS[key]}
@@ -154,7 +154,7 @@ export function PokemonDetailsModal({
                 {moves.map((move, index) => (
                   <li
                     key={`${index}-${move}`}
-                    className="rounded-xl border border-frame/30 bg-surface-2 px-2 py-1.5 text-sm"
+                    className="rounded-lg border border-frame/30 bg-surface-2 px-2 py-1.5 text-sm"
                   >
                     {move}
                   </li>

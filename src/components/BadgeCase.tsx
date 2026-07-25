@@ -59,7 +59,7 @@ export function BadgeCase({
                   />
                 ) : (
                   <span
-                    className={`inline-block h-[22px] w-[22px] rounded-xl border border-frame ${
+                    className={`inline-block h-[22px] w-[22px] rounded-lg border border-frame ${
                       on ? "bg-accent-2/40" : "bg-surface-2"
                     }`}
                   />
@@ -110,7 +110,7 @@ export function BadgeCase({
               <span className="sr-only">{on ? "earned" : "not earned"}</span>
             </>
           );
-          const className = `flex flex-col items-center justify-center rounded-xl border border-frame px-0.5 py-1.5 ${
+          const className = `flex flex-col items-center justify-center rounded-lg border border-frame px-0.5 py-1.5 ${
             on
               ? "bg-accent-2/30 ring-2 ring-accent-2/50"
               : "bg-surface-2 opacity-70"
@@ -149,7 +149,7 @@ export function BadgeCase({
         const title = meta?.badgeName ?? badge.label;
         const preview = meta?.previewLabel ?? badge.label;
         const leader = badge.leaderName ?? meta?.previewLabel;
-        const className = `flex w-full items-center gap-3 rounded-xl border border-frame p-2 text-left ${
+        const className = `flex w-full items-center gap-3 rounded-lg border border-frame p-2 text-left ${
           on
             ? "bg-accent-2/30 ring-2 ring-accent-2/50"
             : "bg-surface-2 opacity-70"

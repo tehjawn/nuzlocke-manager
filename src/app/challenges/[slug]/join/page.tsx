@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { DiscordIcon } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { JoinForm } from "@/components/JoinForm";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -60,8 +61,9 @@ export default async function JoinPage({ params, searchParams }: PageProps) {
             <Frame title="Discord">
               <a
                 href="/login"
-                className="pressable inline-block rounded-xl bg-accent px-4 py-3 text-xs font-semibold tracking-tight text-[var(--on-accent)]"
+                className="pressable inline-flex items-center gap-2 rounded-lg border-accent/40 bg-accent px-4 py-3 text-xs font-semibold tracking-tight text-[var(--on-accent)]"
               >
+                <DiscordIcon className="h-4 w-4" />
                 Continue with Discord
               </a>
             </Frame>

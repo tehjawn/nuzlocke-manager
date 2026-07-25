@@ -45,14 +45,14 @@ export function AvatarPicker({ value, onChange }: AvatarPickerProps) {
           alt=""
           width={72}
           height={72}
-          className="pixelated h-[72px] w-[72px] rounded-xl border border-frame bg-surface-2 object-contain p-1"
+          className="pixelated h-[72px] w-[72px] rounded-lg border border-frame bg-surface-2 object-contain p-1"
           unoptimized
         />
         <div className="space-y-2">
           <div className="flex gap-2">
             <button
               type="button"
-              className={`pressable rounded-xl px-3 py-2 font-display text-xs font-semibold tracking-tight ${
+              className={`pressable rounded-lg px-3 py-2 font-display text-xs font-semibold tracking-tight ${
                 tab === "trainer"
                   ? "bg-accent text-[var(--on-accent)]"
                   : "border border-frame bg-surface"
@@ -63,7 +63,7 @@ export function AvatarPicker({ value, onChange }: AvatarPickerProps) {
             </button>
             <button
               type="button"
-              className={`pressable rounded-xl px-3 py-2 font-display text-xs font-semibold tracking-tight ${
+              className={`pressable rounded-lg px-3 py-2 font-display text-xs font-semibold tracking-tight ${
                 tab === "pokemon"
                   ? "bg-accent text-[var(--on-accent)]"
                   : "border border-frame bg-surface"
@@ -75,7 +75,7 @@ export function AvatarPicker({ value, onChange }: AvatarPickerProps) {
           </div>
           <button
             type="button"
-            className="pressable rounded-xl border border-frame bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
+            className="pressable rounded-lg border border-frame bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
             onClick={() =>
               tab === "trainer" ? setTrainerOpen(true) : setPokemonOpen(true)
             }
@@ -97,7 +97,7 @@ export function AvatarPicker({ value, onChange }: AvatarPickerProps) {
                 title={key}
                 aria-label={`Choose ${key}`}
                 aria-pressed={selected}
-                className={`flex flex-col items-center gap-1 rounded-xl border p-2 ${
+                className={`flex flex-col items-center gap-1 rounded-lg border p-2 ${
                   selected
                     ? "border-accent bg-accent/15"
                     : "border-frame bg-surface-2 hover:bg-accent/10"
@@ -133,7 +133,7 @@ export function AvatarPicker({ value, onChange }: AvatarPickerProps) {
                 title={mon.name}
                 aria-label={`Choose ${mon.name}`}
                 aria-pressed={selected}
-                className={`flex flex-col items-center gap-1 rounded-xl border p-2 ${
+                className={`flex flex-col items-center gap-1 rounded-lg border p-2 ${
                   selected
                     ? "border-accent bg-accent/15"
                     : "border-frame bg-surface-2 hover:bg-accent/10"

@@ -12,7 +12,7 @@ export function SeasonStatusBanner({ slug, status }: SeasonStatusBannerProps) {
 
   if (status === "ARCHIVED") {
     return (
-      <div className="rounded-xl border border-frame bg-rip px-3 py-3 text-sm sm:px-4">
+      <div className="rounded-lg border border-frame bg-rip px-3 py-3 text-sm sm:px-4">
         <p className="text-xs font-semibold tracking-tight text-accent-deep">
           Season archived
         </p>
@@ -21,7 +21,7 @@ export function SeasonStatusBanner({ slug, status }: SeasonStatusBannerProps) {
         </p>
         <Link
           href={`/challenges/${slug}/memorial`}
-          className="pressable mt-3 inline-block rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
+          className="pressable mt-3 inline-block rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
         >
           Open memorial
         </Link>
@@ -30,7 +30,7 @@ export function SeasonStatusBanner({ slug, status }: SeasonStatusBannerProps) {
   }
 
   return (
-    <div className="rounded-xl border border-frame bg-surface-2 px-3 py-3 text-sm sm:px-4">
+    <div className="rounded-lg border border-frame bg-surface-2 px-3 py-3 text-sm sm:px-4">
       <p className="text-xs font-semibold tracking-tight text-accent-deep">
         {seasonStatusLabel(status)}
       </p>
@@ -39,7 +39,7 @@ export function SeasonStatusBanner({ slug, status }: SeasonStatusBannerProps) {
       </p>
       <Link
         href={`/challenges/${slug}/tournament`}
-        className="pressable mt-3 inline-block rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
+        className="pressable mt-3 inline-block rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
       >
         Open tournament
       </Link>

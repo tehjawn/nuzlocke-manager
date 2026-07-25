@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { DiscordIcon } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -66,8 +67,9 @@ export function ChallengeShell({
             {!signedIn ? (
               <Link
                 href="/login"
-                className="pressable mt-4 inline-block rounded-[var(--radius-sm)] border-accent/30 bg-accent px-3.5 py-2 text-sm font-semibold text-[var(--on-accent)]"
+                className="pressable mt-4 inline-flex items-center gap-2 rounded-lg border-accent/40 bg-accent px-3.5 py-2 text-sm font-semibold text-[var(--on-accent)]"
               >
+                <DiscordIcon className="h-4 w-4" />
                 Discord login
               </Link>
             ) : null}

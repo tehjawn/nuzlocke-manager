@@ -128,7 +128,7 @@ export function ActivityFeed({
           {collapsible ? (
             <button
               type="button"
-              className="pressable mt-3 w-full rounded-xl bg-surface px-3 py-2 text-sm font-bold"
+              className="pressable mt-3 w-full rounded-lg bg-surface px-3 py-2 text-sm font-bold"
               onClick={() => setExpanded((open) => !open)}
             >
               {expanded
@@ -219,7 +219,7 @@ function ActivityRow({
               aria-expanded={pickerOpen}
               aria-haspopup="dialog"
               title="Add reaction"
-              className={`rounded-xl border border-frame/40 bg-surface-2 p-1 text-muted transition-opacity pressable hover:bg-accent/10 hover:text-ink ${
+              className={`rounded-lg border border-frame/40 bg-surface-2 p-1 text-muted transition-opacity pressable hover:bg-accent/10 hover:text-ink ${
                 pickerOpen
                   ? "opacity-100"
                   : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
@@ -243,7 +243,7 @@ function ActivityRow({
                 <div
                   role="dialog"
                   aria-label="Emoji reactions"
-                  className="absolute top-full right-0 z-20 mt-1 max-w-[min(100vw-2rem,20rem)] rounded-xl border border-frame bg-surface p-1.5 shadow-lg"
+                  className="absolute top-full right-0 z-20 mt-1 max-w-[min(100vw-2rem,20rem)] rounded-lg border border-frame bg-surface p-1.5 shadow-lg"
                 >
                   <div className="flex flex-wrap items-center gap-0.5 pr-0.5">
                     {QUICK_EMOJIS.map((emoji) => {
@@ -256,7 +256,7 @@ function ActivityRow({
                           type="button"
                           disabled={pending}
                           title={emoji}
-                          className={`rounded-xl px-1.5 py-1 text-base leading-none hover:bg-accent/15 ${
+                          className={`rounded-lg px-1.5 py-1 text-base leading-none hover:bg-accent/15 ${
                             active ? "bg-accent/20" : ""
                           }`}
                           onClick={() => react(emoji)}
@@ -271,7 +271,7 @@ function ActivityRow({
                       aria-label="More emojis"
                       aria-expanded={moreOpen}
                       title="More emojis"
-                      className={`ml-0.5 shrink-0 rounded-xl border border-frame/40 px-2 py-1 font-display text-sm font-bold leading-none hover:bg-accent/15 ${
+                      className={`ml-0.5 shrink-0 rounded-lg border border-frame/40 px-2 py-1 font-display text-sm font-bold leading-none hover:bg-accent/15 ${
                         moreOpen
                           ? "border-accent bg-accent/20 text-accent-deep"
                           : "bg-surface-2 text-muted"
@@ -283,7 +283,7 @@ function ActivityRow({
                   </div>
 
                   {moreOpen ? (
-                    <div className="emoji-picker-shell mt-1.5 overflow-hidden rounded-xl border border-frame/30">
+                    <div className="emoji-picker-shell mt-1.5 overflow-hidden rounded-lg border border-frame/30">
                       <EmojiPicker
                         onEmojiClick={onEmojiClick}
                         theme={Theme.LIGHT}
@@ -312,7 +312,7 @@ function ActivityRow({
               type="button"
               disabled={!canReact || pending}
               title={canReact ? "Toggle reaction" : undefined}
-              className={`rounded-xl border px-1.5 py-0.5 text-sm ${
+              className={`rounded-lg border px-1.5 py-0.5 text-sm ${
                 summary.reactedByMe
                   ? "border-accent bg-accent/15"
                   : "border-frame/40 bg-surface-2"

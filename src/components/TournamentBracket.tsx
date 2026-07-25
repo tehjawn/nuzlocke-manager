@@ -56,7 +56,7 @@ export function TournamentBracket({
             {lockedTrainers.map((t) => (
               <li
                 key={t.id}
-                className="rounded-xl border border-frame bg-surface-2 px-2.5 py-1 text-sm font-bold"
+                className="rounded-lg border border-frame bg-surface-2 px-2.5 py-1 text-sm font-bold"
               >
                 {t.handle}
               </li>
@@ -67,7 +67,7 @@ export function TournamentBracket({
           <button
             type="button"
             disabled={pending || lockedTrainers.length < 2}
-            className="pressable mt-4 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-50"
+            className="pressable mt-4 rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-50"
             onClick={() => {
               startTransition(async () => {
                 const result = await gmInitTournamentAction({
@@ -109,7 +109,7 @@ export function TournamentBracket({
                   {matches.map((match) => (
                     <li
                       key={match.id}
-                      className="rounded-xl border border-frame/30 bg-surface-2/50 p-3"
+                      className="rounded-lg border border-frame/30 bg-surface-2/50 p-3"
                     >
                       <p className="text-xs font-semibold tracking-tight text-muted">
                         {match.label ?? `Match ${match.sortOrder + 1}`}
@@ -209,7 +209,7 @@ function MatchSide({
 }) {
   const body = (
     <span
-      className={`block rounded-xl border px-3 py-2 text-sm font-bold ${
+      className={`block rounded-lg border px-3 py-2 text-sm font-bold ${
         isWinner
           ? "border-accent bg-accent/15 text-accent-deep"
           : "border-frame bg-surface"

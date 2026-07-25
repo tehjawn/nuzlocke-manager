@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
+import { DiscordIcon } from "@/components/DiscordIcon";
 import { UserMenu } from "@/components/UserMenu";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 
@@ -49,8 +50,9 @@ export async function AuthButtons({ hideMyTrainer = false }: AuthButtonsProps) {
     >
       <button
         type="submit"
-        className="pressable inline-flex h-9 items-center rounded-xl bg-accent px-3 text-sm font-semibold text-[var(--on-accent)]"
+        className="pressable inline-flex h-9 items-center gap-2 rounded-lg border-accent/40 bg-accent px-3 text-sm font-semibold text-[var(--on-accent)]"
       >
+        <DiscordIcon className="h-4 w-4" />
         Discord login
       </button>
     </form>

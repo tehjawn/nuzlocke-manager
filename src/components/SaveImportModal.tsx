@@ -179,7 +179,7 @@ export function SaveImportModal({
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
-            className="pressable rounded-xl border border-frame bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
+            className="pressable rounded-lg border border-frame bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
             onClick={() => {
               reset();
               onClose();
@@ -195,7 +195,7 @@ export function SaveImportModal({
               parsing ||
               !sections
             }
-            className="pressable rounded-xl bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-50"
+            className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-50"
             onClick={() =>
               onApply({
                 pokemon: included,
@@ -230,14 +230,14 @@ export function SaveImportModal({
             type="file"
             accept=".state,.sav,.srm,.ss0,.ss1,.ss2,.ss3,.ss4,.ss5,.ss6,.ss7,.ss8,.ss9,application/octet-stream"
             disabled={parsing || pending}
-            className="block w-full text-sm file:mr-3 file:rounded-xl file:border file:border-frame file:bg-surface-2 file:px-3 file:py-1.5 file:text-xs file:font-semibold"
+            className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-frame file:bg-surface-2 file:px-3 file:py-1.5 file:text-xs file:font-semibold"
             onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
           />
         </label>
 
         {parsing ? <p className="text-muted">Reading save…</p> : null}
         {error ? (
-          <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-danger">
+          <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-danger">
             {error}
           </p>
         ) : null}
@@ -250,7 +250,7 @@ export function SaveImportModal({
 
         {sections ? (
           <>
-            <div className="space-y-2 rounded-xl border border-frame bg-surface-2 p-3">
+            <div className="space-y-2 rounded-lg border border-frame bg-surface-2 p-3">
               <p className="text-xs font-semibold tracking-tight tracking-wide text-muted">
                 Trainer
               </p>
@@ -304,7 +304,7 @@ export function SaveImportModal({
                       {list.map((mon, index) => (
                         <li
                           key={mon.pid}
-                          className={`flex flex-wrap items-center gap-3 rounded-xl border border-frame bg-surface-2 p-2 ${
+                          className={`flex flex-wrap items-center gap-3 rounded-lg border border-frame bg-surface-2 p-2 ${
                             mon.include ? "" : "opacity-50"
                           }`}
                         >
@@ -335,7 +335,7 @@ export function SaveImportModal({
                               <input
                                 value={mon.nickname}
                                 placeholder="Nickname"
-                                className="min-w-[6rem] flex-1 rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
+                                className="min-w-[6rem] flex-1 rounded-lg border border-frame bg-surface px-2 py-1 text-sm"
                                 onChange={(e) =>
                                   updateDraft(key, index, {
                                     nickname: e.target.value,
@@ -345,7 +345,7 @@ export function SaveImportModal({
                               <input
                                 value={mon.species}
                                 placeholder="Species"
-                                className="min-w-[7rem] flex-1 rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
+                                className="min-w-[7rem] flex-1 rounded-lg border border-frame bg-surface px-2 py-1 text-sm"
                                 onChange={(e) =>
                                   updateDraft(key, index, {
                                     species: e.target.value,
@@ -356,7 +356,7 @@ export function SaveImportModal({
                                 value={mon.level}
                                 placeholder="Lv"
                                 inputMode="numeric"
-                                className="w-14 rounded-xl border border-frame bg-surface px-2 py-1 text-sm"
+                                className="w-14 rounded-lg border border-frame bg-surface px-2 py-1 text-sm"
                                 onChange={(e) =>
                                   updateDraft(key, index, {
                                     level: e.target.value,
@@ -379,7 +379,7 @@ export function SaveImportModal({
                               </label>
                               <select
                                 value={mon.slot}
-                                className="rounded-xl border border-frame bg-surface px-2 py-1"
+                                className="rounded-lg border border-frame bg-surface px-2 py-1"
                                 onChange={(e) =>
                                   updateDraft(key, index, {
                                     slot: e.target.value as PokemonSlot,

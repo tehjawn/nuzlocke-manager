@@ -21,7 +21,7 @@ export function SpeciesCombobox({
     <div className="relative">
       <input
         id={id}
-        className="w-full rounded-xl border border-frame bg-surface px-3 py-2 text-sm"
+        className="w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
         value={value}
         autoComplete="off"
         placeholder="Start typing a species…"
@@ -36,7 +36,7 @@ export function SpeciesCombobox({
         }}
       />
       {open && results.length > 0 ? (
-        <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-frame bg-surface shadow-lg">
+        <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-frame bg-surface shadow-lg">
           {results.map((s) => (
             <li key={s.pokedexId}>
               <button

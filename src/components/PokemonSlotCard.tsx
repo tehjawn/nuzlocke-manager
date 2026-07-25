@@ -24,7 +24,7 @@ export function PokemonSlotCard({
   if (!pokemon) {
     const empty = (
       <div
-        className={`flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-frame/40 bg-surface-2/60 text-muted ${
+        className={`flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/60 text-muted ${
           size === "sm" ? "min-h-20 p-2" : "min-h-40 p-3"
         }`}
       >
@@ -62,7 +62,7 @@ export function PokemonSlotCard({
 
   const body = (
     <div
-      className={`flex h-full flex-col rounded-xl border border-frame bg-surface ${
+      className={`flex h-full flex-col rounded-lg border border-frame bg-surface ${
         memorial ? "opacity-90" : ""
       } ${
         size === "sm" ? "min-h-20 p-2" : "min-h-40 p-3"
@@ -147,7 +147,7 @@ export function PokemonSlotCard({
           {moves.map((move, index) => (
             <li
               key={`${index}-${move}`}
-              className="rounded-xl border border-frame/30 bg-surface-2 px-1.5 py-1 text-[11px]"
+              className="rounded-lg border border-frame/30 bg-surface-2 px-1.5 py-1 text-[11px]"
             >
               {move}
             </li>
