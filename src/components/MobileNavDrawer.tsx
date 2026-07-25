@@ -5,8 +5,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  AboutIcon,
+  GmIcon,
+  MyTrainerIcon,
+  SeasonsIcon,
+} from "@/components/nav-icons";
 
-type NavLink = { href: string; label: string; tone?: "accent" | "gm" };
+type NavLink = { href: string; label: string; icon: ReactNode };
 
 type MobileNavDrawerProps = {
   challengeSlug?: string;
@@ -47,21 +53,21 @@ export function MobileNavDrawer({
   }
 
   const links: NavLink[] = [
-    { href: "/challenges", label: "Seasons" },
-    { href: "/about", label: "About" },
+    { href: "/challenges", label: "Seasons", icon: <SeasonsIcon /> },
+    { href: "/about", label: "About", icon: <AboutIcon /> },
   ];
   if (challengeSlug && myTrainerId) {
     links.push({
       href: `/challenges/${challengeSlug}/me`,
       label: "My Trainer",
-      tone: "accent",
+      icon: <MyTrainerIcon />,
     });
   }
   if (challengeSlug && showGm) {
     links.push({
       href: `/challenges/${challengeSlug}/gm`,
       label: "GM",
-      tone: "gm",
+      icon: <GmIcon />,
     });
   }
 
@@ -165,32 +171,22 @@ export function MobileNavDrawer({
                         key={link.href}
                         href={link.href}
                         onClick={() => setOpen(false)}
-                        className={`flex h-11 items-center rounded-md border border-transparent px-3 text-sm font-medium hover:border-interactive/40 hover:bg-interactive-soft/60 ${
-                          link.tone === "accent"
-                            ? "bg-accent font-semibold text-[var(--on-accent)] hover:bg-accent"
-                            : link.tone === "gm"
-                              ? "bg-accent-2/25"
-                              : "bg-surface"
-                        }`}
+                        className="flex h-11 items-center gap-3 rounded-md border border-transparent bg-surface px-3 text-sm font-medium hover:border-interactive/40 hover:bg-interactive-soft/60"
                       >
+                        <span className="shrink-0 text-ink/70" aria-hidden>
+                          {link.icon}
+                        </span>
                         {link.label}
                       </Link>
                     ))}
                   </nav>
-
-                  <div className="my-1 h-px bg-frame/60" />
 
                   <div className="flex items-center justify-between rounded-md border border-frame bg-surface px-3 py-2">
                     <span className="text-sm font-medium">Theme</span>
                     <ThemeToggle />
                   </div>
 
-                  {children ? (
-                    <>
-                      <div className="my-1 h-px bg-frame/60" />
-                      {children}
-                    </>
-                  ) : null}
+                  {children}
                 </div>
               </div>
             </div>,

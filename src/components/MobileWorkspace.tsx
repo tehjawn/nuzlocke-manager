@@ -55,6 +55,26 @@ export function MobileWorkspace({
   const select = (next: "info" | "feed") =>
     setPanel((cur) => (cur === next ? null : next));
 
+  // Handle link clicks inside this shell (panel CTAs and section tabs).
+  // - Same-page link (e.g. "Get Started" while already on /setup): no navigation
+  //   fires, so close the panel now to reveal the destination.
+  // - Cross-page link: keep the panel open until the new route commits — the
+  //   pathname-change reset above closes it exactly when the new content lands,
+  //   so we never flash the outgoing page underneath mid-navigation.
+  const onLinkClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (panel === null) return;
+    const anchor = (e.target as HTMLElement).closest("a");
+    const href = anchor?.getAttribute("href");
+    if (!href) return;
+    try {
+      if (new URL(href, window.location.origin).pathname === pathname) {
+        setPanel(null);
+      }
+    } catch {
+      setPanel(null);
+    }
+  };
+
   // Edge fades that hint at more tabs off-screen.
   useEffect(() => {
     const el = scrollerRef.current;
@@ -74,7 +94,7 @@ export function MobileWorkspace({
   }, []);
 
   return (
-    <div className={className}>
+    <div className={className} onClick={onLinkClick}>
       {/* Mobile section nav */}
       <div className="relative mb-4 lg:hidden">
         <div
@@ -120,7 +140,6 @@ export function MobileWorkspace({
                 key={tab.href}
                 href={tab.href}
                 prefetch
-                onClick={() => setPanel(null)}
                 aria-current={active ? "page" : undefined}
                 className={`${itemBase} ${active ? itemActive : itemIdle}`}
               >
@@ -137,13 +156,13 @@ export function MobileWorkspace({
         </div>
         <div
           aria-hidden
-          className={`pointer-events-none absolute inset-y-1 left-1 w-10 rounded-l-[var(--radius-sm)] bg-gradient-to-r from-[var(--surface-2)] to-transparent transition-opacity duration-200 ${
+          className={`pointer-events-none absolute inset-y-px left-px w-10 rounded-l-[var(--radius-sm)] bg-gradient-to-r from-[var(--surface-2)] to-transparent transition-opacity duration-200 ${
             fadeStart ? "opacity-100" : "opacity-0"
           }`}
         />
         <div
           aria-hidden
-          className={`pointer-events-none absolute inset-y-1 right-1 w-10 rounded-r-[var(--radius-sm)] bg-gradient-to-l from-[var(--surface-2)] to-transparent transition-opacity duration-200 ${
+          className={`pointer-events-none absolute inset-y-px right-px w-10 rounded-r-[var(--radius-sm)] bg-gradient-to-l from-[var(--surface-2)] to-transparent transition-opacity duration-200 ${
             fadeEnd ? "opacity-100" : "opacity-0"
           }`}
         />
