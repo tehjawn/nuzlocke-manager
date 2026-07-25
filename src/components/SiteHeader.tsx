@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { AuthButtons } from "@/components/AuthButtons";
 
@@ -24,9 +25,17 @@ export function SiteHeader({
       <div className="min-w-0">
         <Link
           href="/"
-          className="site-brand text-base font-bold tracking-tight sm:text-lg"
+          className="site-brand inline-flex items-center gap-2.5 text-base font-bold tracking-tight sm:text-lg"
         >
-          Nuzlocke Manager
+          <Image
+            src="/nuzlocke-mark.png"
+            alt=""
+            width={36}
+            height={36}
+            className="size-8 shrink-0 rounded-md sm:size-9"
+            priority
+          />
+          <span className="min-w-0 truncate">Nuzlocke Manager</span>
         </Link>
         {challengeYear != null && challengeSlug ? (
           <p className="truncate text-sm text-muted">

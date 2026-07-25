@@ -44,8 +44,7 @@ export default async function HomePage() {
           <span className="mt-1 block">Nuzlocke Challenge Manager</span>
         </h1>
         <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
-          Track squads, badges, and memorials with your league — clean boards
-          built for every run.
+          Now open for testing!
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
