@@ -660,7 +660,7 @@ export function TrainerBoard({
             )}
           </Frame>
 
-          <Frame data-tour="pokemon" title="Main Squad">
+          <Frame title="Main Squad">
             {canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -675,23 +675,31 @@ export function TrainerBoard({
                     + Add
                   </button>
                 </div>
+                {/*
+                  Tour spotlight targets the slot grid (not the whole Frame) so
+                  mobile coachmarks can keep empty "Tap to add" cards visible.
+                */}
+                <div data-tour="pokemon">
+                  <PartyStrip
+                    pokemon={main}
+                    slots={6}
+                    selectHint="View"
+                    onSelect={openPokemon}
+                    onSelectEmpty={(partyIndex) =>
+                      openAddPokemon("MAIN", partyIndex)
+                    }
+                  />
+                </div>
+              </div>
+            ) : (
+              <div data-tour="pokemon">
                 <PartyStrip
                   pokemon={main}
                   slots={6}
-                  selectHint="View"
+                  selectHint="Details"
                   onSelect={openPokemon}
-                  onSelectEmpty={(partyIndex) =>
-                    openAddPokemon("MAIN", partyIndex)
-                  }
                 />
               </div>
-            ) : (
-              <PartyStrip
-                pokemon={main}
-                slots={6}
-                selectHint="Details"
-                onSelect={openPokemon}
-              />
             )}
           </Frame>
 

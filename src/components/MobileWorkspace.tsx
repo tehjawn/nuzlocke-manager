@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ChallengeStatus } from "@/lib/challenge-types";
 import { getSeasonTabs, isSeasonTabActive } from "@/components/SeasonTabs";
+import {
+  ONBOARDING_PANEL_EVENT,
+  type OnboardingMobilePanel,
+} from "@/lib/onboarding";
 
 type MobileWorkspaceProps = {
   slug: string;
@@ -93,6 +97,19 @@ export function MobileWorkspace({
     };
   }, []);
 
+  // First-run tour: open/close Info/Feed so spotlight steps can find mobile
+  // targets that only exist inside those panels (e.g. Get Started).
+  useEffect(() => {
+    const onPanel = (event: Event) => {
+      const detail = (event as CustomEvent<{ panel?: OnboardingMobilePanel }>)
+        .detail;
+      if (!detail || !("panel" in detail)) return;
+      setPanel(detail.panel ?? null);
+    };
+    window.addEventListener(ONBOARDING_PANEL_EVENT, onPanel);
+    return () => window.removeEventListener(ONBOARDING_PANEL_EVENT, onPanel);
+  }, []);
+
   return (
     <div className={className} onClick={onLinkClick}>
       {/* Mobile section nav */}
@@ -106,6 +123,7 @@ export function MobileWorkspace({
             type="button"
             aria-pressed={panel === "info"}
             onClick={() => select("info")}
+            data-tour="tab-info"
             className={`${itemBase} ${panel === "info" ? itemActive : itemIdle}`}
           >
             <span
@@ -120,6 +138,7 @@ export function MobileWorkspace({
             type="button"
             aria-pressed={panel === "feed"}
             onClick={() => select("feed")}
+            data-tour="tab-feed"
             className={`${itemBase} ${panel === "feed" ? itemActive : itemIdle}`}
           >
             <span
@@ -141,6 +160,9 @@ export function MobileWorkspace({
                 href={tab.href}
                 prefetch
                 aria-current={active ? "page" : undefined}
+                data-tour={
+                  tab.label === "Trainers" ? "tab-trainers" : undefined
+                }
                 className={`${itemBase} ${active ? itemActive : itemIdle}`}
               >
                 <span

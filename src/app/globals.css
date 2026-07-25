@@ -774,6 +774,10 @@ button:disabled,
 }
 
 /* Custom onboarding tour — gba-frame popover + spotlight cutout */
+:root {
+  --tour-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 .nuzlocke-tour-layer {
   position: fixed;
   inset: 0;
@@ -845,6 +849,46 @@ button:disabled,
     top 320ms cubic-bezier(0.22, 1, 0.36, 1),
     left 320ms cubic-bezier(0.22, 1, 0.36, 1),
     width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Narrow: coachmark docks as a sheet — spotlight stays in the upper band. */
+@media (max-width: 639px) {
+  .nuzlocke-tour-popover {
+    max-width: none;
+    max-height: min(48vh, 22rem);
+    overflow-y: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) var(--radius) var(--radius);
+    box-shadow:
+      0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
+      0 -8px 32px -12px var(--shadow-md),
+      0 4px 14px -4px var(--shadow);
+    padding-bottom: var(--tour-safe-bottom);
+  }
+
+  .nuzlocke-tour-chrome {
+    padding: 0.55rem 0.85rem;
+  }
+
+  .nuzlocke-tour-progress {
+    padding: 0.6rem 0.85rem 0;
+  }
+
+  .nuzlocke-tour-copy {
+    padding: 0.6rem 0.85rem 0.7rem;
+  }
+
+  .nuzlocke-tour-title {
+    font-size: 1rem;
+  }
+
+  .nuzlocke-tour-description {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .nuzlocke-tour-footer {
+    padding: 0.7rem 0.85rem 0.75rem;
+  }
 }
 
 .nuzlocke-tour-popover::after {
