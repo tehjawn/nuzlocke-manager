@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -15,6 +15,21 @@ const mono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "600"],
 });
+
+/**
+ * Explicit viewport so mobile browser chrome matches the app background in each
+ * theme. `width=device-width, initial-scale=1` is the App Router default; we
+ * deliberately omit maximum-scale / user-scalable so pinch-zoom stays available.
+ * themeColor values mirror --bg (light #eef2e6 / dark #0a0e0b) from globals.css.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#eef2e6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0e0b" },
+  ],
+};
 
 export const metadata: Metadata = {
   title: {

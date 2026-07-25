@@ -129,6 +129,20 @@ body {
   font-family: var(--font-body), "Segoe UI", system-ui, sans-serif;
   letter-spacing: -0.011em;
   background-color: var(--bg);
+}
+
+/*
+  Viewport-anchored gradient backdrop. Rendered as a fixed, full-screen layer
+  behind content instead of `background-attachment: fixed` on the scrolling
+  <body> — the latter forces a full-viewport repaint on every scroll frame and
+  is the main cause of scroll jank on mobile.
+*/
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
     radial-gradient(ellipse 90% 55% at 0% 0%, var(--bg-wash) 0%, transparent 58%),
     radial-gradient(ellipse 70% 50% at 100% 0%, var(--bg-glow) 0%, transparent 52%),
@@ -139,7 +153,6 @@ body {
     );
   background-repeat: no-repeat;
   background-size: 100% 100%;
-  background-attachment: fixed;
 }
 
 body::before {
@@ -154,8 +167,19 @@ body::before {
     url("/textures/noise.png");
   background-repeat: repeat;
   background-size: 180px 180px, 100px 100px;
-  background-attachment: fixed;
   mix-blend-mode: soft-light;
+}
+
+/*
+  Touch devices: drop the decorative noise/blend layers. mix-blend-mode forces
+  off-composite paints, and the per-card grain multiplies that cost across every
+  .gba-frame — a real drain on mobile GPUs for a purely cosmetic texture.
+*/
+@media (hover: none) {
+  body::before,
+  .gba-frame::after {
+    display: none;
+  }
 }
 
 [data-theme="dark"] body::before {
@@ -306,6 +330,14 @@ button:disabled,
   border-bottom-color: color-mix(in srgb, var(--accent-2) 22%, var(--frame));
 }
 
+/*
+  Mobile UX conventions (enforced across components):
+  - Touch targets: interactive controls should present a >=40-44px effective hit
+    area on touch. Keep dense desktop sizing behind `sm:` overrides when needed.
+  - Font floors: text that a user reads should not go below ~12px (`text-xs`) on
+    mobile. Reserve text-[9px]/[10px]/[11px] for genuinely dense, desktop-only
+    labels (and prefer gating them behind `sm:`).
+*/
 .pressable {
   border: 1px solid var(--frame);
   border-radius: var(--radius-sm);
@@ -437,6 +469,16 @@ button:disabled,
 
 .trainer-carousel:hover .trainer-carousel-track {
   animation-play-state: paused;
+}
+
+/*
+  Touch has no hover to pause the marquee, so it would animate forever — endless
+  compositor work and battery drain. Stop it on coarse pointers.
+*/
+@media (hover: none) {
+  .trainer-carousel-track {
+    animation-play-state: paused;
+  }
 }
 
 .trainer-carousel-fade {
