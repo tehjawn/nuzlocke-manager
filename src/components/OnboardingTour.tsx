@@ -17,8 +17,10 @@ import {
   clearOnboardingStep,
   readOnboardingStep,
   readOnboardingTransition,
+  requestOnboardingMobilePanel,
   writeOnboardingStep,
   writeOnboardingTransition,
+  type OnboardingStep,
 } from "@/lib/onboarding";
 
 type OnboardingTourProps = {
@@ -38,12 +40,31 @@ const POPOVER_GAP = 14;
 const POPOVER_WIDTH = 360;
 const VIEW_MARGIN = 12;
 const MOVE_MS = 320;
+/** Match Tailwind `sm` — below this, dock the coachmark as a bottom sheet. */
+const NARROW_MAX = 639;
+/**
+ * Match Tailwind `lg` — below this the season left rail is hidden and
+ * MobileWorkspace owns Info/Feed + section tabs.
+ */
+const MOBILE_CHROME_MAX = 1023;
+/** Keep spotlight cutouts from eating the whole phone viewport. */
+const MAX_HOLE_VH = 0.44;
+/** Reserve room above the bottom sheet when scrolling a target into view. */
+const MOBILE_SHEET_RESERVE = 280;
 
 // Client-only flag (portals need `document.body`) without a mount effect —
 // false during SSR/first paint, true once React reads live browser state.
 const noopSubscribe = () => () => {};
 const getIsClient = () => true;
 const getIsServer = () => false;
+
+function isNarrowViewport() {
+  return window.innerWidth <= NARROW_MAX;
+}
+
+function isMobileChrome() {
+  return window.innerWidth <= MOBILE_CHROME_MAX;
+}
 
 /**
  * Prefer a *visible* match. Some anchors (e.g. the season tabs) render once per
@@ -52,11 +73,10 @@ const getIsServer = () => false;
  */
 function queryTarget(selector: string): Element | null {
   const matches = document.querySelectorAll(selector);
-  if (matches.length <= 1) return matches[0] ?? null;
   for (const el of matches) {
     if (el.getClientRects().length > 0) return el;
   }
-  return matches[0] ?? null;
+  return null;
 }
 
 function waitForElement(
@@ -94,22 +114,61 @@ function measureElement(el: Element): Rect {
   };
 }
 
-async function prepareTarget(
-  selector: string | undefined,
+/** Scroll so the target sits in the band above the mobile bottom sheet. */
+function scrollTargetIntoTourView(
+  el: Element,
+  opts?: { instantScroll?: boolean; reservedBottom?: number },
+) {
+  const narrow = isNarrowViewport();
+  const reservedBottom = opts?.reservedBottom ?? 0;
+  const behavior = opts?.instantScroll ? "instant" : "smooth";
+
+  if (!narrow || reservedBottom <= 0) {
+    el.scrollIntoView({
+      behavior,
+      block: "center",
+      inline: "nearest",
+    });
+    return;
+  }
+
+  // Horizontal: keep tab pills in the mobile scroller visible.
+  el.scrollIntoView({
+    behavior,
+    block: "nearest",
+    inline: "center",
+  });
+
+  const rect = el.getBoundingClientRect();
+  const available = window.innerHeight - reservedBottom - VIEW_MARGIN;
+  const idealTop = Math.max(VIEW_MARGIN + 8, available * 0.12);
+  const delta = rect.top - idealTop;
+  if (Math.abs(delta) > 10) {
+    window.scrollBy({ top: delta, left: 0, behavior });
+  }
+}
+
+async function prepareStepTarget(
+  step: OnboardingStep,
   opts?: { instantScroll?: boolean },
 ): Promise<Rect | null> {
-  if (!selector) {
+  if (step.mobilePanel !== undefined && isMobileChrome()) {
+    requestOnboardingMobilePanel(step.mobilePanel);
+    // Let React commit the Info/Feed panel before querying anchors inside it.
+    await new Promise((r) => window.setTimeout(r, 40));
+  }
+
+  if (!step.element) {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     return null;
   }
 
-  const el = await waitForElement(selector);
+  const el = await waitForElement(step.element);
   if (!el) return null;
 
-  el.scrollIntoView({
-    behavior: opts?.instantScroll ? "instant" : "smooth",
-    block: "center",
-    inline: "nearest",
+  scrollTargetIntoTourView(el, {
+    instantScroll: opts?.instantScroll,
+    reservedBottom: isNarrowViewport() ? MOBILE_SHEET_RESERVE : 0,
   });
 
   await new Promise((r) =>
@@ -124,7 +183,21 @@ function placePopover(
 ): CSSProperties {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  const narrow = isNarrowViewport();
   const width = Math.min(POPOVER_WIDTH, vw - VIEW_MARGIN * 2);
+
+  // Phones: dock as a bottom sheet so the spotlight stays in the upper band.
+  // Safe-area is applied via CSS padding on the popover (included in height).
+  if (narrow) {
+    const top = Math.max(VIEW_MARGIN, vh - VIEW_MARGIN - popoverHeight);
+    return {
+      position: "fixed",
+      top,
+      left: VIEW_MARGIN,
+      width: vw - VIEW_MARGIN * 2,
+      transform: "none",
+    };
+  }
 
   // Always use numeric top/left so CSS can tween between steps.
   if (!target) {
@@ -160,6 +233,40 @@ function placePopover(
     width,
     transform: "none",
   };
+}
+
+function holeFromTarget(target: Rect | null): {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+} {
+  if (!target) {
+    return {
+      top: typeof window !== "undefined" ? window.innerHeight / 2 : 0,
+      left: typeof window !== "undefined" ? window.innerWidth / 2 : 0,
+      width: 0,
+      height: 0,
+    };
+  }
+
+  let top = Math.max(0, target.top - PAD);
+  let left = Math.max(0, target.left - PAD);
+  let width = target.width + PAD * 2;
+  let height = target.height + PAD * 2;
+
+  // Tall party grids: keep the cutout to the top of the target so empty slots
+  // stay readable above the bottom sheet instead of filling the screen.
+  if (isNarrowViewport()) {
+    const maxH = window.innerHeight * MAX_HOLE_VH;
+    if (height > maxH) height = maxH;
+    const sheetTop = window.innerHeight - MOBILE_SHEET_RESERVE;
+    if (top + height > sheetTop - 8) {
+      height = Math.max(48, sheetTop - 8 - top);
+    }
+  }
+
+  return { top, left, width, height };
 }
 
 export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
@@ -208,6 +315,9 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
     setBridging(false);
     setReady(false);
     readyRef.current = false;
+    if (isMobileChrome()) {
+      requestOnboardingMobilePanel(null);
+    }
     onDismissRef.current();
   }, []);
 
@@ -271,7 +381,7 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
     void (async () => {
       if (!stayVisible) setMoving(false);
 
-      const rect = await prepareTarget(active.element, {
+      const rect = await prepareStepTarget(active, {
         instantScroll: !stayVisible,
       });
       if (cancelled) return;
@@ -327,19 +437,7 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
 
   // Overlay steps collapse the cutout to a point so spotlight steps can
   // expand/glide from center (or from the previous target) instead of popping.
-  const hole = spotlightTarget
-    ? {
-        top: Math.max(0, spotlightTarget.top - PAD),
-        left: Math.max(0, spotlightTarget.left - PAD),
-        width: spotlightTarget.width + PAD * 2,
-        height: spotlightTarget.height + PAD * 2,
-      }
-    : {
-        top: typeof window !== "undefined" ? window.innerHeight / 2 : 0,
-        left: typeof window !== "undefined" ? window.innerWidth / 2 : 0,
-        width: 0,
-        height: 0,
-      };
+  const hole = holeFromTarget(spotlightTarget);
 
   return createPortal(
     <>

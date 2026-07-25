@@ -8,6 +8,15 @@ export const ONBOARDING_TRANSITION_KEY = "nuzlocke-onboarding-transition";
 /** Survives App Router remounts while a tour is in progress. */
 export const ONBOARDING_ACTIVE_KEY = "nuzlocke-onboarding-active";
 
+/**
+ * Mobile workspace panel the tour needs before measuring a step.
+ * Dispatched as `ONBOARDING_PANEL_EVENT` so MobileWorkspace can open/close
+ * Info/Feed without the tour importing UI modules.
+ */
+export const ONBOARDING_PANEL_EVENT = "nuzlocke-tour-panel";
+
+export type OnboardingMobilePanel = "info" | "feed" | null;
+
 export type OnboardingRoute = "trainer" | "season" | "setup";
 
 export type OnboardingStep = {
@@ -15,11 +24,24 @@ export type OnboardingStep = {
   route: OnboardingRoute;
   /** CSS selector for spotlight; omit for a centered dark-overlay step. */
   element?: string;
+  /**
+   * On narrow viewports, open/close the mobile Info/Feed panel before the
+   * spotlight is measured. `null` closes any open panel. Desktop ignores this
+   * (the left rail already shows Info + tabs).
+   */
+  mobilePanel?: OnboardingMobilePanel;
   title: string;
   description: string;
   href: string;
   match: (pathname: string) => boolean;
 };
+
+export function requestOnboardingMobilePanel(panel: OnboardingMobilePanel) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(ONBOARDING_PANEL_EVENT, { detail: { panel } }),
+  );
+}
 
 const slug = ONBOARDING_CHALLENGE_SLUG;
 const base = `/challenges/${slug}`;
@@ -66,6 +88,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: "season-trainers",
     route: "season",
     element: "[data-tour='tab-trainers']",
+    // Close Info/Feed so the Trainers tab + board are what the user sees.
+    mobilePanel: null,
     title: "Season 2026 trainers",
     description:
       "On the Season 2026 Trainers tab, you can see yourself alongside your fellow Trash Pack trainers' progress.",
@@ -76,6 +100,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: "demo-trainer",
     route: "season",
     element: "[data-tour='demo-trainer']",
+    mobilePanel: null,
     title: "By the end of your run…",
     description:
       "You'll want your entry to look something like this!",
@@ -86,6 +111,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: "get-started-cta",
     route: "season",
     element: "[data-tour='cta-setup']",
+    // CTA lives in General info — open the mobile Info panel first.
+    mobilePanel: "info",
     title: "Explore more later",
     description:
       "When you're ready to play, hit Get Started — it'll walk you through the ROM, Afterplay, and importing your save.",
