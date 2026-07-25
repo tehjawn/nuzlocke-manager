@@ -47,7 +47,6 @@ export function ChallengeShell({
         challengeName={name}
         showGm={showGm}
         myTrainerId={myTrainerId}
-        wide
       />
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 pb-16 pt-2 sm:px-6 lg:flex-row lg:items-start">
         <aside

@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { AuthButtons } from "@/components/AuthButtons";
 
+/** Shared shell width for the site header on every page. */
+export const SITE_HEADER_MAX_CLASS = "max-w-7xl";
+
 type SiteHeaderProps = {
   challengeSlug?: string;
   challengeName?: string;
   showGm?: boolean;
   myTrainerId?: string | null;
-  wide?: boolean;
 };
 
 export function SiteHeader({
@@ -14,13 +16,10 @@ export function SiteHeader({
   challengeName,
   showGm = false,
   myTrainerId = null,
-  wide = false,
 }: SiteHeaderProps) {
   return (
     <header
-      className={`relative z-40 mx-auto flex w-full items-center justify-between gap-4 px-4 py-4 sm:px-6 ${
-        wide ? "max-w-7xl" : "max-w-6xl"
-      }`}
+      className={`relative z-40 mx-auto flex w-full items-center justify-between gap-4 px-4 py-4 sm:px-6 ${SITE_HEADER_MAX_CLASS}`}
     >
       <div className="min-w-0">
         <Link
