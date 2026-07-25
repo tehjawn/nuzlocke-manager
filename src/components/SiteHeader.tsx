@@ -27,7 +27,7 @@ export function SiteHeader({
       <div className="min-w-0">
         <Link
           href="/"
-          className="site-brand inline-flex items-center gap-2.5 text-base font-bold tracking-tight sm:text-lg"
+          className="site-brand flex min-w-0 items-center gap-2.5 text-base font-bold tracking-tight sm:text-lg"
         >
           <Image
             src="/nuzlocke-mark.png"

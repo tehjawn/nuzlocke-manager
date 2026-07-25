@@ -129,16 +129,22 @@ export function MobileNavDrawer({
                 onClick={() => setOpen(false)}
                 className="absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px] motion-safe:animate-[drawer-scrim-in_200ms_ease-out]"
               />
-              <div
-                ref={panelRef}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Site navigation"
-                tabIndex={-1}
-                onKeyDown={onPanelKeyDown}
-                className="gba-frame absolute right-3 top-3 flex w-[min(16rem,calc(100vw-1.5rem))] flex-col outline-none motion-safe:animate-[drawer-panel-in_200ms_ease-out]"
-              >
-                <div className="gba-frame-title relative z-[1] flex items-center justify-between px-3 py-2">
+              {/*
+                Positioning lives on this wrapper: .gba-frame forces
+                position:relative (same specificity, later in globals.css), which
+                would otherwise beat Tailwind's `absolute`.
+              */}
+              <div className="absolute right-3 top-3 w-[min(16rem,calc(100vw-1.5rem))] motion-safe:animate-[drawer-panel-in_200ms_ease-out]">
+                <div
+                  ref={panelRef}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Site navigation"
+                  tabIndex={-1}
+                  onKeyDown={onPanelKeyDown}
+                  className="gba-frame flex flex-col outline-none"
+                >
+                  <div className="gba-frame-title relative z-[1] flex items-center justify-between px-3 py-2">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                     Menu
                   </span>
@@ -169,6 +175,7 @@ export function MobileNavDrawer({
                     </Link>
                   ))}
                 </nav>
+                </div>
               </div>
             </div>,
             document.body,
