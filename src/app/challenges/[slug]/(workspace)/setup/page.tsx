@@ -30,6 +30,8 @@ export default async function SetupPage({ params }: PageProps) {
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
 
+  const trainerHref = `/challenges/${challenge.slug}/me`;
+
   return (
     <>
       <header className="mb-6">
@@ -37,14 +39,14 @@ export default async function SetupPage({ params }: PageProps) {
           Get Started
         </h2>
         <p className="mt-2 text-muted">
-          Get {challenge.name} running on Afterplay, then keep your board in
-          sync here.
+          Four moves: download the ROM, load it in Afterplay, export your save,
+          then import it on your trainer board.
         </p>
       </header>
 
       <ol className="space-y-4">
         <li>
-          <Frame title="1. Download the game">
+          <Frame title="1. Download the ROM">
             <p className="text-sm leading-relaxed text-muted">
               Grab the Trash Pack Emerald ROM from Google Drive. This build is
               already set up for the season (including the Gen&nbsp;1–4 Nuzlocke
@@ -62,7 +64,7 @@ export default async function SetupPage({ params }: PageProps) {
         </li>
 
         <li>
-          <Frame title="2. Create an Afterplay account & load the game">
+          <Frame title="2. Load the ROM in Afterplay">
             <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
               <li>
                 Sign up / log in at{" "}
@@ -84,11 +86,19 @@ export default async function SetupPage({ params }: PageProps) {
                 to play.
               </li>
             </ol>
+            <a
+              href={AFTERPLAY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${CTA_PRIMARY} mt-4`}
+            >
+              Open Afterplay →
+            </a>
           </Frame>
         </li>
 
         <li>
-          <Frame title="3. Start the game with season settings">
+          <Frame title="3. Start with season settings">
             <p className="text-sm leading-relaxed text-muted">
               When you boot into the run, confirm the pack settings match the
               season rules:
@@ -126,7 +136,7 @@ export default async function SetupPage({ params }: PageProps) {
           <Frame title="4. Export your save & import it here">
             <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
               <li>
-                In Afterplay, download / export your save state (or Gen&nbsp;3{" "}
+                In Afterplay, download / export your save (Gen&nbsp;3{" "}
                 <code className="rounded-lg bg-surface-2 px-1">.sav</code> /{" "}
                 <code className="rounded-lg bg-surface-2 px-1">.srm</code>).
               </li>
@@ -135,7 +145,7 @@ export default async function SetupPage({ params }: PageProps) {
                   <>
                     Open{" "}
                     <Link
-                      href={`/challenges/${challenge.slug}/me`}
+                      href={trainerHref}
                       className="font-bold text-accent-deep underline-offset-2 hover:underline"
                     >
                       your trainer board
@@ -161,6 +171,11 @@ export default async function SetupPage({ params }: PageProps) {
                 → R.I.P., then apply. You can re-import as the run progresses.
               </li>
             </ol>
+            {session?.user ? (
+              <Link href={trainerHref} className={`${CTA_PRIMARY} mt-4`}>
+                Open trainer board →
+              </Link>
+            ) : null}
           </Frame>
         </li>
 

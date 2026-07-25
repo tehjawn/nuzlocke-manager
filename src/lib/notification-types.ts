@@ -8,7 +8,7 @@ export const WELCOME_NOTIFICATION = {
   type: NOTIFICATION_TYPE_WELCOME,
   actionKey: NOTIFICATION_ACTION_WELCOME,
   title: "Welcome to Trash Pack 2026!",
-  body: "A message from Jason (@Oubori) — open to watch the welcome video.",
+  body: "Take a quick 3-page tour — your trainer board, the season, then how to get started.",
 } as const;
 
 export type NotificationItem = {

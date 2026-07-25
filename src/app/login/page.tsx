@@ -56,8 +56,8 @@ export default async function LoginPage({ searchParams }: PageProps) {
         <div className="max-w-lg">
           <h1 className="text-3xl font-bold tracking-tight">Sign in</h1>
           <p className="mt-2 text-muted">
-            Discord login drops you into the 2026 league with your own trainer
-            board.
+            Discord login joins you to Season 2026, then walks you through your
+            trainer board, the league, and how to get started.
           </p>
 
           <div className="mt-8 space-y-4">

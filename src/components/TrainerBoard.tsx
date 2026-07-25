@@ -519,8 +519,10 @@ export function TrainerBoard({
                   ) : null}
                   {canEdit && trainer.pokemon.length === 0 ? (
                     <p className="mt-3 text-sm text-muted">
-                      Your board is ready — edit your profile, tap party slots
-                      to add Pokémon, and toggle badges as you earn them.
+                      Your board is ready — edit your profile, then use{" "}
+                      <span className="font-semibold text-ink">Import save</span>{" "}
+                      under Main Squad once you have a file from Afterplay. You
+                      can also tap party slots and badges by hand.
                     </p>
                   ) : null}
                 </div>
@@ -538,14 +540,23 @@ export function TrainerBoard({
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                      data-onboarding="import-save"
+                      className={`pressable rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight ${
+                        trainer.pokemon.length === 0
+                          ? "bg-accent text-[var(--on-accent)]"
+                          : "border border-frame bg-surface"
+                      }`}
                       onClick={() => setSaveImportOpen(true)}
                     >
                       Import save
                     </button>
                     <button
                       type="button"
-                      className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-[var(--on-accent)]"
+                      className={`pressable rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight ${
+                        trainer.pokemon.length === 0
+                          ? "border border-frame bg-surface"
+                          : "bg-accent text-[var(--on-accent)]"
+                      }`}
                       onClick={() => openAddPokemon("MAIN")}
                     >
                       + Add

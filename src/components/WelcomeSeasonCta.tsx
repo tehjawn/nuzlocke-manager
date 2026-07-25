@@ -14,7 +14,7 @@ export function WelcomeSeasonCta() {
         onClick={() => setOpen(true)}
         className={`${CTA_PRIMARY} mt-4 w-full sm:w-auto`}
       >
-        Welcome to Season 2026
+        Watch welcome video
       </button>
       <WelcomeModal open={open} onDismiss={() => setOpen(false)} />
     </>

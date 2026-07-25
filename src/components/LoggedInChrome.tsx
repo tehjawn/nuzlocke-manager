@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { markNotificationReadAction } from "@/app/actions/notifications";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import { UserMenu } from "@/components/UserMenu";
-import { WelcomeModal } from "@/components/WelcomeModal";
+import { ONBOARDING_STEPS } from "@/lib/onboarding";
 import type { NotificationItem } from "@/lib/notification-types";
 import {
   isWelcomeNotification,
@@ -32,10 +34,11 @@ export function LoggedInChrome({
   notifications: initialNotifications,
   signOutAction,
 }: LoggedInChromeProps) {
+  const router = useRouter();
   const [notifications, setNotifications] = useState(() =>
     withPinnedWelcome(initialNotifications),
   );
-  const [welcomeOpen, setWelcomeOpen] = useState(() =>
+  const [tourOpen, setTourOpen] = useState(() =>
     hasUnreadWelcome(withPinnedWelcome(initialNotifications)),
   );
 
@@ -79,19 +82,22 @@ export function LoggedInChrome({
     }
   }
 
-  async function dismissWelcome() {
+  async function dismissTour() {
     const welcome = findWelcome(notifications);
     if (welcome) {
       await markRead(welcome);
     }
-    setWelcomeOpen(false);
+    setTourOpen(false);
   }
 
   async function onSelectNotification(notification: NotificationItem) {
-    await markRead(notification);
     if (isWelcomeNotification(notification)) {
-      setWelcomeOpen(true);
+      // Re-open the page tour; video stays on the season "Welcome" CTA.
+      setTourOpen(true);
+      router.push(ONBOARDING_STEPS[0].href);
+      return;
     }
+    await markRead(notification);
   }
 
   return (
@@ -108,7 +114,7 @@ export function LoggedInChrome({
           signOutAction={signOutAction}
         />
       </div>
-      <WelcomeModal open={welcomeOpen} onDismiss={dismissWelcome} />
+      <OnboardingTour open={tourOpen} onDismiss={dismissTour} />
     </>
   );
 }
