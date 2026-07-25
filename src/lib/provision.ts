@@ -1,6 +1,7 @@
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { getPrisma } from "@/lib/db";
 import { allocateUniqueHandle } from "@/lib/handles";
+import { ensureWelcomeNotification } from "@/lib/notifications";
 
 async function uniqueHandle(
   challengeId: string,
@@ -151,6 +152,10 @@ export async function ensureTrainerForChallenge(input: {
       message: `${handle} got a trainer board`,
     },
   });
+
+  if (isDefaultLeague) {
+    await ensureWelcomeNotification(input.userId);
+  }
 
   return {
     ok: true,

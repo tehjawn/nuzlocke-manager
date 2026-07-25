@@ -1,0 +1,168 @@
+"use client";
+
+import { useEffect, useId, useRef, useState } from "react";
+import type { NotificationItem } from "@/lib/notifications";
+import {
+  NOTIFICATION_ACTION_WELCOME,
+  NOTIFICATION_TYPE_WELCOME,
+} from "@/lib/notifications";
+
+type NotificationsMenuProps = {
+  notifications: NotificationItem[];
+  unreadCount: number;
+  onSelect: (notification: NotificationItem) => void;
+};
+
+export function NotificationsMenu({
+  notifications,
+  unreadCount,
+  onSelect,
+}: NotificationsMenuProps) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+  const badgeLabel =
+    unreadCount > 99 ? "99+" : unreadCount > 0 ? String(unreadCount) : null;
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div
+      ref={rootRef}
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        className="pressable relative inline-flex h-9 w-9 items-center justify-center bg-surface"
+        aria-label={
+          badgeLabel
+            ? `Notifications, ${badgeLabel} unread`
+            : "Notifications"
+        }
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <BellIcon />
+        {badgeLabel ? (
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-md bg-accent px-1 text-[10px] font-bold leading-none text-[var(--on-accent)]">
+            {badgeLabel}
+          </span>
+        ) : null}
+      </button>
+
+      {open ? (
+        <div className="absolute top-full right-0 z-50 pt-1">
+          <div
+            id={menuId}
+            role="menu"
+            className="gba-frame gba-frame-menu w-72 overflow-hidden sm:w-80"
+          >
+            <div className="relative z-[1] border-b border-frame/60 px-3 py-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">
+                Notifications
+              </p>
+            </div>
+            {notifications.length === 0 ? (
+              <p className="relative z-[1] px-3 py-4 text-sm text-muted">
+                You&apos;re all caught up.
+              </p>
+            ) : (
+              <ul className="relative z-[1] max-h-80 overflow-y-auto">
+                {notifications.map((notification) => {
+                  const unread = !notification.readAt;
+                  return (
+                    <li key={notification.id}>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={`flex w-full flex-col gap-0.5 px-3 py-2.5 text-left hover:bg-accent/15 ${
+                          unread ? "bg-accent/8" : ""
+                        }`}
+                        onClick={() => {
+                          onSelect(notification);
+                          setOpen(false);
+                        }}
+                      >
+                        <span className="flex items-start gap-2">
+                          {unread ? (
+                            <span
+                              aria-hidden
+                              className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-sm bg-accent"
+                            />
+                          ) : (
+                            <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0" />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium">
+                              {notification.title}
+                            </span>
+                            {notification.body ? (
+                              <span className="mt-0.5 block text-xs text-muted">
+                                {notification.body}
+                              </span>
+                            ) : null}
+                            {isWelcome(notification) ? (
+                              <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
+                                Open welcome →
+                              </span>
+                            ) : null}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function isWelcome(notification: NotificationItem) {
+  return (
+    notification.type === NOTIFICATION_TYPE_WELCOME ||
+    notification.actionKey === NOTIFICATION_ACTION_WELCOME
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      className="h-4 w-4 text-accent-deep"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <path
+        d="M5.5 8.2a4.5 4.5 0 019 0c0 2.2.5 3.3 1.2 4.3H4.3c.7-1 1.2-2.1 1.2-4.3z"
+        strokeLinejoin="round"
+      />
+      <path d="M8.2 14.8a1.8 1.8 0 003.6 0" strokeLinecap="round" />
+    </svg>
+  );
+}

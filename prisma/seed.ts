@@ -88,7 +88,6 @@ async function main() {
   const badges = await prisma.badgeDefinition.findMany({
     where: { challengeId: challenge.id },
   });
-  const badgeByKey = new Map(badges.map((b) => [b.key, b.id]));
 
   // Remove demo / unclaimed trainers only — keep real players
   const removed = await prisma.trainerProfile.deleteMany({
@@ -130,15 +129,14 @@ async function main() {
       },
     });
 
-    for (const key of trainer.earnedBadgeKeys) {
-      const badgeId = badgeByKey.get(key);
-      if (!badgeId) continue;
+    const earned = new Set(trainer.earnedBadgeKeys);
+    for (const badge of badges) {
       await prisma.badgeProgress.create({
         data: {
           trainerId: created.id,
-          badgeId,
-          earned: true,
-          earnedAt: new Date(),
+          badgeId: badge.id,
+          earned: earned.has(badge.key),
+          earnedAt: earned.has(badge.key) ? new Date() : null,
         },
       });
     }
@@ -149,7 +147,7 @@ async function main() {
       challengeId: challenge.id,
       type: "NOTE",
       message:
-        "Season refreshed: Ash demo board only. Discord login auto-provisions player trainers.",
+        "Season refreshed: Ash showcase demo board only. Discord login auto-provisions player trainers.",
     },
   });
 
@@ -159,7 +157,7 @@ async function main() {
 
   console.log("Seed complete.");
   console.log(`  Kept ${kept} player-linked trainer(s)`);
-  console.log(`  Demo: Ash (unclaimed)`);
+  console.log(`  Demo: Ash showcase board (unclaimed)`);
   console.log(`  GM invite: ${challenge.gmInviteCode}`);
   console.log(`  Player invite: ${challenge.playerInviteCode ?? "(none — public auto-join)"}`);
 }
