@@ -51,7 +51,7 @@ export function TrainerCard({
                   href={boardHref}
                   aria-label={`Open ${trainer.handle}'s board`}
                   title="Open board"
-                  className="pressable absolute top-0 right-0 inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-[var(--on-accent)] hover:brightness-105"
+                  className="pressable absolute top-0 right-0 inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent text-[var(--on-accent)] hover:brightness-105"
                 >
                   <ArrowIcon className="h-3.5 w-3.5" />
                 </Link>

@@ -494,7 +494,7 @@ function SpriteTile({
         unoptimized
         loading="lazy"
       />
-      <span className="w-full truncate text-[9px] font-bold text-muted">
+      <span className="w-full truncate text-[10px] font-bold text-muted">
         {name}
       </span>
     </button>

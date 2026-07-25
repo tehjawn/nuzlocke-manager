@@ -168,7 +168,7 @@ export function BadgeCase({
                 />
               ) : null}
               <span
-                className={`mt-0.5 font-display text-[8px] font-bold tracking-wide ${
+                className={`mt-0.5 font-display text-[9px] font-bold tracking-wide ${
                   on ? "text-ink" : "text-muted"
                 }`}
               >
