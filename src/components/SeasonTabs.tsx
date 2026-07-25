@@ -8,33 +8,23 @@ import type { ChallengeStatus } from "@/lib/challenge-types";
 type SeasonTabsProps = {
   slug: string;
   status?: ChallengeStatus;
-  /** "vertical" is the desktop rail list; "horizontal" is the mobile tab bar. */
-  orientation?: "vertical" | "horizontal";
 };
 
-type Tab = {
+export type SeasonTab = {
   href: string;
   label: string;
   match: "exact" | "prefix";
   icon: ReactNode;
 };
 
-export function SeasonTabs({
-  slug,
-  status = "ACTIVE",
-  orientation = "vertical",
-}: SeasonTabsProps) {
-  const pathname = usePathname();
+/** Section-tab config, shared by the desktop rail and the mobile tab bar. */
+export function getSeasonTabs(
+  slug: string,
+  status: ChallengeStatus = "ACTIVE",
+): SeasonTab[] {
   const base = `/challenges/${slug}`;
-  const horizontal = orientation === "horizontal";
-
-  const tabs: Tab[] = [
-    {
-      href: base,
-      label: "Trainers",
-      match: "exact",
-      icon: <PlayersIcon />,
-    },
+  return [
+    { href: base, label: "Trainers", match: "exact", icon: <PlayersIcon /> },
     {
       href: `${base}/encounters`,
       label: "Encounters",
@@ -60,22 +50,26 @@ export function SeasonTabs({
       icon: <TournamentIcon />,
     },
   ];
+}
+
+export function isSeasonTabActive(tab: SeasonTab, pathname: string): boolean {
+  return tab.match === "exact"
+    ? pathname === tab.href
+    : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+}
+
+export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
+  const pathname = usePathname();
+  const tabs = getSeasonTabs(slug, status);
 
   return (
     <div
       role="tablist"
       aria-label="Season sections"
-      className={`gba-inset flex gap-1 bg-surface-2/80 p-1.5 ${
-        horizontal
-          ? "flex-row overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          : "flex-col"
-      }`}
+      className="gba-inset flex flex-col gap-1 bg-surface-2/80 p-1.5"
     >
       {tabs.map((tab) => {
-        const active =
-          tab.match === "exact"
-            ? pathname === tab.href
-            : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+        const active = isSeasonTabActive(tab, pathname);
 
         return (
           <Link
@@ -86,8 +80,6 @@ export function SeasonTabs({
             prefetch
             data-tour={tab.label === "Trainers" ? "tab-trainers" : undefined}
             className={`flex items-center gap-3 rounded-[calc(var(--radius-sm)-2px)] border px-3 py-2.5 text-sm font-semibold transition-colors ${
-              horizontal ? "shrink-0 whitespace-nowrap" : ""
-            } ${
               active
                 ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
                 : "border-transparent text-ink hover:bg-surface"

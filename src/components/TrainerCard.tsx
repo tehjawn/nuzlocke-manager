@@ -38,24 +38,14 @@ export function TrainerCard({
         <Frame className="h-full">
           <div className="grid h-full grid-cols-[6rem_minmax(0,1fr)] gap-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-4">
             <div className="flex min-w-0 flex-col items-center gap-2 text-center">
-              <div className="relative w-full">
-                <Image
-                  src={avatarImageUrl(trainer.avatarSpriteKey)}
-                  alt=""
-                  width={72}
-                  height={72}
-                  className="pixelated mx-auto h-[4.5rem] w-[4.5rem] object-contain"
-                  unoptimized
-                />
-                <Link
-                  href={boardHref}
-                  aria-label={`Open ${trainer.handle}'s board`}
-                  title="Open board"
-                  className="pressable absolute top-0 right-0 inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent text-[var(--on-accent)] hover:brightness-105"
-                >
-                  <ArrowIcon className="h-3.5 w-3.5" />
-                </Link>
-              </div>
+              <Image
+                src={avatarImageUrl(trainer.avatarSpriteKey)}
+                alt=""
+                width={72}
+                height={72}
+                className="pixelated mx-auto h-[4.5rem] w-[4.5rem] object-contain"
+                unoptimized
+              />
               <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight">
                 <Link href={boardHref} className="hover:text-accent-deep">
                   {trainer.handle}
@@ -223,21 +213,5 @@ export function TrainerCard({
         onClose={() => setDetailsPokemon(null)}
       />
     </div>
-  );
-}
-
-function ArrowIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.25"
-      aria-hidden
-    >
-      <path d="M7 17L17 7" strokeLinecap="round" />
-      <path d="M9 7h8v8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

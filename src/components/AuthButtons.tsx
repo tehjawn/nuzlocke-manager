@@ -50,7 +50,9 @@ export async function AuthButtons({ hideMyTrainer = false }: AuthButtonsProps) {
   }
 
   return (
+    // On mobile the Discord login lives in the nav drawer (MobileMenuAuth).
     <form
+      className="hidden sm:block"
       action={async () => {
         "use server";
         await signIn("discord", { redirectTo: AFTER_LOGIN });

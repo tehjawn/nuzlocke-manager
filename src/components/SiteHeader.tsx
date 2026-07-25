@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AuthButtons } from "@/components/AuthButtons";
+import { MobileMenuAuth } from "@/components/MobileMenuAuth";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -31,16 +32,19 @@ export function SiteHeader({
         >
           <Image
             src="/nuzlocke-mark.png"
-            alt=""
+            alt="Nuzlocke Manager"
             width={36}
             height={36}
             className="size-8 shrink-0 rounded-md sm:size-9"
             priority
           />
-          <span className="min-w-0 truncate">Nuzlocke Manager</span>
+          {/* Wordmark is redundant next to the logo on phones — hide it there. */}
+          <span className="hidden min-w-0 truncate sm:inline">
+            Nuzlocke Manager
+          </span>
         </Link>
         {challengeYear != null && challengeSlug ? (
-          <p className="truncate text-sm text-muted">
+          <p className="hidden truncate text-sm text-muted sm:block">
             <Link
               href={`/challenges/${challengeSlug}`}
               className="hover:text-ink"
@@ -86,14 +90,19 @@ export function SiteHeader({
             </>
           ) : null}
         </div>
+        <AuthButtons hideMyTrainer={Boolean(myTrainerId)} />
+        {/* Theme lives inline on desktop; on mobile it moves into the drawer. */}
+        <span className="hidden sm:inline-flex">
+          <ThemeToggle />
+        </span>
         <MobileNavDrawer
           className="sm:hidden"
           challengeSlug={challengeSlug}
           showGm={showGm}
           myTrainerId={myTrainerId}
-        />
-        <AuthButtons hideMyTrainer={Boolean(myTrainerId)} />
-        <ThemeToggle />
+        >
+          <MobileMenuAuth />
+        </MobileNavDrawer>
       </nav>
     </header>
   );

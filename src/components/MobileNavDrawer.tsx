@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type NavLink = { href: string; label: string; tone?: "accent" | "gm" };
 
@@ -13,12 +14,16 @@ type MobileNavDrawerProps = {
   myTrainerId?: string | null;
   /** Applied to the trigger button (e.g. `sm:hidden`). */
   className?: string;
+  /** Account actions (server-rendered): My Profile + Sign Out, or Discord login. */
+  children?: ReactNode;
 };
 
 /**
- * Hamburger-triggered navigation drawer for narrow viewports. The site header
- * keeps its inline pill row at `sm+`; below that the primary links collapse in
- * here so the bar can't overflow. Reuses the app's portal + `data-modal-open`
+ * Hamburger-triggered navigation sheet for narrow viewports. The site header
+ * keeps its inline pill row at `sm+`; below that all the header controls — nav
+ * links, My Trainer, theme, and account actions — collapse in here so the bar
+ * only needs the logo, notifications bell, and this trigger. Slides in from the
+ * right at ~90% width, full height. Reuses the app's portal + `data-modal-open`
  * scroll-lock convention (see Modal.tsx and globals.css).
  */
 export function MobileNavDrawer({
@@ -26,6 +31,7 @@ export function MobileNavDrawer({
   showGm = false,
   myTrainerId = null,
   className = "",
+  children,
 }: MobileNavDrawerProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -129,22 +135,16 @@ export function MobileNavDrawer({
                 onClick={() => setOpen(false)}
                 className="absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px] motion-safe:animate-[drawer-scrim-in_200ms_ease-out]"
               />
-              {/*
-                Positioning lives on this wrapper: .gba-frame forces
-                position:relative (same specificity, later in globals.css), which
-                would otherwise beat Tailwind's `absolute`.
-              */}
-              <div className="absolute right-3 top-3 w-[min(16rem,calc(100vw-1.5rem))] motion-safe:animate-[drawer-panel-in_200ms_ease-out]">
-                <div
-                  ref={panelRef}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label="Site navigation"
-                  tabIndex={-1}
-                  onKeyDown={onPanelKeyDown}
-                  className="gba-frame flex flex-col outline-none"
-                >
-                  <div className="gba-frame-title relative z-[1] flex items-center justify-between px-3 py-2">
+              <div
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Site navigation"
+                tabIndex={-1}
+                onKeyDown={onPanelKeyDown}
+                className="absolute inset-y-0 right-0 flex w-[90%] max-w-sm flex-col border-l border-frame bg-surface shadow-[0_0_40px_-4px_var(--shadow-md)] outline-none motion-safe:animate-[drawer-sheet-in_240ms_cubic-bezier(0.22,1,0.36,1)]"
+              >
+                <div className="flex items-center justify-between border-b border-frame px-4 py-3">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                     Menu
                   </span>
@@ -152,29 +152,45 @@ export function MobileNavDrawer({
                     type="button"
                     aria-label="Close menu"
                     onClick={() => setOpen(false)}
-                    className="pressable inline-flex h-8 w-8 items-center justify-center rounded-full border-interactive/35 bg-interactive-soft text-ink"
+                    className="pressable inline-flex h-9 w-9 items-center justify-center rounded-full border-interactive/35 bg-interactive-soft text-ink"
                   >
                     <CloseIcon />
                   </button>
                 </div>
-                <nav className="relative z-[1] flex flex-col gap-1 p-2">
-                  {links.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setOpen(false)}
-                      className={`flex h-11 items-center rounded-md border border-transparent px-3 text-sm font-medium hover:border-interactive/40 hover:bg-interactive-soft/60 ${
-                        link.tone === "accent"
-                          ? "bg-accent font-semibold text-[var(--on-accent)] hover:bg-accent"
-                          : link.tone === "gm"
-                            ? "bg-accent-2/25"
-                            : "bg-surface"
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </nav>
+
+                <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
+                  <nav className="flex flex-col gap-1">
+                    {links.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setOpen(false)}
+                        className={`flex h-11 items-center rounded-md border border-transparent px-3 text-sm font-medium hover:border-interactive/40 hover:bg-interactive-soft/60 ${
+                          link.tone === "accent"
+                            ? "bg-accent font-semibold text-[var(--on-accent)] hover:bg-accent"
+                            : link.tone === "gm"
+                              ? "bg-accent-2/25"
+                              : "bg-surface"
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </nav>
+
+                  <div className="my-1 h-px bg-frame/60" />
+
+                  <div className="flex items-center justify-between rounded-md border border-frame bg-surface px-3 py-2">
+                    <span className="text-sm font-medium">Theme</span>
+                    <ThemeToggle />
+                  </div>
+
+                  {children ? (
+                    <>
+                      <div className="my-1 h-px bg-frame/60" />
+                      {children}
+                    </>
+                  ) : null}
                 </div>
               </div>
             </div>,
