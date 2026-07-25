@@ -1,12 +1,9 @@
 import Image from "next/image";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import { TypeBadge } from "@/components/TypeBadge";
-import { resolveMoveName } from "@/data/pokemon-lookups";
+import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
-import {
-  calcBattleStats,
-  formatBattleStatsShort,
-} from "@/lib/stats";
+import { calcBattleStats, formatBattleStatsShort } from "@/lib/stats";
 
 type PokemonSlotCardProps = {
   pokemon?: PokemonEntry | null;
@@ -147,9 +144,9 @@ export function PokemonSlotCard({
 
       {size === "md" && moves.length > 0 ? (
         <ul className="mt-auto grid grid-cols-2 gap-1 pt-3">
-          {moves.map((move) => (
+          {moves.map((move, index) => (
             <li
-              key={move}
+              key={`${index}-${move}`}
               className="rounded-sm border border-frame/30 bg-surface-2 px-1.5 py-1 text-[11px]"
             >
               {move}

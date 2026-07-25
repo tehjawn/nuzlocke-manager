@@ -9,7 +9,7 @@ import {
   type SaveMonCategory,
 } from "@/lib/gen3-save";
 import type { PokemonSlot } from "@/lib/challenge-types";
-import { resolveMoveNames } from "@/data/pokemon-lookups";
+import { resolveMoveNames } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
 
 export type SaveImportDraft = {

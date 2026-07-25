@@ -52,6 +52,14 @@ const NATURE_MODS: Record<string, { up: StatKey; down: StatKey }> = {
   Careful: { up: "spd", down: "spa" },
 };
 
+const NATURE_MODS_LOOKUP: Record<string, { up: StatKey; down: StatKey }> =
+  Object.fromEntries(
+    Object.entries(NATURE_MODS).flatMap(([name, mod]) => [
+      [name, mod],
+      [name.toLowerCase(), mod],
+    ]),
+  );
+
 export function baseStatsForSpecies(
   pokedexId: number | null | undefined,
 ): StatSpread | null {
@@ -64,7 +72,7 @@ function natureMultiplier(
   key: StatKey,
 ): number {
   if (!nature || key === "hp") return 1;
-  const mod = NATURE_MODS[nature];
+  const mod = NATURE_MODS_LOOKUP[nature] ?? NATURE_MODS_LOOKUP[nature.toLowerCase()];
   if (!mod) return 1;
   if (mod.up === key) return 1.1;
   if (mod.down === key) return 0.9;
@@ -73,7 +81,8 @@ function natureMultiplier(
 
 /**
  * Gen 3+ battle stats from base / IV / EV / level / nature.
- * Returns null when level or species base stats are missing.
+ * Returns null when level, IVs, or species base stats are missing — avoids
+ * implying 0 IVs for manually logged Pokémon that never recorded them.
  */
 export function calcBattleStats(input: {
   pokedexId: number | null | undefined;
@@ -85,8 +94,9 @@ export function calcBattleStats(input: {
   const base = baseStatsForSpecies(input.pokedexId);
   const level = input.level;
   if (!base || level == null || level < 1 || level > 100) return null;
+  if (input.ivs == null) return null;
 
-  const ivs = input.ivs ?? EMPTY_IVS;
+  const ivs = input.ivs;
   const evs = input.evs ?? EMPTY_EVS;
   const out = { ...EMPTY_IVS };
 

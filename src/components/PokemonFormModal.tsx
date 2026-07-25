@@ -9,11 +9,11 @@ import { StatSpreadEditor } from "@/components/StatSpreadEditor";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import { heldItemSpriteUrl, searchHeldItems } from "@/data/pokemon-index";
 import {
-  resolveMoveName,
   searchAbilities,
   searchCatchRoutes,
   searchNatures,
 } from "@/data/pokemon-lookups";
+import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
 import {
   clampEvs,

@@ -3,8 +3,8 @@
 import Image from "next/image";
 import { Modal } from "@/components/Modal";
 import { TypeBadge } from "@/components/TypeBadge";
-import { resolveMoveName } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
+import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
 import {
   calcBattleStats,
@@ -125,17 +125,21 @@ export function PokemonDetailsModal({
           ) : null}
 
           {!isEmptySpread(pokemon.ivs) || !isEmptySpread(pokemon.evs) ? (
-            <dl className="grid grid-cols-1 gap-y-1.5 text-xs sm:grid-cols-2 sm:gap-x-3">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
               {!isEmptySpread(pokemon.ivs) ? (
                 <>
                   <dt className="text-muted">IVs</dt>
-                  <dd className="font-mono">{formatSpreadShort(pokemon.ivs)}</dd>
+                  <dd className="font-mono break-words">
+                    {formatSpreadShort(pokemon.ivs)}
+                  </dd>
                 </>
               ) : null}
               {!isEmptySpread(pokemon.evs) ? (
                 <>
                   <dt className="text-muted">EVs</dt>
-                  <dd className="font-mono">{formatSpreadShort(pokemon.evs)}</dd>
+                  <dd className="font-mono break-words">
+                    {formatSpreadShort(pokemon.evs)}
+                  </dd>
                 </>
               ) : null}
             </dl>
@@ -147,9 +151,9 @@ export function PokemonDetailsModal({
                 Moves
               </p>
               <ul className="grid grid-cols-2 gap-1.5">
-                {moves.map((move) => (
+                {moves.map((move, index) => (
                   <li
-                    key={move}
+                    key={`${index}-${move}`}
                     className="rounded-sm border border-frame/30 bg-surface-2 px-2 py-1.5 text-sm"
                   >
                     {move}

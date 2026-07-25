@@ -67,8 +67,7 @@ export function TrainerCard({ challenge, trainer }: TrainerCardProps) {
           </p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {Array.from({ length: 6 }).map((_, i) => {
-              const mon = main.find((p) => p.partyIndex === i) ?? main[i];
-              const label = mon ? mon.nickname || mon.species : "Empty";
+              const mon = main.find((p) => p.partyIndex === i);
               if (!mon) {
                 return (
                   <div
@@ -80,6 +79,7 @@ export function TrainerCard({ challenge, trainer }: TrainerCardProps) {
                   </div>
                 );
               }
+              const label = mon.nickname || mon.species;
               return (
                 <button
                   key={mon.id}
@@ -101,7 +101,7 @@ export function TrainerCard({ challenge, trainer }: TrainerCardProps) {
                     unoptimized
                   />
                   <span className="max-w-full truncate px-0.5 text-[10px] font-bold leading-tight text-muted group-hover:text-ink">
-                    {mon.nickname || mon.species}
+                    {label}
                   </span>
                 </button>
               );
