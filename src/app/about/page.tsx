@@ -82,8 +82,10 @@ export default function AboutPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm leading-relaxed text-muted">
                   Trash Pack is a Philadelphia friends group of weebs, gamers,
-                  and not-normies. We run annual Nuzlocke seasons, roast each
-                  other&apos;s teams, and occasionally put the chaos on camera.
+                  and not-normies. This is our first Nuzlocke season — we cheer
+                  each other on through the rough patches and celebrate the
+                  wins. Some of us also hang out on YouTube reacting to
+                  seasonal anime.
                 </p>
                 <a
                   href={TRASH_PACK_YT}
