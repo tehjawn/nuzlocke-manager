@@ -1458,12 +1458,15 @@ export const TRAINER_SPRITE_KEYS = [
 
 export type TrainerSpriteKey = (typeof TRAINER_SPRITE_KEYS)[number];
 
-export function searchTrainerSprites(query: string, limit = 96): string[] {
+/** Filter Showdown trainer keys. Omit `limit` to return the full match set. */
+export function searchTrainerSprites(query: string, limit?: number): string[] {
   const q = query.trim().toLowerCase().replace(/\s+/g, "");
   const all = TRAINER_SPRITE_KEYS as readonly string[];
-  if (!q) return all.slice(0, limit) as string[];
-  const hits = all.filter((k) => k.replace(/-/g, "").includes(q) || k.includes(q));
-  return hits.slice(0, Math.max(limit, 240));
+  const hits = !q
+    ? all
+    : all.filter((k) => k.replace(/-/g, "").includes(q) || k.includes(q));
+  if (limit == null) return hits as string[];
+  return hits.slice(0, limit) as string[];
 }
 
 export function formatTrainerSpriteLabel(key: string): string {

@@ -93,7 +93,7 @@ export function SaveImportModal({
     SaveImportDraft[]
   > | null>(null);
   const [trainerName, setTrainerName] = useState<string | null>(null);
-  const [applyTrainerName, setApplyTrainerName] = useState(true);
+  const [applyTrainerName, setApplyTrainerName] = useState(false);
   const [badgeKeys, setBadgeKeys] = useState<string[]>([]);
   const [applyBadges, setApplyBadges] = useState(true);
   const [badgesReliable, setBadgesReliable] = useState(false);
@@ -107,7 +107,7 @@ export function SaveImportModal({
     setWarnings([]);
     setSections(null);
     setTrainerName(null);
-    setApplyTrainerName(true);
+    setApplyTrainerName(false);
     setBadgeKeys([]);
     setApplyBadges(true);
     setBadgesReliable(false);

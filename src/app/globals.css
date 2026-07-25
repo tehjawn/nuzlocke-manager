@@ -410,6 +410,17 @@ button:disabled,
   }
 }
 
+@keyframes sprite-preview-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .trainer-carousel-track {
   animation: trainer-carousel-scroll 48s linear infinite;
 }
