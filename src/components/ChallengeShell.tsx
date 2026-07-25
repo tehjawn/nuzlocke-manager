@@ -58,8 +58,10 @@ export function ChallengeShell({
                 <dt className="text-xs font-semibold tracking-tight text-muted">
                   Season Status
                 </dt>
-                <dd className="mt-0.5 font-semibold text-accent-deep">
-                  {seasonStatusLabel(status)}
+                <dd className="mt-1">
+                  <span className="inline-block rounded-lg bg-accent-2/20 px-2 py-0.5 text-xs font-semibold tracking-tight text-accent-ink">
+                    {seasonStatusLabel(status)}
+                  </span>
                 </dd>
               </div>
               <div>

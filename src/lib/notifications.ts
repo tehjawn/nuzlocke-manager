@@ -2,6 +2,8 @@ import { getPrisma } from "@/lib/db";
 import {
   NOTIFICATION_ACTION_WELCOME,
   NOTIFICATION_TYPE_WELCOME,
+  WELCOME_NOTIFICATION,
+  withPinnedWelcome,
   type NotificationItem,
 } from "@/lib/notification-types";
 
@@ -9,6 +11,9 @@ export type { NotificationItem } from "@/lib/notification-types";
 export {
   NOTIFICATION_ACTION_WELCOME,
   NOTIFICATION_TYPE_WELCOME,
+  WELCOME_NOTIFICATION,
+  isWelcomeNotification,
+  withPinnedWelcome,
 } from "@/lib/notification-types";
 
 function toItem(row: {
@@ -44,12 +49,15 @@ export async function ensureWelcomeNotification(userId: string) {
     },
     create: {
       userId,
-      type: NOTIFICATION_TYPE_WELCOME,
-      actionKey: NOTIFICATION_ACTION_WELCOME,
-      title: "Welcome to Trash Pack 2026!",
-      body: "A message from Jason (@Oubori) — open to watch the welcome video.",
+      type: WELCOME_NOTIFICATION.type,
+      actionKey: WELCOME_NOTIFICATION.actionKey,
+      title: WELCOME_NOTIFICATION.title,
+      body: WELCOME_NOTIFICATION.body,
     },
-    update: {},
+    update: {
+      title: WELCOME_NOTIFICATION.title,
+      body: WELCOME_NOTIFICATION.body,
+    },
   });
 }
 
@@ -58,6 +66,8 @@ export async function listNotificationsForUser(
   limit = 20,
 ): Promise<NotificationItem[]> {
   const prisma = getPrisma();
+  // Every signed-in player gets the hard-coded welcome row (for read-state).
+  await ensureWelcomeNotification(userId);
   const rows = await prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -72,7 +82,7 @@ export async function listNotificationsForUser(
       createdAt: true,
     },
   });
-  return rows.map(toItem);
+  return withPinnedWelcome(rows.map(toItem));
 }
 
 export async function countUnreadNotifications(userId: string): Promise<number> {

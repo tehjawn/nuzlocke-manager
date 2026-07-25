@@ -2,10 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { NotificationItem } from "@/lib/notification-types";
-import {
-  NOTIFICATION_ACTION_WELCOME,
-  NOTIFICATION_TYPE_WELCOME,
-} from "@/lib/notification-types";
+import { isWelcomeNotification } from "@/lib/notification-types";
 
 type NotificationsMenuProps = {
   notifications: NotificationItem[];
@@ -121,7 +118,7 @@ export function NotificationsMenu({
                                 {notification.body}
                               </span>
                             ) : null}
-                            {isWelcome(notification) ? (
+                            {isWelcomeNotification(notification) ? (
                               <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
                                 Open welcome →
                               </span>
@@ -138,13 +135,6 @@ export function NotificationsMenu({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function isWelcome(notification: NotificationItem) {
-  return (
-    notification.type === NOTIFICATION_TYPE_WELCOME ||
-    notification.actionKey === NOTIFICATION_ACTION_WELCOME
   );
 }
 

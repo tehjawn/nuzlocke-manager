@@ -24,7 +24,7 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
   const tabs: Tab[] = [
     {
       href: base,
-      label: "This Season's Trainers",
+      label: "Trainers",
       match: "exact",
       icon: <PlayersIcon />,
     },

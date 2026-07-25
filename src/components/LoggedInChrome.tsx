@@ -7,8 +7,8 @@ import { UserMenu } from "@/components/UserMenu";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import type { NotificationItem } from "@/lib/notification-types";
 import {
-  NOTIFICATION_ACTION_WELCOME,
-  NOTIFICATION_TYPE_WELCOME,
+  isWelcomeNotification,
+  withPinnedWelcome,
 } from "@/lib/notification-types";
 
 type LoggedInChromeProps = {
@@ -19,20 +19,11 @@ type LoggedInChromeProps = {
 };
 
 function hasUnreadWelcome(items: NotificationItem[]) {
-  return items.some(
-    (n) =>
-      !n.readAt &&
-      (n.type === NOTIFICATION_TYPE_WELCOME ||
-        n.actionKey === NOTIFICATION_ACTION_WELCOME),
-  );
+  return items.some((n) => !n.readAt && isWelcomeNotification(n));
 }
 
 function findWelcome(items: NotificationItem[]) {
-  return items.find(
-    (n) =>
-      n.type === NOTIFICATION_TYPE_WELCOME ||
-      n.actionKey === NOTIFICATION_ACTION_WELCOME,
-  );
+  return items.find(isWelcomeNotification);
 }
 
 export function LoggedInChrome({
@@ -41,29 +32,48 @@ export function LoggedInChrome({
   notifications: initialNotifications,
   signOutAction,
 }: LoggedInChromeProps) {
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState(() =>
+    withPinnedWelcome(initialNotifications),
+  );
   const [welcomeOpen, setWelcomeOpen] = useState(() =>
-    hasUnreadWelcome(initialNotifications),
+    hasUnreadWelcome(withPinnedWelcome(initialNotifications)),
   );
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
   async function markRead(notification: NotificationItem) {
     if (notification.readAt) return;
+    // Sentinel id used only when DB has not provisioned a welcome row yet.
+    if (notification.id === "welcome") {
+      setNotifications((prev) =>
+        withPinnedWelcome(
+          prev.map((n) =>
+            isWelcomeNotification(n)
+              ? { ...n, readAt: new Date().toISOString() }
+              : n,
+          ),
+        ),
+      );
+      return;
+    }
     setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === notification.id
-          ? { ...n, readAt: new Date().toISOString() }
-          : n,
+      withPinnedWelcome(
+        prev.map((n) =>
+          n.id === notification.id
+            ? { ...n, readAt: new Date().toISOString() }
+            : n,
+        ),
       ),
     );
     const result = await markNotificationReadAction(notification.id);
     if (!result.ok) {
       setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notification.id
-            ? { ...n, readAt: notification.readAt }
-            : n,
+        withPinnedWelcome(
+          prev.map((n) =>
+            n.id === notification.id
+              ? { ...n, readAt: notification.readAt }
+              : n,
+          ),
         ),
       );
     }
@@ -79,10 +89,7 @@ export function LoggedInChrome({
 
   async function onSelectNotification(notification: NotificationItem) {
     await markRead(notification);
-    if (
-      notification.type === NOTIFICATION_TYPE_WELCOME ||
-      notification.actionKey === NOTIFICATION_ACTION_WELCOME
-    ) {
+    if (isWelcomeNotification(notification)) {
       setWelcomeOpen(true);
     }
   }

@@ -16,8 +16,12 @@ export function AccountForm({
   const [name, setName] = useState(displayName);
   const [bioValue, setBio] = useState(bio);
   const [imageValue, setImage] = useState(image);
+  const [previewBroken, setPreviewBroken] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const previewUrl = imageValue.trim();
+  const showPreview = previewUrl.length > 0 && !previewBroken;
 
   return (
     <form
@@ -57,14 +61,37 @@ export function AccountForm({
           onChange={(e) => setBio(e.target.value)}
         />
       </label>
-      <label className="block text-sm">
+      <div className="block text-sm">
         <span className="mb-1 block font-bold text-muted">Avatar URL</span>
+        <div className="mb-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border border-frame bg-surface-2">
+          {showPreview ? (
+            // User-supplied URLs may be any host — skip next/image remotePatterns.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt="Avatar preview"
+              className="h-full w-full object-cover"
+              onError={() => setPreviewBroken(true)}
+            />
+          ) : (
+            <span className="px-1 text-center text-[10px] font-semibold text-muted">
+              {previewUrl ? "Invalid URL" : "No preview"}
+            </span>
+          )}
+        </div>
+        <label className="sr-only" htmlFor="account-avatar-url">
+          Avatar URL
+        </label>
         <input
+          id="account-avatar-url"
           className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
           value={imageValue}
-          onChange={(e) => setImage(e.target.value)}
+          onChange={(e) => {
+            setImage(e.target.value);
+            setPreviewBroken(false);
+          }}
         />
-      </label>
+      </div>
       <button
         type="submit"
         disabled={pending}
