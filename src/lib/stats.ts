@@ -28,8 +28,10 @@ export const EMPTY_EVS: StatSpread = { ...EMPTY_IVS };
 
 const SPECIES_BASE_STATS = baseStatsData.stats as Record<string, StatSpread>;
 
+type BattleStatKey = Exclude<StatKey, "hp">;
+
 /** Nature → raised / lowered attack stats (neutral natures omitted). */
-const NATURE_MODS: Record<string, { up: StatKey; down: StatKey }> = {
+const NATURE_MODS: Record<string, { up: BattleStatKey; down: BattleStatKey }> = {
   Lonely: { up: "atk", down: "def" },
   Brave: { up: "atk", down: "spe" },
   Adamant: { up: "atk", down: "spa" },
@@ -52,13 +54,34 @@ const NATURE_MODS: Record<string, { up: StatKey; down: StatKey }> = {
   Careful: { up: "spd", down: "spa" },
 };
 
-const NATURE_MODS_LOOKUP: Record<string, { up: StatKey; down: StatKey }> =
-  Object.fromEntries(
-    Object.entries(NATURE_MODS).flatMap(([name, mod]) => [
-      [name, mod],
-      [name.toLowerCase(), mod],
-    ]),
-  );
+const NATURE_MODS_LOOKUP: Record<
+  string,
+  { up: BattleStatKey; down: BattleStatKey }
+> = Object.fromEntries(
+  Object.entries(NATURE_MODS).flatMap(([name, mod]) => [
+    [name, mod],
+    [name.toLowerCase(), mod],
+  ]),
+);
+
+const STAT_FULL_LABELS: Record<BattleStatKey, string> = {
+  atk: "Attack",
+  def: "Defense",
+  spa: "Special Attack",
+  spd: "Special Defense",
+  spe: "Speed",
+};
+
+/** Human-readable nature effect, e.g. "Increases Special Attack / Decreases Speed". */
+export function natureEffectDescription(
+  nature: string | null | undefined,
+): string {
+  if (!nature?.trim()) return "Does not modify stats";
+  const mod =
+    NATURE_MODS_LOOKUP[nature] ?? NATURE_MODS_LOOKUP[nature.toLowerCase()];
+  if (!mod) return "Does not modify stats";
+  return `Increases ${STAT_FULL_LABELS[mod.up]} / Decreases ${STAT_FULL_LABELS[mod.down]}`;
+}
 
 export function baseStatsForSpecies(
   pokedexId: number | null | undefined,
