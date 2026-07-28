@@ -72,50 +72,50 @@ const rules = [
   {
     id: "r1",
     sortOrder: 1,
-    title: "Faint = dead",
-    body: "Any Pokémon that faints must be released or boxed permanently. It is considered “dead” for the rest of the challenge.",
+    title: "Fainted Pokémon = Dead",
+    body: "",
     isCore: true,
   },
   {
     id: "r2",
     sortOrder: 2,
-    title: "First encounter",
-    body: "Only the first wild Pokémon encountered in a route, city, or area can be caught. If it flees or faints, the opportunity in that area is lost. Tip: Repels can help navigate toward desired encounters.",
+    title: "First Encounter per Area",
+    body: "Only the first wild Pokémon encountered in a route, city, or area can be caught. If it flees or faints, the opportunity in that area is lost. (Tip: Repels can help navigate toward desired encounters).",
     isCore: true,
   },
   {
     id: "r3",
     sortOrder: 3,
-    title: "Nicknames",
-    body: "The player must nickname all Pokémon they catch or obtain.",
+    title: "No Breeding",
+    body: "For the principles of the Nuzlocke, breeding is not allowed.",
     isCore: true,
   },
   {
     id: "r4",
     sortOrder: 4,
-    title: "Revive Token",
-    body: "Trainers may use the Revive Token on their board to reload a save after a mistake. Once used, they cannot reload a save again.",
-    isCore: false,
+    title: "No Duplicate Held Items",
+    body: "",
+    isCore: true,
   },
   {
     id: "r5",
     sortOrder: 5,
-    title: "No duplicate held items",
-    body: "No duplicate items can be equipped across your entire Pokémon team.",
+    title: "1 Revive Token",
+    body: "",
     isCore: false,
   },
   {
     id: "r6",
     sortOrder: 6,
-    title: "Items die with the Pokémon",
-    body: "Any held item on a Pokémon that faints is lost forever. Remove the item and permanently box or release the fainted Pokémon with its gear (customize as the group agrees).",
+    title: "No Save Scumming",
+    body: "Accept the mistakes and misfortunes, and keep on progressing. Do not re-load save files.",
     isCore: false,
   },
   {
     id: "r7",
     sortOrder: 7,
-    title: "Keep the board honest",
-    body: "Trainers must actively update their trainer board so everyone can plan around transparent conditions.",
+    title: "Honor System",
+    body: "Trainers must actively update their trainer board as often and honest as possible while abiding by the rules.",
     isCore: false,
   },
 ];
@@ -126,27 +126,55 @@ const faqs = [
     sortOrder: 1,
     question: "What's the end goal?",
     answer:
-      "Initiate a ladder tournament between everyone's Main Squad. The Main Squad locks in immediately after defeating the Champion, even if Pokémon faint in that battle. If the whole Main Squad faints during the Champion fight, retry with reserves.",
+      "To initiate a bracket based tournament between everyone's Main Squad. The Main Squad locks in immediately after defeating the Champion, even if Pokémon faint in the final battle. If the whole Main Squad faints during the Champion fight, retry with reserves.",
   },
   {
     id: "f2",
     sortOrder: 2,
-    question: "How do I get a trainer board?",
+    question: "What if I don't have any more playable Pokémon?",
     answer:
-      "Sign in with Discord. For public seasons, you’re automatically added as a trainer and can edit your board right away. Ash Ketchum on the league board is just a demo example.",
+      'If all playable Pokémon are dead, then the Nuzlocke run is considered a wipe. You\'ll have to start the game over and try the Nuzlocke challenge again. Navigate to the "Game Mode Setting" page on how to set up your game again.',
   },
   {
     id: "f3",
     sortOrder: 3,
-    question: "What if I catch a shiny?",
-    answer: "Toggle Shiny on the Pokémon slot when you add or edit it.",
+    question: "How much time do I have to complete my Nuzlocke challenge?",
+    answer:
+      "You'll be given roughly 3 months after the official announcement of the challenge to complete your run. As time gets closer, a strict deadline will be announced followed by applicable handicaps to participants that are not close to completing their run.",
   },
   {
     id: "f4",
     sortOrder: 4,
-    question: "How do Game Masters work?",
+    question: "What generation (Gen) of Pokémon are we working with?",
     answer:
-      "Ask an existing GM for the GM invite code, or have them promote you from the GM console. GMs can edit everyone’s boards, rules, and FAQ.",
+      "Only Pokémon from Gen 1 through 4 will be usable for this Nuzlocke Challenge. In-game Trainers and Gym Leaders will maintain their default Gen 1-9 Pokémon Line ups to allow participants to strategize how to defeat them.",
+  },
+  {
+    id: "f5",
+    sortOrder: 5,
+    question: "What if I catch a shiny? How do I edit that in my Trainer Board?",
+    answer: "Toggle Shiny on the Pokémon slot when you add or edit it.",
+  },
+  {
+    id: "f6",
+    sortOrder: 6,
+    question: "What's the level cap for training my Pokémon?",
+    answer:
+      "In game rules has it set that your Pokémon level will be equal to the next gym leader's highest level Pokémon. Therefore, if your next undefeated Gym Leader's highest Pokémon level is 15, then all your Pokémon levels cannot surpass level 15 until that Gym leader is defeated.",
+  },
+  {
+    id: "f7",
+    sortOrder: 7,
+    question: "Why can't I use potions or consumable items during battle?",
+    answer:
+      'In game rules has it set that you must strategize "switching" or using "healing moves" to save your Pokémon. Generally, most Nuzlocke playthroughs enforce the rule of not using consumable items during battle.',
+  },
+  {
+    id: "f8",
+    sortOrder: 8,
+    question: "I'm new to the game, what are some resources I can use?",
+    answer:
+      "Navigate to the [Tools] page to get the summarized understanding of how to train, battle, and play Pokémon.",
   },
 ];
 
