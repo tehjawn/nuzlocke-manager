@@ -10,7 +10,7 @@ import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
-import { displayName, pokemonInSlot } from "@/lib/trainer-display";
+import { pokemonInSlot } from "@/lib/trainer-display";
 import {
   avatarImageClassName,
   avatarImageUrl,
@@ -195,49 +195,71 @@ export function TrainerCard({
       ) : (
         <Frame className="group transition-[border-color,box-shadow] duration-200 hover:border-interactive/45">
           {/*
-            List layout: identity rail (avatar + name + status) | badges,
-            squad, footer stats/revive. Whole card opens the board; squad
-            slots stay interactive above the stretched link.
+            List layout:
+            - <sm: identity + badges on one row, squad/stats/revive below
+              (avoids clipping the 3×2 grid on narrow phones)
+            - sm+: identity rail | badges + squad + footer (existing)
+            Whole card opens the board; squad slots stay above the link.
           */}
           <Link
             href={boardHref}
             className="absolute inset-0 z-1"
             aria-label={boardLabel}
           />
-          <div className="relative flex items-center gap-3 sm:gap-4">
-            <div className="flex w-24 shrink-0 flex-col items-center gap-1.5 text-center sm:w-28 md:w-32">
-              <Image
-                src={avatarImageUrl(trainer.avatarSpriteKey)}
-                alt=""
-                width={112}
-                height={112}
-                className={avatarImageClassName(
-                  trainer.avatarSpriteKey,
-                  "h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28",
-                )}
-                unoptimized
-              />
-              <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep sm:text-base">
-                {displayName(trainer)}
-              </h2>
-              {hasStatus ? (
-                <div title={statusTitle} className="w-full min-w-0">
-                  <StatusLine
-                    emoji={trainer.statusEmoji}
-                    text={trainer.statusText}
-                    empty=""
-                    className="line-clamp-3 text-xs leading-snug text-muted"
-                  />
+          <div className="relative flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex items-start justify-between gap-2 sm:contents">
+              <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 sm:w-28 sm:flex-none sm:shrink-0 sm:items-center sm:text-center md:w-32">
+                <Image
+                  src={avatarImageUrl(trainer.avatarSpriteKey)}
+                  alt=""
+                  width={112}
+                  height={112}
+                  className={avatarImageClassName(
+                    trainer.avatarSpriteKey,
+                    "h-14 w-14 shrink-0 sm:h-24 sm:w-24 md:h-28 md:w-28",
+                  )}
+                  unoptimized
+                />
+                <div className="min-w-0 w-full">
+                  <h2 className="truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep sm:text-base">
+                    {trainer.handle}
+                  </h2>
+                  {trainer.realName?.trim() ? (
+                    <p className="mt-0.5 truncate text-xs text-muted/80">
+                      {trainer.realName.trim()}
+                    </p>
+                  ) : null}
+                  {hasStatus ? (
+                    <div title={statusTitle} className="mt-0.5 min-w-0">
+                      <StatusLine
+                        emoji={trainer.statusEmoji}
+                        text={trainer.statusText}
+                        empty=""
+                        className="line-clamp-2 text-xs leading-snug text-muted sm:line-clamp-3"
+                      />
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              </div>
+
+              <div className="max-w-[58%] shrink-0 sm:hidden">
+                <BadgeCase
+                  badges={challenge.badges}
+                  earnedKeys={trainer.earnedBadgeKeys}
+                  strip
+                  className="justify-end"
+                />
+              </div>
             </div>
 
             <div className="min-w-0 flex-1 space-y-2.5">
-              <BadgeCase
-                badges={challenge.badges}
-                earnedKeys={trainer.earnedBadgeKeys}
-                strip
-              />
+              <div className="hidden sm:block">
+                <BadgeCase
+                  badges={challenge.badges}
+                  earnedKeys={trainer.earnedBadgeKeys}
+                  strip
+                />
+              </div>
 
               <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
                 {Array.from({ length: 6 }).map((_, i) => {

@@ -6,6 +6,7 @@ import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { AboutIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { JumpTrigger } from "@/features/jump";
+import { getDefaultJumpChallenge } from "@/lib/challenges";
 
 /** Shared shell width for the site header and page content on every page. */
 export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
@@ -17,12 +18,21 @@ type SiteHeaderProps = {
   myTrainerId?: string | null;
 };
 
-export function SiteHeader({
+export async function SiteHeader({
   challengeSlug,
   challengeYear,
   showGm = false,
   myTrainerId = null,
 }: SiteHeaderProps) {
+  // Global pages (home, about, login, …) omit season props — fall back so the
+  // desktop subtitle stays omnipresent while only one league is live.
+  const defaults =
+    challengeSlug == null || challengeYear == null
+      ? await getDefaultJumpChallenge()
+      : null;
+  const seasonSlug = challengeSlug ?? defaults?.slug ?? null;
+  const seasonYear = challengeYear ?? defaults?.year ?? null;
+
   return (
     <header
       className={`relative z-40 mx-auto flex w-full items-center justify-between gap-4 px-4 py-4 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
@@ -45,13 +55,13 @@ export function SiteHeader({
             Nuzlocke Manager
           </span>
         </Link>
-        {challengeYear != null && challengeSlug ? (
+        {seasonYear != null && seasonSlug ? (
           <p className="hidden truncate text-sm text-muted sm:block">
             <Link
-              href={`/challenges/${challengeSlug}`}
+              href={`/challenges/${seasonSlug}`}
               className="hover:text-ink"
             >
-              Season {challengeYear} League
+              Season {seasonYear} League
             </Link>
           </p>
         ) : null}
@@ -76,9 +86,9 @@ export function SiteHeader({
             <AboutIcon className="h-4 w-4 text-ink/70" />
             About
           </Link>
-          {challengeSlug ? (
+          {seasonSlug ? (
             <Link
-              href={`/challenges/${challengeSlug}/rules`}
+              href={`/challenges/${seasonSlug}/rules`}
               className="pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
             >
               <RulesIcon className="h-4 w-4 text-ink/70" />
@@ -109,7 +119,7 @@ export function SiteHeader({
         </span>
         <MobileNavDrawer
           className="sm:hidden"
-          challengeSlug={challengeSlug}
+          challengeSlug={seasonSlug ?? undefined}
           showGm={showGm}
           myTrainerId={myTrainerId}
         >

@@ -101,9 +101,7 @@ export function GameModeSettingsGuide() {
   return (
     <div className="space-y-6">
       <p className="text-sm leading-relaxed text-muted">
-        After the intro, work through the Game Mode menus and match the season
-        defaults below. Use L / R in-game to move between screens, then Save on
-        Challenges.
+        Use L / R in-game to move between screens, then Save on Challenges.
       </p>
 
       <div className="space-y-8">
