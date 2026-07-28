@@ -5,7 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { AboutIcon, GmIcon, MyTrainerIcon } from "@/components/nav-icons";
+import {
+  AboutIcon,
+  GmIcon,
+  MyTrainerIcon,
+  RulesIcon,
+} from "@/components/nav-icons";
 import { JumpTrigger } from "@/features/jump";
 
 type NavLink = { href: string; label: string; icon: ReactNode };
@@ -53,6 +58,13 @@ export function MobileNavDrawer({
     // { href: "/challenges", label: "Seasons", icon: <SeasonsIcon /> },
     { href: "/about", label: "About", icon: <AboutIcon /> },
   ];
+  if (challengeSlug) {
+    links.push({
+      href: `/challenges/${challengeSlug}/rules`,
+      label: "Rules / FAQ",
+      icon: <RulesIcon />,
+    });
+  }
   if (challengeSlug && myTrainerId) {
     links.push({
       href: `/challenges/${challengeSlug}/me`,

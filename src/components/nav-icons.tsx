@@ -30,6 +30,19 @@ export function AboutIcon({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+export function RulesIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path
+        d="M7 4.5h8.5L18 7v12.5H7A1.5 1.5 0 015.5 18V6A1.5 1.5 0 017 4.5z"
+        strokeLinejoin="round"
+      />
+      <path d="M15.5 4.5V7H18" strokeLinejoin="round" />
+      <path d="M9 11h6M9 14.5h6M9 18h3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function MyTrainerIcon({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg {...base} className={className}>

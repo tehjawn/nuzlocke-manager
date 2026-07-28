@@ -5,7 +5,6 @@ import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { MobileWorkspace } from "@/components/MobileWorkspace";
 import { ScrollFadeRail } from "@/components/ScrollFadeRail";
-import { SeasonRulesLink } from "@/components/SeasonRulesLink";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { GetStartedSeasonCta } from "@/components/GetStartedSeasonCta";
@@ -128,7 +127,6 @@ export function ChallengeShell({
         >
           {generalInfo}
           <SeasonTabs slug={slug} status={status} />
-          <SeasonRulesLink slug={slug} />
           {packFeed}
         </ScrollFadeRail>
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AuthButtons } from "@/components/AuthButtons";
 import { MobileMenuAuth } from "@/components/MobileMenuAuth";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
-import { AboutIcon, MyTrainerIcon } from "@/components/nav-icons";
+import { AboutIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { JumpTrigger } from "@/features/jump";
 
@@ -76,6 +76,15 @@ export function SiteHeader({
             <AboutIcon className="h-4 w-4 text-ink/70" />
             About
           </Link>
+          {challengeSlug ? (
+            <Link
+              href={`/challenges/${challengeSlug}/rules`}
+              className="pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
+            >
+              <RulesIcon className="h-4 w-4 text-ink/70" />
+              Rules / FAQ
+            </Link>
+          ) : null}
           {challengeSlug && myTrainerId ? (
             <Link
               href={`/challenges/${challengeSlug}/me`}
