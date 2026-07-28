@@ -5,6 +5,7 @@ import { Frame } from "@/components/Frame";
 import { TrainerCompare } from "@/components/TrainerCompare";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
 import { getChallenge } from "@/lib/challenges";
+import { getAccessForChallenge } from "@/lib/permissions";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,16 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
 
-  const trainers = challenge.trainers.map(redactTrainerCompetitiveDetails);
+  const access = challenge.id
+    ? await getAccessForChallenge(challenge.id)
+    : null;
+  // Compare UI is sprite-level, but still redact for viewers who shouldn't
+  // receive competitive fields in the RSC payload.
+  const trainers = challenge.trainers.map((trainer) =>
+    access?.canEditTrainer(trainer.userId)
+      ? trainer
+      : redactTrainerCompetitiveDetails(trainer),
+  );
 
   return (
     <div className="space-y-10">

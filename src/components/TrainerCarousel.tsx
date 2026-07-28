@@ -32,6 +32,11 @@ type TrainerCarouselProps = {
 const SECONDS_PER_TRAINER = 3.5;
 /** Split into opposite-direction rows once the roster hits this size. */
 const DUAL_CAROUSEL_MIN = 12;
+/**
+ * Minimum cards in one animation half so a ~2560px viewport stays filled
+ * (card ~160px + gap ~56px). Extra copies still apply for very short rosters.
+ */
+const MIN_LOOP_CARDS = 14;
 
 function trainerLabel(trainer: CarouselTrainer): string {
   return trainer.realName
@@ -40,8 +45,7 @@ function trainerLabel(trainer: CarouselTrainer): string {
 }
 
 function buildLoop(trainers: CarouselTrainer[]): CarouselTrainer[] {
-  // Enough copies that a short roster still fills a wide viewport.
-  const copies = Math.max(4, Math.ceil(8 / trainers.length));
+  const copies = Math.max(4, Math.ceil(MIN_LOOP_CARDS / trainers.length));
   return Array.from({ length: copies }, () => trainers).flat();
 }
 

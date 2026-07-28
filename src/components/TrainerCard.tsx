@@ -23,6 +23,8 @@ type TrainerCardProps = {
   variant?: "list" | "grid";
   /** Signed-in player's own card — soft revolving rainbow edge. */
   isYou?: boolean;
+  /** Nature / ability / stats / moves — owners and GMs only. */
+  showCompetitiveDetails?: boolean;
 };
 
 export function TrainerCard({
@@ -30,6 +32,7 @@ export function TrainerCard({
   trainer,
   variant = "list",
   isYou = false,
+  showCompetitiveDetails = false,
 }: TrainerCardProps) {
   const main = pokemonInSlot(trainer, "MAIN").slice(0, 6);
   const caughtCount =
@@ -328,7 +331,7 @@ export function TrainerCard({
       <PokemonDetailsModal
         open={detailsPokemon != null}
         pokemon={detailsPokemon}
-        showCompetitiveDetails={isYou}
+        showCompetitiveDetails={showCompetitiveDetails}
         onClose={() => setDetailsPokemon(null)}
       />
     </div>

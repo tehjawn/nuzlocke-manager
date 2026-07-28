@@ -6,7 +6,7 @@ import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { AboutIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { JumpTrigger } from "@/features/jump";
-import { getDefaultJumpChallenge } from "@/lib/challenges";
+import { getChallenge, getDefaultJumpChallenge } from "@/lib/challenges";
 
 /** Shared shell width for the site header and page content on every page. */
 export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
@@ -24,14 +24,25 @@ export async function SiteHeader({
   showGm = false,
   myTrainerId = null,
 }: SiteHeaderProps) {
-  // Global pages (home, about, login, …) omit season props — fall back so the
-  // desktop subtitle stays omnipresent while only one league is live.
-  const defaults =
-    challengeSlug == null || challengeYear == null
-      ? await getDefaultJumpChallenge()
-      : null;
-  const seasonSlug = challengeSlug ?? defaults?.slug ?? null;
-  const seasonYear = challengeYear ?? defaults?.year ?? null;
+  // Global pages omit season props — fall back to the live default. Only fetch
+  // that default when both are absent so we never pair slug/year from different
+  // seasons. If only one prop is set, resolve the other from that challenge.
+  let seasonSlug = challengeSlug ?? null;
+  let seasonYear = challengeYear ?? null;
+
+  if (seasonSlug == null && seasonYear == null) {
+    const defaults = await getDefaultJumpChallenge();
+    seasonSlug = defaults?.slug ?? null;
+    seasonYear = defaults?.year ?? null;
+  } else if (seasonSlug != null && seasonYear == null) {
+    const challenge = await getChallenge(seasonSlug);
+    seasonYear = challenge?.year ?? null;
+  } else if (seasonSlug == null && seasonYear != null) {
+    const defaults = await getDefaultJumpChallenge();
+    if (defaults?.year === seasonYear) {
+      seasonSlug = defaults.slug;
+    }
+  }
 
   return (
     <header
