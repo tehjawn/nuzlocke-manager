@@ -4,6 +4,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Frame } from "@/components/Frame";
+import {
+  RuleIllustration,
+  ruleIllustrationKind,
+} from "@/components/RuleIllustrations";
 import type { ChallengeRule, FaqEntry } from "@/lib/challenge-types";
 
 type RulesFaqViewProps = {
@@ -29,6 +33,7 @@ export function RulesFaqView({
 
   const rulesHref = `/challenges/${slug}/rules`;
   const faqHref = `/challenges/${slug}/rules?tab=faq`;
+  const toolsHref = `/challenges/${slug}/tools`;
 
   return (
     <div className="space-y-6">
@@ -57,37 +62,80 @@ export function RulesFaqView({
 
       {tab === "rules" ? (
         <ol className="space-y-4">
-          {rules.map((rule) => (
-            <li key={rule.id}>
-              <Frame
-                title={`${rule.sortOrder}. ${rule.title ?? "Rule"}`}
-                actions={
-                  rule.isCore ? (
+          {rules.map((rule) => {
+            const illustration = ruleIllustrationKind(rule.title);
+            const showBody = rule.body.trim().length > 0;
+
+            return (
+              <li key={rule.id}>
+                <Frame
+                  title={`${rule.sortOrder}. ${rule.title ?? "Rule"}`}
+                  actions={
                     <span className="info-chip text-[11px] font-semibold tracking-tight">
-                      Core
+                      {rule.isCore ? "Core" : "House"}
                     </span>
-                  ) : null
-                }
-              >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {rule.body}
-                </p>
-              </Frame>
-            </li>
-          ))}
+                  }
+                >
+                  {illustration ? (
+                    <RuleIllustration kind={illustration} />
+                  ) : null}
+                  {showBody ? (
+                    <p
+                      className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                        illustration ? "mt-3" : ""
+                      }`}
+                    >
+                      {rule.body}
+                    </p>
+                  ) : null}
+                </Frame>
+              </li>
+            );
+          })}
         </ol>
       ) : (
         <div className="space-y-4">
           {faqs.map((faq) => (
             <Frame key={faq.id} title={faq.question}>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                {faq.answer}
-              </p>
+              <FaqAnswer answer={faq.answer} toolsHref={toolsHref} />
             </Frame>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function FaqAnswer({
+  answer,
+  toolsHref,
+}: {
+  answer: string;
+  toolsHref: string;
+}) {
+  const parts = answer.split(/(\[Tools\])/g);
+  if (parts.length === 1) {
+    return (
+      <p className="text-sm leading-relaxed whitespace-pre-wrap">{answer}</p>
+    );
+  }
+
+  return (
+    <p className="text-sm leading-relaxed whitespace-pre-wrap">
+      {parts.map((part, i) =>
+        part === "[Tools]" ? (
+          <Link
+            key={`tools-${i}`}
+            href={toolsHref}
+            className="font-semibold text-interactive underline decoration-interactive/40 underline-offset-2 hover:decoration-interactive"
+          >
+            Tools
+          </Link>
+        ) : (
+          <span key={`t-${i}`}>{part}</span>
+        ),
+      )}
+    </p>
   );
 }
 
