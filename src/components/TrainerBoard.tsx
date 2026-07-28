@@ -7,6 +7,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
   importFromSaveAction,
+  relocatePokemonAction,
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
@@ -22,6 +23,7 @@ import {
   type PokemonFormState,
 } from "@/components/PokemonFormModal";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
+import { PartyBoardDnd } from "@/components/PartyBoardDnd";
 import { PartyStrip } from "@/components/PartyStrip";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { ReviveControl } from "@/components/ReviveControl";
@@ -671,127 +673,102 @@ export function TrainerBoard({
             )}
           </Frame>
 
-          <Frame title="Main Squad">
-            {canEdit ? (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-muted">
-                    Tap a Pokémon to view or edit; empty slots to add.
-                  </p>
-                  <button
-                    type="button"
-                    className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold tracking-tight text-[var(--on-accent)]"
-                    onClick={() => openAddPokemon("MAIN")}
-                  >
-                    + Add
-                  </button>
-                </div>
-                {/*
-                  Tour spotlight targets the slot grid (not the whole Frame) so
-                  mobile coachmarks can keep empty "Tap to add" cards visible.
-                */}
+          {canEdit ? (
+            <PartyBoardDnd
+              key={trainer.pokemon
+                .map((p) => `${p.id}:${p.slot}:${p.partyIndex}`)
+                .join("|")}
+              pokemon={trainer.pokemon}
+              mainSquadLocked={trainer.mainSquadLocked && !isGm}
+              onSelect={openPokemon}
+              onSelectEmptyMain={(partyIndex) =>
+                openAddPokemon("MAIN", partyIndex)
+              }
+              onRelocate={async (updates) => {
+                partySave.markSaving("Updating party…");
+                const result = await relocatePokemonAction({
+                  trainerId: trainer.id,
+                  updates,
+                });
+                if (result.ok) {
+                  partySave.markSaved(result.message ?? "Party updated");
+                  return true;
+                }
+                partySave.markError(result.error);
+                return false;
+              }}
+              mainActions={
+                <button
+                  type="button"
+                  className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold tracking-tight text-[var(--on-accent)]"
+                  onClick={() => openAddPokemon("MAIN")}
+                >
+                  + Add
+                </button>
+              }
+              reservesActions={
+                <button
+                  type="button"
+                  className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                  onClick={() => openAddPokemon("RESERVE")}
+                >
+                  + Add
+                </button>
+              }
+              graveyardActions={
+                <button
+                  type="button"
+                  className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                  onClick={() => openAddPokemon("GRAVEYARD")}
+                >
+                  + Add
+                </button>
+              }
+            />
+          ) : (
+            <>
+              <Frame title="Main Squad">
                 <div data-tour="pokemon">
                   <PartyStrip
                     pokemon={main}
                     slots={6}
-                    selectHint="View"
+                    selectHint="Details"
+                    showCompetitiveDetails={showCompetitiveDetails}
                     onSelect={openPokemon}
-                    onSelectEmpty={(partyIndex) =>
-                      openAddPokemon("MAIN", partyIndex)
-                    }
                   />
                 </div>
-              </div>
-            ) : (
-              <div data-tour="pokemon">
-                <PartyStrip
-                  pokemon={main}
-                  slots={6}
-                  selectHint="Details"
-                  showCompetitiveDetails={showCompetitiveDetails}
-                  onSelect={openPokemon}
-                />
-              </div>
-            )}
-          </Frame>
+              </Frame>
 
-          <Frame title="The Reserves">
-            {canEdit ? (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-muted">
-                    {reserves.length === 0
-                      ? "No reserves yet."
-                      : "Tap a Pokémon to view or edit."}
-                  </p>
-                  <button
-                    type="button"
-                    className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
-                    onClick={() => openAddPokemon("RESERVE")}
-                  >
-                    + Add
-                  </button>
-                </div>
+              <Frame title="The Reserves">
                 {reserves.length > 0 ? (
                   <PartyStrip
                     pokemon={reserves}
-                    selectHint="View"
+                    selectHint="Details"
+                    showCompetitiveDetails={showCompetitiveDetails}
                     onSelect={openPokemon}
                   />
-                ) : null}
-              </div>
-            ) : reserves.length > 0 ? (
-              <PartyStrip
-                pokemon={reserves}
-                selectHint="Details"
-                showCompetitiveDetails={showCompetitiveDetails}
-                onSelect={openPokemon}
-              />
-            ) : (
-              <p className="text-sm text-muted">No reserves logged yet.</p>
-            )}
-          </Frame>
+                ) : (
+                  <p className="text-sm text-muted">No reserves logged yet.</p>
+                )}
+              </Frame>
 
-          <Frame title="R.I.P." tone="rip">
-            {canEdit ? (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-muted">
-                    {graveyard.length === 0
-                      ? "Memorial is empty."
-                      : "Tap a Pokémon to view or edit."}
-                  </p>
-                  <button
-                    type="button"
-                    className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
-                    onClick={() => openAddPokemon("GRAVEYARD")}
-                  >
-                    + Add
-                  </button>
-                </div>
+              <Frame title="R.I.P." tone="rip">
                 {graveyard.length > 0 ? (
                   <PartyStrip
                     pokemon={graveyard}
                     memorial
-                    selectHint="View"
+                    selectHint="Details"
+                    showCompetitiveDetails={showCompetitiveDetails}
                     onSelect={openPokemon}
                   />
-                ) : null}
-              </div>
-            ) : graveyard.length > 0 ? (
-              <PartyStrip
-                pokemon={graveyard}
-                memorial
-                selectHint="Details"
-                showCompetitiveDetails={showCompetitiveDetails}
-                onSelect={openPokemon}
-              />
-            ) : (
-              <p className="mt-0 text-sm text-muted">
-                Memorial is empty. May it stay that way.
-              </p>
-            )}
-          </Frame>
+                ) : (
+                  <p className="mt-0 text-sm text-muted">
+                    Memorial is empty. May it stay that way.
+                  </p>
+                )}
+              </Frame>
+            </>
+          )}
 
           <Frame title="Encountered">
             {canEdit ? (

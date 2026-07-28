@@ -631,6 +631,86 @@ export async function deletePokemonAction(input: {
   }
 }
 
+const RelocatePokemonSchema = z.object({
+  trainerId: z.string().min(1),
+  updates: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        slot: PokemonSlotSchema,
+        partyIndex: z.number().int().min(0).max(11),
+      }),
+    )
+    .min(1)
+    .max(36),
+});
+
+/** Persist slot / partyIndex changes from board drag-and-drop. */
+export async function relocatePokemonAction(
+  raw: unknown,
+): Promise<ActionResult> {
+  try {
+    const data = RelocatePokemonSchema.parse(raw);
+    const { trainer, userId, access } = await requireTrainerEditAccess(
+      data.trainerId,
+    );
+    const prisma = getPrisma();
+    const ids = data.updates.map((u) => u.id);
+    const existing = await prisma.pokemonEntry.findMany({
+      where: { trainerId: trainer.id, id: { in: ids } },
+    });
+    if (existing.length !== ids.length) {
+      return { ok: false, error: "Pokémon not found" };
+    }
+    const byId = new Map(existing.map((m) => [m.id, m]));
+
+    if (trainer.mainSquadLocked && !access.isGm) {
+      for (const update of data.updates) {
+        const mon = byId.get(update.id)!;
+        if (mon.slot === "MAIN" || update.slot === "MAIN") {
+          return {
+            ok: false,
+            error: "Main Squad is locked after Championship",
+          };
+        }
+      }
+    }
+
+    const memorialized: string[] = [];
+    await prisma.$transaction(
+      data.updates.map((update) => {
+        const mon = byId.get(update.id)!;
+        if (mon.slot !== "GRAVEYARD" && update.slot === "GRAVEYARD") {
+          memorialized.push(update.id);
+        }
+        return prisma.pokemonEntry.update({
+          where: { id: update.id },
+          data: { slot: update.slot, partyIndex: update.partyIndex },
+        });
+      }),
+    );
+
+    for (const id of memorialized) {
+      const mon = byId.get(id)!;
+      await logActivity({
+        challengeId: trainer.challengeId,
+        actorId: userId,
+        trainerId: trainer.id,
+        type: "DEATH",
+        message: `${trainer.handle} memorialized ${mon.nickname || mon.species}`,
+      });
+    }
+
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: "Party updated" };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Party move failed",
+    };
+  }
+}
+
 const SaveImportMonSchema = z.object({
   nickname: z.string().max(32).optional().nullable(),
   species: z.string().min(1).max(64),
