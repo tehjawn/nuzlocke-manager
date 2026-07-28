@@ -13,6 +13,8 @@ type PartyStripProps = {
   selectHint?: string;
   /** Edit mode: select an empty numbered slot (MAIN uses this). */
   onSelectEmpty?: (partyIndex: number) => void;
+  /** Forwarded to slot cards — hide nature/ability/stats/moves when false. */
+  showCompetitiveDetails?: boolean;
 };
 
 export function PartyStrip({
@@ -23,6 +25,7 @@ export function PartyStrip({
   onSelect,
   selectHint,
   onSelectEmpty,
+  showCompetitiveDetails = true,
 }: PartyStripProps) {
   const sorted = [...pokemon].sort((a, b) => a.partyIndex - b.partyIndex);
 
@@ -46,6 +49,7 @@ export function PartyStrip({
             pokemon={p}
             size={size}
             memorial={memorial}
+            showCompetitiveDetails={showCompetitiveDetails}
             selectHint={p && onSelect ? selectHint : undefined}
             onSelect={
               p && onSelect

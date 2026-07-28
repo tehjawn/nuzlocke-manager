@@ -10,6 +10,7 @@ import {
 } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
+import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { isSeasonReadOnly } from "@/lib/season-status";
@@ -64,9 +65,14 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     redirect(`/challenges/${slug}/join`);
   }
 
+  const canViewCompetitiveDetails = Boolean(
+    access?.canEditTrainer(trainer.userId),
+  );
   const canEdit =
-    Boolean(access?.canEditTrainer(trainer.userId)) &&
-    !isSeasonReadOnly(challenge.status);
+    canViewCompetitiveDetails && !isSeasonReadOnly(challenge.status);
+  const boardTrainer = canViewCompetitiveDetails
+    ? trainer
+    : redactTrainerCompetitiveDetails(trainer);
   const isDemo = !trainer.userId;
   // Header only needs a truthy id to show “My Trainer” → /me
   const myTrainerId =
@@ -106,9 +112,10 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           leagueBoardLabel={`${challenge.year} League Board`}
           joinHref={`/challenges/${challenge.slug}/join`}
           myBoardHref={myBoardHref}
-          trainer={trainer}
+          trainer={boardTrainer}
           badges={challenge.badges}
           canEdit={canEdit}
+          showCompetitiveDetails={canViewCompetitiveDetails}
           isGm={showGm}
           isDemo={isDemo}
         />

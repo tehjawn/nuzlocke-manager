@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
+import { GameModeSettingsGuide } from "@/components/GameModeSettingsGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { getChallenge } from "@/lib/challenges";
 import { CTA_PRIMARY } from "@/lib/cta";
@@ -40,8 +41,8 @@ export default async function SetupPage({ params }: PageProps) {
           Get Started
         </h2>
         <p className="mt-2 text-muted">
-          Four moves: download the ROM, load it in Afterplay, export your save,
-          then import it on your trainer board.
+          Download the ROM, load it in Afterplay, confirm Game Mode settings,
+          export your save, then import it on your trainer board.
         </p>
       </header>
 
@@ -144,7 +145,13 @@ export default async function SetupPage({ params }: PageProps) {
         </li>
 
         <li>
-          <Frame title="4. Export your save & import it here">
+          <Frame title="4. Confirm Game Mode settings">
+            <GameModeSettingsGuide />
+          </Frame>
+        </li>
+
+        <li>
+          <Frame title="5. Export your save & import it here">
             <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
               <li>
                 In Afterplay, download / export your save (Gen&nbsp;3{" "}
@@ -191,7 +198,7 @@ export default async function SetupPage({ params }: PageProps) {
         </li>
 
         <li>
-          <Frame title="5. React to milestones in the Pack feed">
+          <Frame title="6. React to milestones in the Pack feed">
             <p className="text-sm leading-relaxed text-muted">
               Board updates and imports show up in the Pack feed on the left.
               Sign in, then react with any emoji when someone badges up, loses a

@@ -5,6 +5,7 @@ import { Frame } from "@/components/Frame";
 import { TrainerCompare } from "@/components/TrainerCompare";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
 import { getChallenge } from "@/lib/challenges";
+import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
 
+  const trainers = challenge.trainers.map(redactTrainerCompetitiveDetails);
+
   return (
     <div className="space-y-10">
       <header>
@@ -39,7 +42,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
       </header>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-bold tracking-tight">Type chart</h3>
+        <h3 className="text-lg font-bold tracking-tight">Type Chart</h3>
         <Frame>
           <TypeChartPanel />
         </Frame>
@@ -52,7 +55,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         </p>
         <TrainerCompare
           slug={challenge.slug}
-          trainers={challenge.trainers}
+          trainers={trainers}
           badges={challenge.badges}
           initialA={a}
           initialB={b}

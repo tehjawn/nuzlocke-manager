@@ -5,6 +5,7 @@ import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { TrainersSection } from "@/components/TrainersSection";
 import { getChallenge } from "@/lib/challenges";
+import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,15 @@ export default async function LeagueBoardPage({ params }: PageProps) {
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
 
-  const trainers = [...challenge.trainers].sort(
-    (a, b) => a.sortOrder - b.sortOrder,
-  );
   const myTrainerId =
     challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
+  const trainers = [...challenge.trainers]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((trainer) =>
+      trainer.id === myTrainerId
+        ? trainer
+        : redactTrainerCompetitiveDetails(trainer),
+    );
 
   return (
     <>
@@ -41,7 +46,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
       </div>
 
       <TrainersSection
-        challenge={challenge}
+        challenge={{ ...challenge, trainers }}
         trainers={trainers}
         myTrainerId={myTrainerId}
       />

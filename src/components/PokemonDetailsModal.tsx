@@ -21,6 +21,11 @@ type PokemonDetailsModalProps = {
   onClose: () => void;
   /** Own-board: switch into the edit form. */
   onEdit?: () => void;
+  /**
+   * When false, hide nature / ability / battle stats / IVs / EVs / moves
+   * (public viewers and league peek for other trainers).
+   */
+  showCompetitiveDetails?: boolean;
 };
 
 function MetaChip({ label, value }: { label: string; value: ReactNode }) {
@@ -90,6 +95,7 @@ export function PokemonDetailsModal({
   pokemon,
   onClose,
   onEdit,
+  showCompetitiveDetails = true,
 }: PokemonDetailsModalProps) {
   if (!open || !pokemon) return null;
 
@@ -100,20 +106,26 @@ export function PokemonDetailsModal({
     shiny: pokemon.isShiny,
     pokedexId: pokemon.pokedexId,
   });
-  const battle = calcBattleStats({
-    pokedexId: pokemon.pokedexId,
-    level: pokemon.level,
-    ivs: pokemon.ivs,
-    evs: pokemon.evs,
-    nature: pokemon.nature,
-  });
-  const battleMax = calcMaxBattleStats({
-    pokedexId: pokemon.pokedexId,
-    level: pokemon.level,
-  });
-  const moves = pokemon.moves.map(resolveMoveName).filter(Boolean);
-  const ivs = pokemon.ivs;
-  const evs = pokemon.evs;
+  const battle = showCompetitiveDetails
+    ? calcBattleStats({
+        pokedexId: pokemon.pokedexId,
+        level: pokemon.level,
+        ivs: pokemon.ivs,
+        evs: pokemon.evs,
+        nature: pokemon.nature,
+      })
+    : null;
+  const battleMax = showCompetitiveDetails
+    ? calcMaxBattleStats({
+        pokedexId: pokemon.pokedexId,
+        level: pokemon.level,
+      })
+    : null;
+  const moves = showCompetitiveDetails
+    ? pokemon.moves.map(resolveMoveName).filter(Boolean)
+    : [];
+  const ivs = showCompetitiveDetails ? pokemon.ivs : null;
+  const evs = showCompetitiveDetails ? pokemon.evs : null;
   const showIvs = !isEmptySpread(ivs);
   const showEvs = !isEmptySpread(evs);
 
@@ -136,10 +148,12 @@ export function PokemonDetailsModal({
   );
 
   const meta = [
-    pokemon.nature
+    showCompetitiveDetails && pokemon.nature
       ? { label: "Nature", value: <NatureValue nature={pokemon.nature} /> }
       : null,
-    pokemon.ability ? { label: "Ability", value: pokemon.ability } : null,
+    showCompetitiveDetails && pokemon.ability
+      ? { label: "Ability", value: pokemon.ability }
+      : null,
     pokemon.catchRoute ? { label: "Route", value: pokemon.catchRoute } : null,
     pokemon.heldItem ? { label: "Item", value: pokemon.heldItem } : null,
   ].filter(Boolean) as Array<{ label: string; value: ReactNode }>;

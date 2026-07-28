@@ -49,6 +49,11 @@ type TrainerBoardProps = {
   trainer: TrainerProfile;
   badges: BadgeDefinition[];
   canEdit: boolean;
+  /**
+   * Show nature / ability / stats / moves. True for the board owner and GMs,
+   * including when the season is read-only (canEdit false).
+   */
+  showCompetitiveDetails?: boolean;
   isGm: boolean;
   isDemo: boolean;
 };
@@ -176,6 +181,7 @@ export function TrainerBoard({
   trainer,
   badges,
   canEdit,
+  showCompetitiveDetails = canEdit,
   isGm,
   isDemo,
 }: TrainerBoardProps) {
@@ -702,6 +708,7 @@ export function TrainerBoard({
                   pokemon={main}
                   slots={6}
                   selectHint="Details"
+                  showCompetitiveDetails={showCompetitiveDetails}
                   onSelect={openPokemon}
                 />
               </div>
@@ -737,6 +744,7 @@ export function TrainerBoard({
               <PartyStrip
                 pokemon={reserves}
                 selectHint="Details"
+                showCompetitiveDetails={showCompetitiveDetails}
                 onSelect={openPokemon}
               />
             ) : (
@@ -775,6 +783,7 @@ export function TrainerBoard({
                 pokemon={graveyard}
                 memorial
                 selectHint="Details"
+                showCompetitiveDetails={showCompetitiveDetails}
                 onSelect={openPokemon}
               />
             ) : (
@@ -813,6 +822,7 @@ export function TrainerBoard({
               <PartyStrip
                 pokemon={encountered}
                 selectHint="Details"
+                showCompetitiveDetails={showCompetitiveDetails}
                 onSelect={openPokemon}
               />
             ) : (
@@ -983,6 +993,7 @@ export function TrainerBoard({
         <PokemonDetailsModal
           open={detailsPokemon != null}
           pokemon={detailsPokemon}
+          showCompetitiveDetails={showCompetitiveDetails}
           onClose={() => setDetailsPokemon(null)}
         />
       ) : null}

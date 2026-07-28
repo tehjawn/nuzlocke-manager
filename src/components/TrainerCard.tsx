@@ -306,6 +306,7 @@ export function TrainerCard({
       <PokemonDetailsModal
         open={detailsPokemon != null}
         pokemon={detailsPokemon}
+        showCompetitiveDetails={isYou}
         onClose={() => setDetailsPokemon(null)}
       />
     </div>
