@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { GmLensToggle } from "@/components/GmLensToggle";
 import {
   AboutIcon,
   GmIcon,
@@ -19,6 +20,7 @@ type MobileNavDrawerProps = {
   challengeSlug?: string;
   showGm?: boolean;
   myTrainerId?: string | null;
+  gmLensOn?: boolean;
   /** Applied to the trigger button (e.g. `sm:hidden`). */
   className?: string;
   /** Account actions (server-rendered): My Profile + Sign Out, or Discord login. */
@@ -37,6 +39,7 @@ export function MobileNavDrawer({
   challengeSlug,
   showGm = false,
   myTrainerId = null,
+  gmLensOn = false,
   className = "",
   children,
 }: MobileNavDrawerProps) {
@@ -198,6 +201,15 @@ export function MobileNavDrawer({
                       className="h-8 border-interactive/35 bg-interactive-soft"
                     />
                   </div>
+
+                  {showGm && challengeSlug ? (
+                    <GmLensToggle
+                      key={`gm-lens-drawer-${challengeSlug}-${gmLensOn ? "1" : "0"}`}
+                      slug={challengeSlug}
+                      initialOn={gmLensOn}
+                      variant="drawer"
+                    />
+                  ) : null}
 
                   <div className="flex items-center justify-between rounded-md border border-frame bg-surface px-3 py-2">
                     <span className="text-sm font-medium">Theme</span>

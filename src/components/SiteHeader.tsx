@@ -1,12 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AuthButtons } from "@/components/AuthButtons";
+import { GmLensToggle } from "@/components/GmLensToggle";
 import { MobileMenuAuth } from "@/components/MobileMenuAuth";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { AboutIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { JumpTrigger } from "@/features/jump";
 import { getChallenge, getDefaultJumpChallenge } from "@/lib/challenges";
+import { readGmLensOn } from "@/lib/gm-lens.server";
 
 /** Shared shell width for the site header and page content on every page. */
 export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
@@ -43,6 +45,9 @@ export async function SiteHeader({
       seasonSlug = defaults.slug;
     }
   }
+
+  const gmLensOn =
+    showGm && challengeSlug ? await readGmLensOn(challengeSlug) : false;
 
   return (
     <header
@@ -115,6 +120,13 @@ export async function SiteHeader({
               My Trainer
             </Link>
           ) : null}
+          {showGm && challengeSlug ? (
+            <GmLensToggle
+              key={`gm-lens-${challengeSlug}-${gmLensOn ? "1" : "0"}`}
+              slug={challengeSlug}
+              initialOn={gmLensOn}
+            />
+          ) : null}
         </div>
         <AuthButtons
           hideMyTrainer={Boolean(myTrainerId)}
@@ -133,6 +145,7 @@ export async function SiteHeader({
           challengeSlug={seasonSlug ?? undefined}
           showGm={showGm}
           myTrainerId={myTrainerId}
+          gmLensOn={gmLensOn}
         >
           <MobileMenuAuth />
         </MobileNavDrawer>

@@ -5,6 +5,10 @@ import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { TrainersSection } from "@/components/TrainersSection";
 import { getChallenge } from "@/lib/challenges";
+import {
+  canViewCompetitiveDetails,
+} from "@/lib/gm-lens";
+import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 
@@ -32,12 +36,15 @@ export default async function LeagueBoardPage({ params }: PageProps) {
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
+  const gmLensOn = access?.isGm
+    ? await readGmLensOn(challenge.slug)
+    : false;
   const myTrainerId =
     challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
 
-  // Owners + GMs keep competitive fields; everyone else gets a redacted payload.
+  // Own board always; other boards only with GM lens on.
   const competitiveTrainerIds = challenge.trainers
-    .filter((t) => access?.canEditTrainer(t.userId))
+    .filter((t) => canViewCompetitiveDetails(access, t.userId, gmLensOn))
     .map((t) => t.id);
   const competitiveIdSet = new Set(competitiveTrainerIds);
 

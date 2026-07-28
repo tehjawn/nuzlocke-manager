@@ -23,7 +23,7 @@ type TrainerCardProps = {
   variant?: "list" | "grid";
   /** Signed-in player's own card — soft revolving rainbow edge. */
   isYou?: boolean;
-  /** Nature / ability / stats / moves — owners and GMs only. */
+  /** Nature / ability / stats / moves — owners, or GMs with lens on. */
   showCompetitiveDetails?: boolean;
 };
 

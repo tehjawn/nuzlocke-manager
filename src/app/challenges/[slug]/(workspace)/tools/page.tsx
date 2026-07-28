@@ -5,6 +5,10 @@ import { Frame } from "@/components/Frame";
 import { TrainerCompare } from "@/components/TrainerCompare";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
 import { getChallenge } from "@/lib/challenges";
+import {
+  canViewCompetitiveDetails,
+} from "@/lib/gm-lens";
+import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 
@@ -33,10 +37,12 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
-  // Compare UI is sprite-level, but still redact for viewers who shouldn't
-  // receive competitive fields in the RSC payload.
+  const gmLensOn = access?.isGm
+    ? await readGmLensOn(challenge.slug)
+    : false;
+
   const trainers = challenge.trainers.map((trainer) =>
-    access?.canEditTrainer(trainer.userId)
+    canViewCompetitiveDetails(access, trainer.userId, gmLensOn)
       ? trainer
       : redactTrainerCompetitiveDetails(trainer),
   );
