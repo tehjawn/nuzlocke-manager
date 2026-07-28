@@ -40,7 +40,8 @@ import type {
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
-import { CTA_PRIMARY, CTA_PRIMARY_SM, CTA_SECONDARY } from "@/lib/cta";
+import { RulesIcon } from "@/components/nav-icons";
+import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { isEmptySpread } from "@/lib/stats";
 
 type TrainerBoardProps = {
@@ -85,7 +86,7 @@ function PencilIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   );
 }
 
-function ImportSaveIcon({ className = "h-4 w-4" }: { className?: string }) {
+function ImportSaveIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -113,6 +114,214 @@ function ImportSaveIcon({ className = "h-4 w-4" }: { className?: string }) {
         strokeLinecap="round"
       />
     </svg>
+  );
+}
+
+function WipeIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M13 8A5 5 0 1 1 11.7 4.6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M13 2.5V6H9.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ReviveShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <rect x="4.5" y="4.5" width="15" height="15" rx="3" />
+      <path d="M12 8.5v7M8.5 12h7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FaqShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="8.5" />
+      <path
+        d="M9.8 9.6a2.4 2.4 0 114.2 1.6c-.7.8-1.5 1.2-1.5 2.3"
+        strokeLinecap="round"
+      />
+      <path d="M12 16.75v.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ToolsShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <path d="M14.5 6.5l3 3-8.5 8.5H6v-3L14.5 6.5z" strokeLinejoin="round" />
+      <path d="M12.5 8.5l3 3" strokeLinecap="round" />
+      <circle cx="7.5" cy="7.5" r="2.25" />
+      <path d="M16.5 16.5l2 2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MemorialShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <path d="M8 20V9.5a4 4 0 018 0V20" strokeLinecap="round" />
+      <path d="M6 20h12" strokeLinecap="round" />
+      <path d="M12 5.5V4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function EncountersShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <path d="M4 7h16M4 12h10M4 17h13" strokeLinecap="round" />
+      <circle cx="18.5" cy="12" r="2.25" />
+    </svg>
+  );
+}
+
+const shortcutTileBase =
+  "pressable flex aspect-square flex-col items-center justify-center gap-2 rounded-[var(--radius)] border px-2 text-center text-[11px] font-semibold leading-tight tracking-tight sm:text-xs";
+
+const shortcutActionRowBase =
+  "pressable inline-flex min-h-11 w-full flex-1 items-center justify-center gap-2 rounded-[var(--radius)] border px-3 text-xs font-semibold tracking-tight disabled:opacity-60";
+
+/** Quiet nav tiles — read as destinations, not actions. */
+const shortcutLinkClass = `${shortcutTileBase} border-dashed border-frame/55 bg-transparent text-muted hover:border-frame hover:bg-surface-2/70 hover:text-ink`;
+
+function shortcutActionToneClass(
+  tone: "accent" | "danger" | "import" | "neutral" = "neutral",
+) {
+  switch (tone) {
+    case "accent":
+      return "border-accent/35 bg-accent/15 text-accent-deep hover:brightness-105";
+    case "danger":
+      return "border-danger/35 bg-danger/15 text-danger hover:brightness-105";
+    case "import":
+      return "cta-import-save border-frame bg-surface text-ink shadow-sm";
+    default:
+      return "border-frame bg-surface text-ink shadow-sm hover:bg-surface-2";
+  }
+}
+
+function ShortcutLinkTile({
+  href,
+  label,
+  icon,
+}: {
+  href: string;
+  label: string;
+  icon: ReactNode;
+}) {
+  return (
+    <Link href={href} className={shortcutLinkClass}>
+      <span className="shrink-0 text-muted/80" aria-hidden>
+        {icon}
+      </span>
+      <span className="max-w-full px-0.5">{label}</span>
+    </Link>
+  );
+}
+
+function ShortcutActionTile({
+  label,
+  icon,
+  onClick,
+  disabled,
+  title,
+  tone = "neutral",
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  title?: string;
+  tone?: "accent" | "danger" | "import" | "neutral";
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+      className={`${shortcutActionRowBase} ${shortcutActionToneClass(tone)}`}
+    >
+      <span className="shrink-0" aria-hidden>
+        {icon}
+      </span>
+      <span className="min-w-0 truncate">{label}</span>
+    </button>
+  );
+}
+
+function ShortcutStatusTile({
+  label,
+  icon,
+  tone = "neutral",
+}: {
+  label: string;
+  icon: ReactNode;
+  tone?: "accent" | "danger" | "import" | "neutral";
+}) {
+  return (
+    <div
+      role="status"
+      className={`${shortcutActionRowBase} ${shortcutActionToneClass(tone)} cursor-default opacity-90`}
+    >
+      <span className="shrink-0" aria-hidden>
+        {icon}
+      </span>
+      <span className="min-w-0 truncate">{label}</span>
+    </div>
   );
 }
 
@@ -282,6 +491,38 @@ export function TrainerBoard({
   const graveyard = pokemonInSlot(boardTrainer, "GRAVEYARD");
   const encountered = pokemonInSlot(boardTrainer, "ENCOUNTERED");
   const wipeBlockedByLock = mainSquadLocked && !isGm;
+  const wipeButtonClass =
+    "pressable inline-flex h-9 items-center justify-center gap-1.5 border-danger/25 bg-danger/10 px-3 text-xs font-semibold tracking-tight text-danger disabled:opacity-60";
+  const wipeButtonTitle = wipeBlockedByLock
+    ? "Main Squad is locked — ask a GM to unlock before recording a wipe"
+    : undefined;
+  const seasonLinkTiles = [
+    {
+      href: `${leagueBoardHref}/rules`,
+      label: "Rules",
+      icon: <RulesIcon className="h-6 w-6" />,
+    },
+    {
+      href: `${leagueBoardHref}/rules?tab=faq`,
+      label: "FAQ",
+      icon: <FaqShortcutIcon />,
+    },
+    {
+      href: `${leagueBoardHref}/tools`,
+      label: "Tools",
+      icon: <ToolsShortcutIcon />,
+    },
+    {
+      href: `${leagueBoardHref}/memorial`,
+      label: "Memorial",
+      icon: <MemorialShortcutIcon />,
+    },
+    {
+      href: `${leagueBoardHref}/encounters`,
+      label: "Encounters",
+      icon: <EncountersShortcutIcon />,
+    },
+  ] as const;
 
   function syncPlayerDraftFromCommitted() {
     setHandle(committed.handle);
@@ -511,7 +752,10 @@ export function TrainerBoard({
   return (
     <div className={`space-y-4 ${showMobileSaveBar ? "pb-20 sm:pb-0" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={leagueBoardHref} className={CTA_PRIMARY}>
+        <Link
+          href={leagueBoardHref}
+          className="pressable inline-flex h-9 items-center gap-1.5 border-frame/70 bg-surface-2/60 px-3 text-xs font-semibold tracking-tight text-muted hover:border-frame hover:bg-surface-2 hover:text-ink"
+        >
           <span aria-hidden>←</span>
           {leagueBoardLabel}
         </Link>
@@ -535,15 +779,35 @@ export function TrainerBoard({
             <button
               type="button"
               data-tour="import-save"
-              className={`${CTA_SECONDARY} cta-import-save`}
+              className="pressable cta-import-save inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink"
               onClick={() => setSaveImportOpen(true)}
             >
               <ImportSaveIcon />
               <span>Import save</span>
             </button>
           ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              disabled={pending || wipeBlockedByLock}
+              title={wipeButtonTitle}
+              className={wipeButtonClass}
+              onClick={() => {
+                void recordWipe();
+              }}
+            >
+              <WipeIcon />
+              Record wipe
+            </button>
+          ) : null}
         </div>
       </div>
+
+      {canEdit && wipeSave.status.kind !== "idle" ? (
+        <div className="flex justify-end">
+          <SaveStatus status={wipeSave.status} />
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
@@ -884,41 +1148,14 @@ export function TrainerBoard({
 
         <aside className="space-y-6 lg:sticky lg:top-4">
           <Frame title="Stats">
-            <div className="space-y-3">
-              <TrainerStatsSummary
-                caught={main.length + reserves.length}
-                fallen={graveyard.length}
-                badgesEarned={earnedBadgeKeys.length}
-                badgesTotal={badges.length}
-                wipes={wipeCount}
-                updatedAt={trainer.updatedAt}
-              />
-              {canEdit ? (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    disabled={pending || wipeBlockedByLock}
-                    title={
-                      wipeBlockedByLock
-                        ? "Main Squad is locked — ask a GM to unlock before recording a wipe"
-                        : undefined
-                    }
-                    className="pressable inline-flex h-9 w-full items-center justify-center gap-1.5 border-danger/25 bg-danger/10 px-3 text-xs font-semibold tracking-tight text-danger disabled:opacity-60"
-                    onClick={() => {
-                      void recordWipe();
-                    }}
-                  >
-                    Record wipe…
-                  </button>
-                  {wipeBlockedByLock ? (
-                    <p className="text-[11px] leading-snug text-muted">
-                      Unlock Main Squad (GM) before recording a wipe.
-                    </p>
-                  ) : null}
-                  <SaveStatus status={wipeSave.status} />
-                </div>
-              ) : null}
-            </div>
+            <TrainerStatsSummary
+              caught={main.length + reserves.length}
+              fallen={graveyard.length}
+              badgesEarned={earnedBadgeKeys.length}
+              badgesTotal={badges.length}
+              wipes={wipeCount}
+              updatedAt={trainer.updatedAt}
+            />
           </Frame>
 
           <Frame title="Badge case">
@@ -944,6 +1181,77 @@ export function TrainerBoard({
           </Frame>
         </aside>
       </div>
+
+      <Frame title="Shortcuts">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch sm:justify-between sm:gap-6">
+          <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:grid-cols-5">
+            {seasonLinkTiles.map((item) => (
+              <ShortcutLinkTile
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+              />
+            ))}
+          </div>
+
+          {!isDemo || canEdit ? (
+            <div className="flex w-full flex-col gap-2 sm:w-52 sm:shrink-0 sm:self-stretch">
+              {!isDemo ? (
+                !reviveUsed && canEdit ? (
+                  <ShortcutActionTile
+                    label="Use Revive Token"
+                    icon={<ReviveShortcutIcon className="h-4 w-4" />}
+                    tone="accent"
+                    disabled={pending}
+                    onClick={() => {
+                      void useReviveToken();
+                    }}
+                  />
+                ) : reviveUsed && isGm ? (
+                  <ShortcutActionTile
+                    label="Reset revive"
+                    icon={<ReviveShortcutIcon className="h-4 w-4" />}
+                    tone="danger"
+                    disabled={pending}
+                    title="Reset revive token"
+                    onClick={() => {
+                      void resetReviveToken();
+                    }}
+                  />
+                ) : (
+                  <ShortcutStatusTile
+                    label={reviveUsed ? "Revive used" : "Revive ready"}
+                    icon={<ReviveShortcutIcon className="h-4 w-4" />}
+                    tone={reviveUsed ? "danger" : "accent"}
+                  />
+                )
+              ) : null}
+              {canEdit ? (
+                <ShortcutActionTile
+                  label="Import save"
+                  icon={<ImportSaveIcon className="h-4 w-4" />}
+                  tone="import"
+                  disabled={pending}
+                  onClick={() => setSaveImportOpen(true)}
+                />
+              ) : null}
+              {canEdit ? (
+                <ShortcutActionTile
+                  label="Record wipe"
+                  icon={<WipeIcon className="h-4 w-4" />}
+                  tone="danger"
+                  disabled={pending || wipeBlockedByLock}
+                  title={wipeButtonTitle}
+                  onClick={() => {
+                    void recordWipe();
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </Frame>
 
       {canEdit && pokemonInspect?.mode === "view" ? (
         <PokemonDetailsModal
