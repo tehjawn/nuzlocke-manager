@@ -684,19 +684,20 @@ export async function importFromSaveAction(
 
     const prisma = getPrisma();
 
-    // ENCOUNTERED is a running history log across many imports over the course
-    // of a run, not a live-state mirror — unlike MAIN/RESERVE/GRAVEYARD, a save
-    // snapshot only ever shows whatever's in the wild-encounter buffer *right
-    // now*, so wiping+replacing it on every import would erase prior encounters.
-    // Merge new finds in instead of nuking history.
-    const existingEncountered = data.replaceSlots.includes("ENCOUNTERED")
-      ? await prisma.pokemonEntry.findMany({
-          where: { trainerId: trainer.id, slot: "ENCOUNTERED" },
-          select: { partyIndex: true, pokedexId: true, species: true, catchRoute: true },
-        })
-      : [];
-    // Index by pokedexId *and* species so manual rows without an ID still
-    // collide with save imports that carry a national dex number (and vice versa).
+    // All imported slots (including ENCOUNTERED) mirror this save snapshot.
+    // Encountered is wild buffer ∪ Pokédex seen — re-import replaces the ledger
+    // so it matches the save rather than accumulating across imports.
+    const indexes: Record<string, number> = {
+      MAIN: 0,
+      RESERVE: 0,
+      GRAVEYARD: 0,
+      ENCOUNTERED: 0,
+    };
+
+    const replaceSet = new Set(data.replaceSlots);
+    // Deduplicate Encountered within this payload only (buffer + dex overlap /
+    // user edits); existing board rows are wiped via replaceSlots below.
+    const seenEncounterKeys = new Set<string>();
     const encounterDedupeKeys = (mon: {
       pokedexId?: number | null;
       species: string;
@@ -711,24 +712,7 @@ export async function importFromSaveAction(
       if (species) keys.push(`name:${species}|${route}`);
       return keys;
     };
-    const seenEncounterKeys = new Set<string>();
-    for (const mon of existingEncountered) {
-      for (const key of encounterDedupeKeys(mon)) seenEncounterKeys.add(key);
-    }
-    const hardReplaceSlots = data.replaceSlots.filter(
-      (slot) => slot !== "ENCOUNTERED",
-    );
 
-    const indexes: Record<string, number> = {
-      MAIN: 0,
-      RESERVE: 0,
-      GRAVEYARD: 0,
-      ENCOUNTERED:
-        existingEncountered.reduce((max, mon) => Math.max(max, mon.partyIndex), -1) +
-        1,
-    };
-
-    const replaceSet = new Set(data.replaceSlots);
     const rows = data.pokemon
       .filter((mon) => replaceSet.has(mon.slot))
       .filter((mon) => {
@@ -787,11 +771,11 @@ export async function importFromSaveAction(
       });
 
     await prisma.$transaction(async (tx) => {
-      if (hardReplaceSlots.length > 0) {
+      if (data.replaceSlots.length > 0) {
         await tx.pokemonEntry.deleteMany({
           where: {
             trainerId: trainer.id,
-            slot: { in: hardReplaceSlots },
+            slot: { in: data.replaceSlots },
           },
         });
       }

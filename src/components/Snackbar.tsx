@@ -57,8 +57,10 @@ function getSnapshot() {
   return items;
 }
 
+const EMPTY_SERVER_SNAPSHOT: SnackbarItem[] = [];
+
 function getServerSnapshot(): SnackbarItem[] {
-  return [];
+  return EMPTY_SERVER_SNAPSHOT;
 }
 
 /**
