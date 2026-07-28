@@ -45,42 +45,54 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
-    async signIn({ profile }) {
+    async signIn({ user, profile }) {
       if (!isDatabaseConfigured()) {
         return true;
       }
-      const p = profile as DiscordAuthProfile | undefined;
-      const discordId = p?.id != null ? String(p.id) : null;
+      // `profile` is the raw Discord /users/@me payload; `user` is our
+      // provider `profile()` mapping. Prefer raw fields so we never miss
+      // username / global_name when Auth.js shape drifts.
+      const raw = profile as DiscordProfile | undefined;
+      const mapped = user as DiscordAuthProfile | undefined;
+      const discordId =
+        raw?.id != null
+          ? String(raw.id)
+          : mapped?.id != null
+            ? String(mapped.id)
+            : null;
       if (!discordId) return false;
 
       const discordUsername =
-        typeof p?.discordUsername === "string" && p.discordUsername.trim()
-          ? p.discordUsername.trim()
-          : null;
+        (typeof raw?.username === "string" && raw.username.trim()) ||
+        (typeof mapped?.discordUsername === "string" &&
+          mapped.discordUsername.trim()) ||
+        null;
       const displayName =
-        (typeof p?.name === "string" && p.name.trim()) ||
+        (typeof raw?.global_name === "string" && raw.global_name.trim()) ||
+        (typeof mapped?.name === "string" && mapped.name.trim()) ||
         discordUsername ||
         null;
       const image =
-        typeof p?.image === "string"
-          ? p.image
-          : p?.image
-            ? String(p.image)
-            : null;
+        (typeof mapped?.image === "string" && mapped.image) ||
+        (raw ? discordAvatarUrl(raw) : null);
+      const email =
+        (typeof raw?.email === "string" && raw.email) ||
+        (typeof mapped?.email === "string" && mapped.email) ||
+        null;
 
       const prisma = getPrisma();
-      const user = await prisma.user.upsert({
+      const dbUser = await prisma.user.upsert({
         where: { discordId },
         create: {
           discordId,
           discordUsername,
-          email: p?.email ?? null,
+          email,
           name: displayName,
           displayName,
           image,
         },
         update: {
-          email: p?.email ?? undefined,
+          email: email ?? undefined,
           name: displayName ?? undefined,
           displayName: displayName ?? undefined,
           discordUsername: discordUsername ?? undefined,
@@ -90,7 +102,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // Always auto-join Trash Pack 2026 for now
       try {
-        await provisionForDefaultLeague(user.id);
+        await provisionForDefaultLeague(dbUser.id);
       } catch (err) {
         console.error("Auto-provision failed", err);
       }

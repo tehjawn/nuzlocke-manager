@@ -682,16 +682,52 @@ export async function importFromSaveAction(
     }
 
     const prisma = getPrisma();
+
+    // ENCOUNTERED is a running history log across many imports over the course
+    // of a run, not a live-state mirror — unlike MAIN/RESERVE/GRAVEYARD, a save
+    // snapshot only ever shows whatever's in the wild-encounter buffer *right
+    // now*, so wiping+replacing it on every import would erase prior encounters.
+    // Merge new finds in instead of nuking history.
+    const existingEncountered = data.replaceSlots.includes("ENCOUNTERED")
+      ? await prisma.pokemonEntry.findMany({
+          where: { trainerId: trainer.id, slot: "ENCOUNTERED" },
+          select: { partyIndex: true, pokedexId: true, species: true, catchRoute: true },
+        })
+      : [];
+    const encounterDedupeKey = (mon: {
+      pokedexId?: number | null;
+      species: string;
+      catchRoute?: string | null;
+    }) =>
+      `${mon.pokedexId ?? mon.species.trim().toLowerCase()}|${
+        mon.catchRoute?.trim().toLowerCase() || ""
+      }`;
+    const seenEncounterKeys = new Set(
+      existingEncountered.map((mon) => encounterDedupeKey(mon)),
+    );
+    const hardReplaceSlots = data.replaceSlots.filter(
+      (slot) => slot !== "ENCOUNTERED",
+    );
+
     const indexes: Record<string, number> = {
       MAIN: 0,
       RESERVE: 0,
       GRAVEYARD: 0,
-      ENCOUNTERED: 0,
+      ENCOUNTERED:
+        existingEncountered.reduce((max, mon) => Math.max(max, mon.partyIndex), -1) +
+        1,
     };
 
     const replaceSet = new Set(data.replaceSlots);
     const rows = data.pokemon
       .filter((mon) => replaceSet.has(mon.slot))
+      .filter((mon) => {
+        if (mon.slot !== "ENCOUNTERED") return true;
+        const key = encounterDedupeKey(mon);
+        if (seenEncounterKeys.has(key)) return false;
+        seenEncounterKeys.add(key);
+        return true;
+      })
       .map((mon) => {
         const speciesMeta = findSpecies(mon.species);
         const indexHit =
@@ -741,16 +777,16 @@ export async function importFromSaveAction(
       });
 
     await prisma.$transaction(async (tx) => {
-      if (data.replaceSlots.length > 0) {
+      if (hardReplaceSlots.length > 0) {
         await tx.pokemonEntry.deleteMany({
           where: {
             trainerId: trainer.id,
-            slot: { in: data.replaceSlots },
+            slot: { in: hardReplaceSlots },
           },
         });
-        if (rows.length > 0) {
-          await tx.pokemonEntry.createMany({ data: rows });
-        }
+      }
+      if (rows.length > 0) {
+        await tx.pokemonEntry.createMany({ data: rows });
       }
 
       if (data.applyTrainerName && data.trainerName) {

@@ -181,7 +181,7 @@ export function TrainerCard({
               </div>
 
               {/* Full-width strip: same as list — earned clear, unearned blurred */}
-              <div className="shrink-0 border-t border-frame/40 pt-2">
+              <div className="flex shrink-0 justify-center pt-1">
                 <BadgeCase
                   badges={challenge.badges}
                   earnedKeys={trainer.earnedBadgeKeys}

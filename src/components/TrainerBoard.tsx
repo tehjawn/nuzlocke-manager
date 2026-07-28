@@ -959,7 +959,10 @@ export function TrainerBoard({
                 applyTrainerName: payload.applyTrainerName,
                 badgeKeys: payload.badgeKeys,
                 applyBadges: payload.applyBadges,
-                // Full category sync: unchecked mons clear that slot group.
+                // MAIN/RESERVE/GRAVEYARD mirror live save state, so unchecked
+                // mons clear that slot group. ENCOUNTERED is a running history
+                // log instead — the server merges new finds in without erasing
+                // encounters recorded by earlier imports.
                 replaceSlots: [
                   "MAIN",
                   "RESERVE",
