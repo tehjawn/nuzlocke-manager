@@ -643,7 +643,7 @@ function listDexBits(bytes: Uint8Array, base: number): number[] {
 function findDexSpeciesTable(bytes: Uint8Array): number | null {
   const scanEnd = Math.min(bytes.length, DEX_TABLE_SCAN_END);
   for (let off = 4; off + 4 * 40 < scanEnd; off += 2) {
-    if ((bytes[off] | (bytes[off + 1]! << 8)) !== 1) continue;
+    if ((bytes[off]! | (bytes[off + 1]! << 8)) !== 1) continue;
     let ok = true;
     for (let i = 0; i < 40; i++) {
       const o = off + i * 4;
@@ -788,7 +788,7 @@ function readPokedexSeen(
 function dexSeenToParsed(speciesId: number): ParsedSavePokemon {
   const entry = findPokemonById(speciesId);
   return {
-    pid: DEX_SEEN_PID_BASE | (speciesId & 0xffff),
+    pid: (DEX_SEEN_PID_BASE | (speciesId & 0xffff)) >>> 0,
     nickname: null,
     species: entry?.name ?? `Species #${speciesId}`,
     pokedexId: speciesId,
@@ -874,11 +874,11 @@ function classifyEwram(bytes: Uint8Array): ParseSaveResult {
   const ripParsed = rip.map((m) => toParsed(m, "rip"));
   let encounteredParsed = encounteredRaw.map((m) => toParsed(m, "encountered"));
 
-  // Anchor dex location on party only — box scans are noisy false-positives
-  // that would make ownedMust too large for a reliable bitfield match.
+  // Anchor dex location on party + R.I.P. owned species. Box scans are noisy
+  // false-positives that would make ownedMust too large for a reliable match.
   const ownedMust = [
     ...new Set(
-      partyParsed
+      [...partyParsed, ...ripParsed]
         .map((m) => m.pokedexId)
         .filter((id) => id > 0 && id <= DEX_MAX_SPECIES),
     ),

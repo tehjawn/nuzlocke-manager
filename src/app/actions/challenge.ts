@@ -695,31 +695,24 @@ export async function importFromSaveAction(
     };
 
     const replaceSet = new Set(data.replaceSlots);
-    // Deduplicate Encountered within this payload only (buffer + dex overlap /
-    // user edits); existing board rows are wiped via replaceSlots below.
+    // Within-payload Encountered dedupe only (existing rows are wiped below).
+    // Always key on species+route so null vs resolved pokedexId cannot diverge.
     const seenEncounterKeys = new Set<string>();
-    const encounterDedupeKeys = (mon: {
-      pokedexId?: number | null;
+    const encounterDedupeKey = (mon: {
       species: string;
       catchRoute?: string | null;
-    }): string[] => {
-      const route = mon.catchRoute?.trim().toLowerCase() || "";
-      const keys: string[] = [];
-      if (mon.pokedexId != null && mon.pokedexId > 0) {
-        keys.push(`${mon.pokedexId}|${route}`);
-      }
-      const species = mon.species.trim().toLowerCase();
-      if (species) keys.push(`name:${species}|${route}`);
-      return keys;
-    };
+    }) =>
+      `${mon.species.trim().toLowerCase()}|${
+        mon.catchRoute?.trim().toLowerCase() || ""
+      }`;
 
     const rows = data.pokemon
       .filter((mon) => replaceSet.has(mon.slot))
       .filter((mon) => {
         if (mon.slot !== "ENCOUNTERED") return true;
-        const keys = encounterDedupeKeys(mon);
-        if (keys.some((key) => seenEncounterKeys.has(key))) return false;
-        for (const key of keys) seenEncounterKeys.add(key);
+        const key = encounterDedupeKey(mon);
+        if (seenEncounterKeys.has(key)) return false;
+        seenEncounterKeys.add(key);
         return true;
       })
       .map((mon) => {

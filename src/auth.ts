@@ -76,8 +76,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (typeof mapped?.image === "string" && mapped.image) ||
         (raw ? discordAvatarUrl(raw) : null);
       const email =
-        (typeof raw?.email === "string" && raw.email) ||
-        (typeof mapped?.email === "string" && mapped.email) ||
+        (typeof raw?.email === "string" && raw.email.trim()) ||
+        (typeof mapped?.email === "string" && mapped.email.trim()) ||
         null;
 
       const prisma = getPrisma();
