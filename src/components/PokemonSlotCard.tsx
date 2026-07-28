@@ -11,6 +11,11 @@ type PokemonSlotCardProps = {
   memorial?: boolean;
   size?: "sm" | "md";
   onSelect?: () => void;
+  /**
+   * Visual “tappable” affordance without wrapping in a <button>.
+   * Use when a parent already provides the interactive surface (e.g. DnD).
+   */
+  interactive?: boolean;
   /** Soft hint under species line when the card is interactive. */
   selectHint?: string;
   /**
@@ -25,9 +30,11 @@ export function PokemonSlotCard({
   memorial = false,
   size = "md",
   onSelect,
+  interactive = false,
   selectHint,
   showCompetitiveDetails = true,
 }: PokemonSlotCardProps) {
+  const looksInteractive = Boolean(onSelect) || interactive;
   if (!pokemon) {
     const empty = (
       <div
@@ -82,7 +89,7 @@ export function PokemonSlotCard({
       <div
         className={`flex h-full min-h-20 items-center gap-2 rounded-lg border border-frame bg-surface p-2 ${
           memorial ? "opacity-90" : ""
-        } ${onSelect ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
+        } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
       >
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
           <Image
@@ -127,7 +134,7 @@ export function PokemonSlotCard({
     <div
       className={`flex h-full flex-col gap-3 rounded-lg border border-frame bg-surface p-3 ${
         memorial ? "opacity-90" : ""
-      } ${onSelect ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
+      } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
     >
       <div className="flex items-start gap-3">
         <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-frame bg-surface-2">

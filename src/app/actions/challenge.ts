@@ -631,19 +631,32 @@ export async function deletePokemonAction(input: {
   }
 }
 
-const RelocatePokemonSchema = z.object({
-  trainerId: z.string().min(1),
-  updates: z
-    .array(
-      z.object({
-        id: z.string().min(1),
-        slot: PokemonSlotSchema,
-        partyIndex: z.number().int().min(0).max(11),
-      }),
-    )
-    .min(1)
-    .max(36),
-});
+const RelocatePokemonSchema = z
+  .object({
+    trainerId: z.string().min(1),
+    updates: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          slot: PokemonSlotSchema,
+          // Reserves/RIP can grow past the old 0–11 add-form scan.
+          partyIndex: z.number().int().min(0).max(999),
+        }),
+      )
+      .min(1)
+      .max(200),
+  })
+  .superRefine((data, ctx) => {
+    for (const [i, update] of data.updates.entries()) {
+      if (update.slot === "MAIN" && update.partyIndex > 5) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Main Squad partyIndex must be 0–5",
+          path: ["updates", i, "partyIndex"],
+        });
+      }
+    }
+  });
 
 /** Persist slot / partyIndex changes from board drag-and-drop. */
 export async function relocatePokemonAction(

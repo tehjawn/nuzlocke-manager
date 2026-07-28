@@ -20,12 +20,6 @@ export function isEmptyMainId(id: string): boolean {
   return id.startsWith("empty:MAIN:");
 }
 
-export function parseEmptyMainIndex(id: string): number | null {
-  if (!isEmptyMainId(id)) return null;
-  const n = Number(id.slice("empty:MAIN:".length));
-  return Number.isInteger(n) && n >= 0 && n < MAIN_PARTY_SIZE ? n : null;
-}
-
 /** Build sortable item id lists for Main (fixed 6) / Reserves / R.I.P. */
 export function buildBoardItems(pokemon: PokemonEntry[]): BoardItems {
   const bySlot = (slot: PokemonSlot) =>

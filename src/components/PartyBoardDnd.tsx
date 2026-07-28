@@ -19,7 +19,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Frame } from "@/components/Frame";
 import { PokemonSlotCard } from "@/components/PokemonSlotCard";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
@@ -198,6 +198,7 @@ function SortableSlot({
   selectHint,
   onSelect,
   onSelectEmpty,
+  shouldSuppressClick,
 }: {
   id: string;
   pokemon: PokemonEntry | null;
@@ -206,6 +207,7 @@ function SortableSlot({
   selectHint?: string;
   onSelect?: (pokemon: PokemonEntry) => void;
   onSelectEmpty?: () => void;
+  shouldSuppressClick: () => boolean;
 }) {
   const empty = isEmptyMainId(id);
   const {
@@ -230,24 +232,52 @@ function SortableSlot({
     opacity: isDragging ? 0.35 : undefined,
   };
 
+  // Empty MAIN slots stay a real <button> via PokemonSlotCard (not sortable).
+  if (empty) {
+    return (
+      <div ref={setNodeRef} style={style} className="h-full min-h-0">
+        <PokemonSlotCard
+          pokemon={null}
+          memorial={memorial}
+          onSelect={onSelectEmpty}
+        />
+      </div>
+    );
+  }
+
+  function activate() {
+    if (!pokemon || !onSelect) return;
+    if (shouldSuppressClick()) return;
+    onSelect(pokemon);
+  }
+
+  // Filled cards: one interactive surface (dnd-kit attributes) — do not nest a
+  // <button> inside role="button".
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`h-full min-h-0 ${disabled || empty ? "" : "touch-none"}`}
-      {...(disabled || empty ? {} : { ...attributes, ...listeners })}
+      className={`h-full min-h-0 ${disabled ? "" : "touch-none cursor-grab active:cursor-grabbing"}`}
+      {...(disabled
+        ? { role: "button", tabIndex: 0 }
+        : { ...attributes, ...listeners })}
+      onClick={activate}
+      onKeyDown={
+        pokemon && onSelect
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                activate();
+              }
+            }
+          : undefined
+      }
     >
       <PokemonSlotCard
         pokemon={pokemon}
         memorial={memorial}
-        selectHint={pokemon && onSelect ? selectHint : undefined}
-        onSelect={
-          pokemon && onSelect
-            ? () => onSelect(pokemon)
-            : !pokemon && onSelectEmpty
-              ? onSelectEmpty
-              : undefined
-        }
+        selectHint={onSelect ? selectHint : undefined}
+        interactive={Boolean(onSelect)}
       />
     </div>
   );
@@ -263,6 +293,7 @@ function SortablePartyGrid({
   selectHint,
   onSelect,
   onSelectEmpty,
+  shouldSuppressClick,
 }: {
   slot: DndSlot;
   items: string[];
@@ -273,6 +304,7 @@ function SortablePartyGrid({
   selectHint?: string;
   onSelect: (pokemon: PokemonEntry) => void;
   onSelectEmpty?: (partyIndex: number) => void;
+  shouldSuppressClick: () => boolean;
 }) {
   return (
     <SortableContext
@@ -293,6 +325,7 @@ function SortablePartyGrid({
               disabled={dragDisabled}
               selectHint={selectHint}
               onSelect={onSelect}
+              shouldSuppressClick={shouldSuppressClick}
               onSelectEmpty={
                 fixedSlots != null && onSelectEmpty
                   ? () => onSelectEmpty(index)
@@ -318,6 +351,17 @@ export function PartyBoardDnd({
 }: PartyBoardDndProps) {
   const [items, setItems] = useState<BoardItems>(() => buildBoardItems(pokemon));
   const itemsRef = useRef(items);
+  const aliveRef = useRef(true);
+  const persistQueuedRef = useRef(false);
+  const persistingRef = useRef(false);
+  const suppressClickRef = useRef(false);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
 
   function commitItems(next: BoardItems) {
     itemsRef.current = next;
@@ -338,12 +382,41 @@ export function PartyBoardDnd({
       ? (pokemonById.get(activeId) ?? null)
       : null;
 
-  async function persistItems(next: BoardItems) {
-    const after = applyBoardItemsToPokemon(pokemon, next);
-    const updates = boardItemUpdates(pokemon, after);
-    if (updates.length === 0) return;
-    const ok = await onRelocate(updates);
-    if (!ok) commitItems(buildBoardItems(pokemon));
+  async function flushPersistQueue() {
+    if (persistingRef.current) {
+      persistQueuedRef.current = true;
+      return;
+    }
+    persistingRef.current = true;
+    try {
+      do {
+        persistQueuedRef.current = false;
+        const snapshot = itemsRef.current;
+        const after = applyBoardItemsToPokemon(pokemon, snapshot);
+        const updates = boardItemUpdates(pokemon, after);
+        if (updates.length === 0) continue;
+        const ok = await onRelocate(updates);
+        if (!aliveRef.current) return;
+        if (!ok) {
+          commitItems(buildBoardItems(pokemon));
+          // Drop any queued snapshot that was based on the failed layout.
+          persistQueuedRef.current = false;
+          return;
+        }
+      } while (persistQueuedRef.current && aliveRef.current);
+    } finally {
+      persistingRef.current = false;
+    }
+  }
+
+  function persistItems() {
+    void flushPersistQueue();
+  }
+
+  function consumeSuppressClick() {
+    if (!suppressClickRef.current) return false;
+    suppressClickRef.current = false;
+    return true;
   }
 
   function resolveOverContainer(
@@ -385,6 +458,8 @@ export function PartyBoardDnd({
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    // Pointer sensors still emit a click after drag — don't open the modal.
+    suppressClickRef.current = true;
     setActiveId(null);
 
     if (!over) {
@@ -408,7 +483,6 @@ export function PartyBoardDnd({
       return;
     }
 
-    let next = current;
     if (from === to) {
       const list = [...current[from]];
       const oldIndex = list.indexOf(activeIdStr);
@@ -416,21 +490,21 @@ export function PartyBoardDnd({
       if (overIdStr === to) newIndex = list.length - 1;
       if (oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
         const moved = arrayMove(list, oldIndex, newIndex);
-        next = {
+        commitItems({
           ...current,
           [from]:
             from === "MAIN"
               ? normalizeMainItems(moved)
               : listWithoutEmpties(moved),
-        };
-        commitItems(next);
+        });
       }
     }
 
-    void persistItems(next);
+    persistItems();
   }
 
   function handleDragCancel() {
+    suppressClickRef.current = true;
     setActiveId(null);
     commitItems(buildBoardItems(pokemon));
   }
@@ -469,6 +543,7 @@ export function PartyBoardDnd({
                   selectHint="View"
                   onSelect={onSelect}
                   onSelectEmpty={onSelectEmptyMain}
+                  shouldSuppressClick={consumeSuppressClick}
                 />
               </div>
             </div>
@@ -493,6 +568,7 @@ export function PartyBoardDnd({
                   pokemonById={pokemonById}
                   selectHint="View"
                   onSelect={onSelect}
+                  shouldSuppressClick={consumeSuppressClick}
                 />
               ) : (
                 <p className="rounded-lg border border-dashed border-frame/40 px-3 py-6 text-center text-sm text-muted">
@@ -522,6 +598,7 @@ export function PartyBoardDnd({
                   memorial
                   selectHint="View"
                   onSelect={onSelect}
+                  shouldSuppressClick={consumeSuppressClick}
                 />
               ) : (
                 <p className="rounded-lg border border-dashed border-frame/40 px-3 py-6 text-center text-sm text-muted">
