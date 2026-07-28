@@ -16,6 +16,7 @@ import {
   pokemonSpriteUrl,
 } from "@/lib/sprites";
 import { pokemonInSlot } from "@/lib/trainer-display";
+import { toolsHref } from "@/lib/tools-routes";
 
 type TrainerCompareProps = {
   slug: string;
@@ -48,12 +49,8 @@ export function TrainerCompare({
   function updateQuery(nextA: string, nextB: string) {
     setAId(nextA);
     setBId(nextB);
-    const params = new URLSearchParams();
-    if (nextA) params.set("a", nextA);
-    if (nextB) params.set("b", nextB);
-    const qs = params.toString();
     router.replace(
-      qs ? `/challenges/${slug}/tools?${qs}` : `/challenges/${slug}/tools`,
+      toolsHref(slug, "compare", { a: nextA || null, b: nextB || null }),
       { scroll: false },
     );
   }

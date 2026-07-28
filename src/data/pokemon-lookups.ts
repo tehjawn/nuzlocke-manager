@@ -57,6 +57,11 @@ export function abilityForSpecies(
   return list[idx] ?? list[0] ?? null;
 }
 
+/** All catalog abilities for a National Dex / forme id (empty when unknown). */
+export function abilitiesForSpecies(pokedexId: number): string[] {
+  return SPECIES_ABILITIES[String(pokedexId)] ?? [];
+}
+
 /** Emerald mapsec → display name (subset used by catch logging). */
 const GEN3_MAPSEC: Record<number, string> = {
   0: "Littleroot Town",
