@@ -9,6 +9,9 @@ type GetStartedSeasonCtaProps = {
 export function GetStartedSeasonCta({ slug }: GetStartedSeasonCtaProps) {
   return (
     <div className="mt-4 flex flex-col gap-2">
+      <Link href="/about" className={`${CTA_SECONDARY} w-full justify-center`}>
+        About
+      </Link>
       <Link
         href={`/challenges/${slug}/setup`}
         data-tour="cta-setup"

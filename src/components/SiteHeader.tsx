@@ -4,13 +4,12 @@ import { AuthButtons } from "@/components/AuthButtons";
 import { GmLensToggle } from "@/components/GmLensToggle";
 import { MobileMenuAuth } from "@/components/MobileMenuAuth";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
-import { AboutIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { JumpTrigger } from "@/features/jump";
 import { getChallenge, getDefaultJumpChallenge } from "@/lib/challenges";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 
-/** Shared shell width for the site header and page content on every page. */
+/** Shared shell width for the site header, footer, and page content. */
 export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
 
 type SiteHeaderProps = {
@@ -95,13 +94,6 @@ export async function SiteHeader({
             Seasons
           </Link>
           */}
-          <Link
-            href="/about"
-            className="pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
-          >
-            <AboutIcon className="h-4 w-4 text-ink/70" />
-            About
-          </Link>
           {seasonSlug ? (
             <Link
               href={`/challenges/${seasonSlug}/rules`}
@@ -136,10 +128,6 @@ export async function SiteHeader({
               : null
           }
         />
-        {/* Theme lives inline on desktop; on mobile it moves into the drawer. */}
-        <span className="hidden sm:inline-flex">
-          <ThemeToggle />
-        </span>
         <MobileNavDrawer
           className="sm:hidden"
           challengeSlug={seasonSlug ?? undefined}
