@@ -3,12 +3,19 @@
  *
  * Categories (Crest / expansion layout):
  * - party: 6-slot playerParty (only filled slots)
- * - encountered: Pokémon stored immediately after the party block
+ * - encountered: post-party wild buffer ∪ Pokédex "seen" species not already
+ *   present as full party/box/rip mons (species-only stubs when dex-only)
  * - box: remaining PC / storage Pokémon
  * - rip: storage copies with 0 HP (fainted / boxed dead)
  *
  * Crest encrypts the 48-byte data section with repeating `pid ^ otId`
  * (vanilla Emerald uses an LCG stream). Both are tried.
+ *
+ * Pokédex seen/owned (Crest expanded national dex, ~1025 species):
+ * - Preferred: cleartext table `{u16 speciesId, u16 flags}` stride 4
+ *   (flag bit0 = seen, bit1 = owned), when the dex UI has materialized it
+ * - Fallback: bitfields `seen[129]` then `owned[129]` (LSB, species-1),
+ *   located by requiring owned bits ⊇ party species
  */
 
 import { findPokemonById } from "@/data/pokemon-index";
@@ -77,6 +84,25 @@ const PARTY_SLOTS = 6;
 const FLAGS_AFTER_PARTY = 0x1038;
 const SYSTEM_FLAGS = 0x860;
 const FLAG_BADGE01 = SYSTEM_FLAGS + 0x7;
+/** Crest national dex flag bytes: ceil(1025 / 8). */
+const DEX_FLAG_BYTES = 129;
+const DEX_MAX_SPECIES = 1025;
+/** Cap dex-only stubs so late-game national dex cannot blow past import limits. */
+const DEX_SEEN_STUB_CAP = 200;
+/** Synthetic PID prefix for dex-only encounter stubs (avoids real PID clashes). */
+const DEX_SEEN_PID_BASE = 0xde000000;
+/**
+ * Crest seen/owned bitfields have been observed near mid-EWRAM (~0x27bxx).
+ * Search preferred windows first; only fall through to the rest of EWRAM if needed.
+ */
+const DEX_BITFIELD_WINDOWS: readonly (readonly [number, number])[] = [
+  [0x25000, 0x2d000],
+  [0x10000, 0x25000],
+  [0x2d000, 0x40000],
+  [0x0, 0x10000],
+];
+/** Cleartext dex UI table materializes near the start of EWRAM when present. */
+const DEX_TABLE_SCAN_END = 0x8000;
 
 const POS_OF_TYPE: readonly (readonly number[])[] = [
   [0, 1, 2, 3],
@@ -583,6 +609,202 @@ function readBadges(bytes: Uint8Array, partyBase: number | null): ParsedSaveBadg
   return { earnedKeys, reliable: true };
 }
 
+function dexBitSet(bytes: Uint8Array, base: number, speciesId: number): boolean {
+  const bit = speciesId - 1;
+  const off = base + (bit >> 3);
+  if (off < 0 || off >= bytes.length) return false;
+  return ((bytes[off]! >> (bit & 7)) & 1) === 1;
+}
+
+function dexPopcount(bytes: Uint8Array, base: number, n: number): number {
+  let c = 0;
+  for (let i = 0; i < n; i++) {
+    let b = bytes[base + i] ?? 0;
+    while (b) {
+      c += b & 1;
+      b >>>= 1;
+    }
+  }
+  return c;
+}
+
+function listDexBits(bytes: Uint8Array, base: number): number[] {
+  const out: number[] = [];
+  for (let s = 1; s <= DEX_MAX_SPECIES; s++) {
+    if (dexBitSet(bytes, base, s)) out.push(s);
+  }
+  return out;
+}
+
+/**
+ * Crest sometimes materializes a cleartext national-dex table
+ * `{ u16 speciesId; u16 flags }` at stride 4 (bit0=seen, bit1=owned).
+ */
+function findDexSpeciesTable(bytes: Uint8Array): number | null {
+  const scanEnd = Math.min(bytes.length, DEX_TABLE_SCAN_END);
+  for (let off = 4; off + 4 * 40 < scanEnd; off += 2) {
+    if ((bytes[off]! | (bytes[off + 1]! << 8)) !== 1) continue;
+    let ok = true;
+    for (let i = 0; i < 40; i++) {
+      const o = off + i * 4;
+      const id = bytes[o]! | (bytes[o + 1]! << 8);
+      const flags = bytes[o + 2]! | (bytes[o + 3]! << 8);
+      if (id !== 1 + i || flags > 7) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) return off - 4; // species 0 slot
+  }
+  return null;
+}
+
+function dexTableFlags(
+  bytes: Uint8Array,
+  tableBase: number,
+  speciesId: number,
+): number | null {
+  const off = tableBase + speciesId * 4;
+  if (off + 3 >= bytes.length) return null;
+  const id = bytes[off]! | (bytes[off + 1]! << 8);
+  if (id !== speciesId) return null;
+  return bytes[off + 2]! | (bytes[off + 3]! << 8);
+}
+
+/** Reject false-positive tables that don't mark party species as owned. */
+function dexTableMatchesOwned(
+  bytes: Uint8Array,
+  tableBase: number,
+  ownedMust: number[],
+): boolean {
+  if (ownedMust.length === 0) return false;
+  for (const speciesId of ownedMust) {
+    const flags = dexTableFlags(bytes, tableBase, speciesId);
+    if (flags == null || (flags & 1) === 0 || (flags & 2) === 0) return false;
+  }
+  return true;
+}
+
+function readDexTableSeen(bytes: Uint8Array, tableBase: number): number[] {
+  const seen: number[] = [];
+  for (let s = 1; s <= DEX_MAX_SPECIES; s++) {
+    const flags = dexTableFlags(bytes, tableBase, s);
+    if (flags == null) {
+      if (s > 100) break;
+      continue;
+    }
+    if (flags & 1) seen.push(s);
+  }
+  return seen;
+}
+
+/**
+ * Locate `seen[129]` + `owned[129]` bitfields. Owned must cover party species;
+ * seen must cover party ∪ post-party encounter species.
+ */
+function locateDexSeenBitfieldInRange(
+  bytes: Uint8Array,
+  ownedMust: number[],
+  seenMust: number[],
+  rangeStart: number,
+  rangeEnd: number,
+): { base: number; seen: number[]; score: number } | null {
+  const hardEnd = bytes.length - DEX_FLAG_BYTES * 2;
+  const start = Math.max(0, rangeStart);
+  const end = Math.min(hardEnd, rangeEnd);
+  if (start >= end) return null;
+
+  let best: { base: number; seen: number[]; score: number } | null = null;
+  const owned0 = ownedMust[0]!;
+
+  for (let base = start; base < end; base++) {
+    if (!dexBitSet(bytes, base + DEX_FLAG_BYTES, owned0)) continue;
+
+    let ok = true;
+    for (let i = 1; i < ownedMust.length; i++) {
+      if (!dexBitSet(bytes, base + DEX_FLAG_BYTES, ownedMust[i]!)) {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok) continue;
+    for (const s of seenMust) {
+      if (!dexBitSet(bytes, base, s)) {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok) continue;
+
+    const ownedPc = dexPopcount(bytes, base + DEX_FLAG_BYTES, DEX_FLAG_BYTES);
+    const seenPc = dexPopcount(bytes, base, DEX_FLAG_BYTES);
+    if (ownedPc < ownedMust.length || ownedPc > ownedMust.length + 15) continue;
+    if (seenPc < seenMust.length) continue;
+    if (seenPc > Math.max(seenMust.length + 40, ownedPc + 40)) continue;
+    if (seenPc < ownedPc) continue;
+
+    const score = seenPc + ownedPc * 2;
+    if (!best || score < best.score) {
+      best = { base, seen: listDexBits(bytes, base), score };
+    }
+  }
+  return best;
+}
+
+function locateDexSeenBitfield(
+  bytes: Uint8Array,
+  ownedMust: number[],
+  seenMust: number[],
+): number[] | null {
+  if (ownedMust.length === 0) return null;
+  for (const [start, end] of DEX_BITFIELD_WINDOWS) {
+    const hit = locateDexSeenBitfieldInRange(
+      bytes,
+      ownedMust,
+      seenMust,
+      start,
+      end,
+    );
+    if (hit) return hit.seen;
+  }
+  return null;
+}
+
+function readPokedexSeen(
+  bytes: Uint8Array,
+  ownedMust: number[],
+  seenMust: number[],
+): { seen: number[]; source: "table" | "bitfield" } | null {
+  const tableBase = findDexSpeciesTable(bytes);
+  if (tableBase != null && dexTableMatchesOwned(bytes, tableBase, ownedMust)) {
+    const seen = readDexTableSeen(bytes, tableBase);
+    if (seen.length > 0) return { seen, source: "table" };
+  }
+  const seen = locateDexSeenBitfield(bytes, ownedMust, seenMust);
+  if (seen && seen.length > 0) return { seen, source: "bitfield" };
+  return null;
+}
+
+function dexSeenToParsed(speciesId: number): ParsedSavePokemon {
+  const entry = findPokemonById(speciesId);
+  return {
+    pid: (DEX_SEEN_PID_BASE | (speciesId & 0xffff)) >>> 0,
+    nickname: null,
+    species: entry?.name ?? `Species #${speciesId}`,
+    pokedexId: speciesId,
+    level: null,
+    isShiny: false,
+    nature: null,
+    ability: null,
+    heldItem: null,
+    catchRoute: null,
+    moves: [],
+    ivs: { ...EMPTY_IVS },
+    evs: { ...EMPTY_EVS },
+    category: "encountered",
+  };
+}
+
 function classifyEwram(bytes: Uint8Array): ParseSaveResult {
   const warnings: string[] = [];
   const partyBases = findPartyBases(bytes);
@@ -603,7 +825,7 @@ function classifyEwram(bytes: Uint8Array): ParseSaveResult {
     if (m && m.level != null) party.push(m);
   }
 
-  const encountered = readSlotArray(
+  const encounteredRaw = readSlotArray(
     bytes,
     partyBase + PARTY_SLOTS * MON_SIZE,
     60,
@@ -620,7 +842,7 @@ function classifyEwram(bytes: Uint8Array): ParseSaveResult {
 
   const claimed = new Set([
     ...party.map((m) => m.pid),
-    ...encountered.map((m) => m.pid),
+    ...encounteredRaw.map((m) => m.pid),
   ]);
 
   const box: RawMon[] = [];
@@ -647,16 +869,64 @@ function classifyEwram(bytes: Uint8Array): ParseSaveResult {
     warnings.push("Decoded with Crest-style encryption (pid⊕otId).");
   }
 
+  const partyParsed = party.map((m) => toParsed(m, "party"));
+  const boxParsed = box.map((m) => toParsed(m, "box"));
+  const ripParsed = rip.map((m) => toParsed(m, "rip"));
+  let encounteredParsed = encounteredRaw.map((m) => toParsed(m, "encountered"));
+
+  // Anchor dex location on party + R.I.P. owned species. Box scans are noisy
+  // false-positives that would make ownedMust too large for a reliable match.
+  const ownedMust = [
+    ...new Set(
+      [...partyParsed, ...ripParsed]
+        .map((m) => m.pokedexId)
+        .filter((id) => id > 0 && id <= DEX_MAX_SPECIES),
+    ),
+  ];
+  const seenMust = [
+    ...new Set([
+      ...ownedMust,
+      ...encounteredParsed
+        .map((m) => m.pokedexId)
+        .filter((id) => id > 0 && id <= DEX_MAX_SPECIES),
+    ]),
+  ];
+  const dex = readPokedexSeen(bytes, ownedMust, seenMust);
+  if (dex) {
+    const already = new Set(
+      [...partyParsed, ...boxParsed, ...ripParsed, ...encounteredParsed].map(
+        (m) => m.pokedexId,
+      ),
+    );
+    let truncated = 0;
+    const dexOnly = dex.seen
+      .filter((id) => !already.has(id))
+      .sort((a, b) => a - b)
+      .filter((_, i) => {
+        if (i < DEX_SEEN_STUB_CAP) return true;
+        truncated += 1;
+        return false;
+      })
+      .map(dexSeenToParsed);
+    encounteredParsed = [...encounteredParsed, ...dexOnly];
+    warnings.push(
+      `Pokédex seen: ${dex.seen.length} species (${dex.source}` +
+        (dexOnly.length ? `, +${dexOnly.length} not in party/box` : "") +
+        (truncated ? `, capped ${truncated} more` : "") +
+        ").",
+    );
+  }
+
   return {
     ok: true,
     format: "Afterplay/mGBA EWRAM",
     warnings,
     trainer,
     badges,
-    party: party.map((m) => toParsed(m, "party")),
-    box: box.map((m) => toParsed(m, "box")),
-    rip: rip.map((m) => toParsed(m, "rip")),
-    encountered: encountered.map((m) => toParsed(m, "encountered")),
+    party: partyParsed,
+    box: boxParsed,
+    rip: ripParsed,
+    encountered: encounteredParsed,
   };
 }
 

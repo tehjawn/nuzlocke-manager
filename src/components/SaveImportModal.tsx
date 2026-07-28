@@ -220,6 +220,9 @@ export function SaveImportModal({
           <code className="text-ink">.srm</code>. Party, box, R.I.P., and
           encounters are detected separately — uncheck anything you want to
           skip. Nature, ability, moves, IVs, and EVs are imported when readable.
+          Party, box, R.I.P., and Encountered all mirror this save — Encountered
+          is the wild buffer plus Pokédex “seen” species, and replaces your
+          current Encountered list on import.
         </p>
 
         <label className="block">

@@ -649,7 +649,8 @@ const SaveImportMonSchema = z.object({
 
 const ImportFromSaveSchema = z.object({
   trainerId: z.string().min(1),
-  pokemon: z.array(SaveImportMonSchema).max(80),
+  // Party + box + R.I.P. + wild buffer + Pokédex-seen stubs (capped in parser).
+  pokemon: z.array(SaveImportMonSchema).max(512),
   trainerName: z.string().min(1).max(32).optional().nullable(),
   applyTrainerName: z.boolean().default(false),
   badgeKeys: z.array(z.string().min(1).max(32)).max(16).default([]),
@@ -682,6 +683,10 @@ export async function importFromSaveAction(
     }
 
     const prisma = getPrisma();
+
+    // All imported slots (including ENCOUNTERED) mirror this save snapshot.
+    // Encountered is wild buffer ∪ Pokédex seen — re-import replaces the ledger
+    // so it matches the save rather than accumulating across imports.
     const indexes: Record<string, number> = {
       MAIN: 0,
       RESERVE: 0,
@@ -690,8 +695,26 @@ export async function importFromSaveAction(
     };
 
     const replaceSet = new Set(data.replaceSlots);
+    // Within-payload Encountered dedupe only (existing rows are wiped below).
+    // Always key on species+route so null vs resolved pokedexId cannot diverge.
+    const seenEncounterKeys = new Set<string>();
+    const encounterDedupeKey = (mon: {
+      species: string;
+      catchRoute?: string | null;
+    }) =>
+      `${mon.species.trim().toLowerCase()}|${
+        mon.catchRoute?.trim().toLowerCase() || ""
+      }`;
+
     const rows = data.pokemon
       .filter((mon) => replaceSet.has(mon.slot))
+      .filter((mon) => {
+        if (mon.slot !== "ENCOUNTERED") return true;
+        const key = encounterDedupeKey(mon);
+        if (seenEncounterKeys.has(key)) return false;
+        seenEncounterKeys.add(key);
+        return true;
+      })
       .map((mon) => {
         const speciesMeta = findSpecies(mon.species);
         const indexHit =
@@ -748,9 +771,9 @@ export async function importFromSaveAction(
             slot: { in: data.replaceSlots },
           },
         });
-        if (rows.length > 0) {
-          await tx.pokemonEntry.createMany({ data: rows });
-        }
+      }
+      if (rows.length > 0) {
+        await tx.pokemonEntry.createMany({ data: rows });
       }
 
       if (data.applyTrainerName && data.trainerName) {

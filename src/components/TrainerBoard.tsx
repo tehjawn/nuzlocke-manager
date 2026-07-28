@@ -959,7 +959,8 @@ export function TrainerBoard({
                 applyTrainerName: payload.applyTrainerName,
                 badgeKeys: payload.badgeKeys,
                 applyBadges: payload.applyBadges,
-                // Full category sync: unchecked mons clear that slot group.
+                // Each category mirrors this save: unchecked mons clear that
+                // slot group (including Encountered / Pokédex seen).
                 replaceSlots: [
                   "MAIN",
                   "RESERVE",

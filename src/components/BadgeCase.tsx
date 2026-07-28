@@ -152,7 +152,11 @@ export function BadgeCase({
     }
 
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div
+        className={`flex flex-wrap items-center gap-2 ${
+          hideCount ? "justify-center" : ""
+        }`}
+      >
         {hideCount ? null : (
           <p className="font-display text-xs font-semibold tracking-tight text-muted">
             {earnedCount}/{badges.length} badges
