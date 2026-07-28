@@ -649,7 +649,8 @@ const SaveImportMonSchema = z.object({
 
 const ImportFromSaveSchema = z.object({
   trainerId: z.string().min(1),
-  pokemon: z.array(SaveImportMonSchema).max(80),
+  // Party + box + R.I.P. + wild buffer + Pokédex-seen stubs (capped in parser).
+  pokemon: z.array(SaveImportMonSchema).max(512),
   trainerName: z.string().min(1).max(32).optional().nullable(),
   applyTrainerName: z.boolean().default(false),
   badgeKeys: z.array(z.string().min(1).max(32)).max(16).default([]),
@@ -694,17 +695,26 @@ export async function importFromSaveAction(
           select: { partyIndex: true, pokedexId: true, species: true, catchRoute: true },
         })
       : [];
-    const encounterDedupeKey = (mon: {
+    // Index by pokedexId *and* species so manual rows without an ID still
+    // collide with save imports that carry a national dex number (and vice versa).
+    const encounterDedupeKeys = (mon: {
       pokedexId?: number | null;
       species: string;
       catchRoute?: string | null;
-    }) =>
-      `${mon.pokedexId ?? mon.species.trim().toLowerCase()}|${
-        mon.catchRoute?.trim().toLowerCase() || ""
-      }`;
-    const seenEncounterKeys = new Set(
-      existingEncountered.map((mon) => encounterDedupeKey(mon)),
-    );
+    }): string[] => {
+      const route = mon.catchRoute?.trim().toLowerCase() || "";
+      const keys: string[] = [];
+      if (mon.pokedexId != null && mon.pokedexId > 0) {
+        keys.push(`${mon.pokedexId}|${route}`);
+      }
+      const species = mon.species.trim().toLowerCase();
+      if (species) keys.push(`name:${species}|${route}`);
+      return keys;
+    };
+    const seenEncounterKeys = new Set<string>();
+    for (const mon of existingEncountered) {
+      for (const key of encounterDedupeKeys(mon)) seenEncounterKeys.add(key);
+    }
     const hardReplaceSlots = data.replaceSlots.filter(
       (slot) => slot !== "ENCOUNTERED",
     );
@@ -723,9 +733,9 @@ export async function importFromSaveAction(
       .filter((mon) => replaceSet.has(mon.slot))
       .filter((mon) => {
         if (mon.slot !== "ENCOUNTERED") return true;
-        const key = encounterDedupeKey(mon);
-        if (seenEncounterKeys.has(key)) return false;
-        seenEncounterKeys.add(key);
+        const keys = encounterDedupeKeys(mon);
+        if (keys.some((key) => seenEncounterKeys.has(key))) return false;
+        for (const key of keys) seenEncounterKeys.add(key);
         return true;
       })
       .map((mon) => {
