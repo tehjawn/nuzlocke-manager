@@ -451,15 +451,7 @@ export async function recordWipeAction(input: {
   trainerId: string;
 }): Promise<ActionResult> {
   try {
-    const { trainer, userId, access } = await requireTrainerEditAccess(
-      input.trainerId,
-    );
-    if (trainer.mainSquadLocked && !access.isGm) {
-      return {
-        ok: false,
-        error: "Main Squad is locked — ask a GM to unlock before recording a wipe",
-      };
-    }
+    const { trainer, userId } = await requireTrainerEditAccess(input.trainerId);
 
     const prisma = getPrisma();
     let wipeCount = 0;
@@ -517,9 +509,17 @@ export async function setBadgeProgressAction(input: {
   trainerId: string;
   badgeKey: string;
   earned: boolean;
+  /** Reject stale writes that raced a wipe (client wipeCount at schedule time). */
+  expectedWipeCount?: number;
 }): Promise<ActionResult> {
   try {
     const { trainer, userId } = await requireTrainerEditAccess(input.trainerId);
+    if (
+      input.expectedWipeCount != null &&
+      trainer.wipeCount !== input.expectedWipeCount
+    ) {
+      return { ok: false, error: "Board changed — refresh and try again" };
+    }
     const prisma = getPrisma();
     const badge = await prisma.badgeDefinition.findFirst({
       where: { challengeId: trainer.challengeId, key: input.badgeKey },

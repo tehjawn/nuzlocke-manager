@@ -10,8 +10,11 @@ type BadgeCaseEditorProps = {
   trainerId: string;
   badges: BadgeDefinition[];
   earnedKeys: string[];
+  /** Snapshot for rejecting badge writes that race a wipe. */
+  wipeCount?: number;
   compact?: boolean;
   layout?: "grid" | "column";
+  disabled?: boolean;
   onEarnedKeysChange?: (keys: string[]) => void;
 };
 
@@ -29,8 +32,10 @@ export function BadgeCaseEditor({
   trainerId,
   badges,
   earnedKeys,
+  wipeCount = 0,
   compact,
   layout,
+  disabled = false,
   onEarnedKeysChange,
 }: BadgeCaseEditorProps) {
   const [, startTransition] = useTransition();
@@ -67,6 +72,7 @@ export function BadgeCaseEditor({
   }, []);
 
   function onToggle(badgeKey: string, earned: boolean) {
+    if (disabled) return;
     const next = toggleKey(latestKeysRef.current, badgeKey, earned);
     latestKeysRef.current = next;
 
@@ -78,6 +84,7 @@ export function BadgeCaseEditor({
     const existing = timers.current.get(badgeKey);
     if (existing) clearTimeout(existing);
 
+    const wipeSnapshot = wipeCount;
     markSaving("Updating badges…");
     timers.current.set(
       badgeKey,
@@ -89,6 +96,7 @@ export function BadgeCaseEditor({
             trainerId,
             badgeKey,
             earned,
+            expectedWipeCount: wipeSnapshot,
           });
           inFlightRef.current -= 1;
           if (!mountedRef.current) return;
@@ -114,7 +122,7 @@ export function BadgeCaseEditor({
         earnedKeys={optimisticKeys}
         compact={compact}
         layout={layout}
-        onToggle={onToggle}
+        onToggle={disabled ? undefined : onToggle}
       />
       <SaveStatus status={status} />
     </div>
