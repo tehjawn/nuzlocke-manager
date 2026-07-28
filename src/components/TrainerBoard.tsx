@@ -384,7 +384,9 @@ export function TrainerBoard({
         trainer.pokemon.filter((p) => p.slot === slot).map((p) => p.partyIndex),
       );
       partyIndex = 0;
-      while (used.has(partyIndex) && partyIndex < 12) partyIndex += 1;
+      // MAIN is fixed 0–5; other sections can grow with drag-and-drop densifying.
+      const limit = slot === "MAIN" ? 6 : 1000;
+      while (used.has(partyIndex) && partyIndex < limit) partyIndex += 1;
     }
     setPokemonInspect({
       mode: "edit",

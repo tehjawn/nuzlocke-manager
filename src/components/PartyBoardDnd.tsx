@@ -3,6 +3,7 @@
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   closestCorners,
   useDroppable,
@@ -16,10 +17,19 @@ import {
   SortableContext,
   arrayMove,
   rectSortingStrategy,
+  sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from "react";
 import { Frame } from "@/components/Frame";
 import { PokemonSlotCard } from "@/components/PokemonSlotCard";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
@@ -251,6 +261,24 @@ function SortableSlot({
     onSelect(pokemon);
   }
 
+  const {
+    onKeyDown: dndKeyDown,
+    ...restListeners
+  } = (listeners ?? {}) as {
+    onKeyDown?: (event: ReactKeyboardEvent<HTMLElement>) => void;
+    [key: string]: unknown;
+  };
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    dndKeyDown?.(event);
+    if (event.defaultPrevented || isDragging) return;
+    // Space is reserved for keyboard sorting; Enter opens details.
+    if (event.key === "Enter" && pokemon && onSelect) {
+      event.preventDefault();
+      activate();
+    }
+  }
+
   // Filled cards: one interactive surface (dnd-kit attributes) — do not nest a
   // <button> inside role="button".
   return (
@@ -260,18 +288,9 @@ function SortableSlot({
       className={`h-full min-h-0 ${disabled ? "" : "touch-none cursor-grab active:cursor-grabbing"}`}
       {...(disabled
         ? { role: "button", tabIndex: 0 }
-        : { ...attributes, ...listeners })}
+        : { ...attributes, ...restListeners })}
       onClick={activate}
-      onKeyDown={
-        pokemon && onSelect
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                activate();
-              }
-            }
-          : undefined
-      }
+      onKeyDown={handleKeyDown}
     >
       <PokemonSlotCard
         pokemon={pokemon}
@@ -371,10 +390,15 @@ export function PartyBoardDnd({
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
-  const pokemonById = new Map(
-    applyBoardItemsToPokemon(pokemon, items).map((p) => [p.id, p]),
+  const pokemonById = useMemo(
+    () =>
+      new Map(applyBoardItemsToPokemon(pokemon, items).map((p) => [p.id, p])),
+    [pokemon, items],
   );
 
   const activePokemon =
@@ -411,6 +435,15 @@ export function PartyBoardDnd({
 
   function persistItems() {
     void flushPersistQueue();
+  }
+
+  function suppressNextClick() {
+    suppressClickRef.current = true;
+    // Cross-section drops may not synthesize a card click — expire so the
+    // next intentional tap is not swallowed.
+    setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 0);
   }
 
   function consumeSuppressClick() {
@@ -459,7 +492,7 @@ export function PartyBoardDnd({
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     // Pointer sensors still emit a click after drag — don't open the modal.
-    suppressClickRef.current = true;
+    suppressNextClick();
     setActiveId(null);
 
     if (!over) {
@@ -504,7 +537,7 @@ export function PartyBoardDnd({
   }
 
   function handleDragCancel() {
-    suppressClickRef.current = true;
+    suppressNextClick();
     setActiveId(null);
     commitItems(buildBoardItems(pokemon));
   }

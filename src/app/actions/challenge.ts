@@ -631,6 +631,8 @@ export async function deletePokemonAction(input: {
   }
 }
 
+const RelocatablePokemonSlotSchema = z.enum(["MAIN", "RESERVE", "GRAVEYARD"]);
+
 const RelocatePokemonSchema = z
   .object({
     trainerId: z.string().min(1),
@@ -638,7 +640,7 @@ const RelocatePokemonSchema = z
       .array(
         z.object({
           id: z.string().min(1),
-          slot: PokemonSlotSchema,
+          slot: RelocatablePokemonSlotSchema,
           // Reserves/RIP can grow past the old 0–11 add-form scan.
           partyIndex: z.number().int().min(0).max(999),
         }),
@@ -647,7 +649,18 @@ const RelocatePokemonSchema = z
       .max(200),
   })
   .superRefine((data, ctx) => {
+    const seenIds = new Set<string>();
+    const seenPositions = new Set<string>();
     for (const [i, update] of data.updates.entries()) {
+      if (seenIds.has(update.id)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Duplicate Pokémon id in relocate payload",
+          path: ["updates", i, "id"],
+        });
+      }
+      seenIds.add(update.id);
+
       if (update.slot === "MAIN" && update.partyIndex > 5) {
         ctx.addIssue({
           code: "custom",
@@ -655,6 +668,16 @@ const RelocatePokemonSchema = z
           path: ["updates", i, "partyIndex"],
         });
       }
+
+      const pos = `${update.slot}:${update.partyIndex}`;
+      if (seenPositions.has(pos)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Duplicate slot/partyIndex in relocate payload",
+          path: ["updates", i, "partyIndex"],
+        });
+      }
+      seenPositions.add(pos);
     }
   });
 
@@ -668,49 +691,91 @@ export async function relocatePokemonAction(
       data.trainerId,
     );
     const prisma = getPrisma();
-    const ids = data.updates.map((u) => u.id);
-    const existing = await prisma.pokemonEntry.findMany({
-      where: { trainerId: trainer.id, id: { in: ids } },
-    });
-    if (existing.length !== ids.length) {
-      return { ok: false, error: "Pokémon not found" };
-    }
-    const byId = new Map(existing.map((m) => [m.id, m]));
 
-    if (trainer.mainSquadLocked && !access.isGm) {
+    const discordDeaths: string[] = [];
+
+    await prisma.$transaction(async (tx) => {
+      const relocatable = await tx.pokemonEntry.findMany({
+        where: {
+          trainerId: trainer.id,
+          slot: { in: ["MAIN", "RESERVE", "GRAVEYARD"] },
+        },
+      });
+      const byId = new Map(relocatable.map((m) => [m.id, m]));
+
       for (const update of data.updates) {
-        const mon = byId.get(update.id)!;
-        if (mon.slot === "MAIN" || update.slot === "MAIN") {
-          return {
-            ok: false,
-            error: "Main Squad is locked after Championship",
-          };
+        if (!byId.has(update.id)) {
+          throw new Error("Pokémon not found");
         }
       }
-    }
 
-    const memorialized: string[] = [];
-    await prisma.$transaction(
-      data.updates.map((update) => {
+      if (trainer.mainSquadLocked && !access.isGm) {
+        for (const update of data.updates) {
+          const mon = byId.get(update.id)!;
+          if (mon.slot === "MAIN" || update.slot === "MAIN") {
+            throw new Error("Main Squad is locked after Championship");
+          }
+        }
+      }
+
+      const finalPositions = new Map(
+        relocatable.map((m) => [
+          m.id,
+          { slot: m.slot, partyIndex: m.partyIndex },
+        ]),
+      );
+      for (const update of data.updates) {
+        finalPositions.set(update.id, {
+          slot: update.slot,
+          partyIndex: update.partyIndex,
+        });
+      }
+
+      const occupied = new Set<string>();
+      for (const pos of finalPositions.values()) {
+        const key = `${pos.slot}:${pos.partyIndex}`;
+        if (occupied.has(key)) {
+          throw new Error("Duplicate party position after relocate");
+        }
+        occupied.add(key);
+      }
+
+      const memorialized: Array<{ id: string; label: string }> = [];
+      for (const update of data.updates) {
         const mon = byId.get(update.id)!;
         if (mon.slot !== "GRAVEYARD" && update.slot === "GRAVEYARD") {
-          memorialized.push(update.id);
+          memorialized.push({
+            id: update.id,
+            label: mon.nickname || mon.species,
+          });
         }
-        return prisma.pokemonEntry.update({
+        await tx.pokemonEntry.update({
           where: { id: update.id },
           data: { slot: update.slot, partyIndex: update.partyIndex },
         });
-      }),
-    );
+      }
 
-    for (const id of memorialized) {
-      const mon = byId.get(id)!;
-      await logActivity({
+      for (const entry of memorialized) {
+        const message = `${trainer.handle} memorialized ${entry.label}`;
+        await tx.activityEvent.create({
+          data: {
+            challengeId: trainer.challengeId,
+            actorId: userId,
+            trainerId: trainer.id,
+            type: "DEATH",
+            message,
+          },
+        });
+        discordDeaths.push(message);
+      }
+    });
+
+    // Discord only after the party + activity write commits.
+    for (const message of discordDeaths) {
+      void dispatchDiscordWebhook({
         challengeId: trainer.challengeId,
-        actorId: userId,
-        trainerId: trainer.id,
         type: "DEATH",
-        message: `${trainer.handle} memorialized ${mon.nickname || mon.species}`,
+        message,
       });
     }
 
