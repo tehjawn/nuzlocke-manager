@@ -44,6 +44,8 @@ export type TrainerProfile = {
   statusText: string | null;
   statusEmoji: string | null;
   reviveUsed: boolean;
+  /** Times this trainer restarted their run this season. */
+  wipeCount: number;
   mainSquadLocked: boolean;
   sortOrder: number;
   userId: string | null;

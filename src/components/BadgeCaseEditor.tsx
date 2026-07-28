@@ -58,6 +58,14 @@ export function BadgeCaseEditor({
     };
   }, []);
 
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   function onToggle(badgeKey: string, earned: boolean) {
     const next = toggleKey(latestKeysRef.current, badgeKey, earned);
     latestKeysRef.current = next;
@@ -83,6 +91,7 @@ export function BadgeCaseEditor({
             earned,
           });
           inFlightRef.current -= 1;
+          if (!mountedRef.current) return;
           if (!result.ok) {
             const rolled = toggleKey(latestKeysRef.current, badgeKey, !earned);
             latestKeysRef.current = rolled;

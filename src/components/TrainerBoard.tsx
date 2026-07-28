@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
   importFromSaveAction,
+  recordWipeAction,
   relocatePokemonAction,
   updateTrainerBoardAction,
   upsertPokemonAction,
@@ -192,13 +193,24 @@ export function TrainerBoard({
   );
 
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   const playerSave = useSaveStatus();
   const partySave = useSaveStatus();
   const reviveSave = useSaveStatus();
+  const wipeSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.reviveUsed}|${trainer.earnedBadgeKeys.join("|")}`;
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => p.id).join(",")}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
+
+  /** Optimistic board after wipe until RSC refresh lands. */
+  const [boardOverride, setBoardOverride] = useState<{
+    wipeCount: number;
+    pokemon: PokemonEntry[];
+    mainSquadLocked: boolean;
+  } | null>(null);
+  /** Remount badge editor to drop pending debounced writes before wipe. */
+  const [badgeEditorKey, setBadgeEditorKey] = useState(0);
 
   const [committed, setCommitted] = useState({
     handle: trainer.handle,
@@ -251,12 +263,25 @@ export function TrainerBoard({
     });
     setReviveUsed(trainer.reviveUsed);
     setEarnedBadgeKeys(trainer.earnedBadgeKeys);
+    setBoardOverride(null);
   }
 
-  const main = pokemonInSlot(trainer, "MAIN");
-  const reserves = pokemonInSlot(trainer, "RESERVE");
-  const graveyard = pokemonInSlot(trainer, "GRAVEYARD");
-  const encountered = pokemonInSlot(trainer, "ENCOUNTERED");
+  const boardPokemon = boardOverride?.pokemon ?? trainer.pokemon;
+  const wipeCount = boardOverride?.wipeCount ?? trainer.wipeCount;
+  const mainSquadLocked =
+    boardOverride?.mainSquadLocked ?? trainer.mainSquadLocked;
+  const boardTrainer = {
+    ...trainer,
+    pokemon: boardPokemon,
+    wipeCount,
+    mainSquadLocked,
+  };
+
+  const main = pokemonInSlot(boardTrainer, "MAIN");
+  const reserves = pokemonInSlot(boardTrainer, "RESERVE");
+  const graveyard = pokemonInSlot(boardTrainer, "GRAVEYARD");
+  const encountered = pokemonInSlot(boardTrainer, "ENCOUNTERED");
+  const wipeBlockedByLock = mainSquadLocked && !isGm;
 
   function syncPlayerDraftFromCommitted() {
     setHandle(committed.handle);
@@ -375,13 +400,58 @@ export function TrainerBoard({
     });
   }
 
+  async function recordWipe() {
+    if (wipeBlockedByLock) return;
+    const nextWipe = wipeCount + 1;
+    const ok = await confirm({
+      title: "Restart this run?",
+      description: (
+        <>
+          Clears Main Squad, Reserves, and Encountered, and resets badges. R.I.P.
+          memorial and your revive token stay. Locked Main Squad unlocks so you can
+          rebuild. This counts as wipe #{nextWipe}.
+        </>
+      ),
+      confirmLabel: "Record wipe",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setBadgeEditorKey((k) => k + 1);
+    setEarnedBadgeKeys([]);
+    wipeSave.markSaving("Recording wipe…");
+    startTransition(async () => {
+      const result = await recordWipeAction({ trainerId: trainer.id });
+      if (result.ok) {
+        setBoardOverride({
+          wipeCount: nextWipe,
+          pokemon: boardPokemon.filter((p) => p.slot === "GRAVEYARD"),
+          mainSquadLocked: false,
+        });
+        setCommitted((prev) => ({
+          ...prev,
+          statusText: "",
+          statusEmoji: null,
+        }));
+        setStatusText("");
+        setStatusEmoji(null);
+        setPokemonInspect(null);
+        setDetailsPokemon(null);
+        setSaveImportOpen(false);
+        wipeSave.markSaved(result.message ?? "Wipe recorded");
+        router.refresh();
+      } else {
+        wipeSave.markError(result.error);
+      }
+    });
+  }
+
   function openAddPokemon(
     slot: PokemonEntry["slot"] = "MAIN",
     partyIndex?: number,
   ) {
     if (partyIndex == null) {
       const used = new Set(
-        trainer.pokemon.filter((p) => p.slot === slot).map((p) => p.partyIndex),
+        boardPokemon.filter((p) => p.slot === slot).map((p) => p.partyIndex),
       );
       partyIndex = 0;
       // MAIN is fixed 0–5; other sections can grow with drag-and-drop densifying.
@@ -410,7 +480,7 @@ export function TrainerBoard({
   if (!jumpPokemonId && openedJumpPokemonId) {
     setOpenedJumpPokemonId(null);
   } else if (jumpPokemonId && jumpPokemonId !== openedJumpPokemonId) {
-    const mon = trainer.pokemon.find((p) => p.id === jumpPokemonId) ?? null;
+    const mon = boardPokemon.find((p) => p.id === jumpPokemonId) ?? null;
     setOpenedJumpPokemonId(jumpPokemonId);
     if (mon) {
       if (canEdit) {
@@ -429,7 +499,9 @@ export function TrainerBoard({
       ? partySave.status
       : playerSave.status.kind !== "idle"
         ? playerSave.status
-        : reviveSave.status;
+        : wipeSave.status.kind !== "idle"
+          ? wipeSave.status
+          : reviveSave.status;
   // Only pin a bottom bar when it has a job — save feedback or profile save.
   // The idle "save as you go" hint felt redundant on mobile.
   const showMobileSaveBar =
@@ -617,9 +689,9 @@ export function TrainerBoard({
                       ) : null}
                     </p>
                   ) : null}
-                  {(trainer.mainSquadLocked || isDemo) ? (
+                  {(mainSquadLocked || isDemo) ? (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {trainer.mainSquadLocked ? (
+                      {mainSquadLocked ? (
                         <span className="rounded-lg border border-frame bg-accent-2/25 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
                           Main Squad locked
                         </span>
@@ -662,7 +734,7 @@ export function TrainerBoard({
                       )}
                     </p>
                   ) : null}
-                  {canEdit && trainer.pokemon.length === 0 ? (
+                  {canEdit && boardPokemon.length === 0 ? (
                     <p className="mt-3 text-sm text-muted">
                       Your board is ready — edit your profile, then use{" "}
                       <span className="font-semibold text-ink">Import save</span>{" "}
@@ -677,11 +749,11 @@ export function TrainerBoard({
 
           {canEdit ? (
             <PartyBoardDnd
-              key={trainer.pokemon
+              key={boardPokemon
                 .map((p) => `${p.id}:${p.slot}:${p.partyIndex}`)
                 .join("|")}
-              pokemon={trainer.pokemon}
-              mainSquadLocked={trainer.mainSquadLocked && !isGm}
+              pokemon={boardPokemon}
+              mainSquadLocked={mainSquadLocked && !isGm}
               onSelect={openPokemon}
               onSelectEmptyMain={(partyIndex) =>
                 openAddPokemon("MAIN", partyIndex)
@@ -812,13 +884,41 @@ export function TrainerBoard({
 
         <aside className="space-y-6 lg:sticky lg:top-4">
           <Frame title="Stats">
-            <TrainerStatsSummary
-              caught={main.length + reserves.length}
-              fallen={graveyard.length}
-              badgesEarned={earnedBadgeKeys.length}
-              badgesTotal={badges.length}
-              updatedAt={trainer.updatedAt}
-            />
+            <div className="space-y-3">
+              <TrainerStatsSummary
+                caught={main.length + reserves.length}
+                fallen={graveyard.length}
+                badgesEarned={earnedBadgeKeys.length}
+                badgesTotal={badges.length}
+                wipes={wipeCount}
+                updatedAt={trainer.updatedAt}
+              />
+              {canEdit ? (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    disabled={pending || wipeBlockedByLock}
+                    title={
+                      wipeBlockedByLock
+                        ? "Main Squad is locked — ask a GM to unlock before recording a wipe"
+                        : undefined
+                    }
+                    className="pressable inline-flex h-9 w-full items-center justify-center gap-1.5 border-danger/25 bg-danger/10 px-3 text-xs font-semibold tracking-tight text-danger disabled:opacity-60"
+                    onClick={() => {
+                      void recordWipe();
+                    }}
+                  >
+                    Record wipe…
+                  </button>
+                  {wipeBlockedByLock ? (
+                    <p className="text-[11px] leading-snug text-muted">
+                      Unlock Main Squad (GM) before recording a wipe.
+                    </p>
+                  ) : null}
+                  <SaveStatus status={wipeSave.status} />
+                </div>
+              ) : null}
+            </div>
           </Frame>
 
           <Frame title="Badge case">
@@ -826,6 +926,7 @@ export function TrainerBoard({
               <div className="space-y-2">
                 <p className="text-xs text-muted">Tap a badge to toggle it.</p>
                 <BadgeCaseEditor
+                  key={`badges-${badgeEditorKey}-${wipeCount}`}
                   trainerId={trainer.id}
                   badges={badges}
                   earnedKeys={earnedBadgeKeys}
@@ -859,7 +960,7 @@ export function TrainerBoard({
         <PokemonFormModal
           open
           initial={pokemonInspect.form}
-          teamPokemon={trainer.pokemon}
+          teamPokemon={boardPokemon}
           pending={pending}
           onClose={() => setPokemonInspect(null)}
           onPreview={(form) =>

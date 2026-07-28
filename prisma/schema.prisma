@@ -49,6 +49,7 @@ enum ActivityType {
   TRAINER_CLAIMED
   RULE_UPDATED
   NOTE
+  WIPE
 }
 
 model User {
@@ -179,6 +180,7 @@ model TrainerProfile {
   statusText      String?
   statusEmoji     String?
   reviveUsed      Boolean  @default(false)
+  wipeCount       Int      @default(0)
   mainSquadLocked Boolean  @default(false)
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())

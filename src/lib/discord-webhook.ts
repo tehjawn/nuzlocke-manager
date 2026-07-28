@@ -9,6 +9,7 @@ const WEBHOOK_TYPES = new Set([
   "DEATH",
   "BADGE_EARNED",
   "REVIVE_USED",
+  "WIPE",
 ]);
 
 function isDiscordWebhookUrl(url: string): boolean {

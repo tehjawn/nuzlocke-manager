@@ -50,16 +50,19 @@ function trainer(
     | "updatedAt"
     | "discordUsername"
     | "discordDisplayName"
+    | "wipeCount"
   > & {
     pokemon?: PokemonEntry[];
     userId?: string | null;
     updatedAt?: string | null;
     discordUsername?: string | null;
     discordDisplayName?: string | null;
+    wipeCount?: number;
   },
 ): TrainerProfile {
   return {
     ...partial,
+    wipeCount: partial.wipeCount ?? 0,
     userId: partial.userId ?? null,
     updatedAt: partial.updatedAt ?? null,
     discordUsername: partial.discordUsername ?? null,
@@ -133,7 +136,7 @@ const faqs = [
     sortOrder: 2,
     question: "What if I don't have any more playable Pokémon?",
     answer:
-      'If all playable Pokémon are dead, then the Nuzlocke run is considered a wipe. You\'ll have to start the game over and try the Nuzlocke challenge again. Navigate to the "Game Mode Setting" page on how to set up your game again.',
+      'If all playable Pokémon are dead, then the Nuzlocke run is considered a wipe. You\'ll have to start the game over and try the Nuzlocke challenge again. Navigate to the "Game Mode Setting" page on how to set up your game again. On your trainer board, use Record wipe to clear Main, Reserves, and Encountered, reset badges, and count the restart — R.I.P. memorial stays.',
   },
   {
     id: "f3",
