@@ -747,7 +747,13 @@ button:disabled,
 }
 
 .trainer-carousel-track {
-  animation: trainer-carousel-scroll 48s linear infinite;
+  /* Duration set per-row from roster length so scroll speed stays constant. */
+  animation: trainer-carousel-scroll var(--carousel-duration, 48s) linear
+    infinite;
+}
+
+.trainer-carousel-track-reverse {
+  animation-direction: reverse;
 }
 
 .trainer-carousel:hover .trainer-carousel-track {

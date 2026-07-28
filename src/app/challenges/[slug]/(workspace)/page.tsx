@@ -5,6 +5,12 @@ import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { TrainersSection } from "@/components/TrainersSection";
 import { getChallenge } from "@/lib/challenges";
+import {
+  canViewCompetitiveDetails,
+} from "@/lib/gm-lens";
+import { readGmLensOn } from "@/lib/gm-lens.server";
+import { getAccessForChallenge } from "@/lib/permissions";
+import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +33,28 @@ export default async function LeagueBoardPage({ params }: PageProps) {
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
 
-  const trainers = [...challenge.trainers].sort(
-    (a, b) => a.sortOrder - b.sortOrder,
-  );
+  const access = challenge.id
+    ? await getAccessForChallenge(challenge.id)
+    : null;
+  const gmLensOn = access?.isGm
+    ? await readGmLensOn(challenge.slug)
+    : false;
   const myTrainerId =
     challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
+
+  // Own board always; other boards only with GM lens on.
+  const competitiveTrainerIds = challenge.trainers
+    .filter((t) => canViewCompetitiveDetails(access, t.userId, gmLensOn))
+    .map((t) => t.id);
+  const competitiveIdSet = new Set(competitiveTrainerIds);
+
+  const trainers = [...challenge.trainers]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((trainer) =>
+      competitiveIdSet.has(trainer.id)
+        ? trainer
+        : redactTrainerCompetitiveDetails(trainer),
+    );
 
   return (
     <>
@@ -41,9 +64,10 @@ export default async function LeagueBoardPage({ params }: PageProps) {
       </div>
 
       <TrainersSection
-        challenge={challenge}
+        challenge={{ ...challenge, trainers }}
         trainers={trainers}
         myTrainerId={myTrainerId}
+        competitiveTrainerIds={competitiveTrainerIds}
       />
     </>
   );

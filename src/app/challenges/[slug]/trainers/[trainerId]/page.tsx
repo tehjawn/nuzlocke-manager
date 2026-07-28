@@ -10,6 +10,12 @@ import {
 } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
+import {
+  canEditTrainerBoard,
+  canViewCompetitiveDetails,
+} from "@/lib/gm-lens";
+import { readGmLensOn } from "@/lib/gm-lens.server";
+import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { isSeasonReadOnly } from "@/lib/season-status";
@@ -64,9 +70,23 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     redirect(`/challenges/${slug}/join`);
   }
 
-  const canEdit =
-    Boolean(access?.canEditTrainer(trainer.userId)) &&
-    !isSeasonReadOnly(challenge.status);
+  const gmLensOn = access?.isGm
+    ? await readGmLensOn(challenge.slug)
+    : false;
+  const canViewCompetitive = canViewCompetitiveDetails(
+    access,
+    trainer.userId,
+    gmLensOn,
+  );
+  const canEdit = canEditTrainerBoard(
+    access,
+    trainer.userId,
+    gmLensOn,
+    isSeasonReadOnly(challenge.status),
+  );
+  const boardTrainer = canViewCompetitive
+    ? trainer
+    : redactTrainerCompetitiveDetails(trainer);
   const isDemo = !trainer.userId;
   // Header only needs a truthy id to show “My Trainer” → /me
   const myTrainerId =
@@ -80,6 +100,8 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     : null;
 
   const showGm = Boolean(access?.isGm);
+  // Board-level GM tools (e.g. revive reset) follow the same lens gate.
+  const boardGm = showGm && (access?.ownsTrainer(trainer.userId) || gmLensOn);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -106,10 +128,11 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           leagueBoardLabel={`${challenge.year} League Board`}
           joinHref={`/challenges/${challenge.slug}/join`}
           myBoardHref={myBoardHref}
-          trainer={trainer}
+          trainer={boardTrainer}
           badges={challenge.badges}
           canEdit={canEdit}
-          isGm={showGm}
+          showCompetitiveDetails={canViewCompetitive}
+          isGm={Boolean(boardGm)}
           isDemo={isDemo}
         />
       </main>

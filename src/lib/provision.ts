@@ -127,7 +127,7 @@ export async function ensureTrainerForChallenge(input: {
       handle,
       realName: null,
       avatarSpriteKey: "brendan",
-      statusText: "Just joined — board ready to fill in.",
+      statusText: "New trainer",
       sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
     },
   });

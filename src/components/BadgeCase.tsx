@@ -27,6 +27,7 @@ type BadgeCaseProps = {
   /** When set, badges become toggle buttons (edit mode). */
   onToggle?: (badgeKey: string, nextEarned: boolean) => void;
   pending?: boolean;
+  className?: string;
 };
 
 export function BadgeCase({
@@ -41,6 +42,7 @@ export function BadgeCase({
   layout = "grid",
   onToggle,
   pending = false,
+  className = "",
 }: BadgeCaseProps) {
   const earned = new Set(earnedKeys);
   const interactive = Boolean(onToggle);
@@ -155,7 +157,7 @@ export function BadgeCase({
       <div
         className={`flex flex-wrap items-center gap-2 ${
           hideCount ? "justify-center" : ""
-        }`}
+        } ${className}`}
       >
         {hideCount ? null : (
           <p className="font-display text-xs font-semibold tracking-tight text-muted">

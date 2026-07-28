@@ -13,6 +13,11 @@ type PokemonSlotCardProps = {
   onSelect?: () => void;
   /** Soft hint under species line when the card is interactive. */
   selectHint?: string;
+  /**
+   * When false, hide nature / ability / battle stats / moves on md cards
+   * (public board viewers).
+   */
+  showCompetitiveDetails?: boolean;
 };
 
 export function PokemonSlotCard({
@@ -21,6 +26,7 @@ export function PokemonSlotCard({
   size = "md",
   onSelect,
   selectHint,
+  showCompetitiveDetails = true,
 }: PokemonSlotCardProps) {
   if (!pokemon) {
     const empty = (
@@ -52,18 +58,24 @@ export function PokemonSlotCard({
     pokedexId: pokemon.pokedexId,
   });
   const label = pokemon.nickname || pokemon.species;
-  const battle = calcBattleStats({
-    pokedexId: pokemon.pokedexId,
-    level: pokemon.level,
-    ivs: pokemon.ivs,
-    evs: pokemon.evs,
-    nature: pokemon.nature,
-  });
-  const battleMax = calcMaxBattleStats({
-    pokedexId: pokemon.pokedexId,
-    level: pokemon.level,
-  });
-  const moves = pokemon.moves.map(resolveMoveName).filter(Boolean);
+  const battle = showCompetitiveDetails
+    ? calcBattleStats({
+        pokedexId: pokemon.pokedexId,
+        level: pokemon.level,
+        ivs: pokemon.ivs,
+        evs: pokemon.evs,
+        nature: pokemon.nature,
+      })
+    : null;
+  const battleMax = showCompetitiveDetails
+    ? calcMaxBattleStats({
+        pokedexId: pokemon.pokedexId,
+        level: pokemon.level,
+      })
+    : null;
+  const moves = showCompetitiveDetails
+    ? pokemon.moves.map(resolveMoveName).filter(Boolean)
+    : [];
 
   if (size === "sm") {
     const compact = (
@@ -152,9 +164,15 @@ export function PokemonSlotCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-2.5">
+      <div
+        className={
+          battle
+            ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-2.5"
+            : undefined
+        }
+      >
         <dl className="flex min-w-0 flex-col gap-1.5">
-          {pokemon.nature ? (
+          {showCompetitiveDetails && pokemon.nature ? (
             <div className="min-w-0">
               <dt className="text-[10px] font-semibold tracking-tight text-muted">
                 Nature
@@ -164,7 +182,7 @@ export function PokemonSlotCard({
               </dd>
             </div>
           ) : null}
-          {pokemon.ability ? (
+          {showCompetitiveDetails && pokemon.ability ? (
             <div className="min-w-0">
               <dt className="text-[10px] font-semibold tracking-tight text-muted">
                 Ability

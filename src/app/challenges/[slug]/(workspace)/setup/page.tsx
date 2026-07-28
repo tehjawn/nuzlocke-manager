@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
+import { GameModeSettingsGuide } from "@/components/GameModeSettingsGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { getChallenge } from "@/lib/challenges";
 import { CTA_PRIMARY } from "@/lib/cta";
@@ -40,8 +41,8 @@ export default async function SetupPage({ params }: PageProps) {
           Get Started
         </h2>
         <p className="mt-2 text-muted">
-          Four moves: download the ROM, load it in Afterplay, export your save,
-          then import it on your trainer board.
+          Download the ROM, load it in Afterplay, confirm Game Mode settings,
+          export your save, then import it on your trainer board.
         </p>
       </header>
 
@@ -109,24 +110,13 @@ export default async function SetupPage({ params }: PageProps) {
         </li>
 
         <li>
-          <Frame title="3. Start with season settings">
-            <p className="text-sm leading-relaxed text-muted">
-              When you boot into the run, confirm the pack settings match the
-              season rules:
-            </p>
-            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-muted">
-              <li>
-                <span className="font-bold text-ink">Experience:</span> 2× EXP
-                multiplier enabled.
-              </li>
-              <li>
-                <span className="font-bold text-ink">Nuzlocke toolkit:</span>{" "}
-                Gen&nbsp;1–4 Nuzlocke helpers / randomizers as configured in the
-                shared ROM (don&apos;t swap to a different patch mid-season).
-              </li>
-              <li>
-                <span className="font-bold text-ink">Core rules:</span> faint =
-                dead, first encounter only, nicknames required — see{" "}
+          <Frame title="3. Match season Game Mode settings">
+            <div className="space-y-3">
+              <p className="text-sm leading-relaxed text-muted">
+                When you boot the ROM, work through the Game Mode menus and
+                match the season defaults below. Don&apos;t swap to a different
+                patch mid-season. Core run rules (faint = dead, first encounter
+                only, nicknames required) live on{" "}
                 <Link
                   href={`/challenges/${challenge.slug}/rules`}
                   className="font-bold text-accent-deep underline-offset-2 hover:underline"
@@ -134,12 +124,13 @@ export default async function SetupPage({ params }: PageProps) {
                   Rules
                 </Link>
                 .
-              </li>
-            </ul>
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              If something looks off compared to the rest of the pack, pause and
-              ask in Discord before continuing.
-            </p>
+              </p>
+              <p className="text-sm leading-relaxed text-muted">
+                If something looks off compared to the rest of the pack, pause
+                and ask in Discord before continuing.
+              </p>
+              <GameModeSettingsGuide />
+            </div>
           </Frame>
         </li>
 
@@ -191,12 +182,72 @@ export default async function SetupPage({ params }: PageProps) {
         </li>
 
         <li>
-          <Frame title="5. React to milestones in the Pack feed">
+          <Frame
+            title="5. Have fun!"
+            className="border-accent/40 [--gba-fill:color-mix(in_srgb,var(--accent)_10%,var(--surface))]"
+          >
             <p className="text-sm leading-relaxed text-muted">
-              Board updates and imports show up in the Pack feed on the left.
-              Sign in, then react with any emoji when someone badges up, loses a
-              mon, or hits a big moment.
+              You&apos;re set — play the run and keep the board in sync.
             </p>
+            <ul className="mt-4 overflow-hidden rounded-lg border border-frame/45 bg-surface/70 text-sm">
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  ·
+                </span>
+                <span>
+                  <span className="font-semibold text-ink">Re-import</span>
+                  <span className="text-muted">
+                    {" "}
+                    your save as badges fall and the party changes
+                  </span>
+                </span>
+              </li>
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  ·
+                </span>
+                <span>
+                  <span className="font-semibold text-ink">React</span>
+                  <span className="text-muted">
+                    {" "}
+                    in the Pack feed when someone hits a big moment
+                  </span>
+                </span>
+              </li>
+              <li className="flex gap-3 px-3 py-2.5">
+                <span
+                  className="mt-0.5 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  ·
+                </span>
+                <span>
+                  <span className="font-semibold text-ink">Rules / FAQ</span>
+                  <span className="text-muted">
+                    {" "}
+                    when you&apos;re unsure —{" "}
+                    <Link
+                      href={`/challenges/${challenge.slug}/rules`}
+                      className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                    >
+                      open them here
+                    </Link>
+                  </span>
+                </span>
+              </li>
+            </ul>
+            <Link
+              href={`/challenges/${challenge.slug}`}
+              className={`${CTA_PRIMARY} mt-4`}
+            >
+              Open league board →
+            </Link>
           </Frame>
         </li>
       </ol>

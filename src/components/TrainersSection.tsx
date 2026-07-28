@@ -14,6 +14,8 @@ type TrainersSectionProps = {
   trainers: TrainerProfile[];
   /** Highlight the signed-in player's card. */
   myTrainerId?: string | null;
+  /** Trainer ids whose competitive details the viewer may see (own / GM lens). */
+  competitiveTrainerIds?: string[];
 };
 
 function readView(): TrainersView {
@@ -52,12 +54,14 @@ export function TrainersSection({
   challenge,
   trainers,
   myTrainerId = null,
+  competitiveTrainerIds = [],
 }: TrainersSectionProps) {
   const view = useSyncExternalStore<TrainersView>(
     subscribeView,
     readView,
     () => "list",
   );
+  const competitiveIds = new Set(competitiveTrainerIds);
 
   return (
     <section className="space-y-4">
@@ -105,6 +109,7 @@ export function TrainersSection({
             trainer={trainer}
             variant={view}
             isYou={myTrainerId != null && trainer.id === myTrainerId}
+            showCompetitiveDetails={competitiveIds.has(trainer.id)}
           />
         ))}
       </div>

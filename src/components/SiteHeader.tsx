@@ -1,11 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AuthButtons } from "@/components/AuthButtons";
+import { GmLensToggle } from "@/components/GmLensToggle";
 import { MobileMenuAuth } from "@/components/MobileMenuAuth";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import { AboutIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { JumpTrigger } from "@/features/jump";
+import { getChallenge, getDefaultJumpChallenge } from "@/lib/challenges";
+import { readGmLensOn } from "@/lib/gm-lens.server";
 
 /** Shared shell width for the site header and page content on every page. */
 export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
@@ -17,12 +20,35 @@ type SiteHeaderProps = {
   myTrainerId?: string | null;
 };
 
-export function SiteHeader({
+export async function SiteHeader({
   challengeSlug,
   challengeYear,
   showGm = false,
   myTrainerId = null,
 }: SiteHeaderProps) {
+  // Global pages omit season props — fall back to the live default. Only fetch
+  // that default when both are absent so we never pair slug/year from different
+  // seasons. If only one prop is set, resolve the other from that challenge.
+  let seasonSlug = challengeSlug ?? null;
+  let seasonYear = challengeYear ?? null;
+
+  if (seasonSlug == null && seasonYear == null) {
+    const defaults = await getDefaultJumpChallenge();
+    seasonSlug = defaults?.slug ?? null;
+    seasonYear = defaults?.year ?? null;
+  } else if (seasonSlug != null && seasonYear == null) {
+    const challenge = await getChallenge(seasonSlug);
+    seasonYear = challenge?.year ?? null;
+  } else if (seasonSlug == null && seasonYear != null) {
+    const defaults = await getDefaultJumpChallenge();
+    if (defaults?.year === seasonYear) {
+      seasonSlug = defaults.slug;
+    }
+  }
+
+  const gmLensOn =
+    showGm && challengeSlug ? await readGmLensOn(challengeSlug) : false;
+
   return (
     <header
       className={`relative z-40 mx-auto flex w-full items-center justify-between gap-4 px-4 py-4 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
@@ -45,13 +71,13 @@ export function SiteHeader({
             Nuzlocke Manager
           </span>
         </Link>
-        {challengeYear != null && challengeSlug ? (
+        {seasonYear != null && seasonSlug ? (
           <p className="hidden truncate text-sm text-muted sm:block">
             <Link
-              href={`/challenges/${challengeSlug}`}
+              href={`/challenges/${seasonSlug}`}
               className="hover:text-ink"
             >
-              Season {challengeYear} League
+              Season {seasonYear} League
             </Link>
           </p>
         ) : null}
@@ -76,9 +102,9 @@ export function SiteHeader({
             <AboutIcon className="h-4 w-4 text-ink/70" />
             About
           </Link>
-          {challengeSlug ? (
+          {seasonSlug ? (
             <Link
-              href={`/challenges/${challengeSlug}/rules`}
+              href={`/challenges/${seasonSlug}/rules`}
               className="pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
             >
               <RulesIcon className="h-4 w-4 text-ink/70" />
@@ -93,6 +119,13 @@ export function SiteHeader({
               <MyTrainerIcon className="h-4 w-4" />
               My Trainer
             </Link>
+          ) : null}
+          {showGm && challengeSlug ? (
+            <GmLensToggle
+              key={`gm-lens-${challengeSlug}-${gmLensOn ? "1" : "0"}`}
+              slug={challengeSlug}
+              initialOn={gmLensOn}
+            />
           ) : null}
         </div>
         <AuthButtons
@@ -109,9 +142,10 @@ export function SiteHeader({
         </span>
         <MobileNavDrawer
           className="sm:hidden"
-          challengeSlug={challengeSlug}
+          challengeSlug={seasonSlug ?? undefined}
           showGm={showGm}
           myTrainerId={myTrainerId}
+          gmLensOn={gmLensOn}
         >
           <MobileMenuAuth />
         </MobileNavDrawer>
