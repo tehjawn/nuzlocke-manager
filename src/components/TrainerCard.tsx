@@ -316,7 +316,9 @@ export function TrainerCard({
                 <p className="min-w-0 truncate text-xs text-muted">
                   {caughtCount} caught • {encounteredCount} encountered •{" "}
                   {ripCount} R.I.P.
-                  {trainer.wipeCount > 0 ? ` • ${trainer.wipeCount} wipe${trainer.wipeCount === 1 ? "" : "s"}` : ""}
+                  {(trainer.wipeCount ?? 0) > 0
+                    ? ` • ${trainer.wipeCount} wipe${trainer.wipeCount === 1 ? "" : "s"}`
+                    : ""}
                 </p>
                 <ReviveToken
                   used={trainer.reviveUsed}

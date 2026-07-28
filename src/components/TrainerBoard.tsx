@@ -267,7 +267,7 @@ export function TrainerBoard({
   }
 
   const boardPokemon = boardOverride?.pokemon ?? trainer.pokemon;
-  const wipeCount = boardOverride?.wipeCount ?? trainer.wipeCount;
+  const wipeCount = boardOverride?.wipeCount ?? trainer.wipeCount ?? 0;
   const mainSquadLocked =
     boardOverride?.mainSquadLocked ?? trainer.mainSquadLocked;
   const boardTrainer = {

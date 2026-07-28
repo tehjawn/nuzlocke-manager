@@ -204,7 +204,7 @@ export function mapDbTrainer(
     statusText: trainer.statusText,
     statusEmoji: trainer.statusEmoji,
     reviveUsed: trainer.reviveUsed,
-    wipeCount: trainer.wipeCount,
+    wipeCount: trainer.wipeCount ?? 0,
     mainSquadLocked: trainer.mainSquadLocked,
     sortOrder: trainer.sortOrder,
     userId: trainer.userId,

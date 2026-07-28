@@ -121,7 +121,7 @@ export function TrainerStatsSummary({
     },
     {
       label: "Wipes",
-      value: String(wipes),
+      value: String(wipes ?? 0),
       icon: <WipesIcon />,
     },
     {
