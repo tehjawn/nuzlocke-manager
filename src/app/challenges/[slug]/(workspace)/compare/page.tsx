@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { toolsHref } from "@/lib/tools-routes";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +15,5 @@ export default async function CompareRedirectPage({
 }: PageProps) {
   const { slug } = await params;
   const { a, b } = await searchParams;
-  const qs = new URLSearchParams();
-  if (a) qs.set("a", a);
-  if (b) qs.set("b", b);
-  const suffix = qs.toString();
-  redirect(
-    suffix
-      ? `/challenges/${slug}/tools?${suffix}`
-      : `/challenges/${slug}/tools`,
-  );
+  redirect(toolsHref(slug, "compare", { a, b }));
 }

@@ -20,6 +20,29 @@ export const HELD_ITEMS = heldItemsData.items as HeldItemEntry[];
 
 export const POKEMON_GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
+const POKEMON_BY_ID = new Map<number, PokemonIndexEntry>(
+  POKEMON_INDEX.map((p) => [p.pokedexId, p]),
+);
+
+/** Base species only, National Dex order — for idle Pokédex browsing. */
+export const BASE_SPECIES_BY_DEX: PokemonIndexEntry[] = POKEMON_INDEX.filter(
+  (p) => !p.isForme,
+).sort((a, b) => a.pokedexId - b.pokedexId);
+
+const POKEMON_BY_NAME = new Map<string, PokemonIndexEntry>();
+const POKEMON_BY_SLUG = new Map<string, PokemonIndexEntry>();
+for (const p of BASE_SPECIES_BY_DEX) {
+  POKEMON_BY_NAME.set(p.name.toLowerCase(), p);
+  POKEMON_BY_SLUG.set(p.slug, p);
+}
+// Formes fill gaps only when no base species claims the key.
+for (const p of POKEMON_INDEX) {
+  if (!p.isForme) continue;
+  const nameKey = p.name.toLowerCase();
+  if (!POKEMON_BY_NAME.has(nameKey)) POKEMON_BY_NAME.set(nameKey, p);
+  if (!POKEMON_BY_SLUG.has(p.slug)) POKEMON_BY_SLUG.set(p.slug, p);
+}
+
 export function searchPokemonIndex(
   query: string,
   options?: {
@@ -34,6 +57,16 @@ export function searchPokemonIndex(
   const gen = options?.generation ?? null;
   const formesOnly = options?.formesOnly ?? null;
   const q = query.trim().toLowerCase();
+
+  // Fast path: full National Dex browse (already sorted).
+  if (!q && formesOnly === false) {
+    const pool =
+      gen == null
+        ? BASE_SPECIES_BY_DEX
+        : BASE_SPECIES_BY_DEX.filter((p) => p.generation === gen);
+    return limit == null ? pool : pool.slice(0, limit);
+  }
+
   let pool = POKEMON_INDEX;
   if (gen != null) pool = pool.filter((p) => p.generation === gen);
   if (formesOnly === true) pool = pool.filter((p) => p.isForme);
@@ -60,7 +93,24 @@ export function searchPokemonIndex(
 }
 
 export function findPokemonById(id: number): PokemonIndexEntry | undefined {
-  return POKEMON_INDEX.find((p) => p.pokedexId === id);
+  return POKEMON_BY_ID.get(id);
+}
+
+/** Case-insensitive name / slug lookup (base species preferred over formes). */
+export function findPokemonByName(
+  nameOrSlug: string,
+): PokemonIndexEntry | undefined {
+  const q = nameOrSlug.trim().toLowerCase();
+  if (!q) return undefined;
+  const slug = q.replace(/\s+/g, "-");
+  return (
+    POKEMON_BY_NAME.get(q) ??
+    POKEMON_BY_SLUG.get(slug) ??
+    POKEMON_INDEX.find(
+      (p) =>
+        p.name.toLowerCase().includes(q) || p.slug.includes(slug),
+    )
+  );
 }
 
 export function searchHeldItems(query: string, limit = 40): HeldItemEntry[] {

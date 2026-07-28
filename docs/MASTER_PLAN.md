@@ -327,8 +327,8 @@ Keep the stack boring so the **UI personality** can carry the product.
 /challenges/[slug]                → League board (hub) + activity feed   ✅
 /challenges/[slug]/rules          → Rules / FAQ (tabbed)                 ✅
 /challenges/[slug]/faq            → Redirect → /rules?tab=faq            ✅
-/challenges/[slug]/tools          → Type chart + trainer compare         ✅
-/challenges/[slug]/compare        → Redirect → /tools                    ✅
+/challenges/[slug]/tools          → Tools hub → Pokédex / chart / compare ✅
+/challenges/[slug]/compare        → Redirect → /tools?tool=compare        ✅
 /challenges/[slug]/me             → Provision + jump to own board        ✅
 /challenges/[slug]/join           → Invite / GM code                     ✅
 /challenges/[slug]/trainers/[id]  → Trainer board                        ✅

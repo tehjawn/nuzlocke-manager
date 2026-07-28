@@ -1,35 +1,63 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { Frame } from "@/components/Frame";
-import { TrainerCompare } from "@/components/TrainerCompare";
-import { TypeChartPanel } from "@/components/TypeChartPanel";
+import { ToolsView } from "@/components/ToolsView";
 import { getChallenge } from "@/lib/challenges";
-import {
-  canViewCompetitiveDetails,
-} from "@/lib/gm-lens";
+import { canViewCompetitiveDetails } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
+import {
+  parseToolsId,
+  toolsTitle,
+  type ToolsId,
+} from "@/lib/tools-routes";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ a?: string; b?: string }>;
+  searchParams: Promise<{
+    tool?: string;
+    tab?: string;
+    a?: string;
+    b?: string;
+    id?: string;
+  }>;
 };
+
+function resolveTool(
+  tool: string | undefined,
+  tab: string | undefined,
+  hasCompareIds: boolean,
+): ToolsId | null {
+  const parsed = parseToolsId(tool, tab);
+  if (parsed) return parsed;
+  // Legacy /compare redirects land with ?a=&b= and no tool.
+  if (hasCompareIds) return "compare";
+  return null;
+}
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  const { tool, tab, a, b } = await searchParams;
   const challenge = await getChallenge(slug);
-  return { title: challenge ? `Tools · ${challenge.name}` : "Tools" };
+  if (!challenge) return { title: "Tools" };
+
+  const resolved = resolveTool(tool, tab, Boolean(a || b));
+  if (!resolved) return { title: `Tools · ${challenge.name}` };
+  return {
+    title: `${toolsTitle(resolved)} · Tools · ${challenge.name}`,
+  };
 }
 
 export default async function ToolsPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { a, b } = await searchParams;
+  const { tool, tab, a, b, id } = await searchParams;
   const session = await auth();
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
@@ -47,36 +75,25 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
       : redactTrainerCompetitiveDetails(trainer),
   );
 
+  const initialTool = resolveTool(tool, tab, Boolean(a || b));
+  const dexIdRaw = id != null ? Number(id) : NaN;
+  const initialDexId =
+    Number.isFinite(dexIdRaw) && dexIdRaw > 0 ? dexIdRaw : null;
+
   return (
-    <div className="space-y-10">
-      <header>
-        <h2 className="text-2xl font-bold tracking-tight">Tools</h2>
-        <p className="mt-2 text-muted">
-          Quick-ref type chart and side-by-side trainer compare for{" "}
-          {challenge.name}.
-        </p>
-      </header>
-
-      <section className="space-y-3">
-        <h3 className="text-lg font-bold tracking-tight">Type Chart</h3>
-        <Frame>
-          <TypeChartPanel />
-        </Frame>
-      </section>
-
-      <section className="space-y-3">
-        <h3 className="text-lg font-bold tracking-tight">Compare trainers</h3>
-        <p className="text-sm text-muted">
-          Side-by-side squads and badges — pick any two boards in the season.
-        </p>
-        <TrainerCompare
-          slug={challenge.slug}
-          trainers={trainers}
-          badges={challenge.badges}
-          initialA={a}
-          initialB={b}
-        />
-      </section>
-    </div>
+    <Suspense
+      fallback={<p className="text-sm text-muted">Loading tools…</p>}
+    >
+      <ToolsView
+        slug={challenge.slug}
+        challengeName={challenge.name}
+        trainers={trainers}
+        badges={challenge.badges}
+        initialTool={initialTool}
+        initialCompareA={a}
+        initialCompareB={b}
+        initialDexId={initialDexId}
+      />
+    </Suspense>
   );
 }
