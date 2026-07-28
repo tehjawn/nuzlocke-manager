@@ -5,6 +5,7 @@ type TrainerStatsSummaryProps = {
   fallen: number;
   badgesEarned: number;
   badgesTotal: number;
+  wipes: number;
   updatedAt: string | null;
 };
 
@@ -63,6 +64,23 @@ function BadgesIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
+function WipesIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className}>
+      <path
+        d="M12 4v4M8.5 6.5l2 2.5M15.5 6.5l-2 2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.5 14c1.2-2.2 3.2-3.5 6.5-3.5s5.3 1.3 6.5 3.5"
+        strokeLinecap="round"
+      />
+      <path d="M7 18h10" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function UpdatedIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
@@ -78,6 +96,7 @@ export function TrainerStatsSummary({
   fallen,
   badgesEarned,
   badgesTotal,
+  wipes,
   updatedAt,
 }: TrainerStatsSummaryProps) {
   const rows: Array<{
@@ -101,6 +120,11 @@ export function TrainerStatsSummary({
       icon: <BadgesIcon />,
     },
     {
+      label: "Wipes",
+      value: String(wipes ?? 0),
+      icon: <WipesIcon />,
+    },
+    {
       label: "Updated",
       value: formatUpdatedDay(updatedAt),
       icon: <UpdatedIcon />,
@@ -108,7 +132,7 @@ export function TrainerStatsSummary({
   ];
 
   return (
-    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-1">
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
       {rows.map((row) => (
         <div
           key={row.label}

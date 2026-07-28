@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
   importFromSaveAction,
+  recordWipeAction,
   relocatePokemonAction,
   updateTrainerBoardAction,
   upsertPokemonAction,
@@ -39,7 +40,8 @@ import type {
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
-import { CTA_PRIMARY, CTA_PRIMARY_SM, CTA_SECONDARY } from "@/lib/cta";
+import { RulesIcon } from "@/components/nav-icons";
+import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { isEmptySpread } from "@/lib/stats";
 
 type TrainerBoardProps = {
@@ -84,7 +86,7 @@ function PencilIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   );
 }
 
-function ImportSaveIcon({ className = "h-4 w-4" }: { className?: string }) {
+function ImportSaveIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -112,6 +114,216 @@ function ImportSaveIcon({ className = "h-4 w-4" }: { className?: string }) {
         strokeLinecap="round"
       />
     </svg>
+  );
+}
+
+function WipeIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M13 8A5 5 0 1 1 11.7 4.6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M13 2.5V6H9.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ReviveShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <rect x="4.5" y="4.5" width="15" height="15" rx="3" />
+      <path d="M12 8.5v7M8.5 12h7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FaqShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="8.5" />
+      <path
+        d="M9.8 9.6a2.4 2.4 0 114.2 1.6c-.7.8-1.5 1.2-1.5 2.3"
+        strokeLinecap="round"
+      />
+      <path d="M12 16.75v.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ToolsShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <path d="M14.5 6.5l3 3-8.5 8.5H6v-3L14.5 6.5z" strokeLinejoin="round" />
+      <path d="M12.5 8.5l3 3" strokeLinecap="round" />
+      <circle cx="7.5" cy="7.5" r="2.25" />
+      <path d="M16.5 16.5l2 2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MemorialShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <path d="M8 20V9.5a4 4 0 018 0V20" strokeLinecap="round" />
+      <path d="M6 20h12" strokeLinecap="round" />
+      <path d="M12 5.5V4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function EncountersShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden="true"
+    >
+      <path d="M4 7h16M4 12h10M4 17h13" strokeLinecap="round" />
+      <circle cx="18.5" cy="12" r="2.25" />
+    </svg>
+  );
+}
+
+const shortcutTileBase =
+  "pressable flex aspect-square flex-col items-center justify-center gap-2 rounded-[var(--radius)] border px-2 text-center text-[11px] font-semibold leading-tight tracking-tight sm:text-xs";
+
+const shortcutActionRowBase =
+  "inline-flex min-h-11 w-full flex-1 items-center justify-center gap-2 rounded-[var(--radius)] border px-3 text-xs font-semibold tracking-tight";
+
+const shortcutActionButtonBase = `pressable ${shortcutActionRowBase} disabled:opacity-60`;
+
+/** Quiet nav tiles — read as destinations, not actions. */
+const shortcutLinkClass = `${shortcutTileBase} border-dashed border-frame/55 bg-transparent text-muted hover:border-frame hover:bg-surface-2/70 hover:text-ink`;
+
+function shortcutActionToneClass(
+  tone: "accent" | "danger" | "import" | "neutral" = "neutral",
+) {
+  switch (tone) {
+    case "accent":
+      return "border-accent/35 bg-accent/15 text-accent-deep hover:brightness-105";
+    case "danger":
+      return "border-danger/35 bg-danger/15 text-danger hover:brightness-105";
+    case "import":
+      return "cta-import-save border-frame bg-surface text-ink shadow-sm";
+    default:
+      return "border-frame bg-surface text-ink shadow-sm hover:bg-surface-2";
+  }
+}
+
+function ShortcutLinkTile({
+  href,
+  label,
+  icon,
+}: {
+  href: string;
+  label: string;
+  icon: ReactNode;
+}) {
+  return (
+    <Link href={href} className={shortcutLinkClass}>
+      <span className="shrink-0 text-muted/80" aria-hidden>
+        {icon}
+      </span>
+      <span className="max-w-full px-0.5">{label}</span>
+    </Link>
+  );
+}
+
+function ShortcutActionTile({
+  label,
+  icon,
+  onClick,
+  disabled,
+  title,
+  tone = "neutral",
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  title?: string;
+  tone?: "accent" | "danger" | "import" | "neutral";
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+      className={`${shortcutActionButtonBase} ${shortcutActionToneClass(tone)}`}
+    >
+      <span className="shrink-0" aria-hidden>
+        {icon}
+      </span>
+      <span className="min-w-0 truncate">{label}</span>
+    </button>
+  );
+}
+
+function ShortcutStatusTile({
+  label,
+  icon,
+  tone = "neutral",
+}: {
+  label: string;
+  icon: ReactNode;
+  tone?: "accent" | "danger" | "import" | "neutral";
+}) {
+  return (
+    <div
+      role="status"
+      className={`${shortcutActionRowBase} ${shortcutActionToneClass(tone)} cursor-default opacity-90`}
+    >
+      <span className="shrink-0" aria-hidden>
+        {icon}
+      </span>
+      <span className="min-w-0 truncate">{label}</span>
+    </div>
   );
 }
 
@@ -192,13 +404,24 @@ export function TrainerBoard({
   );
 
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   const playerSave = useSaveStatus();
   const partySave = useSaveStatus();
   const reviveSave = useSaveStatus();
+  const wipeSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.reviveUsed}|${trainer.earnedBadgeKeys.join("|")}`;
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => p.id).join(",")}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
+
+  /** Optimistic board after wipe until RSC refresh lands. */
+  const [boardOverride, setBoardOverride] = useState<{
+    wipeCount: number;
+    pokemon: PokemonEntry[];
+    mainSquadLocked: boolean;
+  } | null>(null);
+  /** Remount badge editor to drop pending debounced writes before wipe. */
+  const [badgeEditorKey, setBadgeEditorKey] = useState(0);
 
   const [committed, setCommitted] = useState({
     handle: trainer.handle,
@@ -251,12 +474,54 @@ export function TrainerBoard({
     });
     setReviveUsed(trainer.reviveUsed);
     setEarnedBadgeKeys(trainer.earnedBadgeKeys);
+    setBoardOverride(null);
   }
 
-  const main = pokemonInSlot(trainer, "MAIN");
-  const reserves = pokemonInSlot(trainer, "RESERVE");
-  const graveyard = pokemonInSlot(trainer, "GRAVEYARD");
-  const encountered = pokemonInSlot(trainer, "ENCOUNTERED");
+  const boardPokemon = boardOverride?.pokemon ?? trainer.pokemon;
+  const wipeCount = boardOverride?.wipeCount ?? trainer.wipeCount ?? 0;
+  const mainSquadLocked =
+    boardOverride?.mainSquadLocked ?? trainer.mainSquadLocked;
+  const boardTrainer = {
+    ...trainer,
+    pokemon: boardPokemon,
+    wipeCount,
+    mainSquadLocked,
+  };
+
+  const main = pokemonInSlot(boardTrainer, "MAIN");
+  const reserves = pokemonInSlot(boardTrainer, "RESERVE");
+  const graveyard = pokemonInSlot(boardTrainer, "GRAVEYARD");
+  const encountered = pokemonInSlot(boardTrainer, "ENCOUNTERED");
+  const wipeButtonClass =
+    "pressable inline-flex h-9 items-center justify-center gap-1.5 border-danger/25 bg-danger/10 px-3 text-xs font-semibold tracking-tight text-danger disabled:opacity-60";
+  const wiping = wipeSave.status.kind === "saving";
+  const seasonLinkTiles = [
+    {
+      href: `${leagueBoardHref}/rules`,
+      label: "Rules",
+      icon: <RulesIcon className="h-6 w-6" />,
+    },
+    {
+      href: `${leagueBoardHref}/rules?tab=faq`,
+      label: "FAQ",
+      icon: <FaqShortcutIcon />,
+    },
+    {
+      href: `${leagueBoardHref}/tools`,
+      label: "Tools",
+      icon: <ToolsShortcutIcon />,
+    },
+    {
+      href: `${leagueBoardHref}/memorial`,
+      label: "Memorial",
+      icon: <MemorialShortcutIcon />,
+    },
+    {
+      href: `${leagueBoardHref}/encounters`,
+      label: "Encounters",
+      icon: <EncountersShortcutIcon />,
+    },
+  ] as const;
 
   function syncPlayerDraftFromCommitted() {
     setHandle(committed.handle);
@@ -324,7 +589,7 @@ export function TrainerBoard({
     });
   }
 
-  async function useReviveToken() {
+  async function spendReviveToken() {
     const ok = await confirm({
       title: "Use revive token?",
       description:
@@ -375,13 +640,69 @@ export function TrainerBoard({
     });
   }
 
+  async function recordWipe() {
+    const nextWipe = wipeCount + 1;
+    const previousBadges = earnedBadgeKeys;
+    const previousCommitted = committed;
+    const previousBoard = boardOverride;
+    const ok = await confirm({
+      title: "Restart this run?",
+      description: (
+        <>
+          Clears Main Squad, Reserves, and Encountered, and resets badges. R.I.P.
+          memorial and your revive token stay. Locked Main Squad unlocks so you can
+          rebuild. This counts as wipe #{nextWipe}.
+        </>
+      ),
+      confirmLabel: "Record wipe",
+      tone: "danger",
+    });
+    if (!ok) return;
+
+    setBadgeEditorKey((k) => k + 1);
+    setEarnedBadgeKeys([]);
+    setBoardOverride({
+      wipeCount: nextWipe,
+      pokemon: boardPokemon.filter((p) => p.slot === "GRAVEYARD"),
+      mainSquadLocked: false,
+    });
+    setCommitted((prev) => ({
+      ...prev,
+      statusText: "",
+      statusEmoji: null,
+    }));
+    setStatusText("");
+    setStatusEmoji(null);
+    setPokemonInspect(null);
+    setDetailsPokemon(null);
+    setSaveImportOpen(false);
+
+    wipeSave.markSaving("Recording wipe…");
+    startTransition(async () => {
+      const result = await recordWipeAction({ trainerId: trainer.id });
+      if (result.ok) {
+        wipeSave.markSaved(result.message ?? "Wipe recorded");
+        router.refresh();
+      } else {
+        setBoardOverride(previousBoard);
+        setEarnedBadgeKeys(previousBadges);
+        setCommitted(previousCommitted);
+        setStatusText(previousCommitted.statusText);
+        setStatusEmoji(previousCommitted.statusEmoji);
+        setBadgeEditorKey((k) => k + 1);
+        wipeSave.markError(result.error);
+      }
+    });
+  }
+
   function openAddPokemon(
     slot: PokemonEntry["slot"] = "MAIN",
     partyIndex?: number,
   ) {
+    if (wiping) return;
     if (partyIndex == null) {
       const used = new Set(
-        trainer.pokemon.filter((p) => p.slot === slot).map((p) => p.partyIndex),
+        boardPokemon.filter((p) => p.slot === slot).map((p) => p.partyIndex),
       );
       partyIndex = 0;
       // MAIN is fixed 0–5; other sections can grow with drag-and-drop densifying.
@@ -395,6 +716,7 @@ export function TrainerBoard({
   }
 
   function openPokemon(mon: PokemonEntry) {
+    if (wiping) return;
     if (canEdit) {
       // Start in preview — Edit is one click; draft survives Preview ↔ Edit.
       setPokemonInspect({
@@ -410,7 +732,7 @@ export function TrainerBoard({
   if (!jumpPokemonId && openedJumpPokemonId) {
     setOpenedJumpPokemonId(null);
   } else if (jumpPokemonId && jumpPokemonId !== openedJumpPokemonId) {
-    const mon = trainer.pokemon.find((p) => p.id === jumpPokemonId) ?? null;
+    const mon = boardPokemon.find((p) => p.id === jumpPokemonId) ?? null;
     setOpenedJumpPokemonId(jumpPokemonId);
     if (mon) {
       if (canEdit) {
@@ -429,7 +751,9 @@ export function TrainerBoard({
       ? partySave.status
       : playerSave.status.kind !== "idle"
         ? playerSave.status
-        : reviveSave.status;
+        : wipeSave.status.kind !== "idle"
+          ? wipeSave.status
+          : reviveSave.status;
   // Only pin a bottom bar when it has a job — save feedback or profile save.
   // The idle "save as you go" hint felt redundant on mobile.
   const showMobileSaveBar =
@@ -439,7 +763,10 @@ export function TrainerBoard({
   return (
     <div className={`space-y-4 ${showMobileSaveBar ? "pb-20 sm:pb-0" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={leagueBoardHref} className={CTA_PRIMARY}>
+        <Link
+          href={leagueBoardHref}
+          className="pressable inline-flex h-9 items-center gap-1.5 border-frame/70 bg-surface-2/60 px-3 text-xs font-semibold tracking-tight text-muted hover:border-frame hover:bg-surface-2 hover:text-ink"
+        >
           <span aria-hidden>←</span>
           {leagueBoardLabel}
         </Link>
@@ -450,7 +777,7 @@ export function TrainerBoard({
               canUse={canEdit}
               canReset={isGm}
               disabled={pending}
-              onUse={useReviveToken}
+              onUse={spendReviveToken}
               onReset={resetReviveToken}
               status={
                 canEdit || isGm ? (
@@ -463,15 +790,35 @@ export function TrainerBoard({
             <button
               type="button"
               data-tour="import-save"
-              className={`${CTA_SECONDARY} cta-import-save`}
+              className="pressable cta-import-save inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+              disabled={pending || wiping}
               onClick={() => setSaveImportOpen(true)}
             >
               <ImportSaveIcon />
               <span>Import save</span>
             </button>
           ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              disabled={pending || wiping}
+              className={wipeButtonClass}
+              onClick={() => {
+                void recordWipe();
+              }}
+            >
+              <WipeIcon />
+              Record wipe
+            </button>
+          ) : null}
         </div>
       </div>
+
+      {canEdit && wipeSave.status.kind !== "idle" ? (
+        <div className="flex justify-end">
+          <SaveStatus status={wipeSave.status} />
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
@@ -617,9 +964,9 @@ export function TrainerBoard({
                       ) : null}
                     </p>
                   ) : null}
-                  {(trainer.mainSquadLocked || isDemo) ? (
+                  {(mainSquadLocked || isDemo) ? (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {trainer.mainSquadLocked ? (
+                      {mainSquadLocked ? (
                         <span className="rounded-lg border border-frame bg-accent-2/25 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
                           Main Squad locked
                         </span>
@@ -662,7 +1009,7 @@ export function TrainerBoard({
                       )}
                     </p>
                   ) : null}
-                  {canEdit && trainer.pokemon.length === 0 ? (
+                  {canEdit && boardPokemon.length === 0 ? (
                     <p className="mt-3 text-sm text-muted">
                       Your board is ready — edit your profile, then use{" "}
                       <span className="font-semibold text-ink">Import save</span>{" "}
@@ -677,16 +1024,17 @@ export function TrainerBoard({
 
           {canEdit ? (
             <PartyBoardDnd
-              key={trainer.pokemon
+              key={boardPokemon
                 .map((p) => `${p.id}:${p.slot}:${p.partyIndex}`)
                 .join("|")}
-              pokemon={trainer.pokemon}
-              mainSquadLocked={trainer.mainSquadLocked && !isGm}
+              pokemon={boardPokemon}
+              mainSquadLocked={(mainSquadLocked && !isGm) || wiping}
               onSelect={openPokemon}
               onSelectEmptyMain={(partyIndex) =>
                 openAddPokemon("MAIN", partyIndex)
               }
               onRelocate={async (updates) => {
+                if (wiping) return false;
                 partySave.markSaving("Updating party…");
                 const result = await relocatePokemonAction({
                   trainerId: trainer.id,
@@ -702,7 +1050,8 @@ export function TrainerBoard({
               mainActions={
                 <button
                   type="button"
-                  className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold tracking-tight text-[var(--on-accent)]"
+                  disabled={wiping}
+                  className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
                   onClick={() => openAddPokemon("MAIN")}
                 >
                   + Add
@@ -711,7 +1060,8 @@ export function TrainerBoard({
               reservesActions={
                 <button
                   type="button"
-                  className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                  disabled={wiping}
+                  className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight disabled:opacity-60"
                   onClick={() => openAddPokemon("RESERVE")}
                 >
                   + Add
@@ -720,7 +1070,8 @@ export function TrainerBoard({
               graveyardActions={
                 <button
                   type="button"
-                  className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                  disabled={wiping}
+                  className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight disabled:opacity-60"
                   onClick={() => openAddPokemon("GRAVEYARD")}
                 >
                   + Add
@@ -783,7 +1134,8 @@ export function TrainerBoard({
                   </p>
                   <button
                     type="button"
-                    className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                    disabled={wiping}
+                    className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight disabled:opacity-60"
                     onClick={() => openAddPokemon("ENCOUNTERED")}
                   >
                     + Add
@@ -817,6 +1169,7 @@ export function TrainerBoard({
               fallen={graveyard.length}
               badgesEarned={earnedBadgeKeys.length}
               badgesTotal={badges.length}
+              wipes={wipeCount}
               updatedAt={trainer.updatedAt}
             />
           </Frame>
@@ -826,9 +1179,12 @@ export function TrainerBoard({
               <div className="space-y-2">
                 <p className="text-xs text-muted">Tap a badge to toggle it.</p>
                 <BadgeCaseEditor
+                  key={`badges-${badgeEditorKey}-${wipeCount}`}
                   trainerId={trainer.id}
                   badges={badges}
                   earnedKeys={earnedBadgeKeys}
+                  wipeCount={wipeCount}
+                  disabled={wiping}
                   layout="column"
                   onEarnedKeysChange={setEarnedBadgeKeys}
                 />
@@ -843,6 +1199,76 @@ export function TrainerBoard({
           </Frame>
         </aside>
       </div>
+
+      <Frame title="Shortcuts">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch sm:justify-between sm:gap-6">
+          <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:grid-cols-5">
+            {seasonLinkTiles.map((item) => (
+              <ShortcutLinkTile
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+              />
+            ))}
+          </div>
+
+          {canEdit || (isGm && !isDemo && reviveUsed) ? (
+            <div className="flex w-full flex-col gap-2 sm:w-52 sm:shrink-0 sm:self-stretch">
+              {canEdit && !isDemo && !reviveUsed ? (
+                <ShortcutActionTile
+                  label="Use Revive Token"
+                  icon={<ReviveShortcutIcon className="h-4 w-4" />}
+                  tone="accent"
+                  disabled={pending || wiping}
+                  onClick={() => {
+                    void spendReviveToken();
+                  }}
+                />
+              ) : null}
+              {isGm && !isDemo && reviveUsed ? (
+                <ShortcutActionTile
+                  label="Reset revive"
+                  icon={<ReviveShortcutIcon className="h-4 w-4" />}
+                  tone="danger"
+                  disabled={pending || wiping}
+                  title="Reset revive token"
+                  onClick={() => {
+                    void resetReviveToken();
+                  }}
+                />
+              ) : null}
+              {canEdit && !isDemo && reviveUsed && !isGm ? (
+                <ShortcutStatusTile
+                  label="Revive used"
+                  icon={<ReviveShortcutIcon className="h-4 w-4" />}
+                  tone="danger"
+                />
+              ) : null}
+              {canEdit ? (
+                <ShortcutActionTile
+                  label="Import save"
+                  icon={<ImportSaveIcon className="h-4 w-4" />}
+                  tone="import"
+                  disabled={pending || wiping}
+                  onClick={() => setSaveImportOpen(true)}
+                />
+              ) : null}
+              {canEdit ? (
+                <ShortcutActionTile
+                  label="Record wipe"
+                  icon={<WipeIcon className="h-4 w-4" />}
+                  tone="danger"
+                  disabled={pending || wiping}
+                  onClick={() => {
+                    void recordWipe();
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </Frame>
 
       {canEdit && pokemonInspect?.mode === "view" ? (
         <PokemonDetailsModal
@@ -859,7 +1285,7 @@ export function TrainerBoard({
         <PokemonFormModal
           open
           initial={pokemonInspect.form}
-          teamPokemon={trainer.pokemon}
+          teamPokemon={boardPokemon}
           pending={pending}
           onClose={() => setPokemonInspect(null)}
           onPreview={(form) =>

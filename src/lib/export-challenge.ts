@@ -20,6 +20,7 @@ export type ChallengeExportPayload = {
     statusText: string | null;
     statusEmoji: string | null;
     reviveUsed: boolean;
+    wipeCount: number;
     mainSquadLocked: boolean;
     earnedBadgeKeys: string[];
     pokemon: PokemonEntry[];
@@ -47,6 +48,7 @@ export function buildChallengeExport(challenge: Challenge): ChallengeExportPaylo
       statusText: t.statusText,
       statusEmoji: t.statusEmoji,
       reviveUsed: t.reviveUsed,
+      wipeCount: t.wipeCount,
       mainSquadLocked: t.mainSquadLocked,
       earnedBadgeKeys: t.earnedBadgeKeys,
       pokemon: t.pokemon,
@@ -85,6 +87,7 @@ export function buildChallengeCsv(challenge: Challenge): string {
     "causeOfDeath",
     "earnedBadges",
     "reviveUsed",
+    "wipeCount",
     "mainSquadLocked",
     "statusText",
     "statusEmoji",
@@ -118,6 +121,7 @@ export function buildChallengeCsv(challenge: Challenge): string {
         mon?.causeOfDeath ?? "",
         badges,
         trainer.reviveUsed ? "yes" : "no",
+        String(trainer.wipeCount),
         trainer.mainSquadLocked ? "yes" : "no",
         trainer.statusText ?? "",
         trainer.statusEmoji ?? "",

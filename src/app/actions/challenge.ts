@@ -96,7 +96,8 @@ async function logActivity(input: {
     | "MEMBER_JOINED"
     | "TRAINER_CLAIMED"
     | "RULE_UPDATED"
-    | "NOTE";
+    | "NOTE"
+    | "WIPE";
   message: string;
 }) {
   await getPrisma().activityEvent.create({
@@ -445,13 +446,80 @@ export async function updateTrainerBoardAction(input: {
   }
 }
 
+/** Restart the living run: clear playable slots + badges, keep memorial/revive. */
+export async function recordWipeAction(input: {
+  trainerId: string;
+}): Promise<ActionResult> {
+  try {
+    const { trainer, userId } = await requireTrainerEditAccess(input.trainerId);
+
+    const prisma = getPrisma();
+    let wipeCount = 0;
+    let wipeMessage = "";
+
+    await prisma.$transaction(async (tx) => {
+      await tx.pokemonEntry.deleteMany({
+        where: {
+          trainerId: trainer.id,
+          slot: { in: ["MAIN", "RESERVE", "ENCOUNTERED"] },
+        },
+      });
+      await tx.badgeProgress.updateMany({
+        where: { trainerId: trainer.id },
+        data: { earned: false, earnedAt: null },
+      });
+      const updated = await tx.trainerProfile.update({
+        where: { id: trainer.id },
+        data: {
+          wipeCount: { increment: 1 },
+          statusText: null,
+          statusEmoji: null,
+          // Living board is empty — unlock so the run can be rebuilt.
+          mainSquadLocked: false,
+        },
+        select: { wipeCount: true },
+      });
+      wipeCount = updated.wipeCount;
+      wipeMessage = `${trainer.handle} restarted their run (wipe #${wipeCount})`;
+      await tx.activityEvent.create({
+        data: {
+          challengeId: trainer.challengeId,
+          actorId: userId,
+          trainerId: trainer.id,
+          type: "WIPE",
+          message: wipeMessage,
+        },
+      });
+    });
+
+    void dispatchDiscordWebhook({
+      challengeId: trainer.challengeId,
+      type: "WIPE",
+      message: wipeMessage,
+    });
+
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: `Wipe #${wipeCount} recorded` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Wipe failed" };
+  }
+}
+
 export async function setBadgeProgressAction(input: {
   trainerId: string;
   badgeKey: string;
   earned: boolean;
+  /** Reject stale writes that raced a wipe (client wipeCount at schedule time). */
+  expectedWipeCount?: number;
 }): Promise<ActionResult> {
   try {
     const { trainer, userId } = await requireTrainerEditAccess(input.trainerId);
+    if (
+      input.expectedWipeCount != null &&
+      trainer.wipeCount !== input.expectedWipeCount
+    ) {
+      return { ok: false, error: "Board changed — refresh and try again" };
+    }
     const prisma = getPrisma();
     const badge = await prisma.badgeDefinition.findFirst({
       where: { challengeId: trainer.challengeId, key: input.badgeKey },
