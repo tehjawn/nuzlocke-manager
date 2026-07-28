@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ChallengeStatus } from "@/lib/challenge-types";
+import { SeasonRulesLink } from "@/components/SeasonRulesLink";
 import { getSeasonTabs, isSeasonTabActive } from "@/components/SeasonTabs";
 import {
   ONBOARDING_PANEL_EVENT,
@@ -29,10 +30,12 @@ const itemIdle = "border-transparent text-ink hover:bg-surface";
 
 /**
  * Mobile workspace shell. The section tabs (Trainers, Encounters, …) sit in one
- * horizontal scroller alongside "Info" and "Feed" tabs. Info/Feed aren't routes
- * — selecting one swaps the whole content area to that panel and hides the page
- * content; the section tabs are real links that navigate. Desktop instead uses
- * the sticky left rail (this component just renders the page content there).
+ * horizontal scroller alongside "Info" and "Feed" tabs. A Rules / FAQ utility
+ * link sits under that row so reference docs stay one tap away without crowding
+ * the primary tab strip. Info/Feed aren't routes — selecting one swaps the whole
+ * content area to that panel and hides the page content; the section tabs are
+ * real links that navigate. Desktop instead uses the sticky left rail (this
+ * component just renders the page content there).
  */
 export function MobileWorkspace({
   slug,
@@ -113,81 +116,84 @@ export function MobileWorkspace({
   return (
     <div className={className} onClick={onLinkClick}>
       {/* Mobile section nav */}
-      <div className="relative mb-4 lg:hidden">
-        <div
-          ref={scrollerRef}
-          aria-label="Season sections"
-          className="gba-inset flex flex-row gap-1 overflow-x-auto bg-surface-2/80 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          <button
-            type="button"
-            aria-pressed={panel === "info"}
-            onClick={() => select("info")}
-            data-tour="tab-info"
-            className={`${itemBase} ${panel === "info" ? itemActive : itemIdle}`}
+      <div className="mb-4 space-y-2 lg:hidden">
+        <div className="relative">
+          <div
+            ref={scrollerRef}
+            aria-label="Season sections"
+            className="gba-inset flex flex-row gap-1 overflow-x-auto bg-surface-2/80 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            <span
-              className={`shrink-0 ${panel === "info" ? "text-interactive" : "text-ink/70"}`}
-              aria-hidden
+            <button
+              type="button"
+              aria-pressed={panel === "info"}
+              onClick={() => select("info")}
+              data-tour="tab-info"
+              className={`${itemBase} ${panel === "info" ? itemActive : itemIdle}`}
             >
-              <InfoIcon />
-            </span>
-            Info
-          </button>
-          <button
-            type="button"
-            aria-pressed={panel === "feed"}
-            onClick={() => select("feed")}
-            data-tour="tab-feed"
-            className={`${itemBase} ${panel === "feed" ? itemActive : itemIdle}`}
-          >
-            <span
-              className={`shrink-0 ${panel === "feed" ? "text-interactive" : "text-ink/70"}`}
-              aria-hidden
-            >
-              <FeedIcon />
-            </span>
-            Feed
-          </button>
-
-          <span aria-hidden className="my-1 w-px shrink-0 bg-frame/60" />
-
-          {tabs.map((tab) => {
-            const active = panel === null && isSeasonTabActive(tab, pathname);
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                prefetch
-                aria-current={active ? "page" : undefined}
-                data-tour={
-                  tab.label === "Trainers" ? "tab-trainers" : undefined
-                }
-                className={`${itemBase} ${active ? itemActive : itemIdle}`}
+              <span
+                className={`shrink-0 ${panel === "info" ? "text-interactive" : "text-ink/70"}`}
+                aria-hidden
               >
-                <span
-                  className={`shrink-0 ${active ? "text-interactive" : "text-ink/70"}`}
-                  aria-hidden
+                <InfoIcon />
+              </span>
+              Info
+            </button>
+            <button
+              type="button"
+              aria-pressed={panel === "feed"}
+              onClick={() => select("feed")}
+              data-tour="tab-feed"
+              className={`${itemBase} ${panel === "feed" ? itemActive : itemIdle}`}
+            >
+              <span
+                className={`shrink-0 ${panel === "feed" ? "text-interactive" : "text-ink/70"}`}
+                aria-hidden
+              >
+                <FeedIcon />
+              </span>
+              Feed
+            </button>
+
+            <span aria-hidden className="my-1 w-px shrink-0 bg-frame/60" />
+
+            {tabs.map((tab) => {
+              const active = panel === null && isSeasonTabActive(tab, pathname);
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  prefetch
+                  aria-current={active ? "page" : undefined}
+                  data-tour={
+                    tab.label === "Trainers" ? "tab-trainers" : undefined
+                  }
+                  className={`${itemBase} ${active ? itemActive : itemIdle}`}
                 >
-                  {tab.icon}
-                </span>
-                {tab.label}
-              </Link>
-            );
-          })}
+                  <span
+                    className={`shrink-0 ${active ? "text-interactive" : "text-ink/70"}`}
+                    aria-hidden
+                  >
+                    {tab.icon}
+                  </span>
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </div>
+          <div
+            aria-hidden
+            className={`pointer-events-none absolute inset-y-px left-px w-10 rounded-l-[var(--radius-sm)] bg-gradient-to-r from-[var(--surface-2)] to-transparent transition-opacity duration-200 ${
+              fadeStart ? "opacity-100" : "opacity-0"
+            }`}
+          />
+          <div
+            aria-hidden
+            className={`pointer-events-none absolute inset-y-px right-px w-10 rounded-r-[var(--radius-sm)] bg-gradient-to-l from-[var(--surface-2)] to-transparent transition-opacity duration-200 ${
+              fadeEnd ? "opacity-100" : "opacity-0"
+            }`}
+          />
         </div>
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute inset-y-px left-px w-10 rounded-l-[var(--radius-sm)] bg-gradient-to-r from-[var(--surface-2)] to-transparent transition-opacity duration-200 ${
-            fadeStart ? "opacity-100" : "opacity-0"
-          }`}
-        />
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute inset-y-px right-px w-10 rounded-r-[var(--radius-sm)] bg-gradient-to-l from-[var(--surface-2)] to-transparent transition-opacity duration-200 ${
-            fadeEnd ? "opacity-100" : "opacity-0"
-          }`}
-        />
+        <SeasonRulesLink slug={slug} className="w-full" />
       </div>
 
       {/* Info/Feed panels replace the page content on mobile. */}
