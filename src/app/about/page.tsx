@@ -23,9 +23,6 @@ export default function AboutPage() {
         className={`mx-auto w-full flex-1 px-4 py-8 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
       >
         <h1 className="text-3xl font-bold tracking-tight">About</h1>
-        <p className="mt-2 text-muted">
-          The project, the challenge format, and the crew behind the season.
-        </p>
 
         <div className="mt-8 space-y-4">
           <Frame title="This project">

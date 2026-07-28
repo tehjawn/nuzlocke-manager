@@ -4,14 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { GmLensToggle } from "@/components/GmLensToggle";
-import {
-  AboutIcon,
-  GmIcon,
-  MyTrainerIcon,
-  RulesIcon,
-} from "@/components/nav-icons";
+import { GmIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { JumpTrigger } from "@/features/jump";
 
 type NavLink = { href: string; label: string; icon: ReactNode };
@@ -29,11 +23,11 @@ type MobileNavDrawerProps = {
 
 /**
  * Hamburger-triggered navigation sheet for narrow viewports. The site header
- * keeps its inline pill row at `sm+`; below that all the header controls — nav
- * links, My Trainer, theme, and account actions — collapse in here so the bar
- * only needs the logo, notifications bell, and this trigger. Slides in from the
- * right at ~90% width, full height. Reuses the app's portal + `data-modal-open`
- * scroll-lock convention (see Modal.tsx and globals.css).
+ * keeps its inline pill row at `sm+`; below that header controls — nav links,
+ * My Trainer, and account actions — collapse in here so the bar only needs the
+ * logo, notifications bell, and this trigger. Theme lives in the site footer.
+ * Slides in from the right at ~90% width, full height. Reuses the app's portal
+ * + `data-modal-open` scroll-lock convention (see Modal.tsx and globals.css).
  */
 export function MobileNavDrawer({
   challengeSlug,
@@ -56,11 +50,9 @@ export function MobileNavDrawer({
     if (open) setOpen(false);
   }
 
-  const links: NavLink[] = [
-    // TEMP: Seasons index hidden while only one season exists
-    // { href: "/challenges", label: "Seasons", icon: <SeasonsIcon /> },
-    { href: "/about", label: "About", icon: <AboutIcon /> },
-  ];
+  // TEMP: Seasons index hidden while only one season exists
+  // { href: "/challenges", label: "Seasons", icon: <SeasonsIcon /> },
+  const links: NavLink[] = [];
   if (challengeSlug) {
     links.push({
       href: `/challenges/${challengeSlug}/rules`,
@@ -210,11 +202,6 @@ export function MobileNavDrawer({
                       variant="drawer"
                     />
                   ) : null}
-
-                  <div className="flex items-center justify-between rounded-md border border-frame bg-surface px-3 py-2">
-                    <span className="text-sm font-medium">Theme</span>
-                    <ThemeToggle />
-                  </div>
 
                   {children}
                 </div>

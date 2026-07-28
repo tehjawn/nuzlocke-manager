@@ -9,7 +9,7 @@ import {
 } from "@/lib/theme";
 
 /**
- * Header theme control.
+ * Theme control (site footer).
  *
  * Init script in root layout applies + persists theme before paint
  * (stored preference, else OS snapshot on first visit). Server snapshot is

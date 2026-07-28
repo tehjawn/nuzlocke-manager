@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { NavigationProgress } from "@/components/NavigationProgress";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SnackbarHost } from "@/components/Snackbar";
 import { JumpHost } from "@/features/jump/JumpHost";
 import { challengeToJumpSeasonContext } from "@/features/jump/jump-season";
@@ -70,6 +71,7 @@ export default async function RootLayout({
         <NavigationProgress />
         <JumpHost defaultSeason={defaultSeason}>
           {children}
+          <SiteFooter />
           <SnackbarHost />
         </JumpHost>
       </body>
