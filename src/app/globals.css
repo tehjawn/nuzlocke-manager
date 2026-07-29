@@ -281,7 +281,11 @@ button:disabled,
   --gba-fill: var(--surface);
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  /*
+    Visible overflow so avatar stages can soft-bleed. Card chrome (fill, grain,
+    motifs) still respects border-radius on this box / ::before / ::after.
+  */
+  overflow: visible;
   background:
     linear-gradient(
       160deg,
@@ -305,6 +309,8 @@ button:disabled,
   pointer-events: none;
   z-index: 0;
   opacity: var(--grain-card);
+  /* Clip grain to the rounded card without clipping content stages. */
+  overflow: hidden;
   background-image: url("/textures/noise.png");
   background-repeat: repeat;
   background-size: 100px 100px;
@@ -517,10 +523,10 @@ button:disabled,
 
 .avatar-portrait[data-avatar-bg] {
   /*
-    Stage frame larger than the sprite — especially under the feet —
-    so ground plates (spotlight, rocky, etc.) aren’t square-cropped.
+    Keep a modest plate around the sprite; the stage ::before soft-bleeds
+    outside this box (frames no longer clip overflow).
   */
-  padding: 0.55rem 0.8rem 1.15rem;
+  padding: 0.35rem 0.45rem 0.55rem;
   box-sizing: content-box;
   background:
     radial-gradient(
@@ -544,24 +550,23 @@ button:disabled,
 .avatar-bg-swatch[data-avatar-bg] .avatar-bg-swatch-preview::before {
   content: "";
   position: absolute;
-  inset: 0;
+  /* Soft-bleed past the sprite box so floor ellipses aren’t square-cropped. */
+  inset: -12% -20% -32%;
   z-index: 0;
   pointer-events: none;
   border-radius: inherit;
-  /* Fit full motif inside the stage frame; anchor to the floor. */
   background: var(--avatar-bg-stage) center bottom / contain no-repeat;
-  opacity: 0.5;
-  /* Fade only at the outer rim — don’t slice through the floor ellipse. */
+  opacity: 0.55;
   -webkit-mask-image: radial-gradient(
-    ellipse 98% 96% at 50% 52%,
+    ellipse 92% 88% at 50% 58%,
     #000 0%,
-    #000 68%,
+    #000 52%,
     transparent 100%
   );
   mask-image: radial-gradient(
-    ellipse 98% 96% at 50% 52%,
+    ellipse 92% 88% at 50% 58%,
     #000 0%,
-    #000 68%,
+    #000 52%,
     transparent 100%
   );
   -webkit-mask-repeat: no-repeat;
@@ -624,8 +629,7 @@ button:disabled,
 }
 
 /*
-  Custom uploads — cover the stage frame; soft-mask dissolves hard rect edges
-  before they hit the padding-box boundary (frame still clips overflow).
+  Custom uploads — soft-bleed + vignette so hard rect edges dissolve.
 */
 .avatar-portrait[data-avatar-bg="custom"],
 .avatar-bg-swatch[data-avatar-bg="custom"] .avatar-bg-swatch-preview {
@@ -633,22 +637,22 @@ button:disabled,
 }
 
 .avatar-portrait[data-avatar-bg="custom"]::before {
-  inset: 0;
+  inset: -16% -24% -28%;
   background: var(--avatar-bg-custom) center 42% / cover no-repeat;
   opacity: 0.9;
   filter: none;
   -webkit-mask-image: radial-gradient(
-    ellipse 86% 88% at 50% 48%,
+    ellipse 78% 82% at 50% 48%,
     #000 0%,
-    #000 48%,
-    rgba(0, 0, 0, 0.4) 70%,
+    #000 42%,
+    rgba(0, 0, 0, 0.35) 68%,
     transparent 100%
   );
   mask-image: radial-gradient(
-    ellipse 86% 88% at 50% 48%,
+    ellipse 78% 82% at 50% 48%,
     #000 0%,
-    #000 48%,
-    rgba(0, 0, 0, 0.4) 70%,
+    #000 42%,
+    rgba(0, 0, 0, 0.35) 68%,
     transparent 100%
   );
 }
