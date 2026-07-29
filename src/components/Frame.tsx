@@ -3,6 +3,7 @@ import {
   cardBackgroundCustomUrl,
   cardBackgroundDataAttr,
 } from "@/data/card-backgrounds";
+import { cssTextureUrl } from "@/lib/custom-texture";
 
 type FrameProps = {
   title?: string;
@@ -32,7 +33,7 @@ export function Frame({
   const customUrl = cardBackgroundCustomUrl(cardBackgroundKey);
   const style = customUrl
     ? ({
-        ["--card-bg-custom" as string]: `url("${customUrl}")`,
+        ["--card-bg-custom" as string]: cssTextureUrl(customUrl),
       } as CSSProperties)
     : undefined;
 

@@ -34,15 +34,36 @@ export function customTextureKey(url: string): string {
   return `${CUSTOM_AVATAR_PREFIX}${url.trim()}`;
 }
 
-/** Extract blob URL from a stored `custom:https://…` key, else null. */
+/**
+ * Safe CSS `url(...)` wrapper. Always JSON-stringify so quotes/parens in a
+ * hostile string cannot break out of the declaration.
+ */
+export function cssTextureUrl(url: string): string {
+  return `url(${JSON.stringify(url)})`;
+}
+
+/**
+ * Extract a canonical blob URL from a stored `custom:https://…` key.
+ * Returns `null` for missing / non-blob values. Rejects raw CSS-breakout
+ * characters in the candidate; always returns `URL.href`.
+ */
 export function parseCustomTextureUrl(
   raw: string | null | undefined,
 ): string | null {
   if (raw == null) return null;
   const value = raw.trim();
   if (!value.toLowerCase().startsWith(CUSTOM_AVATAR_PREFIX)) return null;
-  const url = value.slice(CUSTOM_AVATAR_PREFIX.length).trim();
-  return isAllowedCustomAvatarUrl(url) ? url : null;
+  const candidate = value.slice(CUSTOM_AVATAR_PREFIX.length).trim();
+  // Block raw breakout chars before the URL parser percent-encodes them.
+  if (/["'()\\\s<>]/.test(candidate)) return null;
+  if (!isAllowedCustomAvatarUrl(candidate)) return null;
+  try {
+    const href = new URL(candidate).href;
+    if (!isAllowedCustomAvatarUrl(href)) return null;
+    return href;
+  } catch {
+    return null;
+  }
 }
 
 export function isCustomTextureKey(value: unknown): value is string {
@@ -53,7 +74,10 @@ export function textureBlobFolder(kind: TextureKind): string {
   return kind === "avatar-bg" ? "avatar-bgs" : "card-bgs";
 }
 
-/** True when the blob path was uploaded under this user's texture folder. */
+/**
+ * True when the blob path was uploaded under this user's texture folder.
+ * Uses path segments (folder / userId / file) rather than substring match.
+ */
 export function isOwnedCustomTextureUrl(
   url: string,
   userId: string,
@@ -61,12 +85,41 @@ export function isOwnedCustomTextureUrl(
 ): boolean {
   if (!userId || !isAllowedCustomAvatarUrl(url)) return false;
   try {
-    const path = decodeURIComponent(new URL(url).pathname);
-    const marker = `/${textureBlobFolder(kind)}/${userId}/`;
-    return path.includes(marker) || path.startsWith(marker.slice(1));
+    const href = new URL(url).href;
+    const segments = decodeURIComponent(new URL(href).pathname)
+      .split("/")
+      .filter(Boolean);
+    const folder = textureBlobFolder(kind);
+    const folderIdx = segments.indexOf(folder);
+    return (
+      folderIdx >= 0 &&
+      segments[folderIdx + 1] === userId &&
+      typeof segments[folderIdx + 2] === "string" &&
+      segments[folderIdx + 2]!.length > 0
+    );
   } catch {
     return false;
   }
+}
+
+/** Acting editor or the profile owner may re-apply an already-uploaded texture. */
+export function canUseCustomTextureUrl(
+  url: string,
+  kind: TextureKind,
+  actingUserId: string,
+  trainerUserId: string | null | undefined,
+  alreadySaved: boolean,
+): boolean {
+  if (alreadySaved) return true;
+  if (isOwnedCustomTextureUrl(url, actingUserId, kind)) return true;
+  if (
+    trainerUserId &&
+    trainerUserId !== actingUserId &&
+    isOwnedCustomTextureUrl(url, trainerUserId, kind)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function canvasToFile(

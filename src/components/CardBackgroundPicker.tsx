@@ -7,10 +7,13 @@ import {
   cardBackgroundCustomUrl,
   isCardBackgroundKey,
 } from "@/data/card-backgrounds";
+import { cssTextureUrl } from "@/lib/custom-texture";
 
 type CardBackgroundPickerProps = {
   value: string | null;
   onChange: (key: string | null) => void;
+  savedCustomBackground?: string | null;
+  onSavedCustomBackgroundChange?: (key: string | null) => void;
   disabled?: boolean;
 };
 
@@ -76,12 +79,24 @@ function selectedLabel(value: string | null): string {
 export function CardBackgroundPicker({
   value,
   onChange,
+  savedCustomBackground,
+  onSavedCustomBackgroundChange,
   disabled = false,
 }: CardBackgroundPickerProps) {
   const [importOpen, setImportOpen] = useState(false);
-  const [savedCustom, setSavedCustom] = useState<string | null>(() =>
+  const [localSavedCustom, setLocalSavedCustom] = useState<string | null>(() =>
     value && !isCardBackgroundKey(value) ? value : null,
   );
+  const savedCustom =
+    savedCustomBackground !== undefined
+      ? savedCustomBackground
+      : localSavedCustom;
+  const rememberCustom = (key: string) => {
+    onSavedCustomBackgroundChange?.(key);
+    if (savedCustomBackground === undefined) {
+      setLocalSavedCustom(key);
+    }
+  };
   const activeCustom =
     value && !isCardBackgroundKey(value) ? value : savedCustom;
   const customUrl = cardBackgroundCustomUrl(activeCustom);
@@ -154,7 +169,7 @@ export function CardBackgroundPicker({
             data-card-bg="custom"
             style={
               {
-                ["--card-bg-custom" as string]: `url("${customUrl}")`,
+                ["--card-bg-custom" as string]: cssTextureUrl(customUrl),
               } as CSSProperties
             }
             onClick={() => onChange(activeCustom)}
@@ -201,7 +216,7 @@ export function CardBackgroundPicker({
         kind="card-bg"
         onClose={() => setImportOpen(false)}
         onSelect={(key) => {
-          setSavedCustom(key);
+          rememberCustom(key);
           onChange(key);
           setImportOpen(false);
         }}

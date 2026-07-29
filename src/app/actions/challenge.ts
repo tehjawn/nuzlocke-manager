@@ -25,8 +25,8 @@ import {
   parseAvatarKey,
 } from "@/lib/sprites";
 import {
+  canUseCustomTextureUrl,
   customTextureKey,
-  isOwnedCustomTextureUrl,
   parseCustomTextureUrl,
 } from "@/lib/custom-texture";
 import { isAvatarBackgroundKey } from "@/data/avatar-backgrounds";
@@ -374,7 +374,15 @@ export async function updateTrainerBoardAction(input: {
         }
         const currentUrl = parseCustomTextureUrl(trainer.avatarBackgroundKey);
         const alreadySaved = currentUrl === url;
-        if (!alreadySaved && !isOwnedCustomTextureUrl(url, userId, "avatar-bg")) {
+        if (
+          !canUseCustomTextureUrl(
+            url,
+            "avatar-bg",
+            userId,
+            trainer.userId,
+            alreadySaved,
+          )
+        ) {
           return { ok: false, error: "Invalid custom backdrop" };
         }
         data.avatarBackgroundKey = customTextureKey(url);
@@ -393,7 +401,15 @@ export async function updateTrainerBoardAction(input: {
         }
         const currentUrl = parseCustomTextureUrl(trainer.cardBackgroundKey);
         const alreadySaved = currentUrl === url;
-        if (!alreadySaved && !isOwnedCustomTextureUrl(url, userId, "card-bg")) {
+        if (
+          !canUseCustomTextureUrl(
+            url,
+            "card-bg",
+            userId,
+            trainer.userId,
+            alreadySaved,
+          )
+        ) {
           return { ok: false, error: "Invalid custom card background" };
         }
         data.cardBackgroundKey = customTextureKey(url);

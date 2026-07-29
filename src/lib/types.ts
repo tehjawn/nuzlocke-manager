@@ -7,7 +7,7 @@ import { IvsSchema, StatSpreadSchema } from "@/lib/stats";
 function backgroundKeySchema(label: string) {
   return z
     .union([
-      z.string().max(512),
+      z.string().max(768),
       z.null(),
     ])
     .optional()
@@ -75,6 +75,7 @@ export const TrainerBoardUpdateSchema = z.object({
       return trimmed === "" ? null : trimmed;
     }),
   avatarSpriteKey: z.string().max(512).optional().nullable(),
+  // Blob URLs + `custom:` prefix can exceed short limits.
   avatarBackgroundKey: backgroundKeySchema("avatar"),
   cardBackgroundKey: backgroundKeySchema("card"),
   reviveUsed: z.boolean().optional(),

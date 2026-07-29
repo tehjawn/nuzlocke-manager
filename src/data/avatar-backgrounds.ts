@@ -1,7 +1,7 @@
 /** Curated + custom avatar backdrop presets (stage plate behind the sprite). */
 
 import {
-  isCustomTextureKey,
+  customTextureKey,
   parseCustomTextureUrl,
 } from "@/lib/custom-texture";
 
@@ -44,7 +44,7 @@ export function isAvatarBackgroundKey(
 
 /**
  * Normalize a stored / submitted value.
- * Curated key or owned custom URL key → itself; empty / unknown → `null`.
+ * Curated key or canonical custom URL key → itself; empty / unknown → `null`.
  */
 export function parseAvatarBackgroundKey(
   value: string | null | undefined,
@@ -53,7 +53,8 @@ export function parseAvatarBackgroundKey(
   const trimmed = value.trim();
   if (!trimmed) return null;
   if (isAvatarBackgroundKey(trimmed)) return trimmed;
-  if (isCustomTextureKey(trimmed)) return trimmed;
+  const customUrl = parseCustomTextureUrl(trimmed);
+  if (customUrl) return customTextureKey(customUrl);
   return null;
 }
 

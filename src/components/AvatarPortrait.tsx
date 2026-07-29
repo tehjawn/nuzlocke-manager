@@ -4,6 +4,7 @@ import {
   avatarBackgroundCustomUrl,
   avatarBackgroundDataAttr,
 } from "@/data/avatar-backgrounds";
+import { cssTextureUrl } from "@/lib/custom-texture";
 import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
 
 type AvatarPortraitProps = {
@@ -37,7 +38,7 @@ export function AvatarPortrait({
   const customUrl = avatarBackgroundCustomUrl(backgroundKey);
   const style = customUrl
     ? ({
-        ["--avatar-bg-custom" as string]: `url("${customUrl}")`,
+        ["--avatar-bg-custom" as string]: cssTextureUrl(customUrl),
       } as CSSProperties)
     : undefined;
 

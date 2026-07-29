@@ -11,6 +11,7 @@ import {
   avatarBackgroundCustomUrl,
   isAvatarBackgroundKey,
 } from "@/data/avatar-backgrounds";
+import { cssTextureUrl } from "@/lib/custom-texture";
 import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
 
 type AvatarPickerProps = {
@@ -18,6 +19,12 @@ type AvatarPickerProps = {
   onChange: (avatarSpriteKey: string) => void;
   backgroundKey?: string | null;
   onBackgroundChange?: (key: string | null) => void;
+  /**
+   * Last imported custom backdrop key, lifted by the parent so it survives
+   * edit-mode remounts when the current selection is a curated preset.
+   */
+  savedCustomBackground?: string | null;
+  onSavedCustomBackgroundChange?: (key: string | null) => void;
   disabled?: boolean;
 };
 
@@ -159,17 +166,28 @@ export function AvatarPicker({
   onChange,
   backgroundKey = null,
   onBackgroundChange,
+  savedCustomBackground,
+  onSavedCustomBackgroundChange,
   disabled = false,
 }: AvatarPickerProps) {
   const [browseOpen, setBrowseOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [backdropImportOpen, setBackdropImportOpen] = useState(false);
-  const [savedCustomBackdrop, setSavedCustomBackdrop] = useState<string | null>(
-    () =>
-      backgroundKey && !isAvatarBackgroundKey(backgroundKey)
-        ? backgroundKey
-        : null,
+  const [localSavedCustom, setLocalSavedCustom] = useState<string | null>(() =>
+    backgroundKey && !isAvatarBackgroundKey(backgroundKey)
+      ? backgroundKey
+      : null,
   );
+  const savedCustomBackdrop =
+    savedCustomBackground !== undefined
+      ? savedCustomBackground
+      : localSavedCustom;
+  const rememberCustomBackdrop = (key: string) => {
+    onSavedCustomBackgroundChange?.(key);
+    if (savedCustomBackground === undefined) {
+      setLocalSavedCustom(key);
+    }
+  };
   const showBackdrops = typeof onBackgroundChange === "function";
   const activeCustomBackdrop =
     backgroundKey && !isAvatarBackgroundKey(backgroundKey)
@@ -305,7 +323,9 @@ export function AvatarPicker({
                 data-avatar-bg="custom"
                 style={
                   {
-                    ["--avatar-bg-custom" as string]: `url("${customBackdropUrl}")`,
+                    ["--avatar-bg-custom" as string]: cssTextureUrl(
+                      customBackdropUrl,
+                    ),
                   } as CSSProperties
                 }
                 onClick={() => onBackgroundChange?.(activeCustomBackdrop)}
@@ -386,7 +406,7 @@ export function AvatarPicker({
           kind="avatar-bg"
           onClose={() => setBackdropImportOpen(false)}
           onSelect={(key) => {
-            setSavedCustomBackdrop(key);
+            rememberCustomBackdrop(key);
             onBackgroundChange?.(key);
             setBackdropImportOpen(false);
           }}

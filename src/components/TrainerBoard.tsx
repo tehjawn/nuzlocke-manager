@@ -36,9 +36,11 @@ import { StatusEmojiPicker } from "@/components/StatusEmojiPicker";
 import { StatusLine } from "@/components/StatusLine";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
 import {
+  isAvatarBackgroundKey,
   parseAvatarBackgroundKey,
 } from "@/data/avatar-backgrounds";
 import {
+  isCardBackgroundKey,
   parseCardBackgroundKey,
 } from "@/data/card-backgrounds";
 import type {
@@ -456,6 +458,19 @@ export function TrainerBoard({
   const [cardBackgroundKey, setCardBackgroundKey] = useState<string | null>(
     parseCardBackgroundKey(trainer.cardBackgroundKey),
   );
+  /** Survive edit remounts when the live selection is a curated preset. */
+  const [savedCustomAvatarBg, setSavedCustomAvatarBg] = useState<string | null>(
+    () => {
+      const parsed = parseAvatarBackgroundKey(trainer.avatarBackgroundKey);
+      return parsed && !isAvatarBackgroundKey(parsed) ? parsed : null;
+    },
+  );
+  const [savedCustomCardBg, setSavedCustomCardBg] = useState<string | null>(
+    () => {
+      const parsed = parseCardBackgroundKey(trainer.cardBackgroundKey);
+      return parsed && !isCardBackgroundKey(parsed) ? parsed : null;
+    },
+  );
   const [reviveUsed, setReviveUsed] = useState(trainer.reviveUsed);
   const [earnedBadgeKeys, setEarnedBadgeKeys] = useState(
     trainer.earnedBadgeKeys,
@@ -489,6 +504,14 @@ export function TrainerBoard({
       cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
       reviveUsed: trainer.reviveUsed,
     });
+    const nextAvatarBg = parseAvatarBackgroundKey(trainer.avatarBackgroundKey);
+    if (nextAvatarBg && !isAvatarBackgroundKey(nextAvatarBg)) {
+      setSavedCustomAvatarBg(nextAvatarBg);
+    }
+    const nextCardBg = parseCardBackgroundKey(trainer.cardBackgroundKey);
+    if (nextCardBg && !isCardBackgroundKey(nextCardBg)) {
+      setSavedCustomCardBg(nextCardBg);
+    }
     setReviveUsed(trainer.reviveUsed);
     setEarnedBadgeKeys(trainer.earnedBadgeKeys);
     setBoardOverride(null);
@@ -913,12 +936,16 @@ export function TrainerBoard({
                     onChange={setAvatarSpriteKey}
                     backgroundKey={avatarBackgroundKey}
                     onBackgroundChange={setAvatarBackgroundKey}
+                    savedCustomBackground={savedCustomAvatarBg}
+                    onSavedCustomBackgroundChange={setSavedCustomAvatarBg}
                     disabled={pending}
                   />
                 </div>
                 <CardBackgroundPicker
                   value={cardBackgroundKey}
                   onChange={setCardBackgroundKey}
+                  savedCustomBackground={savedCustomCardBg}
+                  onSavedCustomBackgroundChange={setSavedCustomCardBg}
                   disabled={pending}
                 />
                 <label className="block text-sm">

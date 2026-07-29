@@ -1,7 +1,7 @@
 /** Curated + custom TrainerCard background presets (league board chrome). */
 
 import {
-  isCustomTextureKey,
+  customTextureKey,
   parseCustomTextureUrl,
 } from "@/lib/custom-texture";
 
@@ -42,7 +42,7 @@ export function isCardBackgroundKey(
 
 /**
  * Normalize a stored / submitted value.
- * Curated key or custom URL key → itself; empty / unknown → `null`.
+ * Curated key or canonical custom URL key → itself; empty / unknown → `null`.
  */
 export function parseCardBackgroundKey(
   value: string | null | undefined,
@@ -51,7 +51,8 @@ export function parseCardBackgroundKey(
   const trimmed = value.trim();
   if (!trimmed) return null;
   if (isCardBackgroundKey(trimmed)) return trimmed;
-  if (isCustomTextureKey(trimmed)) return trimmed;
+  const customUrl = parseCustomTextureUrl(trimmed);
+  if (customUrl) return customTextureKey(customUrl);
   return null;
 }
 
