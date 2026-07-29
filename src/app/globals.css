@@ -523,14 +523,15 @@ button:disabled,
 
 .avatar-portrait[data-avatar-bg] {
   /*
-    Keep a modest plate around the sprite; the stage ::before soft-bleeds
-    outside this box (frames no longer clip overflow).
+    Modest plate around the sprite; stage ::before soft-bleeds outside
+    (frames no longer clip overflow). Extra bottom pad kept small so the
+    floor plate sits under the feet, not below them.
   */
-  padding: 0.35rem 0.45rem 0.55rem;
+  padding: 0.35rem 0.45rem 0.2rem;
   box-sizing: content-box;
   background:
     radial-gradient(
-      ellipse 72% 42% at 50% 88%,
+      ellipse 72% 42% at 50% 82%,
       color-mix(in srgb, var(--avatar-bg-wash) 48%, transparent) 0%,
       transparent 72%
     );
@@ -550,21 +551,21 @@ button:disabled,
 .avatar-bg-swatch[data-avatar-bg] .avatar-bg-swatch-preview::before {
   content: "";
   position: absolute;
-  /* Soft-bleed past the sprite box so floor ellipses aren’t square-cropped. */
-  inset: -12% -20% -32%;
+  /* Bleed sideways/up more than down — keep the floor under the feet. */
+  inset: -14% -22% -10%;
   z-index: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: var(--avatar-bg-stage) center bottom / contain no-repeat;
+  background: var(--avatar-bg-stage) center 86% / contain no-repeat;
   opacity: 0.55;
   -webkit-mask-image: radial-gradient(
-    ellipse 92% 88% at 50% 58%,
+    ellipse 92% 88% at 50% 55%,
     #000 0%,
     #000 52%,
     transparent 100%
   );
   mask-image: radial-gradient(
-    ellipse 92% 88% at 50% 58%,
+    ellipse 92% 88% at 50% 55%,
     #000 0%,
     #000 52%,
     transparent 100%
@@ -637,19 +638,19 @@ button:disabled,
 }
 
 .avatar-portrait[data-avatar-bg="custom"]::before {
-  inset: -16% -24% -28%;
-  background: var(--avatar-bg-custom) center 42% / cover no-repeat;
+  inset: -16% -24% -12%;
+  background: var(--avatar-bg-custom) center 72% / cover no-repeat;
   opacity: 0.9;
   filter: none;
   -webkit-mask-image: radial-gradient(
-    ellipse 78% 82% at 50% 48%,
+    ellipse 78% 82% at 50% 52%,
     #000 0%,
     #000 42%,
     rgba(0, 0, 0, 0.35) 68%,
     transparent 100%
   );
   mask-image: radial-gradient(
-    ellipse 78% 82% at 50% 48%,
+    ellipse 78% 82% at 50% 52%,
     #000 0%,
     #000 42%,
     rgba(0, 0, 0, 0.35) 68%,
