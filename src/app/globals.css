@@ -516,8 +516,11 @@ button:disabled,
 }
 
 .avatar-portrait[data-avatar-bg] {
-  /* Plate padding so soft-mask has room inside the portrait (frame clips overflow). */
-  padding: 0.35rem 0.45rem 0.15rem;
+  /*
+    Stage frame larger than the sprite — especially under the feet —
+    so ground plates (spotlight, rocky, etc.) aren’t square-cropped.
+  */
+  padding: 0.55rem 0.8rem 1.15rem;
   box-sizing: content-box;
   background:
     radial-gradient(
@@ -545,19 +548,21 @@ button:disabled,
   z-index: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: var(--avatar-bg-stage) center 88% / 100% auto no-repeat;
-  opacity: 0.42;
+  /* Fit full motif inside the stage frame; anchor to the floor. */
+  background: var(--avatar-bg-stage) center bottom / contain no-repeat;
+  opacity: 0.5;
+  /* Fade only at the outer rim — don’t slice through the floor ellipse. */
   -webkit-mask-image: radial-gradient(
-    ellipse 78% 82% at 50% 55%,
+    ellipse 98% 96% at 50% 52%,
     #000 0%,
-    #000 46%,
-    transparent 78%
+    #000 68%,
+    transparent 100%
   );
   mask-image: radial-gradient(
-    ellipse 78% 82% at 50% 55%,
+    ellipse 98% 96% at 50% 52%,
     #000 0%,
-    #000 46%,
-    transparent 78%
+    #000 68%,
+    transparent 100%
   );
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
@@ -584,43 +589,43 @@ button:disabled,
 
 .avatar-portrait[data-avatar-bg="spotlight"],
 .avatar-bg-swatch[data-avatar-bg="spotlight"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/spotlight.svg?v=1");
+  --avatar-bg-stage: url("/textures/avatar-bgs/spotlight.svg?v=2");
   --avatar-bg-wash: #f0e6a8;
 }
 
 .avatar-portrait[data-avatar-bg="ember"],
 .avatar-bg-swatch[data-avatar-bg="ember"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/ember.svg?v=1");
+  --avatar-bg-stage: url("/textures/avatar-bgs/ember.svg?v=2");
   --avatar-bg-wash: #f0a060;
 }
 
 .avatar-portrait[data-avatar-bg="tide"],
 .avatar-bg-swatch[data-avatar-bg="tide"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/tide.svg?v=1");
+  --avatar-bg-stage: url("/textures/avatar-bgs/tide.svg?v=2");
   --avatar-bg-wash: #7ec8e8;
 }
 
 .avatar-portrait[data-avatar-bg="meadow"],
 .avatar-bg-swatch[data-avatar-bg="meadow"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/meadow.svg?v=1");
+  --avatar-bg-stage: url("/textures/avatar-bgs/meadow.svg?v=2");
   --avatar-bg-wash: #8fce6a;
 }
 
 .avatar-portrait[data-avatar-bg="rocky"],
 .avatar-bg-swatch[data-avatar-bg="rocky"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/rocky.svg?v=1");
+  --avatar-bg-stage: url("/textures/avatar-bgs/rocky.svg?v=2");
   --avatar-bg-wash: #c4b49a;
 }
 
 .avatar-portrait[data-avatar-bg="spark"],
 .avatar-bg-swatch[data-avatar-bg="spark"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/spark.svg?v=1");
+  --avatar-bg-stage: url("/textures/avatar-bgs/spark.svg?v=2");
   --avatar-bg-wash: #f5e06a;
 }
 
 /*
-  Custom uploads — soft-mask hard rect edges inside the portrait box
-  (`.gba-frame` clips overflow, so the stage must not rely on negative inset).
+  Custom uploads — cover the stage frame; soft-mask dissolves hard rect edges
+  before they hit the padding-box boundary (frame still clips overflow).
 */
 .avatar-portrait[data-avatar-bg="custom"],
 .avatar-bg-swatch[data-avatar-bg="custom"] .avatar-bg-swatch-preview {
@@ -633,18 +638,18 @@ button:disabled,
   opacity: 0.9;
   filter: none;
   -webkit-mask-image: radial-gradient(
-    ellipse 72% 78% at 50% 46%,
+    ellipse 86% 88% at 50% 48%,
     #000 0%,
-    #000 40%,
-    rgba(0, 0, 0, 0.45) 62%,
-    transparent 86%
+    #000 48%,
+    rgba(0, 0, 0, 0.4) 70%,
+    transparent 100%
   );
   mask-image: radial-gradient(
-    ellipse 72% 78% at 50% 46%,
+    ellipse 86% 88% at 50% 48%,
     #000 0%,
-    #000 40%,
-    rgba(0, 0, 0, 0.45) 62%,
-    transparent 86%
+    #000 48%,
+    rgba(0, 0, 0, 0.4) 70%,
+    transparent 100%
   );
 }
 

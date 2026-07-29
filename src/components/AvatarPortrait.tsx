@@ -44,7 +44,9 @@ export function AvatarPortrait({
 
   return (
     <span
-      className={`avatar-portrait inline-flex shrink-0 items-end justify-center ${className}`}
+      className={`avatar-portrait inline-flex shrink-0 items-end justify-center ${
+        dataBg ? "avatar-portrait--staged" : ""
+      } ${className}`}
       data-avatar-bg={dataBg}
       style={style}
     >
