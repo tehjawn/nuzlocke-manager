@@ -24,6 +24,13 @@ import {
   isOwnedCustomAvatarUrl,
   parseAvatarKey,
 } from "@/lib/sprites";
+import {
+  canUseCustomTextureUrl,
+  customTextureKey,
+  parseCustomTextureUrl,
+} from "@/lib/custom-texture";
+import { isAvatarBackgroundKey } from "@/data/avatar-backgrounds";
+import { isCardBackgroundKey } from "@/data/card-backgrounds";
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
 import type { ActivityItem } from "@/lib/challenge-types";
 import { listChallengeActivities } from "@/lib/challenges";
@@ -293,6 +300,7 @@ export async function updateTrainerBoardAction(input: {
   statusText?: string | null;
   statusEmoji?: string | null;
   avatarSpriteKey?: string | null;
+  avatarBackgroundKey?: string | null;
   cardBackgroundKey?: string | null;
   reviveUsed?: boolean;
   handle?: string;
@@ -303,6 +311,7 @@ export async function updateTrainerBoardAction(input: {
       statusText: input.statusText,
       statusEmoji: input.statusEmoji,
       avatarSpriteKey: input.avatarSpriteKey,
+      avatarBackgroundKey: input.avatarBackgroundKey,
       cardBackgroundKey: input.cardBackgroundKey,
       reviveUsed: input.reviveUsed,
       handle: input.handle,
@@ -310,8 +319,17 @@ export async function updateTrainerBoardAction(input: {
     });
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
+      if (issue?.path[0] === "avatarBackgroundKey") {
+        return {
+          ok: false,
+          error: "Pick an avatar backdrop from the list or import your own",
+        };
+      }
       if (issue?.path[0] === "cardBackgroundKey") {
-        return { ok: false, error: "Pick a card background from the list" };
+        return {
+          ok: false,
+          error: "Pick a card background from the list or import your own",
+        };
       }
       return { ok: false, error: issue?.message ?? "Invalid input" };
     }
@@ -334,6 +352,7 @@ export async function updateTrainerBoardAction(input: {
       statusText?: string | null;
       statusEmoji?: string | null;
       avatarSpriteKey?: string | null;
+      avatarBackgroundKey?: string | null;
       cardBackgroundKey?: string | null;
       reviveUsed?: boolean;
       realName?: string | null;
@@ -342,8 +361,59 @@ export async function updateTrainerBoardAction(input: {
 
     if (updates.statusText !== undefined) data.statusText = updates.statusText;
     if (updates.statusEmoji !== undefined) data.statusEmoji = updates.statusEmoji;
+    if (updates.avatarBackgroundKey !== undefined) {
+      const raw = updates.avatarBackgroundKey;
+      if (raw == null) {
+        data.avatarBackgroundKey = null;
+      } else if (isAvatarBackgroundKey(raw)) {
+        data.avatarBackgroundKey = raw;
+      } else {
+        const url = parseCustomTextureUrl(raw);
+        if (!url) {
+          return { ok: false, error: "Invalid custom backdrop" };
+        }
+        const currentUrl = parseCustomTextureUrl(trainer.avatarBackgroundKey);
+        const alreadySaved = currentUrl === url;
+        if (
+          !canUseCustomTextureUrl(
+            url,
+            "avatar-bg",
+            userId,
+            trainer.userId,
+            alreadySaved,
+          )
+        ) {
+          return { ok: false, error: "Invalid custom backdrop" };
+        }
+        data.avatarBackgroundKey = customTextureKey(url);
+      }
+    }
     if (updates.cardBackgroundKey !== undefined) {
-      data.cardBackgroundKey = updates.cardBackgroundKey;
+      const raw = updates.cardBackgroundKey;
+      if (raw == null) {
+        data.cardBackgroundKey = null;
+      } else if (isCardBackgroundKey(raw)) {
+        data.cardBackgroundKey = raw;
+      } else {
+        const url = parseCustomTextureUrl(raw);
+        if (!url) {
+          return { ok: false, error: "Invalid custom card background" };
+        }
+        const currentUrl = parseCustomTextureUrl(trainer.cardBackgroundKey);
+        const alreadySaved = currentUrl === url;
+        if (
+          !canUseCustomTextureUrl(
+            url,
+            "card-bg",
+            userId,
+            trainer.userId,
+            alreadySaved,
+          )
+        ) {
+          return { ok: false, error: "Invalid custom card background" };
+        }
+        data.cardBackgroundKey = customTextureKey(url);
+      }
     }
     if (updates.avatarSpriteKey !== undefined) {
       const raw = updates.avatarSpriteKey ?? "";

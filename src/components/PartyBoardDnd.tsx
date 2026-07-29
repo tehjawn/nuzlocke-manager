@@ -23,6 +23,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -368,6 +369,9 @@ export function PartyBoardDnd({
   reservesActions,
   graveyardActions,
 }: PartyBoardDndProps) {
+  // dnd-kit otherwise assigns its accessibility ID from a module-level counter,
+  // which can differ between SSR and client hydration.
+  const dndContextId = useId();
   const [items, setItems] = useState<BoardItems>(() => buildBoardItems(pokemon));
   const itemsRef = useRef(items);
   const aliveRef = useRef(true);
@@ -547,6 +551,7 @@ export function PartyBoardDnd({
 
   return (
     <DndContext
+      id={dndContextId}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}

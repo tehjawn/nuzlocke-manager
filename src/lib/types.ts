@@ -1,6 +1,33 @@
 import { z } from "zod";
-import { CARD_BACKGROUND_KEYS } from "@/data/card-backgrounds";
+import { isAvatarBackgroundKey } from "@/data/avatar-backgrounds";
+import { isCardBackgroundKey } from "@/data/card-backgrounds";
+import { isCustomTextureKey } from "@/lib/custom-texture";
 import { IvsSchema, StatSpreadSchema } from "@/lib/stats";
+
+function backgroundKeySchema(label: string) {
+  return z
+    .union([
+      z.string().max(768),
+      z.null(),
+    ])
+    .optional()
+    .superRefine((value, ctx) => {
+      if (value == null || value === undefined) return;
+      if (label === "avatar") {
+        if (isAvatarBackgroundKey(value) || isCustomTextureKey(value)) return;
+        ctx.addIssue({
+          code: "custom",
+          message: "Pick an avatar backdrop from the list or import your own",
+        });
+        return;
+      }
+      if (isCardBackgroundKey(value) || isCustomTextureKey(value)) return;
+      ctx.addIssue({
+        code: "custom",
+        message: "Pick a card background from the list or import your own",
+      });
+    });
+}
 
 export const UserRoleSchema = z.enum(["PLAYER", "GAME_MASTER"]);
 export const ChallengeStatusSchema = z.enum([
@@ -48,9 +75,9 @@ export const TrainerBoardUpdateSchema = z.object({
       return trimmed === "" ? null : trimmed;
     }),
   avatarSpriteKey: z.string().max(512).optional().nullable(),
-  cardBackgroundKey: z
-    .union([z.enum(CARD_BACKGROUND_KEYS), z.null()])
-    .optional(),
+  // Blob URLs + `custom:` prefix can exceed short limits.
+  avatarBackgroundKey: backgroundKeySchema("avatar"),
+  cardBackgroundKey: backgroundKeySchema("card"),
   reviveUsed: z.boolean().optional(),
   handle: z.string().min(1).max(32).optional(),
   realName: z.string().max(64).optional().nullable(),

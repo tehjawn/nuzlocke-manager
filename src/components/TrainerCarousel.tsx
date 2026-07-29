@@ -3,17 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import {
-  avatarImageClassName,
-  avatarImageUrl,
-  pokemonSpriteUrl,
-} from "@/lib/sprites";
+import { AvatarPortrait } from "@/components/AvatarPortrait";
+import { pokemonSpriteUrl } from "@/lib/sprites";
 
 export type CarouselTrainer = {
   id: string;
   handle: string;
   realName: string | null;
   avatarSpriteKey: string;
+  avatarBackgroundKey: string | null;
   badgeCount: number;
   leadPokemon: {
     species: string;
@@ -129,18 +127,17 @@ function CarouselRow({
                   unoptimized
                 />
               ) : null}
-              <Image
-                src={avatarImageUrl(trainer.avatarSpriteKey)}
-                alt=""
-                width={96}
-                height={96}
-                className={`${avatarImageClassName(
-                  trainer.avatarSpriteKey,
+              <AvatarPortrait
+                avatarSpriteKey={trainer.avatarSpriteKey}
+                backgroundKey={trainer.avatarBackgroundKey}
+                sizeClass={
                   compact
                     ? "relative z-[1] h-[62px] w-[62px] sm:h-[73px] sm:w-[73px]"
-                    : "relative z-[1] h-[88px] w-[88px] sm:h-[104px] sm:w-[104px]",
-                )} drop-shadow-[0_8px_16px_var(--shadow-md)] transition-transform duration-300 group-hover:translate-y-[-2px]`}
-                unoptimized
+                    : "relative z-[1] h-[88px] w-[88px] sm:h-[104px] sm:w-[104px]"
+                }
+                width={96}
+                height={96}
+                imgClassName="drop-shadow-[0_8px_16px_var(--shadow-md)] transition-transform duration-300 group-hover:translate-y-[-2px]"
               />
             </div>
             <p
