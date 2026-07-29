@@ -29,7 +29,7 @@ export function writeGmLensOnClient(slug: string, on: boolean): void {
 
 /**
  * Competitive nature/ability/stats/moves visibility.
- * Owners always see their own; GMs only when GM lens is on.
+ * Owners always see their own; GMs only when GM view is on.
  */
 export function canViewCompetitiveDetails(
   access: AccessContext | null | undefined,
@@ -44,7 +44,7 @@ export function canViewCompetitiveDetails(
 /**
  * Edit access for a trainer board.
  * Players: own board only (via canEditTrainer).
- * GMs: own board always; others only with GM lens on.
+ * GMs: own board always; others only with GM view on.
  */
 export function canEditTrainerBoard(
   access: AccessContext | null | undefined,

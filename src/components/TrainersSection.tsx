@@ -14,7 +14,7 @@ type TrainersSectionProps = {
   trainers: TrainerProfile[];
   /** Highlight the signed-in player's card. */
   myTrainerId?: string | null;
-  /** Trainer ids whose competitive details the viewer may see (own / GM lens). */
+  /** Trainer ids whose competitive details the viewer may see (own / GM view). */
   competitiveTrainerIds?: string[];
 };
 

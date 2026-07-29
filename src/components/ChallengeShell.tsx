@@ -114,6 +114,7 @@ export function ChallengeShell({
       <SiteHeader
         challengeSlug={slug}
         challengeYear={year}
+        challengeName={name}
         showGm={showGm}
         myTrainerId={myTrainerId}
       />

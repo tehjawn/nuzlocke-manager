@@ -746,6 +746,682 @@ button:disabled,
   }
 }
 
+@keyframes sheet-up-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* GM Tools floating launcher — frosted glass disc + subtle metallic rim */
+@property --gm-tools-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.gm-tools-fab {
+  --gm-tools-angle: 0deg;
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--gm-tools-angle),
+    color-mix(in srgb, var(--accent-2) 75%, #fff),
+    color-mix(in srgb, var(--frame) 55%, transparent) 20%,
+    color-mix(in srgb, var(--interactive) 70%, #fff) 40%,
+    color-mix(in srgb, var(--frame) 50%, transparent) 60%,
+    color-mix(in srgb, #fff 80%, var(--accent-2)) 78%,
+    color-mix(in srgb, var(--frame) 55%, transparent) 90%,
+    color-mix(in srgb, var(--accent-2) 75%, #fff)
+  );
+  animation:
+    gm-tools-revolve 10s linear infinite,
+    gm-tools-pulse 2.8s ease-in-out infinite;
+}
+
+.gm-tools-fab--active {
+  background: conic-gradient(
+    from var(--gm-tools-angle),
+    color-mix(in srgb, var(--interactive) 80%, #fff),
+    color-mix(in srgb, var(--frame) 55%, transparent) 22%,
+    color-mix(in srgb, var(--accent-2) 70%, #fff) 42%,
+    color-mix(in srgb, var(--frame) 50%, transparent) 62%,
+    #fff 78%,
+    color-mix(in srgb, var(--frame) 55%, transparent) 90%,
+    color-mix(in srgb, var(--interactive) 80%, #fff)
+  );
+  animation:
+    gm-tools-revolve 7s linear infinite,
+    gm-tools-pulse-active 2s ease-in-out infinite;
+}
+
+.gm-tools-fab__btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  height: 3rem;
+  width: 3rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, #fff 55%, var(--frame));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, #fff 55%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 72%, transparent) 42%,
+      color-mix(in srgb, var(--surface-2) 78%, transparent) 100%
+    );
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 20%, transparent),
+    0 8px 20px -12px var(--shadow-md);
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    filter 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.gm-tools-fab__btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    125deg,
+    transparent 36%,
+    color-mix(in srgb, #fff 28%, transparent) 48%,
+    color-mix(in srgb, var(--accent-2) 10%, transparent) 52%,
+    transparent 64%
+  );
+  opacity: 0.55;
+}
+
+[data-theme="dark"] .gm-tools-fab__btn {
+  border-color: color-mix(in srgb, #fff 16%, var(--frame));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, #fff 10%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 78%, transparent) 45%,
+      color-mix(in srgb, var(--surface-2) 82%, transparent) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent),
+    0 8px 20px -12px var(--shadow-md);
+}
+
+[data-theme="dark"] .gm-tools-fab__btn::before {
+  opacity: 0.28;
+}
+
+.gm-tools-fab__btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--frame));
+}
+
+.gm-tools-fab__btn:active {
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+
+@media (min-width: 640px) {
+  .gm-tools-fab__btn {
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+}
+
+.gm-tools-fab--active .gm-tools-fab__btn {
+  border-color: color-mix(in srgb, var(--interactive) 40%, var(--frame));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--interactive-soft) 55%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 70%, transparent) 50%,
+      color-mix(in srgb, var(--interactive-soft) 40%, var(--surface-2)) 100%
+    );
+}
+
+.gm-tools-fab--active .gm-tools-fab__btn::before {
+  background: linear-gradient(
+    125deg,
+    transparent 36%,
+    color-mix(in srgb, #fff 28%, transparent) 48%,
+    color-mix(in srgb, var(--interactive) 12%, transparent) 52%,
+    transparent 64%
+  );
+}
+
+.gm-tools-fab__btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-2) 70%, var(--ink));
+  outline-offset: 3px;
+}
+
+.gm-tools-fab--active .gm-tools-fab__btn:focus-visible {
+  outline-color: color-mix(in srgb, var(--interactive) 70%, var(--ink));
+}
+
+@keyframes gm-tools-revolve {
+  to {
+    --gm-tools-angle: 360deg;
+  }
+}
+
+@keyframes gm-tools-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 8px 20px -12px var(--shadow-md),
+      0 0 0 0 color-mix(in srgb, var(--accent-2) 0%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 8px 20px -12px var(--shadow-md),
+      0 0 14px 1px color-mix(in srgb, var(--accent-2) 28%, transparent);
+  }
+}
+
+@keyframes gm-tools-pulse-active {
+  0%,
+  100% {
+    box-shadow:
+      0 8px 20px -12px var(--shadow-md),
+      0 0 6px 0 color-mix(in srgb, var(--interactive) 22%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 8px 20px -12px var(--shadow-md),
+      0 0 16px 2px color-mix(in srgb, var(--interactive) 38%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-tools-fab,
+  .gm-tools-fab--active {
+    animation: none;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent-2) 55%, #fff),
+      color-mix(in srgb, var(--interactive) 45%, var(--accent-2))
+    );
+    box-shadow:
+      0 8px 20px -12px var(--shadow-md),
+      0 0 10px 1px color-mix(in srgb, var(--accent-2) 22%, transparent);
+  }
+
+  .gm-tools-fab--active {
+    box-shadow:
+      0 8px 20px -12px var(--shadow-md),
+      0 0 10px 1px color-mix(in srgb, var(--interactive) 26%, transparent);
+  }
+}
+
+/* GM Tools panel — frosted glass with subtle metallic rim */
+.gm-tools-panel {
+  --gm-tools-angle: 0deg;
+  position: relative;
+  padding: 1.5px;
+  border-radius: calc(var(--radius) + 2px);
+  background: conic-gradient(
+    from var(--gm-tools-angle),
+    color-mix(in srgb, var(--accent-2) 75%, #fff),
+    color-mix(in srgb, var(--frame) 55%, transparent) 20%,
+    color-mix(in srgb, var(--interactive) 70%, #fff) 40%,
+    color-mix(in srgb, var(--frame) 50%, transparent) 60%,
+    color-mix(in srgb, #fff 80%, var(--accent-2)) 78%,
+    color-mix(in srgb, var(--frame) 55%, transparent) 90%,
+    color-mix(in srgb, var(--accent-2) 75%, #fff)
+  );
+  box-shadow:
+    0 18px 40px -20px var(--shadow-md),
+    0 0 0 1px color-mix(in srgb, var(--frame) 35%, transparent);
+  animation: gm-tools-revolve 10s linear infinite;
+}
+
+.gm-tools-panel--active {
+  background: conic-gradient(
+    from var(--gm-tools-angle),
+    color-mix(in srgb, var(--interactive) 80%, #fff),
+    color-mix(in srgb, var(--frame) 55%, transparent) 22%,
+    color-mix(in srgb, var(--accent-2) 70%, #fff) 42%,
+    color-mix(in srgb, var(--frame) 50%, transparent) 62%,
+    #fff 78%,
+    color-mix(in srgb, var(--frame) 55%, transparent) 90%,
+    color-mix(in srgb, var(--interactive) 80%, #fff)
+  );
+  box-shadow:
+    0 18px 40px -20px var(--shadow-md),
+    0 0 20px -10px color-mix(in srgb, var(--interactive) 35%, transparent);
+  animation: gm-tools-revolve 7s linear infinite;
+}
+
+.gm-tools-panel__chrome {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, #fff 55%, var(--frame));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, #fff 55%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 72%, transparent) 42%,
+      color-mix(in srgb, var(--surface-2) 78%, transparent) 100%
+    );
+  color: var(--ink);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 20%, transparent);
+}
+
+[data-theme="dark"] .gm-tools-panel__chrome {
+  border-color: color-mix(in srgb, #fff 16%, var(--frame));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, #fff 10%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 78%, transparent) 45%,
+      color-mix(in srgb, var(--surface-2) 82%, transparent) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent);
+}
+
+/* Soft metallic highlight — sheen only, not a dark face */
+.gm-tools-panel__chrome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    125deg,
+    transparent 36%,
+    color-mix(in srgb, #fff 28%, transparent) 48%,
+    color-mix(in srgb, var(--accent-2) 10%, transparent) 52%,
+    transparent 64%
+  );
+  opacity: 0.55;
+}
+
+[data-theme="dark"] .gm-tools-panel__chrome::before {
+  opacity: 0.28;
+}
+
+.gm-tools-panel__title {
+  border-bottom: 1px solid color-mix(in srgb, var(--frame) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+}
+
+.gm-tools-panel--active .gm-tools-panel__title {
+  border-bottom-color: color-mix(in srgb, var(--interactive) 28%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 40%, transparent);
+}
+
+.gm-tools-panel__eyebrow {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
+}
+
+.gm-tools-panel--active .gm-tools-panel__eyebrow {
+  color: color-mix(in srgb, var(--interactive) 45%, var(--ink));
+}
+
+.gm-tools-panel__heading {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.gm-tools-panel__subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.gm-tools-panel__close {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+  padding: 0.25rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 50%, transparent);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.gm-tools-panel__close:hover {
+  border-color: color-mix(in srgb, var(--interactive) 45%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 70%, var(--surface));
+  transform: translateY(-1px);
+}
+
+.gm-tools-panel__close:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-2) 70%, var(--ink));
+  outline-offset: 2px;
+}
+
+.gm-tools-panel__body {
+  background: transparent;
+}
+
+.gm-tools-panel__switch {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--frame) 75%, transparent);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.gm-tools-panel__switch:hover {
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--frame));
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.gm-tools-panel__switch:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-2) 70%, var(--ink));
+  outline-offset: 2px;
+}
+
+.gm-tools-panel__switch:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.gm-tools-panel__switch--on {
+  border-color: color-mix(in srgb, var(--interactive) 45%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 65%, var(--surface));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 50%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--interactive) 12%, transparent);
+}
+
+.gm-tools-panel__switch-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.gm-tools-panel__switch-desc {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.gm-tools-panel__toggle {
+  position: relative;
+  height: 1.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: color-mix(in srgb, var(--frame) 55%, var(--surface-2));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--shadow) 35%, transparent);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.gm-tools-panel__switch--on .gm-tools-panel__toggle {
+  border-color: color-mix(in srgb, var(--interactive) 50%, var(--frame));
+  background: var(--interactive);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent),
+    0 0 8px color-mix(in srgb, var(--interactive) 28%, transparent);
+}
+
+.gm-tools-panel__toggle-knob {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  height: 1.15rem;
+  width: 1.15rem;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--shadow) 50%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 80%, transparent);
+  transition: transform 160ms ease;
+}
+
+.gm-tools-panel__switch--on .gm-tools-panel__toggle-knob {
+  transform: translateX(1rem);
+}
+
+.gm-tools-panel__console {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--accent-2) 45%, var(--frame));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent-2) 22%, var(--surface)) 0%,
+      color-mix(in srgb, var(--accent-2) 12%, var(--surface-2)) 100%
+    );
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 65%, transparent),
+    0 1px 2px var(--shadow);
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    filter 140ms ease;
+}
+
+.gm-tools-panel__console-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.gm-tools-panel__console-label.is-pending {
+  opacity: 0.72;
+}
+
+.gm-tools-panel__console-hint {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--accent-2) 70%, var(--ink));
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.gm-tools-panel__console-hint.is-pending {
+  opacity: 1;
+  transform: scale(1);
+  animation: gm-tools-console-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes gm-tools-console-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-tools-panel__console-hint.is-pending {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.gm-tools-panel__console:hover {
+  border-color: color-mix(in srgb, var(--accent-2) 65%, var(--frame));
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+
+.gm-tools-panel__console:active {
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+
+.gm-tools-panel__console:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-2) 70%, var(--ink));
+  outline-offset: 2px;
+}
+
+.gm-tools-panel--active .gm-tools-panel__console {
+  border-color: color-mix(in srgb, var(--interactive) 45%, var(--frame));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--interactive) 22%, var(--surface)) 0%,
+      color-mix(in srgb, var(--interactive) 12%, var(--surface-2)) 100%
+    );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-tools-panel,
+  .gm-tools-panel--active {
+    animation: none;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent-2) 55%, #fff),
+      color-mix(in srgb, var(--interactive) 45%, var(--accent-2))
+    );
+  }
+}
+
+/* Sticky GM view status — frosted glass, high contrast */
+.gm-view-banner {
+  border-bottom: 1px solid color-mix(in srgb, var(--interactive) 28%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 55%, transparent);
+  color: var(--ink);
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  box-shadow: 0 8px 20px -16px var(--shadow-md);
+}
+
+.gm-view-banner__badge {
+  display: inline-flex;
+  height: 1.35rem;
+  min-width: 1.7rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--interactive) 40%, var(--frame));
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--interactive) 35%, #fff) 0%,
+    var(--interactive) 100%
+  );
+  padding: 0 0.35rem;
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0 1px 1px color-mix(in srgb, #000 35%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent);
+}
+
+.gm-view-banner__label {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.gm-view-banner__exit {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 50%, transparent);
+  cursor: pointer;
+  transition:
+    filter 140ms ease,
+    border-color 140ms ease;
+}
+
+.gm-view-banner__exit:hover {
+  border-color: color-mix(in srgb, var(--interactive) 45%, var(--frame));
+  filter: brightness(1.03);
+}
+
+.gm-view-banner__exit:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--interactive) 70%, var(--ink));
+  outline-offset: 2px;
+}
+
+.gm-view-banner__exit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .trainer-carousel-track {
   /* Duration set per-row from roster length so scroll speed stays constant. */
   animation: trainer-carousel-scroll var(--carousel-duration, 48s) linear
