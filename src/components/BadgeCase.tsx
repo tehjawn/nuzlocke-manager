@@ -57,50 +57,52 @@ export function BadgeCase({
     if (earnedColumns && !earnedOnly) {
       const iconPx = dense ? 16 : 20;
       return (
-        <ul
-          className={
-            earnedColumns === 2
-              ? `grid grid-cols-2 ${dense ? "gap-0.5" : "gap-1"}`
-              : `grid grid-cols-3 ${dense ? "gap-0.5" : "gap-1"}`
-          }
-          aria-label={`${earnedCount} of ${badges.length} badges earned`}
-        >
-          {badges.map((badge) => {
-            const on = earned.has(badge.key);
-            const meta = getEmeraldBadgeMeta(badge.key);
-            const title = `${meta?.badgeName ?? badge.label}${
-              badge.leaderName ? ` — ${badge.leaderName}` : ""
-            }${on ? " · Earned" : ""}`;
-            return (
-              <li key={badge.key} title={title} className="flex justify-center">
-                {meta ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={meta.badgeSprite}
-                    alt=""
-                    width={iconPx}
-                    height={iconPx}
-                    className={`object-contain ${
-                      on ? "" : "pixelated blur-[1px] grayscale opacity-45"
-                    }`}
-                    style={{ width: iconPx, height: iconPx }}
-                  />
-                ) : (
-                  <span
-                    className={`inline-block rounded border border-frame ${
-                      on ? "bg-accent-2/40" : "bg-surface-2"
-                    }`}
-                    style={{ width: iconPx, height: iconPx }}
-                  />
-                )}
-                <span className="sr-only">
-                  {title}
-                  {on ? " earned" : " not earned"}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="rounded-md bg-surface/70 p-1 shadow-sm backdrop-blur-sm">
+          <ul
+            className={
+              earnedColumns === 2
+                ? `grid grid-cols-2 ${dense ? "gap-0.5" : "gap-1"}`
+                : `grid grid-cols-3 ${dense ? "gap-0.5" : "gap-1"}`
+            }
+            aria-label={`${earnedCount} of ${badges.length} badges earned`}
+          >
+            {badges.map((badge) => {
+              const on = earned.has(badge.key);
+              const meta = getEmeraldBadgeMeta(badge.key);
+              const title = `${meta?.badgeName ?? badge.label}${
+                badge.leaderName ? ` — ${badge.leaderName}` : ""
+              }${on ? " · Earned" : ""}`;
+              return (
+                <li key={badge.key} title={title} className="flex justify-center">
+                  {meta ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={meta.badgeSprite}
+                      alt=""
+                      width={iconPx}
+                      height={iconPx}
+                      className={`object-contain ${
+                        on ? "" : "grayscale opacity-35"
+                      }`}
+                      style={{ width: iconPx, height: iconPx }}
+                    />
+                  ) : (
+                    <span
+                      className={`inline-block rounded border border-frame/60 ${
+                        on ? "bg-accent-2/40" : "bg-surface-2/80"
+                      }`}
+                      style={{ width: iconPx, height: iconPx }}
+                    />
+                  )}
+                  <span className="sr-only">
+                    {title}
+                    {on ? " earned" : " not earned"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       );
     }
 
@@ -164,44 +166,48 @@ export function BadgeCase({
             {earnedCount}/{badges.length} badges
           </p>
         )}
-        <ul
-          className="flex flex-wrap gap-1"
-          aria-label={`${earnedCount} of ${badges.length} badges earned`}
-        >
-          {badges.map((badge) => {
-            const on = earned.has(badge.key);
-            const meta = getEmeraldBadgeMeta(badge.key);
-            const title = `${meta?.badgeName ?? badge.label}${
-              badge.leaderName ? ` — ${badge.leaderName}` : ""
-            }${on ? " · Earned" : ""}`;
-            return (
-              <li key={badge.key} title={title}>
-                {meta ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={meta.badgeSprite}
-                    alt=""
-                    width={22}
-                    height={22}
-                    className={`h-[22px] w-[22px] object-contain ${
-                      on ? "" : "pixelated blur-[1px] grayscale opacity-45"
-                    }`}
-                  />
-                ) : (
-                  <span
-                    className={`inline-block h-[22px] w-[22px] rounded-lg border border-frame ${
-                      on ? "bg-accent-2/40" : "bg-surface-2"
-                    }`}
-                  />
-                )}
-                <span className="sr-only">
-                  {title}
-                  {on ? " earned" : " not earned"}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+        {/* Frosted chip lifts badges off the card background so they stay
+            legible regardless of which preset wash is active. */}
+        <div className="rounded-lg bg-surface/70 px-2 py-1.5 shadow-sm backdrop-blur-sm">
+          <ul
+            className="flex flex-wrap gap-1"
+            aria-label={`${earnedCount} of ${badges.length} badges earned`}
+          >
+            {badges.map((badge) => {
+              const on = earned.has(badge.key);
+              const meta = getEmeraldBadgeMeta(badge.key);
+              const title = `${meta?.badgeName ?? badge.label}${
+                badge.leaderName ? ` — ${badge.leaderName}` : ""
+              }${on ? " · Earned" : ""}`;
+              return (
+                <li key={badge.key} title={title}>
+                  {meta ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={meta.badgeSprite}
+                      alt=""
+                      width={22}
+                      height={22}
+                      className={`h-[22px] w-[22px] object-contain ${
+                        on ? "" : "grayscale opacity-35"
+                      }`}
+                    />
+                  ) : (
+                    <span
+                      className={`inline-block h-[22px] w-[22px] rounded border border-frame/60 ${
+                        on ? "bg-accent-2/40" : "bg-surface-2/80"
+                      }`}
+                    />
+                  )}
+                  <span className="sr-only">
+                    {title}
+                    {on ? " earned" : " not earned"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     );
   }

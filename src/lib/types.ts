@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CARD_BACKGROUND_KEYS } from "@/data/card-backgrounds";
 import { IvsSchema, StatSpreadSchema } from "@/lib/stats";
 
 export const UserRoleSchema = z.enum(["PLAYER", "GAME_MASTER"]);
@@ -47,6 +48,9 @@ export const TrainerBoardUpdateSchema = z.object({
       return trimmed === "" ? null : trimmed;
     }),
   avatarSpriteKey: z.string().max(512).optional().nullable(),
+  cardBackgroundKey: z
+    .union([z.enum(CARD_BACKGROUND_KEYS), z.null()])
+    .optional(),
   reviveUsed: z.boolean().optional(),
   handle: z.string().min(1).max(32).optional(),
   realName: z.string().max(64).optional().nullable(),

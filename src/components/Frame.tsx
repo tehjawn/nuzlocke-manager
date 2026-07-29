@@ -8,6 +8,8 @@ type FrameProps = {
   tone?: "default" | "rip";
   /** Tighter padding for compact cards (e.g. trainers grid). */
   dense?: boolean;
+  /** Curated TrainerCard background key; omit / null = default fill. */
+  cardBackgroundKey?: string | null;
   /** Spotlight target for the first-run onboarding tour. */
   "data-tour"?: string;
 };
@@ -19,11 +21,13 @@ export function Frame({
   className = "",
   tone = "default",
   dense = false,
+  cardBackgroundKey = null,
   "data-tour": dataTour,
 }: FrameProps) {
   return (
     <section
       data-tour={dataTour}
+      data-card-bg={cardBackgroundKey || undefined}
       className={`gba-frame overflow-hidden ${tone === "rip" ? "bg-rip" : ""} ${className}`}
     >
       {title ? (

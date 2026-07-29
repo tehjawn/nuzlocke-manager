@@ -51,6 +51,7 @@ function trainer(
     | "discordUsername"
     | "discordDisplayName"
     | "wipeCount"
+    | "cardBackgroundKey"
   > & {
     pokemon?: PokemonEntry[];
     userId?: string | null;
@@ -58,11 +59,13 @@ function trainer(
     discordUsername?: string | null;
     discordDisplayName?: string | null;
     wipeCount?: number;
+    cardBackgroundKey?: string | null;
   },
 ): TrainerProfile {
   return {
     ...partial,
     wipeCount: partial.wipeCount ?? 0,
+    cardBackgroundKey: partial.cardBackgroundKey ?? null,
     userId: partial.userId ?? null,
     updatedAt: partial.updatedAt ?? null,
     discordUsername: partial.discordUsername ?? null,

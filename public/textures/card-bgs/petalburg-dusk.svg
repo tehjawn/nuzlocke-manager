@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="100" viewBox="0 0 128 100" fill="#000">
+  <!-- Single blossom -->
+  <g transform="translate(16 20) rotate(-15)">
+    <ellipse cx="7" cy="2.2" rx="3" ry="5.5"/>
+    <ellipse cx="7" cy="2.2" rx="3" ry="5.5" transform="rotate(72 7 7)"/>
+    <ellipse cx="7" cy="2.2" rx="3" ry="5.5" transform="rotate(144 7 7)"/>
+    <ellipse cx="7" cy="2.2" rx="3" ry="5.5" transform="rotate(216 7 7)"/>
+    <ellipse cx="7" cy="2.2" rx="3" ry="5.5" transform="rotate(288 7 7)"/>
+    <circle cx="7" cy="7" r="2"/>
+  </g>
+</svg>

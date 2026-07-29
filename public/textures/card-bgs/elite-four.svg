@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="100" viewBox="0 0 128 100" fill="#000">
+  <!-- Single flame -->
+  <g transform="translate(16 16) rotate(-15)">
+    <path d="M7 0c1.2 3-1.2 5.2-1.2 8.2 0 4 3.2 7 7 7s7-3 7-7c0-4.8-4-7.6-6-12-1.2 3-3 4.2-4.2 4.8-1.2-.6-2-1.2-2.6-1z"/>
+  </g>
+</svg>
