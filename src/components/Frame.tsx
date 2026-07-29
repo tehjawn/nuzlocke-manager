@@ -42,7 +42,7 @@ export function Frame({
       data-tour={dataTour}
       data-card-bg={dataBg}
       style={style}
-      className={`gba-frame ${tone === "rip" ? "bg-rip" : ""} ${className}`}
+      className={`gba-frame overflow-hidden ${tone === "rip" ? "bg-rip" : ""} ${className}`}
     >
       {title ? (
         <header className="gba-frame-title relative z-[1] flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base">
@@ -55,7 +55,7 @@ export function Frame({
         </header>
       ) : null}
       <div
-        className={`relative z-[1] overflow-visible ${dense ? "p-2.5 sm:p-3" : "p-4 sm:p-5"}`}
+        className={`relative z-[1] ${dense ? "p-2.5 sm:p-3" : "p-4 sm:p-5"}`}
       >
         {children}
       </div>
