@@ -33,9 +33,13 @@ export function GmToolsLauncher({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [on, setOn] = useState(initialOn);
+  const [seenInitialOn, setSeenInitialOn] = useState(initialOn);
   const [pending, startTransition] = useTransition();
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 640px)").matches
+      : false,
+  );
   const [seenPath, setSeenPath] = useState(pathname);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -50,18 +54,18 @@ export function GmToolsLauncher({
     if (open) setOpen(false);
   }
 
-  useEffect(() => {
+  // Keep switch in sync after cookie + router.refresh() without an effect.
+  if (seenInitialOn !== initialOn) {
+    setSeenInitialOn(initialOn);
     setOn(initialOn);
-  }, [initialOn]);
+  }
 
   useEffect(() => {
-    setMounted(true);
     const mq = window.matchMedia("(min-width: 640px)");
     const sync = () => {
       setIsDesktop(mq.matches);
       setOpen(false);
     };
-    setIsDesktop(mq.matches);
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
@@ -183,7 +187,6 @@ export function GmToolsLauncher({
                 ref={panelRef}
                 id={panelId}
                 role="dialog"
-                aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
                 onKeyDown={onPanelKeyDown}
@@ -211,7 +214,7 @@ export function GmToolsLauncher({
         </div>
       </div>
 
-      {open && isDesktop && mounted
+      {open && isDesktop && typeof document !== "undefined"
         ? createPortal(
             <button
               type="button"
@@ -224,7 +227,7 @@ export function GmToolsLauncher({
           )
         : null}
 
-      {open && !isDesktop && mounted
+      {open && !isDesktop && typeof document !== "undefined"
         ? createPortal(
             <div data-modal-open="" className="fixed inset-0 z-[100] sm:hidden">
               <button
@@ -286,11 +289,13 @@ function GmConsoleLinkLabel() {
 export function GmViewBanner({ slug, initialOn }: GmViewBannerProps) {
   const router = useRouter();
   const [on, setOn] = useState(initialOn);
+  const [seenInitialOn, setSeenInitialOn] = useState(initialOn);
   const [pending, startTransition] = useTransition();
 
-  useEffect(() => {
+  if (seenInitialOn !== initialOn) {
+    setSeenInitialOn(initialOn);
     setOn(initialOn);
-  }, [initialOn]);
+  }
 
   if (!on) return null;
 

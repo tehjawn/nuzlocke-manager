@@ -764,6 +764,7 @@ button:disabled,
 
 .gm-tools-fab {
   --gm-tools-angle: 0deg;
+
   position: relative;
   display: inline-flex;
   border-radius: 9999px;
@@ -977,6 +978,7 @@ button:disabled,
 /* GM Tools panel — frosted glass with subtle metallic rim */
 .gm-tools-panel {
   --gm-tools-angle: 0deg;
+
   position: relative;
   padding: 1.5px;
   border-radius: calc(var(--radius) + 2px);
