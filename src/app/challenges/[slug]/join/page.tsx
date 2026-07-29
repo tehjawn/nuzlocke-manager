@@ -79,6 +79,7 @@ export default async function JoinPage({ params, searchParams }: PageProps) {
       <SiteHeader
         challengeSlug={challenge.slug}
         challengeYear={challenge.year}
+        challengeName={challenge.name}
         showGm={Boolean(access?.isGm)}
       />
       <main

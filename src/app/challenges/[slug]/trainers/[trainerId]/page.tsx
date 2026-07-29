@@ -100,7 +100,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     : null;
 
   const showGm = Boolean(access?.isGm);
-  // Board-level GM tools (e.g. revive reset) follow the same lens gate.
+  // Board-level GM tools (e.g. revive reset) follow the same GM-view gate.
   const boardGm = showGm && (access?.ownsTrainer(trainer.userId) || gmLensOn);
 
   return (
@@ -114,6 +114,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
       <SiteHeader
         challengeSlug={challenge.slug}
         challengeYear={challenge.year}
+        challengeName={challenge.name}
         showGm={showGm}
         myTrainerId={myTrainerId}
       />

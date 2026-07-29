@@ -52,6 +52,7 @@ export default async function GmPage({ params }: PageProps) {
       <SiteHeader
         challengeSlug={challenge.slug}
         challengeYear={challenge.year}
+        challengeName={challenge.name}
         showGm
       />
       <main
@@ -59,9 +60,10 @@ export default async function GmPage({ params }: PageProps) {
       >
         <Link
           href={`/challenges/${challenge.slug}`}
-          className="text-sm text-muted hover:text-ink"
+          className="pressable inline-flex h-9 items-center gap-1.5 border-frame/70 bg-surface-2/60 px-3 text-xs font-semibold tracking-tight text-muted hover:border-frame hover:bg-surface-2 hover:text-ink"
         >
-          ← League board
+          <span aria-hidden>←</span>
+          {challenge.year} League Board
         </Link>
         <h1 className="mt-4 text-3xl font-bold tracking-tight">
           Game Master console

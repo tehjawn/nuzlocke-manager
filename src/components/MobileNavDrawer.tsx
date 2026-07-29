@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { GmLensToggle } from "@/components/GmLensToggle";
 import { GmIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { JumpTrigger } from "@/features/jump";
 
@@ -14,7 +13,6 @@ type MobileNavDrawerProps = {
   challengeSlug?: string;
   showGm?: boolean;
   myTrainerId?: string | null;
-  gmLensOn?: boolean;
   /** Applied to the trigger button (e.g. `sm:hidden`). */
   className?: string;
   /** Account actions (server-rendered): My Profile + Sign Out, or Discord login. */
@@ -33,7 +31,6 @@ export function MobileNavDrawer({
   challengeSlug,
   showGm = false,
   myTrainerId = null,
-  gmLensOn = false,
   className = "",
   children,
 }: MobileNavDrawerProps) {
@@ -193,15 +190,6 @@ export function MobileNavDrawer({
                       className="h-8 border-interactive/35 bg-interactive-soft"
                     />
                   </div>
-
-                  {showGm && challengeSlug ? (
-                    <GmLensToggle
-                      key={`gm-lens-drawer-${challengeSlug}-${gmLensOn ? "1" : "0"}`}
-                      slug={challengeSlug}
-                      initialOn={gmLensOn}
-                      variant="drawer"
-                    />
-                  ) : null}
 
                   {children}
                 </div>

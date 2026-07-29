@@ -74,13 +74,13 @@ export async function requireTrainerEditAccess(trainerId: string) {
   if (!access?.canEditTrainer(trainer.userId)) {
     throw new Error("You cannot edit this trainer board");
   }
-  // Competing GMs stay on a player lens unless they opt in.
+  // Competing GMs stay on a player view unless they opt in.
   if (
     access.isGm &&
     !access.ownsTrainer(trainer.userId) &&
     !(await readGmLensOn(trainer.challenge.slug))
   ) {
-    throw new Error("Turn on GM lens to edit another trainer's board");
+    throw new Error("Turn on GM view to edit another trainer's board");
   }
   if (trainer.mainSquadLocked && !access.isGm) {
     // still allow reserves/graveyard/status? Plan says Main Squad locks — block MAIN edits in actions.

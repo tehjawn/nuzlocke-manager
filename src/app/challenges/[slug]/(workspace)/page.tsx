@@ -42,7 +42,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
   const myTrainerId =
     challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
 
-  // Own board always; other boards only with GM lens on.
+  // Own board always; other boards only with GM view on.
   const competitiveTrainerIds = challenge.trainers
     .filter((t) => canViewCompetitiveDetails(access, t.userId, gmLensOn))
     .map((t) => t.id);
