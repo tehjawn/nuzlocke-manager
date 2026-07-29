@@ -53,6 +53,7 @@ export function TrainerCard({
     .filter(Boolean)
     .join(" ");
   const boardLabel = `Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`;
+  const cardBg = trainer.cardBackgroundKey;
 
   return (
     <div
@@ -71,7 +72,7 @@ export function TrainerCard({
             className="group block h-full md:hidden"
             aria-label={boardLabel}
           >
-            <Frame dense className="h-full">
+            <Frame dense className="h-full" cardBackgroundKey={cardBg}>
               <div className="flex h-full flex-col items-center text-center">
                 <div className="relative flex h-28 w-full items-end justify-center">
                   {firstMon ? (
@@ -107,7 +108,10 @@ export function TrainerCard({
           </Link>
 
           {/* Full card — md and up; compact 3×2 squad grid */}
-          <Frame className="hidden h-full md:block">
+          <Frame
+            className="hidden h-full md:block"
+            cardBackgroundKey={cardBg}
+          >
             <div className="flex h-full flex-col gap-2.5">
               <div className="grid min-h-0 flex-1 grid-cols-[6.5rem_minmax(0,1fr)] gap-3 lg:grid-cols-[7.5rem_minmax(0,1fr)]">
                 <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
@@ -196,8 +200,10 @@ export function TrainerCard({
           </Frame>
         </>
       ) : (
-        <Frame className="group transition-[border-color,box-shadow] duration-200 hover:border-interactive/45">
-          {/*
+        <Frame
+          className="group transition-[border-color,box-shadow] duration-200 hover:border-interactive/45"
+          cardBackgroundKey={cardBg}
+        >          {/*
             List layout:
             - <sm: identity + badges on one row, squad/stats/revive below
               (avoids clipping the 3×2 grid on narrow phones)

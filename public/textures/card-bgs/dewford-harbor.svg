@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="100" viewBox="0 0 128 100" fill="#000">
+  <!-- Single sailboat -->
+  <g transform="translate(16 18) rotate(-14)">
+    <path d="M8 1l7 11H1z"/>
+    <rect x="7" y="1" width="1.6" height="12"/>
+    <path d="M0 14h16l-2 2.2H2z"/>
+  </g>
+</svg>

@@ -15,6 +15,7 @@ import {
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
+import { CardBackgroundPicker } from "@/components/CardBackgroundPicker";
 import { Frame } from "@/components/Frame";
 import {
   EMPTY_POKEMON_FORM,
@@ -33,6 +34,10 @@ import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
 import { StatusEmojiPicker } from "@/components/StatusEmojiPicker";
 import { StatusLine } from "@/components/StatusLine";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
+import {
+  parseCardBackgroundKey,
+  type CardBackgroundKey,
+} from "@/data/card-backgrounds";
 import type {
   BadgeDefinition,
   PokemonEntry,
@@ -411,7 +416,7 @@ export function TrainerBoard({
   const wipeSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => p.id).join(",")}`;
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => p.id).join(",")}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
   /** Optimistic board after wipe until RSC refresh lands. */
@@ -429,6 +434,7 @@ export function TrainerBoard({
     statusEmoji: trainer.statusEmoji ?? null,
     realName: trainer.realName ?? "",
     avatarSpriteKey: trainer.avatarSpriteKey,
+    cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
     reviveUsed: trainer.reviveUsed,
   });
 
@@ -441,6 +447,9 @@ export function TrainerBoard({
   const [avatarSpriteKey, setAvatarSpriteKey] = useState(
     trainer.avatarSpriteKey,
   );
+  const [cardBackgroundKey, setCardBackgroundKey] = useState<
+    CardBackgroundKey | null
+  >(parseCardBackgroundKey(trainer.cardBackgroundKey));
   const [reviveUsed, setReviveUsed] = useState(trainer.reviveUsed);
   const [earnedBadgeKeys, setEarnedBadgeKeys] = useState(
     trainer.earnedBadgeKeys,
@@ -470,6 +479,7 @@ export function TrainerBoard({
       statusEmoji: trainer.statusEmoji ?? null,
       realName: trainer.realName ?? "",
       avatarSpriteKey: trainer.avatarSpriteKey,
+      cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
       reviveUsed: trainer.reviveUsed,
     });
     setReviveUsed(trainer.reviveUsed);
@@ -529,6 +539,7 @@ export function TrainerBoard({
     setStatusEmoji(committed.statusEmoji);
     setRealName(committed.realName);
     setAvatarSpriteKey(committed.avatarSpriteKey);
+    setCardBackgroundKey(committed.cardBackgroundKey);
   }
 
   function startEditingPlayer() {
@@ -549,6 +560,7 @@ export function TrainerBoard({
       statusEmoji,
       realName: realName || "",
       avatarSpriteKey,
+      cardBackgroundKey,
     };
     // Optimistic: show the draft immediately in view mode.
     setCommitted((current) => ({
@@ -565,6 +577,7 @@ export function TrainerBoard({
         statusEmoji: next.statusEmoji,
         realName: next.realName || null,
         avatarSpriteKey: next.avatarSpriteKey,
+        cardBackgroundKey: next.cardBackgroundKey,
       });
       if (result.ok) {
         playerSave.markSaved(result.message ?? "Profile saved");
@@ -575,6 +588,7 @@ export function TrainerBoard({
           statusEmoji: trainer.statusEmoji ?? null,
           realName: trainer.realName ?? "",
           avatarSpriteKey: trainer.avatarSpriteKey,
+          cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
           reviveUsed: trainer.reviveUsed,
         };
         setCommitted(rollback);
@@ -583,6 +597,7 @@ export function TrainerBoard({
         setStatusEmoji(rollback.statusEmoji);
         setRealName(rollback.realName);
         setAvatarSpriteKey(rollback.avatarSpriteKey);
+        setCardBackgroundKey(rollback.cardBackgroundKey);
         setEditingPlayer(true);
         playerSave.markError(result.error);
       }
@@ -838,6 +853,9 @@ export function TrainerBoard({
           <Frame
             data-tour="player"
             title="Player"
+            cardBackgroundKey={
+              editingPlayer ? cardBackgroundKey : committed.cardBackgroundKey
+            }
             actions={
               canEdit ? (
                 editingPlayer ? (
@@ -881,6 +899,11 @@ export function TrainerBoard({
                     onChange={setAvatarSpriteKey}
                   />
                 </div>
+                <CardBackgroundPicker
+                  value={cardBackgroundKey}
+                  onChange={setCardBackgroundKey}
+                  disabled={pending}
+                />
                 <label className="block text-sm">
                   <span className="mb-1 block font-bold text-muted">
                     Nickname

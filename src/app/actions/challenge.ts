@@ -293,6 +293,7 @@ export async function updateTrainerBoardAction(input: {
   statusText?: string | null;
   statusEmoji?: string | null;
   avatarSpriteKey?: string | null;
+  cardBackgroundKey?: string | null;
   reviveUsed?: boolean;
   handle?: string;
   realName?: string | null;
@@ -302,12 +303,17 @@ export async function updateTrainerBoardAction(input: {
       statusText: input.statusText,
       statusEmoji: input.statusEmoji,
       avatarSpriteKey: input.avatarSpriteKey,
+      cardBackgroundKey: input.cardBackgroundKey,
       reviveUsed: input.reviveUsed,
       handle: input.handle,
       realName: input.realName,
     });
     if (!parsed.success) {
-      return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+      const issue = parsed.error.issues[0];
+      if (issue?.path[0] === "cardBackgroundKey") {
+        return { ok: false, error: "Pick a card background from the list" };
+      }
+      return { ok: false, error: issue?.message ?? "Invalid input" };
     }
 
     const { trainer, access, userId } = await requireTrainerEditAccess(
@@ -328,6 +334,7 @@ export async function updateTrainerBoardAction(input: {
       statusText?: string | null;
       statusEmoji?: string | null;
       avatarSpriteKey?: string | null;
+      cardBackgroundKey?: string | null;
       reviveUsed?: boolean;
       realName?: string | null;
       handle?: string;
@@ -335,6 +342,9 @@ export async function updateTrainerBoardAction(input: {
 
     if (updates.statusText !== undefined) data.statusText = updates.statusText;
     if (updates.statusEmoji !== undefined) data.statusEmoji = updates.statusEmoji;
+    if (updates.cardBackgroundKey !== undefined) {
+      data.cardBackgroundKey = updates.cardBackgroundKey;
+    }
     if (updates.avatarSpriteKey !== undefined) {
       const raw = updates.avatarSpriteKey ?? "";
       if (raw.toLowerCase().startsWith(CUSTOM_AVATAR_PREFIX)) {

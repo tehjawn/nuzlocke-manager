@@ -319,6 +319,150 @@ button:disabled,
   --gba-fill: var(--rip);
 }
 
+/*
+  League-board TrainerCard chrome — curated presets via data-card-bg.
+  Soft theme wash (glass-adjacent sheen, quieter than GM tools) +
+  sparse monochrome icon watermark on ::before.
+*/
+.gba-frame[data-card-bg],
+.card-bg-swatch[data-card-bg] .card-bg-swatch-preview,
+.card-bg-swatch[data-card-bg-default] .card-bg-swatch-preview {
+  background-color: transparent;
+}
+
+.card-bg-swatch-preview {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-bg-swatch[data-card-bg-default] .card-bg-swatch-preview {
+  background: var(--surface);
+}
+
+/*
+  Shared depth recipe (per-preset only sets --card-bg-wash + motif):
+  1) faint specular band (GM glass, dialed way down)
+  2) vertical wash from lighter → wash → surface-2
+*/
+.gba-frame[data-card-bg],
+.card-bg-swatch[data-card-bg] .card-bg-swatch-preview {
+  background:
+    linear-gradient(
+      125deg,
+      color-mix(in srgb, #fff 38%, transparent) 0%,
+      transparent 34%,
+      color-mix(in srgb, var(--card-bg-wash) 18%, transparent) 48%,
+      transparent 64%
+    ),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--card-bg-wash) 28%, var(--surface)) 0%,
+      color-mix(in srgb, var(--card-bg-wash) 48%, var(--surface)) 42%,
+      color-mix(in srgb, var(--card-bg-wash) 40%, var(--surface-2)) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent),
+    0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
+    0 10px 28px -14px var(--shadow-md),
+    0 2px 8px -2px var(--shadow);
+}
+
+.card-bg-swatch[data-card-bg] .card-bg-swatch-preview {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+}
+
+.gba-frame[data-card-bg="littleroot"],
+.card-bg-swatch[data-card-bg="littleroot"] .card-bg-swatch-preview {
+  --card-bg-motif: url("/textures/card-bgs/littleroot.svg?v=5");
+  --card-bg-wash: #b7d978;
+}
+
+.gba-frame[data-card-bg="petalburg-dusk"],
+.card-bg-swatch[data-card-bg="petalburg-dusk"] .card-bg-swatch-preview {
+  --card-bg-motif: url("/textures/card-bgs/petalburg-dusk.svg?v=5");
+  --card-bg-wash: #d4a8dc;
+}
+
+.gba-frame[data-card-bg="dewford-harbor"],
+.card-bg-swatch[data-card-bg="dewford-harbor"] .card-bg-swatch-preview {
+  --card-bg-motif: url("/textures/card-bgs/dewford-harbor.svg?v=5");
+  --card-bg-wash: #8ec8e0;
+}
+
+.gba-frame[data-card-bg="victory-road"],
+.card-bg-swatch[data-card-bg="victory-road"] .card-bg-swatch-preview {
+  --card-bg-motif: url("/textures/card-bgs/victory-road.svg?v=5");
+  --card-bg-wash: #d0c09a;
+}
+
+.gba-frame[data-card-bg="elite-four"],
+.card-bg-swatch[data-card-bg="elite-four"] .card-bg-swatch-preview {
+  --card-bg-motif: url("/textures/card-bgs/elite-four.svg?v=5");
+  --card-bg-wash: #b8a8d8;
+}
+
+[data-theme="dark"] .gba-frame[data-card-bg],
+[data-theme="dark"] .card-bg-swatch[data-card-bg] .card-bg-swatch-preview {
+  background:
+    linear-gradient(
+      125deg,
+      color-mix(in srgb, #fff 14%, transparent) 0%,
+      transparent 36%,
+      color-mix(in srgb, var(--card-bg-wash) 22%, transparent) 50%,
+      transparent 68%
+    ),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--card-bg-wash) 28%, var(--surface)) 0%,
+      color-mix(in srgb, var(--card-bg-wash) 46%, var(--surface)) 46%,
+      color-mix(in srgb, var(--card-bg-wash) 34%, var(--surface-2)) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
+    0 10px 28px -14px var(--shadow-md),
+    0 2px 8px -2px var(--shadow);
+}
+
+[data-theme="dark"] .card-bg-swatch[data-card-bg] .card-bg-swatch-preview {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent);
+}
+
+[data-theme="dark"] .gba-frame[data-card-bg="littleroot"],
+[data-theme="dark"]
+  .card-bg-swatch[data-card-bg="littleroot"]
+  .card-bg-swatch-preview {
+  --card-bg-wash: #3d5a28;
+}
+
+[data-theme="dark"] .gba-frame[data-card-bg="petalburg-dusk"],
+[data-theme="dark"]
+  .card-bg-swatch[data-card-bg="petalburg-dusk"]
+  .card-bg-swatch-preview {
+  --card-bg-wash: #5a3a68;
+}
+
+[data-theme="dark"] .gba-frame[data-card-bg="dewford-harbor"],
+[data-theme="dark"]
+  .card-bg-swatch[data-card-bg="dewford-harbor"]
+  .card-bg-swatch-preview {
+  --card-bg-wash: #2a4a68;
+}
+
+[data-theme="dark"] .gba-frame[data-card-bg="victory-road"],
+[data-theme="dark"]
+  .card-bg-swatch[data-card-bg="victory-road"]
+  .card-bg-swatch-preview {
+  --card-bg-wash: #4a4034;
+}
+
+[data-theme="dark"] .gba-frame[data-card-bg="elite-four"],
+[data-theme="dark"]
+  .card-bg-swatch[data-card-bg="elite-four"]
+  .card-bg-swatch-preview {
+  --card-bg-wash: #3a2a58;
+}
+
 /* “Your” trainer on the league board — soft revolving rainbow edge */
 @property --you-angle {
   syntax: "<angle>";
@@ -404,8 +548,51 @@ button:disabled,
 }
 
 .gba-frame-menu::before,
-.gba-frame::before {
+.gba-frame:not([data-card-bg])::before {
   content: none;
+}
+
+/* Motif watermark — brick / half-drop via dual offset layers so
+   it reads less like a rigid grid. No mix-blend (isolation kills it). */
+.gba-frame[data-card-bg]::before,
+.card-bg-swatch[data-card-bg] .card-bg-swatch-preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-color: transparent;
+  background-image: var(--card-bg-motif), var(--card-bg-motif);
+  background-size: 128px 100px, 128px 100px;
+  background-repeat: repeat, repeat;
+  /* Second layer shifted ~half tile → offset rows */
+  background-position:
+    10px 8px,
+    74px 58px;
+  opacity: 0.14;
+}
+
+.card-bg-swatch[data-card-bg] .card-bg-swatch-preview::before {
+  opacity: 0.2;
+  background-size: 72px 56px, 72px 56px;
+  background-position:
+    4px 3px,
+    40px 31px;
+}
+
+[data-theme="dark"] .gba-frame[data-card-bg]::before,
+[data-theme="dark"]
+  .card-bg-swatch[data-card-bg]
+  .card-bg-swatch-preview::before {
+  opacity: 0.16;
+  filter: invert(1);
+}
+
+[data-theme="dark"]
+  .card-bg-swatch[data-card-bg]
+  .card-bg-swatch-preview::before {
+  opacity: 0.22;
 }
 
 /* Informational chrome — gold, not CTA green */
