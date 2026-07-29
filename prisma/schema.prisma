@@ -176,10 +176,11 @@ model TrainerProfile {
   userId          String?
   handle          String
   realName        String?
-  avatarSpriteKey   String?
-  cardBackgroundKey String?
-  statusText        String?
-  statusEmoji       String?
+  avatarSpriteKey      String?
+  avatarBackgroundKey  String?
+  cardBackgroundKey    String?
+  statusText           String?
+  statusEmoji          String?
   reviveUsed      Boolean  @default(false)
   wipeCount       Int      @default(0)
   mainSquadLocked Boolean  @default(false)

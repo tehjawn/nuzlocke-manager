@@ -41,6 +41,8 @@ export type TrainerProfile = {
   handle: string;
   realName: string | null;
   avatarSpriteKey: string;
+  /** Curated stage plate behind the avatar sprite; null = none. */
+  avatarBackgroundKey: string | null;
   /** Curated league-board card chrome; null = default frame fill. */
   cardBackgroundKey: string | null;
   statusText: string | null;

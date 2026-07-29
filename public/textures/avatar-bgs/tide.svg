@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80" fill="none">
+  <!-- Concentric ripples + soft pad -->
+  <ellipse cx="40" cy="62" rx="28" ry="10" fill="#000" opacity="0.12"/>
+  <ellipse cx="40" cy="62" rx="24" ry="8" fill="none" stroke="#000" stroke-width="1.6" opacity="0.35"/>
+  <ellipse cx="40" cy="62" rx="16" ry="5.5" fill="none" stroke="#000" stroke-width="1.6" opacity="0.4"/>
+  <ellipse cx="40" cy="62" rx="8" ry="2.8" fill="none" stroke="#000" stroke-width="1.4" opacity="0.45"/>
+  <path d="M14 54c6 3 14 5 26 5s20-2 26-5" stroke="#000" stroke-width="1.4" opacity="0.25" stroke-linecap="round"/>
+</svg>

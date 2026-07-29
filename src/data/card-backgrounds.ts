@@ -1,4 +1,9 @@
-/** Curated TrainerCard background presets (league board chrome). */
+/** Curated + custom TrainerCard background presets (league board chrome). */
+
+import {
+  isCustomTextureKey,
+  parseCustomTextureUrl,
+} from "@/lib/custom-texture";
 
 export const CARD_BACKGROUND_KEYS = [
   "littleroot",
@@ -10,12 +15,15 @@ export const CARD_BACKGROUND_KEYS = [
 
 export type CardBackgroundKey = (typeof CARD_BACKGROUND_KEYS)[number];
 
+/** Curated key, `custom:https://…`, or null (default chrome). */
+export type CardBackgroundValue = CardBackgroundKey | string | null;
+
 export type CardBackgroundOption = {
   key: CardBackgroundKey;
   label: string;
 };
 
-/** Catalog is the single source of truth for UI + server validation. */
+/** Catalog is the single source of truth for curated UI + validation. */
 export const CARD_BACKGROUNDS: readonly CardBackgroundOption[] = [
   { key: "littleroot", label: "Littleroot" },
   { key: "petalburg-dusk", label: "Petalburg Dusk" },
@@ -34,24 +42,32 @@ export function isCardBackgroundKey(
 
 /**
  * Normalize a stored / submitted value.
- * `null` / empty / unknown → `null` (default card chrome).
+ * Curated key or custom URL key → itself; empty / unknown → `null`.
  */
 export function parseCardBackgroundKey(
   value: string | null | undefined,
-): CardBackgroundKey | null {
+): string | null {
   if (value == null) return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  return isCardBackgroundKey(trimmed) ? trimmed : null;
+  if (isCardBackgroundKey(trimmed)) return trimmed;
+  if (isCustomTextureKey(trimmed)) return trimmed;
+  return null;
 }
 
-/** Reject tampered keys; allow explicit null (reset to default). */
-export function assertCardBackgroundKey(
-  value: string | null,
-): CardBackgroundKey | null {
-  if (value == null) return null;
-  if (!isCardBackgroundKey(value)) {
-    throw new Error("Pick a card background from the list");
-  }
-  return value;
+/** Blob URL for a custom card chrome image, else null. */
+export function cardBackgroundCustomUrl(
+  value: string | null | undefined,
+): string | null {
+  return parseCustomTextureUrl(value);
+}
+
+/** `data-card-bg` token: curated key, `custom`, or omit. */
+export function cardBackgroundDataAttr(
+  value: string | null | undefined,
+): string | undefined {
+  if (!value) return undefined;
+  if (isCardBackgroundKey(value)) return value;
+  if (parseCustomTextureUrl(value)) return "custom";
+  return undefined;
 }

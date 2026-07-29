@@ -1,29 +1,27 @@
 "use client";
 
+import { useState, type CSSProperties } from "react";
+import { CustomTextureModal } from "@/components/CustomTextureModal";
 import {
   CARD_BACKGROUNDS,
-  type CardBackgroundKey,
+  cardBackgroundCustomUrl,
+  isCardBackgroundKey,
 } from "@/data/card-backgrounds";
 
 type CardBackgroundPickerProps = {
-  value: CardBackgroundKey | null;
-  onChange: (key: CardBackgroundKey | null) => void;
+  value: string | null;
+  onChange: (key: string | null) => void;
   disabled?: boolean;
 };
 
-const OPTIONS: Array<{ key: CardBackgroundKey | null; label: string }> = [
+const CURATED: Array<{ key: string | null; label: string }> = [
   { key: null, label: "Default" },
   ...CARD_BACKGROUNDS.map((bg) => ({ key: bg.key, label: bg.label })),
 ];
 
 function CheckIcon() {
   return (
-    <svg
-      viewBox="0 0 16 16"
-      className="h-3 w-3"
-      fill="none"
-      aria-hidden
-    >
+    <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" aria-hidden>
       <path
         d="M3.5 8.2 6.2 11l6.3-7"
         stroke="currentColor"
@@ -35,13 +33,60 @@ function CheckIcon() {
   );
 }
 
+function ImportIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M8 2.5v7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.5 7 8 9.5 10.5 7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3 11.5v1A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-1"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function selectedLabel(value: string | null): string {
+  if (!value) return "Default";
+  if (isCardBackgroundKey(value)) {
+    return CARD_BACKGROUNDS.find((bg) => bg.key === value)?.label ?? value;
+  }
+  if (cardBackgroundCustomUrl(value)) return "Custom";
+  return "Default";
+}
+
 export function CardBackgroundPicker({
   value,
   onChange,
   disabled = false,
 }: CardBackgroundPickerProps) {
-  const selectedLabel =
-    OPTIONS.find((option) => option.key === value)?.label ?? "Default";
+  const [importOpen, setImportOpen] = useState(false);
+  const [savedCustom, setSavedCustom] = useState<string | null>(() =>
+    value && !isCardBackgroundKey(value) ? value : null,
+  );
+  const activeCustom =
+    value && !isCardBackgroundKey(value) ? value : savedCustom;
+  const customUrl = cardBackgroundCustomUrl(activeCustom);
+  const customSelected =
+    value != null && !isCardBackgroundKey(value) && Boolean(customUrl);
 
   return (
     <fieldset disabled={disabled} className="min-w-0">
@@ -53,7 +98,7 @@ export function CardBackgroundPicker({
         aria-label="Card background"
         className="grid grid-cols-3 gap-2 sm:grid-cols-6"
       >
-        {OPTIONS.map((option) => {
+        {CURATED.map((option) => {
           const selected = value === option.key;
           return (
             <button
@@ -94,13 +139,73 @@ export function CardBackgroundPicker({
             </button>
           );
         })}
+        {customUrl && activeCustom ? (
+          <button
+            type="button"
+            role="radio"
+            aria-checked={customSelected}
+            aria-label="Custom card background"
+            disabled={disabled}
+            className={`card-bg-swatch pressable relative flex flex-col items-stretch overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60 ${
+              customSelected
+                ? "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_35%,transparent)]"
+                : "border-frame/70 hover:border-interactive/55"
+            }`}
+            data-card-bg="custom"
+            style={
+              {
+                ["--card-bg-custom" as string]: `url("${customUrl}")`,
+              } as CSSProperties
+            }
+            onClick={() => onChange(activeCustom)}
+          >
+            <span className="card-bg-swatch-preview relative block h-11 w-full">
+              {customSelected ? (
+                <span
+                  aria-hidden
+                  className="absolute top-1 right-1 z-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
+                >
+                  <CheckIcon />
+                </span>
+              ) : null}
+            </span>
+            <span
+              className={`truncate px-1.5 py-1 text-[10px] font-semibold leading-tight ${
+                customSelected
+                  ? "bg-interactive text-white"
+                  : "bg-surface-2/95 text-ink"
+              }`}
+            >
+              Custom
+            </span>
+          </button>
+        ) : null}
       </div>
+      <button
+        type="button"
+        disabled={disabled}
+        className="pressable mt-2 inline-flex items-center gap-2 rounded-lg border border-frame bg-surface-2 px-3 py-2 text-left text-xs font-semibold tracking-tight text-muted disabled:opacity-60"
+        onClick={() => setImportOpen(true)}
+      >
+        <ImportIcon className="h-3.5 w-3.5 shrink-0" />
+        {customUrl ? "Replace custom background" : "Import custom background"}
+      </button>
       <p className="mt-2 text-xs text-muted" aria-live="polite">
         Selected:{" "}
-        <span className="font-semibold text-ink">{selectedLabel}</span>
+        <span className="font-semibold text-ink">{selectedLabel(value)}</span>
         {" · "}
-        Shows on your league board card. Save to keep it.
+        League card chrome — separate from the avatar backdrop.
       </p>
+      <CustomTextureModal
+        open={importOpen}
+        kind="card-bg"
+        onClose={() => setImportOpen(false)}
+        onSelect={(key) => {
+          setSavedCustom(key);
+          onChange(key);
+          setImportOpen(false);
+        }}
+      />
     </fieldset>
   );
 }

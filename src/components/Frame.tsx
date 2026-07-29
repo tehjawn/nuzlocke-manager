@@ -1,4 +1,8 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import {
+  cardBackgroundCustomUrl,
+  cardBackgroundDataAttr,
+} from "@/data/card-backgrounds";
 
 type FrameProps = {
   title?: string;
@@ -8,7 +12,7 @@ type FrameProps = {
   tone?: "default" | "rip";
   /** Tighter padding for compact cards (e.g. trainers grid). */
   dense?: boolean;
-  /** Curated TrainerCard background key; omit / null = default fill. */
+  /** Curated or custom TrainerCard background; omit / null = default fill. */
   cardBackgroundKey?: string | null;
   /** Spotlight target for the first-run onboarding tour. */
   "data-tour"?: string;
@@ -24,10 +28,19 @@ export function Frame({
   cardBackgroundKey = null,
   "data-tour": dataTour,
 }: FrameProps) {
+  const dataBg = cardBackgroundDataAttr(cardBackgroundKey);
+  const customUrl = cardBackgroundCustomUrl(cardBackgroundKey);
+  const style = customUrl
+    ? ({
+        ["--card-bg-custom" as string]: `url("${customUrl}")`,
+      } as CSSProperties)
+    : undefined;
+
   return (
     <section
       data-tour={dataTour}
-      data-card-bg={cardBackgroundKey || undefined}
+      data-card-bg={dataBg}
+      style={style}
       className={`gba-frame overflow-hidden ${tone === "rip" ? "bg-rip" : ""} ${className}`}
     >
       {title ? (

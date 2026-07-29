@@ -4,17 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { Frame } from "@/components/Frame";
 import type {
   BadgeDefinition,
   TrainerProfile,
 } from "@/lib/challenge-types";
-import {
-  avatarImageClassName,
-  avatarImageUrl,
-  pokemonSpriteUrl,
-} from "@/lib/sprites";
+import { pokemonSpriteUrl } from "@/lib/sprites";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { toolsHref } from "@/lib/tools-routes";
 
@@ -135,13 +132,12 @@ function CompareColumn({
       }
     >
       <div className="mb-4 flex items-center gap-3">
-        <Image
-          src={avatarImageUrl(trainer.avatarSpriteKey)}
-          alt=""
+        <AvatarPortrait
+          avatarSpriteKey={trainer.avatarSpriteKey}
+          backgroundKey={trainer.avatarBackgroundKey}
+          sizeClass="h-14 w-14"
           width={56}
           height={56}
-          className={avatarImageClassName(trainer.avatarSpriteKey, "h-14 w-14")}
-          unoptimized
         />
         <div className="min-w-0">
           <p className="truncate font-semibold">

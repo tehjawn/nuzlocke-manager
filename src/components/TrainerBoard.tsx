@@ -13,6 +13,7 @@ import {
   upsertPokemonAction,
 } from "@/app/actions/challenge";
 import { AvatarPicker } from "@/components/AvatarPicker";
+import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
 import { CardBackgroundPicker } from "@/components/CardBackgroundPicker";
@@ -35,8 +36,10 @@ import { StatusEmojiPicker } from "@/components/StatusEmojiPicker";
 import { StatusLine } from "@/components/StatusLine";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
 import {
+  parseAvatarBackgroundKey,
+} from "@/data/avatar-backgrounds";
+import {
   parseCardBackgroundKey,
-  type CardBackgroundKey,
 } from "@/data/card-backgrounds";
 import type {
   BadgeDefinition,
@@ -44,7 +47,6 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
-import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
 import { RulesIcon } from "@/components/nav-icons";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { isEmptySpread } from "@/lib/stats";
@@ -416,7 +418,7 @@ export function TrainerBoard({
   const wipeSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => p.id).join(",")}`;
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => p.id).join(",")}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
   /** Optimistic board after wipe until RSC refresh lands. */
@@ -434,6 +436,7 @@ export function TrainerBoard({
     statusEmoji: trainer.statusEmoji ?? null,
     realName: trainer.realName ?? "",
     avatarSpriteKey: trainer.avatarSpriteKey,
+    avatarBackgroundKey: parseAvatarBackgroundKey(trainer.avatarBackgroundKey),
     cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
     reviveUsed: trainer.reviveUsed,
   });
@@ -447,9 +450,12 @@ export function TrainerBoard({
   const [avatarSpriteKey, setAvatarSpriteKey] = useState(
     trainer.avatarSpriteKey,
   );
-  const [cardBackgroundKey, setCardBackgroundKey] = useState<
-    CardBackgroundKey | null
-  >(parseCardBackgroundKey(trainer.cardBackgroundKey));
+  const [avatarBackgroundKey, setAvatarBackgroundKey] = useState<string | null>(
+    parseAvatarBackgroundKey(trainer.avatarBackgroundKey),
+  );
+  const [cardBackgroundKey, setCardBackgroundKey] = useState<string | null>(
+    parseCardBackgroundKey(trainer.cardBackgroundKey),
+  );
   const [reviveUsed, setReviveUsed] = useState(trainer.reviveUsed);
   const [earnedBadgeKeys, setEarnedBadgeKeys] = useState(
     trainer.earnedBadgeKeys,
@@ -479,6 +485,7 @@ export function TrainerBoard({
       statusEmoji: trainer.statusEmoji ?? null,
       realName: trainer.realName ?? "",
       avatarSpriteKey: trainer.avatarSpriteKey,
+      avatarBackgroundKey: parseAvatarBackgroundKey(trainer.avatarBackgroundKey),
       cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
       reviveUsed: trainer.reviveUsed,
     });
@@ -539,6 +546,7 @@ export function TrainerBoard({
     setStatusEmoji(committed.statusEmoji);
     setRealName(committed.realName);
     setAvatarSpriteKey(committed.avatarSpriteKey);
+    setAvatarBackgroundKey(committed.avatarBackgroundKey);
     setCardBackgroundKey(committed.cardBackgroundKey);
   }
 
@@ -560,6 +568,7 @@ export function TrainerBoard({
       statusEmoji,
       realName: realName || "",
       avatarSpriteKey,
+      avatarBackgroundKey,
       cardBackgroundKey,
     };
     // Optimistic: show the draft immediately in view mode.
@@ -577,6 +586,7 @@ export function TrainerBoard({
         statusEmoji: next.statusEmoji,
         realName: next.realName || null,
         avatarSpriteKey: next.avatarSpriteKey,
+        avatarBackgroundKey: next.avatarBackgroundKey,
         cardBackgroundKey: next.cardBackgroundKey,
       });
       if (result.ok) {
@@ -588,6 +598,9 @@ export function TrainerBoard({
           statusEmoji: trainer.statusEmoji ?? null,
           realName: trainer.realName ?? "",
           avatarSpriteKey: trainer.avatarSpriteKey,
+          avatarBackgroundKey: parseAvatarBackgroundKey(
+            trainer.avatarBackgroundKey,
+          ),
           cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
           reviveUsed: trainer.reviveUsed,
         };
@@ -597,6 +610,7 @@ export function TrainerBoard({
         setStatusEmoji(rollback.statusEmoji);
         setRealName(rollback.realName);
         setAvatarSpriteKey(rollback.avatarSpriteKey);
+        setAvatarBackgroundKey(rollback.avatarBackgroundKey);
         setCardBackgroundKey(rollback.cardBackgroundKey);
         setEditingPlayer(true);
         playerSave.markError(result.error);
@@ -897,6 +911,9 @@ export function TrainerBoard({
                   <AvatarPicker
                     value={avatarSpriteKey}
                     onChange={setAvatarSpriteKey}
+                    backgroundKey={avatarBackgroundKey}
+                    onBackgroundChange={setAvatarBackgroundKey}
+                    disabled={pending}
                   />
                 </div>
                 <CardBackgroundPicker
@@ -954,16 +971,12 @@ export function TrainerBoard({
               </div>
             ) : (
               <div className="flex flex-wrap items-start gap-4">
-                <Image
-                  src={avatarImageUrl(committed.avatarSpriteKey)}
-                  alt=""
+                <AvatarPortrait
+                  avatarSpriteKey={committed.avatarSpriteKey}
+                  backgroundKey={committed.avatarBackgroundKey}
+                  sizeClass="h-24 w-24"
                   width={96}
                   height={96}
-                  className={avatarImageClassName(
-                    committed.avatarSpriteKey,
-                    "h-24 w-24",
-                  )}
-                  unoptimized
                 />
                 <div className="min-w-0 flex-1">
                   <h1 className="text-3xl font-bold tracking-tight">

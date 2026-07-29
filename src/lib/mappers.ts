@@ -3,6 +3,7 @@ import type {
   PokemonEntry,
   TrainerProfile,
 } from "@/lib/challenge-types";
+import { parseAvatarBackgroundKey } from "@/data/avatar-backgrounds";
 import { parseCardBackgroundKey } from "@/data/card-backgrounds";
 import { avatarImageUrl } from "@/lib/sprites";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
@@ -45,6 +46,7 @@ type DbChallenge = {
     handle: string;
     realName: string | null;
     avatarSpriteKey: string | null;
+    avatarBackgroundKey: string | null;
     cardBackgroundKey: string | null;
     statusText: string | null;
     statusEmoji: string | null;
@@ -203,6 +205,7 @@ export function mapDbTrainer(
     handle: trainer.handle,
     realName: trainer.realName,
     avatarSpriteKey: trainer.avatarSpriteKey ?? "brendan",
+    avatarBackgroundKey: parseAvatarBackgroundKey(trainer.avatarBackgroundKey),
     cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
     statusText: trainer.statusText,
     statusEmoji: trainer.statusEmoji,

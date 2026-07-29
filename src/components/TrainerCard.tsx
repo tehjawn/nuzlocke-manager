@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { Frame } from "@/components/Frame";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
@@ -11,11 +12,7 @@ import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
 import { pokemonInSlot } from "@/lib/trainer-display";
-import {
-  avatarImageClassName,
-  avatarImageUrl,
-  pokemonSpriteUrl,
-} from "@/lib/sprites";
+import { pokemonSpriteUrl } from "@/lib/sprites";
 
 type TrainerCardProps = {
   challenge: Challenge;
@@ -54,6 +51,7 @@ export function TrainerCard({
     .join(" ");
   const boardLabel = `Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`;
   const cardBg = trainer.cardBackgroundKey;
+  const avatarBg = trainer.avatarBackgroundKey;
 
   return (
     <div
@@ -74,7 +72,7 @@ export function TrainerCard({
           >
             <Frame dense className="h-full" cardBackgroundKey={cardBg}>
               <div className="flex h-full flex-col items-center text-center">
-                <div className="relative flex h-28 w-full items-end justify-center">
+                <div className="relative flex h-28 w-full items-end justify-center overflow-visible">
                   {firstMon ? (
                     <Image
                       src={pokemonSpriteUrl(firstMon.species, {
@@ -84,17 +82,17 @@ export function TrainerCard({
                       alt=""
                       width={96}
                       height={96}
-                      className="pixelated absolute top-0 left-1/2 h-16 w-16 -translate-x-[15%] object-contain opacity-80"
+                      className="pixelated absolute top-0 left-1/2 z-0 h-16 w-16 -translate-x-[15%] object-contain opacity-80"
                       unoptimized
                     />
                   ) : null}
-                  <Image
-                    src={avatarImageUrl(trainer.avatarSpriteKey)}
-                    alt=""
+                  <AvatarPortrait
+                    avatarSpriteKey={trainer.avatarSpriteKey}
+                    backgroundKey={avatarBg}
+                    sizeClass="relative z-1 h-20 w-20"
                     width={96}
                     height={96}
-                    className={`${avatarImageClassName(trainer.avatarSpriteKey, "relative z-1 h-20 w-20")} drop-shadow-[0_6px_12px_var(--shadow-md)]`}
-                    unoptimized
+                    imgClassName="drop-shadow-[0_6px_12px_var(--shadow-md)]"
                   />
                 </div>
                 <p className="mt-1.5 w-full truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep">
@@ -113,18 +111,15 @@ export function TrainerCard({
             cardBackgroundKey={cardBg}
           >
             <div className="flex h-full flex-col gap-2.5">
-              <div className="grid min-h-0 flex-1 grid-cols-[6.5rem_minmax(0,1fr)] gap-3 lg:grid-cols-[7.5rem_minmax(0,1fr)]">
-                <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
-                  <Image
-                    src={avatarImageUrl(trainer.avatarSpriteKey)}
-                    alt=""
+              <div className="grid min-h-0 flex-1 grid-cols-[7rem_minmax(0,1fr)] gap-3 lg:grid-cols-[8rem_minmax(0,1fr)]">
+                <div className="flex min-w-0 flex-col items-center gap-1.5 overflow-visible text-center">
+                  <AvatarPortrait
+                    avatarSpriteKey={trainer.avatarSpriteKey}
+                    backgroundKey={avatarBg}
+                    sizeClass="mx-auto h-20 w-20 lg:h-24 lg:w-24"
                     width={112}
                     height={112}
-                    className={avatarImageClassName(
-                      trainer.avatarSpriteKey,
-                      "mx-auto h-20 w-20 lg:h-24 lg:w-24",
-                    )}
-                    unoptimized
+                    className="overflow-visible"
                   />
                   <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight">
                     <Link
@@ -217,17 +212,13 @@ export function TrainerCard({
           />
           <div className="relative flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
             <div className="flex items-start justify-between gap-2 sm:contents">
-              <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 sm:w-28 sm:flex-none sm:shrink-0 sm:items-center sm:text-center md:w-32">
-                <Image
-                  src={avatarImageUrl(trainer.avatarSpriteKey)}
-                  alt=""
+              <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 overflow-visible sm:w-28 sm:flex-none sm:shrink-0 sm:items-center sm:text-center md:w-32">
+                <AvatarPortrait
+                  avatarSpriteKey={trainer.avatarSpriteKey}
+                  backgroundKey={avatarBg}
+                  sizeClass="h-14 w-14 shrink-0 sm:h-24 sm:w-24 md:h-28 md:w-28"
                   width={112}
                   height={112}
-                  className={avatarImageClassName(
-                    trainer.avatarSpriteKey,
-                    "h-14 w-14 shrink-0 sm:h-24 sm:w-24 md:h-28 md:w-28",
-                  )}
-                  unoptimized
                 />
                 <div className="min-w-0 w-full">
                   <h2 className="truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep sm:text-base">

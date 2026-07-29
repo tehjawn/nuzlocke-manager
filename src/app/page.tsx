@@ -24,6 +24,7 @@ export default async function HomePage() {
         handle: trainer.handle,
         realName: trainer.realName,
         avatarSpriteKey: trainer.avatarSpriteKey,
+        avatarBackgroundKey: trainer.avatarBackgroundKey,
         badgeCount: trainer.earnedBadgeKeys.length,
         leadPokemon: lead
           ? {
