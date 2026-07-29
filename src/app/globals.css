@@ -505,25 +505,14 @@ button:disabled,
   --card-bg-wash: #3a2a58;
 }
 
-/*
-  Avatar backdrop — compact stage plate behind the trainer sprite.
-  Sized smaller than the sprite box and clipped by the card frame so
-  custom uploads can’t spill into neighboring cards.
-*/
+/* Avatar backdrop — exactly fills the avatar box and sits behind the sprite. */
 .avatar-portrait {
   position: relative;
   overflow: hidden;
 }
 
 .avatar-portrait[data-avatar-bg] {
-  padding: 0.2rem 0.3rem 0.35rem;
-  box-sizing: content-box;
-  background:
-    radial-gradient(
-      ellipse 65% 36% at 50% 84%,
-      color-mix(in srgb, var(--avatar-bg-wash) 40%, transparent) 0%,
-      transparent 72%
-    );
+  isolation: isolate;
 }
 
 .avatar-bg-swatch[data-avatar-bg] .avatar-bg-swatch-preview {
@@ -540,13 +529,29 @@ button:disabled,
 .avatar-bg-swatch[data-avatar-bg] .avatar-bg-swatch-preview::before {
   content: "";
   position: absolute;
-  inset: 8% 6% 0;
+  inset: 0;
   z-index: 0;
   pointer-events: none;
   border-radius: inherit;
-  /* ~70% of the plate — stays under the feet, inside the card. */
-  background: var(--avatar-bg-stage) center 92% / 70% auto no-repeat;
+  background: var(--avatar-bg-stage) center / 100% 100% no-repeat;
   opacity: 0.5;
+}
+
+.avatar-bg-swatch-preview {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--surface-2);
+}
+
+.avatar-bg-swatch[data-avatar-bg-none] .avatar-bg-swatch-preview {
+  background: var(--surface-2);
+}
+
+.avatar-bg-swatch[data-avatar-bg] .avatar-bg-swatch-preview::before {
+  inset: 4% 0 0;
+  opacity: 0.5;
+  background-size: 70% auto;
+  background-position: center 95%;
   -webkit-mask-image: radial-gradient(
     ellipse 88% 80% at 50% 62%,
     #000 0%,
@@ -565,56 +570,39 @@ button:disabled,
   mask-size: 100% 100%;
 }
 
-.avatar-bg-swatch-preview {
-  position: relative;
-  overflow: hidden;
-  background-color: var(--surface-2);
-}
-
-.avatar-bg-swatch[data-avatar-bg-none] .avatar-bg-swatch-preview {
-  background: var(--surface-2);
-}
-
-.avatar-bg-swatch[data-avatar-bg] .avatar-bg-swatch-preview::before {
-  inset: 4% 0 0;
-  opacity: 0.5;
-  background-size: 70% auto;
-  background-position: center 95%;
-}
-
 .avatar-portrait[data-avatar-bg="spotlight"],
 .avatar-bg-swatch[data-avatar-bg="spotlight"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/spotlight.svg?v=2");
+  --avatar-bg-stage: url("/textures/avatar-bgs/spotlight.svg?v=4");
   --avatar-bg-wash: #f0e6a8;
 }
 
 .avatar-portrait[data-avatar-bg="ember"],
 .avatar-bg-swatch[data-avatar-bg="ember"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/ember.svg?v=2");
+  --avatar-bg-stage: url("/textures/avatar-bgs/ember.svg?v=4");
   --avatar-bg-wash: #f0a060;
 }
 
 .avatar-portrait[data-avatar-bg="tide"],
 .avatar-bg-swatch[data-avatar-bg="tide"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/tide.svg?v=2");
+  --avatar-bg-stage: url("/textures/avatar-bgs/tide.svg?v=7");
   --avatar-bg-wash: #7ec8e8;
 }
 
 .avatar-portrait[data-avatar-bg="meadow"],
 .avatar-bg-swatch[data-avatar-bg="meadow"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/meadow.svg?v=2");
+  --avatar-bg-stage: url("/textures/avatar-bgs/meadow.svg?v=4");
   --avatar-bg-wash: #8fce6a;
 }
 
 .avatar-portrait[data-avatar-bg="rocky"],
 .avatar-bg-swatch[data-avatar-bg="rocky"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/rocky.svg?v=2");
+  --avatar-bg-stage: url("/textures/avatar-bgs/rocky.svg?v=4");
   --avatar-bg-wash: #c4b49a;
 }
 
 .avatar-portrait[data-avatar-bg="spark"],
 .avatar-bg-swatch[data-avatar-bg="spark"] .avatar-bg-swatch-preview {
-  --avatar-bg-stage: url("/textures/avatar-bgs/spark.svg?v=2");
+  --avatar-bg-stage: url("/textures/avatar-bgs/spark.svg?v=4");
   --avatar-bg-wash: #f5e06a;
 }
 
@@ -628,24 +616,10 @@ button:disabled,
 }
 
 .avatar-portrait[data-avatar-bg="custom"]::before {
-  inset: 6% 4% 0;
-  background: var(--avatar-bg-custom) center 78% / 68% auto no-repeat;
+  inset: 0;
+  background: var(--avatar-bg-custom) center / cover no-repeat;
   opacity: 0.88;
   filter: none;
-  -webkit-mask-image: radial-gradient(
-    ellipse 82% 78% at 50% 58%,
-    #000 0%,
-    #000 40%,
-    rgba(0, 0, 0, 0.35) 65%,
-    transparent 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 82% 78% at 50% 58%,
-    #000 0%,
-    #000 40%,
-    rgba(0, 0, 0, 0.35) 65%,
-    transparent 100%
-  );
 }
 
 .avatar-bg-swatch[data-avatar-bg="custom"] .avatar-bg-swatch-preview {
@@ -676,7 +650,7 @@ button:disabled,
   .avatar-bg-swatch[data-avatar-bg]:not([data-avatar-bg="custom"])
   .avatar-bg-swatch-preview::before {
   opacity: 0.45;
-  filter: invert(1);
+  filter: none;
 }
 
 [data-theme="dark"] .avatar-portrait[data-avatar-bg="custom"]::before,

@@ -10,7 +10,7 @@ import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
 type AvatarPortraitProps = {
   avatarSpriteKey: string;
   backgroundKey?: string | null;
-  /** Tailwind size classes for the image (e.g. `h-24 w-24`). */
+  /** Tailwind size classes for the portrait and its backdrop (e.g. `h-24 w-24`). */
   sizeClass: string;
   width: number;
   height: number;
@@ -46,7 +46,7 @@ export function AvatarPortrait({
     <span
       className={`avatar-portrait inline-flex shrink-0 items-end justify-center ${
         dataBg ? "avatar-portrait--staged" : ""
-      } ${className}`}
+      } ${sizeClass} ${className}`}
       data-avatar-bg={dataBg}
       style={style}
     >
@@ -56,7 +56,7 @@ export function AvatarPortrait({
         alt={alt}
         width={width}
         height={height}
-        className={`${avatarImageClassName(avatarSpriteKey, `relative z-1 ${sizeClass}`)}${
+        className={`${avatarImageClassName(avatarSpriteKey, "relative z-1 h-full w-full")}${
           imgClassName ? ` ${imgClassName}` : ""
         }`}
         unoptimized

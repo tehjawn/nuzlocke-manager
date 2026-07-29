@@ -215,7 +215,7 @@ export function AvatarPicker({
             sizeClass="h-[72px] w-[72px]"
             width={72}
             height={72}
-            className="rounded-lg border border-frame bg-surface-2/50 p-1"
+            className="rounded-lg border border-frame bg-surface-2/50"
           />
           <span
             aria-hidden
