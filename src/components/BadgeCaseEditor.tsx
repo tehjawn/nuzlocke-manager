@@ -4,6 +4,7 @@ import { useEffect, useOptimistic, useRef, useTransition } from "react";
 import { setBadgeProgressAction } from "@/app/actions/challenge";
 import { BadgeCase } from "@/components/BadgeCase";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
+import { triggerFx } from "@/features/fx";
 import type { BadgeDefinition } from "@/lib/challenge-types";
 
 type BadgeCaseEditorProps = {
@@ -106,6 +107,9 @@ export function BadgeCaseEditor({
             onEarnedKeysChange?.(rolled);
             markError(result.error);
             return;
+          }
+          if (earned) {
+            triggerFx("badge_earned", { badgeKey });
           }
           if (timers.current.size === 0 && inFlightRef.current === 0) {
             markSaved("Badges saved");
