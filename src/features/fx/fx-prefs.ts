@@ -31,9 +31,14 @@ function clampVolume(value: number): number {
 
 function normalizePrefs(raw: Partial<FxPrefs> | null | undefined): FxPrefs {
   return {
-    sfxEnabled: raw?.sfxEnabled ?? DEFAULT_FX_PREFS.sfxEnabled,
+    sfxEnabled:
+      typeof raw?.sfxEnabled === "boolean"
+        ? raw.sfxEnabled
+        : DEFAULT_FX_PREFS.sfxEnabled,
     celebrationsEnabled:
-      raw?.celebrationsEnabled ?? DEFAULT_FX_PREFS.celebrationsEnabled,
+      typeof raw?.celebrationsEnabled === "boolean"
+        ? raw.celebrationsEnabled
+        : DEFAULT_FX_PREFS.celebrationsEnabled,
     volume: clampVolume(raw?.volume ?? DEFAULT_FX_PREFS.volume),
   };
 }
@@ -97,7 +102,8 @@ export function isSfxMuted(prefs: FxPrefs = readFxPrefs()): boolean {
 /** Subscribe for `useSyncExternalStore` (same-tab + cross-tab). */
 export function subscribeFxPrefs(onStoreChange: () => void): () => void {
   function onStorage(event: StorageEvent) {
-    if (event.key !== FX_PREFS_STORAGE_KEY) return;
+    // `key === null` means localStorage.clear() in another tab.
+    if (event.key !== FX_PREFS_STORAGE_KEY && event.key !== null) return;
     cachedPrefs = loadPrefsFromStorage();
     onStoreChange();
   }

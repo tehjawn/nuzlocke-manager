@@ -23,6 +23,8 @@ export const BADGE_SFX_SRC: Record<string, string> = {
 };
 
 export function resolveBadgeSfxSrc(badgeKey: string | undefined): string {
-  if (badgeKey && BADGE_SFX_SRC[badgeKey]) return BADGE_SFX_SRC[badgeKey];
-  return SFX_SRC.badge;
+  if (!badgeKey || !Object.hasOwn(BADGE_SFX_SRC, badgeKey)) {
+    return SFX_SRC.badge;
+  }
+  return BADGE_SFX_SRC[badgeKey];
 }
