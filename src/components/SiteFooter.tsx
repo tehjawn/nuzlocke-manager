@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { SoundToggle } from "@/features/fx";
 
 const ORGANIZER_URL = "https://ouboridesigns.carrd.co/";
 const MAINTAINER_GITHUB = "https://github.com/tehjawn";
@@ -8,7 +9,7 @@ const MAINTAINER_GITHUB = "https://github.com/tehjawn";
 const creditLinkClass =
   "font-medium text-ink underline-offset-2 hover:text-accent-deep hover:underline";
 
-/** Global secondary chrome: About, credit, theme. Auth + Jump stay in the header. */
+/** Global secondary chrome: About, credit, sound, theme. Auth + Jump stay in the header. */
 export function SiteFooter() {
   return (
     <footer className="mt-auto">
@@ -47,7 +48,10 @@ export function SiteFooter() {
             </a>
           </p>
         </div>
-        <ThemeToggle />
+        <div className="flex shrink-0 items-center gap-2">
+          <SoundToggle />
+          <ThemeToggle />
+        </div>
       </div>
     </footer>
   );

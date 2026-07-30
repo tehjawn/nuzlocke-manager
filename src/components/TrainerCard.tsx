@@ -99,7 +99,10 @@ export function TrainerCard({
                   {trainer.handle}
                 </p>
                 <p className="mt-0.5 text-xs text-muted">
-                  {earnedCount} {earnedCount === 1 ? "badge" : "badges"}
+                  {earnedCount > 0 &&
+                  earnedCount === challenge.badges.length
+                    ? "All badges · ready"
+                    : `${earnedCount} ${earnedCount === 1 ? "badge" : "badges"}`}
                 </p>
               </div>
             </Frame>

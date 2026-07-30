@@ -4,6 +4,7 @@ import Script from "next/script";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SnackbarHost } from "@/components/Snackbar";
+import { CelebrationHost } from "@/features/fx/CelebrationHost";
 import { JumpHost } from "@/features/jump/JumpHost";
 import { challengeToJumpSeasonContext } from "@/features/jump/jump-season";
 import { getDefaultJumpChallenge } from "@/lib/challenges";
@@ -73,6 +74,7 @@ export default async function RootLayout({
           {children}
           <SiteFooter />
           <SnackbarHost />
+          <CelebrationHost />
         </JumpHost>
       </body>
     </html>

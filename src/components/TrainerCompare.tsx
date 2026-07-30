@@ -144,9 +144,13 @@ function CompareColumn({
             {trainer.realName ?? trainer.handle}
           </p>
           <p className="text-xs text-muted">
-            {trainer.earnedBadgeKeys.length} badge
-            {trainer.earnedBadgeKeys.length === 1 ? "" : "s"} · {graves.length}{" "}
-            fallen
+            {badges.length > 0 &&
+            trainer.earnedBadgeKeys.length === badges.length
+              ? "All badges · ready"
+              : `${trainer.earnedBadgeKeys.length} badge${
+                  trainer.earnedBadgeKeys.length === 1 ? "" : "s"
+                }`}{" "}
+            · {graves.length} fallen
           </p>
           {trainer.statusEmoji || trainer.statusText ? (
             <p className="mt-1 line-clamp-2 text-xs text-muted">
