@@ -99,10 +99,13 @@ export function TrainerStatsSummary({
   wipes,
   updatedAt,
 }: TrainerStatsSummaryProps) {
+  const badgesComplete = badgesTotal > 0 && badgesEarned === badgesTotal;
+
   const rows: Array<{
     label: string;
     value: string;
     icon: ReactNode;
+    complete?: boolean;
   }> = [
     {
       label: "Caught",
@@ -115,9 +118,10 @@ export function TrainerStatsSummary({
       icon: <RipIcon />,
     },
     {
-      label: "Badges",
+      label: badgesComplete ? "All Badges Earned!" : "Badges",
       value: `${badgesEarned}/${badgesTotal}`,
       icon: <BadgesIcon />,
+      complete: badgesComplete,
     },
     {
       label: "Wipes",
@@ -136,11 +140,25 @@ export function TrainerStatsSummary({
       {rows.map((row) => (
         <div
           key={row.label}
-          className="gba-inset flex items-center gap-2.5 bg-surface-2/70 px-3 py-2"
+          className={`gba-inset flex items-center gap-2.5 px-3 py-2 ${
+            row.complete
+              ? "trainer-stat--badges-complete"
+              : "bg-surface-2/70"
+          }`}
         >
-          <span className="shrink-0 text-muted/80">{row.icon}</span>
+          <span
+            className={`shrink-0 ${
+              row.complete ? "text-accent-2" : "text-muted/80"
+            }`}
+          >
+            {row.icon}
+          </span>
           <div className="min-w-0">
-            <dt className="text-[10px] font-semibold tracking-tight text-muted">
+            <dt
+              className={`text-[10px] font-semibold tracking-tight ${
+                row.complete ? "text-accent-2" : "text-muted"
+              }`}
+            >
               {row.label}
             </dt>
             <dd className="text-lg font-bold leading-tight tracking-tight">

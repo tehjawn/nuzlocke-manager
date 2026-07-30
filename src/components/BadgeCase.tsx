@@ -30,6 +30,22 @@ type BadgeCaseProps = {
   className?: string;
 };
 
+function CompleteBanner({ dense = false }: { dense?: boolean }) {
+  return (
+    <p
+      className={`badge-case__banner ${
+        dense ? "badge-case__banner--dense" : ""
+      }`}
+      role="status"
+    >
+      <span className="badge-case__banner-mark" aria-hidden>
+        ★
+      </span>
+      <span>All badges earned!</span>
+    </p>
+  );
+}
+
 export function BadgeCase({
   badges,
   earnedKeys,
@@ -47,9 +63,14 @@ export function BadgeCase({
   const earned = new Set(earnedKeys);
   const interactive = Boolean(onToggle);
   const earnedCount = badges.filter((b) => earned.has(b.key)).length;
+  const complete = badges.length > 0 && earnedCount === badges.length;
   const stripBadges = earnedOnly
     ? badges.filter((b) => earned.has(b.key))
     : badges;
+  const completeClass = complete ? "badge-case--complete" : "";
+  const ariaProgress = complete
+    ? `All ${badges.length} badges earned`
+    : `${earnedCount} of ${badges.length} badges earned`;
 
   if (strip) {
     // Narrow left-rail layout (grid cards): fixed columns of every badge,
@@ -57,14 +78,16 @@ export function BadgeCase({
     if (earnedColumns && !earnedOnly) {
       const iconPx = dense ? 16 : 20;
       return (
-        <div className="rounded-md bg-surface/70 p-1 shadow-sm backdrop-blur-sm">
+        <div
+          className={`badge-case badge-case--strip badge-case--strip-rail rounded-md bg-surface/70 p-1 shadow-sm backdrop-blur-sm ${completeClass}`}
+        >
           <ul
             className={
               earnedColumns === 2
                 ? `grid grid-cols-2 ${dense ? "gap-0.5" : "gap-1"}`
                 : `grid grid-cols-3 ${dense ? "gap-0.5" : "gap-1"}`
             }
-            aria-label={`${earnedCount} of ${badges.length} badges earned`}
+            aria-label={ariaProgress}
           >
             {badges.map((badge) => {
               const on = earned.has(badge.key);
@@ -81,8 +104,8 @@ export function BadgeCase({
                       alt=""
                       width={iconPx}
                       height={iconPx}
-                      className={`object-contain ${
-                        on ? "" : "grayscale opacity-35"
+                      className={`badge-case__icon object-contain ${
+                        on ? "badge-case__icon--earned" : "grayscale opacity-35"
                       }`}
                       style={{ width: iconPx, height: iconPx }}
                     />
@@ -120,59 +143,64 @@ export function BadgeCase({
       }
       const iconPx = dense ? 16 : 22;
       return (
-        <ul
-          className={`flex flex-wrap ${dense ? "gap-px" : "gap-0.5"}`}
-          aria-label={`${stripBadges.length} badges earned`}
-        >
-          {stripBadges.map((badge) => {
-            const meta = getEmeraldBadgeMeta(badge.key);
-            const title = `${meta?.badgeName ?? badge.label}${
-              badge.leaderName ? ` — ${badge.leaderName}` : ""
-            }`;
-            return (
-              <li key={badge.key} title={title} className="flex justify-center">
-                {meta ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={meta.badgeSprite}
-                    alt=""
-                    width={iconPx}
-                    height={iconPx}
-                    className="object-contain"
-                    style={{ width: iconPx, height: iconPx }}
-                  />
-                ) : (
-                  <span
-                    className="inline-block rounded border border-frame bg-accent-2/40"
-                    style={{ width: iconPx, height: iconPx }}
-                  />
-                )}
-                <span className="sr-only">{title}</span>
-              </li>
-            );
-          })}
-        </ul>
+        <div className={`badge-case badge-case--strip ${completeClass}`}>
+          <ul
+            className={`flex flex-wrap ${dense ? "gap-px" : "gap-0.5"}`}
+            aria-label={ariaProgress}
+          >
+            {stripBadges.map((badge) => {
+              const meta = getEmeraldBadgeMeta(badge.key);
+              const title = `${meta?.badgeName ?? badge.label}${
+                badge.leaderName ? ` — ${badge.leaderName}` : ""
+              }`;
+              return (
+                <li key={badge.key} title={title} className="flex justify-center">
+                  {meta ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={meta.badgeSprite}
+                      alt=""
+                      width={iconPx}
+                      height={iconPx}
+                      className="badge-case__icon badge-case__icon--earned object-contain"
+                      style={{ width: iconPx, height: iconPx }}
+                    />
+                  ) : (
+                    <span
+                      className="inline-block rounded border border-frame bg-accent-2/40"
+                      style={{ width: iconPx, height: iconPx }}
+                    />
+                  )}
+                  <span className="sr-only">{title}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       );
     }
 
     return (
       <div
-        className={`flex flex-wrap items-center gap-2 ${
+        className={`badge-case badge-case--strip flex flex-wrap items-center gap-2 ${
           hideCount ? "justify-center" : ""
-        } ${className}`}
+        } ${completeClass} ${className}`}
       >
         {hideCount ? null : (
-          <p className="font-display text-xs font-semibold tracking-tight text-muted">
-            {earnedCount}/{badges.length} badges
+          <p
+            className={`font-display text-xs font-semibold tracking-tight ${
+              complete ? "text-accent-2" : "text-muted"
+            }`}
+          >
+            {complete
+              ? "All Badges Earned"
+              : `${earnedCount}/${badges.length} badges`}
           </p>
         )}
         {/* Frosted chip lifts badges off the card background so they stay
             legible regardless of which preset wash is active. */}
-        <div className="rounded-lg bg-surface/70 px-2 py-1.5 shadow-sm backdrop-blur-sm">
-          <ul
-            className="flex flex-wrap gap-1"
-            aria-label={`${earnedCount} of ${badges.length} badges earned`}
-          >
+        <div className="badge-case__shell rounded-lg bg-surface/70 px-2 py-1.5 shadow-sm backdrop-blur-sm">
+          <ul className="flex flex-wrap gap-1" aria-label={ariaProgress}>
             {badges.map((badge) => {
               const on = earned.has(badge.key);
               const meta = getEmeraldBadgeMeta(badge.key);
@@ -188,8 +216,10 @@ export function BadgeCase({
                       alt=""
                       width={22}
                       height={22}
-                      className={`h-[22px] w-[22px] object-contain ${
-                        on ? "" : "grayscale opacity-35"
+                      className={`badge-case__icon h-[22px] w-[22px] object-contain ${
+                        on
+                          ? "badge-case__icon--earned"
+                          : "grayscale opacity-35"
                       }`}
                     />
                   ) : (
@@ -214,141 +244,149 @@ export function BadgeCase({
 
   if (compact) {
     return (
-      <ul className="grid grid-cols-7 gap-1.5" aria-label="Badge case">
+      <div className={`badge-case space-y-2 ${completeClass}`}>
+        {complete ? <CompleteBanner dense /> : null}
+        <ul className="grid grid-cols-7 gap-1.5" aria-label={ariaProgress}>
+          {badges.map((badge) => {
+            const on = earned.has(badge.key);
+            const meta = getEmeraldBadgeMeta(badge.key);
+            const label = meta?.previewLabel ?? badge.label;
+            const title = `${meta?.badgeName ?? badge.label}${
+              badge.leaderName ? ` — ${badge.leaderName}` : ""
+            }`;
+            const body = (
+              <>
+                {meta ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={meta.badgeSprite}
+                    alt=""
+                    width={28}
+                    height={28}
+                    className={`badge-case__icon h-7 w-7 object-contain ${
+                      on
+                        ? "badge-case__icon--earned"
+                        : "pixelated blur-[1px] grayscale opacity-50"
+                    }`}
+                  />
+                ) : null}
+                <span
+                  className={`mt-0.5 font-display text-[9px] font-bold tracking-wide ${
+                    on ? "text-ink" : "text-muted"
+                  }`}
+                >
+                  {label}
+                </span>
+                <span className="sr-only">{on ? "earned" : "not earned"}</span>
+              </>
+            );
+            const cellClass = `badge-case__cell flex flex-col items-center justify-center rounded-lg border border-frame px-0.5 py-1.5 ${
+              on
+                ? "bg-accent-2/30 ring-2 ring-accent-2/50"
+                : "bg-surface-2 opacity-70"
+            }`;
+            return (
+              <li key={badge.key} title={title}>
+                {interactive ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    className={`w-full ${cellClass}`}
+                    onClick={() => onToggle?.(badge.key, !on)}
+                  >
+                    {body}
+                  </button>
+                ) : (
+                  <div className={cellClass}>{body}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`badge-case space-y-2 ${completeClass} ${className}`}>
+      {complete ? <CompleteBanner /> : null}
+      <ul
+        className={`grid grid-cols-1 gap-2 ${
+          layout === "grid" ? "sm:grid-cols-2" : ""
+        }`}
+        aria-label={ariaProgress}
+      >
         {badges.map((badge) => {
           const on = earned.has(badge.key);
           const meta = getEmeraldBadgeMeta(badge.key);
-          const label = meta?.previewLabel ?? badge.label;
-          const title = `${meta?.badgeName ?? badge.label}${
-            badge.leaderName ? ` — ${badge.leaderName}` : ""
-          }`;
-          const body = (
-            <>
-              {meta ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={meta.badgeSprite}
-                  alt=""
-                  width={28}
-                  height={28}
-                  className={`h-7 w-7 object-contain ${
-                    on ? "" : "pixelated blur-[1px] grayscale opacity-50"
-                  }`}
-                />
-              ) : null}
-              <span
-                className={`mt-0.5 font-display text-[9px] font-bold tracking-wide ${
-                  on ? "text-ink" : "text-muted"
-                }`}
-              >
-                {label}
-              </span>
-              <span className="sr-only">{on ? "earned" : "not earned"}</span>
-            </>
-          );
-          const className = `flex flex-col items-center justify-center rounded-lg border border-frame px-0.5 py-1.5 ${
+          const title = meta?.badgeName ?? badge.label;
+          const preview = meta?.previewLabel ?? badge.label;
+          const leader = badge.leaderName ?? meta?.previewLabel;
+          const cellClass = `badge-case__cell flex w-full items-center gap-3 rounded-lg border border-frame p-2 text-left ${
             on
               ? "bg-accent-2/30 ring-2 ring-accent-2/50"
               : "bg-surface-2 opacity-70"
           }`;
+          const mysterySprite = on
+            ? ""
+            : "pixelated blur-[1.5px] grayscale opacity-55";
+          const body = (
+            <>
+              {meta ? (
+                <Image
+                  src={trainerSpriteUrl(meta.leaderSpriteKey)}
+                  alt=""
+                  width={56}
+                  height={56}
+                  className={`pixelated h-14 w-14 shrink-0 object-contain ${mysterySprite}`}
+                  unoptimized
+                />
+              ) : null}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={meta?.badgeSprite ?? "/badges/gym-1.png"}
+                alt=""
+                width={40}
+                height={40}
+                className={`badge-case__icon h-10 w-10 shrink-0 object-contain ${
+                  on ? "badge-case__icon--earned" : mysterySprite
+                }`}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-xs font-semibold tracking-tight">
+                  {preview}
+                </span>
+                <span className="mt-0.5 block truncate text-sm font-bold">
+                  {title}
+                </span>
+                <span className="mt-0.5 block truncate text-[11px] text-muted">
+                  {leader}
+                  {meta?.city ? ` · ${meta.city}` : ""}
+                  {on ? " · Earned" : ""}
+                </span>
+              </span>
+              <span className="sr-only">{on ? "earned" : "not earned"}</span>
+            </>
+          );
+
           return (
-            <li key={badge.key} title={title}>
+            <li key={badge.key}>
               {interactive ? (
                 <button
                   type="button"
                   disabled={pending}
-                  className={`w-full ${className}`}
+                  className={cellClass}
                   onClick={() => onToggle?.(badge.key, !on)}
                 >
                   {body}
                 </button>
               ) : (
-                <div className={className}>{body}</div>
+                <div className={cellClass}>{body}</div>
               )}
             </li>
           );
         })}
       </ul>
-    );
-  }
-
-  return (
-    <ul
-      className={`grid grid-cols-1 gap-2 ${
-        layout === "grid" ? "sm:grid-cols-2" : ""
-      }`}
-      aria-label="Badge case"
-    >
-      {badges.map((badge) => {
-        const on = earned.has(badge.key);
-        const meta = getEmeraldBadgeMeta(badge.key);
-        const title = meta?.badgeName ?? badge.label;
-        const preview = meta?.previewLabel ?? badge.label;
-        const leader = badge.leaderName ?? meta?.previewLabel;
-        const className = `flex w-full items-center gap-3 rounded-lg border border-frame p-2 text-left ${
-          on
-            ? "bg-accent-2/30 ring-2 ring-accent-2/50"
-            : "bg-surface-2 opacity-70"
-        }`;
-        const mysterySprite = on
-          ? ""
-          : "pixelated blur-[1.5px] grayscale opacity-55";
-        const body = (
-          <>
-            {meta ? (
-              <Image
-                src={trainerSpriteUrl(meta.leaderSpriteKey)}
-                alt=""
-                width={56}
-                height={56}
-                className={`pixelated h-14 w-14 shrink-0 object-contain ${mysterySprite}`}
-                unoptimized
-              />
-            ) : null}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={meta?.badgeSprite ?? "/badges/gym-1.png"}
-              alt=""
-              width={40}
-              height={40}
-              className={`h-10 w-10 shrink-0 object-contain ${
-                on ? "" : mysterySprite
-              }`}
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block font-display text-xs font-semibold tracking-tight">
-                {preview}
-              </span>
-              <span className="mt-0.5 block truncate text-sm font-bold">
-                {title}
-              </span>
-              <span className="mt-0.5 block truncate text-[11px] text-muted">
-                {leader}
-                {meta?.city ? ` · ${meta.city}` : ""}
-                {on ? " · Earned" : ""}
-              </span>
-            </span>
-            <span className="sr-only">{on ? "earned" : "not earned"}</span>
-          </>
-        );
-
-        return (
-          <li key={badge.key}>
-            {interactive ? (
-              <button
-                type="button"
-                disabled={pending}
-                className={className}
-                onClick={() => onToggle?.(badge.key, !on)}
-              >
-                {body}
-              </button>
-            ) : (
-              <div className={className}>{body}</div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    </div>
   );
 }

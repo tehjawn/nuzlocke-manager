@@ -2292,6 +2292,102 @@ button:disabled,
   font-family: var(--font-body), "Segoe UI", system-ui, sans-serif !important;
 }
 
+/* ---- Complete badge case (all badges earned) ---- */
+
+/* List/grid strips: quiet gold rim only — no pulse/sparkle */
+.badge-case--strip.badge-case--complete .badge-case__shell,
+.badge-case--strip.badge-case--complete.badge-case--strip-rail {
+  border: 1px solid color-mix(in srgb, var(--accent-2) 36%, var(--frame));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 12%, transparent);
+}
+
+.badge-case--strip.badge-case--complete .badge-case__icon--earned {
+  filter: none;
+}
+
+/* Full board case: richer treatment */
+.badge-case--complete:not(.badge-case--strip) .badge-case__cell {
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--frame));
+  background: color-mix(in srgb, var(--accent-2) 28%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-2) 20%, transparent);
+}
+
+.badge-case--complete:not(.badge-case--strip) .badge-case__icon--earned {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent-2) 55%, transparent));
+}
+
+.badge-case__banner {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-2) 50%, var(--frame));
+  background: color-mix(in srgb, var(--accent-2) 18%, var(--surface));
+  padding: 0.3rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--accent-2) 55%, var(--ink));
+  text-align: center;
+}
+
+.badge-case__banner--dense {
+  font-size: 0.65rem;
+  padding: 0.22rem 0.55rem;
+}
+
+.badge-case__banner-mark {
+  color: var(--accent-2);
+  font-size: 0.75em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .badge-case--complete:not(.badge-case--strip) .badge-case__icon--earned {
+    animation: badge-case-sparkle 2.4s ease-in-out infinite;
+  }
+
+  .badge-case--complete .badge-case__banner-mark {
+    animation: badge-case-star 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes badge-case-sparkle {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent-2) 40%, transparent));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent-2) 70%, transparent));
+    transform: scale(1.04);
+  }
+}
+
+@keyframes badge-case-star {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.trainer-stat--badges-complete {
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--frame));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent-2) 24%, var(--surface-2)) 0%,
+      color-mix(in srgb, var(--surface-2) 90%, transparent) 100%
+    );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 18%, transparent);
+}
+
 /* ---- FX celebrations ---- */
 .fx-celebration {
   position: relative;
