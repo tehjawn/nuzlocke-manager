@@ -113,10 +113,11 @@ export default async function SetupPage({ params }: PageProps) {
           <Frame title="3. Match season Game Mode settings">
             <div className="space-y-3">
               <p className="text-sm leading-relaxed text-muted">
-                When you boot the ROM, work through the Game Mode menus and
-                match the season defaults below. Don&apos;t swap to a different
-                patch mid-season. Core run rules (faint = dead, first encounter
-                only, nicknames required) live on{" "}
+                When you boot the ROM, work through the Game Mode menus in order
+                and match the Pokémon Emerald Modern season defaults below.
+                Don&apos;t swap to a different patch mid-season. Core run rules
+                (faint = dead, first encounter only, nicknames required) live
+                on{" "}
                 <Link
                   href={`/challenges/${challenge.slug}/rules`}
                   className="font-bold text-accent-deep underline-offset-2 hover:underline"
