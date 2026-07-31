@@ -1,7 +1,25 @@
+/** Built-in Trash Pack ROM Drive link used when a season has no custom `romUrl`. */
+export const DEFAULT_ROM_DOWNLOAD_URL =
+  "https://drive.google.com/file/d/1ZpHF4ACenI8guJxwKlDDlIoHbbztYH4T/view?usp=drive_link";
+
 /** Optional welcome video for Trash Pack 2026 (YouTube, Google Drive, or direct media). */
 export function getWelcomeVideoUrl(): string | null {
   const raw = process.env.NEXT_PUBLIC_WELCOME_VIDEO_URL?.trim();
   return raw || null;
+}
+
+/** Prefer season-configured welcome URL, then the env fallback. */
+export function resolveSeasonWelcomeVideoUrl(
+  configured?: string | null,
+): string | null {
+  const trimmed = configured?.trim();
+  return trimmed || getWelcomeVideoUrl();
+}
+
+/** Prefer season-configured ROM URL, then the built-in Drive link. */
+export function resolveSeasonRomUrl(configured?: string | null): string {
+  const trimmed = configured?.trim();
+  return trimmed || DEFAULT_ROM_DOWNLOAD_URL;
 }
 
 /** Default public unlock: 9:00 PM Eastern, Jul 31 2026. GMs can override per season. */
@@ -30,7 +48,7 @@ export function resolveWelcomeVideoPublishAt(
 
 /**
  * Who can see the welcome video:
- * - GMs always (preview)
+ * - GMs / GM view always (preview)
  * - Everyone once now >= the season's publish-at (default 9pm Eastern tonight)
  */
 export function canViewWelcomeVideo(

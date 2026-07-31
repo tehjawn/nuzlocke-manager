@@ -15,9 +15,16 @@ import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import type { Challenge } from "@/lib/challenge-types";
 import {
+  DEFAULT_ROM_DOWNLOAD_URL,
   fromEasternDatetimeLocalInput,
+  getWelcomeVideoUrl,
   toEasternDatetimeLocalInput,
 } from "@/lib/welcome-video";
+
+const hintLinkClass =
+  "font-medium text-ink underline-offset-2 hover:text-accent-deep hover:underline";
+
+const FALLBACK_WELCOME_VIDEO_URL = getWelcomeVideoUrl();
 
 type ConsoleTab = "season" | "roster" | "rules" | "faq" | "ops";
 
@@ -264,7 +271,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             <Panel
               kicker="01 · Season"
               title="Season settings"
-              description="Identity, access, Discord alerts, and Get Started unlock timing."
+              description="Identity, access, Discord alerts, and Get Started links."
             >
               <form
                 className="gm-console__grid gm-console__grid--2"
@@ -310,7 +317,9 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                         discordWebhookUrl: String(
                           fd.get("discordWebhookUrl") ?? "",
                         ),
+                        welcomeVideoUrl: String(fd.get("welcomeVideoUrl") ?? ""),
                         welcomeVideoPublishAt,
+                        romUrl: String(fd.get("romUrl") ?? ""),
                       }),
                     );
                   });
@@ -402,6 +411,63 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                 </label>
                 <label className="gm-console__field sm:col-span-2">
                   <span className="gm-console__label">
+                    Embed welcome video URL
+                  </span>
+                  <input
+                    name="welcomeVideoUrl"
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=… or Drive link"
+                    defaultValue={challenge.welcomeVideoUrl ?? ""}
+                    className="gm-console__input"
+                  />
+                  <span className="gm-console__hint">
+                    YouTube, Google Drive, or direct .mp4 shown on Get Started.
+                    Leave blank to use the app env fallback
+                    {FALLBACK_WELCOME_VIDEO_URL ? (
+                      <>
+                        {" "}
+                        (
+                        <a
+                          href={FALLBACK_WELCOME_VIDEO_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={hintLinkClass}
+                        >
+                          open fallback
+                        </a>
+                        )
+                      </>
+                    ) : (
+                      " (none set)"
+                    )}
+                    .
+                  </span>
+                </label>
+                <label className="gm-console__field sm:col-span-2">
+                  <span className="gm-console__label">ROM download URL</span>
+                  <input
+                    name="romUrl"
+                    type="url"
+                    placeholder="https://drive.google.com/file/d/…"
+                    defaultValue={challenge.romUrl ?? ""}
+                    className="gm-console__input"
+                  />
+                  <span className="gm-console__hint">
+                    Linked from Get Started step 1. Leave blank to use the
+                    built-in Trash Pack Drive link (
+                    <a
+                      href={DEFAULT_ROM_DOWNLOAD_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={hintLinkClass}
+                    >
+                      open fallback
+                    </a>
+                    ).
+                  </span>
+                </label>
+                <label className="gm-console__field sm:col-span-2">
+                  <span className="gm-console__label">
                     Welcome video publish time (Eastern)
                   </span>
                   <input
@@ -414,8 +480,8 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   />
                   <span className="gm-console__hint">
                     When the Get Started welcome video unlocks for everyone.
-                    Defaults to 9:00 PM Eastern tonight. GMs can always preview
-                    it early.
+                    Defaults to 9:00 PM Eastern tonight. GMs (and GM view) can
+                    always preview it early.
                   </span>
                 </label>
                 <div className="gm-console__actions sm:col-span-2">

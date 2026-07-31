@@ -4,7 +4,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { SoundToggle } from "@/features/fx";
 
 const ORGANIZER_URL = "https://ouboridesigns.carrd.co/";
-const MAINTAINER_GITHUB = "https://github.com/tehjawn";
+const MAINTAINER_URL = "https://www.jawn.codes/";
+const ROM_AUTHOR_URL = "https://github.com/chethtrayen/nzl_modern";
 
 const creditLinkClass =
   "font-medium text-ink underline-offset-2 hover:text-accent-deep hover:underline";
@@ -39,12 +40,22 @@ export function SiteFooter() {
             <span aria-hidden> • </span>
             App by{" "}
             <a
-              href={MAINTAINER_GITHUB}
+              href={MAINTAINER_URL}
               target="_blank"
               rel="noopener noreferrer"
               className={creditLinkClass}
             >
               jawn
+            </a>
+            <span aria-hidden> • </span>
+            ROM by{" "}
+            <a
+              href={ROM_AUTHOR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={creditLinkClass}
+            >
+              chedda
             </a>
           </p>
         </div>

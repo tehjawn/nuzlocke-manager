@@ -111,8 +111,12 @@ model Challenge {
   gmInviteCode      String?
   /// Discord incoming webhook URL for death / badge / revive posts
   discordWebhookUrl String?
+  /// Get Started welcome video (YouTube, Drive, or direct media). Null = env fallback.
+  welcomeVideoUrl String?
   /// When the Get Started welcome video becomes visible to everyone (Eastern schedule; null = default).
   welcomeVideoPublishAt DateTime?
+  /// Get Started ROM download URL. Null = built-in Trash Pack Drive link.
+  romUrl String?
   startsAt          DateTime?
   endsAt            DateTime?
   createdAt         DateTime            @default(now())

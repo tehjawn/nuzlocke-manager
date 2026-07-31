@@ -20,7 +20,9 @@ type DbChallenge = {
   visibility: Challenge["visibility"];
   playerInviteCode: string | null;
   gmInviteCode: string | null;
+  welcomeVideoUrl: string | null;
   welcomeVideoPublishAt: Date | null;
+  romUrl: string | null;
   badges: Array<{
     id: string;
     key: string;
@@ -122,7 +124,9 @@ export function mapDbChallenge(
     visibility: row.visibility,
     playerInviteCode: row.playerInviteCode,
     gmInviteCode: row.gmInviteCode,
+    welcomeVideoUrl: row.welcomeVideoUrl,
     welcomeVideoPublishAt: row.welcomeVideoPublishAt?.toISOString() ?? null,
+    romUrl: row.romUrl,
     source: "database",
     badges: row.badges
       .slice()

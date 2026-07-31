@@ -1999,8 +1999,8 @@ button:disabled,
   opacity: 0.18;
 }
 
+/* Flex items honor z-index without position; avoid overriding the FAB's `fixed`. */
 .gm-console-page > * {
-  position: relative;
   z-index: 1;
 }
 
