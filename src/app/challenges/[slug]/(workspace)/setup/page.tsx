@@ -88,8 +88,8 @@ export default async function SetupPage({ params }: PageProps) {
           <Frame title="1. Download the ROM">
             <p className="text-sm leading-relaxed text-muted">
               Grab the Trash Pack ROM from Google Drive. This build is already
-              set up for the season (Including Gen&nbsp;1-3 + extras, totaling
-              423 pokemon).
+              set up for the season (including Gen&nbsp;1–3 + extras, totaling
+              423 Pokémon).
             </p>
             <a
               href={ROM_DOWNLOAD_URL}

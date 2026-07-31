@@ -25,6 +25,7 @@ type ToolsViewProps = {
   badges: BadgeDefinition[];
   /** Signed-in trainer id for this season (Type Tips / ownership). */
   myTrainerId?: string | null;
+  signedIn?: boolean;
   /** When null, show the Tools directory hub. */
   initialTool?: ToolsId | null;
   initialCompareA?: string | null;
@@ -38,6 +39,7 @@ export function ToolsView({
   trainers,
   badges,
   myTrainerId = null,
+  signedIn = false,
   initialTool = null,
   initialCompareA = null,
   initialCompareB = null,
@@ -62,6 +64,7 @@ export function ToolsView({
       trainers={trainers}
       badges={badges}
       myTrainerId={myTrainerId}
+      signedIn={signedIn}
       initialCompareA={initialCompareA}
       initialCompareB={initialCompareB}
       initialDexId={initialDexId}
@@ -124,6 +127,7 @@ function ToolWorkspace({
   trainers,
   badges,
   myTrainerId,
+  signedIn,
   initialCompareA,
   initialCompareB,
   initialDexId,
@@ -134,6 +138,7 @@ function ToolWorkspace({
   trainers: TrainerProfile[];
   badges: BadgeDefinition[];
   myTrainerId?: string | null;
+  signedIn?: boolean;
   initialCompareA?: string | null;
   initialCompareB?: string | null;
   initialDexId?: number | null;
@@ -169,6 +174,7 @@ function ToolWorkspace({
           slug={slug}
           trainers={trainers}
           myTrainerId={myTrainerId}
+          signedIn={signedIn}
           initialId={initialDexId}
         />
       ) : null}

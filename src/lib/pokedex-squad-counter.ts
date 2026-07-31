@@ -192,18 +192,21 @@ export function recommendSquadCounters(
       const meta = lookupMoveMeta(rawMove);
       if (!meta) continue;
       if (meta.category === "Status") continue;
-      if (meta.power <= 0) continue;
       const attackType = asChartType(meta.type);
       if (!attackType) continue;
       const offenseMult = attackMultiplierVs(attackType, targetTypes);
       if (offenseMult < minOffense) continue;
+
+      // Showdown stores variable/fixed-damage moves as basePower 0 (Low Kick,
+      // Grass Knot, Seismic Toss, Magnitude, …). Still type-relevant for tips.
+      const power = meta.power > 0 ? meta.power : 60;
 
       const candidate = {
         moveName: meta.name,
         attackType,
         category: meta.category,
         offenseMult,
-        power: meta.power,
+        power,
       };
       if (
         !bestMove ||

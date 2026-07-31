@@ -58,6 +58,7 @@ type PokedexPanelProps = {
   trainers?: TrainerProfile[];
   /** Signed-in trainer on this season — Type Tips use their Main + Reserve. */
   myTrainerId?: string | null;
+  signedIn?: boolean;
   initialId?: number | null;
 };
 
@@ -65,6 +66,7 @@ export function PokedexPanel({
   slug,
   trainers = [],
   myTrainerId = null,
+  signedIn = false,
   initialId = null,
 }: PokedexPanelProps) {
   const router = useRouter();
@@ -93,6 +95,10 @@ export function PokedexPanel({
     ];
   }, [myTrainer]);
   const tipTrainerLabel = myTrainer ? displayName(myTrainer) : null;
+  const tipSquadHasMoves = useMemo(
+    () => tipSquad.some((mon) => mon.moves.some((m) => m.trim().length > 0)),
+    [tipSquad],
+  );
 
   const results = useMemo(() => {
     const hits = searchPokemonIndex(deferred, {
@@ -414,6 +420,8 @@ export function PokedexPanel({
               tipsPending={tipsPending}
               tipTrainerLabel={tipTrainerLabel}
               tipSquadCount={tipSquad.length}
+              tipSquadHasMoves={tipSquadHasMoves}
+              signedIn={signedIn}
               canGoPrev={selectedIndex > 0}
               canGoNext={
                 selectedIndex >= 0 && selectedIndex < results.length - 1
@@ -477,6 +485,8 @@ function PokedexEntry({
   tipsPending,
   tipTrainerLabel,
   tipSquadCount,
+  tipSquadHasMoves,
+  signedIn,
   canGoPrev,
   canGoNext,
   onPrev,
@@ -494,6 +504,8 @@ function PokedexEntry({
   tipsPending: boolean;
   tipTrainerLabel: string | null;
   tipSquadCount: number;
+  tipSquadHasMoves: boolean;
+  signedIn: boolean;
   canGoPrev: boolean;
   canGoNext: boolean;
   onPrev: () => void;
@@ -661,7 +673,9 @@ function PokedexEntry({
               <p className="text-[11px] text-muted">
                 {tipTrainerLabel
                   ? `From ${tipTrainerLabel}'s Main + Reserve movesets — not a damage calc.`
-                  : "Sign in and join this season to see counters from your Main + Reserve."}
+                  : signedIn
+                    ? "Join this season to see counters from your Main + Reserve."
+                    : "Sign in and join this season to see counters from your Main + Reserve."}
               </p>
             </div>
             {types.length > 0 && tipSquadCount > 0 ? (
@@ -741,10 +755,14 @@ function PokedexEntry({
               {tipsPending
                 ? "Ranking type tips…"
                 : !tipTrainerLabel
-                  ? "Sign in to get tips from your board."
+                  ? signedIn
+                    ? "Join this season to get tips from your board."
+                    : "Sign in to get tips from your board."
                   : tipSquadCount === 0
                     ? "Add Pokémon to your Main or Reserve to get tips."
-                    : "None of your Main/Reserve moves look super-effective here."}
+                    : !tipSquadHasMoves
+                      ? "Import a save (or add moves) on your board to get tips."
+                      : "None of your Main/Reserve moves look super-effective here."}
             </p>
           ) : null}
         </div>

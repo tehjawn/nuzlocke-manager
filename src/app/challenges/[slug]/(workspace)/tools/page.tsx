@@ -93,6 +93,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         trainers={trainers}
         badges={challenge.badges}
         myTrainerId={myTrainerId}
+        signedIn={Boolean(session?.user)}
         initialTool={initialTool}
         initialCompareA={a}
         initialCompareB={b}
