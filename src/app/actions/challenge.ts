@@ -55,6 +55,15 @@ import {
   buildRoundPairings,
   roundIsComplete,
 } from "@/lib/tournament";
+import {
+  buildSnapshotSummaryLine,
+  captureTrainerBoardSnapshotInTx,
+  parseSnapshotPayload,
+  snapshotTriggerLabel,
+  type BoardSnapshotTrigger,
+  type TrainerBoardSnapshotPayload,
+  type TrainerBoardSnapshotSummary,
+} from "@/lib/board-snapshot";
 
 function jsonStatOrNull(
   value: StatSpread | null | undefined,
@@ -539,6 +548,12 @@ export async function recordWipeAction(input: {
     let wipeMessage = "";
 
     await prisma.$transaction(async (tx) => {
+      await captureTrainerBoardSnapshotInTx(tx, {
+        challengeId: trainer.challengeId,
+        trainerId: trainer.id,
+        actorId: userId,
+        trigger: "WIPE",
+      });
       await tx.pokemonEntry.deleteMany({
         where: {
           trainerId: trainer.id,
@@ -630,6 +645,12 @@ export async function gmResetTrainerBoardAction(input: {
     const { userId } = await requireGm(trainer.challengeId);
 
     await prisma.$transaction(async (tx) => {
+      await captureTrainerBoardSnapshotInTx(tx, {
+        challengeId: trainer.challengeId,
+        trainerId: trainer.id,
+        actorId: userId,
+        trigger: "GM_RESET",
+      });
       await hardResetTrainerInTx(tx, trainer.id);
       await tx.activityEvent.create({
         data: {
@@ -690,6 +711,12 @@ export async function gmResetAllTrainerBoardsAction(input: {
     const count = challenge.trainers.length;
     await prisma.$transaction(async (tx) => {
       for (const trainer of challenge.trainers) {
+        await captureTrainerBoardSnapshotInTx(tx, {
+          challengeId: challenge.id,
+          trainerId: trainer.id,
+          actorId: userId,
+          trigger: "GM_RESET",
+        });
         await hardResetTrainerInTx(tx, trainer.id);
       }
       await tx.activityEvent.create({
@@ -711,6 +738,121 @@ export async function gmResetAllTrainerBoardsAction(input: {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Season board reset failed",
+    };
+  }
+}
+
+export type ListTrainerBoardSnapshotsResult =
+  | { ok: true; snapshots: TrainerBoardSnapshotSummary[] }
+  | { ok: false; error: string };
+
+/** GM-only: list board history for a trainer (newest first). */
+export async function listTrainerBoardSnapshotsAction(input: {
+  trainerId: string;
+}): Promise<ListTrainerBoardSnapshotsResult> {
+  try {
+    const prisma = getPrisma();
+    const trainer = await prisma.trainerProfile.findUnique({
+      where: { id: input.trainerId },
+      select: { id: true, challengeId: true },
+    });
+    if (!trainer) return { ok: false, error: "Trainer not found" };
+
+    await requireGm(trainer.challengeId);
+
+    const rows = await prisma.trainerBoardSnapshot.findMany({
+      where: { trainerId: trainer.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        trigger: true,
+        label: true,
+        payload: true,
+        createdAt: true,
+      },
+    });
+
+    const snapshots: TrainerBoardSnapshotSummary[] = [];
+    for (const row of rows) {
+      const payload = parseSnapshotPayload(row.payload);
+      if (!payload) continue;
+      const trigger = row.trigger as BoardSnapshotTrigger;
+      snapshots.push({
+        id: row.id,
+        trigger,
+        label: row.label,
+        createdAt: row.createdAt.toISOString(),
+        wipeCount: payload.wipeCount,
+        summary: buildSnapshotSummaryLine(payload),
+      });
+    }
+
+    return { ok: true, snapshots };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Could not load board history",
+    };
+  }
+}
+
+export type GetTrainerBoardSnapshotResult =
+  | {
+      ok: true;
+      snapshot: {
+        id: string;
+        trigger: BoardSnapshotTrigger;
+        triggerLabel: string;
+        label: string | null;
+        createdAt: string;
+        summary: string;
+        payload: TrainerBoardSnapshotPayload;
+      };
+    }
+  | { ok: false; error: string };
+
+/** GM-only: load one snapshot's full board payload. */
+export async function getTrainerBoardSnapshotAction(input: {
+  snapshotId: string;
+}): Promise<GetTrainerBoardSnapshotResult> {
+  try {
+    const prisma = getPrisma();
+    const row = await prisma.trainerBoardSnapshot.findUnique({
+      where: { id: input.snapshotId },
+      select: {
+        id: true,
+        challengeId: true,
+        trigger: true,
+        label: true,
+        payload: true,
+        createdAt: true,
+      },
+    });
+    if (!row) return { ok: false, error: "Snapshot not found" };
+
+    await requireGm(row.challengeId);
+
+    const payload = parseSnapshotPayload(row.payload);
+    if (!payload) return { ok: false, error: "Snapshot data is unreadable" };
+
+    const trigger = row.trigger as BoardSnapshotTrigger;
+    return {
+      ok: true,
+      snapshot: {
+        id: row.id,
+        trigger,
+        triggerLabel: snapshotTriggerLabel(trigger),
+        label: row.label,
+        createdAt: row.createdAt.toISOString(),
+        summary: buildSnapshotSummaryLine(payload),
+        payload,
+      },
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Could not load snapshot",
     };
   }
 }
@@ -1200,6 +1342,12 @@ export async function importFromSaveAction(
       });
 
     await prisma.$transaction(async (tx) => {
+      await captureTrainerBoardSnapshotInTx(tx, {
+        challengeId: trainer.challengeId,
+        trainerId: trainer.id,
+        actorId: userId,
+        trigger: "IMPORT",
+      });
       if (data.replaceSlots.length > 0) {
         await tx.pokemonEntry.deleteMany({
           where: {

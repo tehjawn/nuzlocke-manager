@@ -285,7 +285,8 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             Clears every trainer board for an official fresh start: Main,
             Reserves, Encountered, R.I.P. memorial, badges, wipe counters, and
             revive tokens. Claims and profile personalization (name, avatar,
-            backdrops, status) stay.
+            backdrops, status) stay. A board history snapshot is saved for each
+            trainer first.
           </p>
           <button
             type="button"
@@ -301,8 +302,9 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                       and revive tokens for all {challenge.trainers.length}{" "}
                       trainer
                       {challenge.trainers.length === 1 ? "" : "s"}. Profiles and
-                      claims stay. Export a backup first if you may need the
-                      current boards.
+                      claims stay. A history snapshot is saved for each board
+                      first. Export a backup if you may need the live boards
+                      elsewhere.
                     </>
                   ),
                   confirmLabel: "Reset all boards",
