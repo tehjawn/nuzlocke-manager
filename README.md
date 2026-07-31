@@ -74,5 +74,6 @@ Without DB/Discord env, the app still serves **seed read-only** pages.
 1. Import repo
 2. Set env vars above (use production Discord redirect + `AUTH_URL`)
 3. Provision Postgres (Vercel / Neon / etc.)
-4. Build runs `prisma generate && next build`
-5. Run `db push` / migrate + `db:seed` once against production DB
+4. Build runs `prisma generate && prisma migrate deploy && next build`, so
+   committed migrations are applied to the production DB on every deploy
+5. Run `db:seed` once against the production DB
