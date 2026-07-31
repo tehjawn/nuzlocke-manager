@@ -14,6 +14,8 @@ const TRASH_PACK_YT =
   "https://www.youtube.com/channel/UC0cYecpkXZgRGEPUjj8gl5Q";
 const PROJECT_GITHUB = "https://github.com/tehjawn/nuzlocke-manager";
 const MAINTAINER_GITHUB = "https://github.com/tehjawn";
+const CHET_GITHUB = "https://github.com/chethtrayen/";
+const UWU_GITHUB = "https://github.com/alcas1/";
 
 export default function AboutPage() {
   return (
@@ -52,6 +54,27 @@ export default function AboutPage() {
             >
               View on GitHub →
             </a>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              Also thanks to{" "}
+              <a
+                href={CHET_GITHUB}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-accent-deep underline-offset-2 hover:underline"
+              >
+                chet
+              </a>{" "}
+              and{" "}
+              <a
+                href={UWU_GITHUB}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-accent-deep underline-offset-2 hover:underline"
+              >
+                uwu
+              </a>{" "}
+              for their contributions!
+            </p>
           </Frame>
 
           <Frame title="What is a Nuzlocke?">
