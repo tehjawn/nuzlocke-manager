@@ -129,72 +129,33 @@ function isWorthCapturing(payload: TrainerBoardSnapshotPayload): boolean {
   );
 }
 
+type CaptureSnapshotInput = {
+  challengeId: string;
+  trainerId: string;
+  actorId?: string | null;
+  trigger: BoardSnapshotTrigger;
+  label?: string | null;
+};
+
+const SNAPSHOT_SAVEPOINT = "board_snapshot_capture";
+
 /**
  * Capture a point-in-time board copy inside an open transaction.
- * Fail-open: logs and returns null so the parent mutation still proceeds.
+ *
+ * Fail-open: a snapshot problem must never block the wipe/reset/import that
+ * asked for it. Postgres aborts the whole transaction on any failed statement,
+ * so catching the error is not enough on its own — every later statement would
+ * fail with 25P02 and mask the real cause. The capture therefore runs inside a
+ * savepoint that we roll back to, which leaves the parent transaction usable.
  */
 export async function captureTrainerBoardSnapshotInTx(
   tx: TxClient,
-  input: {
-    challengeId: string;
-    trainerId: string;
-    actorId?: string | null;
-    trigger: BoardSnapshotTrigger;
-    label?: string | null;
-  },
+  input: CaptureSnapshotInput,
 ): Promise<string | null> {
+  await tx.$executeRawUnsafe(`SAVEPOINT ${SNAPSHOT_SAVEPOINT}`);
   try {
-    const trainer = await tx.trainerProfile.findUnique({
-      where: { id: input.trainerId },
-      select: {
-        wipeCount: true,
-        reviveUsed: true,
-        mainSquadLocked: true,
-        pokemon: true,
-        badges: {
-          where: { earned: true },
-          select: { badge: { select: { key: true } } },
-        },
-      },
-    });
-    if (!trainer) return null;
-
-    const payload: TrainerBoardSnapshotPayload = {
-      wipeCount: trainer.wipeCount,
-      reviveUsed: trainer.reviveUsed,
-      mainSquadLocked: trainer.mainSquadLocked,
-      earnedBadgeKeys: trainer.badges.map((b) => b.badge.key),
-      pokemon: trainer.pokemon.map((p) => mapPokemonRow(p as DbPokemonRow)),
-    };
-
-    if (!isWorthCapturing(payload)) return null;
-
-    const label =
-      input.label ?? defaultSnapshotLabel(input.trigger, trainer.wipeCount);
-
-    await tx.trainerBoardSnapshot.create({
-      data: {
-        challengeId: input.challengeId,
-        trainerId: input.trainerId,
-        actorId: input.actorId ?? null,
-        trigger: input.trigger,
-        label,
-        payload: payload as unknown as Prisma.InputJsonValue,
-      },
-    });
-
-    const stale = await tx.trainerBoardSnapshot.findMany({
-      where: { trainerId: input.trainerId },
-      orderBy: { createdAt: "desc" },
-      skip: BOARD_SNAPSHOT_RETENTION,
-      select: { id: true },
-    });
-    if (stale.length > 0) {
-      await tx.trainerBoardSnapshot.deleteMany({
-        where: { id: { in: stale.map((s) => s.id) } },
-      });
-    }
-
+    const label = await captureSnapshot(tx, input);
+    await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${SNAPSHOT_SAVEPOINT}`);
     return label;
   } catch (error) {
     console.error("[board-snapshot] capture failed (fail-open)", {
@@ -202,8 +163,67 @@ export async function captureTrainerBoardSnapshotInTx(
       trigger: input.trigger,
       error,
     });
+    await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${SNAPSHOT_SAVEPOINT}`);
     return null;
   }
+}
+
+async function captureSnapshot(
+  tx: TxClient,
+  input: CaptureSnapshotInput,
+): Promise<string | null> {
+  const trainer = await tx.trainerProfile.findUnique({
+    where: { id: input.trainerId },
+    select: {
+      wipeCount: true,
+      reviveUsed: true,
+      mainSquadLocked: true,
+      pokemon: true,
+      badges: {
+        where: { earned: true },
+        select: { badge: { select: { key: true } } },
+      },
+    },
+  });
+  if (!trainer) return null;
+
+  const payload: TrainerBoardSnapshotPayload = {
+    wipeCount: trainer.wipeCount,
+    reviveUsed: trainer.reviveUsed,
+    mainSquadLocked: trainer.mainSquadLocked,
+    earnedBadgeKeys: trainer.badges.map((b) => b.badge.key),
+    pokemon: trainer.pokemon.map((p) => mapPokemonRow(p as DbPokemonRow)),
+  };
+
+  if (!isWorthCapturing(payload)) return null;
+
+  const label =
+    input.label ?? defaultSnapshotLabel(input.trigger, trainer.wipeCount);
+
+  await tx.trainerBoardSnapshot.create({
+    data: {
+      challengeId: input.challengeId,
+      trainerId: input.trainerId,
+      actorId: input.actorId ?? null,
+      trigger: input.trigger,
+      label,
+      payload: payload as unknown as Prisma.InputJsonValue,
+    },
+  });
+
+  const stale = await tx.trainerBoardSnapshot.findMany({
+    where: { trainerId: input.trainerId },
+    orderBy: { createdAt: "desc" },
+    skip: BOARD_SNAPSHOT_RETENTION,
+    select: { id: true },
+  });
+  if (stale.length > 0) {
+    await tx.trainerBoardSnapshot.deleteMany({
+      where: { id: { in: stale.map((s) => s.id) } },
+    });
+  }
+
+  return label;
 }
 
 export function parseSnapshotPayload(

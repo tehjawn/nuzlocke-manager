@@ -62,9 +62,11 @@ Without DB/Discord env, the app still serves **seed read-only** pages.
 | Script | Purpose |
 |---|---|
 | `npm run dev` | Local server |
-| `npm run build` | Production build |
+| `npm run build` | Local / preview build (`prisma generate` + `next build`) |
+| `npm run vercel-build` | Vercel build; production deploys also run `migrate deploy` |
 | `npm run db:generate` | Prisma client |
-| `npm run db:migrate` | Migrations |
+| `npm run db:migrate` | Migrations (dev) |
+| `npm run db:migrate:deploy` | Apply committed migrations (any env) |
 | `npm run db:push` | Push schema (dev) |
 | `npm run db:seed` | Seed Trash Pack 2026 |
 | `npm run db:studio` | Prisma Studio |
@@ -74,5 +76,7 @@ Without DB/Discord env, the app still serves **seed read-only** pages.
 1. Import repo
 2. Set env vars above (use production Discord redirect + `AUTH_URL`)
 3. Provision Postgres (Vercel / Neon / etc.)
-4. Build runs `prisma generate && next build`
-5. Run `db push` / migrate + `db:seed` once against production DB
+4. Vercel runs `vercel-build`: `prisma generate`, then `prisma migrate deploy`
+   only when `VERCEL_ENV=production`, then `next build`. Preview/local builds
+   do not mutate the database.
+5. Run `db:seed` once against the production DB
