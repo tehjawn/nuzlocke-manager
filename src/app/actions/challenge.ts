@@ -1744,8 +1744,8 @@ function parseOptionalHttpsUrl(
   }
   try {
     const parsed = new URL(trimmed);
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      return { ok: false, error: `${label} URL must start with http(s)://` };
+    if (parsed.protocol !== "https:") {
+      return { ok: false, error: `${label} URL must start with https://` };
     }
     return { ok: true, value: trimmed };
   } catch {
