@@ -112,10 +112,38 @@ const abilityList = await fetchJson(
 const abilities = abilityList.results
   .map((r) => {
     const id = Number(r.url.split("/").filter(Boolean).pop());
-    return { id, name: titleCaseSlug(r.name), slug: r.name };
+    return { id, name: titleCaseSlug(r.name), slug: r.name, description: null };
   })
   .filter((a) => a.id > 0 && a.id < 10000)
   .sort((a, b) => a.name.localeCompare(b.name));
+
+console.log("Fetching ability descriptions (Pokémon Showdown)…");
+try {
+  const res = await fetch(
+    "https://raw.githubusercontent.com/smogon/pokemon-showdown/master/data/text/abilities.ts",
+  );
+  if (res.ok) {
+    const ts = await res.text();
+    const byKey = new Map();
+    const entryRe = /^\t([a-z0-9]+):\s*\{([\s\S]*?)^\t\},/gm;
+    let m;
+    while ((m = entryRe.exec(ts))) {
+      const body = m[2];
+      const short = body.match(/shortDesc:\s*"((?:\\.|[^"\\])*)"/);
+      const desc = body.match(/(?:^|\n)\t\tdesc:\s*"((?:\\.|[^"\\])*)"/);
+      const text = (short?.[1] ?? desc?.[1] ?? "")
+        .replace(/\\"/g, '"')
+        .replace(/\\n/g, " ");
+      if (text) byKey.set(m[1], text);
+    }
+    for (const a of abilities) {
+      const key = a.slug.replace(/-/g, "");
+      a.description = byKey.get(key) ?? byKey.get(a.slug) ?? null;
+    }
+  }
+} catch (err) {
+  console.warn("Ability description fetch failed:", err);
+}
 
 console.log("Fetching species abilities (Gen 3–aware, 1–1025)…");
 const speciesAbilities = {};
@@ -142,7 +170,12 @@ writeFileSync(
 );
 writeFileSync(
   join(dataDir, "abilities.json"),
-  JSON.stringify({ version: 1, count: abilities.length, abilities }),
+  JSON.stringify({
+    version: 2,
+    count: abilities.length,
+    source: "pokeapi+pokemon-showdown-text",
+    abilities,
+  }),
 );
 writeFileSync(
   join(dataDir, "species-abilities.json"),

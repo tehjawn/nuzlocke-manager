@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
 import { StatGrid } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
+import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
@@ -42,51 +44,6 @@ function MetaChip({ label, value }: { label: string; value: ReactNode }) {
         )}
       </div>
     </div>
-  );
-}
-
-function NatureInfoIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-3 w-3 shrink-0 text-muted/70"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 11v5" strokeLinecap="round" />
-      <path d="M12 7.75v.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-/** Nature name with dotted underline, info icon, and hover/focus tooltip. */
-function NatureValue({ nature }: { nature: string }) {
-  const tipId = useId();
-  const description = natureEffectDescription(nature);
-
-  return (
-    <span className="group/nature relative inline-flex max-w-full items-center">
-      <button
-        type="button"
-        className="inline-flex max-w-full items-center gap-1 text-left"
-        aria-describedby={tipId}
-      >
-        <span className="truncate underline decoration-dotted decoration-muted/65 underline-offset-[3px]">
-          {nature}
-        </span>
-        <NatureInfoIcon />
-      </button>
-      <span
-        id={tipId}
-        role="tooltip"
-        className="pointer-events-none absolute top-[calc(100%+0.35rem)] left-0 z-30 w-max max-w-60 rounded-md border border-frame bg-surface px-2 py-1 text-[11px] font-medium leading-snug text-ink opacity-0 shadow-md transition-opacity group-hover/nature:opacity-100 group-focus-within/nature:opacity-100"
-      >
-        {description}
-      </span>
-    </span>
   );
 }
 
@@ -149,10 +106,24 @@ export function PokemonDetailsModal({
 
   const meta = [
     showCompetitiveDetails && pokemon.nature
-      ? { label: "Nature", value: <NatureValue nature={pokemon.nature} /> }
+      ? {
+          label: "Nature",
+          value: (
+            <InfoTip tip={natureEffectDescription(pokemon.nature)}>
+              {pokemon.nature}
+            </InfoTip>
+          ),
+        }
       : null,
     showCompetitiveDetails && pokemon.ability
-      ? { label: "Ability", value: pokemon.ability }
+      ? {
+          label: "Ability",
+          value: (
+            <InfoTip tip={abilityDescription(pokemon.ability) ?? ""}>
+              {pokemon.ability}
+            </InfoTip>
+          ),
+        }
       : null,
     pokemon.catchRoute ? { label: "Route", value: pokemon.catchRoute } : null,
     pokemon.heldItem ? { label: "Item", value: pokemon.heldItem } : null,

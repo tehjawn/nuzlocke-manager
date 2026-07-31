@@ -72,15 +72,18 @@ const STAT_FULL_LABELS: Record<BattleStatKey, string> = {
   spe: "Speed",
 };
 
-/** Human-readable nature effect, e.g. "Increases Special Attack / Decreases Speed". */
+/**
+ * Human-readable nature effect (Bulbapedia-style), e.g.
+ * "Increases a Pokémon's Special Attack stat by 10% and decreases its Speed stat by 10%."
+ */
 export function natureEffectDescription(
   nature: string | null | undefined,
 ): string {
-  if (!nature?.trim()) return "Does not modify stats";
+  if (!nature?.trim()) return "Does not modify stats.";
   const mod =
     NATURE_MODS_LOOKUP[nature] ?? NATURE_MODS_LOOKUP[nature.toLowerCase()];
-  if (!mod) return "Does not modify stats";
-  return `Increases ${STAT_FULL_LABELS[mod.up]} / Decreases ${STAT_FULL_LABELS[mod.down]}`;
+  if (!mod) return "Does not modify stats.";
+  return `Increases a Pokémon's ${STAT_FULL_LABELS[mod.up]} stat by 10% and decreases its ${STAT_FULL_LABELS[mod.down]} stat by 10%.`;
 }
 
 export function baseStatsForSpecies(

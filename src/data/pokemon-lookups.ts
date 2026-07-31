@@ -9,10 +9,34 @@ export type AbilityEntry = {
   id: number;
   name: string;
   slug: string;
+  description?: string | null;
 };
 
 export const NATURES = naturesData.natures as string[];
 export const ABILITIES = abilitiesData.abilities as AbilityEntry[];
+
+const ABILITY_DESCRIPTION_BY_NAME: Record<string, string> = Object.fromEntries(
+  ABILITIES.flatMap((a) => {
+    const desc = a.description?.trim();
+    if (!desc) return [];
+    return [
+      [a.name, desc],
+      [a.name.toLowerCase(), desc],
+    ];
+  }),
+);
+
+/** Battle effect text for a known ability name (case-insensitive). */
+export function abilityDescription(
+  name: string | null | undefined,
+): string | null {
+  if (!name?.trim()) return null;
+  return (
+    ABILITY_DESCRIPTION_BY_NAME[name] ??
+    ABILITY_DESCRIPTION_BY_NAME[name.toLowerCase()] ??
+    null
+  );
+}
 
 const SPECIES_ABILITIES = speciesAbilitiesData.species as Record<
   string,

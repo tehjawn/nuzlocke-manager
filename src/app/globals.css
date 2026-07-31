@@ -1135,6 +1135,58 @@ button:disabled,
   word-break: break-word;
 }
 
+/* Portaled nature / ability speech bubble */
+.info-speech-bubble {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--frame);
+  background: var(--surface);
+  box-shadow: 0 6px 18px var(--shadow-md);
+}
+
+.info-speech-bubble::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  transform: translateX(-50%);
+}
+
+.info-speech-bubble--below::before {
+  bottom: 100%;
+  border-bottom-color: var(--frame);
+}
+
+.info-speech-bubble--above::before {
+  top: 100%;
+  border-top-color: var(--frame);
+}
+
+.info-speech-bubble--below::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-bottom-color: var(--surface);
+  transform: translateX(-50%) translateY(1px);
+}
+
+.info-speech-bubble--above::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-top-color: var(--surface);
+  transform: translateX(-50%) translateY(-1px);
+}
+
 @keyframes trainer-carousel-scroll {
   from {
     transform: translateX(0);
