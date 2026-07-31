@@ -67,15 +67,6 @@ function ImportIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-function selectedLabel(value: string | null): string {
-  if (!value) return "Default";
-  if (isCardBackgroundKey(value)) {
-    return CARD_BACKGROUNDS.find((bg) => bg.key === value)?.label ?? value;
-  }
-  if (cardBackgroundCustomUrl(value)) return "Custom";
-  return "Default";
-}
-
 export function CardBackgroundPicker({
   value,
   onChange,
@@ -202,12 +193,6 @@ export function CardBackgroundPicker({
         <ImportIcon className="h-3.5 w-3.5 shrink-0" />
         {customUrl ? "Replace your card art" : "Add your own"}
       </button>
-      <p className="mt-2 text-xs text-muted" aria-live="polite">
-        Card art:{" "}
-        <span className="font-semibold text-ink">{selectedLabel(value)}</span>
-        {" · "}
-        Chrome for your league card — separate from the portrait stage.
-      </p>
       <CustomTextureModal
         open={importOpen}
         kind="card-bg"

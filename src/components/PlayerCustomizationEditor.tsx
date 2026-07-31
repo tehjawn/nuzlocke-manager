@@ -1,15 +1,20 @@
 "use client";
 
-import { useId, useState, type CSSProperties } from "react";
+import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { CardBackgroundPicker } from "@/components/CardBackgroundPicker";
 import { StatusEmojiPicker } from "@/components/StatusEmojiPicker";
+import { avatarBackgroundLabel } from "@/data/avatar-backgrounds";
 import {
   cardBackgroundCustomUrl,
+  cardBackgroundLabel,
   isCardBackgroundKey,
 } from "@/data/card-backgrounds";
+import { formatTrainerSpriteLabel } from "@/data/trainer-sprites";
+import { SPECIES_INDEX } from "@/data/species";
 import { cssTextureUrl } from "@/lib/custom-texture";
+import { parseAvatarKey } from "@/lib/sprites";
 
 export type CustomizationTab = "portrait" | "stage" | "card" | "profile";
 
@@ -35,15 +40,48 @@ type PlayerCustomizationEditorProps = {
   discordUsername?: string | null;
   discordDisplayName?: string | null;
   disabled?: boolean;
-  initialTab?: CustomizationTab;
+  initialSection?: CustomizationTab;
 };
 
-const TABS: Array<{ id: CustomizationTab; label: string }> = [
-  { id: "portrait", label: "Portrait" },
-  { id: "stage", label: "Stage" },
-  { id: "card", label: "Card art" },
-  { id: "profile", label: "Profile" },
+const SECTION_COPY: Record<
+  CustomizationTab,
+  { label: string; hint: string }
+> = {
+  portrait: {
+    label: "Portrait",
+    hint: "Your trainer sprite, a Pokémon, or your own image.",
+  },
+  stage: {
+    label: "Stage",
+    hint: "The plate behind your portrait on the board and league cards.",
+  },
+  card: {
+    label: "Card art",
+    hint: "Chrome behind your league card — separate from the stage.",
+  },
+  profile: {
+    label: "Profile",
+    hint: "Nickname, real name, and the status shown on your board.",
+  },
+};
+
+const SECTION_ORDER: CustomizationTab[] = [
+  "portrait",
+  "stage",
+  "card",
+  "profile",
 ];
+
+function portraitLabel(avatarSpriteKey: string): string {
+  const parsed = parseAvatarKey(avatarSpriteKey);
+  if (parsed.kind === "custom") return "Your image";
+  if (parsed.kind === "trainer") return formatTrainerSpriteLabel(parsed.key);
+  const named = parsed.pokedexId
+    ? SPECIES_INDEX.find((s) => s.pokedexId === parsed.pokedexId)?.name
+    : null;
+  if (named) return named;
+  return parsed.pokedexId ? `Pokémon #${parsed.pokedexId}` : parsed.species;
+}
 
 export function PlayerCustomizationEditor({
   avatarSpriteKey,
@@ -67,10 +105,10 @@ export function PlayerCustomizationEditor({
   discordUsername,
   discordDisplayName,
   disabled = false,
-  initialTab = "portrait",
+  initialSection = "portrait",
 }: PlayerCustomizationEditorProps) {
-  const [tab, setTab] = useState<CustomizationTab>(initialTab);
-  const tabsId = useId();
+  const [section, setSection] = useState<CustomizationTab>(initialSection);
+  const baseId = useId();
 
   const customCardUrl = cardBackgroundCustomUrl(cardBackgroundKey);
   const cardDataAttr = isCardBackgroundKey(cardBackgroundKey)
@@ -79,138 +117,93 @@ export function PlayerCustomizationEditor({
       ? "custom"
       : undefined;
 
+  const thumbs: Record<CustomizationTab, ReactNode> = {
+    portrait: (
+      <AvatarPortrait
+        avatarSpriteKey={avatarSpriteKey}
+        sizeClass="h-10 w-10"
+        width={40}
+        height={40}
+      />
+    ),
+    stage: (
+      <AvatarPortrait
+        avatarSpriteKey={avatarSpriteKey}
+        backgroundKey={avatarBackgroundKey}
+        sizeClass="h-10 w-10"
+        width={40}
+        height={40}
+        className="overflow-hidden rounded-md"
+      />
+    ),
+    card: (
+      <span
+        aria-hidden
+        className="card-bg-swatch block h-10 w-10 overflow-hidden rounded-md border border-frame/70"
+        data-card-bg={cardDataAttr}
+        data-card-bg-default={cardDataAttr ? undefined : ""}
+        style={
+          customCardUrl
+            ? ({
+                ["--card-bg-custom" as string]: cssTextureUrl(customCardUrl),
+              } as CSSProperties)
+            : undefined
+        }
+      >
+        <span className="card-bg-swatch-preview block h-full w-full" />
+      </span>
+    ),
+    profile: (
+      <span
+        aria-hidden
+        className="flex h-10 w-10 items-center justify-center rounded-md border border-frame/70 bg-surface-2 text-lg leading-none"
+      >
+        {statusEmoji ?? (handle.trim().charAt(0).toUpperCase() || "?")}
+      </span>
+    ),
+  };
+
+  const values: Record<CustomizationTab, string> = {
+    portrait: portraitLabel(avatarSpriteKey),
+    stage: avatarBackgroundLabel(avatarBackgroundKey),
+    card: cardBackgroundLabel(cardBackgroundKey),
+    profile: handle.trim() || "Add a nickname",
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-stretch gap-3">
-        <div
-          className={`flex flex-col rounded-lg border-2 bg-surface-2/40 p-2 transition ${
-            tab === "portrait" || tab === "stage"
-              ? "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_30%,transparent)]"
-              : "border-frame/70"
-          }`}
-        >
-          <button
-            type="button"
-            disabled={disabled}
-            aria-label="Edit portrait"
-            className="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
-            onClick={() => setTab("portrait")}
-          >
-            <AvatarPortrait
-              avatarSpriteKey={avatarSpriteKey}
-              backgroundKey={avatarBackgroundKey}
-              sizeClass="h-24 w-24"
-              width={96}
-              height={96}
-            />
-          </button>
-          <div className="mt-2 flex gap-1">
-            <button
-              type="button"
-              disabled={disabled}
-              className={`pressable flex-1 rounded-md px-1.5 py-1 text-[10px] font-semibold tracking-tight disabled:opacity-60 ${
-                tab === "portrait"
-                  ? "bg-interactive text-white"
-                  : "bg-surface text-muted hover:text-ink"
-              }`}
-              onClick={() => setTab("portrait")}
-            >
-              Portrait
-            </button>
-            <button
-              type="button"
-              disabled={disabled}
-              className={`pressable flex-1 rounded-md px-1.5 py-1 text-[10px] font-semibold tracking-tight disabled:opacity-60 ${
-                tab === "stage"
-                  ? "bg-interactive text-white"
-                  : "bg-surface text-muted hover:text-ink"
-              }`}
-              onClick={() => setTab("stage")}
-            >
-              Stage
-            </button>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label="Edit card art"
-          title="Edit card art"
-          className={`card-bg-swatch pressable relative flex w-28 flex-col overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60 sm:w-32 ${
-            tab === "card"
-              ? "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_30%,transparent)]"
-              : "border-frame/70 hover:border-interactive/55"
-          }`}
-          data-card-bg={cardDataAttr}
-          data-card-bg-default={cardDataAttr ? undefined : ""}
-          style={
-            customCardUrl
-              ? ({
-                  ["--card-bg-custom" as string]: cssTextureUrl(customCardUrl),
-                } as CSSProperties)
-              : undefined
-          }
-          onClick={() => setTab("card")}
-        >
-          <span className="card-bg-swatch-preview relative block min-h-16 w-full flex-1" />
-          <span
-            className={`px-1.5 py-1 text-center text-[10px] font-semibold tracking-tight ${
-              tab === "card"
-                ? "bg-interactive text-white"
-                : "bg-surface-2/95 text-ink"
-            }`}
-          >
-            Card art
-          </span>
-        </button>
-
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label="Edit profile"
-          title="Edit profile"
-          className={`flex min-w-30 flex-1 flex-col justify-center rounded-lg border-2 px-3 py-2 text-left transition disabled:opacity-60 sm:max-w-xs ${
-            tab === "profile"
-              ? "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_30%,transparent)]"
-              : "border-frame/70 hover:border-interactive/55"
-          }`}
-          onClick={() => setTab("profile")}
-        >
-          <span className="truncate font-display text-sm font-semibold tracking-tight text-ink">
-            {handle.trim() || "Nickname"}
-          </span>
-          <span className="mt-0.5 line-clamp-2 text-xs text-muted">
-            {statusEmoji ? `${statusEmoji} ` : ""}
-            {statusText.trim() || "Status & name"}
-          </span>
-        </button>
-      </div>
-
+    <div className="grid gap-4 sm:grid-cols-[minmax(9rem,13rem)_minmax(0,1fr)] sm:items-start">
       <div
         role="tablist"
         aria-label="Customization sections"
-        className="flex flex-wrap gap-1 rounded-lg border border-frame bg-surface-2/50 p-1"
+        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-col sm:overflow-visible sm:px-0 sm:pb-0"
       >
-        {TABS.map((item) => {
-          const selected = tab === item.id;
+        {SECTION_ORDER.map((id) => {
+          const selected = section === id;
           return (
             <button
-              key={item.id}
+              key={id}
               type="button"
               role="tab"
-              id={`${tabsId}-${item.id}`}
+              id={`${baseId}-tab-${id}`}
               aria-selected={selected}
-              aria-controls={`${tabsId}-panel-${item.id}`}
+              aria-controls={`${baseId}-panel-${id}`}
               disabled={disabled}
-              className={`pressable min-h-9 flex-1 rounded-md px-2.5 py-1.5 text-xs font-semibold tracking-tight transition disabled:opacity-60 sm:flex-none ${
+              className={`pressable flex w-40 shrink-0 items-center gap-2.5 rounded-lg border-2 px-2.5 py-2 text-left transition disabled:opacity-60 sm:w-full ${
                 selected
-                  ? "bg-surface text-ink shadow-sm"
-                  : "text-muted hover:text-ink"
+                  ? "border-interactive bg-interactive-soft"
+                  : "border-frame/70 bg-surface hover:border-interactive/55"
               }`}
-              onClick={() => setTab(item.id)}
+              onClick={() => setSection(id)}
             >
-              {item.label}
+              <span className="shrink-0">{thumbs[id]}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-display text-xs font-semibold tracking-tight text-ink">
+                  {SECTION_COPY[id].label}
+                </span>
+                <span className="mt-0.5 block truncate text-[11px] text-muted">
+                  {values[id]}
+                </span>
+              </span>
             </button>
           );
         })}
@@ -218,20 +211,28 @@ export function PlayerCustomizationEditor({
 
       <div
         role="tabpanel"
-        id={`${tabsId}-panel-${tab}`}
-        aria-labelledby={`${tabsId}-${tab}`}
-        className="min-h-28"
+        id={`${baseId}-panel-${section}`}
+        aria-labelledby={`${baseId}-tab-${section}`}
+        className="min-w-0 rounded-lg border border-frame bg-surface-2/40 p-3 sm:p-4"
       >
-        {tab === "portrait" ? (
+        <div className="mb-3">
+          <h3 className="font-display text-sm font-semibold tracking-tight text-ink">
+            {SECTION_COPY[section].label}
+          </h3>
+          <p className="mt-0.5 text-xs text-muted">
+            {SECTION_COPY[section].hint}
+          </p>
+        </div>
+
+        {section === "portrait" ? (
           <AvatarPicker
             panel="portrait"
             value={avatarSpriteKey}
             onChange={onAvatarChange}
-            backgroundKey={avatarBackgroundKey}
             disabled={disabled}
           />
         ) : null}
-        {tab === "stage" ? (
+        {section === "stage" ? (
           <AvatarPicker
             panel="stage"
             value={avatarSpriteKey}
@@ -243,7 +244,7 @@ export function PlayerCustomizationEditor({
             disabled={disabled}
           />
         ) : null}
-        {tab === "card" ? (
+        {section === "card" ? (
           <CardBackgroundPicker
             value={cardBackgroundKey}
             onChange={onCardBackgroundChange}
@@ -252,7 +253,7 @@ export function PlayerCustomizationEditor({
             disabled={disabled}
           />
         ) : null}
-        {tab === "profile" ? (
+        {section === "profile" ? (
           <div className="space-y-4">
             <label className="block text-sm">
               <span className="mb-1 block font-bold text-muted">Nickname</span>
@@ -269,9 +270,7 @@ export function PlayerCustomizationEditor({
               <p className="text-sm text-muted">
                 Discord{" "}
                 <span className="font-semibold text-ink">
-                  {discordUsername
-                    ? `@${discordUsername}`
-                    : discordDisplayName}
+                  {discordUsername ? `@${discordUsername}` : discordDisplayName}
                 </span>
               </p>
             ) : null}
@@ -303,11 +302,6 @@ export function PlayerCustomizationEditor({
           </div>
         ) : null}
       </div>
-
-      <p className="text-xs text-muted">
-        Changes stay local until you hit{" "}
-        <span className="font-semibold text-ink">Save</span>.
-      </p>
     </div>
   );
 }
