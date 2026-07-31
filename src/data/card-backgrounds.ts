@@ -56,7 +56,7 @@ export function parseCardBackgroundKey(
   return null;
 }
 
-/** Blob URL for a custom card chrome image, else null. */
+/** HTTPS URL for a custom card chrome image, else null. */
 export function cardBackgroundCustomUrl(
   value: string | null | undefined,
 ): string | null {

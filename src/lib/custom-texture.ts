@@ -10,6 +10,8 @@ import {
 import {
   CUSTOM_AVATAR_PREFIX,
   isAllowedCustomAvatarUrl,
+  isVercelBlobCustomUrl,
+  normalizeCustomImageUrl,
 } from "@/lib/sprites";
 
 export type TextureKind = "avatar-bg" | "card-bg";
@@ -46,9 +48,9 @@ export function cssTextureUrl(url: string): string {
 }
 
 /**
- * Extract a canonical blob URL from a stored `custom:https://…` key.
- * Returns `null` for missing / non-blob values. Rejects raw CSS-breakout
- * characters in the candidate; always returns `URL.href`.
+ * Extract a canonical HTTPS URL from a stored `custom:https://…` key.
+ * Accepts Vercel Blob uploads and pasted hotlinks. Rejects CSS-breakout
+ * characters; always returns `URL.href`.
  */
 export function parseCustomTextureUrl(
   raw: string | null | undefined,
@@ -56,17 +58,7 @@ export function parseCustomTextureUrl(
   if (raw == null) return null;
   const value = raw.trim();
   if (!value.toLowerCase().startsWith(CUSTOM_AVATAR_PREFIX)) return null;
-  const candidate = value.slice(CUSTOM_AVATAR_PREFIX.length).trim();
-  // Block raw breakout chars before the URL parser percent-encodes them.
-  if (/["'()\\\s<>]/.test(candidate)) return null;
-  if (!isAllowedCustomAvatarUrl(candidate)) return null;
-  try {
-    const href = new URL(candidate).href;
-    if (!isAllowedCustomAvatarUrl(href)) return null;
-    return href;
-  } catch {
-    return null;
-  }
+  return normalizeCustomImageUrl(value);
 }
 
 export function isCustomTextureKey(value: unknown): value is string {
@@ -86,7 +78,7 @@ export function isOwnedCustomTextureUrl(
   userId: string,
   kind: TextureKind,
 ): boolean {
-  if (!userId || !isAllowedCustomAvatarUrl(url)) return false;
+  if (!userId || !isVercelBlobCustomUrl(url)) return false;
   try {
     const href = new URL(url).href;
     const segments = decodeURIComponent(new URL(href).pathname)
@@ -105,7 +97,10 @@ export function isOwnedCustomTextureUrl(
   }
 }
 
-/** Acting editor or the profile owner may re-apply an already-uploaded texture. */
+/**
+ * Acting editor may persist a texture URL.
+ * Hotlinked HTTPS images are allowed; Blob URLs must be owned (or already saved).
+ */
 export function canUseCustomTextureUrl(
   url: string,
   kind: TextureKind,
@@ -114,6 +109,8 @@ export function canUseCustomTextureUrl(
   alreadySaved: boolean,
 ): boolean {
   if (alreadySaved) return true;
+  if (!isAllowedCustomAvatarUrl(url)) return false;
+  if (!isVercelBlobCustomUrl(url)) return true;
   if (isOwnedCustomTextureUrl(url, actingUserId, kind)) return true;
   if (
     trainerUserId &&

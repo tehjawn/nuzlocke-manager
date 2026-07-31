@@ -58,7 +58,7 @@ export function parseAvatarBackgroundKey(
   return null;
 }
 
-/** Blob URL for a custom backdrop, else null. */
+/** HTTPS URL for a custom backdrop, else null. */
 export function avatarBackgroundCustomUrl(
   value: string | null | undefined,
 ): string | null {

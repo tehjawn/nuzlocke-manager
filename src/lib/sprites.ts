@@ -71,8 +71,17 @@ export function trainerSpriteUrl(spriteKey: string): string {
 /** Prefix for Pokémon species avatars stored in `avatarSpriteKey`. */
 export const POKEMON_AVATAR_PREFIX = "poke:";
 
-/** Prefix for user-uploaded avatars (`custom:https://…`). */
+/** Prefix for custom avatars (`custom:https://…`) — uploads or hotlinked URLs. */
 export const CUSTOM_AVATAR_PREFIX = "custom:";
+
+/**
+ * Max length of the HTTPS URL portion of a `custom:` key.
+ * Keeps stored keys bounded while allowing typical CDN query strings.
+ */
+export const CUSTOM_IMAGE_URL_MAX_LENGTH = 1000;
+
+/** Chars that must not appear raw in CSS `url()` / attribute contexts. */
+const UNSAFE_CUSTOM_URL_CHARS = /["'()\\\s<>]/;
 
 export type AvatarKind = "trainer" | "pokemon" | "custom";
 
@@ -95,15 +104,60 @@ export function customAvatarKey(url: string): string {
   return `${CUSTOM_AVATAR_PREFIX}${url.trim()}`;
 }
 
+function isBlockedCustomImageHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local")
+  ) {
+    return true;
+  }
+  // Prefer named public hosts over literal IPs.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true;
+  if (host.includes(":")) return true;
+  return false;
+}
+
+/**
+ * Normalize a pasted HTTPS URL or `custom:https://…` key to a canonical href.
+ * Returns `null` when the value is missing, unsafe, or not an allowed URL.
+ */
+export function normalizeCustomImageUrl(
+  raw: string | null | undefined,
+): string | null {
+  if (raw == null) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const candidate = trimmed.toLowerCase().startsWith(CUSTOM_AVATAR_PREFIX)
+    ? trimmed.slice(CUSTOM_AVATAR_PREFIX.length).trim()
+    : trimmed;
+  if (UNSAFE_CUSTOM_URL_CHARS.test(candidate)) return null;
+  if (!isAllowedCustomAvatarUrl(candidate)) return null;
+  try {
+    const href = new URL(candidate).href;
+    if (!isAllowedCustomAvatarUrl(href)) return null;
+    return href;
+  } catch {
+    return null;
+  }
+}
+
+/** Build a stored `custom:…` key from a pasted URL or existing custom key. */
+export function customImageKeyFromInput(
+  raw: string | null | undefined,
+): string | null {
+  const href = normalizeCustomImageUrl(raw);
+  return href ? customAvatarKey(href) : null;
+}
+
 export function parseAvatarKey(raw: string | null | undefined): ParsedAvatar {
   const value = (raw ?? "brendan").trim() || "brendan";
   const lower = value.toLowerCase();
 
   if (lower.startsWith(CUSTOM_AVATAR_PREFIX)) {
-    const url = value.slice(CUSTOM_AVATAR_PREFIX.length).trim();
-    if (isAllowedCustomAvatarUrl(url)) {
-      return { kind: "custom", url };
-    }
+    const href = normalizeCustomImageUrl(value);
+    if (href) return { kind: "custom", url: href };
     return { kind: "trainer", key: "brendan" };
   }
 
@@ -119,13 +173,34 @@ export function parseAvatarKey(raw: string | null | undefined): ParsedAvatar {
   return { kind: "trainer", key: trainerAvatarKey(value) };
 }
 
-/** Public HTTPS URLs we accept for uploaded trainer avatars. */
+/**
+ * Public HTTPS image URLs we accept for custom avatars / textures.
+ * Includes Vercel Blob uploads and user-pasted hotlinks. We never fetch these
+ * server-side — they are rendered client-side with `unoptimized` / CSS url().
+ */
 export function isAllowedCustomAvatarUrl(url: string): boolean {
+  if (!url || url.length > CUSTOM_IMAGE_URL_MAX_LENGTH) return false;
+  if (UNSAFE_CUSTOM_URL_CHARS.test(url)) return false;
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;
-    const host = parsed.hostname.toLowerCase();
-    return host.endsWith(".public.blob.vercel-storage.com");
+    if (!parsed.hostname) return false;
+    if (parsed.username || parsed.password) return false;
+    if (isBlockedCustomImageHost(parsed.hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** True when the URL is one of our Vercel Blob public objects. */
+export function isVercelBlobCustomUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    return parsed.hostname
+      .toLowerCase()
+      .endsWith(".public.blob.vercel-storage.com");
   } catch {
     return false;
   }
@@ -133,7 +208,7 @@ export function isAllowedCustomAvatarUrl(url: string): boolean {
 
 /** True when the blob path was uploaded under this user's avatar folder. */
 export function isOwnedCustomAvatarUrl(url: string, userId: string): boolean {
-  if (!userId || !isAllowedCustomAvatarUrl(url)) return false;
+  if (!userId || !isVercelBlobCustomUrl(url)) return false;
   try {
     const path = decodeURIComponent(new URL(url).pathname);
     const marker = `/avatars/${userId}/`;
@@ -141,6 +216,21 @@ export function isOwnedCustomAvatarUrl(url: string, userId: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Whether the acting user may persist this custom avatar URL.
+ * Hotlinked HTTPS URLs are allowed; Blob URLs must be owned (or already saved).
+ */
+export function canUseCustomAvatarUrl(
+  url: string,
+  actingUserId: string,
+  alreadySaved: boolean,
+): boolean {
+  if (alreadySaved) return true;
+  if (!isAllowedCustomAvatarUrl(url)) return false;
+  if (!isVercelBlobCustomUrl(url)) return true;
+  return isOwnedCustomAvatarUrl(url, actingUserId);
 }
 
 /** Resolve board/card avatar URL for trainer, Pokémon, or custom uploads. */

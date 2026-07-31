@@ -20,8 +20,8 @@ import {
 import { sanitizeHandle } from "@/lib/handles";
 import {
   CUSTOM_AVATAR_PREFIX,
+  canUseCustomAvatarUrl,
   customAvatarKey,
-  isOwnedCustomAvatarUrl,
   parseAvatarKey,
 } from "@/lib/sprites";
 import {
@@ -609,7 +609,7 @@ export async function updateTrainerBoardAction(input: {
         const current = parseAvatarKey(trainer.avatarSpriteKey);
         const alreadySaved =
           current.kind === "custom" && current.url === avatar.url;
-        if (!alreadySaved && !isOwnedCustomAvatarUrl(avatar.url, userId)) {
+        if (!canUseCustomAvatarUrl(avatar.url, userId, alreadySaved)) {
           return { ok: false, error: "Invalid custom avatar" };
         }
         data.avatarSpriteKey = customAvatarKey(avatar.url);
