@@ -550,14 +550,14 @@ button:disabled,
   --avatar-bg-stage: url("/textures/avatar-bgs/spark.svg?v=4");
 }
 
-/* Custom uploads fill the portrait box like the curated plates do. */
+/* Custom uploads — contain so the plate sits under the sprite like curated stages. */
 .avatar-portrait[data-avatar-bg="custom"] {
   background: transparent;
 }
 
 .avatar-portrait[data-avatar-bg="custom"]::before {
   inset: 0;
-  background: var(--avatar-bg-custom) center / cover no-repeat;
+  background: var(--avatar-bg-custom) center bottom / contain no-repeat;
   opacity: 0.88;
   filter: none;
 }

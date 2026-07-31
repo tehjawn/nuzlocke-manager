@@ -47,9 +47,10 @@ export function AvatarPortrait({
     : undefined;
   const src = avatarImageUrl(avatarSpriteKey);
   const stillSrc = avatarStillImageUrl(avatarSpriteKey);
-  const imgClass = `${avatarImageClassName(avatarSpriteKey, "relative z-1 h-full w-full")}${
-    imgClassName ? ` ${imgClassName}` : ""
-  }`;
+  const imgClass = `${avatarImageClassName(
+    avatarSpriteKey,
+    "relative z-1 h-full w-full max-h-full max-w-full object-contain",
+  )}${imgClassName ? ` ${imgClassName}` : ""}`;
 
   return (
     <span
@@ -60,7 +61,7 @@ export function AvatarPortrait({
       style={style}
     >
       {stillSrc ? (
-        <picture key={avatarSpriteKey}>
+        <picture key={avatarSpriteKey} className="contents">
           <source
             srcSet={stillSrc}
             media="(prefers-reduced-motion: reduce)"

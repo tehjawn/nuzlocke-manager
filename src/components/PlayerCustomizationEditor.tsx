@@ -145,22 +145,25 @@ export function PlayerCustomizationEditor({
 
   const thumbs: Record<CustomizationTab, ReactNode> = {
     portrait: (
-      <AvatarPortrait
-        avatarSpriteKey={avatarSpriteKey}
-        sizeClass="h-10 w-10"
-        width={40}
-        height={40}
-      />
+      <span className="flex h-10 w-10 items-end justify-center overflow-hidden rounded-md border border-frame/70 bg-surface-2/80 p-0.5">
+        <AvatarPortrait
+          avatarSpriteKey={avatarSpriteKey}
+          sizeClass="h-full w-full"
+          width={40}
+          height={40}
+        />
+      </span>
     ),
     stage: (
-      <AvatarPortrait
-        avatarSpriteKey={avatarSpriteKey}
-        backgroundKey={avatarBackgroundKey}
-        sizeClass="h-10 w-10"
-        width={40}
-        height={40}
-        className="overflow-hidden rounded-md"
-      />
+      <span className="flex h-10 w-10 items-end justify-center overflow-hidden rounded-md border border-frame/70 bg-surface-2/80 p-0.5">
+        <AvatarPortrait
+          avatarSpriteKey={avatarSpriteKey}
+          backgroundKey={avatarBackgroundKey}
+          sizeClass="h-full w-full"
+          width={40}
+          height={40}
+        />
+      </span>
     ),
     card: (
       <span
