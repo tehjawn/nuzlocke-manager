@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Modal } from "@/components/Modal";
-import { CTA_SECONDARY } from "@/lib/cta";
+import { CTA_PRIMARY, CTA_SECONDARY } from "@/lib/cta";
 
 type Shot = {
   src: string;
@@ -40,7 +40,7 @@ const STEPS: Shot[] = [
     height: 997,
     title: "Export the save state",
     blurb:
-      "Open the save state’s menu and choose Export. That file is what you’ll import on your trainer board.",
+      "Right-click the save state to open its menu, then choose Export. That downloads the .sav / .srm file you’ll import on your trainer board.",
   },
 ];
 
@@ -65,30 +65,45 @@ export function SaveExportGuide() {
         onClose={() => setOpen(false)}
         size="md"
       >
-        <ol className="space-y-6">
-          {STEPS.map((step, index) => (
-            <li key={step.src} className="space-y-3">
-              <div>
-                <h3 className="text-sm font-bold tracking-tight text-ink">
-                  {index + 1}. {step.title}
-                </h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted">
-                  {step.blurb}
-                </p>
-              </div>
-              <figure className="overflow-hidden rounded-lg border border-frame bg-surface-2">
-                <Image
-                  src={step.src}
-                  alt={step.alt}
-                  width={step.width}
-                  height={step.height}
-                  className="h-auto w-full"
-                  sizes="(max-width: 640px) 100vw, 36rem"
-                />
-              </figure>
-            </li>
-          ))}
-        </ol>
+        <div className="space-y-6">
+          <ol className="space-y-6">
+            {STEPS.map((step, index) => (
+              <li key={step.src} className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-bold tracking-tight text-ink">
+                    {index + 1}. {step.title}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">
+                    {step.blurb}
+                  </p>
+                </div>
+                <figure className="overflow-hidden rounded-lg border border-frame bg-surface-2">
+                  <Image
+                    src={step.src}
+                    alt={step.alt}
+                    width={step.width}
+                    height={step.height}
+                    className="h-auto w-full"
+                    sizes="(max-width: 640px) 100vw, 36rem"
+                  />
+                </figure>
+              </li>
+            ))}
+          </ol>
+
+          <div className="space-y-2 border-t border-frame/40 pt-5">
+            <button
+              type="button"
+              className={CTA_PRIMARY}
+              onClick={() => setOpen(false)}
+            >
+              Got it!
+            </button>
+            <p className="text-sm leading-relaxed text-muted">
+              Still don&apos;t get it? Message Oubori, jawn, or chedda!
+            </p>
+          </div>
+        </div>
       </Modal>
     </>
   );

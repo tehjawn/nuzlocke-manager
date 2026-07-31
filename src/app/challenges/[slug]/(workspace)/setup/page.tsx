@@ -112,25 +112,50 @@ export default async function SetupPage({ params }: PageProps) {
 
         <li>
           <Frame title="2. Load the ROM in Afterplay">
-            <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
-              <li>
-                Sign up / log in at{" "}
-                <a
-                  href={AFTERPLAY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-accent-deep underline-offset-2 hover:underline"
+            <ol className="overflow-hidden rounded-lg border border-frame/45 bg-surface/70 text-sm">
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                  aria-hidden
                 >
-                  afterplay.io
-                </a>
-                .
+                  1
+                </span>
+                <span className="text-muted">
+                  Sign up / log in at{" "}
+                  <a
+                    href={AFTERPLAY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                  >
+                    afterplay.io
+                  </a>
+                  .
+                </span>
               </li>
-              <li>
-                Add a Game Boy Advance game and upload the ROM you downloaded.
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  2
+                </span>
+                <span className="text-muted">
+                  Add a Game Boy Advance game and upload the ROM you
+                  downloaded.
+                </span>
               </li>
-              <li>
-                Open the game from your Afterplay library when you&apos;re ready
-                to play.
+              <li className="flex gap-3 px-3 py-2.5">
+                <span
+                  className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  3
+                </span>
+                <span className="text-muted">
+                  Open the game from your Afterplay library when you&apos;re
+                  ready to play.
+                </span>
               </li>
             </ol>
             <a
@@ -195,37 +220,53 @@ export default async function SetupPage({ params }: PageProps) {
                 board to sync party, boxes, and R.I.P.
               </p>
               <SaveExportGuide />
-              <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
-                <li>
-                  {session?.user ? (
-                    <>
-                      Open{" "}
-                      <Link
-                        href={trainerHref}
-                        className="font-bold text-accent-deep underline-offset-2 hover:underline"
-                      >
-                        your trainer board
-                      </Link>{" "}
-                      and use{" "}
-                      <span className="font-bold text-ink">Import save</span>.
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        href="/login"
-                        className="font-bold text-accent-deep underline-offset-2 hover:underline"
-                      >
-                        Sign in with Discord
-                      </Link>
-                      , open your trainer board, and use{" "}
-                      <span className="font-bold text-ink">Import save</span>.
-                    </>
-                  )}
+              <ol className="overflow-hidden rounded-lg border border-frame/45 bg-surface/70 text-sm">
+                <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                  <span
+                    className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                    aria-hidden
+                  >
+                    1
+                  </span>
+                  <span className="text-muted">
+                    {session?.user ? (
+                      <>
+                        Open{" "}
+                        <Link
+                          href={trainerHref}
+                          className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                        >
+                          your trainer board
+                        </Link>{" "}
+                        and use{" "}
+                        <span className="font-bold text-ink">Import save</span>.
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          href="/login"
+                          className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                        >
+                          Sign in with Discord
+                        </Link>
+                        , open your trainer board, and use{" "}
+                        <span className="font-bold text-ink">Import save</span>.
+                      </>
+                    )}
+                  </span>
                 </li>
-                <li>
-                  Review the mapped party → Main Squad, boxes → Reserves,
-                  fainted → R.I.P., then apply. You can re-import as the run
-                  progresses.
+                <li className="flex gap-3 px-3 py-2.5">
+                  <span
+                    className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                    aria-hidden
+                  >
+                    2
+                  </span>
+                  <span className="text-muted">
+                    Review the mapped party → Main Squad, boxes → Reserves,
+                    fainted → R.I.P., then apply. You can re-import as the run
+                    progresses.
+                  </span>
                 </li>
               </ol>
               {session?.user ? (
