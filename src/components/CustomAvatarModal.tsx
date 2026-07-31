@@ -114,8 +114,8 @@ export function CustomAvatarModal({
       }
     >
       <p className="mb-4 text-sm text-muted">
-        Upload a square-ish PNG, JPEG, WebP, or GIF (max 2 MB). We’ll resize it
-        to a compact avatar before saving.
+        Upload a square-ish PNG, JPEG, WebP, or GIF. We’ll optimize it to at
+        most 1000×1000 pixels and 5 MB before saving. Animated GIFs are kept.
       </p>
 
       <input
@@ -160,11 +160,11 @@ export function CustomAvatarModal({
         </span>
       </button>
 
-      {error ? (
+      {error && (
         <p className="mt-3 text-sm font-medium text-danger" role="alert">
           {error}
         </p>
-      ) : null}
+      )}
     </Modal>
   );
 }

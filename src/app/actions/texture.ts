@@ -5,10 +5,13 @@ import { requireUserId } from "@/lib/permissions";
 import {
   customTextureKey,
   isAllowedTextureMime,
-  TEXTURE_MAX_UPLOAD_BYTES,
   textureBlobFolder,
   type TextureKind,
 } from "@/lib/custom-texture";
+import {
+  validateImageUpload,
+  versionBlobUrl,
+} from "@/lib/server-image-upload";
 
 export type UploadCustomTextureResult =
   | { ok: true; textureKey: string }
@@ -44,32 +47,31 @@ export async function uploadCustomTextureAction(
     if (!isAllowedTextureMime(file.type)) {
       return { ok: false, error: "Use a PNG, JPEG, WebP, or GIF image" };
     }
-    if (file.size > TEXTURE_MAX_UPLOAD_BYTES) {
-      return { ok: false, error: "Image must be 2 MB or smaller" };
+    const validationError = await validateImageUpload(file, {
+      allowAnimation: false,
+    });
+    if (validationError) {
+      return { ok: false, error: validationError };
     }
-
-    const ext =
-      file.type === "image/png"
-        ? "png"
-        : file.type === "image/jpeg"
-          ? "jpg"
-          : file.type === "image/gif"
-            ? "gif"
-            : "webp";
 
     const basename = kind === "avatar-bg" ? "backdrop" : "card";
     const blob = await put(
-      `${textureBlobFolder(kind)}/${userId}/${basename}.${ext}`,
+      `${textureBlobFolder(kind)}/${userId}/${basename}`,
       file,
       {
         access: "public",
-        addRandomSuffix: true,
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        cacheControlMaxAge: 60,
         contentType: file.type,
         token,
       },
     );
 
-    return { ok: true, textureKey: customTextureKey(blob.url) };
+    return {
+      ok: true,
+      textureKey: customTextureKey(versionBlobUrl(blob.url)),
+    };
   } catch (error) {
     return {
       ok: false,

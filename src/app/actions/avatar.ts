@@ -2,10 +2,11 @@
 
 import { put } from "@vercel/blob";
 import { requireUserId } from "@/lib/permissions";
+import { isAllowedAvatarMime } from "@/lib/avatar-upload";
 import {
-  AVATAR_MAX_UPLOAD_BYTES,
-  isAllowedAvatarMime,
-} from "@/lib/avatar-upload";
+  validateImageUpload,
+  versionBlobUrl,
+} from "@/lib/server-image-upload";
 import { customAvatarKey } from "@/lib/sprites";
 
 export type UploadCustomAvatarResult =
@@ -34,27 +35,26 @@ export async function uploadCustomAvatarAction(
     if (!isAllowedAvatarMime(file.type)) {
       return { ok: false, error: "Use a PNG, JPEG, WebP, or GIF image" };
     }
-    if (file.size > AVATAR_MAX_UPLOAD_BYTES) {
-      return { ok: false, error: "Image must be 2 MB or smaller" };
+    const validationError = await validateImageUpload(file, {
+      allowAnimation: true,
+    });
+    if (validationError) {
+      return { ok: false, error: validationError };
     }
 
-    const ext =
-      file.type === "image/png"
-        ? "png"
-        : file.type === "image/jpeg"
-          ? "jpg"
-          : file.type === "image/gif"
-            ? "gif"
-            : "webp";
-
-    const blob = await put(`avatars/${userId}/avatar.${ext}`, file, {
+    const blob = await put(`avatars/${userId}/avatar`, file, {
       access: "public",
-      addRandomSuffix: true,
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      cacheControlMaxAge: 60,
       contentType: file.type,
       token,
     });
 
-    return { ok: true, avatarSpriteKey: customAvatarKey(blob.url) };
+    return {
+      ok: true,
+      avatarSpriteKey: customAvatarKey(versionBlobUrl(blob.url)),
+    };
   } catch (error) {
     return {
       ok: false,
