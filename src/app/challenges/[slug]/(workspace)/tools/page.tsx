@@ -75,6 +75,9 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
       : redactTrainerCompetitiveDetails(trainer),
   );
 
+  const myTrainerId =
+    challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
+
   const initialTool = resolveTool(tool, tab, Boolean(a || b));
   const dexIdRaw = id != null ? Number(id) : NaN;
   const initialDexId =
@@ -89,6 +92,8 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         challengeName={challenge.name}
         trainers={trainers}
         badges={challenge.badges}
+        myTrainerId={myTrainerId}
+        signedIn={Boolean(session?.user)}
         initialTool={initialTool}
         initialCompareA={a}
         initialCompareB={b}

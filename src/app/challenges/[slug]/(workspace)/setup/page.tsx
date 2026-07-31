@@ -87,9 +87,9 @@ export default async function SetupPage({ params }: PageProps) {
         <li>
           <Frame title="1. Download the ROM">
             <p className="text-sm leading-relaxed text-muted">
-              Grab the Trash Pack Emerald ROM from Google Drive. This build is
-              already set up for the season (including the Gen&nbsp;1–4 Nuzlocke
-              toolkit and 2× experience).
+              Grab the Trash Pack ROM from Google Drive. This build is already
+              set up for the season (including Gen&nbsp;1–3 + extras, totaling
+              423 Pokémon).
             </p>
             <a
               href={ROM_DOWNLOAD_URL}

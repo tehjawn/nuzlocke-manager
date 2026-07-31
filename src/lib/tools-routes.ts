@@ -8,7 +8,7 @@ export const TOOLS_CATALOG: ReadonlyArray<{
   {
     id: "pokedex",
     title: "Pokédex",
-    blurb: "Search species — sprite, typing, base stats, matchups, and a quick counter tip.",
+    blurb: "Search species — sprite, typing, base stats, matchups, and counters from your Main + Reserve.",
   },
   {
     id: "chart",

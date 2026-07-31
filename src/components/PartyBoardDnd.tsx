@@ -46,6 +46,7 @@ import {
   type BoardItems,
   type DndSlot,
 } from "@/lib/pokemon-board-dnd";
+import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 
 export type RelocateUpdate = {
   id: string;
@@ -372,6 +373,9 @@ export function PartyBoardDnd({
   // dnd-kit otherwise assigns its accessibility ID from a module-level counter,
   // which can differ between SSR and client hydration.
   const dndContextId = useId();
+  const coarsePointer = useCoarsePointer();
+  // Touch / phone UX fights scroll and accidental drags — tap-only there.
+  const rearrangeDisabled = coarsePointer;
   const [items, setItems] = useState<BoardItems>(() => buildBoardItems(pokemon));
   const itemsRef = useRef(items);
   const aliveRef = useRef(true);
@@ -393,7 +397,9 @@ export function PartyBoardDnd({
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: rearrangeDisabled ? Number.MAX_SAFE_INTEGER : 8 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -464,6 +470,7 @@ export function PartyBoardDnd({
   }
 
   function handleDragStart(event: DragStartEvent) {
+    if (rearrangeDisabled) return;
     const id = String(event.active.id);
     if (isEmptyMainId(id)) return;
     if (
@@ -476,6 +483,7 @@ export function PartyBoardDnd({
   }
 
   function handleDragOver(event: DragOverEvent) {
+    if (rearrangeDisabled) return;
     const { active, over } = event;
     if (!over) return;
 
@@ -494,6 +502,10 @@ export function PartyBoardDnd({
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    if (rearrangeDisabled) {
+      setActiveId(null);
+      return;
+    }
     const { active, over } = event;
     // Pointer sensors still emit a click after drag — don't open the modal.
     suppressNextClick();
@@ -541,6 +553,10 @@ export function PartyBoardDnd({
   }
 
   function handleDragCancel() {
+    if (rearrangeDisabled) {
+      setActiveId(null);
+      return;
+    }
     suppressNextClick();
     setActiveId(null);
     commitItems(buildBoardItems(pokemon));
@@ -548,6 +564,7 @@ export function PartyBoardDnd({
 
   const reservesCount = items.RESERVE.length;
   const graveyardCount = items.GRAVEYARD.length;
+  const mainDragDisabled = rearrangeDisabled || mainSquadLocked;
 
   return (
     <DndContext
@@ -561,13 +578,15 @@ export function PartyBoardDnd({
     >
       <div className="space-y-6">
         <Frame title="Main Squad">
-          <SlotSectionDroppable id="MAIN" disabled={mainSquadLocked}>
+          <SlotSectionDroppable id="MAIN" disabled={mainDragDisabled}>
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-muted">
                   {mainSquadLocked
                     ? "Main Squad is locked. Tap a Pokémon to view."
-                    : "Drag to reorder or move between sections. Tap to view or edit; empty slots to add."}
+                    : rearrangeDisabled
+                      ? "Tap a Pokémon to view or edit; empty slots to add."
+                      : "Drag to reorder or move between sections. Tap to view or edit; empty slots to add."}
                 </p>
                 {mainActions}
               </div>
@@ -577,7 +596,7 @@ export function PartyBoardDnd({
                   items={items.MAIN}
                   pokemonById={pokemonById}
                   fixedSlots={MAIN_PARTY_SIZE}
-                  dragDisabled={mainSquadLocked}
+                  dragDisabled={mainDragDisabled}
                   selectHint="View"
                   onSelect={onSelect}
                   onSelectEmpty={onSelectEmptyMain}
@@ -589,13 +608,17 @@ export function PartyBoardDnd({
         </Frame>
 
         <Frame title="The Reserves">
-          <SlotSectionDroppable id="RESERVE">
+          <SlotSectionDroppable id="RESERVE" disabled={rearrangeDisabled}>
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-muted">
                   {reservesCount === 0
-                    ? "No reserves yet — drag a Pokémon here."
-                    : "Drag to reorder or move. Tap a Pokémon to view or edit."}
+                    ? rearrangeDisabled
+                      ? "No reserves yet."
+                      : "No reserves yet — drag a Pokémon here."
+                    : rearrangeDisabled
+                      ? "Tap a Pokémon to view or edit."
+                      : "Drag to reorder or move. Tap a Pokémon to view or edit."}
                 </p>
                 {reservesActions}
               </div>
@@ -604,13 +627,16 @@ export function PartyBoardDnd({
                   slot="RESERVE"
                   items={items.RESERVE}
                   pokemonById={pokemonById}
+                  dragDisabled={rearrangeDisabled}
                   selectHint="View"
                   onSelect={onSelect}
                   shouldSuppressClick={consumeSuppressClick}
                 />
               ) : (
                 <p className="rounded-lg border border-dashed border-frame/40 px-3 py-6 text-center text-sm text-muted">
-                  Drop Pokémon here for the reserves.
+                  {rearrangeDisabled
+                    ? "Reserves will show up here."
+                    : "Drop Pokémon here for the reserves."}
                 </p>
               )}
             </div>
@@ -618,13 +644,17 @@ export function PartyBoardDnd({
         </Frame>
 
         <Frame title="R.I.P." tone="rip">
-          <SlotSectionDroppable id="GRAVEYARD">
+          <SlotSectionDroppable id="GRAVEYARD" disabled={rearrangeDisabled}>
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-muted">
                   {graveyardCount === 0
-                    ? "Memorial is empty — drag a fallen Pokémon here."
-                    : "Drag to reorder or move. Tap a Pokémon to view or edit."}
+                    ? rearrangeDisabled
+                      ? "Memorial is empty."
+                      : "Memorial is empty — drag a fallen Pokémon here."
+                    : rearrangeDisabled
+                      ? "Tap a Pokémon to view or edit."
+                      : "Drag to reorder or move. Tap a Pokémon to view or edit."}
                 </p>
                 {graveyardActions}
               </div>
@@ -634,13 +664,16 @@ export function PartyBoardDnd({
                   items={items.GRAVEYARD}
                   pokemonById={pokemonById}
                   memorial
+                  dragDisabled={rearrangeDisabled}
                   selectHint="View"
                   onSelect={onSelect}
                   shouldSuppressClick={consumeSuppressClick}
                 />
               ) : (
                 <p className="rounded-lg border border-dashed border-frame/40 px-3 py-6 text-center text-sm text-muted">
-                  Drop fallen Pokémon here.
+                  {rearrangeDisabled
+                    ? "Fallen Pokémon will show up here."
+                    : "Drop fallen Pokémon here."}
                 </p>
               )}
             </div>

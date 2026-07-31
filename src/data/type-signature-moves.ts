@@ -118,15 +118,3 @@ export function signatureMovesForTypes(
   }
   return out;
 }
-
-/** Prefer a Special or Physical pick matching the attacker’s stronger offense. */
-export function pickCounterMove(
-  attackType: PokemonType,
-  preferPhysical: boolean,
-): { name: string; category: "Physical" | "Special" } {
-  const list = TYPE_SIGNATURE_MOVES[attackType];
-  const preferred = list.find((m) =>
-    preferPhysical ? m.category === "Physical" : m.category === "Special",
-  );
-  return preferred ?? list[0]!;
-}
