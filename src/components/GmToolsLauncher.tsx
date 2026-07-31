@@ -3,7 +3,6 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  useEffect,
   useId,
   useRef,
   useState,
@@ -14,6 +13,7 @@ import { createPortal } from "react-dom";
 import { gmResetAllTrainerBoardsAction } from "@/app/actions/challenge";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { writeGmLensOnClient } from "@/lib/gm-lens";
+import { useMediaQuery } from "@/lib/use-media-query";
 
 type GmToolsLauncherProps = {
   slug: string;
@@ -40,11 +40,8 @@ export function GmToolsLauncher({
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
-  const [isDesktop, setIsDesktop] = useState(() =>
-    typeof window !== "undefined"
-      ? window.matchMedia("(min-width: 640px)").matches
-      : false,
-  );
+  const isDesktop = useMediaQuery("(min-width: 640px)", false);
+  const [seenDesktop, setSeenDesktop] = useState(isDesktop);
   const [seenPath, setSeenPath] = useState(pathname);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -65,34 +62,16 @@ export function GmToolsLauncher({
     setOn(initialOn);
   }
 
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 640px)");
-    const sync = () => {
-      setIsDesktop(mq.matches);
-      setOpen(false);
-    };
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
+  // Close when crossing the desktop/mobile layout breakpoint.
+  if (seenDesktop !== isDesktop) {
+    setSeenDesktop(isDesktop);
+    if (open) setOpen(false);
+  }
 
-  useEffect(() => {
-    if (!open) return;
-    const trigger = triggerRef.current;
-    panelRef.current?.focus();
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        setOpen(false);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      trigger?.focus();
-    };
-  }, [open]);
+  function closePanel() {
+    setOpen(false);
+    queueMicrotask(() => triggerRef.current?.focus());
+  }
 
   function setGmView(next: boolean) {
     if (next === on) return;
@@ -104,6 +83,11 @@ export function GmToolsLauncher({
   }
 
   function onPanelKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closePanel();
+      return;
+    }
     if (e.key !== "Tab") return;
     const focusables = panelRef.current?.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), [role="switch"]:not([disabled])',
@@ -125,7 +109,7 @@ export function GmToolsLauncher({
       const ok = await confirm({
         title: "Reset all trainer boards?",
         description:
-          "Clears every trainer’s party, memorial, badges, wipe counts, and revive tokens for an official season start. Profiles and claims stay. Export a backup from the GM console first if needed.",
+          "Clears every trainer’s party, memorial, badges, wipe counts, and revive tokens for an official season start. A history snapshot is saved for each board first. Profiles and claims stay. Export a backup from the GM console if needed.",
         confirmLabel: "Reset all boards",
         tone: "danger",
       });
@@ -160,7 +144,7 @@ export function GmToolsLauncher({
         <button
           type="button"
           aria-label="Close GM tools"
-          onClick={() => setOpen(false)}
+          onClick={closePanel}
           className="gm-tools-panel__close"
         >
           Close
@@ -237,6 +221,7 @@ export function GmToolsLauncher({
                 role="dialog"
                 aria-labelledby={titleId}
                 tabIndex={-1}
+                autoFocus
                 onKeyDown={onPanelKeyDown}
                 className={panelClassName}
               >
@@ -269,7 +254,7 @@ export function GmToolsLauncher({
               tabIndex={-1}
               aria-label="Close GM tools"
               className="fixed inset-0 z-[39] cursor-default bg-transparent"
-              onClick={() => setOpen(false)}
+              onClick={closePanel}
             />,
             document.body,
           )
@@ -281,7 +266,7 @@ export function GmToolsLauncher({
               <button
                 type="button"
                 aria-label="Close GM tools"
-                onClick={() => setOpen(false)}
+                onClick={closePanel}
                 className="absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px] motion-safe:animate-[drawer-scrim-in_200ms_ease-out]"
               />
               <div
@@ -291,6 +276,7 @@ export function GmToolsLauncher({
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
+                autoFocus
                 onKeyDown={onPanelKeyDown}
                 className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-hidden pb-[env(safe-area-inset-bottom,0px)] outline-none motion-safe:animate-[sheet-up-in_240ms_cubic-bezier(0.22,1,0.36,1)]"
               >

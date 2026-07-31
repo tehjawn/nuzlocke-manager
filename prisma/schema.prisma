@@ -52,6 +52,13 @@ enum ActivityType {
   WIPE
 }
 
+/// Why a trainer board snapshot was taken (pre-mutation boundary).
+enum BoardSnapshotTrigger {
+  IMPORT
+  WIPE
+  GM_RESET
+}
+
 model User {
   id              String   @id @default(cuid())
   email           String?  @unique
@@ -117,6 +124,7 @@ model Challenge {
   memberships ChallengeMembership[]
   trainers    TrainerProfile[]
   activities  ActivityEvent[]
+  snapshots   TrainerBoardSnapshot[]
   tournament  Tournament?
 }
 
@@ -195,6 +203,7 @@ model TrainerProfile {
   badges     BadgeProgress[]
   pokemon    PokemonEntry[]
   activities ActivityEvent[]
+  snapshots  TrainerBoardSnapshot[]
   matchAsA   TournamentMatch[] @relation("MatchTrainerA")
   matchAsB   TournamentMatch[] @relation("MatchTrainerB")
   matchWins  TournamentMatch[] @relation("MatchWinner")
@@ -202,6 +211,26 @@ model TrainerProfile {
   @@unique([challengeId, handle])
   @@index([challengeId, sortOrder])
   @@index([userId])
+}
+
+/// Point-in-time board copy taken before import / wipe / GM reset.
+/// Survives hard clears of live PokemonEntry / BadgeProgress rows.
+model TrainerBoardSnapshot {
+  id          String               @id @default(cuid())
+  challengeId String
+  trainerId   String
+  actorId     String?
+  trigger     BoardSnapshotTrigger
+  label       String?
+  /// { wipeCount, reviveUsed, mainSquadLocked, earnedBadgeKeys, pokemon[] }
+  payload     Json
+  createdAt   DateTime             @default(now())
+
+  challenge Challenge     @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  trainer   TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@index([trainerId, createdAt])
+  @@index([challengeId, createdAt])
 }
 
 model BadgeProgress {

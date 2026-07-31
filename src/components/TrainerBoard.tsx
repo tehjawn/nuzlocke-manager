@@ -17,6 +17,7 @@ import { AvatarPicker } from "@/components/AvatarPicker";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
+import { BoardHistoryModal } from "@/components/BoardHistoryModal";
 import { CardBackgroundPicker } from "@/components/CardBackgroundPicker";
 import { Frame } from "@/components/Frame";
 import {
@@ -172,6 +173,36 @@ function ResetBoardIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
       />
       <path
         d="M5 11.5 11 4.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function BoardHistoryIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M3.5 2.5h6.2L12.5 5.3v8.2H3.5V2.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.5 2.5V5.5h3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.5 8.5h5M5.5 11h3.5"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
@@ -516,6 +547,7 @@ export function TrainerBoard({
     null,
   );
   const [saveImportOpen, setSaveImportOpen] = useState(false);
+  const [boardHistoryOpen, setBoardHistoryOpen] = useState(false);
   const searchParams = useSearchParams();
   const jumpPokemonId = searchParams.get("pokemon");
   const [openedJumpPokemonId, setOpenedJumpPokemonId] = useState<string | null>(
@@ -734,7 +766,7 @@ export function TrainerBoard({
           Clears Main Squad, Reserves, and Encountered, and resets badges. R.I.P.
           memorial, revive token, and your profile (name, avatar, backdrops,
           status) stay. Locked Main Squad unlocks so you can rebuild. This counts
-          as wipe #{nextWipe}.
+          as wipe #{nextWipe}. A board history snapshot is saved for GMs first.
         </>
       ),
       confirmLabel: "Record wipe",
@@ -779,8 +811,8 @@ export function TrainerBoard({
         <>
           GM hard reset: clears Main, Reserves, Encountered, and R.I.P. memorial,
           and resets badges, wipe count, and revive token. Profile stays (name,
-          avatar, backdrops, status). Use for an official fresh start — not a
-          mid-run wipe.
+          avatar, backdrops, status). A board history snapshot is saved first.
+          Use for an official fresh start — not a mid-run wipe.
         </>
       ),
       confirmLabel: "Reset board",
@@ -937,6 +969,17 @@ export function TrainerBoard({
             >
               <WipeIcon />
               Record wipe
+            </button>
+          ) : null}
+          {isGm && !isDemo ? (
+            <button
+              type="button"
+              disabled={pending || wiping}
+              className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+              onClick={() => setBoardHistoryOpen(true)}
+            >
+              <BoardHistoryIcon />
+              Board history
             </button>
           ) : null}
           {isGm && !isDemo ? (
@@ -1424,6 +1467,16 @@ export function TrainerBoard({
               ) : null}
               {isGm && !isDemo ? (
                 <ShortcutActionTile
+                  label="Board history"
+                  icon={<BoardHistoryIcon className="h-4 w-4" />}
+                  tone="neutral"
+                  disabled={pending || wiping}
+                  title="GM-only past boards"
+                  onClick={() => setBoardHistoryOpen(true)}
+                />
+              ) : null}
+              {isGm && !isDemo ? (
+                <ShortcutActionTile
                   label="Reset board"
                   icon={<ResetBoardIcon className="h-4 w-4" />}
                   tone="danger"
@@ -1560,6 +1613,17 @@ export function TrainerBoard({
               }
             });
           }}
+        />
+      ) : null}
+
+      {isGm && !isDemo && boardHistoryOpen ? (
+        <BoardHistoryModal
+          open
+          onClose={() => setBoardHistoryOpen(false)}
+          trainerId={trainer.id}
+          trainerHandle={trainer.handle}
+          badges={badges}
+          showCompetitiveDetails={showCompetitiveDetails}
         />
       ) : null}
 
