@@ -125,7 +125,7 @@ export function GmToolsLauncher({
       const ok = await confirm({
         title: "Reset all trainer boards?",
         description:
-          "Clears every trainer’s party, memorial, badges, wipe counts, and revive tokens for an official season start. Claims stay. Export a backup from the GM console first if needed.",
+          "Clears every trainer’s party, memorial, badges, wipe counts, and revive tokens for an official season start. Profiles and claims stay. Export a backup from the GM console first if needed.",
         confirmLabel: "Reset all boards",
         tone: "danger",
       });

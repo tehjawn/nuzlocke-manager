@@ -526,7 +526,8 @@ export async function updateTrainerBoardAction(input: {
   }
 }
 
-/** Restart the living run: clear playable slots + badges, keep memorial/revive. */
+/** Restart the living run: clear playable slots + badges, keep memorial/revive
+ *  and player identity (handle, avatar, backdrops, status). */
 export async function recordWipeAction(input: {
   trainerId: string;
 }): Promise<ActionResult> {
@@ -552,8 +553,6 @@ export async function recordWipeAction(input: {
         where: { id: trainer.id },
         data: {
           wipeCount: { increment: 1 },
-          statusText: null,
-          statusEmoji: null,
           // Living board is empty — unlock so the run can be rebuilt.
           mainSquadLocked: false,
         },
@@ -590,9 +589,9 @@ type TxClient = Parameters<
 >[0];
 
 /**
- * Official clean start for one trainer: clear every slot (including memorial),
- * badges, wipe counter, and revive — unlike recordWipe which keeps graves/revive
- * and increments wipeCount.
+ * Official clean start for one trainer: clear run progress (every Pokémon slot
+ * including memorial, badges, wipe counter, revive, main lock). Keeps player
+ * identity: handle, real name, avatar, backdrops, and status.
  */
 async function hardResetTrainerInTx(
   tx: TxClient,
@@ -608,8 +607,6 @@ async function hardResetTrainerInTx(
     data: {
       wipeCount: 0,
       reviveUsed: false,
-      statusText: null,
-      statusEmoji: null,
       mainSquadLocked: false,
     },
   });

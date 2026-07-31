@@ -726,15 +726,15 @@ export function TrainerBoard({
   async function recordWipe() {
     const nextWipe = wipeCount + 1;
     const previousBadges = earnedBadgeKeys;
-    const previousCommitted = committed;
     const previousBoard = boardOverride;
     const ok = await confirm({
       title: "Restart this run?",
       description: (
         <>
           Clears Main Squad, Reserves, and Encountered, and resets badges. R.I.P.
-          memorial and your revive token stay. Locked Main Squad unlocks so you can
-          rebuild. This counts as wipe #{nextWipe}.
+          memorial, revive token, and your profile (name, avatar, backdrops,
+          status) stay. Locked Main Squad unlocks so you can rebuild. This counts
+          as wipe #{nextWipe}.
         </>
       ),
       confirmLabel: "Record wipe",
@@ -749,13 +749,6 @@ export function TrainerBoard({
       pokemon: boardPokemon.filter((p) => p.slot === "GRAVEYARD"),
       mainSquadLocked: false,
     });
-    setCommitted((prev) => ({
-      ...prev,
-      statusText: "",
-      statusEmoji: null,
-    }));
-    setStatusText("");
-    setStatusEmoji(null);
     setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
@@ -769,9 +762,6 @@ export function TrainerBoard({
       } else {
         setBoardOverride(previousBoard);
         setEarnedBadgeKeys(previousBadges);
-        setCommitted(previousCommitted);
-        setStatusText(previousCommitted.statusText);
-        setStatusEmoji(previousCommitted.statusEmoji);
         setBadgeEditorKey((k) => k + 1);
         wipeSave.markError(result.error);
       }
@@ -788,8 +778,9 @@ export function TrainerBoard({
       description: (
         <>
           GM hard reset: clears Main, Reserves, Encountered, and R.I.P. memorial,
-          resets badges, wipe count, and revive token. Use this for an official
-          fresh start — not a mid-run wipe.
+          and resets badges, wipe count, and revive token. Profile stays (name,
+          avatar, backdrops, status). Use for an official fresh start — not a
+          mid-run wipe.
         </>
       ),
       confirmLabel: "Reset board",
@@ -806,12 +797,8 @@ export function TrainerBoard({
     });
     setCommitted((prev) => ({
       ...prev,
-      statusText: "",
-      statusEmoji: null,
       reviveUsed: false,
     }));
-    setStatusText("");
-    setStatusEmoji(null);
     setReviveUsed(false);
     setPokemonInspect(null);
     setDetailsPokemon(null);
@@ -827,8 +814,6 @@ export function TrainerBoard({
         setBoardOverride(previousBoard);
         setEarnedBadgeKeys(previousBadges);
         setCommitted(previousCommitted);
-        setStatusText(previousCommitted.statusText);
-        setStatusEmoji(previousCommitted.statusEmoji);
         setReviveUsed(previousRevive);
         setBadgeEditorKey((k) => k + 1);
         resetSave.markError(result.error);

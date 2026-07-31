@@ -284,7 +284,8 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
           <p className="text-sm text-muted">
             Clears every trainer board for an official fresh start: Main,
             Reserves, Encountered, R.I.P. memorial, badges, wipe counters, and
-            revive tokens. Claims and roster seats stay.
+            revive tokens. Claims and profile personalization (name, avatar,
+            backdrops, status) stay.
           </p>
           <button
             type="button"
@@ -296,11 +297,12 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   title: "Reset all trainer boards?",
                   description: (
                     <>
-                      This wipes living parties, memorials, badges, wipe counts,
+                      This clears living parties, memorials, badges, wipe counts,
                       and revive tokens for all {challenge.trainers.length}{" "}
                       trainer
-                      {challenge.trainers.length === 1 ? "" : "s"}. Export a
-                      backup first if you may need the current boards.
+                      {challenge.trainers.length === 1 ? "" : "s"}. Profiles and
+                      claims stay. Export a backup first if you may need the
+                      current boards.
                     </>
                   ),
                   confirmLabel: "Reset all boards",
