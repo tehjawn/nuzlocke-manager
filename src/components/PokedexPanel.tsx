@@ -29,10 +29,10 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import {
-  recommendCounters,
-  recommendMoreCounters,
-  type CounterSuggestion,
-} from "@/lib/pokedex-counter";
+  recommendMoreSquadCounters,
+  recommendSquadCounters,
+  type SquadCounterSuggestion,
+} from "@/lib/pokedex-squad-counter";
 import type { PokemonType } from "@/lib/pokemon-types";
 import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 import {
@@ -47,7 +47,7 @@ import {
   type MatchupMult,
 } from "@/lib/type-matchups";
 import type { PokemonType as ChartType } from "@/lib/type-chart";
-import { pokemonInSlot } from "@/lib/trainer-display";
+import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 import { toolsHref } from "@/lib/tools-routes";
 
 /** Keep the first paint light; scroll loads more. */
@@ -56,12 +56,15 @@ const PAGE_SIZE = 32;
 type PokedexPanelProps = {
   slug: string;
   trainers?: TrainerProfile[];
+  /** Signed-in trainer on this season — Type Tips use their Main + Reserve. */
+  myTrainerId?: string | null;
   initialId?: number | null;
 };
 
 export function PokedexPanel({
   slug,
   trainers = [],
+  myTrainerId = null,
   initialId = null,
 }: PokedexPanelProps) {
   const router = useRouter();
@@ -71,9 +74,25 @@ export function PokedexPanel({
   const [query, setQuery] = useState("");
   const [generation, setGeneration] = useState<number | null>(null);
   const [selected, setSelected] = useState<PokemonIndexEntry | null>(initial);
-  const [tipExcludeIds, setTipExcludeIds] = useState<number[]>([]);
+  const [tipExcludeEntryIds, setTipExcludeEntryIds] = useState<string[]>([]);
   const deferred = useDeferredValue(query);
   const searching = deferred.trim().length > 0;
+
+  const myTrainer = useMemo(
+    () =>
+      myTrainerId
+        ? (trainers.find((t) => t.id === myTrainerId) ?? null)
+        : null,
+    [myTrainerId, trainers],
+  );
+  const tipSquad = useMemo(() => {
+    if (!myTrainer) return [];
+    return [
+      ...pokemonInSlot(myTrainer, "MAIN"),
+      ...pokemonInSlot(myTrainer, "RESERVE"),
+    ];
+  }, [myTrainer]);
+  const tipTrainerLabel = myTrainer ? displayName(myTrainer) : null;
 
   const results = useMemo(() => {
     const hits = searchPokemonIndex(deferred, {
@@ -117,24 +136,26 @@ export function PokedexPanel({
 
   // Defer tip ranking so species selection paints first.
   const deferredSelected = useDeferredValue(selected);
-  const deferredTipExcludeIds = useDeferredValue(tipExcludeIds);
+  const deferredTipExcludeEntryIds = useDeferredValue(tipExcludeEntryIds);
+  const deferredTipSquad = useDeferredValue(tipSquad);
   const typeTips = useMemo(() => {
-    if (!deferredSelected) return [];
+    if (!deferredSelected || deferredTipSquad.length === 0) return [];
     const tipTypes = typesForPokedexId(deferredSelected.pokedexId);
     if (tipTypes.length === 0) return [];
-    return recommendCounters(tipTypes, {
+    return recommendSquadCounters(tipTypes, deferredTipSquad, {
       excludePokedexId: deferredSelected.pokedexId,
-      excludeIds: deferredTipExcludeIds,
+      excludeEntryIds: deferredTipExcludeEntryIds,
       limit: 3,
     });
-  }, [deferredSelected, deferredTipExcludeIds]);
+  }, [deferredSelected, deferredTipExcludeEntryIds, deferredTipSquad]);
   const tipsPending =
     deferredSelected?.pokedexId !== selected?.pokedexId ||
-    deferredTipExcludeIds !== tipExcludeIds;
+    deferredTipExcludeEntryIds !== tipExcludeEntryIds ||
+    deferredTipSquad !== tipSquad;
 
   function selectEntry(entry: PokemonIndexEntry) {
     setSelected(entry);
-    setTipExcludeIds([]);
+    setTipExcludeEntryIds([]);
     startTransition(() => {
       router.replace(
         toolsHref(slug, "pokedex", {
@@ -160,20 +181,20 @@ export function PokedexPanel({
   }
 
   function showMoreTips() {
-    if (!selected || types.length === 0) return;
+    if (!selected || types.length === 0 || tipSquad.length === 0) return;
     const shown = [
-      ...tipExcludeIds,
-      ...typeTips.map((t) => t.pokemon.pokedexId),
+      ...tipExcludeEntryIds,
+      ...typeTips.map((t) => t.entryId),
     ];
-    const next = recommendMoreCounters(types, shown, {
+    const next = recommendMoreSquadCounters(types, tipSquad, shown, {
       excludePokedexId: selected.pokedexId,
       limit: 3,
     });
     if (next.length === 0) {
-      setTipExcludeIds([]);
+      setTipExcludeEntryIds([]);
       return;
     }
-    setTipExcludeIds(shown);
+    setTipExcludeEntryIds(shown);
   }
 
   const scoutTrainers = useMemo(
@@ -391,6 +412,8 @@ export function PokedexPanel({
               stabMoves={stabMoves}
               typeTips={typeTips}
               tipsPending={tipsPending}
+              tipTrainerLabel={tipTrainerLabel}
+              tipSquadCount={tipSquad.length}
               canGoPrev={selectedIndex > 0}
               canGoNext={
                 selectedIndex >= 0 && selectedIndex < results.length - 1
@@ -452,6 +475,8 @@ function PokedexEntry({
   stabMoves,
   typeTips,
   tipsPending,
+  tipTrainerLabel,
+  tipSquadCount,
   canGoPrev,
   canGoNext,
   onPrev,
@@ -465,8 +490,10 @@ function PokedexEntry({
   bst: number | null;
   matchups: ReturnType<typeof defensiveMatchups>;
   stabMoves: ReturnType<typeof signatureMovesForTypes>;
-  typeTips: CounterSuggestion[];
+  typeTips: SquadCounterSuggestion[];
   tipsPending: boolean;
+  tipTrainerLabel: string | null;
+  tipSquadCount: number;
   canGoPrev: boolean;
   canGoNext: boolean;
   onPrev: () => void;
@@ -632,11 +659,12 @@ function PokedexEntry({
             <div>
               <p className="text-sm font-bold tracking-tight">Type tips</p>
               <p className="text-[11px] text-muted">
-                Typing matchups with sample SE moves — not a damage calc or
-                learnset.
+                {tipTrainerLabel
+                  ? `From ${tipTrainerLabel}'s Main + Reserve movesets — not a damage calc.`
+                  : "Sign in and join this season to see counters from your Main + Reserve."}
               </p>
             </div>
-            {types.length > 0 ? (
+            {types.length > 0 && tipSquadCount > 0 ? (
               <button
                 type="button"
                 className="pressable rounded-lg border border-frame bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
@@ -655,7 +683,7 @@ function PokedexEntry({
             >
               {typeTips.map((tip, i) => (
                 <li
-                  key={tip.pokemon.pokedexId}
+                  key={tip.entryId}
                   className="flex flex-col gap-2.5 rounded-lg border border-frame/50 bg-surface-2/80 p-2.5 sm:flex-row sm:items-center"
                 >
                   <div className="flex items-center gap-2.5">
@@ -676,8 +704,16 @@ function PokedexEntry({
                     />
                     <div className="min-w-0">
                       <p className="font-bold leading-tight">
-                        {tip.pokemon.name}
+                        {tip.displayName}
                       </p>
+                      {tip.displayName !== tip.pokemon.name ? (
+                        <p className="text-[11px] text-muted">
+                          {tip.pokemon.name}
+                          {tip.slot === "RESERVE" ? " · Reserve" : ""}
+                        </p>
+                      ) : tip.slot === "RESERVE" ? (
+                        <p className="text-[11px] text-muted">Reserve</p>
+                      ) : null}
                       <div className="mt-0.5 flex flex-wrap gap-1">
                         {tip.types.map((t) => (
                           <TypeBadge key={t} type={t} />
@@ -687,11 +723,12 @@ function PokedexEntry({
                   </div>
                   <div className="min-w-0 flex-1 sm:border-l sm:border-frame/40 sm:pl-3">
                     <p className="text-sm leading-snug">
-                      Sample move:{" "}
+                      Move:{" "}
                       <span className="font-semibold">{tip.moveName}</span>
                       <span className="text-muted">
                         {" "}
-                        ({tip.moveCategory} · {tip.attackType})
+                        ({tip.moveCategory} · {tip.attackType} ·{" "}
+                        {tip.offenseMult}×)
                       </span>
                     </p>
                     <p className="mt-0.5 text-[11px] text-muted">{tip.reason}</p>
@@ -703,7 +740,11 @@ function PokedexEntry({
             <p className="mt-3 text-sm text-muted">
               {tipsPending
                 ? "Ranking type tips…"
-                : "No mid-BST counter tips for this typing."}
+                : !tipTrainerLabel
+                  ? "Sign in to get tips from your board."
+                  : tipSquadCount === 0
+                    ? "Add Pokémon to your Main or Reserve to get tips."
+                    : "None of your Main/Reserve moves look super-effective here."}
             </p>
           ) : null}
         </div>

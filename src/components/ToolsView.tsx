@@ -23,6 +23,8 @@ type ToolsViewProps = {
   challengeName: string;
   trainers: TrainerProfile[];
   badges: BadgeDefinition[];
+  /** Signed-in trainer id for this season (Type Tips / ownership). */
+  myTrainerId?: string | null;
   /** When null, show the Tools directory hub. */
   initialTool?: ToolsId | null;
   initialCompareA?: string | null;
@@ -35,6 +37,7 @@ export function ToolsView({
   challengeName,
   trainers,
   badges,
+  myTrainerId = null,
   initialTool = null,
   initialCompareA = null,
   initialCompareB = null,
@@ -58,6 +61,7 @@ export function ToolsView({
       tool={tool}
       trainers={trainers}
       badges={badges}
+      myTrainerId={myTrainerId}
       initialCompareA={initialCompareA}
       initialCompareB={initialCompareB}
       initialDexId={initialDexId}
@@ -119,6 +123,7 @@ function ToolWorkspace({
   tool,
   trainers,
   badges,
+  myTrainerId,
   initialCompareA,
   initialCompareB,
   initialDexId,
@@ -128,6 +133,7 @@ function ToolWorkspace({
   tool: ToolsId;
   trainers: TrainerProfile[];
   badges: BadgeDefinition[];
+  myTrainerId?: string | null;
   initialCompareA?: string | null;
   initialCompareB?: string | null;
   initialDexId?: number | null;
@@ -137,7 +143,7 @@ function ToolWorkspace({
 
   const blurb =
     tool === "pokedex"
-      ? `Look up species for ${challengeName} — stats, matchups, and a quick counter tip.`
+      ? `Look up species for ${challengeName} — stats, matchups, and counters from your Main + Reserve.`
       : tool === "chart"
         ? `Attack × defense multipliers for ${challengeName}.`
         : `Side-by-side squads and badges for ${challengeName}.`;
@@ -162,6 +168,7 @@ function ToolWorkspace({
         <PokedexPanel
           slug={slug}
           trainers={trainers}
+          myTrainerId={myTrainerId}
           initialId={initialDexId}
         />
       ) : null}

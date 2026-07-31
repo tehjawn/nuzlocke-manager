@@ -572,9 +572,9 @@ const ashKetchum = trainer({
 
 export const trashPack2026: SeedChallenge = {
   slug: "2026-trash-pack",
-  name: "Pokémon Emerald Crest",
+  name: "Pokémon Emerald Modern",
   year: 2026,
-  game: "Pokémon Emerald Crest",
+  game: "Pokémon Emerald Modern",
   description:
     "Trash Pack's 2026 Nuzlocke! Sign in with Discord to join and import your game save file!",
   status: "ACTIVE",
