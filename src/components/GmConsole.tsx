@@ -15,9 +15,16 @@ import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import type { Challenge } from "@/lib/challenge-types";
 import {
+  DEFAULT_ROM_DOWNLOAD_URL,
   fromEasternDatetimeLocalInput,
+  getWelcomeVideoUrl,
   toEasternDatetimeLocalInput,
 } from "@/lib/welcome-video";
+
+const hintLinkClass =
+  "font-medium text-ink underline-offset-2 hover:text-accent-deep hover:underline";
+
+const FALLBACK_WELCOME_VIDEO_URL = getWelcomeVideoUrl();
 
 type ConsoleTab = "season" | "roster" | "rules" | "faq" | "ops";
 
@@ -415,7 +422,25 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   />
                   <span className="gm-console__hint">
                     YouTube, Google Drive, or direct .mp4 shown on Get Started.
-                    Leave blank to use the app env fallback.
+                    Leave blank to use the app env fallback
+                    {FALLBACK_WELCOME_VIDEO_URL ? (
+                      <>
+                        {" "}
+                        (
+                        <a
+                          href={FALLBACK_WELCOME_VIDEO_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={hintLinkClass}
+                        >
+                          open fallback
+                        </a>
+                        )
+                      </>
+                    ) : (
+                      " (none set)"
+                    )}
+                    .
                   </span>
                 </label>
                 <label className="gm-console__field sm:col-span-2">
@@ -429,7 +454,16 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   />
                   <span className="gm-console__hint">
                     Linked from Get Started step 1. Leave blank to use the
-                    built-in Trash Pack Drive link.
+                    built-in Trash Pack Drive link (
+                    <a
+                      href={DEFAULT_ROM_DOWNLOAD_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={hintLinkClass}
+                    >
+                      open fallback
+                    </a>
+                    ).
                   </span>
                 </label>
                 <label className="gm-console__field sm:col-span-2">
