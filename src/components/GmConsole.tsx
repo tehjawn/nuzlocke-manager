@@ -480,8 +480,8 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   />
                   <span className="gm-console__hint">
                     When the Get Started welcome video unlocks for everyone.
-                    Defaults to 9:00 PM Eastern tonight. GMs (and GM view) can
-                    always preview it early.
+                    Defaults to 9:00 PM Eastern tonight. Turn on GM view to
+                    preview it early.
                   </span>
                 </label>
                 <div className="gm-console__actions sm:col-span-2">

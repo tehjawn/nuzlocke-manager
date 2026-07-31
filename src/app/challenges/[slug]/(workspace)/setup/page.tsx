@@ -42,9 +42,9 @@ export default async function SetupPage({ params }: PageProps) {
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
-  // GM role or GM view lens — always preview the welcome video early.
+  // Early preview only when GM view (lens) is on — not merely for having the GM role.
   const gmPreview =
-    Boolean(access?.isGm) || (await readGmLensOn(slug));
+    Boolean(access?.isGm) && (await readGmLensOn(slug));
   const welcomeUrl = resolveSeasonWelcomeVideoUrl(challenge.welcomeVideoUrl);
   const romUrl = resolveSeasonRomUrl(challenge.romUrl);
   const welcomeUnlocked = canViewWelcomeVideo(
