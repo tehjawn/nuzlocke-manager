@@ -1613,7 +1613,9 @@ export async function gmUpdateChallengeMetaAction(input: {
   gmInviteCode?: string;
   description?: string;
   discordWebhookUrl?: string | null;
+  welcomeVideoUrl?: string | null;
   welcomeVideoPublishAt?: string | null;
+  romUrl?: string | null;
 }): Promise<ActionResult> {
   try {
     await requireGm(input.challengeId);
@@ -1669,6 +1671,20 @@ export async function gmUpdateChallengeMetaAction(input: {
       }
     }
 
+    let welcomeVideoUrl: string | null | undefined = undefined;
+    if (input.welcomeVideoUrl !== undefined) {
+      const parsed = parseOptionalHttpsUrl(input.welcomeVideoUrl, "Welcome video");
+      if (!parsed.ok) return parsed;
+      welcomeVideoUrl = parsed.value;
+    }
+
+    let romUrl: string | null | undefined = undefined;
+    if (input.romUrl !== undefined) {
+      const parsed = parseOptionalHttpsUrl(input.romUrl, "ROM");
+      if (!parsed.ok) return parsed;
+      romUrl = parsed.value;
+    }
+
     let welcomeVideoPublishAt: Date | null | undefined = undefined;
     if (input.welcomeVideoPublishAt !== undefined) {
       if (
@@ -1698,9 +1714,11 @@ export async function gmUpdateChallengeMetaAction(input: {
         ...(webhookUrl !== undefined
           ? { discordWebhookUrl: webhookUrl }
           : {}),
+        ...(welcomeVideoUrl !== undefined ? { welcomeVideoUrl } : {}),
         ...(welcomeVideoPublishAt !== undefined
           ? { welcomeVideoPublishAt }
           : {}),
+        ...(romUrl !== undefined ? { romUrl } : {}),
       },
     });
     revalidateChallenge(challenge.slug);
@@ -1710,6 +1728,28 @@ export async function gmUpdateChallengeMetaAction(input: {
       ok: false,
       error: e instanceof Error ? e.message : "Settings update failed",
     };
+  }
+}
+
+function parseOptionalHttpsUrl(
+  raw: string | null | undefined,
+  label: string,
+):
+  | { ok: true; value: string | null }
+  | { ok: false; error: string } {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return { ok: true, value: null };
+  if (trimmed.length > 2000) {
+    return { ok: false, error: `${label} URL is too long` };
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return { ok: false, error: `${label} URL must start with http(s)://` };
+    }
+    return { ok: true, value: trimmed };
+  } catch {
+    return { ok: false, error: `Invalid ${label.toLowerCase()} URL` };
   }
 }
 

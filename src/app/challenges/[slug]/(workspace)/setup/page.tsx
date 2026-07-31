@@ -7,18 +7,18 @@ import { GameModeSettingsGuide } from "@/components/GameModeSettingsGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { getChallenge } from "@/lib/challenges";
 import { CTA_PRIMARY } from "@/lib/cta";
+import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import {
   canViewWelcomeVideo,
   formatWelcomeVideoPublishAtEastern,
-  getWelcomeVideoUrl,
+  resolveSeasonRomUrl,
+  resolveSeasonWelcomeVideoUrl,
   resolveWelcomeVideoEmbed,
 } from "@/lib/welcome-video";
 
 export const dynamic = "force-dynamic";
 
-const ROM_DOWNLOAD_URL =
-  "https://drive.google.com/file/d/1ZpHF4ACenI8guJxwKlDDlIoHbbztYH4T/view?usp=drive_link";
 const AFTERPLAY_URL = "https://afterplay.io";
 
 type PageProps = {
@@ -42,17 +42,24 @@ export default async function SetupPage({ params }: PageProps) {
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
-  const welcomeUrl = getWelcomeVideoUrl();
+  // GM role or GM view lens — always preview the welcome video early.
+  const gmPreview =
+    Boolean(access?.isGm) || (await readGmLensOn(slug));
+  const welcomeUrl = resolveSeasonWelcomeVideoUrl(challenge.welcomeVideoUrl);
+  const romUrl = resolveSeasonRomUrl(challenge.romUrl);
   const welcomeUnlocked = canViewWelcomeVideo(
-    Boolean(access?.isGm),
+    gmPreview,
     challenge.welcomeVideoPublishAt,
   );
   const welcomeEmbed = welcomeUnlocked
     ? resolveWelcomeVideoEmbed(welcomeUrl)
     : null;
-  const welcomeLockedMessage =
-    welcomeUrl && !welcomeUnlocked
+  const welcomeLockedMessage = !welcomeUnlocked
+    ? welcomeUrl
       ? `Unlocks for everyone at ${formatWelcomeVideoPublishAtEastern(challenge.welcomeVideoPublishAt)}. GMs can change this in the GM console.`
+      : null
+    : !welcomeUrl && gmPreview
+      ? "No welcome video URL configured yet — add one under Season settings in the GM console."
       : null;
 
   const trainerHref = `/challenges/${challenge.slug}/me`;
@@ -64,8 +71,9 @@ export default async function SetupPage({ params }: PageProps) {
           Get Started
         </h2>
         <p className="mt-2 text-muted">
-          Download the ROM, load it in Afterplay, confirm Game Mode settings,
-          export your save, then import it on your trainer board.
+          Download the ROM, load it in Afterplay (or another emulator), confirm
+          Game Mode settings, export your save, then import it on your trainer
+          board.
         </p>
       </header>
 
@@ -92,7 +100,7 @@ export default async function SetupPage({ params }: PageProps) {
               423 Pokémon).
             </p>
             <a
-              href={ROM_DOWNLOAD_URL}
+              href={romUrl}
               target="_blank"
               rel="noopener noreferrer"
               className={`${CTA_PRIMARY} mt-4`}
@@ -125,6 +133,17 @@ export default async function SetupPage({ params }: PageProps) {
                 to play.
               </li>
             </ol>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              Afterplay is recommended for ease of use (browser play + cloud
+              saves), but you can use another emulator instead — for example{" "}
+              <span className="font-semibold text-ink">mGBA</span> (PC/Mac),{" "}
+              <span className="font-semibold text-ink">Delta</span> (iOS), or{" "}
+              <span className="font-semibold text-ink">My Boy!</span> (Android).
+              Just make sure you can export a Gen&nbsp;3{" "}
+              <code className="rounded-lg bg-surface-2 px-1">.sav</code> /{" "}
+              <code className="rounded-lg bg-surface-2 px-1">.srm</code> for
+              import in step 4.
+            </p>
             <a
               href={AFTERPLAY_URL}
               target="_blank"
@@ -166,7 +185,8 @@ export default async function SetupPage({ params }: PageProps) {
           <Frame title="4. Export your save & import it here">
             <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
               <li>
-                In Afterplay, download / export your save (Gen&nbsp;3{" "}
+                In Afterplay (or your emulator), download / export your save
+                (Gen&nbsp;3{" "}
                 <code className="rounded-lg bg-surface-2 px-1">.sav</code> /{" "}
                 <code className="rounded-lg bg-surface-2 px-1">.srm</code>).
               </li>

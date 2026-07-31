@@ -61,7 +61,7 @@ export function WelcomeVideoPanel({
             rel="noopener noreferrer"
             className="font-bold text-accent-deep underline-offset-2 hover:underline"
           >
-            View on Google Drive →
+            Open video →
           </a>
         </p>
       ) : null}

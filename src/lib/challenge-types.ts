@@ -108,8 +108,12 @@ export type Challenge = {
   gmInviteCode?: string | null;
   /** GM-only; omitted from public challenge payloads. */
   discordWebhookUrl?: string | null;
+  /** Get Started welcome video URL. Null = env fallback. */
+  welcomeVideoUrl?: string | null;
   /** When the welcome video becomes visible to everyone (ISO). Null = default 9pm Eastern. */
   welcomeVideoPublishAt?: string | null;
+  /** Get Started ROM download URL. Null = built-in Trash Pack Drive link. */
+  romUrl?: string | null;
   badges: BadgeDefinition[];
   rules: ChallengeRule[];
   faqs: FaqEntry[];

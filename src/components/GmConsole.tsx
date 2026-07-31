@@ -264,7 +264,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             <Panel
               kicker="01 · Season"
               title="Season settings"
-              description="Identity, access, Discord alerts, and Get Started unlock timing."
+              description="Identity, access, Discord alerts, and Get Started links."
             >
               <form
                 className="gm-console__grid gm-console__grid--2"
@@ -310,7 +310,9 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                         discordWebhookUrl: String(
                           fd.get("discordWebhookUrl") ?? "",
                         ),
+                        welcomeVideoUrl: String(fd.get("welcomeVideoUrl") ?? ""),
                         welcomeVideoPublishAt,
+                        romUrl: String(fd.get("romUrl") ?? ""),
                       }),
                     );
                   });
@@ -402,6 +404,36 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                 </label>
                 <label className="gm-console__field sm:col-span-2">
                   <span className="gm-console__label">
+                    Embed welcome video URL
+                  </span>
+                  <input
+                    name="welcomeVideoUrl"
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=… or Drive link"
+                    defaultValue={challenge.welcomeVideoUrl ?? ""}
+                    className="gm-console__input"
+                  />
+                  <span className="gm-console__hint">
+                    YouTube, Google Drive, or direct .mp4 shown on Get Started.
+                    Leave blank to use the app env fallback.
+                  </span>
+                </label>
+                <label className="gm-console__field sm:col-span-2">
+                  <span className="gm-console__label">ROM download URL</span>
+                  <input
+                    name="romUrl"
+                    type="url"
+                    placeholder="https://drive.google.com/file/d/…"
+                    defaultValue={challenge.romUrl ?? ""}
+                    className="gm-console__input"
+                  />
+                  <span className="gm-console__hint">
+                    Linked from Get Started step 1. Leave blank to use the
+                    built-in Trash Pack Drive link.
+                  </span>
+                </label>
+                <label className="gm-console__field sm:col-span-2">
+                  <span className="gm-console__label">
                     Welcome video publish time (Eastern)
                   </span>
                   <input
@@ -414,8 +446,8 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   />
                   <span className="gm-console__hint">
                     When the Get Started welcome video unlocks for everyone.
-                    Defaults to 9:00 PM Eastern tonight. GMs can always preview
-                    it early.
+                    Defaults to 9:00 PM Eastern tonight. GMs (and GM view) can
+                    always preview it early.
                   </span>
                 </label>
                 <div className="gm-console__actions sm:col-span-2">
