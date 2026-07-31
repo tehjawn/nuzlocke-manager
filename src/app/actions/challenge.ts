@@ -585,6 +585,139 @@ export async function recordWipeAction(input: {
   }
 }
 
+type TxClient = Parameters<
+  Parameters<ReturnType<typeof getPrisma>["$transaction"]>[0]
+>[0];
+
+/**
+ * Official clean start for one trainer: clear every slot (including memorial),
+ * badges, wipe counter, and revive — unlike recordWipe which keeps graves/revive
+ * and increments wipeCount.
+ */
+async function hardResetTrainerInTx(
+  tx: TxClient,
+  trainerId: string,
+): Promise<void> {
+  await tx.pokemonEntry.deleteMany({ where: { trainerId } });
+  await tx.badgeProgress.updateMany({
+    where: { trainerId },
+    data: { earned: false, earnedAt: null },
+  });
+  await tx.trainerProfile.update({
+    where: { id: trainerId },
+    data: {
+      wipeCount: 0,
+      reviveUsed: false,
+      statusText: null,
+      statusEmoji: null,
+      mainSquadLocked: false,
+    },
+  });
+}
+
+/** GM-only: hard-reset one trainer board to a pre-challenge blank slate. */
+export async function gmResetTrainerBoardAction(input: {
+  trainerId: string;
+}): Promise<ActionResult> {
+  try {
+    const prisma = getPrisma();
+    const trainer = await prisma.trainerProfile.findUnique({
+      where: { id: input.trainerId },
+      include: { challenge: { select: { id: true, slug: true, status: true } } },
+    });
+    if (!trainer) return { ok: false, error: "Trainer not found" };
+    if (trainer.challenge.status === "ARCHIVED") {
+      return { ok: false, error: "This season is archived and read-only" };
+    }
+
+    const { userId } = await requireGm(trainer.challengeId);
+
+    await prisma.$transaction(async (tx) => {
+      await hardResetTrainerInTx(tx, trainer.id);
+      await tx.activityEvent.create({
+        data: {
+          challengeId: trainer.challengeId,
+          actorId: userId,
+          trainerId: trainer.id,
+          type: "NOTE",
+          message: `GM reset ${trainer.handle}'s board for a fresh start`,
+        },
+      });
+    });
+
+    revalidateChallenge(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: `${trainer.handle} board reset` };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Board reset failed",
+    };
+  }
+}
+
+/** GM-only: hard-reset every trainer board for an official season start. */
+export async function gmResetAllTrainerBoardsAction(input: {
+  challengeId?: string;
+  slug?: string;
+}): Promise<ActionResult> {
+  try {
+    const prisma = getPrisma();
+    const challenge = input.challengeId
+      ? await prisma.challenge.findUnique({
+          where: { id: input.challengeId },
+          select: {
+            id: true,
+            slug: true,
+            status: true,
+            trainers: { select: { id: true } },
+          },
+        })
+      : input.slug
+        ? await prisma.challenge.findUnique({
+            where: { slug: input.slug },
+            select: {
+              id: true,
+              slug: true,
+              status: true,
+              trainers: { select: { id: true } },
+            },
+          })
+        : null;
+    if (!challenge) return { ok: false, error: "Challenge not found" };
+    if (challenge.status === "ARCHIVED") {
+      return { ok: false, error: "This season is archived and read-only" };
+    }
+
+    const { userId } = await requireGm(challenge.id);
+
+    const count = challenge.trainers.length;
+    await prisma.$transaction(async (tx) => {
+      for (const trainer of challenge.trainers) {
+        await hardResetTrainerInTx(tx, trainer.id);
+      }
+      await tx.activityEvent.create({
+        data: {
+          challengeId: challenge.id,
+          actorId: userId,
+          type: "NOTE",
+          message: `GM reset all ${count} trainer board${count === 1 ? "" : "s"} for an official season start`,
+        },
+      });
+    });
+
+    revalidateChallenge(challenge.slug);
+    return {
+      ok: true,
+      message: `Reset ${count} trainer board${count === 1 ? "" : "s"}`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Season board reset failed",
+    };
+  }
+}
+
 export async function setBadgeProgressAction(input: {
   trainerId: string;
   badgeKey: string;
@@ -1327,6 +1460,8 @@ export async function gmUnclaimTrainerAction(input: {
 
 export async function gmUpdateChallengeMetaAction(input: {
   challengeId: string;
+  name?: string;
+  game?: string | null;
   visibility?: "INVITE" | "UNLISTED" | "PUBLIC";
   status?: "DRAFT" | "ACTIVE" | "TOURNAMENT" | "ARCHIVED";
   playerInviteCode?: string;
@@ -1342,6 +1477,24 @@ export async function gmUpdateChallengeMetaAction(input: {
     const status = input.status
       ? ChallengeStatusSchema.parse(input.status)
       : undefined;
+
+    let name: string | undefined;
+    if (input.name !== undefined) {
+      const trimmed = input.name.trim();
+      if (!trimmed) {
+        return { ok: false, error: "Season name is required" };
+      }
+      if (trimmed.length > 120) {
+        return { ok: false, error: "Season name is too long" };
+      }
+      name = trimmed;
+    }
+
+    let game: string | null | undefined;
+    if (input.game !== undefined) {
+      const trimmed = (input.game ?? "").trim();
+      game = trimmed ? trimmed.slice(0, 120) : null;
+    }
 
     let webhookUrl: string | null | undefined = undefined;
     if (input.discordWebhookUrl !== undefined) {
@@ -1390,6 +1543,8 @@ export async function gmUpdateChallengeMetaAction(input: {
     const challenge = await prisma.challenge.update({
       where: { id: input.challengeId },
       data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(game !== undefined ? { game } : {}),
         visibility: input.visibility,
         status,
         playerInviteCode: input.playerInviteCode,

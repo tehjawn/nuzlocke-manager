@@ -3,12 +3,14 @@
 import { useState, useTransition } from "react";
 import {
   gmExportChallengeAction,
+  gmResetAllTrainerBoardsAction,
   gmSetTrainerLockAction,
   gmUnclaimTrainerAction,
   gmUpdateChallengeMetaAction,
   gmUpdateFaqAction,
   gmUpdateRuleAction,
 } from "@/app/actions/challenge";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import type { Challenge } from "@/lib/challenge-types";
 import {
   fromEasternDatetimeLocalInput,
@@ -29,6 +31,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const challengeId = challenge.id;
 
   if (!challengeId) {
@@ -79,6 +82,8 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
               flash(
                 await gmUpdateChallengeMetaAction({
                   challengeId,
+                  name: String(fd.get("name") ?? ""),
+                  game: String(fd.get("game") ?? ""),
                   status: String(fd.get("status")) as
                     | "DRAFT"
                     | "ACTIVE"
@@ -98,6 +103,27 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             });
           }}
         >
+          <label className="text-sm sm:col-span-2">
+            <span className="mb-1 block font-bold text-muted">Season name</span>
+            <input
+              name="name"
+              required
+              defaultValue={challenge.name}
+              className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
+            />
+          </label>
+          <label className="text-sm sm:col-span-2">
+            <span className="mb-1 block font-bold text-muted">Game</span>
+            <input
+              name="game"
+              defaultValue={challenge.game ?? ""}
+              placeholder="Pokémon Emerald Modern"
+              className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
+            />
+            <span className="mt-1 block text-xs text-muted">
+              Shown on General info. Example: Pokémon Emerald Modern.
+            </span>
+          </label>
           <label className="text-sm">
             <span className="mb-1 block font-bold text-muted">Status</span>
             <select
@@ -247,6 +273,50 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
           <p className="basis-full text-xs text-muted">
             Full season backup — trainers, badges, Pokémon, rules, and FAQ.
           </p>
+        </div>
+      </section>
+
+      <section className="gba-frame">
+        <header className="gba-frame-title px-3 py-2 text-sm">
+          Season start reset
+        </header>
+        <div className="space-y-3 p-3 sm:p-4">
+          <p className="text-sm text-muted">
+            Clears every trainer board for an official fresh start: Main,
+            Reserves, Encountered, R.I.P. memorial, badges, wipe counters, and
+            revive tokens. Claims and roster seats stay.
+          </p>
+          <button
+            type="button"
+            disabled={pending}
+            className="pressable rounded-lg bg-danger px-4 py-2 text-xs font-semibold text-white tracking-tight disabled:opacity-60"
+            onClick={() => {
+              void (async () => {
+                const ok = await confirm({
+                  title: "Reset all trainer boards?",
+                  description: (
+                    <>
+                      This wipes living parties, memorials, badges, wipe counts,
+                      and revive tokens for all {challenge.trainers.length}{" "}
+                      trainer
+                      {challenge.trainers.length === 1 ? "" : "s"}. Export a
+                      backup first if you may need the current boards.
+                    </>
+                  ),
+                  confirmLabel: "Reset all boards",
+                  tone: "danger",
+                });
+                if (!ok) return;
+                startTransition(async () => {
+                  flash(
+                    await gmResetAllTrainerBoardsAction({ challengeId }),
+                  );
+                });
+              })();
+            }}
+          >
+            Reset all boards
+          </button>
         </div>
       </section>
 
@@ -552,6 +622,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
         <p className="text-sm font-semibold text-accent-deep">{message}</p>
       ) : null}
       {error ? <p className="text-sm font-semibold text-danger">{error}</p> : null}
+      {confirmDialog}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
+  gmResetTrainerBoardAction,
   importFromSaveAction,
   recordWipeAction,
   relocatePokemonAction,
@@ -418,6 +419,7 @@ export function TrainerBoard({
   const partySave = useSaveStatus();
   const reviveSave = useSaveStatus();
   const wipeSave = useSaveStatus();
+  const resetSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => p.id).join(",")}`;
@@ -534,7 +536,8 @@ export function TrainerBoard({
   const encountered = pokemonInSlot(boardTrainer, "ENCOUNTERED");
   const wipeButtonClass =
     "pressable inline-flex h-9 items-center justify-center gap-1.5 border-danger/25 bg-danger/10 px-3 text-xs font-semibold tracking-tight text-danger disabled:opacity-60";
-  const wiping = wipeSave.status.kind === "saving";
+  const wiping =
+    wipeSave.status.kind === "saving" || resetSave.status.kind === "saving";
   const seasonLinkTiles = [
     {
       href: `${leagueBoardHref}/rules`,
@@ -747,6 +750,64 @@ export function TrainerBoard({
     });
   }
 
+  async function resetTrainerBoard() {
+    const previousBadges = earnedBadgeKeys;
+    const previousCommitted = committed;
+    const previousBoard = boardOverride;
+    const previousRevive = reviveUsed;
+    const ok = await confirm({
+      title: "Reset this trainer board?",
+      description: (
+        <>
+          GM hard reset: clears Main, Reserves, Encountered, and R.I.P. memorial,
+          resets badges, wipe count, and revive token. Use this for an official
+          fresh start — not a mid-run wipe.
+        </>
+      ),
+      confirmLabel: "Reset board",
+      tone: "danger",
+    });
+    if (!ok) return;
+
+    setBadgeEditorKey((k) => k + 1);
+    setEarnedBadgeKeys([]);
+    setBoardOverride({
+      wipeCount: 0,
+      pokemon: [],
+      mainSquadLocked: false,
+    });
+    setCommitted((prev) => ({
+      ...prev,
+      statusText: "",
+      statusEmoji: null,
+      reviveUsed: false,
+    }));
+    setStatusText("");
+    setStatusEmoji(null);
+    setReviveUsed(false);
+    setPokemonInspect(null);
+    setDetailsPokemon(null);
+    setSaveImportOpen(false);
+
+    resetSave.markSaving("Resetting board…");
+    startTransition(async () => {
+      const result = await gmResetTrainerBoardAction({ trainerId: trainer.id });
+      if (result.ok) {
+        resetSave.markSaved(result.message ?? "Board reset");
+        router.refresh();
+      } else {
+        setBoardOverride(previousBoard);
+        setEarnedBadgeKeys(previousBadges);
+        setCommitted(previousCommitted);
+        setStatusText(previousCommitted.statusText);
+        setStatusEmoji(previousCommitted.statusEmoji);
+        setReviveUsed(previousRevive);
+        setBadgeEditorKey((k) => k + 1);
+        resetSave.markError(result.error);
+      }
+    });
+  }
+
   function openAddPokemon(
     slot: PokemonEntry["slot"] = "MAIN",
     partyIndex?: number,
@@ -805,7 +866,9 @@ export function TrainerBoard({
         ? playerSave.status
         : wipeSave.status.kind !== "idle"
           ? wipeSave.status
-          : reviveSave.status;
+          : resetSave.status.kind !== "idle"
+            ? resetSave.status
+            : reviveSave.status;
   // Only pin a bottom bar when it has a job — save feedback or profile save.
   // The idle "save as you go" hint felt redundant on mobile.
   const showMobileSaveBar =
@@ -863,12 +926,30 @@ export function TrainerBoard({
               Record wipe
             </button>
           ) : null}
+          {isGm && !isDemo ? (
+            <button
+              type="button"
+              disabled={pending || wiping}
+              className={wipeButtonClass}
+              onClick={() => {
+                void resetTrainerBoard();
+              }}
+            >
+              <WipeIcon />
+              Reset board
+            </button>
+          ) : null}
         </div>
       </div>
 
       {canEdit && wipeSave.status.kind !== "idle" ? (
         <div className="flex justify-end">
           <SaveStatus status={wipeSave.status} />
+        </div>
+      ) : null}
+      {isGm && !isDemo && resetSave.status.kind !== "idle" ? (
+        <div className="flex justify-end">
+          <SaveStatus status={resetSave.status} />
         </div>
       ) : null}
 
@@ -1276,7 +1357,7 @@ export function TrainerBoard({
             ))}
           </div>
 
-          {canEdit || (isGm && !isDemo && reviveUsed) ? (
+          {canEdit || (isGm && !isDemo) ? (
             <div className="flex w-full flex-col gap-2 sm:w-52 sm:shrink-0 sm:self-stretch">
               {canEdit && !isDemo && !reviveUsed ? (
                 <ShortcutActionTile
@@ -1325,6 +1406,18 @@ export function TrainerBoard({
                   disabled={pending || wiping}
                   onClick={() => {
                     void recordWipe();
+                  }}
+                />
+              ) : null}
+              {isGm && !isDemo ? (
+                <ShortcutActionTile
+                  label="Reset board"
+                  icon={<WipeIcon className="h-4 w-4" />}
+                  tone="danger"
+                  disabled={pending || wiping}
+                  title="GM hard reset — zeros wipe count"
+                  onClick={() => {
+                    void resetTrainerBoard();
                   }}
                 />
               ) : null}
