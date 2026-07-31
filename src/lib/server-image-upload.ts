@@ -26,9 +26,14 @@ export async function validateImageUpload(
       return "Image contents do not match the selected file type";
     }
 
-    const width = metadata.autoOrient.width;
-    const height = metadata.pageHeight ?? metadata.autoOrient.height;
-    if (!isWithinCustomImageDimensions(width, height)) {
+    const width = metadata.autoOrient?.width ?? metadata.width;
+    const height =
+      metadata.pageHeight ?? metadata.autoOrient?.height ?? metadata.height;
+    if (
+      width == null ||
+      height == null ||
+      !isWithinCustomImageDimensions(width, height)
+    ) {
       return CUSTOM_IMAGE_DIMENSIONS_ERROR;
     }
 

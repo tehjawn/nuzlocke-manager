@@ -2,8 +2,8 @@
 
 import {
   assertCustomImageSize,
-  CUSTOM_IMAGE_DIMENSIONS_ERROR,
   CUSTOM_IMAGE_MAX_EDGE_PX,
+  CUSTOM_IMAGE_MAX_UPLOAD_BYTES,
   isWithinCustomImageDimensions,
 } from "@/lib/custom-image-upload";
 
@@ -23,7 +23,8 @@ export function isAllowedAvatarMime(type: string): boolean {
 
 /**
  * Downscale/crop to a square WebP (or PNG fallback) for compact blob storage.
- * Compliant GIFs stay intact so their animation is preserved.
+ * Compliant GIFs stay intact so their animation is preserved; oversized GIFs
+ * are flattened and resized like other formats.
  */
 export async function prepareAvatarFile(file: File): Promise<File> {
   if (!isAllowedAvatarMime(file.type)) {
@@ -32,11 +33,11 @@ export async function prepareAvatarFile(file: File): Promise<File> {
 
   const bitmap = await createImageBitmap(file);
   try {
-    if (file.type === "image/gif") {
-      if (!isWithinCustomImageDimensions(bitmap.width, bitmap.height)) {
-        throw new Error(CUSTOM_IMAGE_DIMENSIONS_ERROR);
-      }
-      assertCustomImageSize(file);
+    if (
+      file.type === "image/gif" &&
+      isWithinCustomImageDimensions(bitmap.width, bitmap.height) &&
+      file.size <= CUSTOM_IMAGE_MAX_UPLOAD_BYTES
+    ) {
       return file;
     }
 
