@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useOptimistic, useRef, useTransition } from "react";
-import { setBadgeProgressAction } from "@/app/actions/challenge";
+import { setBadgesProgressAction } from "@/app/actions/challenge";
 import { BadgeCase } from "@/components/BadgeCase";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
 import { triggerFx } from "@/features/fx";
@@ -19,7 +19,7 @@ type BadgeCaseEditorProps = {
   onEarnedKeysChange?: (keys: string[]) => void;
 };
 
-/** Debounce server writes; keep UI optimistic from a local keys ref. */
+/** Quiet window across the whole case — flush as one condensed feed entry. */
 const DEBOUNCE_MS = 450;
 
 function toggleKey(keys: string[], badgeKey: string, earned: boolean) {
@@ -41,7 +41,12 @@ export function BadgeCaseEditor({
 }: BadgeCaseEditorProps) {
   const [, startTransition] = useTransition();
   const { status, markSaving, markSaved, markError } = useSaveStatus();
-  const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Latest intended earned state per key since last flush. */
+  const pendingRef = useRef<Map<string, boolean>>(new Map());
+  /** Last successfully saved (or prop-synced) keys — used to drop no-op toggles. */
+  const baselineRef = useRef(new Set(earnedKeys));
+  const wipeSnapshotRef = useRef(wipeCount);
   /** Latest keys including optimistic toggles — avoids stale-prop rubber banding. */
   const latestKeysRef = useRef(earnedKeys);
   const inFlightRef = useRef(0);
@@ -54,13 +59,18 @@ export function BadgeCaseEditor({
 
   useEffect(() => {
     latestKeysRef.current = earnedKeys;
+    if (
+      pendingRef.current.size === 0 &&
+      flushTimerRef.current == null &&
+      inFlightRef.current === 0
+    ) {
+      baselineRef.current = new Set(earnedKeys);
+    }
   }, [earnedKeys]);
 
   useEffect(() => {
-    const timersMap = timers.current;
     return () => {
-      for (const timer of timersMap.values()) clearTimeout(timer);
-      timersMap.clear();
+      if (flushTimerRef.current != null) clearTimeout(flushTimerRef.current);
     };
   }, []);
 
@@ -82,41 +92,64 @@ export function BadgeCaseEditor({
     });
     onEarnedKeysChange?.(next);
 
-    const existing = timers.current.get(badgeKey);
-    if (existing) clearTimeout(existing);
+    if (pendingRef.current.size === 0) {
+      wipeSnapshotRef.current = wipeCount;
+    }
+    pendingRef.current.set(badgeKey, earned);
 
-    const wipeSnapshot = wipeCount;
+    if (flushTimerRef.current != null) clearTimeout(flushTimerRef.current);
     markSaving("Updating badges…");
-    timers.current.set(
-      badgeKey,
-      setTimeout(() => {
-        timers.current.delete(badgeKey);
-        inFlightRef.current += 1;
-        void (async () => {
-          const result = await setBadgeProgressAction({
-            trainerId,
-            badgeKey,
-            earned,
-            expectedWipeCount: wipeSnapshot,
-          });
-          inFlightRef.current -= 1;
-          if (!mountedRef.current) return;
-          if (!result.ok) {
-            const rolled = toggleKey(latestKeysRef.current, badgeKey, !earned);
-            latestKeysRef.current = rolled;
-            onEarnedKeysChange?.(rolled);
-            markError(result.error);
-            return;
+    flushTimerRef.current = setTimeout(() => {
+      flushTimerRef.current = null;
+      const pending = pendingRef.current;
+      pendingRef.current = new Map();
+
+      const changes = [...pending.entries()]
+        .filter(([key, wantEarned]) => baselineRef.current.has(key) !== wantEarned)
+        .map(([key, wantEarned]) => ({ badgeKey: key, earned: wantEarned }));
+
+      if (changes.length === 0) {
+        if (inFlightRef.current === 0) markSaved("Badges saved");
+        return;
+      }
+
+      const wipeSnapshot = wipeSnapshotRef.current;
+      inFlightRef.current += 1;
+      void (async () => {
+        const result = await setBadgesProgressAction({
+          trainerId,
+          changes,
+          expectedWipeCount: wipeSnapshot,
+        });
+        inFlightRef.current -= 1;
+        if (!mountedRef.current) return;
+        if (!result.ok) {
+          let rolled = latestKeysRef.current;
+          for (const change of changes) {
+            rolled = toggleKey(rolled, change.badgeKey, !change.earned);
           }
-          if (earned) {
-            triggerFx("badge_earned", { badgeKey });
+          latestKeysRef.current = rolled;
+          onEarnedKeysChange?.(rolled);
+          markError(result.error);
+          return;
+        }
+        for (const change of changes) {
+          if (change.earned) {
+            baselineRef.current.add(change.badgeKey);
+            triggerFx("badge_earned", { badgeKey: change.badgeKey });
+          } else {
+            baselineRef.current.delete(change.badgeKey);
           }
-          if (timers.current.size === 0 && inFlightRef.current === 0) {
-            markSaved("Badges saved");
-          }
-        })();
-      }, DEBOUNCE_MS),
-    );
+        }
+        if (
+          pendingRef.current.size === 0 &&
+          flushTimerRef.current == null &&
+          inFlightRef.current === 0
+        ) {
+          markSaved("Badges saved");
+        }
+      })();
+    }, DEBOUNCE_MS);
   }
 
   return (

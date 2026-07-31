@@ -24,6 +24,7 @@ import {
   isOwnedCustomAvatarUrl,
   parseAvatarKey,
 } from "@/lib/sprites";
+import { summarizeBadgeBatch } from "@/lib/activity-messages";
 import {
   canUseCustomTextureUrl,
   customTextureKey,
@@ -857,14 +858,24 @@ export async function getTrainerBoardSnapshotAction(input: {
   }
 }
 
-export async function setBadgeProgressAction(input: {
-  trainerId: string;
-  badgeKey: string;
-  earned: boolean;
+const BadgeChangeSchema = z.object({
+  badgeKey: z.string().min(1),
+  earned: z.boolean(),
+});
+
+const SetBadgesProgressSchema = z.object({
+  trainerId: z.string().min(1),
+  changes: z.array(BadgeChangeSchema).min(1).max(32),
   /** Reject stale writes that raced a wipe (client wipeCount at schedule time). */
-  expectedWipeCount?: number;
-}): Promise<ActionResult> {
+  expectedWipeCount: z.number().int().nonnegative().optional(),
+});
+
+/** Apply one or many badge toggles and log a single condensed Pack-feed entry. */
+export async function setBadgesProgressAction(
+  raw: unknown,
+): Promise<ActionResult> {
   try {
+    const input = SetBadgesProgressSchema.parse(raw);
     const { trainer, userId } = await requireTrainerEditAccess(input.trainerId);
     if (
       input.expectedWipeCount != null &&
@@ -872,37 +883,71 @@ export async function setBadgeProgressAction(input: {
     ) {
       return { ok: false, error: "Board changed — refresh and try again" };
     }
+
+    // Last write wins if the same key appears twice in one flush.
+    const desired = new Map<string, boolean>();
+    for (const change of input.changes) {
+      desired.set(change.badgeKey, change.earned);
+    }
+
     const prisma = getPrisma();
-    const badge = await prisma.badgeDefinition.findFirst({
-      where: { challengeId: trainer.challengeId, key: input.badgeKey },
-    });
-    if (!badge) return { ok: false, error: "Badge not found" };
-
-    await prisma.badgeProgress.upsert({
+    const badges = await prisma.badgeDefinition.findMany({
       where: {
-        trainerId_badgeId: { trainerId: trainer.id, badgeId: badge.id },
-      },
-      create: {
-        trainerId: trainer.id,
-        badgeId: badge.id,
-        earned: input.earned,
-        earnedAt: input.earned ? new Date() : null,
-      },
-      update: {
-        earned: input.earned,
-        earnedAt: input.earned ? new Date() : null,
+        challengeId: trainer.challengeId,
+        key: { in: [...desired.keys()] },
       },
     });
+    if (badges.length !== desired.size) {
+      return { ok: false, error: "Badge not found" };
+    }
 
-    await logActivity({
-      challengeId: trainer.challengeId,
-      actorId: userId,
-      trainerId: trainer.id,
-      type: input.earned ? "BADGE_EARNED" : "BADGE_REVOKED",
-      message: input.earned
-        ? `${trainer.handle} earned ${badge.label}`
-        : `${trainer.handle} lost ${badge.label}`,
-    });
+    const byKey = new Map(badges.map((b) => [b.key, b]));
+    const earnedLabels: string[] = [];
+    const lostLabels: string[] = [];
+    const now = new Date();
+
+    await prisma.$transaction(
+      [...desired.entries()].map(([badgeKey, earned]) => {
+        const badge = byKey.get(badgeKey)!;
+        if (earned) earnedLabels.push(badge.label);
+        else lostLabels.push(badge.label);
+        return prisma.badgeProgress.upsert({
+          where: {
+            trainerId_badgeId: { trainerId: trainer.id, badgeId: badge.id },
+          },
+          create: {
+            trainerId: trainer.id,
+            badgeId: badge.id,
+            earned,
+            earnedAt: earned ? now : null,
+          },
+          update: {
+            earned,
+            earnedAt: earned ? now : null,
+          },
+        });
+      }),
+    );
+
+    // Keep gym / elite display order in the feed line.
+    const order = new Map(badges.map((b) => [b.label, b.sortOrder]));
+    earnedLabels.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+    lostLabels.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+
+    const summary = summarizeBadgeBatch(
+      trainer.handle,
+      earnedLabels,
+      lostLabels,
+    );
+    if (summary) {
+      await logActivity({
+        challengeId: trainer.challengeId,
+        actorId: userId,
+        trainerId: trainer.id,
+        type: summary.type,
+        message: summary.message,
+      });
+    }
 
     // League board only — avoid remounting the trainer editor mid-toggle.
     revalidatePath(`/challenges/${trainer.challenge.slug}`);
@@ -910,6 +955,20 @@ export async function setBadgeProgressAction(input: {
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Badge update failed" };
   }
+}
+
+export async function setBadgeProgressAction(input: {
+  trainerId: string;
+  badgeKey: string;
+  earned: boolean;
+  /** Reject stale writes that raced a wipe (client wipeCount at schedule time). */
+  expectedWipeCount?: number;
+}): Promise<ActionResult> {
+  return setBadgesProgressAction({
+    trainerId: input.trainerId,
+    changes: [{ badgeKey: input.badgeKey, earned: input.earned }],
+    expectedWipeCount: input.expectedWipeCount,
+  });
 }
 
 const UpsertPokemonSchema = PokemonEntryInputSchema.extend({
