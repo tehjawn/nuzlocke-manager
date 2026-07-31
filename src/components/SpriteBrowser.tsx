@@ -65,15 +65,15 @@ function SpritePickerShell({
   return (
     <div className="flex min-h-0 flex-col gap-4 sm:h-[min(68vh,36rem)] sm:flex-row sm:gap-5">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">{catalog}</div>
-      <aside className="order-first flex w-full shrink-0 flex-col gap-3 rounded-lg border border-frame/50 bg-surface-2/70 p-3 sm:order-none sm:w-48 lg:w-56">
-        <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-frame/40 bg-surface p-3">
+      <aside className="order-first grid w-full shrink-0 grid-cols-[4.5rem_minmax(0,1fr)] gap-3 rounded-lg border border-frame/50 bg-surface-2/70 p-3 sm:order-none sm:flex sm:w-48 sm:flex-col lg:w-56">
+        <div className="flex aspect-square w-[4.5rem] items-center justify-center rounded-lg border border-frame/40 bg-surface p-2 sm:w-full sm:p-3">
           {preview ? (
             <Image
               src={preview.src}
               alt=""
               width={SIDEBAR_SPRITE_PX}
               height={SIDEBAR_SPRITE_PX}
-              className="pixelated h-40 w-40 object-contain sm:h-44 sm:w-44"
+              className="pixelated h-14 w-14 object-contain sm:h-44 sm:w-44"
               unoptimized
             />
           ) : (
@@ -82,7 +82,7 @@ function SpritePickerShell({
             </span>
           )}
         </div>
-        <div className="min-h-12 text-center">
+        <div className="min-w-0 self-center text-left sm:min-h-12 sm:self-auto sm:text-center">
           {preview ? (
             <>
               <p className="text-sm font-bold leading-snug">{preview.title}</p>
@@ -94,7 +94,7 @@ function SpritePickerShell({
             </>
           ) : null}
         </div>
-        <div className="mt-auto flex flex-col gap-2">
+        <div className="col-span-2 grid grid-cols-2 gap-2 sm:mt-auto sm:flex sm:flex-col">
           <button
             type="button"
             disabled={!canConfirm}
