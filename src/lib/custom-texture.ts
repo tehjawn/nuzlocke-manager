@@ -4,20 +4,23 @@
  */
 
 import {
+  assertCustomImageSize,
+  CUSTOM_IMAGE_MAX_EDGE_PX,
+} from "@/lib/custom-image-upload";
+import {
   CUSTOM_AVATAR_PREFIX,
   isAllowedCustomAvatarUrl,
 } from "@/lib/sprites";
 
 export type TextureKind = "avatar-bg" | "card-bg";
 
-export const TEXTURE_MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 export const TEXTURE_ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
 
-/** Avatar stage plate — keep alpha; modest square-ish edge. */
-export const AVATAR_BG_MAX_EDGE_PX = 384;
+/** Avatar stage plate — keep alpha and preserve its aspect ratio. */
+export const AVATAR_BG_MAX_EDGE_PX = CUSTOM_IMAGE_MAX_EDGE_PX;
 /** League card chrome — landscape-ish cover. */
-export const CARD_BG_MAX_WIDTH_PX = 960;
-export const CARD_BG_MAX_HEIGHT_PX = 720;
+export const CARD_BG_MAX_WIDTH_PX = CUSTOM_IMAGE_MAX_EDGE_PX;
+export const CARD_BG_MAX_HEIGHT_PX = 750;
 
 const ALLOWED_TYPES = new Set([
   "image/png",
@@ -128,29 +131,34 @@ function canvasToFile(
   basename: string,
 ): Promise<File> {
   return new Promise((resolve, reject) => {
-    const finish = (blob: Blob | null, type: string, ext: string) => {
+    const finish = (blob: Blob | null) => {
       if (!blob) {
         reject(new Error("Could not process image"));
         return;
       }
-      resolve(new File([blob], `${basename}.${ext}`, { type }));
+      const type = blob.type === "image/webp" ? "image/webp" : "image/png";
+      const ext = type === "image/webp" ? "webp" : "png";
+      const prepared = new File([blob], `${basename}.${ext}`, { type });
+      try {
+        assertCustomImageSize(prepared);
+        resolve(prepared);
+      } catch (error) {
+        reject(error);
+      }
     };
 
     if (preferPng) {
-      canvas.toBlob((blob) => finish(blob, "image/png", "png"), "image/png");
+      canvas.toBlob(finish, "image/png");
       return;
     }
 
     canvas.toBlob(
       (blob) => {
         if (blob) {
-          finish(blob, "image/webp", "webp");
+          finish(blob);
           return;
         }
-        canvas.toBlob(
-          (png) => finish(png, "image/png", "png"),
-          "image/png",
-        );
+        canvas.toBlob(finish, "image/png");
       },
       "image/webp",
       0.9,
@@ -160,17 +168,11 @@ function canvasToFile(
 
 /**
  * Downscale backdrop art; preserve aspect + transparency (PNG preferred).
- * Small GIFs kept intact for simple animated stages.
+ * Canvas encoding also flattens animated sources to their first frame.
  */
 export async function prepareAvatarBackdropFile(file: File): Promise<File> {
   if (!isAllowedTextureMime(file.type)) {
     throw new Error("Use a PNG, JPEG, WebP, or GIF image");
-  }
-  if (file.size > TEXTURE_MAX_UPLOAD_BYTES) {
-    throw new Error("Image must be 2 MB or smaller");
-  }
-  if (file.type === "image/gif" && file.size <= 512 * 1024) {
-    return file;
   }
 
   const bitmap = await createImageBitmap(file);
@@ -200,12 +202,6 @@ export async function prepareAvatarBackdropFile(file: File): Promise<File> {
 export async function prepareCardBackgroundFile(file: File): Promise<File> {
   if (!isAllowedTextureMime(file.type)) {
     throw new Error("Use a PNG, JPEG, WebP, or GIF image");
-  }
-  if (file.size > TEXTURE_MAX_UPLOAD_BYTES) {
-    throw new Error("Image must be 2 MB or smaller");
-  }
-  if (file.type === "image/gif" && file.size <= 512 * 1024) {
-    return file;
   }
 
   const bitmap = await createImageBitmap(file);

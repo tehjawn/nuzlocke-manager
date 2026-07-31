@@ -24,13 +24,13 @@ const COPY: Record<
   "avatar-bg": {
     title: "Import custom backdrop",
     blurb:
-      "Upload a PNG, JPEG, WebP, or GIF (max 2 MB). Hard-edged art is fine — we soft-vignette it behind your avatar. Transparent PNGs still look best.",
+      "Upload a PNG, JPEG, WebP, or GIF. We’ll optimize it to at most 1000×1000 pixels and 5 MB, using the first frame of animated images. Transparent PNGs look best.",
     previewClass: "h-24 w-24 object-contain",
   },
   "card-bg": {
     title: "Import custom card background",
     blurb:
-      "Upload a PNG, JPEG, WebP, or GIF (max 2 MB). Landscape images work best — we’ll cover-crop to a card plate with a light readability wash.",
+      "Upload a PNG, JPEG, WebP, or GIF. We’ll optimize it to at most 1000×1000 pixels and 5 MB, using the first frame of animated images. Landscape images work best.",
     previewClass: "h-24 w-40 object-cover",
   },
 };
@@ -183,11 +183,11 @@ export function CustomTextureModal({
         </span>
       </button>
 
-      {error ? (
+      {error && (
         <p className="mt-3 text-sm font-medium text-danger" role="alert">
           {error}
         </p>
-      ) : null}
+      )}
     </Modal>
   );
 }

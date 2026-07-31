@@ -1,7 +1,13 @@
 /** Client-side helpers for custom trainer avatar imports. */
 
-export const AVATAR_MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
-export const AVATAR_MAX_EDGE_PX = 256;
+import {
+  assertCustomImageSize,
+  CUSTOM_IMAGE_MAX_EDGE_PX,
+  CUSTOM_IMAGE_MAX_UPLOAD_BYTES,
+  isWithinCustomImageDimensions,
+} from "@/lib/custom-image-upload";
+
+export const AVATAR_MAX_EDGE_PX = CUSTOM_IMAGE_MAX_EDGE_PX;
 export const AVATAR_ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
 
 const ALLOWED_TYPES = new Set([
@@ -17,23 +23,24 @@ export function isAllowedAvatarMime(type: string): boolean {
 
 /**
  * Downscale/crop to a square WebP (or PNG fallback) for compact blob storage.
- * GIFs are returned as-is when already small enough — animated frames are kept.
+ * Compliant GIFs stay intact so their animation is preserved; oversized GIFs
+ * are flattened and resized like other formats.
  */
 export async function prepareAvatarFile(file: File): Promise<File> {
   if (!isAllowedAvatarMime(file.type)) {
     throw new Error("Use a PNG, JPEG, WebP, or GIF image");
   }
-  if (file.size > AVATAR_MAX_UPLOAD_BYTES) {
-    throw new Error("Image must be 2 MB or smaller");
-  }
-
-  // Keep small GIFs intact so short animations survive.
-  if (file.type === "image/gif" && file.size <= 512 * 1024) {
-    return file;
-  }
 
   const bitmap = await createImageBitmap(file);
   try {
+    if (
+      file.type === "image/gif" &&
+      isWithinCustomImageDimensions(bitmap.width, bitmap.height) &&
+      file.size <= CUSTOM_IMAGE_MAX_UPLOAD_BYTES
+    ) {
+      return file;
+    }
+
     const edge = Math.min(
       AVATAR_MAX_EDGE_PX,
       Math.max(bitmap.width, bitmap.height),
@@ -61,12 +68,16 @@ export async function prepareAvatarFile(file: File): Promise<File> {
         canvas.toBlob(resolve, "image/png");
       });
       if (!png) throw new Error("Could not process image");
-      return new File([png], "avatar.png", { type: "image/png" });
+      const prepared = new File([png], "avatar.png", { type: "image/png" });
+      assertCustomImageSize(prepared);
+      return prepared;
     }
     // Browsers without WebP encoding may still return a non-null PNG blob.
     const type = blob.type || "image/png";
     const ext = type === "image/webp" ? "webp" : "png";
-    return new File([blob], `avatar.${ext}`, { type });
+    const prepared = new File([blob], `avatar.${ext}`, { type });
+    assertCustomImageSize(prepared);
+    return prepared;
   } finally {
     bitmap.close();
   }
