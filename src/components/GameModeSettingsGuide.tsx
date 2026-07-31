@@ -3,6 +3,8 @@ import Image from "next/image";
 type Shot = {
   src: string;
   alt: string;
+  width: number;
+  height: number;
 };
 
 type Section = {
@@ -19,6 +21,8 @@ const SECTIONS: Section[] = [
       {
         src: "/setup/game-mode/01-difficulty.png",
         alt: "Adventure difficulty prompt with Normal selected",
+        width: 1600,
+        height: 893,
       },
     ],
   },
@@ -30,10 +34,14 @@ const SECTIONS: Section[] = [
       {
         src: "/setup/game-mode/02-gamemode-modern.png",
         alt: "Gamemode screen with Modern preset selected",
+        width: 1600,
+        height: 988,
       },
       {
         src: "/setup/game-mode/03-gamemode-features.png",
         alt: "Gamemode screen showing Legendary Abilities, Nature Mints, Reusable TMs, and Survive Poison on",
+        width: 1600,
+        height: 1065,
       },
     ],
   },
@@ -45,10 +53,14 @@ const SECTIONS: Section[] = [
       {
         src: "/setup/game-mode/04-features-clock.png",
         alt: "Features screen with RTC, shiny chance 8192, and related toggles",
+        width: 1600,
+        height: 1065,
       },
       {
         src: "/setup/game-mode/05-features-next.png",
         alt: "Features screen with Easier Feebas off and Frontier Bans set to Ban before Next",
+        width: 1600,
+        height: 1068,
       },
     ],
   },
@@ -60,14 +72,20 @@ const SECTIONS: Section[] = [
       {
         src: "/setup/game-mode/06-randomizer-main.png",
         alt: "Randomizer screen with starters, wilds, and static Pokémon randomized",
+        width: 1600,
+        height: 1070,
       },
       {
         src: "/setup/game-mode/07-randomizer-balance.png",
         alt: "Randomizer screen with balancing on and type, moves, and abilities left off",
+        width: 1600,
+        height: 1067,
       },
       {
         src: "/setup/game-mode/08-randomizer-evo.png",
         alt: "Randomizer screen with evolutions, items, and chaos mode left off",
+        width: 1600,
+        height: 1070,
       },
     ],
   },
@@ -79,6 +97,8 @@ const SECTIONS: Section[] = [
       {
         src: "/setup/game-mode/09-nuzlocke.png",
         alt: "Nuzlocke screen with Normal mode, clauses enabled, and fainting set to Cemetery",
+        width: 1600,
+        height: 1061,
       },
     ],
   },
@@ -90,14 +110,20 @@ const SECTIONS: Section[] = [
       {
         src: "/setup/game-mode/10-difficulty-caps.png",
         alt: "Difficulty screen with lock on, party limit off, level cap off, and exp multiplier ×2.0",
+        width: 1600,
+        height: 1068,
       },
       {
         src: "/setup/game-mode/11-difficulty-items.png",
         alt: "Difficulty screen showing catch rate, player and trainer items, and player IVs",
+        width: 1600,
+        height: 1068,
       },
       {
         src: "/setup/game-mode/12-difficulty-evs.png",
         alt: "Difficulty screen showing player EVs, trainer EVs, and Escape Rope / Dig before Next",
+        width: 1600,
+        height: 1073,
       },
     ],
   },
@@ -109,10 +135,14 @@ const SECTIONS: Section[] = [
       {
         src: "/setup/game-mode/13-challenges.png",
         alt: "Challenges screen with Pokécenter and PC heals on and challenge modifiers off",
+        width: 1600,
+        height: 1066,
       },
       {
         src: "/setup/game-mode/14-challenges-save.png",
         alt: "Challenges screen ready to save choices and continue",
+        width: 1600,
+        height: 1062,
       },
     ],
   },
@@ -151,8 +181,8 @@ export function GameModeSettingsGuide() {
                   <Image
                     src={shot.src}
                     alt={shot.alt}
-                    width={960}
-                    height={640}
+                    width={shot.width}
+                    height={shot.height}
                     className="h-auto w-full"
                     sizes="(max-width: 640px) 100vw, 28rem"
                   />
