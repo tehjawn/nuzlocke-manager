@@ -50,23 +50,41 @@ export function summarizeDeathBatch(
 }
 
 /**
- * Collapse consecutive identical RULE_UPDATED rows (historical GM spam).
- * Items are newest-first. Keeps the newest row in each run.
+ * Collapse consecutive feed spam (newest-first).
+ * Write-time coalesce handles live merges; this cleans historical duplicates
+ * for categories that keep an identical message (rules / status).
  */
 export function coalesceActivityItems(items: ActivityItem[]): ActivityItem[] {
   if (items.length <= 1) return items;
   const out: ActivityItem[] = [];
   for (const item of items) {
     const prev = out[out.length - 1];
-    if (
-      prev &&
-      prev.type === "RULE_UPDATED" &&
-      item.type === "RULE_UPDATED" &&
-      prev.message === item.message
-    ) {
+    if (prev && shouldCollapseFeedItems(prev, item)) {
       continue;
     }
     out.push(item);
   }
   return out;
+}
+
+function shouldCollapseFeedItems(newer: ActivityItem, older: ActivityItem) {
+  if (newer.message !== older.message) return false;
+  if (newer.trainerHandle !== older.trainerHandle) return false;
+
+  if (
+    newer.type === "RULE_UPDATED" &&
+    older.type === "RULE_UPDATED"
+  ) {
+    return true;
+  }
+  if (
+    newer.type === "STATUS_UPDATE" &&
+    older.type === "STATUS_UPDATE"
+  ) {
+    const dt = Math.abs(
+      new Date(newer.createdAt).getTime() - new Date(older.createdAt).getTime(),
+    );
+    return dt <= 15 * 60 * 1000;
+  }
+  return false;
 }
