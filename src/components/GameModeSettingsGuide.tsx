@@ -151,8 +151,8 @@ export function GameModeSettingsGuide() {
                   <Image
                     src={shot.src}
                     alt={shot.alt}
-                    width={1024}
-                    height={683}
+                    width={960}
+                    height={640}
                     className="h-auto w-full"
                     sizes="(max-width: 640px) 100vw, 28rem"
                   />
