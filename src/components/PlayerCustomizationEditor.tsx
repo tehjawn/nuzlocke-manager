@@ -207,7 +207,8 @@ export function PlayerCustomizationEditor({
             List Preview
           </p>
           <div
-            className="pointer-events-none select-none"
+            inert
+            className="select-none"
             role="img"
             aria-label="League board list preview"
           >

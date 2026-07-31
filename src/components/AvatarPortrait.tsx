@@ -1,5 +1,7 @@
+"use client";
+
 import Image from "next/image";
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import {
   avatarBackgroundCustomUrl,
   avatarBackgroundDataAttr,
@@ -47,6 +49,9 @@ export function AvatarPortrait({
     : undefined;
   const src = avatarImageUrl(avatarSpriteKey);
   const stillSrc = avatarStillImageUrl(avatarSpriteKey);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const gifFailed = Boolean(stillSrc && failedSrc === src);
+  const displaySrc = gifFailed && stillSrc ? stillSrc : src;
   const imgClass = `${avatarImageClassName(
     avatarSpriteKey,
     "relative z-1 h-full w-full max-h-full max-w-full object-contain",
@@ -62,19 +67,24 @@ export function AvatarPortrait({
     >
       {stillSrc ? (
         <picture key={avatarSpriteKey} className="contents">
-          <source
-            srcSet={stillSrc}
-            media="(prefers-reduced-motion: reduce)"
-          />
+          {!gifFailed ? (
+            <source
+              srcSet={stillSrc}
+              media="(prefers-reduced-motion: reduce)"
+            />
+          ) : null}
           {/* Animated GIFs need a plain img so <picture> can swap the still. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={src}
+            src={displaySrc}
             alt={alt}
             width={width}
             height={height}
             className={imgClass}
             decoding="async"
+            onError={() => {
+              if (stillSrc && failedSrc !== src) setFailedSrc(src);
+            }}
           />
         </picture>
       ) : (

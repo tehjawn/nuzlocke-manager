@@ -297,7 +297,7 @@ export function avatarImageUrl(raw: string | null | undefined): string {
 }
 
 /**
- * Static stand-in for an animated avatar (reduced-motion / GIF load failure).
+ * Static stand-in for an animated avatar (reduced-motion and GIF load failure).
  * Returns null when the key isn't an animated Pokémon portrait.
  */
 export function avatarStillImageUrl(

@@ -338,7 +338,15 @@ function PokemonSpriteBrowserInner({
   const catalog = (
     <>
       <div className="mb-2 flex shrink-0 flex-col gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <div
+          className="flex min-w-0 flex-wrap items-center gap-1.5"
+          onKeyDown={(event) => {
+            if (event.key !== "Escape" || filterMenu == null) return;
+            // Prefer dismissing an open filter menu over the parent Modal.
+            event.stopPropagation();
+            setFilterMenu(null);
+          }}
+        >
           {showMotionFilter ? (
             <FilterSubmenu
               id="motion"
@@ -506,19 +514,23 @@ function FilterSubmenu({
         onOpenChange(null);
       }
     }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onOpenChange(null);
-    }
     document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onOpenChange]);
 
   return (
-    <div ref={rootRef} className="relative shrink-0">
+    <div
+      ref={rootRef}
+      className="relative shrink-0"
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || !open) return;
+        // Stop Modal's Escape handler from closing the whole picker.
+        event.stopPropagation();
+        onOpenChange(null);
+      }}
+    >
       <button
         type="button"
         aria-label={label}
