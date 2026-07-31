@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
-import { GameModeSettingsGuide } from "@/components/GameModeSettingsGuide";
+import { SaveExportGuide } from "@/components/SaveExportGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { getChallenge } from "@/lib/challenges";
 import { CTA_PRIMARY } from "@/lib/cta";
@@ -42,9 +42,9 @@ export default async function SetupPage({ params }: PageProps) {
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
-  // GM role or GM view lens — always preview the welcome video early.
+  // Early preview only when GM view (lens) is on — not merely for having the GM role.
   const gmPreview =
-    Boolean(access?.isGm) || (await readGmLensOn(slug));
+    Boolean(access?.isGm) && (await readGmLensOn(slug));
   const welcomeUrl = resolveSeasonWelcomeVideoUrl(challenge.welcomeVideoUrl);
   const romUrl = resolveSeasonRomUrl(challenge.romUrl);
   const welcomeUnlocked = canViewWelcomeVideo(
@@ -71,9 +71,8 @@ export default async function SetupPage({ params }: PageProps) {
           Get Started
         </h2>
         <p className="mt-2 text-muted">
-          Download the ROM, load it in Afterplay (or another emulator), confirm
-          Game Mode settings, export your save, then import it on your trainer
-          board.
+          Download the ROM, load it in Afterplay, save the pre-loaded Game Mode
+          settings, export your save, then import it on your trainer board.
         </p>
       </header>
 
@@ -112,38 +111,52 @@ export default async function SetupPage({ params }: PageProps) {
 
         <li>
           <Frame title="2. Load the ROM in Afterplay">
-            <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
-              <li>
-                Sign up / log in at{" "}
-                <a
-                  href={AFTERPLAY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-accent-deep underline-offset-2 hover:underline"
+            <ol className="overflow-hidden rounded-lg border border-frame/45 bg-surface/70 text-sm">
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                  aria-hidden
                 >
-                  afterplay.io
-                </a>
-                .
+                  1
+                </span>
+                <span className="text-muted">
+                  Sign up / log in at{" "}
+                  <a
+                    href={AFTERPLAY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                  >
+                    afterplay.io
+                  </a>
+                  .
+                </span>
               </li>
-              <li>
-                Add a Game Boy Advance game and upload the ROM you downloaded.
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  2
+                </span>
+                <span className="text-muted">
+                  Add a Game Boy Advance game and upload the ROM you
+                  downloaded.
+                </span>
               </li>
-              <li>
-                Open the game from your Afterplay library when you&apos;re ready
-                to play.
+              <li className="flex gap-3 px-3 py-2.5">
+                <span
+                  className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  3
+                </span>
+                <span className="text-muted">
+                  Open the game from your Afterplay library when you&apos;re
+                  ready to play.
+                </span>
               </li>
             </ol>
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              Afterplay is recommended for ease of use (browser play + cloud
-              saves), but you can use another emulator instead — for example{" "}
-              <span className="font-semibold text-ink">mGBA</span> (PC/Mac),{" "}
-              <span className="font-semibold text-ink">Delta</span> (iOS), or{" "}
-              <span className="font-semibold text-ink">My Boy!</span> (Android).
-              Just make sure you can export a Gen&nbsp;3{" "}
-              <code className="rounded-lg bg-surface-2 px-1">.sav</code> /{" "}
-              <code className="rounded-lg bg-surface-2 px-1">.srm</code> for
-              import in step 4.
-            </p>
             <a
               href={AFTERPLAY_URL}
               target="_blank"
@@ -157,75 +170,110 @@ export default async function SetupPage({ params }: PageProps) {
 
         <li>
           <Frame title="3. Match season Game Mode settings">
-            <div className="space-y-3">
-              <p className="text-sm leading-relaxed text-muted">
-                When you boot the ROM, work through the Game Mode menus in order
-                and match the Pokémon Emerald Modern season defaults below.
-                Don&apos;t swap to a different patch mid-season. Core run rules
-                (faint = dead, first encounter only, nicknames required) live
-                on{" "}
-                <Link
-                  href={`/challenges/${challenge.slug}/rules`}
-                  className="font-bold text-accent-deep underline-offset-2 hover:underline"
+            <ul className="overflow-hidden rounded-lg border border-frame/45 bg-surface/70 text-sm">
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 font-bold text-accent-deep"
+                  aria-hidden
                 >
-                  Rules
-                </Link>
-                .
-              </p>
-              <p className="text-sm leading-relaxed text-muted">
-                If something looks off compared to the rest of the pack, pause
-                and ask in Discord before continuing.
-              </p>
-              <GameModeSettingsGuide />
-            </div>
+                  ·
+                </span>
+                <span className="text-muted">
+                  When starting a new game after character creation, the game
+                  mode settings options will appear.
+                </span>
+              </li>
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  ·
+                </span>
+                <span className="text-muted">
+                  Because the &quot;game mode settings&quot; are already
+                  pre-loaded, do not change anything.
+                </span>
+              </li>
+              <li className="flex gap-3 px-3 py-2.5">
+                <span
+                  className="mt-0.5 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  ·
+                </span>
+                <span className="text-muted">
+                  Keep clicking next page and &quot;Save&quot; the game mode
+                  setting to begin your game.
+                </span>
+              </li>
+            </ul>
           </Frame>
         </li>
 
         <li>
           <Frame title="4. Export your save & import it here">
-            <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
-              <li>
-                In Afterplay (or your emulator), download / export your save
-                (Gen&nbsp;3{" "}
-                <code className="rounded-lg bg-surface-2 px-1">.sav</code> /{" "}
-                <code className="rounded-lg bg-surface-2 px-1">.srm</code>).
-              </li>
-              <li>
-                {session?.user ? (
-                  <>
-                    Open{" "}
-                    <Link
-                      href={trainerHref}
-                      className="font-bold text-accent-deep underline-offset-2 hover:underline"
-                    >
-                      your trainer board
-                    </Link>{" "}
-                    and use{" "}
-                    <span className="font-bold text-ink">Import save</span>.
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/login"
-                      className="font-bold text-accent-deep underline-offset-2 hover:underline"
-                    >
-                      Sign in with Discord
-                    </Link>
-                    , open your trainer board, and use{" "}
-                    <span className="font-bold text-ink">Import save</span>.
-                  </>
-                )}
-              </li>
-              <li>
-                Review the mapped party → Main Squad, boxes → Reserves, fainted
-                → R.I.P., then apply. You can re-import as the run progresses.
-              </li>
-            </ol>
-            {session?.user ? (
-              <Link href={trainerHref} className={`${CTA_PRIMARY} mt-4`}>
-                Open trainer board →
-              </Link>
-            ) : null}
+            <div className="space-y-4">
+              <p className="text-sm leading-relaxed text-muted">
+                Export a save from Afterplay, then import it on your trainer
+                board to sync party, boxes, and R.I.P.
+              </p>
+              <SaveExportGuide />
+              <ol className="overflow-hidden rounded-lg border border-frame/45 bg-surface/70 text-sm">
+                <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                  <span
+                    className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                    aria-hidden
+                  >
+                    1
+                  </span>
+                  <span className="text-muted">
+                    {session?.user ? (
+                      <>
+                        Open{" "}
+                        <Link
+                          href={trainerHref}
+                          className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                        >
+                          your trainer board
+                        </Link>{" "}
+                        and use{" "}
+                        <span className="font-bold text-ink">Import save</span>.
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          href="/login"
+                          className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                        >
+                          Sign in with Discord
+                        </Link>
+                        , open your trainer board, and use{" "}
+                        <span className="font-bold text-ink">Import save</span>.
+                      </>
+                    )}
+                  </span>
+                </li>
+                <li className="flex gap-3 px-3 py-2.5">
+                  <span
+                    className="mt-0.5 w-4 shrink-0 font-bold text-accent-deep"
+                    aria-hidden
+                  >
+                    2
+                  </span>
+                  <span className="text-muted">
+                    Review the mapped party → Main Squad, boxes → Reserves,
+                    fainted → R.I.P., then apply. You can re-import as the run
+                    progresses.
+                  </span>
+                </li>
+              </ol>
+              {session?.user ? (
+                <Link href={trainerHref} className={CTA_PRIMARY}>
+                  Open trainer board →
+                </Link>
+              ) : null}
+            </div>
           </Frame>
         </li>
 

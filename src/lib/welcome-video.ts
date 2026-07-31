@@ -48,15 +48,15 @@ export function resolveWelcomeVideoPublishAt(
 
 /**
  * Who can see the welcome video:
- * - GMs / GM view always (preview)
+ * - GMs with GM view (lens) on — early preview
  * - Everyone once now >= the season's publish-at (default 9pm Eastern tonight)
  */
 export function canViewWelcomeVideo(
-  isGm: boolean,
+  gmViewOn: boolean,
   publishAt?: Date | string | null,
   now: Date = new Date(),
 ): boolean {
-  return isGm || now.getTime() >= resolveWelcomeVideoPublishAt(publishAt).getTime();
+  return gmViewOn || now.getTime() >= resolveWelcomeVideoPublishAt(publishAt).getTime();
 }
 
 /** `datetime-local` value in America/New_York for GM console inputs. */
