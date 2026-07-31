@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
-import { GameModeSettingsGuide } from "@/components/GameModeSettingsGuide";
 import { SaveExportGuide } from "@/components/SaveExportGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { getChallenge } from "@/lib/challenges";
@@ -72,9 +71,9 @@ export default async function SetupPage({ params }: PageProps) {
           Get Started
         </h2>
         <p className="mt-2 text-muted">
-          Download the ROM, load it in Afterplay (or another emulator), confirm
-          Game Mode settings, export your save, then import it on your trainer
-          board.
+          Download the ROM, load it in Afterplay (or another emulator), save the
+          pre-loaded Game Mode settings, export your save, then import it on
+          your trainer board.
         </p>
       </header>
 
@@ -160,8 +159,12 @@ export default async function SetupPage({ params }: PageProps) {
           <Frame title="3. Match season Game Mode settings">
             <div className="space-y-3">
               <p className="text-sm leading-relaxed text-muted">
-                When you boot the ROM, work through the Game Mode menus in order
-                and match the Pokémon Emerald Modern season defaults below.
+                When starting a new game after character creation, the Game Mode
+                settings options will appear. Because those settings are already
+                pre-loaded, do not change anything. Keep clicking Next through
+                each page, then Save the Game Mode settings to begin your game.
+              </p>
+              <p className="text-sm leading-relaxed text-muted">
                 Don&apos;t swap to a different patch mid-season. Core run rules
                 (faint = dead, first encounter only, nicknames required) live
                 on{" "}
@@ -171,13 +174,9 @@ export default async function SetupPage({ params }: PageProps) {
                 >
                   Rules
                 </Link>
-                .
-              </p>
-              <p className="text-sm leading-relaxed text-muted">
-                If something looks off compared to the rest of the pack, pause
+                . If something looks off compared to the rest of the pack, pause
                 and ask in Discord before continuing.
               </p>
-              <GameModeSettingsGuide />
             </div>
           </Frame>
         </li>
