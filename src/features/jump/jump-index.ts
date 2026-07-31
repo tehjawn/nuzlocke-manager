@@ -119,6 +119,14 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
       tags: ["rules", "core", "guidelines"],
     },
     {
+      id: `nav-activity-${ctx.slug}`,
+      title: "Pack feed",
+      subtitle: `${ctx.name} · All activity`,
+      href: `${base}/activity`,
+      category: "navigate",
+      tags: ["feed", "activity", "pack", "updates"],
+    },
+    {
       id: `nav-faq-${ctx.slug}`,
       title: "FAQ",
       subtitle: `${ctx.name} · Frequently asked`,
