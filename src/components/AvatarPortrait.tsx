@@ -1,11 +1,17 @@
+"use client";
+
 import Image from "next/image";
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import {
   avatarBackgroundCustomUrl,
   avatarBackgroundDataAttr,
 } from "@/data/avatar-backgrounds";
 import { cssTextureUrl } from "@/lib/custom-texture";
-import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
+import {
+  avatarImageClassName,
+  avatarImageUrl,
+  avatarStillImageUrl,
+} from "@/lib/sprites";
 
 type AvatarPortraitProps = {
   avatarSpriteKey: string;
@@ -41,6 +47,15 @@ export function AvatarPortrait({
         ["--avatar-bg-custom" as string]: cssTextureUrl(customUrl),
       } as CSSProperties)
     : undefined;
+  const src = avatarImageUrl(avatarSpriteKey);
+  const stillSrc = avatarStillImageUrl(avatarSpriteKey);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const gifFailed = Boolean(stillSrc && failedSrc === src);
+  const displaySrc = gifFailed && stillSrc ? stillSrc : src;
+  const imgClass = `${avatarImageClassName(
+    avatarSpriteKey,
+    "relative z-1 h-full w-full max-h-full max-w-full object-contain",
+  )}${imgClassName ? ` ${imgClassName}` : ""}`;
 
   return (
     <span
@@ -50,17 +65,39 @@ export function AvatarPortrait({
       data-avatar-bg={dataBg}
       style={style}
     >
-      <Image
-        key={avatarSpriteKey}
-        src={avatarImageUrl(avatarSpriteKey)}
-        alt={alt}
-        width={width}
-        height={height}
-        className={`${avatarImageClassName(avatarSpriteKey, "relative z-1 h-full w-full")}${
-          imgClassName ? ` ${imgClassName}` : ""
-        }`}
-        unoptimized
-      />
+      {stillSrc ? (
+        <picture key={avatarSpriteKey} className="contents">
+          {!gifFailed ? (
+            <source
+              srcSet={stillSrc}
+              media="(prefers-reduced-motion: reduce)"
+            />
+          ) : null}
+          {/* Animated GIFs need a plain img so <picture> can swap the still. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={displaySrc}
+            alt={alt}
+            width={width}
+            height={height}
+            className={imgClass}
+            decoding="async"
+            onError={() => {
+              if (stillSrc && failedSrc !== src) setFailedSrc(src);
+            }}
+          />
+        </picture>
+      ) : (
+        <Image
+          key={avatarSpriteKey}
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          className={imgClass}
+          unoptimized
+        />
+      )}
     </span>
   );
 }

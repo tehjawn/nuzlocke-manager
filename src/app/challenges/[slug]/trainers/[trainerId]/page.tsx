@@ -129,6 +129,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           leagueBoardLabel={`${challenge.year} League Board`}
           joinHref={`/challenges/${challenge.slug}/join`}
           myBoardHref={myBoardHref}
+          challengeSlug={challenge.slug}
           trainer={boardTrainer}
           badges={challenge.badges}
           canEdit={canEdit}

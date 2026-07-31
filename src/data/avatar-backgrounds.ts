@@ -58,7 +58,16 @@ export function parseAvatarBackgroundKey(
   return null;
 }
 
-/** Blob URL for a custom backdrop, else null. */
+/** Human label for a stored value: curated name, `Custom`, or `None`. */
+export function avatarBackgroundLabel(value: string | null | undefined): string {
+  if (!value) return "None";
+  if (isAvatarBackgroundKey(value)) {
+    return AVATAR_BACKGROUNDS.find((bg) => bg.key === value)?.label ?? value;
+  }
+  return parseCustomTextureUrl(value) ? "Custom" : "None";
+}
+
+/** HTTPS URL for a custom backdrop, else null. */
 export function avatarBackgroundCustomUrl(
   value: string | null | undefined,
 ): string | null {

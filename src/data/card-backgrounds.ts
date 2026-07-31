@@ -56,7 +56,16 @@ export function parseCardBackgroundKey(
   return null;
 }
 
-/** Blob URL for a custom card chrome image, else null. */
+/** Human label for a stored value: curated name, `Custom`, or `Default`. */
+export function cardBackgroundLabel(value: string | null | undefined): string {
+  if (!value) return "Default";
+  if (isCardBackgroundKey(value)) {
+    return CARD_BACKGROUNDS.find((bg) => bg.key === value)?.label ?? value;
+  }
+  return parseCustomTextureUrl(value) ? "Custom" : "Default";
+}
+
+/** HTTPS URL for a custom card chrome image, else null. */
 export function cardBackgroundCustomUrl(
   value: string | null | undefined,
 ): string | null {

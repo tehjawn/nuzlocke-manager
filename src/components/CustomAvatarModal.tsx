@@ -5,6 +5,12 @@ import { useRef, useState } from "react";
 import { uploadCustomAvatarAction } from "@/app/actions/avatar";
 import { Modal } from "@/components/Modal";
 import { AVATAR_ACCEPT, prepareAvatarFile } from "@/lib/avatar-upload";
+import {
+  CUSTOM_AVATAR_PREFIX,
+  CUSTOM_IMAGE_URL_MAX_LENGTH,
+  customImageKeyFromInput,
+  normalizeCustomImageUrl,
+} from "@/lib/sprites";
 
 type CustomAvatarModalProps = {
   open: boolean;
@@ -21,6 +27,7 @@ export function CustomAvatarModal({
   const previewUrlRef = useRef<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [urlInput, setUrlInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -37,6 +44,7 @@ export function CustomAvatarModal({
     revokePreview();
     setPreviewUrl(null);
     setPendingFile(null);
+    setUrlInput("");
     setError(null);
     setUploading(false);
     if (inputRef.current) inputRef.current.value = "";
@@ -45,6 +53,13 @@ export function CustomAvatarModal({
   function handleClose() {
     resetLocal();
     onClose();
+  }
+
+  function clearFileSelection() {
+    revokePreview();
+    setPreviewUrl(null);
+    setPendingFile(null);
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   async function onFileChosen(file: File | null) {
@@ -57,6 +72,7 @@ export function CustomAvatarModal({
       previewUrlRef.current = next;
       setPendingFile(prepared);
       setPreviewUrl(next);
+      setUrlInput("");
     } catch (err) {
       setPendingFile(null);
       revokePreview();
@@ -87,10 +103,35 @@ export function CustomAvatarModal({
     }
   }
 
+  function onUseUrl() {
+    if (uploading || !urlInput.trim()) return;
+    setError(null);
+    const key = customImageKeyFromInput(urlInput);
+    if (!key) {
+      setError("Paste a public https:// image URL (PNG, JPEG, WebP, or GIF)");
+      return;
+    }
+    onSelect(key);
+    resetLocal();
+    onClose();
+  }
+
+  const urlPreview = normalizeCustomImageUrl(urlInput);
+  const canUseUrl = Boolean(urlPreview) && !uploading;
+  const canUpload = Boolean(pendingFile) && !uploading;
+  const primaryDisabled = pendingFile ? !canUpload : !canUseUrl;
+  const primaryLabel = pendingFile
+    ? uploading
+      ? "Uploading…"
+      : "Use image"
+    : urlInput.trim()
+      ? "Use URL"
+      : "Use image";
+
   return (
     <Modal
       open
-      title="Import custom avatar"
+      title="Add your own portrait"
       onClose={handleClose}
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -104,18 +145,19 @@ export function CustomAvatarModal({
           </button>
           <button
             type="button"
-            disabled={!pendingFile || uploading}
+            disabled={primaryDisabled}
             className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
-            onClick={onUpload}
+            onClick={pendingFile ? onUpload : onUseUrl}
           >
-            {uploading ? "Uploading…" : "Use image"}
+            {primaryLabel}
           </button>
         </div>
       }
     >
       <p className="mb-4 text-sm text-muted">
-        Upload a square-ish PNG, JPEG, WebP, or GIF. We’ll optimize it to at
-        most 1000×1000 pixels and 5 MB before saving. Animated GIFs are kept.
+        Upload a square-ish PNG, JPEG, WebP, or GIF (max 1000×1000, 5 MB;
+        animated GIFs kept), or paste a public HTTPS image URL to store only the
+        link.
       </p>
 
       <input
@@ -159,6 +201,51 @@ export function CustomAvatarModal({
           {pendingFile ? pendingFile.name : "Choose file…"}
         </span>
       </button>
+
+      <div className="my-4 flex items-center gap-3 text-xs text-muted">
+        <span className="h-px flex-1 bg-frame" aria-hidden />
+        or paste a URL
+        <span className="h-px flex-1 bg-frame" aria-hidden />
+      </div>
+
+      <label className="block text-xs font-semibold tracking-tight text-ink">
+        Image URL
+        <input
+          type="url"
+          inputMode="url"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={CUSTOM_IMAGE_URL_MAX_LENGTH + CUSTOM_AVATAR_PREFIX.length}
+          disabled={uploading}
+          placeholder="https://…"
+          value={urlInput}
+          onChange={(e) => {
+            setError(null);
+            if (pendingFile || previewUrl) clearFileSelection();
+            setUrlInput(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onUseUrl();
+            }
+          }}
+          className="mt-1.5 w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm font-normal text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
+        />
+      </label>
+
+      {urlPreview && !pendingFile ? (
+        <div className="mt-3 flex justify-center">
+          <Image
+            src={urlPreview}
+            alt=""
+            width={96}
+            height={96}
+            className="h-24 w-24 rounded-lg border border-frame bg-surface object-contain"
+            unoptimized
+          />
+        </div>
+      ) : null}
 
       {error && (
         <p className="mt-3 text-sm font-medium text-danger" role="alert">

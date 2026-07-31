@@ -9,6 +9,12 @@ import {
   TEXTURE_ACCEPT,
   type TextureKind,
 } from "@/lib/custom-texture";
+import {
+  CUSTOM_AVATAR_PREFIX,
+  CUSTOM_IMAGE_URL_MAX_LENGTH,
+  customImageKeyFromInput,
+  normalizeCustomImageUrl,
+} from "@/lib/sprites";
 
 type CustomTextureModalProps = {
   open: boolean;
@@ -22,15 +28,15 @@ const COPY: Record<
   { title: string; blurb: string; previewClass: string }
 > = {
   "avatar-bg": {
-    title: "Import custom backdrop",
+    title: "Add your own stage",
     blurb:
-      "Upload a PNG, JPEG, WebP, or GIF. We’ll optimize it to at most 1000×1000 pixels and 5 MB, using the first frame of animated images. Transparent PNGs look best.",
+      "Upload a PNG, JPEG, WebP, or GIF (max 1000×1000, 5 MB; first frame only), or paste a public HTTPS image URL to store only the link. Transparent PNGs look best.",
     previewClass: "h-24 w-24 object-contain",
   },
   "card-bg": {
-    title: "Import custom card background",
+    title: "Add your own card art",
     blurb:
-      "Upload a PNG, JPEG, WebP, or GIF. We’ll optimize it to at most 1000×1000 pixels and 5 MB, using the first frame of animated images. Landscape images work best.",
+      "Upload a PNG, JPEG, WebP, or GIF (max 1000×1000, 5 MB; first frame only), or paste a public HTTPS image URL to store only the link. Landscape images work best.",
     previewClass: "h-24 w-40 object-cover",
   },
 };
@@ -45,6 +51,7 @@ export function CustomTextureModal({
   const previewUrlRef = useRef<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [urlInput, setUrlInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const copy = COPY[kind];
@@ -62,6 +69,7 @@ export function CustomTextureModal({
     revokePreview();
     setPreviewUrl(null);
     setPendingFile(null);
+    setUrlInput("");
     setError(null);
     setUploading(false);
     if (inputRef.current) inputRef.current.value = "";
@@ -70,6 +78,13 @@ export function CustomTextureModal({
   function handleClose() {
     resetLocal();
     onClose();
+  }
+
+  function clearFileSelection() {
+    revokePreview();
+    setPreviewUrl(null);
+    setPendingFile(null);
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   async function onFileChosen(file: File | null) {
@@ -82,6 +97,7 @@ export function CustomTextureModal({
       previewUrlRef.current = next;
       setPendingFile(prepared);
       setPreviewUrl(next);
+      setUrlInput("");
     } catch (err) {
       setPendingFile(null);
       revokePreview();
@@ -113,6 +129,31 @@ export function CustomTextureModal({
     }
   }
 
+  function onUseUrl() {
+    if (uploading || !urlInput.trim()) return;
+    setError(null);
+    const key = customImageKeyFromInput(urlInput);
+    if (!key) {
+      setError("Paste a public https:// image URL (PNG, JPEG, WebP, or GIF)");
+      return;
+    }
+    onSelect(key);
+    resetLocal();
+    onClose();
+  }
+
+  const urlPreview = normalizeCustomImageUrl(urlInput);
+  const canUseUrl = Boolean(urlPreview) && !uploading;
+  const canUpload = Boolean(pendingFile) && !uploading;
+  const primaryDisabled = pendingFile ? !canUpload : !canUseUrl;
+  const primaryLabel = pendingFile
+    ? uploading
+      ? "Uploading…"
+      : "Use image"
+    : urlInput.trim()
+      ? "Use URL"
+      : "Use image";
+
   return (
     <Modal
       open
@@ -130,11 +171,11 @@ export function CustomTextureModal({
           </button>
           <button
             type="button"
-            disabled={!pendingFile || uploading}
+            disabled={primaryDisabled}
             className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
-            onClick={onUpload}
+            onClick={pendingFile ? onUpload : onUseUrl}
           >
-            {uploading ? "Uploading…" : "Use image"}
+            {primaryLabel}
           </button>
         </div>
       }
@@ -182,6 +223,51 @@ export function CustomTextureModal({
           {pendingFile ? pendingFile.name : "Choose file…"}
         </span>
       </button>
+
+      <div className="my-4 flex items-center gap-3 text-xs text-muted">
+        <span className="h-px flex-1 bg-frame" aria-hidden />
+        or paste a URL
+        <span className="h-px flex-1 bg-frame" aria-hidden />
+      </div>
+
+      <label className="block text-xs font-semibold tracking-tight text-ink">
+        Image URL
+        <input
+          type="url"
+          inputMode="url"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={CUSTOM_IMAGE_URL_MAX_LENGTH + CUSTOM_AVATAR_PREFIX.length}
+          disabled={uploading}
+          placeholder="https://…"
+          value={urlInput}
+          onChange={(e) => {
+            setError(null);
+            if (pendingFile || previewUrl) clearFileSelection();
+            setUrlInput(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onUseUrl();
+            }
+          }}
+          className="mt-1.5 w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm font-normal text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
+        />
+      </label>
+
+      {urlPreview && !pendingFile ? (
+        <div className="mt-3 flex justify-center">
+          <Image
+            src={urlPreview}
+            alt=""
+            width={160}
+            height={96}
+            className={`rounded-lg border border-frame bg-surface ${copy.previewClass}`}
+            unoptimized
+          />
+        </div>
+      ) : null}
 
       {error && (
         <p className="mt-3 text-sm font-medium text-danger" role="alert">

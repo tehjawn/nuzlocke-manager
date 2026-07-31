@@ -7,7 +7,8 @@ import { IvsSchema, StatSpreadSchema } from "@/lib/stats";
 function backgroundKeySchema(label: string) {
   return z
     .union([
-      z.string().max(768),
+      // custom: + HTTPS CDN URLs (uploads or hotlinks) can be long.
+      z.string().max(1024),
       z.null(),
     ])
     .optional()
@@ -17,14 +18,16 @@ function backgroundKeySchema(label: string) {
         if (isAvatarBackgroundKey(value) || isCustomTextureKey(value)) return;
         ctx.addIssue({
           code: "custom",
-          message: "Pick an avatar backdrop from the list or import your own",
+          message:
+            "Pick an avatar backdrop from the list, import one, or paste an image URL",
         });
         return;
       }
       if (isCardBackgroundKey(value) || isCustomTextureKey(value)) return;
       ctx.addIssue({
         code: "custom",
-        message: "Pick a card background from the list or import your own",
+        message:
+          "Pick a card background from the list, import one, or paste an image URL",
       });
     });
 }
@@ -74,8 +77,8 @@ export const TrainerBoardUpdateSchema = z.object({
       const trimmed = v.trim();
       return trimmed === "" ? null : trimmed;
     }),
-  avatarSpriteKey: z.string().max(512).optional().nullable(),
-  // Blob URLs + `custom:` prefix can exceed short limits.
+  avatarSpriteKey: z.string().max(1024).optional().nullable(),
+  // custom: + HTTPS CDN URLs (uploads or hotlinks) can be long.
   avatarBackgroundKey: backgroundKeySchema("avatar"),
   cardBackgroundKey: backgroundKeySchema("card"),
   reviveUsed: z.boolean().optional(),
