@@ -26,6 +26,8 @@ type AvatarPickerProps = {
   savedCustomBackground?: string | null;
   onSavedCustomBackgroundChange?: (key: string | null) => void;
   disabled?: boolean;
+  /** Which controls to show. Defaults to both portrait + stage. */
+  panel?: "all" | "portrait" | "stage";
 };
 
 const CURATED_BACKDROPS: Array<{ key: string | null; label: string }> = [
@@ -169,6 +171,7 @@ export function AvatarPicker({
   savedCustomBackground,
   onSavedCustomBackgroundChange,
   disabled = false,
+  panel = "all",
 }: AvatarPickerProps) {
   const [browseOpen, setBrowseOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -188,7 +191,10 @@ export function AvatarPicker({
       setLocalSavedCustom(key);
     }
   };
-  const showBackdrops = typeof onBackgroundChange === "function";
+  const showPortrait = panel === "all" || panel === "portrait";
+  const showBackdrops =
+    (panel === "all" || panel === "stage") &&
+    typeof onBackgroundChange === "function";
   const activeCustomBackdrop =
     backgroundKey && !isAvatarBackgroundKey(backgroundKey)
       ? backgroundKey
@@ -200,61 +206,74 @@ export function AvatarPicker({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          aria-label="Browse avatars"
-          title="Browse avatars"
-          disabled={disabled}
-          className="group relative shrink-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
-          onClick={() => setBrowseOpen(true)}
-        >
-          <AvatarPortrait
-            avatarSpriteKey={value}
-            backgroundKey={backgroundKey}
-            sizeClass="h-[72px] w-[72px]"
-            width={72}
-            height={72}
-            className="rounded-lg border border-frame bg-surface-2/50"
-          />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-2 flex items-center justify-center rounded-lg bg-ink/55 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-          >
-            <PencilIcon />
-          </span>
-        </button>
+      {showPortrait ? (
+        <div className="flex flex-wrap items-center gap-3">
+          {panel === "all" ? (
+            <button
+              type="button"
+              aria-label="Browse portraits"
+              title="Browse portraits"
+              disabled={disabled}
+              className="group relative shrink-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+              onClick={() => setBrowseOpen(true)}
+            >
+              <AvatarPortrait
+                avatarSpriteKey={value}
+                backgroundKey={backgroundKey}
+                sizeClass="h-[72px] w-[72px]"
+                width={72}
+                height={72}
+                className="rounded-lg border border-frame bg-surface-2/50"
+              />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 z-2 flex items-center justify-center rounded-lg bg-ink/55 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              >
+                <PencilIcon />
+              </span>
+            </button>
+          ) : null}
 
-        <div className="flex min-w-0 flex-col gap-2">
-          <button
-            type="button"
-            disabled={disabled}
-            className="pressable inline-flex items-center gap-2 rounded-lg border border-frame bg-surface px-3 py-2 text-left text-xs font-semibold tracking-tight disabled:opacity-60"
-            onClick={() => setBrowseOpen(true)}
-          >
-            <BrowseIcon className="h-3.5 w-3.5 shrink-0 text-ink/70" />
-            Browse Avatars
-          </button>
-          <button
-            type="button"
-            disabled={disabled}
-            className="pressable inline-flex items-center gap-2 rounded-lg border border-frame bg-surface-2 px-3 py-2 text-left text-xs font-semibold tracking-tight text-muted disabled:opacity-60"
-            onClick={() => setImportOpen(true)}
-          >
-            <ImportIcon className="h-3.5 w-3.5 shrink-0" />
-            Import Custom Avatar
-          </button>
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              disabled={disabled}
+              className="pressable inline-flex items-center gap-2 rounded-lg border border-frame bg-surface px-3 py-2 text-left text-xs font-semibold tracking-tight disabled:opacity-60"
+              onClick={() => setBrowseOpen(true)}
+            >
+              <BrowseIcon className="h-3.5 w-3.5 shrink-0 text-ink/70" />
+              Browse trainers & Pokémon
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              className="pressable inline-flex items-center gap-2 rounded-lg border border-frame bg-surface-2 px-3 py-2 text-left text-xs font-semibold tracking-tight text-muted disabled:opacity-60"
+              onClick={() => setImportOpen(true)}
+            >
+              <ImportIcon className="h-3.5 w-3.5 shrink-0" />
+              Add your own
+            </button>
+          </div>
         </div>
-      </div>
+      ) : null}
+
+      {showPortrait ? (
+        <p className="text-xs text-muted">
+          Pick a trainer or Pokémon sprite, or add an image / GIF from a file or
+          URL.
+        </p>
+      ) : null}
 
       {showBackdrops ? (
         <fieldset disabled={disabled} className="min-w-0">
-          <legend className="mb-2 block text-sm font-bold text-muted">
-            Avatar backdrop
-          </legend>
+          {panel === "all" ? (
+            <legend className="mb-2 block text-sm font-bold text-muted">
+              Stage
+            </legend>
+          ) : null}
           <div
             role="radiogroup"
-            aria-label="Avatar backdrop"
+            aria-label="Portrait stage"
             className="grid grid-cols-4 gap-2 sm:grid-cols-7"
           >
             {CURATED_BACKDROPS.map((option) => {
@@ -313,7 +332,7 @@ export function AvatarPicker({
                 type="button"
                 role="radio"
                 aria-checked={customBackdropSelected}
-                aria-label="Custom backdrop"
+                aria-label="Custom stage"
                 disabled={disabled}
                 className={`avatar-bg-swatch pressable relative flex flex-col items-stretch overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60 ${
                   customBackdropSelected
@@ -370,15 +389,13 @@ export function AvatarPicker({
             onClick={() => setBackdropImportOpen(true)}
           >
             <ImportIcon className="h-3.5 w-3.5 shrink-0" />
-            {customBackdropUrl
-              ? "Replace custom backdrop"
-              : "Import custom backdrop"}
+            {customBackdropUrl ? "Replace your stage" : "Add your own"}
           </button>
           <p className="mt-2 text-xs text-muted" aria-live="polite">
-            Backdrop:{" "}
+            Stage:{" "}
             <span className="font-semibold text-ink">{selectedBackdrop}</span>
             {" · "}
-            Sits behind your avatar on cards and your board.
+            Plate behind your portrait on the board and league cards.
           </p>
         </fieldset>
       ) : null}

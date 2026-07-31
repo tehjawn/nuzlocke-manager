@@ -131,7 +131,7 @@ export function CustomAvatarModal({
   return (
     <Modal
       open
-      title="Import custom avatar"
+      title="Add your own portrait"
       onClose={handleClose}
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">

@@ -28,13 +28,13 @@ const COPY: Record<
   { title: string; blurb: string; previewClass: string }
 > = {
   "avatar-bg": {
-    title: "Import custom backdrop",
+    title: "Add your own stage",
     blurb:
       "Upload a PNG, JPEG, WebP, or GIF (max 1000×1000, 5 MB; first frame only), or paste a public HTTPS image URL to store only the link. Transparent PNGs look best.",
     previewClass: "h-24 w-24 object-contain",
   },
   "card-bg": {
-    title: "Import custom card background",
+    title: "Add your own card art",
     blurb:
       "Upload a PNG, JPEG, WebP, or GIF (max 1000×1000, 5 MB; first frame only), or paste a public HTTPS image URL to store only the link. Landscape images work best.",
     previewClass: "h-24 w-40 object-cover",

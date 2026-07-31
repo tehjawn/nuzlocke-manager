@@ -53,7 +53,7 @@ function AvatarBrowserInner({
     parsed.kind === "pokemon" ? parsed.pokedexId : null;
 
   return (
-    <Modal open title="Browse avatars" onClose={onClose} wide>
+    <Modal open title="Browse portraits" onClose={onClose} wide>
       <div
         role="group"
         aria-label="Avatar catalog"

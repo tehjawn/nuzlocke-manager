@@ -13,12 +13,10 @@ import {
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
-import { AvatarPicker } from "@/components/AvatarPicker";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
 import { BoardHistoryModal } from "@/components/BoardHistoryModal";
-import { CardBackgroundPicker } from "@/components/CardBackgroundPicker";
 import { Frame } from "@/components/Frame";
 import {
   EMPTY_POKEMON_FORM,
@@ -30,11 +28,11 @@ import {
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PartyBoardDnd } from "@/components/PartyBoardDnd";
 import { PartyStrip } from "@/components/PartyStrip";
+import { PlayerCustomizationEditor } from "@/components/PlayerCustomizationEditor";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { ReviveControl } from "@/components/ReviveControl";
 import { SaveImportModal } from "@/components/SaveImportModal";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
-import { StatusEmojiPicker } from "@/components/StatusEmojiPicker";
 import { StatusLine } from "@/components/StatusLine";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
 import {
@@ -1051,11 +1049,11 @@ export function TrainerBoard({
                   <>
                     <SaveStatus status={playerSave.status} onAccent />
                     <HeaderButton
-                      aria-label="Edit player profile"
+                      aria-label="Customize player profile"
                       onClick={startEditingPlayer}
                     >
                       <PencilIcon />
-                      Edit
+                      Customize
                     </HeaderButton>
                   </>
                 )
@@ -1063,76 +1061,29 @@ export function TrainerBoard({
             }
           >
             {editingPlayer ? (
-              <div className="space-y-4">
-                <div>
-                  <span className="mb-2 block text-sm font-bold text-muted">
-                    Avatar
-                  </span>
-                  <AvatarPicker
-                    value={avatarSpriteKey}
-                    onChange={setAvatarSpriteKey}
-                    backgroundKey={avatarBackgroundKey}
-                    onBackgroundChange={setAvatarBackgroundKey}
-                    savedCustomBackground={savedCustomAvatarBg}
-                    onSavedCustomBackgroundChange={setSavedCustomAvatarBg}
-                    disabled={pending}
-                  />
-                </div>
-                <CardBackgroundPicker
-                  value={cardBackgroundKey}
-                  onChange={setCardBackgroundKey}
-                  savedCustomBackground={savedCustomCardBg}
-                  onSavedCustomBackgroundChange={setSavedCustomCardBg}
-                  disabled={pending}
-                />
-                <label className="block text-sm">
-                  <span className="mb-1 block font-bold text-muted">
-                    Nickname
-                  </span>
-                  <input
-                    className="w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
-                    value={handle}
-                    maxLength={24}
-                    placeholder="Your league nickname"
-                    onChange={(e) => setHandle(e.target.value)}
-                  />
-                </label>
-                {trainer.discordUsername || trainer.discordDisplayName ? (
-                  <p className="text-sm text-muted">
-                    Discord{" "}
-                    <span className="font-semibold text-ink">
-                      {trainer.discordUsername
-                        ? `@${trainer.discordUsername}`
-                        : trainer.discordDisplayName}
-                    </span>
-                  </p>
-                ) : null}
-                <label className="block text-sm">
-                  <span className="mb-1 block font-bold text-muted">
-                    Real name
-                  </span>
-                  <input
-                    className="w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
-                    value={realName}
-                    placeholder="Optional — e.g. John"
-                    onChange={(e) => setRealName(e.target.value)}
-                  />
-                </label>
-                <StatusEmojiPicker
-                  value={statusEmoji}
-                  onChange={setStatusEmoji}
-                  disabled={pending}
-                />
-                <label className="block text-sm">
-                  <span className="mb-1 block font-bold text-muted">Status</span>
-                  <textarea
-                    className="min-h-20 w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
-                    value={statusText}
-                    placeholder="Where you are in the run…"
-                    onChange={(e) => setStatusText(e.target.value)}
-                  />
-                </label>
-              </div>
+              <PlayerCustomizationEditor
+                avatarSpriteKey={avatarSpriteKey}
+                onAvatarChange={setAvatarSpriteKey}
+                avatarBackgroundKey={avatarBackgroundKey}
+                onAvatarBackgroundChange={setAvatarBackgroundKey}
+                savedCustomAvatarBg={savedCustomAvatarBg}
+                onSavedCustomAvatarBgChange={setSavedCustomAvatarBg}
+                cardBackgroundKey={cardBackgroundKey}
+                onCardBackgroundChange={setCardBackgroundKey}
+                savedCustomCardBg={savedCustomCardBg}
+                onSavedCustomCardBgChange={setSavedCustomCardBg}
+                handle={handle}
+                onHandleChange={setHandle}
+                realName={realName}
+                onRealNameChange={setRealName}
+                statusEmoji={statusEmoji}
+                onStatusEmojiChange={setStatusEmoji}
+                statusText={statusText}
+                onStatusTextChange={setStatusText}
+                discordUsername={trainer.discordUsername}
+                discordDisplayName={trainer.discordDisplayName}
+                disabled={pending}
+              />
             ) : (
               <div className="flex flex-wrap items-start gap-4">
                 <AvatarPortrait
@@ -1211,7 +1162,7 @@ export function TrainerBoard({
                   ) : null}
                   {canEdit && boardPokemon.length === 0 ? (
                     <p className="mt-3 text-sm text-muted">
-                      Your board is ready — edit your profile, then use{" "}
+                      Your board is ready — customize your profile, then use{" "}
                       <span className="font-semibold text-ink">Import save</span>{" "}
                       at the top once you have a file from Afterplay. You can
                       also tap party slots and badges by hand.

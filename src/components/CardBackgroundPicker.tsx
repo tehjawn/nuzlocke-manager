@@ -105,12 +105,9 @@ export function CardBackgroundPicker({
 
   return (
     <fieldset disabled={disabled} className="min-w-0">
-      <legend className="mb-2 block text-sm font-bold text-muted">
-        Card background
-      </legend>
       <div
         role="radiogroup"
-        aria-label="Card background"
+        aria-label="Card art"
         className="grid grid-cols-3 gap-2 sm:grid-cols-6"
       >
         {CURATED.map((option) => {
@@ -159,7 +156,7 @@ export function CardBackgroundPicker({
             type="button"
             role="radio"
             aria-checked={customSelected}
-            aria-label="Custom card background"
+            aria-label="Custom card art"
             disabled={disabled}
             className={`card-bg-swatch pressable relative flex flex-col items-stretch overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60 ${
               customSelected
@@ -203,13 +200,13 @@ export function CardBackgroundPicker({
         onClick={() => setImportOpen(true)}
       >
         <ImportIcon className="h-3.5 w-3.5 shrink-0" />
-        {customUrl ? "Replace custom background" : "Import custom background"}
+        {customUrl ? "Replace your card art" : "Add your own"}
       </button>
       <p className="mt-2 text-xs text-muted" aria-live="polite">
-        Selected:{" "}
+        Card art:{" "}
         <span className="font-semibold text-ink">{selectedLabel(value)}</span>
         {" · "}
-        League card chrome — separate from the avatar backdrop.
+        Chrome for your league card — separate from the portrait stage.
       </p>
       <CustomTextureModal
         open={importOpen}
