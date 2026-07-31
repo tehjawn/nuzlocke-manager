@@ -11,6 +11,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { gmResetAllTrainerBoardsAction } from "@/app/actions/challenge";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { writeGmLensOnClient } from "@/lib/gm-lens";
 
 type GmToolsLauncherProps = {
@@ -35,6 +37,9 @@ export function GmToolsLauncher({
   const [on, setOn] = useState(initialOn);
   const [seenInitialOn, setSeenInitialOn] = useState(initialOn);
   const [pending, startTransition] = useTransition();
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(min-width: 640px)").matches
@@ -115,6 +120,30 @@ export function GmToolsLauncher({
     }
   }
 
+  function resetAllBoards() {
+    void (async () => {
+      const ok = await confirm({
+        title: "Reset all trainer boards?",
+        description:
+          "Clears every trainer’s party, memorial, badges, wipe counts, and revive tokens for an official season start. Profiles and claims stay. Export a backup from the GM console first if needed.",
+        confirmLabel: "Reset all boards",
+        tone: "danger",
+      });
+      if (!ok) return;
+      setResetMessage(null);
+      setResetError(null);
+      startTransition(async () => {
+        const result = await gmResetAllTrainerBoardsAction({ slug });
+        if (result.ok) {
+          setResetMessage(result.message ?? "All boards reset");
+          router.refresh();
+        } else {
+          setResetError(result.error);
+        }
+      });
+    })();
+  }
+
   const gmConsoleHref = `/challenges/${slug}/gm`;
   const subtitle = seasonLabel?.trim() || "Game Master controls";
 
@@ -163,6 +192,25 @@ export function GmToolsLauncher({
             <span className="gm-tools-panel__toggle-knob" />
           </span>
         </button>
+
+        <button
+          type="button"
+          disabled={pending}
+          onClick={resetAllBoards}
+          className="gm-tools-panel__danger"
+        >
+          <span className="gm-tools-panel__danger-label">Reset all boards</span>
+          <span className="gm-tools-panel__danger-desc">
+            Clear every trainer for an official season start
+          </span>
+        </button>
+
+        {resetMessage ? (
+          <p className="text-xs font-semibold text-accent-deep">{resetMessage}</p>
+        ) : null}
+        {resetError ? (
+          <p className="text-xs font-semibold text-danger">{resetError}</p>
+        ) : null}
 
         <Link href={gmConsoleHref} className="gm-tools-panel__console">
           <GmConsoleLinkLabel />
@@ -256,6 +304,7 @@ export function GmToolsLauncher({
             document.body,
           )
         : null}
+      {confirmDialog}
     </>
   );
 }
