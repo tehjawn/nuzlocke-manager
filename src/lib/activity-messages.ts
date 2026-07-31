@@ -1,3 +1,5 @@
+import type { ActivityItem } from "@/lib/challenge-types";
+
 /** Oxford-comma list: "A", "A and B", "A, B, and C". */
 export function listLabels(labels: string[]): string {
   if (labels.length === 0) return "";
@@ -36,4 +38,35 @@ export function summarizeBadgeBatch(
     return { type: "BADGE_EARNED", message };
   }
   return { type: "BADGE_REVOKED", message };
+}
+
+/** One Pack-feed / Discord line for multi-mon memorial relocates. */
+export function summarizeDeathBatch(
+  handle: string,
+  labels: string[],
+): string | null {
+  if (labels.length === 0) return null;
+  return `${handle} memorialized ${listLabels(labels)}`;
+}
+
+/**
+ * Collapse consecutive identical RULE_UPDATED rows (historical GM spam).
+ * Items are newest-first. Keeps the newest row in each run.
+ */
+export function coalesceActivityItems(items: ActivityItem[]): ActivityItem[] {
+  if (items.length <= 1) return items;
+  const out: ActivityItem[] = [];
+  for (const item of items) {
+    const prev = out[out.length - 1];
+    if (
+      prev &&
+      prev.type === "RULE_UPDATED" &&
+      item.type === "RULE_UPDATED" &&
+      prev.message === item.message
+    ) {
+      continue;
+    }
+    out.push(item);
+  }
+  return out;
 }

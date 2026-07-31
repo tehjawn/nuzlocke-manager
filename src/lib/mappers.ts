@@ -3,6 +3,7 @@ import type {
   PokemonEntry,
   TrainerProfile,
 } from "@/lib/challenge-types";
+import { coalesceActivityItems } from "@/lib/activity-messages";
 import { parseAvatarBackgroundKey } from "@/data/avatar-backgrounds";
 import { parseCardBackgroundKey } from "@/data/card-backgrounds";
 import { avatarImageUrl } from "@/lib/sprites";
@@ -162,8 +163,8 @@ export function mapDbChallenge(
       .slice()
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(mapDbTrainer),
-    activities: row.activities?.map((a) =>
-      mapActivity(a, viewerUserId),
+    activities: coalesceActivityItems(
+      row.activities?.map((a) => mapActivity(a, viewerUserId)) ?? [],
     ),
   };
 }

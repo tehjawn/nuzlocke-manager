@@ -1,7 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useOptimistic, useState, useTransition } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import EmojiPicker, {
   EmojiStyle,
   Theme,
@@ -12,6 +20,7 @@ import {
   toggleActivityReactionAction,
 } from "@/app/actions/challenge";
 import { Frame } from "@/components/Frame";
+import { coalesceActivityItems } from "@/lib/activity-messages";
 import type {
   ActivityItem,
   ActivityReactionSummary,
@@ -21,12 +30,13 @@ const APP_MARK = "/nuzlocke-mark.png";
 
 const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
 const POLL_MS = 12_000;
+const PAGE_SIZE = 30;
 
 type ActivityFeedProps = {
   slug: string;
   activities: ActivityItem[];
   canReact?: boolean;
-  /** When set, show this many rows first with a Show more control. */
+  /** When set, show this many rows with a link to the full activity page. */
   previewCount?: number;
 };
 
@@ -64,17 +74,18 @@ export function ActivityFeed({
   canReact = false,
   previewCount,
 }: ActivityFeedProps) {
+  const pathname = usePathname() ?? "";
+  const onFullPage = pathname === `/challenges/${slug}/activity`;
   const propKey = activitiesKey(activitiesProp);
   const [seenPropKey, setSeenPropKey] = useState(propKey);
   const [polled, setPolled] = useState<ActivityItem[] | null>(null);
-  const [expanded, setExpanded] = useState(false);
 
   if (propKey !== seenPropKey) {
     setSeenPropKey(propKey);
     setPolled(null);
   }
 
-  const activities = polled ?? activitiesProp;
+  const activities = coalesceActivityItems(polled ?? activitiesProp);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,8 +93,11 @@ export function ActivityFeed({
     async function poll() {
       if (document.visibilityState === "hidden") return;
       try {
-        const next = await fetchChallengeActivitiesAction({ slug });
-        if (!cancelled) setPolled(next);
+        const next = await fetchChallengeActivitiesAction({
+          slug,
+          limit: previewCount != null ? Math.max(previewCount * 4, 20) : 20,
+        });
+        if (!cancelled) setPolled(next.items);
       } catch {
         // ignore transient poll failures
       }
@@ -100,14 +114,14 @@ export function ActivityFeed({
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [slug]);
+  }, [slug, previewCount]);
 
-  const collapsible =
-    typeof previewCount === "number" && activities.length > previewCount;
   const visible =
-    collapsible && !expanded
+    typeof previewCount === "number"
       ? activities.slice(0, previewCount)
       : activities;
+  const showAllLink =
+    typeof previewCount === "number" && !onFullPage && activities.length > 0;
 
   return (
     <Frame title="Pack feed">
@@ -115,32 +129,152 @@ export function ActivityFeed({
         <p className="text-sm text-muted">No activity yet. Updates show here.</p>
       ) : (
         <>
-          <div
-            className={
-              expanded && collapsible
-                ? "max-h-[28rem] overflow-y-auto pr-2 [scrollbar-gutter:stable]"
-                : undefined
-            }
-          >
-            <ul className="space-y-3">
-              {visible.map((item) => (
-                <ActivityRow key={item.id} item={item} canReact={canReact} />
-              ))}
-            </ul>
-          </div>
-          {collapsible ? (
-            <button
-              type="button"
-              className="pressable mt-3 w-full rounded-lg bg-surface px-3 py-2 text-sm font-bold"
-              onClick={() => setExpanded((open) => !open)}
+          <ul className="space-y-3">
+            {visible.map((item) => (
+              <ActivityRow key={item.id} item={item} canReact={canReact} />
+            ))}
+          </ul>
+          {showAllLink ? (
+            <Link
+              href={`/challenges/${slug}/activity`}
+              className="pressable mt-3 flex w-full items-center justify-center rounded-lg bg-surface px-3 py-2 text-sm font-bold hover:bg-accent/10"
             >
-              {expanded
-                ? "Show less"
-                : `Show more (${activities.length - previewCount} more)`}
-            </button>
+              View all activity
+            </Link>
           ) : null}
         </>
       )}
+    </Frame>
+  );
+}
+
+type ActivityFeedInfiniteProps = {
+  slug: string;
+  initialItems: ActivityItem[];
+  initialCursor: string | null;
+  canReact?: boolean;
+};
+
+/** Full Pack feed page — cursor pages loaded via IntersectionObserver. */
+export function ActivityFeedInfinite({
+  slug,
+  initialItems,
+  initialCursor,
+  canReact = false,
+}: ActivityFeedInfiniteProps) {
+  const [items, setItems] = useState(() =>
+    coalesceActivityItems(initialItems),
+  );
+  const [cursor, setCursor] = useState<string | null>(initialCursor);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef(false);
+  const cursorRef = useRef<string | null>(initialCursor);
+  const paginatedRef = useRef(false);
+
+  useEffect(() => {
+    cursorRef.current = cursor;
+  }, [cursor]);
+
+  // Fresh first page while the tab is visible (same cadence as the rail).
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const next = await fetchChallengeActivitiesAction({
+          slug,
+          limit: PAGE_SIZE,
+        });
+        if (cancelled) return;
+        if (!paginatedRef.current) {
+          setItems(coalesceActivityItems(next.items));
+          setCursor(next.nextCursor);
+          return;
+        }
+        setItems((prev) => {
+          const ids = new Set(next.items.map((item) => item.id));
+          const older = prev.filter((item) => !ids.has(item.id));
+          return coalesceActivityItems([...next.items, ...older]);
+        });
+      } catch {
+        // ignore
+      }
+    }
+
+    const id = setInterval(poll, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [slug]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !cursor) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        const pageCursor = cursorRef.current;
+        if (loadingRef.current || !pageCursor) return;
+        loadingRef.current = true;
+        setLoading(true);
+        setError(null);
+        void (async () => {
+          try {
+            const page = await fetchChallengeActivitiesAction({
+              slug,
+              cursor: pageCursor,
+              limit: PAGE_SIZE,
+            });
+            paginatedRef.current = true;
+            setItems((prev) =>
+              coalesceActivityItems([...prev, ...page.items]),
+            );
+            setCursor(page.nextCursor);
+          } catch {
+            setError("Couldn’t load more activity");
+          } finally {
+            loadingRef.current = false;
+            setLoading(false);
+          }
+        })();
+      },
+      { rootMargin: "240px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [slug, cursor]);
+
+  return (
+    <Frame title="Pack feed">
+      {items.length === 0 ? (
+        <p className="text-sm text-muted">No activity yet. Updates show here.</p>
+      ) : (
+        <ul className="space-y-3">
+          {items.map((item) => (
+            <ActivityRow key={item.id} item={item} canReact={canReact} />
+          ))}
+        </ul>
+      )}
+      <div ref={sentinelRef} className="h-4" aria-hidden />
+      {loading ? (
+        <p className="mt-2 text-center text-sm text-muted">Loading…</p>
+      ) : null}
+      {error ? (
+        <p className="mt-2 text-center text-sm text-danger">{error}</p>
+      ) : null}
+      {!cursor && items.length > 0 ? (
+        <p className="mt-3 text-center text-xs text-muted">End of feed</p>
+      ) : null}
     </Frame>
   );
 }

@@ -24,7 +24,10 @@ import {
   isOwnedCustomAvatarUrl,
   parseAvatarKey,
 } from "@/lib/sprites";
-import { summarizeBadgeBatch } from "@/lib/activity-messages";
+import {
+  summarizeBadgeBatch,
+  summarizeDeathBatch,
+} from "@/lib/activity-messages";
 import {
   canUseCustomTextureUrl,
   customTextureKey,
@@ -33,8 +36,11 @@ import {
 import { isAvatarBackgroundKey } from "@/data/avatar-backgrounds";
 import { isCardBackgroundKey } from "@/data/card-backgrounds";
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
-import type { ActivityItem } from "@/lib/challenge-types";
-import { listChallengeActivities } from "@/lib/challenges";
+import {
+  getChallenge,
+  listChallengeActivities,
+  type ActivityPage,
+} from "@/lib/challenges";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import {
   IvsSchema,
@@ -49,7 +55,6 @@ import {
   buildChallengeExport,
 } from "@/lib/export-challenge";
 import { canViewChallenge } from "@/lib/challenge-access";
-import { getChallenge } from "@/lib/challenges";
 import { ChallengeStatusSchema } from "@/lib/types";
 import {
   buildFirstRoundPairings,
@@ -78,6 +83,7 @@ function jsonStatOrNull(
 function revalidateBoardViews(slug: string, trainerId?: string) {
   revalidatePath(`/challenges/${slug}`);
   revalidatePath(`/challenges/${slug}/memorial`);
+  revalidatePath(`/challenges/${slug}/activity`);
   if (trainerId) {
     revalidatePath(`/challenges/${slug}/trainers/${trainerId}`);
   }
@@ -116,8 +122,37 @@ async function logActivity(input: {
     | "NOTE"
     | "WIPE";
   message: string;
+  /**
+   * When set, bump `createdAt` on a matching recent row instead of inserting.
+   * Used for identical GM rule saves so the Pack feed stays one line.
+   */
+  coalesceWindowMs?: number;
 }) {
-  await getPrisma().activityEvent.create({
+  const prisma = getPrisma();
+
+  if (input.coalesceWindowMs != null && input.coalesceWindowMs > 0) {
+    const since = new Date(Date.now() - input.coalesceWindowMs);
+    const existing = await prisma.activityEvent.findFirst({
+      where: {
+        challengeId: input.challengeId,
+        type: input.type,
+        message: input.message,
+        createdAt: { gte: since },
+        ...(input.actorId != null ? { actorId: input.actorId } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.activityEvent.update({
+        where: { id: existing.id },
+        data: { createdAt: new Date() },
+      });
+      return;
+    }
+  }
+
+  await prisma.activityEvent.create({
     data: {
       challengeId: input.challengeId,
       actorId: input.actorId,
@@ -1234,18 +1269,21 @@ export async function relocatePokemonAction(
         });
       }
 
-      for (const entry of memorialized) {
-        const message = `${trainer.handle} memorialized ${entry.label}`;
+      const deathMessage = summarizeDeathBatch(
+        trainer.handle,
+        memorialized.map((entry) => entry.label),
+      );
+      if (deathMessage) {
         await tx.activityEvent.create({
           data: {
             challengeId: trainer.challengeId,
             actorId: userId,
             trainerId: trainer.id,
             type: "DEATH",
-            message,
+            message: deathMessage,
           },
         });
-        discordDeaths.push(message);
+        discordDeaths.push(deathMessage);
       }
     });
 
@@ -1548,6 +1586,8 @@ export async function gmUpdateRuleAction(input: {
       actorId: session?.user?.id,
       type: "RULE_UPDATED",
       message: "Rules updated by Game Master",
+      // Rapid per-rule saves collapse into one Pack feed line.
+      coalesceWindowMs: 15 * 60 * 1000,
     });
 
     revalidateChallenge(challenge.slug);
@@ -2132,13 +2172,15 @@ export async function toggleActivityReactionAction(input: {
   }
 }
 
-/** Lightweight Pack feed poll (activities + reaction aggregates). */
+/** Lightweight Pack feed poll / paginated activity page fetch. */
 export async function fetchChallengeActivitiesAction(input: {
   slug: string;
-}): Promise<ActivityItem[]> {
+  cursor?: string | null;
+  limit?: number;
+}): Promise<ActivityPage> {
   const session = await auth();
   const challenge = await getChallenge(input.slug, session?.user?.id);
-  if (!challenge) return [];
+  if (!challenge) return { items: [], nextCursor: null };
 
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
@@ -2150,8 +2192,11 @@ export async function fetchChallengeActivitiesAction(input: {
       hasMembership: Boolean(access?.role),
     })
   ) {
-    return [];
+    return { items: [], nextCursor: null };
   }
 
-  return listChallengeActivities(input.slug, session?.user?.id);
+  return listChallengeActivities(input.slug, session?.user?.id, {
+    cursor: input.cursor,
+    limit: input.limit,
+  });
 }
