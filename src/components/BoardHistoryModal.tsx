@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   getTrainerBoardSnapshotAction,
   listTrainerBoardSnapshotsAction,
@@ -49,26 +49,6 @@ function formatSnapshotWhen(iso: string): string {
   }
 }
 
-function BoardHistoryFallback({
-  onClose,
-  trainerHandle,
-}: {
-  onClose: () => void;
-  trainerHandle: string;
-}) {
-  return (
-    <Modal
-      open
-      title="Board history"
-      subtitle={`${trainerHandle} · GM-only run archive`}
-      size="wide"
-      onClose={onClose}
-    >
-      <p className="text-sm text-muted">Loading history…</p>
-    </Modal>
-  );
-}
-
 function BoardHistoryBody({
   onClose,
   trainerId,
@@ -76,18 +56,12 @@ function BoardHistoryBody({
   badges,
   showCompetitiveDetails = true,
 }: Omit<BoardHistoryModalProps, "open">) {
-  const [listRequest] = useState(() =>
-    listTrainerBoardSnapshotsAction({ trainerId }),
-  );
-  const listResult = use(listRequest);
-
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(
-    listResult.ok ? null : listResult.error,
+  const [listLoading, setListLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snapshots, setSnapshots] = useState<TrainerBoardSnapshotSummary[]>(
+    [],
   );
-  const snapshots: TrainerBoardSnapshotSummary[] = listResult.ok
-    ? listResult.snapshots
-    : [];
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{
     id: string;
@@ -100,6 +74,34 @@ function BoardHistoryBody({
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void listTrainerBoardSnapshotsAction({ trainerId })
+      .then((result) => {
+        if (cancelled) return;
+        setListLoading(false);
+        if (!result.ok) {
+          setError(result.error);
+          setSnapshots([]);
+          return;
+        }
+        setSnapshots(result.snapshots);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setListLoading(false);
+        setError(
+          e instanceof Error ? e.message : "Could not load board history",
+        );
+        setSnapshots([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [trainerId]);
 
   function openSnapshot(id: string) {
     setSelectedId(id);
@@ -246,12 +248,15 @@ function BoardHistoryBody({
               Snapshots are taken before imports, wipes, and GM resets. Players
               do not see this list.
             </p>
-            {snapshots.length === 0 && !error ? (
+            {listLoading ? (
+              <p className="text-sm text-muted">Loading history…</p>
+            ) : null}
+            {!listLoading && snapshots.length === 0 && !error ? (
               <p className="text-sm text-muted">
                 No snapshots yet for this trainer.
               </p>
             ) : null}
-            {snapshots.length > 0 ? (
+            {!listLoading && snapshots.length > 0 ? (
               <ul className="divide-y divide-frame/25 border border-frame/40">
                 {snapshots.map((snap) => {
                   const active = selectedId === snap.id && pending;
@@ -307,22 +312,15 @@ export function BoardHistoryModal({
 }: BoardHistoryModalProps) {
   if (!open) return null;
 
+  // Remount on each open so loading state resets without sync setState in effects.
   return (
-    <Suspense
-      fallback={
-        <BoardHistoryFallback
-          onClose={onClose}
-          trainerHandle={trainerHandle}
-        />
-      }
-    >
-      <BoardHistoryBody
-        onClose={onClose}
-        trainerId={trainerId}
-        trainerHandle={trainerHandle}
-        badges={badges}
-        showCompetitiveDetails={showCompetitiveDetails}
-      />
-    </Suspense>
+    <BoardHistoryBody
+      key={trainerId}
+      onClose={onClose}
+      trainerId={trainerId}
+      trainerHandle={trainerHandle}
+      badges={badges}
+      showCompetitiveDetails={showCompetitiveDetails}
+    />
   );
 }
