@@ -4,6 +4,7 @@ import Image from "next/image";
 import {
   useDeferredValue,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -24,7 +25,9 @@ import {
   type PokemonIndexEntry,
 } from "@/data/pokemon-index";
 import {
+  pokemonAnimatedSpriteUrl,
   pokemonSpriteUrl,
+  SHOWDOWN_ANI_SPRITES_DIR,
   SHOWDOWN_POKEMON_SPRITES_DIR,
   SHOWDOWN_TRAINER_SPRITES_DIR,
   trainerSpriteUrl,
@@ -42,6 +45,8 @@ type SpritePickerPreview = {
   src: string;
   title: string;
   subtitle?: string;
+  /** Showdown ani GIFs aren't pixel art. */
+  smooth?: boolean;
 };
 
 /** Catalog on the left; large selection preview + actions on the right. */
@@ -73,7 +78,7 @@ function SpritePickerShell({
               alt=""
               width={SIDEBAR_SPRITE_PX}
               height={SIDEBAR_SPRITE_PX}
-              className="pixelated h-14 w-14 object-contain sm:h-44 sm:w-44"
+              className={`${preview.smooth ? "" : "pixelated "}h-14 w-14 object-contain sm:h-44 sm:w-44`}
               unoptimized
             />
           ) : (
@@ -254,6 +259,11 @@ type PokemonBrowserProps = {
   onSelect: (entry: PokemonIndexEntry) => void;
   /** Render panel content only (parent owns the modal chrome). */
   embedded?: boolean;
+  /** Showdown `/sprites/ani/` GIFs instead of static dex sprites. */
+  animated?: boolean;
+  /** Portrait picker: include Still/Animated in the compact filter row. */
+  showMotionFilter?: boolean;
+  onAnimatedChange?: (animated: boolean) => void;
 };
 
 function initialPokemonDraft(selectedId: number | null): PokemonIndexEntry | null {
@@ -266,6 +276,9 @@ export function PokemonSpriteBrowser({
   onClose,
   onSelect,
   embedded = false,
+  animated = false,
+  showMotionFilter = false,
+  onAnimatedChange,
 }: PokemonBrowserProps) {
   // Remount when opened so draft/query/generation reset without an effect.
   if (!open) return null;
@@ -276,6 +289,9 @@ export function PokemonSpriteBrowser({
       onClose={onClose}
       onSelect={onSelect}
       embedded={embedded}
+      animated={animated}
+      showMotionFilter={showMotionFilter}
+      onAnimatedChange={onAnimatedChange}
     />
   );
 }
@@ -285,6 +301,9 @@ function PokemonSpriteBrowserInner({
   onClose,
   onSelect,
   embedded,
+  animated = false,
+  showMotionFilter = false,
+  onAnimatedChange,
 }: Omit<PokemonBrowserProps, "open">) {
   const selected = initialPokemonDraft(selectedId);
   const [query, setQuery] = useState("");
@@ -292,8 +311,9 @@ function PokemonSpriteBrowserInner({
     selected?.generation ?? 3,
   );
   const [formesOnly, setFormesOnly] = useState(Boolean(selected?.isForme));
+  const [filterMenu, setFilterMenu] = useState<string | null>(null);
   const deferred = useDeferredValue(query);
-  const resetKey = `${deferred}|${generation ?? "all"}|${formesOnly ? 1 : 0}`;
+  const resetKey = `${deferred}|${generation ?? "all"}|${formesOnly ? 1 : 0}|${animated ? "ani" : "still"}`;
   const allResults = useMemo(
     () =>
       searchPokemonIndex(deferred, {
@@ -308,108 +328,97 @@ function PokemonSpriteBrowserInner({
   const coarse = useCoarsePointer();
   const [draft, setDraft] = useState<PokemonIndexEntry | null>(selected);
 
+  const spriteSrc = (mon: PokemonIndexEntry) =>
+    animated
+      ? pokemonAnimatedSpriteUrl(mon.slug)
+      : pokemonSpriteUrl(mon.name, { pokedexId: mon.pokedexId });
+  const stillSrc = (mon: PokemonIndexEntry) =>
+    pokemonSpriteUrl(mon.name, { pokedexId: mon.pokedexId });
+
   const catalog = (
     <>
-      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2">
-        <div
-          role="group"
-          aria-label="Generation"
-          className="flex flex-wrap gap-1.5"
-        >
-          <button
-            type="button"
-            className={`pressable rounded-lg px-2.5 py-1.5 text-[11px] font-semibold tracking-tight ${
-              generation == null
-                ? "bg-accent text-[var(--on-accent)]"
-                : "border border-frame bg-surface"
-            }`}
-            onClick={() => setGeneration(null)}
-          >
-            All
-          </button>
-          {POKEMON_GENERATIONS.map((g) => (
-            <button
-              key={g}
-              type="button"
-              className={`pressable rounded-lg px-2.5 py-1.5 text-[11px] font-semibold tracking-tight ${
-                generation === g
-                  ? "bg-accent text-[var(--on-accent)]"
-                  : "border border-frame bg-surface"
-              }`}
-              onClick={() => setGeneration(g)}
-            >
-              Gen {g}
-            </button>
-          ))}
+      <div className="mb-2 flex shrink-0 flex-col gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          {showMotionFilter ? (
+            <FilterSubmenu
+              id="motion"
+              openId={filterMenu}
+              onOpenChange={setFilterMenu}
+              label="Style"
+              valueLabel={animated ? "Animated" : "Still"}
+              options={[
+                { value: "still", label: "Still" },
+                { value: "animated", label: "Animated" },
+              ]}
+              value={animated ? "animated" : "still"}
+              onChange={(next) => onAnimatedChange?.(next === "animated")}
+            />
+          ) : null}
+          <FilterSubmenu
+            id="gen"
+            openId={filterMenu}
+            onOpenChange={setFilterMenu}
+            label="Gen"
+            valueLabel={generation == null ? "All gens" : `Gen ${generation}`}
+            options={[
+              { value: "all", label: "All gens" },
+              ...POKEMON_GENERATIONS.map((g) => ({
+                value: String(g),
+                label: `Gen ${g}`,
+              })),
+            ]}
+            value={generation == null ? "all" : String(generation)}
+            onChange={(next) =>
+              setGeneration(next === "all" ? null : Number(next))
+            }
+          />
+          <FilterSubmenu
+            id="formes"
+            openId={filterMenu}
+            onOpenChange={setFilterMenu}
+            label="Formes"
+            valueLabel={formesOnly ? "Formes" : "All"}
+            options={[
+              { value: "all", label: "All species" },
+              { value: "formes", label: "Formes only" },
+            ]}
+            value={formesOnly ? "formes" : "all"}
+            onChange={(next) => setFormesOnly(next === "formes")}
+          />
+          <input
+            autoFocus
+            aria-label="Search species and formes"
+            className="min-w-0 flex-1 rounded-md border border-frame bg-surface px-2.5 py-1.5 text-sm"
+            placeholder="Search species…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={formesOnly}
-          className={`pressable inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold tracking-tight ${
-            formesOnly
-              ? "border-accent/50 bg-accent/15 text-accent-ink"
-              : "border-dashed border-frame bg-surface text-muted"
-          }`}
-          onClick={() => setFormesOnly((v) => !v)}
-        >
-          <span
-            aria-hidden
-            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ${
-              formesOnly
-                ? "border-accent bg-accent text-[var(--on-accent)]"
-                : "border-frame bg-surface-2"
-            }`}
-          >
-            {formesOnly ? (
-              <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none">
-                <path
-                  d="M2.5 6.2 5 8.5 9.5 3.5"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            ) : null}
-          </span>
-          Formes only
-        </button>
-      </div>
-      <label className="mb-3 block shrink-0 text-sm">
-        <span className="mb-1 block font-bold text-muted">
-          Search species & formes
-        </span>
-        <input
-          autoFocus
-          className="w-full rounded-lg border border-frame bg-surface px-3 py-2"
-          placeholder="Deoxys, Castform, Alola…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+        <ResultCount
+          visible={visible.length}
+          total={total}
+          suffix={`${generation != null ? ` · Gen ${generation}` : ""}${formesOnly ? " · formes" : ""}${animated ? " · ani" : ""}`}
+          catalogHref={
+            animated ? SHOWDOWN_ANI_SPRITES_DIR : SHOWDOWN_POKEMON_SPRITES_DIR
+          }
+          catalogLabel={animated ? "Showdown ani" : "Showdown sprites"}
         />
-      </label>
-      <ResultCount
-        visible={visible.length}
-        total={total}
-        suffix={`${generation != null ? ` in Gen ${generation}` : ""}${formesOnly ? " formes" : ""}`}
-        catalogHref={SHOWDOWN_POKEMON_SPRITES_DIR}
-        catalogLabel="Showdown sprites"
-      />
+      </div>
       <SpriteScrollGrid scrollRef={scrollRef}>
         {visible.map((mon) => {
           const selectedRow = draft?.pokedexId === mon.pokedexId;
-          const src = pokemonSpriteUrl(mon.name, {
-            pokedexId: mon.pokedexId,
-          });
+          const src = spriteSrc(mon);
           const label = `#${mon.pokedexId} ${mon.name}`;
           return (
             <SpriteTile
               key={mon.pokedexId}
               src={src}
+              fallbackSrc={animated ? stillSrc(mon) : undefined}
               name={mon.name}
               label={label}
               selected={selectedRow}
               coarse={coarse}
+              smooth={animated}
               onSelect={() => setDraft(mon)}
               onConfirm={() => {
                 onSelect(mon);
@@ -427,7 +436,7 @@ function PokemonSpriteBrowserInner({
           remaining={total - visible.length}
         />
       </SpriteScrollGrid>
-      <SpriteHoverPreview preview={hover.preview} />
+      <SpriteHoverPreview preview={hover.preview} smooth={animated} />
     </>
   );
 
@@ -437,16 +446,15 @@ function PokemonSpriteBrowserInner({
       preview={
         draft
           ? {
-              src: pokemonSpriteUrl(draft.name, {
-                pokedexId: draft.pokedexId,
-              }),
+              src: spriteSrc(draft),
               title: `#${draft.pokedexId} ${draft.name}`,
-              subtitle: `Gen ${draft.generation}${draft.isForme ? " · forme" : ""}`,
+              subtitle: `Gen ${draft.generation}${draft.isForme ? " · forme" : ""}${animated ? " · animated" : ""}`,
+              smooth: animated,
             }
           : null
       }
       emptyLabel="Pick a species"
-      confirmLabel="Use Pokémon"
+      confirmLabel={animated ? "Use animated" : "Use Pokémon"}
       canConfirm={Boolean(draft)}
       onClose={onClose}
       onConfirm={() => {
@@ -466,6 +474,120 @@ function PokemonSpriteBrowserInner({
   );
 }
 
+type FilterOption = { value: string; label: string };
+
+function FilterSubmenu({
+  id,
+  openId,
+  onOpenChange,
+  label,
+  valueLabel,
+  options,
+  value,
+  onChange,
+}: {
+  id: string;
+  openId: string | null;
+  onOpenChange: (id: string | null) => void;
+  label: string;
+  valueLabel: string;
+  options: FilterOption[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const open = openId === id;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        onOpenChange(null);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onOpenChange(null);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, onOpenChange]);
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={menuId}
+        className={`pressable inline-flex max-w-36 items-center gap-1 rounded-md border px-2 py-1.5 text-[11px] font-semibold tracking-tight ${
+          open
+            ? "border-accent/50 bg-accent/15 text-accent-ink"
+            : "border-frame bg-surface text-ink"
+        }`}
+        onClick={() => onOpenChange(open ? null : id)}
+      >
+        <span className="truncate">{valueLabel}</span>
+        <FilterChevron open={open} />
+      </button>
+      {open ? (
+        <ul
+          id={menuId}
+          role="listbox"
+          aria-label={label}
+          className="absolute top-full left-0 z-30 mt-1 min-w-full overflow-hidden rounded-md border border-frame bg-surface py-0.5 shadow-[0_8px_24px_var(--shadow-md)]"
+        >
+          {options.map((option) => {
+            const selected = option.value === value;
+            return (
+              <li key={option.value} role="option" aria-selected={selected}>
+                <button
+                  type="button"
+                  className={`flex w-full whitespace-nowrap px-2.5 py-1.5 text-left text-[11px] font-semibold tracking-tight ${
+                    selected
+                      ? "bg-accent/15 text-accent-ink"
+                      : "text-ink hover:bg-accent/10"
+                  }`}
+                  onClick={() => {
+                    onChange(option.value);
+                    onOpenChange(null);
+                  }}
+                >
+                  {option.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function FilterChevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className={`h-2.5 w-2.5 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M3 4.5 6 7.5 9 4.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function ResultCount({
   visible,
   total,
@@ -480,7 +602,7 @@ function ResultCount({
   catalogLabel: string;
 }) {
   return (
-    <div className="mb-2 flex shrink-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs">
+    <div className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-[11px]">
       <p className="text-muted">
         Showing {visible}
         {visible < total ? ` of ${total}` : ""}
@@ -507,25 +629,32 @@ type SpritePreview = {
 
 function SpriteTile({
   src,
+  fallbackSrc,
   name,
   label,
   selected,
   coarse = false,
+  smooth = false,
   onSelect,
   onConfirm,
   onPreviewShow,
   onPreviewHide,
 }: {
   src: string;
+  fallbackSrc?: string;
   name: string;
   label: string;
   selected: boolean;
   coarse?: boolean;
+  smooth?: boolean;
   onSelect: () => void;
   onConfirm: () => void;
   onPreviewShow: (el: HTMLElement, src: string, label: string) => void;
   onPreviewHide: () => void;
 }) {
+  const [failed, setFailed] = useState(false);
+  const displaySrc =
+    failed && fallbackSrc && fallbackSrc !== src ? fallbackSrc : src;
   return (
     <button
       type="button"
@@ -541,19 +670,23 @@ function SpriteTile({
       // native double-click shortcut below.
       onClick={coarse && selected ? onConfirm : onSelect}
       onDoubleClick={onConfirm}
-      onMouseEnter={(e) => onPreviewShow(e.currentTarget, src, label)}
+      onMouseEnter={(e) => onPreviewShow(e.currentTarget, displaySrc, label)}
       onMouseLeave={onPreviewHide}
-      onFocus={(e) => onPreviewShow(e.currentTarget, src, label)}
+      onFocus={(e) => onPreviewShow(e.currentTarget, displaySrc, label)}
       onBlur={onPreviewHide}
     >
       <Image
-        src={src}
+        key={displaySrc}
+        src={displaySrc}
         alt=""
         width={72}
         height={72}
-        className="pixelated h-14 w-14 object-contain sm:h-16 sm:w-16"
+        className={`${smooth && !failed ? "" : "pixelated "}h-14 w-14 object-contain sm:h-16 sm:w-16`}
         unoptimized
         loading="lazy"
+        onError={() => {
+          if (fallbackSrc && !failed) setFailed(true);
+        }}
       />
       <span className="w-full truncate text-[11px] font-bold text-muted">
         {name}
@@ -562,7 +695,13 @@ function SpriteTile({
   );
 }
 
-function SpriteHoverPreview({ preview }: { preview: SpritePreview | null }) {
+function SpriteHoverPreview({
+  preview,
+  smooth = false,
+}: {
+  preview: SpritePreview | null;
+  smooth?: boolean;
+}) {
   if (!preview || typeof document === "undefined") return null;
 
   const viewportW = window.innerWidth;
@@ -593,7 +732,7 @@ function SpriteHoverPreview({ preview }: { preview: SpritePreview | null }) {
             alt=""
             width={PREVIEW_SIZE}
             height={PREVIEW_SIZE}
-            className="pixelated h-40 w-40 object-contain"
+            className={`${smooth ? "" : "pixelated "}h-40 w-40 object-contain`}
             unoptimized
           />
         </div>

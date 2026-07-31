@@ -4,6 +4,8 @@
  * Trainers: Pokemon Showdown trainer sprite CDN.
  */
 
+import { findPokemonById } from "@/data/pokemon-index";
+
 const SHOWDOWN_TRAINER_BASE =
   "https://play.pokemonshowdown.com/sprites/trainers";
 
@@ -11,12 +13,15 @@ const POKEAPI_SPRITE_BASE =
   "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
 
 const SHOWDOWN_POKE_BASE = "https://play.pokemonshowdown.com/sprites/gen5";
+const SHOWDOWN_ANI_BASE = "https://play.pokemonshowdown.com/sprites/ani";
 
 /** Browseable Showdown sprite indexes (open in a new tab from pickers). */
 export const SHOWDOWN_TRAINER_SPRITES_DIR =
   "https://play.pokemonshowdown.com/sprites/trainers/?sort=name&view=dir";
 export const SHOWDOWN_POKEMON_SPRITES_DIR =
   "https://play.pokemonshowdown.com/sprites/gen5/?sort=name&view=dir";
+export const SHOWDOWN_ANI_SPRITES_DIR =
+  "https://play.pokemonshowdown.com/sprites/ani/?sort=name&view=dir";
 
 /** Normalize spreadsheet-style names like "(Shiny) Charizard" or "Nidoran-M". */
 export function parseSpeciesInput(raw: string): {
@@ -71,6 +76,12 @@ export function trainerSpriteUrl(spriteKey: string): string {
 /** Prefix for Pokémon species avatars stored in `avatarSpriteKey`. */
 export const POKEMON_AVATAR_PREFIX = "poke:";
 
+/**
+ * Prefix for Showdown animated (`/sprites/ani/`) Pokémon avatars.
+ * Same id/species payload as `poke:` — only the render source differs.
+ */
+export const POKEMON_ANI_AVATAR_PREFIX = "pokeani:";
+
 /** Prefix for custom avatars (`custom:https://…`) — uploads or hotlinked URLs. */
 export const CUSTOM_AVATAR_PREFIX = "custom:";
 
@@ -83,11 +94,12 @@ export const CUSTOM_IMAGE_URL_MAX_LENGTH = 1000;
 /** Chars that must not appear raw in CSS `url()` / attribute contexts. */
 const UNSAFE_CUSTOM_URL_CHARS = /["'()\\\s<>]/;
 
-export type AvatarKind = "trainer" | "pokemon" | "custom";
+export type AvatarKind = "trainer" | "pokemon" | "pokemon-ani" | "custom";
 
 export type ParsedAvatar =
   | { kind: "trainer"; key: string }
   | { kind: "pokemon"; pokedexId: number | null; species: string }
+  | { kind: "pokemon-ani"; pokedexId: number | null; species: string }
   | { kind: "custom"; url: string };
 
 export function trainerAvatarKey(key: string): string {
@@ -98,6 +110,28 @@ export function pokemonAvatarKey(pokedexId: number, species?: string): string {
   if (pokedexId > 0) return `${POKEMON_AVATAR_PREFIX}${pokedexId}`;
   const slug = (species ?? "pikachu").trim() || "pikachu";
   return `${POKEMON_AVATAR_PREFIX}${slug}`;
+}
+
+export function pokemonAnimatedAvatarKey(
+  pokedexId: number,
+  species?: string,
+): string {
+  if (pokedexId > 0) return `${POKEMON_ANI_AVATAR_PREFIX}${pokedexId}`;
+  const slug = (species ?? "pikachu").trim() || "pikachu";
+  return `${POKEMON_ANI_AVATAR_PREFIX}${slug}`;
+}
+
+/**
+ * Showdown `/sprites/ani/` filename stem. Mostly the dex slug, with mega-x/y
+ * collapsed the way Showdown names those files (`charizard-megax.gif`).
+ */
+export function pokemonAnimatedSpriteId(speciesOrSlug: string): string {
+  const { slug } = parseSpeciesInput(speciesOrSlug);
+  return slug.replace(/-mega-x$/, "-megax").replace(/-mega-y$/, "-megay");
+}
+
+export function pokemonAnimatedSpriteUrl(speciesOrSlug: string): string {
+  return `${SHOWDOWN_ANI_BASE}/${pokemonAnimatedSpriteId(speciesOrSlug)}.gif`;
 }
 
 export function customAvatarKey(url: string): string {
@@ -161,16 +195,32 @@ export function parseAvatarKey(raw: string | null | undefined): ParsedAvatar {
     return { kind: "trainer", key: "brendan" };
   }
 
+  if (lower.startsWith(POKEMON_ANI_AVATAR_PREFIX)) {
+    return parsePokemonAvatarRest(
+      "pokemon-ani",
+      value.slice(POKEMON_ANI_AVATAR_PREFIX.length).trim(),
+    );
+  }
+
   if (lower.startsWith(POKEMON_AVATAR_PREFIX)) {
-    const rest = value.slice(POKEMON_AVATAR_PREFIX.length).trim();
-    const asId = Number(rest);
-    if (Number.isFinite(asId) && asId > 0) {
-      return { kind: "pokemon", pokedexId: asId, species: rest };
-    }
-    return { kind: "pokemon", pokedexId: null, species: rest || "Pikachu" };
+    return parsePokemonAvatarRest(
+      "pokemon",
+      value.slice(POKEMON_AVATAR_PREFIX.length).trim(),
+    );
   }
 
   return { kind: "trainer", key: trainerAvatarKey(value) };
+}
+
+function parsePokemonAvatarRest(
+  kind: "pokemon" | "pokemon-ani",
+  rest: string,
+): ParsedAvatar {
+  const asId = Number(rest);
+  if (Number.isFinite(asId) && asId > 0) {
+    return { kind, pokedexId: asId, species: rest };
+  }
+  return { kind, pokedexId: null, species: rest || "Pikachu" };
 }
 
 /**
@@ -237,20 +287,53 @@ export function canUseCustomAvatarUrl(
 export function avatarImageUrl(raw: string | null | undefined): string {
   const parsed = parseAvatarKey(raw);
   if (parsed.kind === "custom") return parsed.url;
+  if (parsed.kind === "pokemon-ani") {
+    return pokemonAnimatedSpriteUrl(pokemonAniSpecies(parsed));
+  }
   if (parsed.kind === "pokemon") {
     return pokemonSpriteUrl(parsed.species, { pokedexId: parsed.pokedexId });
   }
   return trainerSpriteUrl(parsed.key);
 }
 
-/** Tailwind classes for avatar images — custom uploads aren't pixel art. */
+/**
+ * Static stand-in for an animated avatar (reduced-motion / GIF load failure).
+ * Returns null when the key isn't an animated Pokémon portrait.
+ */
+export function avatarStillImageUrl(
+  raw: string | null | undefined,
+): string | null {
+  const parsed = parseAvatarKey(raw);
+  if (parsed.kind !== "pokemon-ani") return null;
+  return pokemonSpriteUrl(pokemonAniSpecies(parsed), {
+    pokedexId: parsed.pokedexId,
+  });
+}
+
+function pokemonAniSpecies(parsed: {
+  pokedexId: number | null;
+  species: string;
+}): string {
+  if (parsed.pokedexId && parsed.pokedexId > 0) {
+    const entry = findPokemonById(parsed.pokedexId);
+    if (entry) return entry.slug;
+  }
+  return parsed.species;
+}
+
+/**
+ * Tailwind classes for avatar images — custom uploads and ani GIFs aren't
+ * pixel art. Everything is `object-contain`: hotlinked and GIF avatars skip
+ * the square canvas in `prepareAvatarFile`, and cropping them hides part of
+ * the picked image rather than matching what the picker showed.
+ */
 export function avatarImageClassName(
   raw: string | null | undefined,
   sizeClass: string,
 ): string {
-  const custom = parseAvatarKey(raw).kind === "custom";
-  if (custom) {
-    return `${sizeClass} rounded-lg object-cover`;
+  const kind = parseAvatarKey(raw).kind;
+  if (kind === "custom" || kind === "pokemon-ani") {
+    return `${sizeClass} rounded-lg object-contain`;
   }
   return `pixelated ${sizeClass} object-contain`;
 }

@@ -7,6 +7,9 @@ import {
 } from "@/lib/custom-texture";
 import {
   CUSTOM_IMAGE_URL_MAX_LENGTH,
+  avatarImageClassName,
+  avatarImageUrl,
+  avatarStillImageUrl,
   canUseCustomAvatarUrl,
   customAvatarKey,
   customImageKeyFromInput,
@@ -15,6 +18,10 @@ import {
   isVercelBlobCustomUrl,
   normalizeCustomImageUrl,
   parseAvatarKey,
+  pokemonAnimatedAvatarKey,
+  pokemonAnimatedSpriteId,
+  pokemonAnimatedSpriteUrl,
+  pokemonSpriteUrl,
 } from "@/lib/sprites";
 
 const BLOB_AVATAR =
@@ -64,6 +71,37 @@ test("normalizeCustomImageUrl accepts raw URLs and custom: keys", () => {
 test("parseAvatarKey keeps hotlinked custom avatars", () => {
   const parsed = parseAvatarKey(customAvatarKey(HOTLINK));
   assert.deepEqual(parsed, { kind: "custom", url: HOTLINK });
+});
+
+test("pokemon animated avatar keys resolve to Showdown ani GIFs", () => {
+  assert.equal(pokemonAnimatedAvatarKey(306), "pokeani:306");
+  assert.deepEqual(parseAvatarKey("pokeani:306"), {
+    kind: "pokemon-ani",
+    pokedexId: 306,
+    species: "306",
+  });
+  assert.equal(
+    pokemonAnimatedSpriteId("Charizard-Mega-X"),
+    "charizard-megax",
+  );
+  assert.equal(
+    pokemonAnimatedSpriteUrl("venusaur-mega"),
+    "https://play.pokemonshowdown.com/sprites/ani/venusaur-mega.gif",
+  );
+  assert.equal(
+    avatarImageUrl("pokeani:306"),
+    "https://play.pokemonshowdown.com/sprites/ani/aggron.gif",
+  );
+  assert.equal(
+    avatarStillImageUrl("pokeani:306"),
+    pokemonSpriteUrl("306", { pokedexId: 306 }),
+  );
+  assert.equal(avatarStillImageUrl("poke:306"), null);
+  assert.match(avatarImageClassName("pokeani:306", "h-10"), /^h-10 /);
+  assert.doesNotMatch(
+    avatarImageClassName("pokeani:306", "h-10"),
+    /pixelated/,
+  );
 });
 
 test("parseCustomTextureUrl accepts hotlinked textures", () => {

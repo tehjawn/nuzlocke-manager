@@ -5,7 +5,11 @@ import {
   avatarBackgroundDataAttr,
 } from "@/data/avatar-backgrounds";
 import { cssTextureUrl } from "@/lib/custom-texture";
-import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
+import {
+  avatarImageClassName,
+  avatarImageUrl,
+  avatarStillImageUrl,
+} from "@/lib/sprites";
 
 type AvatarPortraitProps = {
   avatarSpriteKey: string;
@@ -41,6 +45,11 @@ export function AvatarPortrait({
         ["--avatar-bg-custom" as string]: cssTextureUrl(customUrl),
       } as CSSProperties)
     : undefined;
+  const src = avatarImageUrl(avatarSpriteKey);
+  const stillSrc = avatarStillImageUrl(avatarSpriteKey);
+  const imgClass = `${avatarImageClassName(avatarSpriteKey, "relative z-1 h-full w-full")}${
+    imgClassName ? ` ${imgClassName}` : ""
+  }`;
 
   return (
     <span
@@ -50,17 +59,34 @@ export function AvatarPortrait({
       data-avatar-bg={dataBg}
       style={style}
     >
-      <Image
-        key={avatarSpriteKey}
-        src={avatarImageUrl(avatarSpriteKey)}
-        alt={alt}
-        width={width}
-        height={height}
-        className={`${avatarImageClassName(avatarSpriteKey, "relative z-1 h-full w-full")}${
-          imgClassName ? ` ${imgClassName}` : ""
-        }`}
-        unoptimized
-      />
+      {stillSrc ? (
+        <picture key={avatarSpriteKey}>
+          <source
+            srcSet={stillSrc}
+            media="(prefers-reduced-motion: reduce)"
+          />
+          {/* Animated GIFs need a plain img so <picture> can swap the still. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={alt}
+            width={width}
+            height={height}
+            className={imgClass}
+            decoding="async"
+          />
+        </picture>
+      ) : (
+        <Image
+          key={avatarSpriteKey}
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          className={imgClass}
+          unoptimized
+        />
+      )}
     </span>
   );
 }

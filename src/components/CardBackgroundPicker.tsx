@@ -22,6 +22,17 @@ const CURATED: Array<{ key: string | null; label: string }> = [
   ...CARD_BACKGROUNDS.map((bg) => ({ key: bg.key, label: bg.label })),
 ];
 
+/** Match portrait / stage picker tiles. */
+const TILE_GRID = "grid grid-cols-3 gap-2.5 sm:grid-cols-4";
+const TILE_PREVIEW = "relative h-16 w-full sm:h-18";
+const TILE_LABEL =
+  "flex h-7 min-w-0 w-full items-center justify-center truncate px-1 text-center text-[11px] font-semibold leading-tight";
+const TILE_SELECTED =
+  "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_35%,transparent)]";
+const TILE_IDLE = "border-frame/70 hover:border-interactive/55";
+const TILE_BASE =
+  "pressable relative flex flex-col items-stretch overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60";
+
 function CheckIcon() {
   return (
     <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" aria-hidden>
@@ -96,11 +107,7 @@ export function CardBackgroundPicker({
 
   return (
     <fieldset disabled={disabled} className="min-w-0">
-      <div
-        role="radiogroup"
-        aria-label="Card art"
-        className="grid grid-cols-3 gap-2 sm:grid-cols-6"
-      >
+      <div role="radiogroup" aria-label="Card art" className={TILE_GRID}>
         {CURATED.map((option) => {
           const selected = value === option.key;
           return (
@@ -111,27 +118,25 @@ export function CardBackgroundPicker({
               aria-checked={selected}
               aria-label={option.label}
               disabled={disabled}
-              className={`card-bg-swatch pressable relative flex flex-col items-stretch overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60 ${
-                selected
-                  ? "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_35%,transparent)]"
-                  : "border-frame/70 hover:border-interactive/55"
+              className={`card-bg-swatch ${TILE_BASE} ${
+                selected ? TILE_SELECTED : TILE_IDLE
               }`}
               data-card-bg={option.key ?? undefined}
               data-card-bg-default={option.key == null ? "" : undefined}
               onClick={() => onChange(option.key)}
             >
-              <span className="card-bg-swatch-preview relative block h-11 w-full">
+              <span className={`card-bg-swatch-preview ${TILE_PREVIEW} block`}>
                 {selected ? (
                   <span
                     aria-hidden
-                    className="absolute top-1 right-1 z-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
+                    className="absolute top-1.5 right-1.5 z-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
                   >
                     <CheckIcon />
                   </span>
                 ) : null}
               </span>
               <span
-                className={`truncate px-1.5 py-1 text-[10px] font-semibold leading-tight ${
+                className={`${TILE_LABEL} ${
                   selected
                     ? "bg-interactive text-white"
                     : "bg-surface-2/95 text-ink"
@@ -149,10 +154,8 @@ export function CardBackgroundPicker({
             aria-checked={customSelected}
             aria-label="Custom card art"
             disabled={disabled}
-            className={`card-bg-swatch pressable relative flex flex-col items-stretch overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60 ${
-              customSelected
-                ? "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_35%,transparent)]"
-                : "border-frame/70 hover:border-interactive/55"
+            className={`card-bg-swatch ${TILE_BASE} ${
+              customSelected ? TILE_SELECTED : TILE_IDLE
             }`}
             data-card-bg="custom"
             style={
@@ -162,18 +165,18 @@ export function CardBackgroundPicker({
             }
             onClick={() => onChange(activeCustom)}
           >
-            <span className="card-bg-swatch-preview relative block h-11 w-full">
+            <span className={`card-bg-swatch-preview ${TILE_PREVIEW} block`}>
               {customSelected ? (
                 <span
                   aria-hidden
-                  className="absolute top-1 right-1 z-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
+                  className="absolute top-1.5 right-1.5 z-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
                 >
                   <CheckIcon />
                 </span>
               ) : null}
             </span>
             <span
-              className={`truncate px-1.5 py-1 text-[10px] font-semibold leading-tight ${
+              className={`${TILE_LABEL} ${
                 customSelected
                   ? "bg-interactive text-white"
                   : "bg-surface-2/95 text-ink"
@@ -187,7 +190,7 @@ export function CardBackgroundPicker({
       <button
         type="button"
         disabled={disabled}
-        className="pressable mt-2 inline-flex items-center gap-2 rounded-lg border border-frame bg-surface-2 px-3 py-2 text-left text-xs font-semibold tracking-tight text-muted disabled:opacity-60"
+        className="pressable mt-3 inline-flex items-center gap-2 rounded-lg border border-frame bg-surface-2 px-3 py-2 text-left text-xs font-semibold tracking-tight text-muted disabled:opacity-60"
         onClick={() => setImportOpen(true)}
       >
         <ImportIcon className="h-3.5 w-3.5 shrink-0" />

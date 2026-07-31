@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type CSSProperties } from "react";
+import { useState, type ReactNode } from "react";
 import { AvatarBrowser } from "@/components/AvatarBrowser";
+import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { CustomAvatarModal } from "@/components/CustomAvatarModal";
 import { CustomTextureModal } from "@/components/CustomTextureModal";
 import {
@@ -10,8 +11,12 @@ import {
   avatarBackgroundCustomUrl,
   isAvatarBackgroundKey,
 } from "@/data/avatar-backgrounds";
-import { cssTextureUrl } from "@/lib/custom-texture";
-import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
+import { CURATED_PORTRAITS, isCuratedPortraitKey } from "@/data/curated-portraits";
+import {
+  avatarImageClassName,
+  avatarImageUrl,
+  parseAvatarKey,
+} from "@/lib/sprites";
 
 type AvatarPickerProps = {
   /** `portrait` picks the sprite; `stage` picks the plate behind it. */
@@ -33,6 +38,20 @@ const CURATED_BACKDROPS: Array<{ key: string | null; label: string }> = [
   { key: null, label: "None" },
   ...AVATAR_BACKGROUNDS.map((bg) => ({ key: bg.key, label: bg.label })),
 ];
+
+/** Shared across portrait / stage / card art pickers. */
+const TILE_GRID = "grid grid-cols-3 gap-2.5 sm:grid-cols-4";
+const TILE_PREVIEW = "relative h-16 w-full sm:h-18";
+const TILE_LABEL =
+  "flex h-7 min-w-0 w-full items-center justify-center truncate px-1 text-center text-[11px] font-semibold leading-tight";
+const TILE_SELECTED =
+  "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_35%,transparent)]";
+const TILE_IDLE = "border-frame/70 hover:border-interactive/55";
+const TILE_BASE =
+  "pressable relative flex flex-col items-stretch overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60";
+const TILE_SPRITE = "relative z-1 aspect-square h-full w-auto";
+/** Stage tiles render the real portrait box so they scale like the board. */
+const STAGE_PORTRAIT = "aspect-square h-full";
 
 function BrowseIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -127,6 +146,55 @@ function CheckIcon() {
   );
 }
 
+function PortraitOptionButton({
+  label,
+  ariaLabel,
+  selected,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  ariaLabel?: string;
+  selected: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      aria-label={ariaLabel ?? label}
+      disabled={disabled}
+      className={`${TILE_BASE} bg-surface ${selected ? TILE_SELECTED : TILE_IDLE}`}
+      onClick={onClick}
+    >
+      <span
+        className={`${TILE_PREVIEW} flex items-end justify-center bg-surface-2/60 p-0.5`}
+      >
+        {children}
+        {selected ? (
+          <span
+            aria-hidden
+            className="absolute top-1.5 right-1.5 z-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
+          >
+            <CheckIcon />
+          </span>
+        ) : null}
+      </span>
+      <span
+        className={`${TILE_LABEL} ${
+          selected ? "bg-interactive text-white" : "bg-surface-2/95 text-ink"
+        }`}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
 export function AvatarPicker({
   panel,
   value,
@@ -164,8 +232,74 @@ export function AvatarPicker({
     backgroundKey != null && !isAvatarBackgroundKey(backgroundKey);
 
   if (panel === "portrait") {
+    const parsed = parseAvatarKey(value);
+    const customSelected = parsed.kind === "custom";
+    const curatedSelected = isCuratedPortraitKey(value);
+
     return (
       <div className="space-y-3">
+        <div
+          role="radiogroup"
+          aria-label="Suggested portraits"
+          className={TILE_GRID}
+        >
+          {CURATED_PORTRAITS.map((option) => {
+            const selected = value === option.key;
+            return (
+              <PortraitOptionButton
+                key={option.key}
+                label={option.label}
+                selected={selected}
+                disabled={disabled}
+                onClick={() => onChange(option.key)}
+              >
+                <Image
+                  src={avatarImageUrl(option.key)}
+                  alt=""
+                  width={56}
+                  height={56}
+                  className={avatarImageClassName(option.key, TILE_SPRITE)}
+                  unoptimized
+                />
+              </PortraitOptionButton>
+            );
+          })}
+          {customSelected ? (
+            <PortraitOptionButton
+              label="Custom"
+              selected
+              disabled={disabled}
+              onClick={() => onChange(value)}
+            >
+              <Image
+                src={avatarImageUrl(value)}
+                alt=""
+                width={56}
+                height={56}
+                className={avatarImageClassName(value, TILE_SPRITE)}
+                unoptimized
+              />
+            </PortraitOptionButton>
+          ) : null}
+          {!curatedSelected && !customSelected ? (
+            <PortraitOptionButton
+              label="Current"
+              selected
+              disabled={disabled}
+              onClick={() => onChange(value)}
+            >
+              <Image
+                src={avatarImageUrl(value)}
+                alt=""
+                width={56}
+                height={56}
+                className={avatarImageClassName(value, TILE_SPRITE)}
+                unoptimized
+              />
+            </PortraitOptionButton>
+          ) : null}
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -213,108 +347,42 @@ export function AvatarPicker({
       <div
         role="radiogroup"
         aria-label="Portrait stage"
-        className="grid grid-cols-4 gap-2 sm:grid-cols-5"
+        className={TILE_GRID}
       >
-        {CURATED_BACKDROPS.map((option) => {
-          const selected = backgroundKey === option.key;
-          return (
-            <button
-              key={option.key ?? "none"}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              aria-label={option.label}
-              disabled={disabled}
-              className={`avatar-bg-swatch pressable relative flex flex-col items-stretch overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60 ${
-                selected
-                  ? "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_35%,transparent)]"
-                  : "border-frame/70 hover:border-interactive/55"
-              }`}
-              data-avatar-bg={option.key ?? undefined}
-              data-avatar-bg-none={option.key == null ? "" : undefined}
-              onClick={() => onBackgroundChange?.(option.key)}
-            >
-              <span className="avatar-bg-swatch-preview relative flex h-12 w-full items-end justify-center pb-0.5">
-                <Image
-                  src={avatarImageUrl(value)}
-                  alt=""
-                  width={36}
-                  height={36}
-                  className={`${avatarImageClassName(value, "relative z-1 h-9 w-9")}${
-                    option.key == null ? " opacity-80" : ""
-                  }`}
-                  unoptimized
-                />
-                {selected ? (
-                  <span
-                    aria-hidden
-                    className="absolute top-1 right-1 z-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
-                  >
-                    <CheckIcon />
-                  </span>
-                ) : null}
-              </span>
-              <span
-                className={`truncate px-1 py-1 text-center text-[10px] font-semibold leading-tight ${
-                  selected
-                    ? "bg-interactive text-white"
-                    : "bg-surface-2/95 text-ink"
-                }`}
-              >
-                {option.label}
-              </span>
-            </button>
-          );
-        })}
-        {customBackdropUrl && activeCustomBackdrop ? (
-          <button
-            type="button"
-            role="radio"
-            aria-checked={customBackdropSelected}
-            aria-label="Custom stage"
+        {CURATED_BACKDROPS.map((option) => (
+          <PortraitOptionButton
+            key={option.key ?? "none"}
+            label={option.label}
+            selected={backgroundKey === option.key}
             disabled={disabled}
-            className={`avatar-bg-swatch pressable relative flex flex-col items-stretch overflow-hidden rounded-lg border-2 text-left transition disabled:opacity-60 ${
-              customBackdropSelected
-                ? "border-interactive shadow-[0_0_0_2px_color-mix(in_srgb,var(--interactive)_35%,transparent)]"
-                : "border-frame/70 hover:border-interactive/55"
-            }`}
-            data-avatar-bg="custom"
-            style={
-              {
-                ["--avatar-bg-custom" as string]:
-                  cssTextureUrl(customBackdropUrl),
-              } as CSSProperties
-            }
+            onClick={() => onBackgroundChange?.(option.key)}
+          >
+            <AvatarPortrait
+              avatarSpriteKey={value}
+              backgroundKey={option.key}
+              sizeClass={STAGE_PORTRAIT}
+              width={72}
+              height={72}
+              imgClassName={option.key == null ? "opacity-80" : ""}
+            />
+          </PortraitOptionButton>
+        ))}
+        {customBackdropUrl && activeCustomBackdrop ? (
+          <PortraitOptionButton
+            label="Custom"
+            ariaLabel="Custom stage"
+            selected={customBackdropSelected}
+            disabled={disabled}
             onClick={() => onBackgroundChange?.(activeCustomBackdrop)}
           >
-            <span className="avatar-bg-swatch-preview relative flex h-12 w-full items-end justify-center pb-0.5">
-              <Image
-                src={avatarImageUrl(value)}
-                alt=""
-                width={36}
-                height={36}
-                className={avatarImageClassName(value, "relative z-1 h-9 w-9")}
-                unoptimized
-              />
-              {customBackdropSelected ? (
-                <span
-                  aria-hidden
-                  className="absolute top-1 right-1 z-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
-                >
-                  <CheckIcon />
-                </span>
-              ) : null}
-            </span>
-            <span
-              className={`truncate px-1 py-1 text-center text-[10px] font-semibold leading-tight ${
-                customBackdropSelected
-                  ? "bg-interactive text-white"
-                  : "bg-surface-2/95 text-ink"
-              }`}
-            >
-              Custom
-            </span>
-          </button>
+            <AvatarPortrait
+              avatarSpriteKey={value}
+              backgroundKey={activeCustomBackdrop}
+              sizeClass={STAGE_PORTRAIT}
+              width={72}
+              height={72}
+            />
+          </PortraitOptionButton>
         ) : null}
       </div>
 

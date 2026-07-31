@@ -8,6 +8,7 @@ import {
 } from "@/components/SpriteBrowser";
 import {
   parseAvatarKey,
+  pokemonAnimatedAvatarKey,
   pokemonAvatarKey,
   trainerAvatarKey,
 } from "@/lib/sprites";
@@ -43,26 +44,33 @@ function AvatarBrowserInner({
 }: Omit<AvatarBrowserProps, "open">) {
   const parsed = parseAvatarKey(value);
   const [tab, setTab] = useState<"trainer" | "pokemon">(
-    parsed.kind === "pokemon" ? "pokemon" : "trainer",
+    parsed.kind === "pokemon" || parsed.kind === "pokemon-ani"
+      ? "pokemon"
+      : "trainer",
+  );
+  const [pokemonMotion, setPokemonMotion] = useState<"still" | "animated">(
+    parsed.kind === "pokemon-ani" ? "animated" : "still",
   );
 
   // Don't invent a trainer draft for custom/pokemon values — Use stays disabled
   // until the user actually picks a sprite (avoids overwriting custom uploads).
   const selectedTrainer = parsed.kind === "trainer" ? parsed.key : null;
   const selectedPokedexId =
-    parsed.kind === "pokemon" ? parsed.pokedexId : null;
+    parsed.kind === "pokemon" || parsed.kind === "pokemon-ani"
+      ? parsed.pokedexId
+      : null;
 
   return (
     <Modal open title="Browse portraits" onClose={onClose} wide>
       <div
         role="group"
         aria-label="Avatar catalog"
-        className="mb-4 flex gap-2"
+        className="mb-3 flex flex-wrap gap-1.5"
       >
         <button
           type="button"
           aria-pressed={tab === "trainer"}
-          className={`pressable rounded-lg px-3 py-2 font-display text-xs font-semibold tracking-tight ${
+          className={`pressable rounded-md px-2.5 py-1.5 font-display text-xs font-semibold tracking-tight ${
             tab === "trainer"
               ? "bg-accent text-[var(--on-accent)]"
               : "border border-frame bg-surface"
@@ -74,7 +82,7 @@ function AvatarBrowserInner({
         <button
           type="button"
           aria-pressed={tab === "pokemon"}
-          className={`pressable rounded-lg px-3 py-2 font-display text-xs font-semibold tracking-tight ${
+          className={`pressable rounded-md px-2.5 py-1.5 font-display text-xs font-semibold tracking-tight ${
             tab === "pokemon"
               ? "bg-accent text-[var(--on-accent)]"
               : "border border-frame bg-surface"
@@ -97,10 +105,19 @@ function AvatarBrowserInner({
         <PokemonSpriteBrowser
           open
           embedded
+          showMotionFilter
+          animated={pokemonMotion === "animated"}
+          onAnimatedChange={(next) =>
+            setPokemonMotion(next ? "animated" : "still")
+          }
           selectedId={selectedPokedexId}
           onClose={onClose}
           onSelect={(entry) =>
-            onSelect(pokemonAvatarKey(entry.pokedexId, entry.name))
+            onSelect(
+              pokemonMotion === "animated"
+                ? pokemonAnimatedAvatarKey(entry.pokedexId, entry.name)
+                : pokemonAvatarKey(entry.pokedexId, entry.name),
+            )
           }
         />
       )}

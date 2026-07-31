@@ -58,6 +58,7 @@ type TrainerBoardProps = {
   joinHref: string;
   /** When set, demo boards point signed-in players at their own board instead of login. */
   myBoardHref?: string | null;
+  challengeSlug: string;
   trainer: TrainerProfile;
   badges: BadgeDefinition[];
   canEdit: boolean;
@@ -458,6 +459,7 @@ export function TrainerBoard({
   leagueBoardLabel,
   joinHref,
   myBoardHref = null,
+  challengeSlug,
   trainer,
   badges,
   canEdit,
@@ -1025,7 +1027,7 @@ export function TrainerBoard({
             data-tour="player"
             title="Player"
             cardBackgroundKey={
-              editingPlayer ? cardBackgroundKey : committed.cardBackgroundKey
+              editingPlayer ? null : committed.cardBackgroundKey
             }
             actions={
               canEdit ? (
@@ -1082,6 +1084,15 @@ export function TrainerBoard({
                 discordUsername={trainer.discordUsername}
                 discordDisplayName={trainer.discordDisplayName}
                 disabled={pending}
+                leaguePreview={{
+                  challengeSlug,
+                  badges,
+                  trainer: {
+                    ...boardTrainer,
+                    earnedBadgeKeys,
+                    reviveUsed,
+                  },
+                }}
               />
             ) : (
               <div className="flex flex-wrap items-start gap-4">

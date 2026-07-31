@@ -15,7 +15,7 @@ import { pokemonInSlot } from "@/lib/trainer-display";
 import { pokemonSpriteUrl } from "@/lib/sprites";
 
 type TrainerCardProps = {
-  challenge: Challenge;
+  challenge: Pick<Challenge, "slug" | "badges">;
   trainer: TrainerProfile;
   variant?: "list" | "grid";
   /** Signed-in player's own card — soft revolving rainbow edge. */

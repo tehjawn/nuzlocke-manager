@@ -615,7 +615,7 @@ export async function updateTrainerBoardAction(input: {
         data.avatarSpriteKey = customAvatarKey(avatar.url);
       } else {
         const avatar = parseAvatarKey(raw);
-        if (avatar.kind === "pokemon") {
+        if (avatar.kind === "pokemon" || avatar.kind === "pokemon-ani") {
           data.avatarSpriteKey = raw;
         } else if (avatar.kind === "trainer") {
           data.avatarSpriteKey = avatar.key;
