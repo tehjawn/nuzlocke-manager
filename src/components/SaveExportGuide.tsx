@@ -1,4 +1,9 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
+import { Modal } from "@/components/Modal";
+import { CTA_SECONDARY } from "@/lib/cta";
 
 type Shot = {
   src: string;
@@ -39,41 +44,52 @@ const STEPS: Shot[] = [
   },
 ];
 
-/** Afterplay screenshot walkthrough for exporting a save on Get Started. */
+/** Secondary CTA + modal walkthrough for exporting a save from Afterplay. */
 export function SaveExportGuide() {
-  return (
-    <div className="space-y-6">
-      <p className="text-sm leading-relaxed text-muted">
-        Afterplay path below. Other emulators work too — export a Gen&nbsp;3{" "}
-        <code className="rounded-lg bg-surface-2 px-1 text-ink">.sav</code> /{" "}
-        <code className="rounded-lg bg-surface-2 px-1 text-ink">.srm</code>{" "}
-        instead, then continue with import.
-      </p>
+  const [open, setOpen] = useState(false);
 
-      <div className="space-y-8">
-        {STEPS.map((step) => (
-          <section key={step.src} className="space-y-3">
-            <div>
-              <h3 className="text-sm font-bold tracking-tight text-ink">
-                {step.title}
-              </h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted">
-                {step.blurb}
-              </p>
-            </div>
-            <figure className="max-w-xl overflow-hidden rounded-lg border border-frame bg-surface-2">
-              <Image
-                src={step.src}
-                alt={step.alt}
-                width={step.width}
-                height={step.height}
-                className="h-auto w-full"
-                sizes="(max-width: 640px) 100vw, 28rem"
-              />
-            </figure>
-          </section>
-        ))}
-      </div>
-    </div>
+  return (
+    <>
+      <button
+        type="button"
+        className={CTA_SECONDARY}
+        onClick={() => setOpen(true)}
+      >
+        How to export from Afterplay →
+      </button>
+
+      <Modal
+        open={open}
+        title="Export from Afterplay"
+        subtitle="Game Menu → Saves → Export, then import on your trainer board."
+        onClose={() => setOpen(false)}
+        size="md"
+      >
+        <ol className="space-y-6">
+          {STEPS.map((step, index) => (
+            <li key={step.src} className="space-y-3">
+              <div>
+                <h3 className="text-sm font-bold tracking-tight text-ink">
+                  {index + 1}. {step.title}
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted">
+                  {step.blurb}
+                </p>
+              </div>
+              <figure className="overflow-hidden rounded-lg border border-frame bg-surface-2">
+                <Image
+                  src={step.src}
+                  alt={step.alt}
+                  width={step.width}
+                  height={step.height}
+                  className="h-auto w-full"
+                  sizes="(max-width: 640px) 100vw, 36rem"
+                />
+              </figure>
+            </li>
+          ))}
+        </ol>
+      </Modal>
+    </>
   );
 }

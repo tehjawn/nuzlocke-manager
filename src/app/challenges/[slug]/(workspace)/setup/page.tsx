@@ -133,17 +133,6 @@ export default async function SetupPage({ params }: PageProps) {
                 to play.
               </li>
             </ol>
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              Afterplay is recommended for ease of use (browser play + cloud
-              saves), but you can use another emulator instead — for example{" "}
-              <span className="font-semibold text-ink">mGBA</span> (PC/Mac),{" "}
-              <span className="font-semibold text-ink">Delta</span> (iOS), or{" "}
-              <span className="font-semibold text-ink">My Boy!</span> (Android).
-              Just make sure you can export a Gen&nbsp;3{" "}
-              <code className="rounded-lg bg-surface-2 px-1">.sav</code> /{" "}
-              <code className="rounded-lg bg-surface-2 px-1">.srm</code> for
-              import in step 4.
-            </p>
             <a
               href={AFTERPLAY_URL}
               target="_blank"
@@ -157,33 +146,54 @@ export default async function SetupPage({ params }: PageProps) {
 
         <li>
           <Frame title="3. Match season Game Mode settings">
-            <div className="space-y-3">
-              <p className="text-sm leading-relaxed text-muted">
-                When starting a new game after character creation, the Game Mode
-                settings options will appear. Because those settings are already
-                pre-loaded, do not change anything. Keep clicking Next through
-                each page, then Save the Game Mode settings to begin your game.
-              </p>
-              <p className="text-sm leading-relaxed text-muted">
-                Don&apos;t swap to a different patch mid-season. Core run rules
-                (faint = dead, first encounter only, nicknames required) live
-                on{" "}
-                <Link
-                  href={`/challenges/${challenge.slug}/rules`}
-                  className="font-bold text-accent-deep underline-offset-2 hover:underline"
+            <ul className="overflow-hidden rounded-lg border border-frame/45 bg-surface/70 text-sm">
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 font-bold text-accent-deep"
+                  aria-hidden
                 >
-                  Rules
-                </Link>
-                . If something looks off compared to the rest of the pack, pause
-                and ask in Discord before continuing.
-              </p>
-            </div>
+                  ·
+                </span>
+                <span className="text-muted">
+                  When starting a new game after character creation, the game
+                  mode settings options will appear.
+                </span>
+              </li>
+              <li className="flex gap-3 border-b border-frame/30 px-3 py-2.5">
+                <span
+                  className="mt-0.5 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  ·
+                </span>
+                <span className="text-muted">
+                  Because the &quot;game mode settings&quot; are already
+                  pre-loaded, do not change anything.
+                </span>
+              </li>
+              <li className="flex gap-3 px-3 py-2.5">
+                <span
+                  className="mt-0.5 font-bold text-accent-deep"
+                  aria-hidden
+                >
+                  ·
+                </span>
+                <span className="text-muted">
+                  Keep clicking next page and &quot;Save&quot; the game mode
+                  setting to begin your game.
+                </span>
+              </li>
+            </ul>
           </Frame>
         </li>
 
         <li>
           <Frame title="4. Export your save & import it here">
             <div className="space-y-4">
+              <p className="text-sm leading-relaxed text-muted">
+                Export a save from Afterplay, then import it on your trainer
+                board to sync party, boxes, and R.I.P.
+              </p>
               <SaveExportGuide />
               <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
                 <li>
