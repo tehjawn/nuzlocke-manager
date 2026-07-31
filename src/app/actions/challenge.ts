@@ -25,6 +25,18 @@ import {
   parseAvatarKey,
 } from "@/lib/sprites";
 import {
+  ACTIVITY_COALESCE_WINDOW_MS,
+  parseActivityCoalesceMeta,
+  resolveBadgeCoalesce,
+  resolveCatchCoalesce,
+  resolveDeathCoalesce,
+  resolveLocksCoalesce,
+  resolveRulesCoalesce,
+  resolveStatusCoalesce,
+  type ActivityCoalesceCategory,
+  type ActivityCoalesceMeta,
+} from "@/lib/activity-coalesce";
+import {
   canUseCustomTextureUrl,
   customTextureKey,
   parseCustomTextureUrl,
@@ -32,8 +44,11 @@ import {
 import { isAvatarBackgroundKey } from "@/data/avatar-backgrounds";
 import { isCardBackgroundKey } from "@/data/card-backgrounds";
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
-import type { ActivityItem } from "@/lib/challenge-types";
-import { listChallengeActivities } from "@/lib/challenges";
+import {
+  getChallenge,
+  listChallengeActivities,
+  type ActivityPage,
+} from "@/lib/challenges";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import {
   IvsSchema,
@@ -48,7 +63,6 @@ import {
   buildChallengeExport,
 } from "@/lib/export-challenge";
 import { canViewChallenge } from "@/lib/challenge-access";
-import { getChallenge } from "@/lib/challenges";
 import { ChallengeStatusSchema } from "@/lib/types";
 import {
   buildFirstRoundPairings,
@@ -77,6 +91,7 @@ function jsonStatOrNull(
 function revalidateBoardViews(slug: string, trainerId?: string) {
   revalidatePath(`/challenges/${slug}`);
   revalidatePath(`/challenges/${slug}/memorial`);
+  revalidatePath(`/challenges/${slug}/activity`);
   if (trainerId) {
     revalidatePath(`/challenges/${slug}/trainers/${trainerId}`);
   }
@@ -96,43 +111,203 @@ function revalidateChallenge(slug: string, trainerId?: string) {
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
 
+type ActivityTypeName =
+  | "STATUS_UPDATE"
+  | "CATCH"
+  | "DEATH"
+  | "BADGE_EARNED"
+  | "BADGE_REVOKED"
+  | "REVIVE_USED"
+  | "REVIVE_RESET"
+  | "MAIN_SQUAD_LOCKED"
+  | "MEMBER_JOINED"
+  | "TRAINER_CLAIMED"
+  | "RULE_UPDATED"
+  | "NOTE"
+  | "WIPE";
+
+type ActivityDb = {
+  activityEvent: {
+    findFirst: (args: {
+      where: Record<string, unknown>;
+      orderBy: Record<string, unknown> | Record<string, unknown>[];
+      select: { id: true; metadata: true; trainerId: true };
+    }) => Promise<{
+      id: string;
+      metadata: unknown;
+      trainerId: string | null;
+    } | null>;
+    create: (args: {
+      data: {
+        challengeId: string;
+        actorId?: string;
+        trainerId?: string | null;
+        type: ActivityTypeName;
+        message: string;
+        metadata?: ActivityCoalesceMeta;
+      };
+    }) => Promise<unknown>;
+    update: (args: {
+      where: { id: string };
+      data: {
+        type: ActivityTypeName;
+        message: string;
+        metadata: ActivityCoalesceMeta;
+        createdAt: Date;
+        trainerId?: string | null;
+      };
+    }) => Promise<unknown>;
+  };
+};
+
+type CoalesceWrite = {
+  category: ActivityCoalesceCategory;
+  /** trainer = same board; actor = same GM; challenge = season-wide (rules). */
+  scope: "trainer" | "actor" | "challenge";
+  windowMs?: number;
+  /** Legacy rows without metadata (e.g. old RULE_UPDATED). */
+  legacyTypes?: ActivityTypeName[];
+  resolve: (prev: ActivityCoalesceMeta | null) => {
+    type: ActivityTypeName;
+    message: string;
+    metadata: ActivityCoalesceMeta;
+    trainerId?: string | null;
+  } | null;
+};
+
+/**
+ * Facebook-style feed grouping: within the quiet window, merge into the open
+ * row for this category instead of stacking near-duplicates. Discord fires only
+ * when a new row is created — coalesce updates stay silent.
+ */
+async function writeActivityEvent(
+  db: ActivityDb,
+  input: {
+    challengeId: string;
+    actorId?: string;
+    trainerId?: string;
+    type?: ActivityTypeName;
+    message?: string;
+    metadata?: ActivityCoalesceMeta;
+    coalesce?: CoalesceWrite;
+    /** When false, caller posts Discord after its own transaction commits. */
+    dispatchDiscord?: boolean;
+  },
+): Promise<{ created: boolean; type: ActivityTypeName; message: string }> {
+  let type = input.type;
+  let message = input.message;
+  let metadata: ActivityCoalesceMeta | undefined = input.metadata;
+  let trainerId: string | null | undefined = input.trainerId;
+  let created = true;
+
+  if (input.coalesce) {
+    const windowMs = input.coalesce.windowMs ?? ACTIVITY_COALESCE_WINDOW_MS;
+    const since = new Date(Date.now() - windowMs);
+    const scopeWhere =
+      input.coalesce.scope === "trainer" && input.trainerId
+        ? { trainerId: input.trainerId }
+        : input.coalesce.scope === "actor" && input.actorId
+          ? { actorId: input.actorId }
+          : {};
+
+    let existing = await db.activityEvent.findFirst({
+      where: {
+        challengeId: input.challengeId,
+        createdAt: { gte: since },
+        metadata: {
+          path: ["category"],
+          equals: input.coalesce.category,
+        },
+        ...scopeWhere,
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, metadata: true, trainerId: true },
+    });
+
+    // Pre-metadata RULE_UPDATED / STATUS rows still coalesce by type.
+    if (!existing && input.coalesce.legacyTypes?.length) {
+      existing = await db.activityEvent.findFirst({
+        where: {
+          challengeId: input.challengeId,
+          createdAt: { gte: since },
+          type: { in: input.coalesce.legacyTypes },
+          ...scopeWhere,
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, metadata: true, trainerId: true },
+      });
+    }
+
+    const resolved = input.coalesce.resolve(
+      parseActivityCoalesceMeta(existing?.metadata),
+    );
+    if (!resolved) {
+      throw new Error("Activity coalesce produced an empty update");
+    }
+    type = resolved.type;
+    message = resolved.message;
+    metadata = resolved.metadata;
+    if (resolved.trainerId !== undefined) {
+      trainerId = resolved.trainerId;
+    }
+
+    if (existing) {
+      await db.activityEvent.update({
+        where: { id: existing.id },
+        data: {
+          type,
+          message,
+          metadata,
+          createdAt: new Date(),
+          ...(trainerId !== undefined ? { trainerId } : {}),
+        },
+      });
+      created = false;
+    }
+  }
+
+  if (type == null || message == null) {
+    throw new Error("Activity event requires type and message");
+  }
+
+  if (created) {
+    await db.activityEvent.create({
+      data: {
+        challengeId: input.challengeId,
+        actorId: input.actorId,
+        trainerId: trainerId ?? null,
+        type,
+        message,
+        ...(metadata ? { metadata } : {}),
+      },
+    });
+
+    // Don't await — Discord outages must not block board saves.
+    // Skip on coalesce updates so the channel isn't re-pinged for every merge.
+    if (input.dispatchDiscord !== false) {
+      void dispatchDiscordWebhook({
+        challengeId: input.challengeId,
+        type,
+        message,
+      });
+    }
+  }
+
+  return { created, type, message };
+}
+
 async function logActivity(input: {
   challengeId: string;
   actorId?: string;
   trainerId?: string;
-  type:
-    | "STATUS_UPDATE"
-    | "CATCH"
-    | "DEATH"
-    | "BADGE_EARNED"
-    | "BADGE_REVOKED"
-    | "REVIVE_USED"
-    | "REVIVE_RESET"
-    | "MAIN_SQUAD_LOCKED"
-    | "MEMBER_JOINED"
-    | "TRAINER_CLAIMED"
-    | "RULE_UPDATED"
-    | "NOTE"
-    | "WIPE";
-  message: string;
+  type?: ActivityTypeName;
+  message?: string;
+  metadata?: ActivityCoalesceMeta;
+  coalesce?: CoalesceWrite;
 }) {
-  await getPrisma().activityEvent.create({
-    data: {
-      challengeId: input.challengeId,
-      actorId: input.actorId,
-      trainerId: input.trainerId,
-      type: input.type,
-      message: input.message,
-    },
-  });
-
-  // Don't await — Discord outages must not block board saves.
-  void dispatchDiscordWebhook({
-    challengeId: input.challengeId,
-    type: input.type,
-    message: input.message,
-  });
+  return writeActivityEvent(getPrisma() as unknown as ActivityDb, input);
 }
+
 
 export async function updateAccountAction(
   raw: unknown,
@@ -509,12 +684,17 @@ export async function updateTrainerBoardAction(input: {
       (updates.statusEmoji !== undefined &&
         updates.statusEmoji !== trainer.statusEmoji);
     if (statusChanged) {
+      const handle = data.handle ?? trainer.handle;
       await logActivity({
         challengeId: trainer.challengeId,
         actorId: userId,
         trainerId: trainer.id,
-        type: "STATUS_UPDATE",
-        message: `${data.handle ?? trainer.handle} updated status`,
+        coalesce: {
+          category: "status",
+          scope: "trainer",
+          legacyTypes: ["STATUS_UPDATE"],
+          resolve: () => resolveStatusCoalesce(handle),
+        },
       });
     }
 
@@ -857,14 +1037,24 @@ export async function getTrainerBoardSnapshotAction(input: {
   }
 }
 
-export async function setBadgeProgressAction(input: {
-  trainerId: string;
-  badgeKey: string;
-  earned: boolean;
+const BadgeChangeSchema = z.object({
+  badgeKey: z.string().min(1),
+  earned: z.boolean(),
+});
+
+const SetBadgesProgressSchema = z.object({
+  trainerId: z.string().min(1),
+  changes: z.array(BadgeChangeSchema).min(1).max(32),
   /** Reject stale writes that raced a wipe (client wipeCount at schedule time). */
-  expectedWipeCount?: number;
-}): Promise<ActionResult> {
+  expectedWipeCount: z.number().int().nonnegative().optional(),
+});
+
+/** Apply one or many badge toggles and log a single condensed Pack-feed entry. */
+export async function setBadgesProgressAction(
+  raw: unknown,
+): Promise<ActionResult> {
   try {
+    const input = SetBadgesProgressSchema.parse(raw);
     const { trainer, userId } = await requireTrainerEditAccess(input.trainerId);
     if (
       input.expectedWipeCount != null &&
@@ -872,37 +1062,75 @@ export async function setBadgeProgressAction(input: {
     ) {
       return { ok: false, error: "Board changed — refresh and try again" };
     }
+
+    // Last write wins if the same key appears twice in one flush.
+    const desired = new Map<string, boolean>();
+    for (const change of input.changes) {
+      desired.set(change.badgeKey, change.earned);
+    }
+
     const prisma = getPrisma();
-    const badge = await prisma.badgeDefinition.findFirst({
-      where: { challengeId: trainer.challengeId, key: input.badgeKey },
-    });
-    if (!badge) return { ok: false, error: "Badge not found" };
-
-    await prisma.badgeProgress.upsert({
+    const badges = await prisma.badgeDefinition.findMany({
       where: {
-        trainerId_badgeId: { trainerId: trainer.id, badgeId: badge.id },
-      },
-      create: {
-        trainerId: trainer.id,
-        badgeId: badge.id,
-        earned: input.earned,
-        earnedAt: input.earned ? new Date() : null,
-      },
-      update: {
-        earned: input.earned,
-        earnedAt: input.earned ? new Date() : null,
+        challengeId: trainer.challengeId,
+        key: { in: [...desired.keys()] },
       },
     });
+    if (badges.length !== desired.size) {
+      return { ok: false, error: "Badge not found" };
+    }
 
-    await logActivity({
-      challengeId: trainer.challengeId,
-      actorId: userId,
-      trainerId: trainer.id,
-      type: input.earned ? "BADGE_EARNED" : "BADGE_REVOKED",
-      message: input.earned
-        ? `${trainer.handle} earned ${badge.label}`
-        : `${trainer.handle} lost ${badge.label}`,
-    });
+    const byKey = new Map(badges.map((b) => [b.key, b]));
+    const earnedLabels: string[] = [];
+    const lostLabels: string[] = [];
+    const now = new Date();
+
+    await prisma.$transaction(
+      [...desired.entries()].map(([badgeKey, earned]) => {
+        const badge = byKey.get(badgeKey)!;
+        if (earned) earnedLabels.push(badge.label);
+        else lostLabels.push(badge.label);
+        return prisma.badgeProgress.upsert({
+          where: {
+            trainerId_badgeId: { trainerId: trainer.id, badgeId: badge.id },
+          },
+          create: {
+            trainerId: trainer.id,
+            badgeId: badge.id,
+            earned,
+            earnedAt: earned ? now : null,
+          },
+          update: {
+            earned,
+            earnedAt: earned ? now : null,
+          },
+        });
+      }),
+    );
+
+    // Keep gym / elite display order in the feed line.
+    const order = new Map(badges.map((b) => [b.label, b.sortOrder]));
+    earnedLabels.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+    lostLabels.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+
+    if (earnedLabels.length > 0 || lostLabels.length > 0) {
+      await logActivity({
+        challengeId: trainer.challengeId,
+        actorId: userId,
+        trainerId: trainer.id,
+        coalesce: {
+          category: "badges",
+          scope: "trainer",
+          resolve: (prev) =>
+            resolveBadgeCoalesce(
+              trainer.handle,
+              prev,
+              earnedLabels,
+              lostLabels,
+            ),
+        },
+      });
+    }
 
     // League board only — avoid remounting the trainer editor mid-toggle.
     revalidatePath(`/challenges/${trainer.challenge.slug}`);
@@ -910,6 +1138,20 @@ export async function setBadgeProgressAction(input: {
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Badge update failed" };
   }
+}
+
+export async function setBadgeProgressAction(input: {
+  trainerId: string;
+  badgeKey: string;
+  earned: boolean;
+  /** Reject stale writes that raced a wipe (client wipeCount at schedule time). */
+  expectedWipeCount?: number;
+}): Promise<ActionResult> {
+  return setBadgesProgressAction({
+    trainerId: input.trainerId,
+    changes: [{ badgeKey: input.badgeKey, earned: input.earned }],
+    expectedWipeCount: input.expectedWipeCount,
+  });
 }
 
 const UpsertPokemonSchema = PokemonEntryInputSchema.extend({
@@ -992,28 +1234,49 @@ export async function upsertPokemonAction(
         existing.slot !== "GRAVEYARD" &&
         data.slot === "GRAVEYARD"
       ) {
+        const label = data.nickname || data.species;
         await logActivity({
           challengeId: trainer.challengeId,
           actorId: userId,
           trainerId: trainer.id,
-          type: "DEATH",
-          message: `${trainer.handle} memorialized ${data.nickname || data.species}`,
+          coalesce: {
+            category: "deaths",
+            scope: "trainer",
+            resolve: (prev) =>
+              resolveDeathCoalesce(trainer.handle, prev, [label]),
+          },
         });
       }
     } else {
       await prisma.pokemonEntry.create({
         data: { trainerId: trainer.id, ...payload },
       });
-      await logActivity({
-        challengeId: trainer.challengeId,
-        actorId: userId,
-        trainerId: trainer.id,
-        type: data.slot === "GRAVEYARD" ? "DEATH" : "CATCH",
-        message:
-          data.slot === "GRAVEYARD"
-            ? `${trainer.handle} memorialized ${data.nickname || data.species}`
-            : `${trainer.handle} logged ${data.nickname || data.species}`,
-      });
+      const label = data.nickname || data.species;
+      if (data.slot === "GRAVEYARD") {
+        await logActivity({
+          challengeId: trainer.challengeId,
+          actorId: userId,
+          trainerId: trainer.id,
+          coalesce: {
+            category: "deaths",
+            scope: "trainer",
+            resolve: (prev) =>
+              resolveDeathCoalesce(trainer.handle, prev, [label]),
+          },
+        });
+      } else {
+        await logActivity({
+          challengeId: trainer.challengeId,
+          actorId: userId,
+          trainerId: trainer.id,
+          coalesce: {
+            category: "catches",
+            scope: "trainer",
+            resolve: (prev) =>
+              resolveCatchCoalesce(trainer.handle, prev, [label]),
+          },
+        });
+      }
     }
 
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
@@ -1175,18 +1438,23 @@ export async function relocatePokemonAction(
         });
       }
 
-      for (const entry of memorialized) {
-        const message = `${trainer.handle} memorialized ${entry.label}`;
-        await tx.activityEvent.create({
-          data: {
-            challengeId: trainer.challengeId,
-            actorId: userId,
-            trainerId: trainer.id,
-            type: "DEATH",
-            message,
+      const deathLabels = memorialized.map((entry) => entry.label);
+      if (deathLabels.length > 0) {
+        const written = await writeActivityEvent(tx as unknown as ActivityDb, {
+          challengeId: trainer.challengeId,
+          actorId: userId,
+          trainerId: trainer.id,
+          dispatchDiscord: false,
+          coalesce: {
+            category: "deaths",
+            scope: "trainer",
+            resolve: (prev) =>
+              resolveDeathCoalesce(trainer.handle, prev, deathLabels),
           },
         });
-        discordDeaths.push(message);
+        if (written.created) {
+          discordDeaths.push(written.message);
+        }
       }
     });
 
@@ -1487,8 +1755,12 @@ export async function gmUpdateRuleAction(input: {
     await logActivity({
       challengeId: input.challengeId,
       actorId: session?.user?.id,
-      type: "RULE_UPDATED",
-      message: "Rules updated by Game Master",
+      coalesce: {
+        category: "rules",
+        scope: "challenge",
+        legacyTypes: ["RULE_UPDATED"],
+        resolve: () => resolveRulesCoalesce(),
+      },
     });
 
     revalidateChallenge(challenge.slug);
@@ -1569,8 +1841,19 @@ export async function gmSetTrainerLockAction(input: {
         challengeId: trainer.challengeId,
         actorId: userId,
         trainerId: trainer.id,
-        type: "MAIN_SQUAD_LOCKED",
-        message: `${trainer.handle}'s Main Squad locked`,
+        coalesce: {
+          category: "locks",
+          scope: "actor",
+          resolve: (prev) => {
+            const resolved = resolveLocksCoalesce(prev, [trainer.handle]);
+            if (!resolved) return null;
+            return {
+              ...resolved,
+              trainerId:
+                resolved.metadata.handles.length === 1 ? trainer.id : null,
+            };
+          },
+        },
       });
     }
 
@@ -2073,13 +2356,15 @@ export async function toggleActivityReactionAction(input: {
   }
 }
 
-/** Lightweight Pack feed poll (activities + reaction aggregates). */
+/** Lightweight Pack feed poll / paginated activity page fetch. */
 export async function fetchChallengeActivitiesAction(input: {
   slug: string;
-}): Promise<ActivityItem[]> {
+  cursor?: string | null;
+  limit?: number;
+}): Promise<ActivityPage> {
   const session = await auth();
   const challenge = await getChallenge(input.slug, session?.user?.id);
-  if (!challenge) return [];
+  if (!challenge) return { items: [], nextCursor: null };
 
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
@@ -2091,8 +2376,11 @@ export async function fetchChallengeActivitiesAction(input: {
       hasMembership: Boolean(access?.role),
     })
   ) {
-    return [];
+    return { items: [], nextCursor: null };
   }
 
-  return listChallengeActivities(input.slug, session?.user?.id);
+  return listChallengeActivities(input.slug, session?.user?.id, {
+    cursor: input.cursor,
+    limit: input.limit,
+  });
 }

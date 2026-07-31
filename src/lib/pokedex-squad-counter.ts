@@ -40,6 +40,11 @@ export type RecommendSquadCountersOptions = {
   minOffenseMult?: number;
 };
 
+export type SquadCounterReroll = {
+  action: "more" | "restart";
+  excludeEntryIds: string[];
+};
+
 function formatMult(m: number): string {
   if (m === 0) return "0×";
   if (m === 0.25) return "¼×";
@@ -296,4 +301,32 @@ export function recommendMoreSquadCounters(
     ...options,
     excludeEntryIds: shownEntryIds,
   });
+}
+
+/** Resolve the next visible reroll without offering a no-op first batch. */
+export function getSquadCounterReroll(
+  targetTypes: readonly ChipType[],
+  squad: readonly PokemonEntry[],
+  currentSuggestions: readonly SquadCounterSuggestion[],
+  priorExcludedEntryIds: readonly string[],
+  options?: Omit<RecommendSquadCountersOptions, "excludeEntryIds">,
+): SquadCounterReroll | null {
+  if (currentSuggestions.length === 0) return null;
+
+  const excludeEntryIds = [
+    ...priorExcludedEntryIds,
+    ...currentSuggestions.map((suggestion) => suggestion.entryId),
+  ];
+  const next = recommendMoreSquadCounters(
+    targetTypes,
+    squad,
+    excludeEntryIds,
+    options,
+  );
+
+  if (next.length > 0) return { action: "more", excludeEntryIds };
+  if (priorExcludedEntryIds.length > 0) {
+    return { action: "restart", excludeEntryIds: [] };
+  }
+  return null;
 }
