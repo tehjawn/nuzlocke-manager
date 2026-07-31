@@ -6,6 +6,7 @@ import { uploadCustomAvatarAction } from "@/app/actions/avatar";
 import { Modal } from "@/components/Modal";
 import { AVATAR_ACCEPT, prepareAvatarFile } from "@/lib/avatar-upload";
 import {
+  CUSTOM_AVATAR_PREFIX,
   CUSTOM_IMAGE_URL_MAX_LENGTH,
   customImageKeyFromInput,
   normalizeCustomImageUrl,
@@ -103,7 +104,7 @@ export function CustomAvatarModal({
   }
 
   function onUseUrl() {
-    if (uploading) return;
+    if (uploading || !urlInput.trim()) return;
     setError(null);
     const key = customImageKeyFromInput(urlInput);
     if (!key) {
@@ -118,6 +119,14 @@ export function CustomAvatarModal({
   const urlPreview = normalizeCustomImageUrl(urlInput);
   const canUseUrl = Boolean(urlPreview) && !uploading;
   const canUpload = Boolean(pendingFile) && !uploading;
+  const primaryDisabled = pendingFile ? !canUpload : !canUseUrl;
+  const primaryLabel = pendingFile
+    ? uploading
+      ? "Uploading…"
+      : "Use image"
+    : urlInput.trim()
+      ? "Use URL"
+      : "Use image";
 
   return (
     <Modal
@@ -134,32 +143,21 @@ export function CustomAvatarModal({
           >
             Cancel
           </button>
-          {pendingFile ? (
-            <button
-              type="button"
-              disabled={!canUpload}
-              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
-              onClick={onUpload}
-            >
-              {uploading ? "Uploading…" : "Use upload"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={!canUseUrl}
-              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
-              onClick={onUseUrl}
-            >
-              Use URL
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={primaryDisabled}
+            className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
+            onClick={pendingFile ? onUpload : onUseUrl}
+          >
+            {primaryLabel}
+          </button>
         </div>
       }
     >
       <p className="mb-4 text-sm text-muted">
-        Upload a square-ish PNG, JPEG, WebP, or GIF — we’ll host it — or paste a
-        public HTTPS image URL to store only the link (no upload). Uploads are
-        optimized to at most 1000×1000 and 5 MB; animated GIFs are kept.
+        Upload a square-ish PNG, JPEG, WebP, or GIF (max 1000×1000, 5 MB;
+        animated GIFs kept), or paste a public HTTPS image URL to store only the
+        link.
       </p>
 
       <input
@@ -217,13 +215,13 @@ export function CustomAvatarModal({
           inputMode="url"
           autoComplete="off"
           spellCheck={false}
-          maxLength={CUSTOM_IMAGE_URL_MAX_LENGTH + 8}
+          maxLength={CUSTOM_IMAGE_URL_MAX_LENGTH + CUSTOM_AVATAR_PREFIX.length}
           disabled={uploading}
           placeholder="https://…"
           value={urlInput}
           onChange={(e) => {
             setError(null);
-            clearFileSelection();
+            if (pendingFile || previewUrl) clearFileSelection();
             setUrlInput(e.target.value);
           }}
           onKeyDown={(e) => {

@@ -132,8 +132,8 @@ export function normalizeCustomImageUrl(
   const candidate = trimmed.toLowerCase().startsWith(CUSTOM_AVATAR_PREFIX)
     ? trimmed.slice(CUSTOM_AVATAR_PREFIX.length).trim()
     : trimmed;
+  // Reject breakout chars before URL() percent-encodes them away.
   if (UNSAFE_CUSTOM_URL_CHARS.test(candidate)) return null;
-  if (!isAllowedCustomAvatarUrl(candidate)) return null;
   try {
     const href = new URL(candidate).href;
     if (!isAllowedCustomAvatarUrl(href)) return null;

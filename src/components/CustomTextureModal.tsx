@@ -10,6 +10,7 @@ import {
   type TextureKind,
 } from "@/lib/custom-texture";
 import {
+  CUSTOM_AVATAR_PREFIX,
   CUSTOM_IMAGE_URL_MAX_LENGTH,
   customImageKeyFromInput,
   normalizeCustomImageUrl,
@@ -29,13 +30,13 @@ const COPY: Record<
   "avatar-bg": {
     title: "Import custom backdrop",
     blurb:
-      "Upload a PNG, JPEG, WebP, or GIF — we’ll host it — or paste a public HTTPS image URL to store only the link. Uploads are optimized to at most 1000×1000 and 5 MB (first frame only). Transparent PNGs look best.",
+      "Upload a PNG, JPEG, WebP, or GIF (max 1000×1000, 5 MB; first frame only), or paste a public HTTPS image URL to store only the link. Transparent PNGs look best.",
     previewClass: "h-24 w-24 object-contain",
   },
   "card-bg": {
     title: "Import custom card background",
     blurb:
-      "Upload a PNG, JPEG, WebP, or GIF — we’ll host it — or paste a public HTTPS image URL to store only the link. Uploads are optimized to at most 1000×1000 and 5 MB (first frame only). Landscape images work best.",
+      "Upload a PNG, JPEG, WebP, or GIF (max 1000×1000, 5 MB; first frame only), or paste a public HTTPS image URL to store only the link. Landscape images work best.",
     previewClass: "h-24 w-40 object-cover",
   },
 };
@@ -129,7 +130,7 @@ export function CustomTextureModal({
   }
 
   function onUseUrl() {
-    if (uploading) return;
+    if (uploading || !urlInput.trim()) return;
     setError(null);
     const key = customImageKeyFromInput(urlInput);
     if (!key) {
@@ -144,6 +145,14 @@ export function CustomTextureModal({
   const urlPreview = normalizeCustomImageUrl(urlInput);
   const canUseUrl = Boolean(urlPreview) && !uploading;
   const canUpload = Boolean(pendingFile) && !uploading;
+  const primaryDisabled = pendingFile ? !canUpload : !canUseUrl;
+  const primaryLabel = pendingFile
+    ? uploading
+      ? "Uploading…"
+      : "Use image"
+    : urlInput.trim()
+      ? "Use URL"
+      : "Use image";
 
   return (
     <Modal
@@ -160,25 +169,14 @@ export function CustomTextureModal({
           >
             Cancel
           </button>
-          {pendingFile ? (
-            <button
-              type="button"
-              disabled={!canUpload}
-              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
-              onClick={onUpload}
-            >
-              {uploading ? "Uploading…" : "Use upload"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={!canUseUrl}
-              className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
-              onClick={onUseUrl}
-            >
-              Use URL
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={primaryDisabled}
+            className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-60"
+            onClick={pendingFile ? onUpload : onUseUrl}
+          >
+            {primaryLabel}
+          </button>
         </div>
       }
     >
@@ -239,13 +237,13 @@ export function CustomTextureModal({
           inputMode="url"
           autoComplete="off"
           spellCheck={false}
-          maxLength={CUSTOM_IMAGE_URL_MAX_LENGTH + 8}
+          maxLength={CUSTOM_IMAGE_URL_MAX_LENGTH + CUSTOM_AVATAR_PREFIX.length}
           disabled={uploading}
           placeholder="https://…"
           value={urlInput}
           onChange={(e) => {
             setError(null);
-            clearFileSelection();
+            if (pendingFile || previewUrl) clearFileSelection();
             setUrlInput(e.target.value);
           }}
           onKeyDown={(e) => {
