@@ -1,10 +1,16 @@
 import Image from "next/image";
-import type { PokemonEntry } from "@/lib/challenge-types";
+import { InfoTip } from "@/components/InfoTip";
 import { StatGrid } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
+import { abilityDescription } from "@/data/pokemon-lookups";
+import type { PokemonEntry } from "@/lib/challenge-types";
 import { resolveMoveName } from "@/lib/move-names";
 import { pokemonSpriteUrl } from "@/lib/sprites";
-import { calcBattleStats, calcMaxBattleStats } from "@/lib/stats";
+import {
+  calcBattleStats,
+  calcMaxBattleStats,
+  natureEffectDescription,
+} from "@/lib/stats";
 
 type PokemonSlotCardProps = {
   pokemon?: PokemonEntry | null;
@@ -185,7 +191,13 @@ export function PokemonSlotCard({
                 Nature
               </dt>
               <dd className="mt-0.5">
-                <span className="info-chip text-xs">{pokemon.nature}</span>
+                <InfoTip
+                  tip={natureEffectDescription(pokemon.nature)}
+                  embedded={looksInteractive}
+                  chipClassName="info-chip text-xs"
+                >
+                  {pokemon.nature}
+                </InfoTip>
               </dd>
             </div>
           ) : null}
@@ -195,9 +207,13 @@ export function PokemonSlotCard({
                 Ability
               </dt>
               <dd className="mt-0.5">
-                <span className="info-chip max-w-full truncate text-xs">
+                <InfoTip
+                  tip={abilityDescription(pokemon.ability) ?? ""}
+                  embedded={looksInteractive}
+                  chipClassName="info-chip max-w-full text-xs"
+                >
                   {pokemon.ability}
-                </span>
+                </InfoTip>
               </dd>
             </div>
           ) : null}
