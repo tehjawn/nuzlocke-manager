@@ -66,11 +66,15 @@ export function TrainerCard({
             then badge count.
           */}
           <Link
-            href={boardHref}
-            className="group block h-full md:hidden"
             aria-label={boardLabel}
+            className="group block h-full md:hidden"
+            href={boardHref}
           >
-            <Frame dense className="h-full" cardBackgroundKey={cardBg}>
+            <Frame
+              cardBackgroundKey={cardBg}
+              className="h-full transition-[border-color,box-shadow] duration-200 group-hover:border-interactive/45"
+              dense
+            >
               <div className="flex h-full flex-col items-center text-center">
                 <div className="relative flex h-28 w-full items-end justify-center overflow-visible">
                   {firstMon ? (
@@ -110,9 +114,14 @@ export function TrainerCard({
 
           {/* Full card — md and up; compact 3×2 squad grid */}
           <Frame
-            className="hidden h-full md:block"
             cardBackgroundKey={cardBg}
+            className="group hidden h-full transition-[border-color,box-shadow] duration-200 hover:border-interactive/45 md:block"
           >
+            <Link
+              aria-label={boardLabel}
+              className="absolute inset-0 z-1"
+              href={boardHref}
+            />
             <div className="flex h-full flex-col gap-2.5">
               <div className="grid min-h-0 flex-1 grid-cols-[7rem_minmax(0,1fr)] gap-3 lg:grid-cols-[8rem_minmax(0,1fr)]">
                 <div className="flex min-w-0 flex-col items-center gap-1.5 overflow-visible text-center">
@@ -124,14 +133,8 @@ export function TrainerCard({
                     height={112}
                     className="overflow-visible"
                   />
-                  <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight">
-                    <Link
-                      href={boardHref}
-                      className="hover:text-accent-deep"
-                      aria-label={`${trainer.handle}${isYou ? " (you)" : ""}`}
-                    >
-                      {trainer.handle}
-                    </Link>
+                  <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep">
+                    {trainer.handle}
                   </h2>
                   {hasStatus ? (
                     <StatusLine
@@ -159,7 +162,11 @@ export function TrainerCard({
                     }
                     const label = mon.nickname || mon.species;
                     return (
-                      <PokemonHoverPreview key={mon.id} pokemon={mon} className="min-h-0">
+                      <PokemonHoverPreview
+                        className="relative z-2 min-h-0"
+                        key={mon.id}
+                        pokemon={mon}
+                      >
                         <button
                           type="button"
                           title={label}
