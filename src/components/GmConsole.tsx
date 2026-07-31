@@ -10,6 +10,10 @@ import {
   gmUpdateRuleAction,
 } from "@/app/actions/challenge";
 import type { Challenge } from "@/lib/challenge-types";
+import {
+  fromEasternDatetimeLocalInput,
+  toEasternDatetimeLocalInput,
+} from "@/lib/welcome-video";
 
 function downloadTextFile(filename: string, content: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
@@ -57,6 +61,21 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
             startTransition(async () => {
+              const rawPublishAt = String(
+                fd.get("welcomeVideoPublishAt") ?? "",
+              ).trim();
+              let welcomeVideoPublishAt: string | null = null;
+              if (rawPublishAt) {
+                const parsed = fromEasternDatetimeLocalInput(rawPublishAt);
+                if (!parsed) {
+                  flash({
+                    ok: false,
+                    error: "Invalid welcome video publish time",
+                  });
+                  return;
+                }
+                welcomeVideoPublishAt = parsed.toISOString();
+              }
               flash(
                 await gmUpdateChallengeMetaAction({
                   challengeId,
@@ -73,6 +92,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                   gmInviteCode: String(fd.get("gmInviteCode") ?? ""),
                   description: String(fd.get("description") ?? ""),
                   discordWebhookUrl: String(fd.get("discordWebhookUrl") ?? ""),
+                  welcomeVideoPublishAt,
                 }),
               );
             });
@@ -142,6 +162,23 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             />
             <span className="mt-1 block text-xs text-muted">
               Posts deaths, badges earned, and revive uses. Leave blank to disable.
+            </span>
+          </label>
+          <label className="text-sm sm:col-span-2">
+            <span className="mb-1 block font-bold text-muted">
+              Welcome video publish time (Eastern)
+            </span>
+            <input
+              name="welcomeVideoPublishAt"
+              type="datetime-local"
+              defaultValue={toEasternDatetimeLocalInput(
+                challenge.welcomeVideoPublishAt,
+              )}
+              className="w-full rounded-lg border border-frame bg-surface px-3 py-2 sm:max-w-xs"
+            />
+            <span className="mt-1 block text-xs text-muted">
+              When the Get Started welcome video unlocks for everyone. Defaults
+              to 9:00 PM Eastern tonight. GMs can always preview it early.
             </span>
           </label>
           <button

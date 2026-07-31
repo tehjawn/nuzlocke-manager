@@ -7,11 +7,18 @@ import { GameModeSettingsGuide } from "@/components/GameModeSettingsGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { getChallenge } from "@/lib/challenges";
 import { CTA_PRIMARY } from "@/lib/cta";
+import { getAccessForChallenge } from "@/lib/permissions";
+import {
+  canViewWelcomeVideo,
+  formatWelcomeVideoPublishAtEastern,
+  getWelcomeVideoUrl,
+  resolveWelcomeVideoEmbed,
+} from "@/lib/welcome-video";
 
 export const dynamic = "force-dynamic";
 
 const ROM_DOWNLOAD_URL =
-  "https://drive.google.com/file/d/1gW4d5CSna2rpGNK8B0JNdILr115hbp33/view";
+  "https://drive.google.com/file/d/1ZpHF4ACenI8guJxwKlDDlIoHbbztYH4T/view?usp=drive_link";
 const AFTERPLAY_URL = "https://afterplay.io";
 
 type PageProps = {
@@ -31,6 +38,22 @@ export default async function SetupPage({ params }: PageProps) {
   const session = await auth();
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
+
+  const access = challenge.id
+    ? await getAccessForChallenge(challenge.id)
+    : null;
+  const welcomeUrl = getWelcomeVideoUrl();
+  const welcomeUnlocked = canViewWelcomeVideo(
+    Boolean(access?.isGm),
+    challenge.welcomeVideoPublishAt,
+  );
+  const welcomeEmbed = welcomeUnlocked
+    ? resolveWelcomeVideoEmbed(welcomeUrl)
+    : null;
+  const welcomeLockedMessage =
+    welcomeUrl && !welcomeUnlocked
+      ? `Unlocks for everyone at ${formatWelcomeVideoPublishAtEastern(challenge.welcomeVideoPublishAt)}. GMs can change this in the GM console.`
+      : null;
 
   const trainerHref = `/challenges/${challenge.slug}/me`;
 
@@ -52,7 +75,11 @@ export default async function SetupPage({ params }: PageProps) {
             A message from Jason (@Oubori) to kick off Season 2026 — then follow
             the steps below to get your run online.
           </p>
-          <WelcomeVideoPanel />
+          <WelcomeVideoPanel
+            embed={welcomeEmbed}
+            lockedMessage={welcomeLockedMessage}
+            fallbackUrl={welcomeUnlocked ? welcomeUrl : null}
+          />
         </Frame>
       </div>
 

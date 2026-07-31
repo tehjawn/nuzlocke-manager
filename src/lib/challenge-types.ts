@@ -108,6 +108,8 @@ export type Challenge = {
   gmInviteCode?: string | null;
   /** GM-only; omitted from public challenge payloads. */
   discordWebhookUrl?: string | null;
+  /** When the welcome video becomes visible to everyone (ISO). Null = default 9pm Eastern. */
+  welcomeVideoPublishAt?: string | null;
   badges: BadgeDefinition[];
   rules: ChallengeRule[];
   faqs: FaqEntry[];
