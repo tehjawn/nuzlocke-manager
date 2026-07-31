@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { Frame } from "@/components/Frame";
 import { GameModeSettingsGuide } from "@/components/GameModeSettingsGuide";
+import { SaveExportGuide } from "@/components/SaveExportGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { getChallenge } from "@/lib/challenges";
 import { CTA_PRIMARY } from "@/lib/cta";
@@ -183,49 +184,47 @@ export default async function SetupPage({ params }: PageProps) {
 
         <li>
           <Frame title="4. Export your save & import it here">
-            <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
-              <li>
-                In Afterplay (or your emulator), download / export your save
-                (Gen&nbsp;3{" "}
-                <code className="rounded-lg bg-surface-2 px-1">.sav</code> /{" "}
-                <code className="rounded-lg bg-surface-2 px-1">.srm</code>).
-              </li>
-              <li>
-                {session?.user ? (
-                  <>
-                    Open{" "}
-                    <Link
-                      href={trainerHref}
-                      className="font-bold text-accent-deep underline-offset-2 hover:underline"
-                    >
-                      your trainer board
-                    </Link>{" "}
-                    and use{" "}
-                    <span className="font-bold text-ink">Import save</span>.
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/login"
-                      className="font-bold text-accent-deep underline-offset-2 hover:underline"
-                    >
-                      Sign in with Discord
-                    </Link>
-                    , open your trainer board, and use{" "}
-                    <span className="font-bold text-ink">Import save</span>.
-                  </>
-                )}
-              </li>
-              <li>
-                Review the mapped party → Main Squad, boxes → Reserves, fainted
-                → R.I.P., then apply. You can re-import as the run progresses.
-              </li>
-            </ol>
-            {session?.user ? (
-              <Link href={trainerHref} className={`${CTA_PRIMARY} mt-4`}>
-                Open trainer board →
-              </Link>
-            ) : null}
+            <div className="space-y-4">
+              <SaveExportGuide />
+              <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
+                <li>
+                  {session?.user ? (
+                    <>
+                      Open{" "}
+                      <Link
+                        href={trainerHref}
+                        className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                      >
+                        your trainer board
+                      </Link>{" "}
+                      and use{" "}
+                      <span className="font-bold text-ink">Import save</span>.
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/login"
+                        className="font-bold text-accent-deep underline-offset-2 hover:underline"
+                      >
+                        Sign in with Discord
+                      </Link>
+                      , open your trainer board, and use{" "}
+                      <span className="font-bold text-ink">Import save</span>.
+                    </>
+                  )}
+                </li>
+                <li>
+                  Review the mapped party → Main Squad, boxes → Reserves,
+                  fainted → R.I.P., then apply. You can re-import as the run
+                  progresses.
+                </li>
+              </ol>
+              {session?.user ? (
+                <Link href={trainerHref} className={CTA_PRIMARY}>
+                  Open trainer board →
+                </Link>
+              ) : null}
+            </div>
           </Frame>
         </li>
 
