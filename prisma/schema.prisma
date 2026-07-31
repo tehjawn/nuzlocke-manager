@@ -104,6 +104,8 @@ model Challenge {
   gmInviteCode      String?
   /// Discord incoming webhook URL for death / badge / revive posts
   discordWebhookUrl String?
+  /// When the Get Started welcome video becomes visible to everyone (Eastern schedule; null = default).
+  welcomeVideoPublishAt DateTime?
   startsAt          DateTime?
   endsAt            DateTime?
   createdAt         DateTime            @default(now())

@@ -1333,6 +1333,7 @@ export async function gmUpdateChallengeMetaAction(input: {
   gmInviteCode?: string;
   description?: string;
   discordWebhookUrl?: string | null;
+  welcomeVideoPublishAt?: string | null;
 }): Promise<ActionResult> {
   try {
     await requireGm(input.challengeId);
@@ -1370,6 +1371,22 @@ export async function gmUpdateChallengeMetaAction(input: {
       }
     }
 
+    let welcomeVideoPublishAt: Date | null | undefined = undefined;
+    if (input.welcomeVideoPublishAt !== undefined) {
+      if (
+        input.welcomeVideoPublishAt === null ||
+        input.welcomeVideoPublishAt.trim() === ""
+      ) {
+        welcomeVideoPublishAt = null;
+      } else {
+        const parsed = new Date(input.welcomeVideoPublishAt);
+        if (Number.isNaN(parsed.getTime())) {
+          return { ok: false, error: "Invalid welcome video publish time" };
+        }
+        welcomeVideoPublishAt = parsed;
+      }
+    }
+
     const challenge = await prisma.challenge.update({
       where: { id: input.challengeId },
       data: {
@@ -1380,6 +1397,9 @@ export async function gmUpdateChallengeMetaAction(input: {
         description: input.description,
         ...(webhookUrl !== undefined
           ? { discordWebhookUrl: webhookUrl }
+          : {}),
+        ...(welcomeVideoPublishAt !== undefined
+          ? { welcomeVideoPublishAt }
           : {}),
       },
     });
