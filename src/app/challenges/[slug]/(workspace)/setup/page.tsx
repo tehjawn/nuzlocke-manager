@@ -71,9 +71,8 @@ export default async function SetupPage({ params }: PageProps) {
           Get Started
         </h2>
         <p className="mt-2 text-muted">
-          Download the ROM, load it in Afterplay (or another emulator), save the
-          pre-loaded Game Mode settings, export your save, then import it on
-          your trainer board.
+          Download the ROM, load it in Afterplay, save the pre-loaded Game Mode
+          settings, export your save, then import it on your trainer board.
         </p>
       </header>
 

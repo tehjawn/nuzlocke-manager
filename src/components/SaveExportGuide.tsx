@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { CTA_PRIMARY, CTA_SECONDARY } from "@/lib/cta";
 
@@ -47,12 +47,21 @@ const STEPS: Shot[] = [
 /** Secondary CTA + modal walkthrough for exporting a save from Afterplay. */
 export function SaveExportGuide() {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const close = () => {
+    setOpen(false);
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  };
 
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         className={CTA_SECONDARY}
+        aria-haspopup="dialog"
+        aria-expanded={open}
         onClick={() => setOpen(true)}
       >
         How to export from Afterplay →
@@ -62,7 +71,7 @@ export function SaveExportGuide() {
         open={open}
         title="Export from Afterplay"
         subtitle="Game Menu → Saves → Export, then import on your trainer board."
-        onClose={() => setOpen(false)}
+        onClose={close}
         size="md"
       >
         <div className="space-y-6">
@@ -95,7 +104,7 @@ export function SaveExportGuide() {
             <button
               type="button"
               className={CTA_PRIMARY}
-              onClick={() => setOpen(false)}
+              onClick={close}
             >
               Got it!
             </button>

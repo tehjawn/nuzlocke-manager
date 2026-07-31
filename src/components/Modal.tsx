@@ -1,6 +1,11 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import {
+  useId,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 
 type ModalProps = {
@@ -18,6 +23,9 @@ type ModalProps = {
   size?: "default" | "md" | "wide";
 };
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function Modal({
   open,
   title,
@@ -30,6 +38,7 @@ export function Modal({
   size,
 }: ModalProps) {
   const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
   const resolvedSize = size ?? (wide ? "wide" : "default");
   const widthClass =
     resolvedSize === "wide"
@@ -38,6 +47,25 @@ export function Modal({
         ? "sm:max-w-2xl"
         : "sm:max-w-xl";
 
+  const onPanelKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      onClose();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const focusables = panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE);
+    if (!focusables || focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === panelRef.current)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   if (!open || typeof document === "undefined") return null;
 
   // Portal above sticky rails / overflow parents; sit above body grain (z-80).
@@ -45,22 +73,22 @@ export function Modal({
     <div
       data-modal-open=""
       className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") onClose();
-      }}
     >
       <button
         type="button"
         aria-label="Close dialog"
+        tabIndex={-1}
         className="absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px]"
         onClick={onClose}
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
         autoFocus
+        onKeyDown={onPanelKeyDown}
         className={`gba-frame relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden outline-none sm:rounded-xl ${widthClass}`}
       >
         <header className="gba-frame-title relative z-[1] flex items-start justify-between gap-3 px-4 py-3">
