@@ -29,7 +29,7 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import {
-  recommendMoreSquadCounters,
+  getSquadCounterReroll,
   recommendSquadCounters,
   type SquadCounterSuggestion,
 } from "@/lib/pokedex-squad-counter";
@@ -158,6 +158,25 @@ export function PokedexPanel({
     deferredSelected?.pokedexId !== selected?.pokedexId ||
     deferredTipExcludeEntryIds !== tipExcludeEntryIds ||
     deferredTipSquad !== tipSquad;
+  const tipReroll = useMemo(() => {
+    if (!deferredSelected) return null;
+    const tipTypes = typesForPokedexId(deferredSelected.pokedexId);
+    return getSquadCounterReroll(
+      tipTypes,
+      deferredTipSquad,
+      typeTips,
+      deferredTipExcludeEntryIds,
+      {
+        excludePokedexId: deferredSelected.pokedexId,
+        limit: 3,
+      },
+    );
+  }, [
+    deferredSelected,
+    deferredTipExcludeEntryIds,
+    deferredTipSquad,
+    typeTips,
+  ]);
 
   function selectEntry(entry: PokemonIndexEntry) {
     setSelected(entry);
@@ -187,20 +206,7 @@ export function PokedexPanel({
   }
 
   function showMoreTips() {
-    if (!selected || types.length === 0 || tipSquad.length === 0) return;
-    const shown = [
-      ...tipExcludeEntryIds,
-      ...typeTips.map((t) => t.entryId),
-    ];
-    const next = recommendMoreSquadCounters(types, tipSquad, shown, {
-      excludePokedexId: selected.pokedexId,
-      limit: 3,
-    });
-    if (next.length === 0) {
-      setTipExcludeEntryIds([]);
-      return;
-    }
-    setTipExcludeEntryIds(shown);
+    if (tipReroll) setTipExcludeEntryIds(tipReroll.excludeEntryIds);
   }
 
   const scoutTrainers = useMemo(
@@ -417,6 +423,7 @@ export function PokedexPanel({
               matchups={matchups}
               stabMoves={stabMoves}
               typeTips={typeTips}
+              tipRerollAction={tipReroll?.action ?? null}
               tipsPending={tipsPending}
               tipTrainerLabel={tipTrainerLabel}
               tipSquadCount={tipSquad.length}
@@ -482,6 +489,7 @@ function PokedexEntry({
   matchups,
   stabMoves,
   typeTips,
+  tipRerollAction,
   tipsPending,
   tipTrainerLabel,
   tipSquadCount,
@@ -501,6 +509,7 @@ function PokedexEntry({
   matchups: ReturnType<typeof defensiveMatchups>;
   stabMoves: ReturnType<typeof signatureMovesForTypes>;
   typeTips: SquadCounterSuggestion[];
+  tipRerollAction: "more" | "restart" | null;
   tipsPending: boolean;
   tipTrainerLabel: string | null;
   tipSquadCount: number;
@@ -678,15 +687,17 @@ function PokedexEntry({
                     : "Sign in and join this season to see counters from your Main + Reserve."}
               </p>
             </div>
-            {types.length > 0 && tipSquadCount > 0 ? (
+            {tipRerollAction && (
               <button
-                type="button"
                 className="pressable rounded-lg border border-frame bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
+                data-testid="type-tips-more"
+                disabled={tipsPending}
                 onClick={onMoreTips}
+                type="button"
               >
-                More tips
+                {tipRerollAction === "restart" ? "Start over" : "More tips"}
               </button>
-            ) : null}
+            )}
           </div>
 
           {typeTips.length > 0 ? (
