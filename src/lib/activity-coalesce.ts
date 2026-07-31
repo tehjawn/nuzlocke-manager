@@ -1,4 +1,9 @@
-import { listLabels, summarizeBadgeBatch, summarizeDeathBatch } from "@/lib/activity-messages";
+import {
+  summarizeBadgeBatch,
+  summarizeCatchBatch,
+  summarizeDeathBatch,
+  summarizeLocksBatch,
+} from "@/lib/activity-messages";
 
 /** Match social notification grouping — quiet window before a new feed row. */
 export const ACTIVITY_COALESCE_WINDOW_MS = 15 * 60 * 1000;
@@ -128,20 +133,6 @@ export function mergeLocksCoalesce(
     }
   }
   return { category: "locks", handles: list };
-}
-
-export function summarizeCatchBatch(
-  handle: string,
-  labels: string[],
-): string | null {
-  if (labels.length === 0) return null;
-  return `${handle} logged ${listLabels(labels)}`;
-}
-
-export function summarizeLocksBatch(handles: string[]): string | null {
-  if (handles.length === 0) return null;
-  if (handles.length === 1) return `${handles[0]}'s Main Squad locked`;
-  return `Main Squad locked for ${listLabels(handles)}`;
 }
 
 export function resolveBadgeCoalesce(
