@@ -1952,6 +1952,869 @@ button:disabled,
   cursor: not-allowed;
 }
 
+/* ─── GM Console dashboard ─── */
+.gm-console-page {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(
+      1200px 480px at 12% -10%,
+      color-mix(in srgb, var(--interactive) 16%, transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      900px 420px at 92% 8%,
+      color-mix(in srgb, var(--accent-2) 12%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      700px 360px at 50% 100%,
+      color-mix(in srgb, var(--accent) 8%, transparent),
+      transparent 60%
+    );
+}
+
+.gm-console-page::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--frame) 22%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--frame) 22%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 72%);
+}
+
+[data-theme="dark"] .gm-console-page::before {
+  opacity: 0.18;
+}
+
+.gm-console-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+.gm-console {
+  --gm-tools-angle: 0deg;
+  display: grid;
+  gap: 1.35rem;
+}
+
+.gm-console__hero {
+  position: relative;
+  padding: 1.5px;
+  border-radius: calc(var(--radius-lg) + 2px);
+  background: conic-gradient(
+    from var(--gm-tools-angle),
+    color-mix(in srgb, var(--interactive) 80%, #fff),
+    color-mix(in srgb, var(--frame) 55%, transparent) 22%,
+    color-mix(in srgb, var(--accent-2) 70%, #fff) 42%,
+    color-mix(in srgb, var(--frame) 50%, transparent) 62%,
+    #fff 78%,
+    color-mix(in srgb, var(--frame) 55%, transparent) 90%,
+    color-mix(in srgb, var(--interactive) 80%, #fff)
+  );
+  box-shadow:
+    0 22px 48px -24px var(--shadow-md),
+    0 0 28px -14px color-mix(in srgb, var(--interactive) 32%, transparent);
+  animation: gm-tools-revolve 12s linear infinite;
+}
+
+.gm-console__hero-chrome {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, #fff 55%, var(--frame));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--surface) 92%, #fff) 0%,
+      color-mix(in srgb, var(--surface) 88%, transparent) 42%,
+      var(--surface-2) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 20%, transparent);
+  padding: 1.35rem 1.35rem 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .gm-console__hero-chrome {
+    padding: 1.6rem 1.75rem 1.75rem;
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .gm-console__hero-chrome {
+    background:
+      linear-gradient(
+        145deg,
+        color-mix(in srgb, #fff 55%, transparent) 0%,
+        color-mix(in srgb, var(--surface) 72%, transparent) 42%,
+        color-mix(in srgb, var(--surface-2) 78%, transparent) 100%
+      );
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  }
+}
+
+[data-theme="dark"] .gm-console__hero-chrome {
+  border-color: color-mix(in srgb, #fff 16%, var(--frame));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--surface) 94%, #fff) 0%,
+      var(--surface) 45%,
+      var(--surface-2) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  [data-theme="dark"] .gm-console__hero-chrome {
+    background:
+      linear-gradient(
+        145deg,
+        color-mix(in srgb, #fff 10%, transparent) 0%,
+        color-mix(in srgb, var(--surface) 78%, transparent) 45%,
+        color-mix(in srgb, var(--surface-2) 82%, transparent) 100%
+      );
+  }
+}
+
+.gm-console__hero-chrome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    125deg,
+    transparent 36%,
+    color-mix(in srgb, #fff 28%, transparent) 48%,
+    color-mix(in srgb, var(--interactive) 12%, transparent) 52%,
+    transparent 64%
+  );
+  opacity: 0.5;
+}
+
+[data-theme="dark"] .gm-console__hero-chrome::before {
+  opacity: 0.26;
+}
+
+.gm-console__hero-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1.15rem;
+}
+
+.gm-console__eyebrow {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--interactive) 45%, var(--ink));
+}
+
+.gm-console__badge {
+  display: inline-flex;
+  height: 1.35rem;
+  min-width: 1.7rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--interactive) 40%, var(--frame));
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--interactive) 35%, #fff) 0%,
+    var(--interactive) 100%
+  );
+  padding: 0 0.4rem;
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0 1px 1px color-mix(in srgb, #000 35%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent);
+}
+
+.gm-console__title {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.gm-console__lede {
+  margin: 0.45rem 0 0;
+  max-width: 40rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.gm-console__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.gm-console__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  padding: 0.28rem 0.7rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent);
+}
+
+.gm-console__chip-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  background: var(--interactive);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--interactive) 55%, transparent);
+}
+
+.gm-console__chip--live .gm-console__chip-dot {
+  animation: gm-console-pulse-dot 1.8s ease-in-out infinite;
+}
+
+.gm-console__chip--warn {
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--frame));
+  background: color-mix(in srgb, var(--accent-2) 12%, var(--surface));
+}
+
+.gm-console__chip--danger {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--frame));
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+}
+
+.gm-console__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+@media (min-width: 640px) {
+  .gm-console__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.gm-console__stat {
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--frame) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
+  padding: 0.7rem 0.85rem;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+}
+
+.gm-console__stat-label {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gm-console__stat-value {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.gm-console__layout {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 960px) {
+  .gm-console__layout {
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+    align-items: start;
+    gap: 1.25rem;
+  }
+}
+
+.gm-console__nav {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0.2rem;
+  border-radius: calc(var(--radius) + 2px);
+  border: 1px solid color-mix(in srgb, var(--frame) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+  scrollbar-width: thin;
+}
+
+@media (min-width: 960px) {
+  .gm-console__nav {
+    position: sticky;
+    top: 4.5rem;
+    flex-direction: column;
+    overflow: visible;
+    padding: 0.45rem;
+  }
+}
+
+.gm-console__nav-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.gm-console__nav-btn:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--interactive-soft) 45%, transparent);
+}
+
+.gm-console__nav-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--interactive) 70%, var(--ink));
+  outline-offset: 2px;
+}
+
+.gm-console__nav-btn--active {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--interactive) 35%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 65%, var(--surface));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent);
+}
+
+.gm-console__nav-index {
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--frame) 75%, transparent);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.gm-console__nav-btn--active .gm-console__nav-index {
+  border-color: color-mix(in srgb, var(--interactive) 45%, var(--frame));
+  background: color-mix(in srgb, var(--interactive) 18%, transparent);
+  opacity: 1;
+}
+
+.gm-console__panels {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.gm-console__panel {
+  position: relative;
+  padding: 1.5px;
+  border-radius: calc(var(--radius) + 2px);
+  contain: layout style;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-2) 55%, #fff),
+    color-mix(in srgb, var(--frame) 55%, transparent) 40%,
+    color-mix(in srgb, var(--interactive) 45%, var(--accent-2))
+  );
+  box-shadow:
+    0 16px 36px -22px var(--shadow-md),
+    0 0 0 1px color-mix(in srgb, var(--frame) 28%, transparent);
+  animation: gm-console-panel-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gm-console__panel--danger {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--danger) 55%, #fff),
+    color-mix(in srgb, var(--frame) 50%, transparent) 45%,
+    color-mix(in srgb, var(--danger) 40%, var(--accent-2))
+  );
+}
+
+.gm-console__panel-chrome {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, #fff 55%, var(--frame));
+  /* Opaque glass fill — avoid backdrop-filter on every panel (GPU drain). */
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--surface) 96%, #fff) 0%,
+      var(--surface) 48%,
+      var(--surface-2) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 65%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 16%, transparent);
+}
+
+[data-theme="dark"] .gm-console__panel-chrome {
+  border-color: color-mix(in srgb, #fff 14%, var(--frame));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--surface) 94%, #fff) 0%,
+      var(--surface) 48%,
+      var(--surface-2) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 5%, transparent);
+}
+
+.gm-console__panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--interactive) 18%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 28%, transparent);
+  padding: 0.85rem 1rem;
+}
+
+.gm-console__panel--danger .gm-console__panel-head {
+  border-bottom-color: color-mix(in srgb, var(--danger) 22%, var(--frame));
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+.gm-console__panel-kicker {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--interactive) 40%, var(--ink));
+}
+
+.gm-console__panel--danger .gm-console__panel-kicker {
+  color: color-mix(in srgb, var(--danger) 55%, var(--ink));
+}
+
+.gm-console__panel-title {
+  margin: 0.15rem 0 0;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.gm-console__panel-desc {
+  margin: 0.25rem 0 0;
+  max-width: 36rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.gm-console__panel-body {
+  padding: 1rem;
+}
+
+.gm-console__flash {
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--frame) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  animation: gm-console-panel-in 240ms ease-out both;
+}
+
+.gm-console__flash--ok {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--frame));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent-deep);
+}
+
+.gm-console__flash--err {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--frame));
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--danger);
+}
+
+.gm-console__field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.gm-console__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gm-console__hint {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.gm-console__input,
+.gm-console__select,
+.gm-console__textarea {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--frame) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
+}
+
+.gm-console__textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.gm-console__input:focus,
+.gm-console__select:focus,
+.gm-console__textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--interactive) 55%, var(--frame));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--interactive) 18%, transparent);
+}
+
+.gm-console__grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .gm-console__grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.gm-console__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.gm-console__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 50%, transparent);
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    filter 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.gm-console__btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.gm-console__btn:active {
+  transform: translateY(0);
+}
+
+.gm-console__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.gm-console__btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--interactive) 70%, var(--ink));
+  outline-offset: 2px;
+}
+
+.gm-console__btn--primary {
+  border-color: color-mix(in srgb, var(--interactive) 45%, var(--frame));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--interactive) 22%, var(--surface)) 0%,
+    color-mix(in srgb, var(--interactive) 12%, var(--surface-2)) 100%
+  );
+}
+
+.gm-console__btn--accent {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--frame));
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent),
+    0 1px 2px var(--shadow);
+}
+
+.gm-console__btn--ghost {
+  background: transparent;
+}
+
+.gm-console__btn--danger {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--frame));
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+}
+
+.gm-console__btn--danger-solid {
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  background: var(--danger);
+  color: #fff;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 25%, transparent);
+}
+
+.gm-console__roster {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.gm-console__trainer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--frame) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  padding: 0.8rem 0.9rem;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 4.75rem;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.gm-console__trainer:hover {
+  border-color: color-mix(in srgb, var(--interactive) 35%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 28%, var(--surface));
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent),
+    0 10px 22px -18px var(--shadow-md);
+}
+
+.gm-console__trainer-name {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.gm-console__trainer-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.gm-console__pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--frame) 75%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  padding: 0.1rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gm-console__pill--ok {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--frame));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-deep);
+}
+
+.gm-console__pill--lock {
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--frame));
+  background: color-mix(in srgb, var(--accent-2) 14%, transparent);
+  color: color-mix(in srgb, var(--accent-2) 35%, var(--ink));
+}
+
+.gm-console__editor {
+  display: grid;
+  gap: 0.65rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--frame) 65%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  padding: 0.85rem;
+}
+
+.gm-console__editor--new {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--interactive) 35%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 22%, transparent);
+}
+
+.gm-console__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.gm-console__ops-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 720px) {
+  .gm-console__ops-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+}
+
+@keyframes gm-console-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gm-console-pulse-dot {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-console__hero {
+    animation: none;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--interactive) 55%, #fff),
+      color-mix(in srgb, var(--accent-2) 45%, var(--interactive))
+    );
+  }
+
+  .gm-console__panel {
+    animation: none;
+  }
+
+  .gm-console__chip--live .gm-console__chip-dot {
+    animation: none;
+  }
+
+  .gm-console__trainer:hover {
+    transform: none;
+  }
+}
+
+/* Touch / coarse pointers: drop continuous rim spin + page grid (same policy as gba grain). */
+@media (hover: none) {
+  .gm-console-page::before {
+    display: none;
+  }
+
+  .gm-console__hero {
+    animation: none;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--interactive) 55%, #fff),
+      color-mix(in srgb, var(--accent-2) 45%, var(--interactive))
+    );
+  }
+
+  .gm-console__panel {
+    animation: none;
+  }
+
+  .gm-console__chip--live .gm-console__chip-dot {
+    animation: none;
+  }
+}
+
 .trainer-carousel-track {
   /* Duration set per-row from roster length so scroll speed stays constant. */
   animation: trainer-carousel-scroll var(--carousel-duration, 48s) linear

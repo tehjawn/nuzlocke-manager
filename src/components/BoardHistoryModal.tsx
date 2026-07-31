@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { Suspense, use, useState, useTransition } from "react";
 import {
   getTrainerBoardSnapshotAction,
   listTrainerBoardSnapshotsAction,
@@ -49,19 +49,45 @@ function formatSnapshotWhen(iso: string): string {
   }
 }
 
-export function BoardHistoryModal({
-  open,
+function BoardHistoryFallback({
+  onClose,
+  trainerHandle,
+}: {
+  onClose: () => void;
+  trainerHandle: string;
+}) {
+  return (
+    <Modal
+      open
+      title="Board history"
+      subtitle={`${trainerHandle} · GM-only run archive`}
+      size="wide"
+      onClose={onClose}
+    >
+      <p className="text-sm text-muted">Loading history…</p>
+    </Modal>
+  );
+}
+
+function BoardHistoryBody({
   onClose,
   trainerId,
   trainerHandle,
   badges,
   showCompetitiveDetails = true,
-}: BoardHistoryModalProps) {
+}: Omit<BoardHistoryModalProps, "open">) {
+  const [listRequest] = useState(() =>
+    listTrainerBoardSnapshotsAction({ trainerId }),
+  );
+  const listResult = use(listRequest);
+
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [snapshots, setSnapshots] = useState<
-    TrainerBoardSnapshotSummary[] | null
-  >(null);
+  const [error, setError] = useState<string | null>(
+    listResult.ok ? null : listResult.error,
+  );
+  const snapshots: TrainerBoardSnapshotSummary[] = listResult.ok
+    ? listResult.snapshots
+    : [];
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{
     id: string;
@@ -74,27 +100,6 @@ export function BoardHistoryModal({
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    void (async () => {
-      const result = await listTrainerBoardSnapshotsAction({ trainerId });
-      if (cancelled) return;
-      if (!result.ok) {
-        setSnapshots([]);
-        setError(result.error);
-        return;
-      }
-      setSnapshots(result.snapshots);
-      setError(null);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, trainerId]);
-
-  if (!open) return null;
 
   function openSnapshot(id: string) {
     setSelectedId(id);
@@ -139,7 +144,7 @@ export function BoardHistoryModal({
   return (
     <>
       <Modal
-        open={open}
+        open
         title={viewingDetail ? "Past board" : "Board history"}
         subtitle={
           viewingDetail
@@ -241,15 +246,12 @@ export function BoardHistoryModal({
               Snapshots are taken before imports, wipes, and GM resets. Players
               do not see this list.
             </p>
-            {snapshots == null ? (
-              <p className="text-sm text-muted">Loading history…</p>
-            ) : null}
-            {snapshots != null && snapshots.length === 0 && !error ? (
+            {snapshots.length === 0 && !error ? (
               <p className="text-sm text-muted">
                 No snapshots yet for this trainer.
               </p>
             ) : null}
-            {snapshots != null && snapshots.length > 0 ? (
+            {snapshots.length > 0 ? (
               <ul className="divide-y divide-frame/25 border border-frame/40">
                 {snapshots.map((snap) => {
                   const active = selectedId === snap.id && pending;
@@ -292,5 +294,35 @@ export function BoardHistoryModal({
         />
       ) : null}
     </>
+  );
+}
+
+export function BoardHistoryModal({
+  open,
+  onClose,
+  trainerId,
+  trainerHandle,
+  badges,
+  showCompetitiveDetails = true,
+}: BoardHistoryModalProps) {
+  if (!open) return null;
+
+  return (
+    <Suspense
+      fallback={
+        <BoardHistoryFallback
+          onClose={onClose}
+          trainerHandle={trainerHandle}
+        />
+      }
+    >
+      <BoardHistoryBody
+        onClose={onClose}
+        trainerId={trainerId}
+        trainerHandle={trainerHandle}
+        badges={badges}
+        showCompetitiveDetails={showCompetitiveDetails}
+      />
+    </Suspense>
   );
 }
