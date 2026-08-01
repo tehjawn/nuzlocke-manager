@@ -1241,16 +1241,14 @@ export function TrainerBoard({
             />
           ) : (
             <>
-              <Frame title="Main Squad">
-                <div data-tour="pokemon">
-                  <PartyStrip
-                    pokemon={main}
-                    slots={6}
-                    selectHint="Details"
-                    showCompetitiveDetails={showCompetitiveDetails}
-                    onSelect={openPokemon}
-                  />
-                </div>
+              <Frame title="Main Squad" data-tour="pokemon">
+                <PartyStrip
+                  pokemon={main}
+                  slots={6}
+                  selectHint="Details"
+                  showCompetitiveDetails={showCompetitiveDetails}
+                  onSelect={openPokemon}
+                />
               </Frame>
 
               <Frame title="The Reserves">

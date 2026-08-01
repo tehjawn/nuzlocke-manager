@@ -10,6 +10,7 @@ import {
   type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 import {
@@ -525,6 +526,21 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
               {step.title}
             </h2>
             <p className="nuzlocke-tour-description">{step.description}</p>
+            {step.signature ? (
+              <div className="nuzlocke-tour-signature">
+                <Image
+                  src={step.signature.avatarUrl}
+                  alt=""
+                  width={48}
+                  height={48}
+                  className="nuzlocke-tour-signature-avatar"
+                  unoptimized
+                />
+                <p className="nuzlocke-tour-signature-label">
+                  {step.signature.label}
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <footer className="nuzlocke-tour-footer">

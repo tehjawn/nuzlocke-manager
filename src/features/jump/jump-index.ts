@@ -81,6 +81,8 @@ function seasonSectionTabs(slug: string, status: string) {
   const base = `/challenges/${slug}`;
   const tournamentLabel = status === "TOURNAMENT" ? "Ladder" : "Tournament";
   return [
+    { href: `${base}/about`, label: "About" },
+    { href: `${base}/rules`, label: "Rules / FAQ" },
     { href: base, label: "Trainers" },
     { href: `${base}/encounters`, label: "Encounters" },
     { href: `${base}/tools`, label: "Tools" },
@@ -110,14 +112,6 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
       category: "navigate" as const,
       tags: [tab.label.toLowerCase(), "section", "tab"],
     })),
-    {
-      id: `nav-rules-${ctx.slug}`,
-      title: "Rules",
-      subtitle: `${ctx.name} · Season rules`,
-      href: `${base}/rules`,
-      category: "navigate",
-      tags: ["rules", "core", "guidelines"],
-    },
     {
       id: `nav-activity-${ctx.slug}`,
       title: "Pack feed",

@@ -32,6 +32,11 @@ export type OnboardingStep = {
   mobilePanel?: OnboardingMobilePanel;
   title: string;
   description: string;
+  /** Optional avatar shown above a sign-off line in the coachmark. */
+  signature?: {
+    avatarUrl: string;
+    label: string;
+  };
   href: string;
   match: (pathname: string) => boolean;
 };
@@ -97,13 +102,13 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     match: seasonMatch,
   },
   {
-    id: "demo-trainer",
+    id: "your-trainer",
     route: "season",
-    element: "[data-tour='demo-trainer']",
+    element: "[data-tour='your-trainer']",
     mobilePanel: null,
-    title: "By the end of your run…",
+    title: "This is your trainer!",
     description:
-      "You'll want your entry to look something like this!",
+      "Your card on the Season 2026 board — it'll fill in as you catch Pokémon, earn badges, and update your status.",
     href: base,
     match: seasonMatch,
   },
@@ -113,7 +118,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     element: "[data-tour='cta-setup']",
     // CTA lives in General info — open the mobile Info panel first.
     mobilePanel: "info",
-    title: "Explore more later",
+    title: "Starting the Nuzlocke",
     description:
       "When you're ready to play, hit Get Started — it'll walk you through the ROM, Afterplay, and importing your save.",
     href: base,
@@ -125,7 +130,12 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     // Centered overlay on Get Started — Welcome video sits on the page behind it.
     title: "Here's where you'll start your Nuzlocke journey",
     description:
-      "I'll leave it to Jason to take things from here.\nHope you guys have fun!\n— jawn",
+      "I'll leave it to Jason to take things from here.\nHope you guys have fun!",
+    signature: {
+      avatarUrl:
+        "https://cdn.discordapp.com/avatars/500702466313027594/41bc49e3dba4f9b42fb33b21e8d6333d.png",
+      label: "— jawn",
+    },
     href: `${base}/setup`,
     match: setupMatch,
   },

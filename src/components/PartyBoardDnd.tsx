@@ -577,7 +577,7 @@ export function PartyBoardDnd({
       onDragCancel={handleDragCancel}
     >
       <div className="space-y-6">
-        <Frame title="Main Squad">
+        <Frame title="Main Squad" data-tour="pokemon">
           <SlotSectionDroppable id="MAIN" disabled={mainDragDisabled}>
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -590,19 +590,17 @@ export function PartyBoardDnd({
                 </p>
                 {mainActions}
               </div>
-              <div data-tour="pokemon">
-                <SortablePartyGrid
-                  slot="MAIN"
-                  items={items.MAIN}
-                  pokemonById={pokemonById}
-                  fixedSlots={MAIN_PARTY_SIZE}
-                  dragDisabled={mainDragDisabled}
-                  selectHint="View"
-                  onSelect={onSelect}
-                  onSelectEmpty={onSelectEmptyMain}
-                  shouldSuppressClick={consumeSuppressClick}
-                />
-              </div>
+              <SortablePartyGrid
+                slot="MAIN"
+                items={items.MAIN}
+                pokemonById={pokemonById}
+                fixedSlots={MAIN_PARTY_SIZE}
+                dragDisabled={mainDragDisabled}
+                selectHint="View"
+                onSelect={onSelect}
+                onSelectEmpty={onSelectEmptyMain}
+                shouldSuppressClick={consumeSuppressClick}
+              />
             </div>
           </SlotSectionDroppable>
         </Frame>
