@@ -20,7 +20,7 @@ type ModalProps = {
   footer?: ReactNode;
   /** @deprecated Prefer `size="wide"`. */
   wide?: boolean;
-  size?: "default" | "md" | "wide";
+  size?: "default" | "md" | "wide" | "fullscreen";
 };
 
 const FOCUSABLE =
@@ -41,11 +41,15 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null);
   const resolvedSize = size ?? (wide ? "wide" : "default");
   const widthClass =
-    resolvedSize === "wide"
-      ? "sm:max-w-4xl"
-      : resolvedSize === "md"
-        ? "sm:max-w-2xl"
-        : "sm:max-w-xl";
+    resolvedSize === "fullscreen"
+      ? "sm:max-w-[min(96rem,calc(100vw-1.5rem))]"
+      : resolvedSize === "wide"
+        ? "sm:max-w-4xl"
+        : resolvedSize === "md"
+          ? "sm:max-w-2xl"
+          : "sm:max-w-xl";
+  const heightClass =
+    resolvedSize === "fullscreen" ? "max-h-[98vh] sm:h-[min(96vh,56rem)]" : "max-h-[92vh]";
 
   const onPanelKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape") {
@@ -72,7 +76,9 @@ export function Modal({
   return createPortal(
     <div
       data-modal-open=""
-      className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4"
+      className={`fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center ${
+        resolvedSize === "fullscreen" ? "sm:p-2 lg:p-3" : "sm:p-4"
+      }`}
     >
       <button
         type="button"
@@ -89,7 +95,7 @@ export function Modal({
         tabIndex={-1}
         autoFocus
         onKeyDown={onPanelKeyDown}
-        className={`gba-frame relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden outline-none sm:rounded-xl ${widthClass}`}
+        className={`gba-frame relative z-10 flex w-full flex-col overflow-hidden outline-none sm:rounded-xl ${heightClass} ${widthClass}`}
       >
         <header className="gba-frame-title relative z-[1] flex items-start justify-between gap-3 px-4 py-3">
           <div className="min-w-0">

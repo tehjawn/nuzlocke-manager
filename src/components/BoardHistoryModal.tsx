@@ -226,7 +226,7 @@ function TrainerHistoryBody({
             ? `${trainerHandle} · ${detail.label ?? detail.triggerLabel} · ${formatWhen(detail.createdAt)}`
             : `${trainerHandle} · runs & board snapshots`
         }
-        size="wide"
+        size="fullscreen"
         onClose={onClose}
         headerActions={
           viewingDetail ? (
@@ -267,7 +267,7 @@ function TrainerHistoryBody({
               {detail.payload.reviveUsed ? " · revive used" : null}
             </p>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
               <div className="space-y-4">
                 <Frame title="Main Squad">
                   <PartyStrip
