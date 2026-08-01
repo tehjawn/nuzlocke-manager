@@ -232,9 +232,10 @@ export function SaveImportModal({
     >
       <div className="space-y-4 text-sm">
         <p className="text-muted">
-          Upload a Modern Emerald save from Afterplay (
+          Upload a Modern Emerald save. Prefer Afterplay’s in-game export (
           <code className="text-ink">.sav</code> /{" "}
-          <code className="text-ink">.srm</code>) or an mGBA/libretro state (
+          <code className="text-ink">.srm</code>) — that’s the most stable
+          source for badges, revive, and Pokédex encounters. Emulator states (
           <code className="text-ink">.state</code>,{" "}
           <code className="text-ink">.ss0</code>–
           <code className="text-ink">.ss9</code>,{" "}
@@ -242,11 +243,12 @@ export function SaveImportModal({
           <code className="text-ink">.s9</code>,{" "}
           <code className="text-ink">.sr0</code>–
           <code className="text-ink">.sr9</code>
-          ). Party, box, R.I.P., and encounters are detected separately —
-          uncheck anything you want to skip. Nature, ability, moves, IVs, and
-          EVs are imported when readable. Party, box, R.I.P., and Encountered
-          all mirror this save — Encountered is the wild buffer plus Pokédex
-          “seen” species, and replaces your current Encountered list on import.
+          ) still work for party/box/R.I.P. and usually encounters, but badges
+          and revive may be unavailable. Party, box, R.I.P., and Encountered
+          are detected separately — uncheck anything you want to skip. Nature,
+          ability, moves, IVs, and EVs are imported when readable. Encountered
+          is the wild buffer plus Pokédex “seen” species, and replaces your
+          current Encountered list on import.
         </p>
 
         <label className="block">
