@@ -4,8 +4,8 @@
  * Party/money/bag pocket *starts* match pret Emerald (BAG_ITEMS_COUNT stays 30).
  * Dex bitfields use National Dex indices (GetSetPokedexFlag), size 58.
  *
- * Offsets past seen1 were confirmed against live Afterplay .ss0 fixtures
- * (global.h comments are stale vanilla addresses).
+ * Offsets from seen1 onward are +0xF0 vs an earlier estimate — confirmed against
+ * Afterplay flash .srm (absolute SB1) and matching .state EWRAM dumps.
  */
 
 import modernSpeciesData from "@/data/modern-emerald-species.json";
@@ -26,28 +26,27 @@ export const SECTOR_ID_PKMN_STORAGE_END = 13;
 export const SB1_PARTY_COUNT = 0x234;
 export const SB1_PARTY = 0x238;
 export const SB1_MONEY = 0x490;
-/** Unchanged vs vanilla (bag still 30 slots). */
-export const SB1_SEEN1 = 0x988;
+/** National dex seen[1]; owned bitfield immediately precedes this (58 bytes). */
+export const SB1_SEEN1 = 0xa78;
 /**
- * Empirical: seen1 + 0x30B0 (vanilla gap shrank vs +6-only estimate).
+ * Second seen copy (seen1 + 0x30B0).
  */
-export const SB1_SEEN2 = 0x3a38;
+export const SB1_SEEN2 = 0x3b28;
 /**
- * Vanilla 0x1270 + (58-52). Gym badges live in flags[SYSTEM_FLAGS…].
+ * Gym badges live in flags[SYSTEM_FLAGS…].
  */
-export const SB1_FLAGS = 0x1276;
+export const SB1_FLAGS = 0x1366;
 /** Vanilla/Crest Emerald SaveBlock1.flags (52-byte dex). */
 export const CREST_SB1_FLAGS = 0x1270;
 /**
- * Empirical from .ss0 fixtures (seen2 + ~0x26C).
  * NuzlockeEncounterFlags[9] then packed challenge bitfields.
  */
-export const SB1_NUZLOCKE_ENCOUNTER_FLAGS = 0x3ca4;
+export const SB1_NUZLOCKE_ENCOUNTER_FLAGS = 0x3d94;
 export const SB1_NUZLOCKE_FLAGS_LEN = 9;
 /**
- * tx_Nuzlocke_RevivesUsed:4 — empirical absolute offset (= nuz flags + 9 + 11).
+ * tx_Nuzlocke_RevivesUsed:4 — absolute offset (= nuz flags + 9 + 11).
  */
-export const SB1_REVIVES_USED = 0x3cb8;
+export const SB1_REVIVES_USED = 0x3da8;
 export const SB1_REVIVES_USED_BYTE = 11;
 export const REVIVES_USED_MASK = 0xf;
 export const MODERN_REVIVES_TOTAL = 1;
