@@ -75,3 +75,17 @@ export function GmIcon({ className = "h-5 w-5" }: IconProps) {
     </svg>
   );
 }
+
+/** Map / checklist mark for the Game Guide deep link. */
+export function GuideIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path
+        d="M5.5 5.5l4.5-1.5 4 1.5 4.5-1.5v14.5l-4.5 1.5-4-1.5-4.5 1.5V5.5z"
+        strokeLinejoin="round"
+      />
+      <path d="M10 4.5v14M14 5.5v14" strokeLinecap="round" />
+      <path d="M7.5 10.5h1.5M7.5 13.5h1.5" strokeLinecap="round" />
+    </svg>
+  );
+}

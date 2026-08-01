@@ -5,9 +5,15 @@ import { createPortal } from "react-dom";
 import type { CelebrationKind } from "@/features/fx/fx-events";
 import { prefersReducedMotion } from "@/features/fx/fx-prefs";
 
+type CelebrationOptions = {
+  /** Override particle count for confetti kinds. */
+  confettiCount?: number;
+};
+
 type CelebrationItem = {
   id: string;
   kind: CelebrationKind;
+  confettiCount?: number;
 };
 
 let items: CelebrationItem[] = [];
@@ -36,14 +42,24 @@ function dismissCelebration(id: string) {
 }
 
 /** Fire-and-forget celebration — same module-store pattern as snackbars. */
-export function pushCelebration(kind: CelebrationKind, durationMs = 1600) {
+export function pushCelebration(
+  kind: CelebrationKind,
+  durationMs = 1600,
+  options: CelebrationOptions = {},
+) {
   if (typeof window === "undefined") return;
   if (prefersReducedMotion()) return;
 
   clearCelebrationTimers();
 
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  items = [{ id, kind }];
+  items = [
+    {
+      id,
+      kind,
+      confettiCount: options.confettiCount,
+    },
+  ];
   emit();
   timers.set(
     id,
@@ -85,8 +101,14 @@ const CONFETTI_KINDS = new Set<CelebrationKind>([
 ]);
 
 /** Deterministic particle seeds so SSR/client markup stays stable for a given id. */
-function confettiPieces(kind: CelebrationKind, seed: string) {
-  const count = kind === "guide_complete" ? 48 : 18;
+function confettiPieces(
+  kind: CelebrationKind,
+  seed: string,
+  confettiCount?: number,
+) {
+  const count =
+    confettiCount ??
+    (kind === "guide_complete" ? 48 : 18);
   const pieces = [];
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) {
@@ -127,7 +149,9 @@ export function CelebrationHost() {
 
   const active = celebrations[0]!;
   const showConfetti = CONFETTI_KINDS.has(active.kind);
-  const pieces = showConfetti ? confettiPieces(active.kind, active.id) : [];
+  const pieces = showConfetti
+    ? confettiPieces(active.kind, active.id, active.confettiCount)
+    : [];
 
   return createPortal(
     <div

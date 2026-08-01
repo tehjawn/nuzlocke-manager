@@ -525,7 +525,9 @@ export function GameGuidePanel({
           ?.cleared,
     );
     if (clearedChapter) {
-      triggerFx("guide_chapter_cleared");
+      triggerFx("guide_chapter_cleared", {
+        guideChapterIndex: clearedChapter.chapter.sortOrder,
+      });
       return;
     }
 
