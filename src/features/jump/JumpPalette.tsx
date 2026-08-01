@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import {
   clearRecentJumps,
   defaultSuggestions,
@@ -83,6 +84,20 @@ function matchIndices(
 }
 
 function ResultIcon({ item }: { item: JumpResult }) {
+  if (item.pokemonSprite) {
+    return (
+      <PokemonSpriteImage
+        alt=""
+        className="pixelated h-7 w-7 shrink-0 object-contain"
+        height={28}
+        pokedexId={item.pokemonSprite.pokedexId}
+        shiny={item.pokemonSprite.shiny}
+        species={item.pokemonSprite.species}
+        width={28}
+      />
+    );
+  }
+
   if (item.imageUrl) {
     // Plain img: Jump icons come from Showdown / PokeAPI / Blob and must not
     // depend on next/image remotePatterns (custom avatars break search in prod).

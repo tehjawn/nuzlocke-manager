@@ -1,6 +1,7 @@
 import Image from "next/image";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { heldItemSpriteUrl } from "@/data/pokemon-index";
-import { pokemonSpriteUrl, trainerSpriteUrl } from "@/lib/sprites";
+import { trainerSpriteUrl } from "@/lib/sprites";
 
 export type RuleIllustrationKind =
   | "faint-dead"
@@ -84,17 +85,19 @@ function Sprite({
 }
 
 function FaintDeadIllustration() {
-  const pikachu = pokemonSpriteUrl("Pikachu", { pokedexId: 25 });
   return (
     <div
       className="flex flex-wrap items-center justify-center gap-2 py-2 sm:gap-3"
       role="img"
       aria-label="Fainted Pikachu becomes a tombstone marked R.I.P."
     >
-      <Sprite
-        src={pikachu}
+      <PokemonSpriteImage
         alt=""
-        className="h-16 w-16 opacity-55 grayscale sm:h-[72px] sm:w-[72px]"
+        className="pixelated h-16 w-16 opacity-55 grayscale sm:h-[72px] sm:w-[72px]"
+        height={72}
+        pokedexId={25}
+        species="Pikachu"
+        width={72}
       />
       <FlowArrow />
       <Tombstone />
@@ -119,8 +122,6 @@ function Tombstone() {
 }
 
 function NoDupItemsIllustration() {
-  const pikachu = pokemonSpriteUrl("Pikachu", { pokedexId: 25 });
-  const bulbasaur = pokemonSpriteUrl("Bulbasaur", { pokedexId: 1 });
   const blackBelt = heldItemSpriteUrl("black-belt");
 
   return (
@@ -129,27 +130,35 @@ function NoDupItemsIllustration() {
       role="img"
       aria-label="Pikachu and Bulbasaur each with a Black Belt; Bulbasaur marked No for duplicate held items"
     >
-      <MonWithItem sprite={pikachu} item={blackBelt} label="Pikachu" />
       <MonWithItem
-        sprite={bulbasaur}
+        item={blackBelt}
+        label="Pikachu"
+        pokedexId={25}
+        species="Pikachu"
+      />
+      <MonWithItem
+        banned
         item={blackBelt}
         label="Bulbasaur"
-        banned
+        pokedexId={1}
+        species="Bulbasaur"
       />
     </div>
   );
 }
 
 function MonWithItem({
-  sprite,
+  banned = false,
   item,
   label,
-  banned = false,
+  pokedexId,
+  species,
 }: {
-  sprite: string;
+  banned?: boolean;
   item: string;
   label: string;
-  banned?: boolean;
+  pokedexId: number;
+  species: string;
 }) {
   return (
     <div className="relative flex w-20 flex-col items-center sm:w-24">
@@ -161,10 +170,13 @@ function MonWithItem({
           </span>
         ) : null}
       </div>
-      <Sprite
-        src={sprite}
+      <PokemonSpriteImage
         alt=""
-        className="h-16 w-16 sm:h-[72px] sm:w-[72px]"
+        className="pixelated h-16 w-16 sm:h-[72px] sm:w-[72px]"
+        height={72}
+        pokedexId={pokedexId}
+        species={species}
+        width={72}
       />
       <span className="mt-1 text-[11px] text-muted">{label}</span>
     </div>
@@ -172,7 +184,6 @@ function MonWithItem({
 }
 
 function ReviveTokenIllustration() {
-  const pikachu = pokemonSpriteUrl("Pikachu", { pokedexId: 25 });
   const revive = heldItemSpriteUrl("revive");
 
   return (
@@ -181,18 +192,24 @@ function ReviveTokenIllustration() {
       role="img"
       aria-label="Fainted Pikachu, Revive item, then a healthy Pikachu"
     >
-      <Sprite
-        src={pikachu}
+      <PokemonSpriteImage
         alt=""
-        className="h-16 w-16 opacity-55 grayscale sm:h-[72px] sm:w-[72px]"
+        className="pixelated h-16 w-16 opacity-55 grayscale sm:h-[72px] sm:w-[72px]"
+        height={72}
+        pokedexId={25}
+        species="Pikachu"
+        width={72}
       />
       <FlowArrow />
       <Sprite src={revive} alt="" size={40} className="h-10 w-10" />
       <FlowArrow />
-      <Sprite
-        src={pikachu}
+      <PokemonSpriteImage
         alt=""
-        className="h-16 w-16 sm:h-[72px] sm:w-[72px]"
+        className="pixelated h-16 w-16 sm:h-[72px] sm:w-[72px]"
+        height={72}
+        pokedexId={25}
+        species="Pikachu"
+        width={72}
       />
     </div>
   );

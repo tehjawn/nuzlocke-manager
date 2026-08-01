@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { GmIcon } from "@/components/nav-icons";
+import { GmIcon, PreferencesIcon } from "@/components/nav-icons";
 
 type UserMenuProps = {
   name: string;
@@ -92,6 +92,15 @@ export function UserMenu({
             >
               <ProfileIcon />
               My Profile
+            </Link>
+            <Link
+              className="relative z-[1] flex items-center gap-2 px-3 py-2.5 text-sm font-medium hover:bg-accent/15"
+              href="/preferences"
+              onClick={() => setOpen(false)}
+              role="menuitem"
+            >
+              <PreferencesIcon className="h-4 w-4 text-accent-deep" />
+              Preferences
             </Link>
             {gmHref ? (
               <Link

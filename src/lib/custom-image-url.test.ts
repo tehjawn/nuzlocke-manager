@@ -89,6 +89,10 @@ test("pokemon animated avatar keys resolve to Showdown ani GIFs", () => {
     "https://play.pokemonshowdown.com/sprites/ani/venusaur-mega.gif",
   );
   assert.equal(
+    pokemonAnimatedSpriteUrl("Charizard-Mega-X", { shiny: true }),
+    "https://play.pokemonshowdown.com/sprites/ani-shiny/charizard-megax.gif",
+  );
+  assert.equal(
     avatarImageUrl("pokeani:306"),
     "https://play.pokemonshowdown.com/sprites/ani/aggron.gif",
   );

@@ -1,15 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import { resolveMoveName } from "@/lib/move-names";
-import { pokemonSpriteUrl } from "@/lib/sprites";
 import {
   calcBattleStats,
   calcMaxBattleStats,
@@ -59,10 +58,6 @@ export function PokemonDetailsModal({
   const nickname = pokemon.nickname?.trim() ?? "";
   const title = nickname || pokemon.species;
   const showSpeciesInSubtitle = Boolean(nickname);
-  const sprite = pokemonSpriteUrl(pokemon.species, {
-    shiny: pokemon.isShiny,
-    pokedexId: pokemon.pokedexId,
-  });
   const battle = showCompetitiveDetails
     ? calcBattleStats({
         pokedexId: pokemon.pokedexId,
@@ -153,13 +148,14 @@ export function PokemonDetailsModal({
           {/* Identity rail — fills the old empty left column */}
           <div className="flex flex-col items-center gap-2 sm:items-stretch">
             <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-lg border border-frame bg-surface-2 sm:mx-0 sm:h-auto sm:w-full sm:aspect-square">
-              <Image
-                src={sprite}
+              <PokemonSpriteImage
                 alt=""
-                width={144}
-                height={144}
                 className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"
-                unoptimized
+                height={144}
+                pokedexId={pokemon.pokedexId}
+                shiny={pokemon.isShiny}
+                species={pokemon.species}
+                width={144}
               />
             </div>
             {pokemon.types.length > 0 ? (

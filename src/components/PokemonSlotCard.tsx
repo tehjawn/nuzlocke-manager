@@ -1,11 +1,10 @@
-import Image from "next/image";
 import { InfoTip } from "@/components/InfoTip";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import { resolveMoveName } from "@/lib/move-names";
-import { pokemonSpriteUrl } from "@/lib/sprites";
 import {
   calcBattleStats,
   calcMaxBattleStats,
@@ -66,10 +65,6 @@ export function PokemonSlotCard({
     );
   }
 
-  const sprite = pokemonSpriteUrl(pokemon.species, {
-    shiny: pokemon.isShiny,
-    pokedexId: pokemon.pokedexId,
-  });
   const label = pokemon.nickname || pokemon.species;
   const battle = showCompetitiveDetails
     ? calcBattleStats({
@@ -98,13 +93,14 @@ export function PokemonSlotCard({
         } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
       >
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
-          <Image
-            src={sprite}
+          <PokemonSpriteImage
             alt=""
-            width={48}
-            height={48}
             className="pixelated h-10 w-10 object-contain"
-            unoptimized
+            height={48}
+            pokedexId={pokemon.pokedexId}
+            shiny={pokemon.isShiny}
+            species={pokemon.species}
+            width={48}
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -144,13 +140,14 @@ export function PokemonSlotCard({
     >
       <div className="flex items-start gap-3">
         <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-frame bg-surface-2">
-          <Image
-            src={sprite}
+          <PokemonSpriteImage
             alt=""
-            width={96}
-            height={96}
             className="pixelated h-20 w-20 object-contain"
-            unoptimized
+            height={96}
+            pokedexId={pokemon.pokedexId}
+            shiny={pokemon.isShiny}
+            species={pokemon.species}
+            width={96}
           />
         </div>
         <div className="min-w-0 flex-1 space-y-1.5">

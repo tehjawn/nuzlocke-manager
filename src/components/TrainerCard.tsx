@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
@@ -9,10 +8,10 @@ import { BadgeCase } from "@/components/BadgeCase";
 import { Frame } from "@/components/Frame";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
 import { pokemonInSlot } from "@/lib/trainer-display";
-import { pokemonSpriteUrl } from "@/lib/sprites";
 
 type TrainerCardProps = {
   challenge: Pick<Challenge, "slug" | "badges">;
@@ -80,16 +79,14 @@ export function TrainerCard({
               <div className="flex h-full flex-col items-center text-center">
                 <div className="relative flex h-28 w-full items-end justify-center overflow-visible">
                   {firstMon ? (
-                    <Image
-                      src={pokemonSpriteUrl(firstMon.species, {
-                        shiny: firstMon.isShiny,
-                        pokedexId: firstMon.pokedexId,
-                      })}
+                    <PokemonSpriteImage
                       alt=""
-                      width={96}
-                      height={96}
                       className="pixelated absolute top-0 left-1/2 z-0 h-16 w-16 -translate-x-[15%] object-contain opacity-80"
-                      unoptimized
+                      height={96}
+                      pokedexId={firstMon.pokedexId}
+                      shiny={firstMon.isShiny}
+                      species={firstMon.species}
+                      width={96}
                     />
                   ) : null}
                   <AvatarPortrait
@@ -176,16 +173,14 @@ export function TrainerCard({
                           className="pressable flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
                           onClick={() => setDetailsPokemon(mon)}
                         >
-                          <Image
-                            src={pokemonSpriteUrl(mon.species, {
-                              shiny: mon.isShiny,
-                              pokedexId: mon.pokedexId,
-                            })}
+                          <PokemonSpriteImage
                             alt={label}
-                            width={96}
-                            height={96}
                             className="pixelated h-full w-full max-h-14 object-contain lg:max-h-16"
-                            unoptimized
+                            height={96}
+                            pokedexId={mon.pokedexId}
+                            shiny={mon.isShiny}
+                            species={mon.species}
+                            width={96}
                           />
                         </button>
                       </PokemonHoverPreview>
@@ -301,16 +296,14 @@ export function TrainerCard({
                         className="pressable group/slot flex h-[5.25rem] w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
                         onClick={() => setDetailsPokemon(mon)}
                       >
-                        <Image
-                          src={pokemonSpriteUrl(mon.species, {
-                            shiny: mon.isShiny,
-                            pokedexId: mon.pokedexId,
-                          })}
+                        <PokemonSpriteImage
                           alt={label}
-                          width={80}
-                          height={80}
                           className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
-                          unoptimized
+                          height={80}
+                          pokedexId={mon.pokedexId}
+                          shiny={mon.isShiny}
+                          species={mon.species}
+                          width={80}
                         />
                         <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover/slot:text-ink">
                           {label}

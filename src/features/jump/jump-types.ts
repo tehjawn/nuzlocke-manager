@@ -16,6 +16,12 @@ export type JumpResult = {
   tags: string[];
   /** Optional left icon URL (trainer avatar / Pokémon sprite). */
   imageUrl?: string;
+  /** Pokémon image data resolved against the player's sprite preference. */
+  pokemonSprite?: {
+    pokedexId: number | null;
+    shiny: boolean;
+    species: string;
+  };
   /** Non-navigation command key (e.g. theme toggle). */
   action?: "toggle-theme";
 };

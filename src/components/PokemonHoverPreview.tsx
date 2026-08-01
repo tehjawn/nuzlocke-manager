@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   useCallback,
   useEffect,
@@ -10,9 +9,9 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TypeBadge } from "@/components/TypeBadge";
 import type { PokemonEntry } from "@/lib/challenge-types";
-import { pokemonSpriteUrl } from "@/lib/sprites";
 
 type PokemonHoverPreviewProps = {
   pokemon: PokemonEntry;
@@ -128,16 +127,14 @@ export function PokemonHoverPreview({
             >
               <div className="flex flex-col items-center gap-1.5 text-center">
                 <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
-                  <Image
-                    src={pokemonSpriteUrl(pokemon.species, {
-                      shiny: pokemon.isShiny,
-                      pokedexId: pokemon.pokedexId,
-                    })}
+                  <PokemonSpriteImage
                     alt=""
-                    width={96}
-                    height={96}
                     className="pixelated h-20 w-20 object-contain"
-                    unoptimized
+                    height={96}
+                    pokedexId={pokemon.pokedexId}
+                    shiny={pokemon.isShiny}
+                    species={pokemon.species}
+                    width={96}
                   />
                 </div>
                 <div className="min-w-0 w-full">
