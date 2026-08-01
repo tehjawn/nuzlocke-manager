@@ -40,6 +40,7 @@ import {
   MODERN_DEX_FLAG_BYTES,
   MODERN_NUM_SPECIES,
   MODERN_REVIVES_TOTAL,
+  MODERN_ROM_DEX_TO_NATIONAL,
   MODERN_SPECIES_TO_NATIONAL,
   NUZLOCKE_FLAGS_AFTER_PARTY as MODERN_NUZLOCKE_FLAGS_AFTER_PARTY,
   PARTY_MON_SIZE,
@@ -317,6 +318,48 @@ function modernNationalId(speciesId: number): number | null {
   }
   const nd = MODERN_SPECIES_TO_NATIONAL[speciesId] ?? 0;
   return nd > 0 ? nd : null;
+}
+
+/** Compacted ROM NATIONAL_DEX bit index → real National Dex. */
+function modernRomDexToNational(romDex: number): number {
+  if (romDex <= 0 || romDex >= MODERN_ROM_DEX_TO_NATIONAL.length) {
+    return romDex;
+  }
+  const nd = MODERN_ROM_DEX_TO_NATIONAL[romDex] ?? 0;
+  return nd > 0 ? nd : romDex;
+}
+
+const MODERN_NATIONAL_TO_ROM_DEX = (() => {
+  const map = new Map<number, number>();
+  for (let romDex = 1; romDex < MODERN_ROM_DEX_TO_NATIONAL.length; romDex++) {
+    const nd = MODERN_ROM_DEX_TO_NATIONAL[romDex] ?? 0;
+    if (nd > 0 && !map.has(nd)) map.set(nd, romDex);
+  }
+  return map;
+})();
+
+/** Real National Dex → ROM dex bit index (for GetSetPokedexFlag bitfields). */
+function modernNationalToRomDex(nationalId: number): number | null {
+  return MODERN_NATIONAL_TO_ROM_DEX.get(nationalId) ?? null;
+}
+
+/**
+ * Dex bitfield indices for owned/seen checks.
+ * Modern Emerald stores compacted ROM NATIONAL_DEX bits, not always real ND.
+ */
+function dexBitIdsForMode(
+  pokedexIds: number[],
+  mode: SpeciesIdMode,
+): number[] {
+  if (mode !== "modern") {
+    return [...new Set(pokedexIds.filter((id) => id > 0))];
+  }
+  const out: number[] = [];
+  for (const id of pokedexIds) {
+    const rom = modernNationalToRomDex(id);
+    if (rom != null && rom > 0 && rom < MODERN_NUM_SPECIES) out.push(rom);
+  }
+  return [...new Set(out)];
 }
 
 function resolvePokedexId(speciesId: number, mode: SpeciesIdMode): number {
@@ -1077,7 +1120,7 @@ function locateModernSaveMeta(
       }
     }
     if (!ok) continue;
-    const owned = listDexBits(bytes, ownedBase, 400);
+    const owned = listDexBits(bytes, ownedBase, MODERN_NUM_SPECIES);
     if (owned.length < ownedMust.length || owned.length > ownedMust.length + 12) {
       continue;
     }
@@ -1089,7 +1132,7 @@ function locateModernSaveMeta(
       }
     }
     if (!ok) continue;
-    const seen = listDexBits(bytes, seenBase, 400);
+    const seen = listDexBits(bytes, seenBase, MODERN_NUM_SPECIES);
     if (seen.length < owned.length || seen.length > owned.length + 40) continue;
     hits.push({ ownedBase, seenBase, owned, seen });
   }
@@ -1116,19 +1159,7 @@ function locateModernSaveMeta(
       if (!match) continue;
       const sb1 = i - SB1_SEEN1;
       if (sb1 < 0) continue;
-      const badges = readBadgesAbsolute(bytes, sb1 + SB1_FLAGS);
-      if (!badges.reliable && badges.earnedKeys.length > 0) continue;
-      // SYS_POKEMON_GET must be set for a real flags block.
-      if (!badges.reliable) {
-        // readBadgesAbsolute returns unreliable when SYS flag missing OR non-prefix.
-        // Early game with 0 badges is reliable when SYS is set — check directly.
-        const flagsBase = sb1 + SB1_FLAGS;
-        const sysIdx = SYSTEM_FLAGS >> 3;
-        if (flagsBase + sysIdx >= bytes.length) continue;
-        if (((bytes[flagsBase + sysIdx]! >> (SYSTEM_FLAGS & 7)) & 1) !== 1) {
-          continue;
-        }
-      }
+      if (!badgeFlagsLookCoherent(bytes, sb1 + SB1_FLAGS)) continue;
       return { sb1, seen: hit.seen, owned: hit.owned, source: "seen1" };
     }
   }
@@ -1136,6 +1167,27 @@ function locateModernSaveMeta(
   // Dex found but SB1 not anchored — still return seen via first hit.
   const hit = hits[0]!;
   return { sb1: -1, seen: hit.seen, owned: hit.owned, source: "seen1" };
+}
+
+/**
+ * A real flags block has SYS_POKEMON_GET set and gym badges as an ordered
+ * prefix. Badge 3 without 1–2 is impossible, so such a block is a stale or
+ * coincidental match rather than the live SaveBlock1.
+ */
+function badgeFlagsLookCoherent(bytes: Uint8Array, flagsBase: number): boolean {
+  if (flagsBase < 0 || flagsBase + 0x120 >= bytes.length) return false;
+  const flagGet = (flag: number) =>
+    ((bytes[flagsBase + (flag >> 3)]! >> (flag & 7)) & 1) === 1;
+  if (!flagGet(SYSTEM_FLAGS)) return false;
+  let earned = 0;
+  for (let i = 0; i < 8; i++) {
+    if (!flagGet(FLAG_BADGE01 + i)) break;
+    earned += 1;
+  }
+  for (let i = earned; i < 8; i++) {
+    if (flagGet(FLAG_BADGE01 + i)) return false;
+  }
+  return true;
 }
 
 function nuzlockeFlagsLookCoherent(
@@ -1222,13 +1274,17 @@ function readPokedexSeen(
   return null;
 }
 
-function dexSeenToParsed(speciesId: number): ParsedSavePokemon {
-  const entry = findPokemonById(speciesId);
+function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedSavePokemon {
+  const pokedexId =
+    mode === "modern"
+      ? modernRomDexToNational(romDexOrNational)
+      : romDexOrNational;
+  const entry = findPokemonById(pokedexId);
   return {
-    pid: (DEX_SEEN_PID_BASE | (speciesId & 0xffff)) >>> 0,
+    pid: (DEX_SEEN_PID_BASE | (pokedexId & 0xffff)) >>> 0,
     nickname: null,
-    species: entry?.name ?? `Species #${speciesId}`,
-    pokedexId: speciesId,
+    species: entry?.name ?? `Species #${pokedexId}`,
+    pokedexId,
     level: null,
     isShiny: false,
     nature: null,
@@ -1362,13 +1418,11 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
   const maxDex =
     speciesMode === "modern" ? MODERN_NUM_SPECIES : CREST_DEX_MAX_SPECIES;
   // Include box mons in ownedMust — Modern dex owned covers PC living mons.
-  const ownedMust = [
-    ...new Set(
-      [...partyParsed, ...boxParsed, ...ripParsed]
-        .map((m) => m.pokedexId)
-        .filter((id) => id > 0 && id <= maxDex),
-    ),
-  ];
+  // Bitfield indices are ROM NATIONAL_DEX for modern, real ND for crest.
+  const ownedMust = dexBitIdsForMode(
+    [...partyParsed, ...boxParsed, ...ripParsed].map((m) => m.pokedexId),
+    speciesMode,
+  ).filter((id) => id <= maxDex);
 
   let badges = readBadges(bytes, partyBase, speciesMode);
   let revive =
@@ -1418,9 +1472,10 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
   const seenMust = [
     ...new Set([
       ...ownedMust,
-      ...encounteredParsed
-        .map((m) => m.pokedexId)
-        .filter((id) => id > 0 && id <= maxDex),
+      ...dexBitIdsForMode(
+        encounteredParsed.map((m) => m.pokedexId),
+        speciesMode,
+      ).filter((id) => id <= maxDex),
     ]),
   ];
   if (!dex) {
@@ -1440,6 +1495,9 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
     );
     let truncated = 0;
     const dexOnly = dex.seen
+      .map((id) =>
+        speciesMode === "modern" ? modernRomDexToNational(id) : id,
+      )
       .filter((id) => !already.has(id))
       .sort((a, b) => a - b)
       .filter((_, i) => {
@@ -1447,7 +1505,8 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
         truncated += 1;
         return false;
       })
-      .map(dexSeenToParsed);
+      // Values are already real National Dex ids.
+      .map((id) => dexSeenToParsed(id, "crest"));
     encounteredParsed = [...encounteredParsed, ...dexOnly];
     if (!warnings.some((w) => w.startsWith("Pokédex:"))) {
       warnings.push(
@@ -1593,13 +1652,10 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
 
   const maxDex =
     speciesMode === "modern" ? MODERN_NUM_SPECIES : CREST_DEX_MAX_SPECIES;
-  const ownedMust = [
-    ...new Set(
-      [...partyParsed, ...ripParsed]
-        .map((m) => m.pokedexId)
-        .filter((id) => id > 0 && id <= maxDex),
-    ),
-  ];
+  const ownedMust = dexBitIdsForMode(
+    [...partyParsed, ...ripParsed].map((m) => m.pokedexId),
+    speciesMode,
+  ).filter((id) => id <= maxDex);
 
   let encounteredParsed: ParsedSavePokemon[] = [];
   if (speciesMode === "modern" && ownedMust.length > 0) {
@@ -1614,6 +1670,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
       );
       let truncated = 0;
       const dexOnly = seen
+        .map((id) => modernRomDexToNational(id))
         .filter((id) => !already.has(id))
         .sort((a, b) => a - b)
         .filter((_, i) => {
@@ -1621,7 +1678,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
           truncated += 1;
           return false;
         })
-        .map(dexSeenToParsed);
+        .map((id) => dexSeenToParsed(id, "crest"));
       encounteredParsed = dexOnly;
       warnings.push(
         `Pokédex seen: ${seen.length} species (seen1` +

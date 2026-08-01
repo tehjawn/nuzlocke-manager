@@ -1,11 +1,15 @@
 /**
  * Modern Emerald (nzl_modern) SaveBlock layout constants.
  *
- * Party/money/bag pocket *starts* match pret Emerald (BAG_ITEMS_COUNT stays 30).
- * Dex bitfields use National Dex indices (GetSetPokedexFlag), size 58.
+ * Party/money start like pret Emerald; bag is expanded (BAG_ITEMS_COUNT 90 →
+ * +0xF0 vs vanilla from seen1 onward). Dex bitfields use the ROM's compacted
+ * NATIONAL_DEX_* indices (GetSetPokedexFlag), size 58 — those diverge from real
+ * National Dex numbers for later additions (e.g. Leafeon is ROM dex 414, real
+ * National Dex 470).
  *
- * Offsets from seen1 onward are +0xF0 vs an earlier estimate — confirmed against
- * Afterplay flash .srm (absolute SB1) and matching .state EWRAM dumps.
+ * SB1_FLAGS is 0x1364 (not 0x1270+0xF0+6): confirmed against Afterplay .srm
+ * where gym-1 + Rustboro visited decode cleanly; 0x1366 reads as a bogus
+ * non-prefix badge set.
  */
 
 import modernSpeciesData from "@/data/modern-emerald-species.json";
@@ -34,8 +38,9 @@ export const SB1_SEEN1 = 0xa78;
 export const SB1_SEEN2 = 0x3b28;
 /**
  * Gym badges live in flags[SYSTEM_FLAGS…].
+ * Empirically 0x1364 on Modern Emerald flash saves (see file header).
  */
-export const SB1_FLAGS = 0x1366;
+export const SB1_FLAGS = 0x1364;
 /** Vanilla/Crest Emerald SaveBlock1.flags (52-byte dex). */
 export const CREST_SB1_FLAGS = 0x1270;
 /**
@@ -53,7 +58,7 @@ export const MODERN_REVIVES_TOTAL = 1;
 
 /** Relatives from playerParty (only valid when partyBase is SaveBlock1.playerParty). */
 export const SEEN1_AFTER_PARTY = SB1_SEEN1 - SB1_PARTY; // 0x750
-export const FLAGS_AFTER_PARTY = SB1_FLAGS - SB1_PARTY; // 0x103E
+export const FLAGS_AFTER_PARTY = SB1_FLAGS - SB1_PARTY; // 0x112C
 export const NUZLOCKE_FLAGS_AFTER_PARTY =
   SB1_NUZLOCKE_ENCOUNTER_FLAGS - SB1_PARTY; // 0x3A6C
 
@@ -69,8 +74,11 @@ export const SB2_TRAINER_ID = 0x0a;
 
 /** PokemonStorage */
 export const STORAGE_CURRENT_BOX = 0x00;
-/** boxes[][] starts immediately after currentBox (no padding). */
-export const STORAGE_BOXES = 0x01;
+/**
+ * boxes[][] — 4-byte aligned after currentBox (u8 + 3 pad before first u32 PID).
+ * Stale ROM comments say 0x0001; real layout is 0x0004.
+ */
+export const STORAGE_BOXES = 0x04;
 export const STORAGE_BOX_COUNT = 15;
 export const STORAGE_BOX_CAPACITY = 30;
 export const BOX_MON_SIZE = 80;
@@ -82,7 +90,11 @@ export const FLAG_BADGE01 = SYSTEM_FLAGS + 0x7;
 
 export const MODERN_DEX_FLAG_BYTES = modernSpeciesData.dexFlagBytes as number;
 export const MODERN_NUM_SPECIES = modernSpeciesData.numSpecies as number;
+/** SPECIES_* (party/box growth) → real National Dex / catalog id. */
 export const MODERN_SPECIES_TO_NATIONAL = modernSpeciesData.table as number[];
+/** Compacted ROM NATIONAL_DEX_* index (dex bitfields) → real National Dex. */
+export const MODERN_ROM_DEX_TO_NATIONAL =
+  modernSpeciesData.romDexToNational as number[];
 
 /** Crest / expansion national-dex bitfield size (fallback path only). */
 export const CREST_DEX_FLAG_BYTES = 129;
