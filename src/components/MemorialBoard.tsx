@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Frame } from "@/components/Frame";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { TypeBadge } from "@/components/TypeBadge";
 import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 
@@ -36,18 +35,17 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
     .filter((row) => row.graves.length > 0);
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
+    <div className="space-y-5">
+      <header className="space-y-1.5">
         <p className="text-xs font-semibold tracking-tight text-accent-deep">
-          End of season
+          Across every wipe
         </p>
-        <h2 className="text-2xl font-bold tracking-tight">
-          Memorial
-        </h2>
+        <h2 className="text-2xl font-bold tracking-tight">Memorial</h2>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
           Every fallen partner from {challenge.name}
-          {challenge.status === "ARCHIVED" ? " — season archived and read-only" : ""}.
-          Nicknames first; causes of death when known.
+          {challenge.status === "ARCHIVED" ? " — season archived and read-only" : ""}
+          , including losses carried through run restarts. Nicknames first;
+          causes when known.
         </p>
         <p className="text-xs text-muted">
           {entries.length} memorialized · {byTrainer.length} trainers with losses
@@ -61,74 +59,84 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
           </p>
         </Frame>
       ) : (
-        <div className="space-y-5">
-          {byTrainer.map(({ trainer, graves }) => (
-            <Frame
-              key={trainer.id}
-              title={displayName(trainer)}
-              tone="rip"
-              actions={
-                <Link
-                  href={`/challenges/${challenge.slug}/trainers/${trainer.id}`}
-                  className="text-xs font-bold text-white/90 underline-offset-2 hover:underline"
-                >
-                  Board
-                </Link>
-              }
-            >
-              <ul className="grid gap-3 sm:grid-cols-2">
-                {graves.map((pokemon) => {
-                  const label = pokemon.nickname || pokemon.species;
-                  return (
-                    <li
-                      key={pokemon.id}
-                      className="flex gap-3 rounded-lg border border-frame/40 bg-surface/70 p-3"
+        <div className="space-y-4">
+          {byTrainer.map(({ trainer, graves }) => {
+            const wipes = trainer.wipeCount ?? 0;
+            return (
+              <Frame
+                key={trainer.id}
+                title={displayName(trainer)}
+                tone="rip"
+                dense
+                actions={
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-semibold text-white/75">
+                      {graves.length} fallen
+                      {wipes > 0
+                        ? ` · ${wipes} wipe${wipes === 1 ? "" : "s"}`
+                        : ""}
+                    </span>
+                    <Link
+                      href={`/challenges/${challenge.slug}/trainers/${trainer.id}`}
+                      className="text-xs font-bold text-white/90 underline-offset-2 hover:underline"
                     >
-                      <div className="relative h-16 w-16 shrink-0">
-                        <PokemonSpriteImage
-                          alt=""
-                          className="pixelated h-full w-full object-contain opacity-90"
-                          height={64}
-                          pokedexId={pokemon.pokedexId}
-                          shiny={pokemon.isShiny}
-                          species={pokemon.species}
-                          width={64}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-display truncate text-sm font-bold">
-                          {label}
-                          {pokemon.isShiny ? (
-                            <span className="ml-1 text-accent-2" title="Shiny">
-                              ✦
-                            </span>
-                          ) : null}
-                        </p>
-                        <p className="text-xs text-muted">
-                          {pokemon.species}
-                          {pokemon.level != null ? ` · Lv.${pokemon.level}` : ""}
-                        </p>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {pokemon.types.map((type) => (
-                            <TypeBadge key={type} type={type} />
-                          ))}
+                      Board
+                    </Link>
+                  </div>
+                }
+              >
+                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {graves.map((pokemon) => {
+                    const label = pokemon.nickname || pokemon.species;
+                    return (
+                      <li
+                        key={pokemon.id}
+                        className="flex gap-2 rounded-md border border-frame/35 bg-surface/65 p-2"
+                      >
+                        <div className="relative h-10 w-10 shrink-0">
+                          <PokemonSpriteImage
+                            alt=""
+                            className="pixelated h-full w-full object-contain opacity-90"
+                            height={40}
+                            pokedexId={pokemon.pokedexId}
+                            shiny={pokemon.isShiny}
+                            species={pokemon.species}
+                            width={40}
+                          />
                         </div>
-                        {pokemon.causeOfDeath ? (
-                          <p className="mt-2 text-sm leading-snug text-ink">
-                            {pokemon.causeOfDeath}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display truncate text-xs font-bold leading-tight">
+                            {label}
+                            {pokemon.isShiny ? (
+                              <span className="ml-0.5 text-accent-2" title="Shiny">
+                                ✦
+                              </span>
+                            ) : null}
                           </p>
-                        ) : (
-                          <p className="mt-2 text-xs text-muted italic">
-                            Cause unknown
+                          <p className="truncate text-[11px] leading-tight text-muted">
+                            {pokemon.species}
+                            {pokemon.level != null ? ` · Lv.${pokemon.level}` : ""}
                           </p>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Frame>
-          ))}
+                          {pokemon.causeOfDeath ? (
+                            <p
+                              className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-ink/90"
+                              title={pokemon.causeOfDeath}
+                            >
+                              {pokemon.causeOfDeath}
+                            </p>
+                          ) : (
+                            <p className="mt-0.5 text-[11px] italic text-muted">
+                              Cause unknown
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Frame>
+            );
+          })}
         </div>
       )}
     </div>

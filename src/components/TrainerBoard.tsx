@@ -48,6 +48,7 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
+import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { isEmptySpread } from "@/lib/stats";
@@ -762,10 +763,11 @@ export function TrainerBoard({
       title: "Restart this run?",
       description: (
         <>
-          Clears Main Squad, Reserves, and Encountered, and resets badges. R.I.P.
-          memorial, revive token, and your profile (name, avatar, backdrops,
-          status) stay. Locked Main Squad unlocks so you can rebuild. This counts
-          as wipe #{nextWipe}. A board history snapshot is saved for GMs first.
+          Moves Main Squad and Reserves into the season R.I.P. memorial (cause:
+          run wiped), clears Encountered, and resets badges. Existing memorial,
+          revive token, and your profile (name, avatar, backdrops, status) stay.
+          Locked Main Squad unlocks so you can rebuild. This counts as wipe #
+          {nextWipe}. A board history snapshot is saved for GMs first.
         </>
       ),
       confirmLabel: "Record wipe",
@@ -777,7 +779,7 @@ export function TrainerBoard({
     setEarnedBadgeKeys([]);
     setBoardOverride({
       wipeCount: nextWipe,
-      pokemon: boardPokemon.filter((p) => p.slot === "GRAVEYARD"),
+      pokemon: memorialPokemonAfterWipe(boardPokemon, nextWipe),
       mainSquadLocked: false,
     });
     setPokemonInspect(null);

@@ -37,6 +37,10 @@ import {
   type ActivityCoalesceMeta,
 } from "@/lib/activity-coalesce";
 import {
+  memorialRowsAfterWipe,
+  wipeCauseOfDeath,
+} from "@/lib/wipe-memorial";
+import {
   canUseCustomTextureUrl,
   customTextureKey,
   parseCustomTextureUrl,
@@ -715,8 +719,8 @@ export async function updateTrainerBoardAction(input: {
   }
 }
 
-/** Restart the living run: clear playable slots + badges, keep memorial/revive
- *  and player identity (handle, avatar, backdrops, status). */
+/** Restart the living run: memorializes Main/Reserve, clears Encountered +
+ *  badges, keeps season memorial/revive and player identity. */
 export async function recordWipeAction(input: {
   trainerId: string;
 }): Promise<ActionResult> {
@@ -734,12 +738,50 @@ export async function recordWipeAction(input: {
         actorId: userId,
         trigger: "WIPE",
       });
-      await tx.pokemonEntry.deleteMany({
-        where: {
-          trainerId: trainer.id,
-          slot: { in: ["MAIN", "RESERVE", "ENCOUNTERED"] },
+
+      const nextWipe = trainer.wipeCount + 1;
+      const board = await tx.pokemonEntry.findMany({
+        where: { trainerId: trainer.id },
+        select: {
+          id: true,
+          slot: true,
+          partyIndex: true,
+          causeOfDeath: true,
         },
       });
+      const after = memorialRowsAfterWipe(board, nextWipe);
+      const keepIds = new Set(after.map((p) => p.id));
+      const byId = new Map(after.map((p) => [p.id, p]));
+      const dropIds = board
+        .filter((row) => !keepIds.has(row.id))
+        .map((row) => row.id);
+
+      for (const row of board) {
+        const memorial = byId.get(row.id);
+        if (!memorial) continue;
+        if (
+          row.slot === memorial.slot &&
+          row.partyIndex === memorial.partyIndex &&
+          row.causeOfDeath === memorial.causeOfDeath
+        ) {
+          continue;
+        }
+        await tx.pokemonEntry.update({
+          where: { id: row.id },
+          data: {
+            slot: memorial.slot,
+            partyIndex: memorial.partyIndex,
+            causeOfDeath:
+              memorial.causeOfDeath ?? wipeCauseOfDeath(nextWipe),
+          },
+        });
+      }
+
+      if (dropIds.length > 0) {
+        await tx.pokemonEntry.deleteMany({
+          where: { id: { in: dropIds } },
+        });
+      }
       await tx.badgeProgress.updateMany({
         where: { trainerId: trainer.id },
         data: { earned: false, earnedAt: null },
@@ -754,7 +796,11 @@ export async function recordWipeAction(input: {
         select: { wipeCount: true },
       });
       wipeCount = updated.wipeCount;
-      wipeMessage = `${trainer.handle} restarted their run (wipe #${wipeCount})`;
+      const memorializedCount = after.length - board.filter((p) => p.slot === "GRAVEYARD").length;
+      wipeMessage =
+        memorializedCount > 0
+          ? `${trainer.handle} restarted their run (wipe #${wipeCount}) — ${memorializedCount} partner${memorializedCount === 1 ? "" : "s"} memorialized`
+          : `${trainer.handle} restarted their run (wipe #${wipeCount})`;
       await tx.activityEvent.create({
         data: {
           challengeId: trainer.challengeId,
