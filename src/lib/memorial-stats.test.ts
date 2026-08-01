@@ -1,0 +1,109 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import { memorialSeasonHighlights } from "@/lib/memorial-stats";
+
+function mon(
+  partial: Pick<PokemonEntry, "id" | "slot" | "partyIndex" | "species"> &
+    Partial<PokemonEntry>,
+): PokemonEntry {
+  return {
+    nickname: null,
+    pokedexId: null,
+    isShiny: false,
+    types: ["Normal"],
+    nature: null,
+    level: null,
+    ability: null,
+    catchRoute: null,
+    heldItem: null,
+    moves: [],
+    ivs: null,
+    evs: null,
+    causeOfDeath: null,
+    diedOnRun: null,
+    ...partial,
+  };
+}
+
+function trainer(
+  partial: Pick<TrainerProfile, "id" | "handle" | "sortOrder"> & {
+    pokemon: PokemonEntry[];
+  },
+): TrainerProfile {
+  return {
+    realName: null,
+    avatarSpriteKey: "brendan",
+    avatarBackgroundKey: null,
+    cardBackgroundKey: null,
+    statusText: null,
+    statusEmoji: null,
+    reviveUsed: false,
+    wipeCount: 0,
+    mainSquadLocked: false,
+    userId: null,
+    discordUsername: null,
+    discordDisplayName: null,
+    earnedBadgeKeys: [],
+    updatedAt: null,
+    ...partial,
+  };
+}
+
+test("memorialSeasonHighlights finds heaviest memorial and most mourned species", () => {
+  const highlights = memorialSeasonHighlights([
+    trainer({
+      id: "t1",
+      handle: "Ash",
+      sortOrder: 0,
+      pokemon: [
+        mon({ id: "a1", slot: "GRAVEYARD", partyIndex: 0, species: "Zigzagoon", pokedexId: 263 }),
+        mon({ id: "a2", slot: "GRAVEYARD", partyIndex: 1, species: "Zigzagoon", pokedexId: 263 }),
+        mon({ id: "a3", slot: "MAIN", partyIndex: 0, species: "Mudkip", pokedexId: 258 }),
+      ],
+    }),
+    trainer({
+      id: "t2",
+      handle: "May",
+      sortOrder: 1,
+      pokemon: [
+        mon({ id: "b1", slot: "GRAVEYARD", partyIndex: 0, species: "Zigzagoon", pokedexId: 263 }),
+      ],
+    }),
+  ]);
+
+  assert.equal(highlights.totalGraves, 3);
+  assert.equal(highlights.trainersWithLosses, 2);
+  assert.deepEqual(highlights.heaviestMemorial, {
+    trainerIds: ["t1"],
+    labels: ["Ash"],
+    count: 2,
+    tied: false,
+  });
+  assert.deepEqual(highlights.mostMourned, {
+    species: "Zigzagoon",
+    pokedexId: 263,
+    count: 3,
+    tied: false,
+  });
+});
+
+test("memorialSeasonHighlights marks trainer ties", () => {
+  const highlights = memorialSeasonHighlights([
+    trainer({
+      id: "t1",
+      handle: "Ash",
+      sortOrder: 0,
+      pokemon: [mon({ id: "a1", slot: "GRAVEYARD", partyIndex: 0, species: "Ralts" })],
+    }),
+    trainer({
+      id: "t2",
+      handle: "May",
+      sortOrder: 1,
+      pokemon: [mon({ id: "b1", slot: "GRAVEYARD", partyIndex: 0, species: "Taillow" })],
+    }),
+  ]);
+
+  assert.equal(highlights.heaviestMemorial?.tied, true);
+  assert.deepEqual(highlights.heaviestMemorial?.labels, ["Ash", "May"]);
+});

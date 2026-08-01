@@ -84,6 +84,7 @@ type DbChallenge = {
       ivs: unknown;
       evs: unknown;
       causeOfDeath: string | null;
+      diedOnRun: number | null;
       updatedAt: Date;
     }>;
   }>;
@@ -258,6 +259,7 @@ export function mapDbTrainer(
       })(),
       evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
       causeOfDeath: p.causeOfDeath,
+      diedOnRun: p.diedOnRun ?? null,
     })),
   };
 }

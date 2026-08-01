@@ -8,7 +8,13 @@ export type WipeMemorialRow = {
   slot: PokemonSlot;
   partyIndex: number;
   causeOfDeath: string | null;
+  diedOnRun: number | null;
 };
+
+/** Current attempt number (1-based). Wipe #N ends run N. */
+export function currentRunNumber(wipeCount: number): number {
+  return wipeCount + 1;
+}
 
 export function wipeCauseOfDeath(wipeNumber: number): string {
   return `Run wiped (#${wipeNumber})`;
@@ -23,6 +29,7 @@ function livingSlotRank(slot: PokemonSlot): number {
 /**
  * Season memorial after a wipe: keep existing graves, append living Main/Reserve
  * into GRAVEYARD (Encountered is discarded), preserving MAIN→RESERVE order.
+ * `wipeNumber` is the wipe being recorded (also the run that just ended).
  */
 export function memorialRowsAfterWipe(
   rows: WipeMemorialRow[],
@@ -46,6 +53,7 @@ export function memorialRowsAfterWipe(
     slot: "GRAVEYARD" as const,
     partyIndex: nextIndex++,
     causeOfDeath: p.causeOfDeath?.trim() || cause,
+    diedOnRun: wipeNumber,
   }));
 
   return [...graves, ...memorialized];
@@ -64,6 +72,7 @@ export function memorialPokemonAfterWipe(
       slot: row.slot,
       partyIndex: row.partyIndex,
       causeOfDeath: row.causeOfDeath,
+      diedOnRun: row.diedOnRun,
     };
   });
 }

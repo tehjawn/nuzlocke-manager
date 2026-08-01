@@ -34,6 +34,8 @@ export type PokemonEntry = {
   ivs: StatSpread | null;
   evs: StatSpread | null;
   causeOfDeath: string | null;
+  /** 1-based run attempt when memorialized; null when unknown (legacy graves). */
+  diedOnRun: number | null;
 };
 
 export type TrainerProfile = {

@@ -34,11 +34,16 @@ function evs(partial: Partial<StatSpread>): StatSpread {
 }
 
 function mon(
-  partial: Omit<PokemonEntry, "id"> & { id?: string },
+  partial: Omit<PokemonEntry, "id" | "diedOnRun"> & {
+    id?: string;
+    diedOnRun?: number | null;
+  },
 ): PokemonEntry {
+  const { id, diedOnRun, ...rest } = partial;
   return {
-    id: partial.id ?? `${partial.slot}-${partial.partyIndex}-${partial.species}`,
-    ...partial,
+    ...rest,
+    id: id ?? `${rest.slot}-${rest.partyIndex}-${rest.species}`,
+    diedOnRun: diedOnRun ?? null,
   };
 }
 
@@ -450,6 +455,7 @@ const ashKetchum = trainer({
       ivs: ivs({ spa: 8 }),
       evs: evs({ atk: 128, spe: 128 }),
       causeOfDeath: "Crit Tackle from a wild Aron on Route 111. Gone too soon.",
+      diedOnRun: 1,
     }),
     mon({
       id: "ash-rip-1",
@@ -469,6 +475,7 @@ const ashKetchum = trainer({
       ivs: ivs({ atk: 30, spa: 14 }),
       evs: evs({ spe: 252, atk: 128, hp: 4 }),
       causeOfDeath: "Brawly's Machop hit a crit Karate Chop. Speed couldn't save him.",
+      diedOnRun: 1,
     }),
     mon({
       id: "ash-rip-2",
@@ -488,6 +495,7 @@ const ashKetchum = trainer({
       ivs: ivs({ spa: 10, def: 22 }),
       evs: evs({ atk: 252, spe: 128, hp: 4 }),
       causeOfDeath: "Flannery's Torkoal Overheat — held the line so Muddy could finish.",
+      diedOnRun: 1,
     }),
     mon({
       id: "ash-rip-3",
@@ -507,6 +515,7 @@ const ashKetchum = trainer({
       ivs: ivs({ hp: 0, def: 20 }),
       evs: evs({ atk: 252, spe: 252 }),
       causeOfDeath: "Wattson's Magnemite Thunder Wave + Struggle chip. Wonder Guard has limits.",
+      diedOnRun: 1,
     }),
 
     // —— Encountered (logged, not caught) ——

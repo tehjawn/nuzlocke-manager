@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import {
+  currentRunNumber,
   memorialPokemonAfterWipe,
   memorialRowsAfterWipe,
   wipeCauseOfDeath,
@@ -25,12 +26,18 @@ function mon(
     ivs: null,
     evs: null,
     causeOfDeath: null,
+    diedOnRun: null,
     ...partial,
   };
 }
 
 test("wipeCauseOfDeath labels the wipe attempt", () => {
   assert.equal(wipeCauseOfDeath(3), "Run wiped (#3)");
+});
+
+test("currentRunNumber is wipeCount + 1", () => {
+  assert.equal(currentRunNumber(0), 1);
+  assert.equal(currentRunNumber(2), 3);
 });
 
 test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encountered", () => {
@@ -41,16 +48,36 @@ test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encou
         slot: "GRAVEYARD",
         partyIndex: 0,
         causeOfDeath: "Crit",
+        diedOnRun: 1,
       },
-      { id: "m0", slot: "MAIN", partyIndex: 0, causeOfDeath: null },
-      { id: "r0", slot: "RESERVE", partyIndex: 0, causeOfDeath: null },
+      {
+        id: "m0",
+        slot: "MAIN",
+        partyIndex: 0,
+        causeOfDeath: null,
+        diedOnRun: null,
+      },
+      {
+        id: "r0",
+        slot: "RESERVE",
+        partyIndex: 0,
+        causeOfDeath: null,
+        diedOnRun: null,
+      },
       {
         id: "e0",
         slot: "ENCOUNTERED",
         partyIndex: 0,
         causeOfDeath: null,
+        diedOnRun: null,
       },
-      { id: "m1", slot: "MAIN", partyIndex: 1, causeOfDeath: null },
+      {
+        id: "m1",
+        slot: "MAIN",
+        partyIndex: 1,
+        causeOfDeath: null,
+        diedOnRun: null,
+      },
     ],
     2,
   );
@@ -65,7 +92,9 @@ test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encou
     [0, 1, 2, 3],
   );
   assert.equal(result[1]?.causeOfDeath, "Run wiped (#2)");
+  assert.equal(result[1]?.diedOnRun, 2);
   assert.equal(result[0]?.causeOfDeath, "Crit");
+  assert.equal(result[0]?.diedOnRun, 1);
 });
 
 test("memorialRowsAfterWipe preserves an existing cause of death", () => {
@@ -76,11 +105,13 @@ test("memorialRowsAfterWipe preserves an existing cause of death", () => {
         slot: "MAIN",
         partyIndex: 0,
         causeOfDeath: "Already noted",
+        diedOnRun: null,
       },
     ],
     1,
   );
   assert.equal(result[0]?.causeOfDeath, "Already noted");
+  assert.equal(result[0]?.diedOnRun, 1);
 });
 
 test("memorialPokemonAfterWipe preserves species payload while rewriting slot", () => {
@@ -105,4 +136,5 @@ test("memorialPokemonAfterWipe preserves species payload while rewriting slot", 
   assert.equal(result[0]?.nickname, "Muddy");
   assert.equal(result[0]?.level, 16);
   assert.equal(result[0]?.causeOfDeath, "Run wiped (#1)");
+  assert.equal(result[0]?.diedOnRun, 1);
 });

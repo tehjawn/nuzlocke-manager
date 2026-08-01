@@ -271,6 +271,8 @@ model PokemonEntry {
   /// { hp, atk, def, spa, spd, spe } — each 0–255
   evs          Json?
   causeOfDeath String?
+  /// 1-based run attempt when this mon entered GRAVEYARD (wipeCount + 1 at death).
+  diedOnRun    Int?
   notes        String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt

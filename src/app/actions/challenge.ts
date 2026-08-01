@@ -37,6 +37,7 @@ import {
   type ActivityCoalesceMeta,
 } from "@/lib/activity-coalesce";
 import {
+  currentRunNumber,
   memorialRowsAfterWipe,
   wipeCauseOfDeath,
 } from "@/lib/wipe-memorial";
@@ -747,6 +748,7 @@ export async function recordWipeAction(input: {
           slot: true,
           partyIndex: true,
           causeOfDeath: true,
+          diedOnRun: true,
         },
       });
       const after = memorialRowsAfterWipe(board, nextWipe);
@@ -762,7 +764,8 @@ export async function recordWipeAction(input: {
         if (
           row.slot === memorial.slot &&
           row.partyIndex === memorial.partyIndex &&
-          row.causeOfDeath === memorial.causeOfDeath
+          row.causeOfDeath === memorial.causeOfDeath &&
+          row.diedOnRun === memorial.diedOnRun
         ) {
           continue;
         }
@@ -773,6 +776,7 @@ export async function recordWipeAction(input: {
             partyIndex: memorial.partyIndex,
             causeOfDeath:
               memorial.causeOfDeath ?? wipeCauseOfDeath(nextWipe),
+            diedOnRun: memorial.diedOnRun,
           },
         });
       }
@@ -1300,6 +1304,8 @@ export async function upsertPokemonAction(
     });
 
     const prisma = getPrisma();
+    const enteringGraveyard = data.slot === "GRAVEYARD";
+    const runAtDeath = currentRunNumber(trainer.wipeCount);
     const payload = {
       slot: data.slot,
       partyIndex: data.partyIndex,
@@ -1325,14 +1331,20 @@ export async function upsertPokemonAction(
         where: { id: data.id, trainerId: trainer.id },
       });
       if (!existing) return { ok: false, error: "Pokémon not found" };
+      const becameGrave =
+        existing.slot !== "GRAVEYARD" && enteringGraveyard;
       await prisma.pokemonEntry.update({
         where: { id: data.id },
-        data: payload,
+        data: {
+          ...payload,
+          diedOnRun: enteringGraveyard
+            ? becameGrave || existing.diedOnRun == null
+              ? runAtDeath
+              : existing.diedOnRun
+            : null,
+        },
       });
-      if (
-        existing.slot !== "GRAVEYARD" &&
-        data.slot === "GRAVEYARD"
-      ) {
+      if (becameGrave) {
         const label = data.nickname || data.species;
         await logActivity({
           challengeId: trainer.challengeId,
@@ -1348,10 +1360,14 @@ export async function upsertPokemonAction(
       }
     } else {
       await prisma.pokemonEntry.create({
-        data: { trainerId: trainer.id, ...payload },
+        data: {
+          trainerId: trainer.id,
+          ...payload,
+          diedOnRun: enteringGraveyard ? runAtDeath : null,
+        },
       });
       const label = data.nickname || data.species;
-      if (data.slot === "GRAVEYARD") {
+      if (enteringGraveyard) {
         await logActivity({
           challengeId: trainer.challengeId,
           actorId: userId,
@@ -1409,6 +1425,47 @@ export async function deletePokemonAction(input: {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Delete failed",
+    };
+  }
+}
+
+/** Memorial-only: update a grave's cause of death without opening the full form. */
+export async function updateGraveCauseAction(input: {
+  trainerId: string;
+  pokemonId: string;
+  causeOfDeath: string | null;
+}): Promise<ActionResult> {
+  try {
+    const cause = z
+      .string()
+      .max(500)
+      .nullable()
+      .optional()
+      .parse(input.causeOfDeath);
+    const { trainer } = await requireTrainerEditAccess(input.trainerId);
+    const prisma = getPrisma();
+    const mon = await prisma.pokemonEntry.findFirst({
+      where: {
+        id: input.pokemonId,
+        trainerId: trainer.id,
+        slot: "GRAVEYARD",
+      },
+      select: { id: true },
+    });
+    if (!mon) return { ok: false, error: "Memorial entry not found" };
+
+    const trimmed = cause?.trim() || null;
+    await prisma.pokemonEntry.update({
+      where: { id: mon.id },
+      data: { causeOfDeath: trimmed },
+    });
+
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: "Cause of death updated" };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Update failed",
     };
   }
 }
@@ -1523,6 +1580,7 @@ export async function relocatePokemonAction(
       }
 
       const memorialized: Array<{ id: string; label: string }> = [];
+      const runAtDeath = currentRunNumber(trainer.wipeCount);
       for (const update of data.updates) {
         const mon = byId.get(update.id)!;
         if (mon.slot !== "GRAVEYARD" && update.slot === "GRAVEYARD") {
@@ -1531,9 +1589,21 @@ export async function relocatePokemonAction(
             label: mon.nickname || mon.species,
           });
         }
+        const enteringGraveyard =
+          mon.slot !== "GRAVEYARD" && update.slot === "GRAVEYARD";
+        const leavingGraveyard =
+          mon.slot === "GRAVEYARD" && update.slot !== "GRAVEYARD";
         await tx.pokemonEntry.update({
           where: { id: update.id },
-          data: { slot: update.slot, partyIndex: update.partyIndex },
+          data: {
+            slot: update.slot,
+            partyIndex: update.partyIndex,
+            ...(enteringGraveyard
+              ? { diedOnRun: mon.diedOnRun ?? runAtDeath }
+              : leavingGraveyard
+                ? { diedOnRun: null }
+                : {}),
+          },
         });
       }
 
@@ -1706,6 +1776,10 @@ export async function importFromSaveAction(
           evs: jsonStatOrNull(mon.evs ?? null),
           causeOfDeath:
             mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null,
+          diedOnRun:
+            mon.slot === "GRAVEYARD"
+              ? currentRunNumber(trainer.wipeCount)
+              : null,
           notes: `Imported from save (${mon.slot.toLowerCase()})`,
         };
       });
