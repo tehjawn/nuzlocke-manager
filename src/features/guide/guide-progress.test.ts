@@ -51,11 +51,24 @@ test("active chapter advances once prior critical steps are checked", () => {
   );
 });
 
+test("next steps highlight starting the Nuzlocke after the starter", () => {
+  const snap = resolveGuideProgress(EMERALD_GUIDE, {
+    earnedBadgeKeys: [],
+    checkedStepIds: ["prologue-starter"],
+  });
+  assert.equal(snap.activeChapterId, "prologue");
+  assert.ok(
+    snap.nextSteps.some((s) => s.id === "prologue-start-nuzlocke"),
+    `expected start-nuzlocke in next steps, got ${snap.nextSteps.map((s) => s.id).join(", ")}`,
+  );
+});
+
 test("next steps highlight Devon letter after Rustboro gym is checked", () => {
   const snap = resolveGuideProgress(EMERALD_GUIDE, {
     earnedBadgeKeys: ["gym-1"],
     checkedStepIds: [
       "prologue-starter",
+      "prologue-start-nuzlocke",
       "prologue-oldale-petalburg",
       "prologue-route-104",
       "rustboro-petalburg-woods",
@@ -72,6 +85,21 @@ test("next steps highlight Devon letter after Rustboro gym is checked", () => {
     !ids.includes("rustboro-get-cut"),
     "Cut is optional and should not appear in Next steps",
   );
+});
+
+test("start-nuzlocke step sits between starter and Petalburg", () => {
+  const starter = EMERALD_GUIDE.steps.find((s) => s.id === "prologue-starter")!;
+  const start = EMERALD_GUIDE.steps.find(
+    (s) => s.id === "prologue-start-nuzlocke",
+  )!;
+  const petalburg = EMERALD_GUIDE.steps.find(
+    (s) => s.id === "prologue-oldale-petalburg",
+  )!;
+  assert.ok(starter.sortOrder < start.sortOrder);
+  assert.ok(start.sortOrder < petalburg.sortOrder);
+  assert.deepEqual(start.requiresSteps, ["prologue-starter"]);
+  assert.deepEqual(petalburg.requiresSteps, ["prologue-start-nuzlocke"]);
+  assert.match(start.summary, /100 Poké Balls|Pokédex/i);
 });
 
 test("Steven step appears once Dewford chapter is active", () => {

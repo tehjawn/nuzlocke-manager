@@ -14,7 +14,7 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "prologue",
       title: "Littleroot → Petalburg",
-      summary: "Random starter, early routes, and Dad in Petalburg Gym.",
+      summary: "Random starter, start the Nuzlocke on Route 103, then Dad in Petalburg.",
       requiresBadges: [],
       locations: [
         "Littleroot Town",
@@ -210,10 +210,28 @@ export const EMERALD_GUIDE: GuideDocument = {
       summary:
         "Help Prof. Birch on Route 101 — Modern Emerald gives a randomized starter (not a fixed Hoenn trio pick).",
       detail:
-        "After the moving truck cutscene in **Littleroot**, help Birch on **Route 101**. In **Modern Emerald** your starter is **randomized** from the challenge/randomizer settings — you don’t pick Mudkip / Torchic / Treecko unless that option is off.\n\nPlan early gym prep around whatever species you rolled (Roxanne is Rock; Brawly is Fighting).",
+        "After the moving truck cutscene in **Littleroot**, help Birch on **Route 101**. In **Modern Emerald** your starter is **randomized** from the challenge/randomizer settings — you don’t pick Mudkip / Torchic / Treecko unless that option is off.\n\n**The Nuzlocke has not started yet.** Wild encounters before the Route 103 rival fight do not count. Plan early gym prep around whatever species you rolled (Roxanne is Rock; Brawly is Fighting).",
       locations: ["Littleroot Town", "Route 101"],
+      nuzlockeNote:
+        "Starter is free. Do not treat Route 101 as your first locked encounter.",
       priority: "critical",
       sortOrder: 10,
+    },
+    {
+      id: "prologue-start-nuzlocke",
+      chapterId: "prologue",
+      title: "Start the Nuzlocke (Route 103)",
+      summary:
+        "Rival fight north of Oldale, then return to Littleroot for the Pokédex and 100 Poké Balls — that’s when the run begins.",
+      detail:
+        "The Modern Emerald Nuzlocke **does not start** when you get your starter. Complete this sequence first:\n\n1. Walk **Oldale Town → Route 103** (the route **north** of Oldale).\n2. Fight your **rival** on Route 103.\n3. Return to **Littleroot** and get the **Pokédex** from **Prof. Birch**.\n4. Receive **100 Poké Balls** from your rival.\n\nAfter that handoff, encounter locking and the rest of the Nuzlocke rules are live. Head west/south from Oldale toward Petalburg when you’re ready.",
+      locations: ["Oldale Town", "Route 103", "Littleroot Town"],
+      requiresSteps: ["prologue-starter"],
+      keyItems: ["Pokédex"],
+      nuzlockeNote:
+        "First real encounter lock begins after this — not on Route 101.",
+      priority: "critical",
+      sortOrder: 15,
     },
     {
       id: "prologue-oldale-petalburg",
@@ -223,7 +241,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       detail:
         "Go through **Oldale** → **Route 102** → **Petalburg City**. Talk to **Norman** in the Gym. He will not battle you until you have **four badges**. He points you toward **Rustboro** via Route 104 / Petalburg Woods.",
       locations: ["Oldale Town", "Route 102", "Petalburg City"],
-      requiresSteps: ["prologue-starter"],
+      requiresSteps: ["prologue-start-nuzlocke"],
       priority: "critical",
       sortOrder: 20,
     },
