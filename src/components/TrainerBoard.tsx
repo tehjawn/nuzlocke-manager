@@ -16,7 +16,7 @@ import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
 import { BoardHistoryModal } from "@/components/BoardHistoryModal";
-import { Frame } from "@/components/Frame";
+import { Frame, frameCountTitle } from "@/components/Frame";
 import {
   EMPTY_POKEMON_FORM,
   PokemonFormModal,
@@ -1271,7 +1271,10 @@ export function TrainerBoard({
             />
           ) : (
             <>
-              <Frame title="Main Squad" data-tour="pokemon">
+              <Frame
+                title={frameCountTitle("Main Squad", main.length)}
+                data-tour="pokemon"
+              >
                 <PartyStrip
                   pokemon={main}
                   slots={6}
@@ -1281,7 +1284,7 @@ export function TrainerBoard({
                 />
               </Frame>
 
-              <Frame title="The Reserves">
+              <Frame title={frameCountTitle("The Reserves", reserves.length)}>
                 {reserves.length > 0 ? (
                   <PartyStrip
                     pokemon={reserves}
@@ -1294,7 +1297,10 @@ export function TrainerBoard({
                 )}
               </Frame>
 
-              <Frame title="R.I.P." tone="rip">
+              <Frame
+                title={frameCountTitle("R.I.P.", graveyard.length)}
+                tone="rip"
+              >
                 {graveyard.length > 0 ? (
                   <PartyStrip
                     pokemon={graveyard}
@@ -1312,7 +1318,7 @@ export function TrainerBoard({
             </>
           )}
 
-          <Frame title="Encountered">
+          <Frame title={frameCountTitle("Encountered", encountered.length)}>
             {canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">

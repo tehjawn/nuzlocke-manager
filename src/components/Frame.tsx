@@ -6,7 +6,7 @@ import {
 import { cssTextureUrl } from "@/lib/custom-texture";
 
 type FrameProps = {
-  title?: string;
+  title?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -18,6 +18,16 @@ type FrameProps = {
   /** Spotlight target for the first-run onboarding tour. */
   "data-tour"?: string;
 };
+
+/** Frame header with a muted count, e.g. Main Squad (6). */
+export function frameCountTitle(label: string, count: number): ReactNode {
+  return (
+    <>
+      {label}{" "}
+      <span className="font-medium tabular-nums text-muted">({count})</span>
+    </>
+  );
+}
 
 export function Frame({
   title,

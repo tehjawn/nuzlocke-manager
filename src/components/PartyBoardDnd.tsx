@@ -31,7 +31,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
-import { Frame } from "@/components/Frame";
+import { Frame, frameCountTitle } from "@/components/Frame";
 import { PokemonSlotCard } from "@/components/PokemonSlotCard";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import {
@@ -562,6 +562,7 @@ export function PartyBoardDnd({
     commitItems(buildBoardItems(pokemon));
   }
 
+  const mainCount = items.MAIN.filter((id) => !isEmptyMainId(id)).length;
   const reservesCount = items.RESERVE.length;
   const graveyardCount = items.GRAVEYARD.length;
   const mainDragDisabled = rearrangeDisabled || mainSquadLocked;
@@ -577,7 +578,10 @@ export function PartyBoardDnd({
       onDragCancel={handleDragCancel}
     >
       <div className="space-y-6">
-        <Frame title="Main Squad" data-tour="pokemon">
+        <Frame
+          title={frameCountTitle("Main Squad", mainCount)}
+          data-tour="pokemon"
+        >
           <SlotSectionDroppable id="MAIN" disabled={mainDragDisabled}>
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -605,7 +609,7 @@ export function PartyBoardDnd({
           </SlotSectionDroppable>
         </Frame>
 
-        <Frame title="The Reserves">
+        <Frame title={frameCountTitle("The Reserves", reservesCount)}>
           <SlotSectionDroppable id="RESERVE" disabled={rearrangeDisabled}>
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -641,7 +645,7 @@ export function PartyBoardDnd({
           </SlotSectionDroppable>
         </Frame>
 
-        <Frame title="R.I.P." tone="rip">
+        <Frame title={frameCountTitle("R.I.P.", graveyardCount)} tone="rip">
           <SlotSectionDroppable id="GRAVEYARD" disabled={rearrangeDisabled}>
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
