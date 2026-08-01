@@ -48,6 +48,14 @@ import {
   memorialRowsAfterWipe,
 } from "@/lib/wipe-memorial";
 import {
+  DEFAULT_IMPORT_REPLACE_SLOTS,
+  importedGravesToAppend,
+} from "@/lib/import-memorial";
+import {
+  memorialBackfillCandidates,
+  type MemorialBackfillCandidate,
+} from "@/lib/memorial-backfill";
+import {
   canUseCustomTextureUrl,
   customTextureKey,
   parseCustomTextureUrl,
@@ -1369,6 +1377,400 @@ export async function gmClearTrainerBoardHistoryAction(input: {
   }
 }
 
+export type MemorialBackfillPreviewItem = Pick<
+  MemorialBackfillCandidate,
+  | "label"
+  | "species"
+  | "nickname"
+  | "pokedexId"
+  | "isShiny"
+  | "diedOnRun"
+  | "causeOfDeath"
+  | "source"
+>;
+
+export type PreviewMemorialBackfillResult =
+  | {
+      ok: true;
+      candidates: MemorialBackfillPreviewItem[];
+      runsRestored: number[];
+      runsSkipped: number[];
+    }
+  | { ok: false; error: string };
+
+async function buildMemorialBackfillPlanForTrainer(trainerId: string) {
+  const prisma = getPrisma();
+  const trainer = await prisma.trainerProfile.findUnique({
+    where: { id: trainerId },
+    include: {
+      challenge: { select: { id: true, slug: true, status: true } },
+      pokemon: {
+        where: { slot: "GRAVEYARD" },
+        select: {
+          species: true,
+          nickname: true,
+          partyIndex: true,
+        },
+      },
+    },
+  });
+  if (!trainer) throw new Error("Trainer not found");
+  if (trainer.challenge.status === "ARCHIVED") {
+    throw new Error("This season is archived and read-only");
+  }
+
+  const [runs, snapRows] = await Promise.all([
+    prisma.trainerRun.findMany({
+      where: { trainerId: trainer.id },
+      orderBy: { runNumber: "asc" },
+      select: { id: true, runNumber: true, status: true },
+    }),
+    prisma.trainerBoardSnapshot.findMany({
+      where: { trainerId: trainer.id },
+      orderBy: { createdAt: "desc" },
+      take: 80,
+      select: {
+        id: true,
+        trigger: true,
+        createdAt: true,
+        runId: true,
+        payload: true,
+      },
+    }),
+  ]);
+
+  const snapshots = [];
+  for (const row of snapRows) {
+    const payload = parseSnapshotPayload(row.payload);
+    if (!payload) continue;
+    snapshots.push({
+      id: row.id,
+      trigger: row.trigger as BoardSnapshotTrigger,
+      createdAt: row.createdAt.toISOString(),
+      runId: row.runId,
+      wipeCount: payload.wipeCount,
+      pokemon: payload.pokemon,
+    });
+  }
+
+  const plan = memorialBackfillCandidates({
+    runs: runs.map((run) => ({
+      id: run.id,
+      runNumber: run.runNumber,
+      status: run.status as "ACTIVE" | "CLOSED",
+    })),
+    snapshots,
+    existingGraves: trainer.pokemon,
+  });
+
+  return { trainer, plan };
+}
+
+async function loadMemorialBackfillPlan(trainerId: string) {
+  const { trainer, plan } = await buildMemorialBackfillPlanForTrainer(trainerId);
+  const { userId } = await requireGm(trainer.challengeId);
+  return { trainer, plan, userId };
+}
+
+/** GM-only: preview graves that would be restored from board history. */
+export async function previewMemorialBackfillAction(input: {
+  trainerId: string;
+}): Promise<PreviewMemorialBackfillResult> {
+  try {
+    const { plan } = await loadMemorialBackfillPlan(input.trainerId);
+    return {
+      ok: true,
+      candidates: plan.candidates.map((c) => ({
+        label: c.label,
+        species: c.species,
+        nickname: c.nickname,
+        pokedexId: c.pokedexId,
+        isShiny: c.isShiny,
+        diedOnRun: c.diedOnRun,
+        causeOfDeath: c.causeOfDeath,
+        source: c.source,
+      })),
+      runsRestored: plan.runsRestored,
+      runsSkipped: plan.runsSkipped,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error ? e.message : "Could not preview memorial restore",
+    };
+  }
+}
+
+/** GM-only: append missing memorial rows reconstructed from board history. */
+export async function gmApplyMemorialBackfillAction(input: {
+  trainerId: string;
+}): Promise<ActionResult> {
+  try {
+    const { trainer, plan, userId } = await loadMemorialBackfillPlan(
+      input.trainerId,
+    );
+
+    if (plan.candidates.length === 0) {
+      return {
+        ok: true,
+        message: "Memorial already has every recoverable R.I.P. from history",
+      };
+    }
+
+    await prismaMemorialBackfillCreate(trainer, plan, {
+      actorId: userId,
+      logActivity: true,
+    });
+
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
+    revalidatePath(`/challenges/${trainer.challenge.slug}/memorial`);
+    return {
+      ok: true,
+      message: `Restored ${plan.candidates.length} memorial entr${
+        plan.candidates.length === 1 ? "y" : "ies"
+      } from board history`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error
+          ? e.message
+          : "Could not restore memorial from history",
+    };
+  }
+}
+
+export type SeasonMemorialBackfillTrainerPreview = {
+  trainerId: string;
+  handle: string;
+  count: number;
+  sample: string[];
+};
+
+export type PreviewSeasonMemorialBackfillResult =
+  | {
+      ok: true;
+      totalCandidates: number;
+      trainersAffected: number;
+      trainers: SeasonMemorialBackfillTrainerPreview[];
+    }
+  | { ok: false; error: string };
+
+/** GM-only: preview season-wide memorial reconstruction from board history. */
+export async function previewSeasonMemorialBackfillAction(input: {
+  challengeId: string;
+}): Promise<PreviewSeasonMemorialBackfillResult> {
+  try {
+    const prisma = getPrisma();
+    const challenge = await prisma.challenge.findUnique({
+      where: { id: input.challengeId },
+      select: {
+        id: true,
+        status: true,
+        trainers: {
+          orderBy: { sortOrder: "asc" },
+          select: { id: true, handle: true },
+        },
+      },
+    });
+    if (!challenge) return { ok: false, error: "Challenge not found" };
+    if (challenge.status === "ARCHIVED") {
+      return { ok: false, error: "This season is archived and read-only" };
+    }
+    await requireGm(challenge.id);
+
+    const trainers: SeasonMemorialBackfillTrainerPreview[] = [];
+    let totalCandidates = 0;
+    for (const row of challenge.trainers) {
+      const { plan } = await buildMemorialBackfillPlanForTrainer(row.id);
+      if (plan.candidates.length === 0) continue;
+      totalCandidates += plan.candidates.length;
+      trainers.push({
+        trainerId: row.id,
+        handle: row.handle,
+        count: plan.candidates.length,
+        sample: plan.candidates.slice(0, 4).map((c) => c.label),
+      });
+    }
+
+    return {
+      ok: true,
+      totalCandidates,
+      trainersAffected: trainers.length,
+      trainers,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error
+          ? e.message
+          : "Could not preview memorial reconstruction",
+    };
+  }
+}
+
+/**
+ * GM-only: reconstruct missing memorial rows for every trainer from retained
+ * board history snapshots (same rules as per-trainer restore).
+ */
+export async function gmReconstructMemorialHistoryAction(input: {
+  challengeId: string;
+}): Promise<ActionResult> {
+  try {
+    const prisma = getPrisma();
+    const challenge = await prisma.challenge.findUnique({
+      where: { id: input.challengeId },
+      select: {
+        id: true,
+        slug: true,
+        status: true,
+        trainers: {
+          orderBy: { sortOrder: "asc" },
+          select: { id: true, handle: true },
+        },
+      },
+    });
+    if (!challenge) return { ok: false, error: "Challenge not found" };
+    if (challenge.status === "ARCHIVED") {
+      return { ok: false, error: "This season is archived and read-only" };
+    }
+
+    const { userId } = await requireGm(challenge.id);
+
+    let totalRestored = 0;
+    let trainersUpdated = 0;
+    const touchedHandles: string[] = [];
+
+    for (const row of challenge.trainers) {
+      const { trainer, plan } = await buildMemorialBackfillPlanForTrainer(
+        row.id,
+      );
+      if (plan.candidates.length === 0) continue;
+      await prismaMemorialBackfillCreate(trainer, plan, {
+        actorId: userId,
+        logActivity: false,
+      });
+      totalRestored += plan.candidates.length;
+      trainersUpdated += 1;
+      touchedHandles.push(trainer.handle);
+    }
+
+    if (totalRestored > 0) {
+      await prisma.activityEvent.create({
+        data: {
+          challengeId: challenge.id,
+          actorId: userId,
+          type: "NOTE",
+          message: `GM reconstructed memorial history — ${totalRestored} entr${
+            totalRestored === 1 ? "y" : "ies"
+          } across ${trainersUpdated} trainer${
+            trainersUpdated === 1 ? "" : "s"
+          }${
+            touchedHandles.length
+              ? ` (${touchedHandles.slice(0, 6).join(", ")}${
+                  touchedHandles.length > 6
+                    ? ` +${touchedHandles.length - 6}`
+                    : ""
+                })`
+              : ""
+          }`,
+        },
+      });
+    }
+
+    revalidateChallenge(challenge.slug);
+    revalidatePath(`/challenges/${challenge.slug}/memorial`);
+
+    if (totalRestored === 0) {
+      return {
+        ok: true,
+        message:
+          "No missing memorial entries found in retained board history",
+      };
+    }
+
+    return {
+      ok: true,
+      message: `Restored ${totalRestored} memorial entr${
+        totalRestored === 1 ? "y" : "ies"
+      } across ${trainersUpdated} trainer${trainersUpdated === 1 ? "" : "s"}`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error
+          ? e.message
+          : "Could not reconstruct memorial history",
+    };
+  }
+}
+
+async function prismaMemorialBackfillCreate(
+  trainer: {
+    id: string;
+    challengeId: string;
+    handle: string;
+  },
+  plan: Awaited<
+    ReturnType<typeof buildMemorialBackfillPlanForTrainer>
+  >["plan"],
+  options: { actorId: string; logActivity: boolean },
+) {
+  const prisma = getPrisma();
+  let partyIndex = plan.nextPartyIndex;
+  const rows = plan.candidates.map((c) => {
+    const mon = c.pokemon;
+    const index = partyIndex++;
+    return {
+      trainerId: trainer.id,
+      slot: "GRAVEYARD" as const,
+      partyIndex: index,
+      nickname: mon.nickname,
+      species: mon.species,
+      pokedexId: mon.pokedexId,
+      isShiny: mon.isShiny,
+      types: resolvePokemonTypes({
+        types: mon.types,
+        pokedexId: mon.pokedexId,
+        species: mon.species,
+      }),
+      level: mon.level,
+      nature: mon.nature,
+      ability: mon.ability,
+      catchRoute: mon.catchRoute,
+      heldItem: mon.heldItem,
+      moves: mon.moves,
+      ivs: jsonStatOrNull(mon.ivs),
+      evs: jsonStatOrNull(mon.evs),
+      causeOfDeath: c.causeOfDeath,
+      diedOnRun: c.diedOnRun,
+      runId: c.runId,
+      notes: `Restored from board history (run ${c.diedOnRun})`,
+    };
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.pokemonEntry.createMany({ data: rows });
+    if (options.logActivity) {
+      await tx.activityEvent.create({
+        data: {
+          challengeId: trainer.challengeId,
+          actorId: options.actorId,
+          trainerId: trainer.id,
+          type: "NOTE",
+          message: `GM restored ${rows.length} memorial entr${
+            rows.length === 1 ? "y" : "ies"
+          } for ${trainer.handle} from board history`,
+        },
+      });
+    }
+  });
+}
+
 const BadgeChangeSchema = z.object({
   badgeKey: z.string().min(1),
   earned: z.boolean(),
@@ -1923,10 +2325,12 @@ const ImportFromSaveSchema = z.object({
   applyBadges: z.boolean().default(false),
   reviveUsed: z.boolean().optional().nullable(),
   applyRevive: z.boolean().default(false),
-  /** Which board slots to overwrite from this import. */
-  replaceSlots: z
-    .array(PokemonSlotSchema)
-    .default(["MAIN", "RESERVE", "GRAVEYARD", "ENCOUNTERED"]),
+  /**
+   * Which living / Encountered slots to overwrite from this import.
+   * GRAVEYARD is season-wide: omitted here means append imported R.I.P.
+   * (deduped); including GRAVEYARD still hard-replaces the memorial.
+   */
+  replaceSlots: z.array(PokemonSlotSchema).default(DEFAULT_IMPORT_REPLACE_SLOTS),
 });
 
 /** Apply categorized save import (party/box/rip/encounters + optional name/badges). */
@@ -1952,9 +2356,10 @@ export async function importFromSaveAction(
 
     const prisma = getPrisma();
 
-    // All imported slots (including ENCOUNTERED) mirror this save snapshot.
-    // Encountered is wild buffer ∪ Pokédex seen — re-import replaces the ledger
-    // so it matches the save rather than accumulating across imports.
+    // Living + Encountered mirror this save snapshot (re-import replaces those
+    // slots). Memorial is season-wide: by default we append imported R.I.P.
+    // instead of wiping prior graves. Opt into replaceSlots: ["GRAVEYARD"] to
+    // hard-replace the memorial.
     const indexes: Record<string, number> = {
       MAIN: 0,
       RESERVE: 0,
@@ -1963,6 +2368,7 @@ export async function importFromSaveAction(
     };
 
     const replaceSet = new Set(data.replaceSlots);
+    const replaceMemorial = replaceSet.has("GRAVEYARD");
     // Within-payload Encountered dedupe only (existing rows are wiped below).
     // Always key on species+route so null vs resolved pokedexId cannot diverge.
     const seenEncounterKeys = new Set<string>();
@@ -1974,8 +2380,56 @@ export async function importFromSaveAction(
         mon.catchRoute?.trim().toLowerCase() || ""
       }`;
 
-    const rows = data.pokemon
-      .filter((mon) => replaceSet.has(mon.slot))
+    function buildImportRow(mon: (typeof data.pokemon)[number], partyIndex: number) {
+      const speciesMeta = findSpecies(mon.species);
+      const indexHit =
+        (mon.pokedexId ? findPokemonById(mon.pokedexId) : undefined) ??
+        (speciesMeta ? findPokemonById(speciesMeta.pokedexId) : undefined) ??
+        searchPokemonIndex(mon.species.trim().toLowerCase(), {
+          limit: 8,
+        }).find(
+          (p) => p.name.toLowerCase() === mon.species.trim().toLowerCase(),
+        );
+
+      const pokedexId =
+        mon.pokedexId ??
+        speciesMeta?.pokedexId ??
+        indexHit?.pokedexId ??
+        null;
+
+      return {
+        trainerId: trainer.id,
+        slot: mon.slot,
+        partyIndex,
+        nickname: mon.nickname?.trim() || null,
+        species: mon.species.trim(),
+        pokedexId,
+        isShiny: mon.isShiny,
+        types: resolvePokemonTypes({
+          pokedexId,
+          species: mon.species,
+        }),
+        level: mon.level ?? null,
+        nature: mon.nature?.trim() || null,
+        ability: mon.ability?.trim() || null,
+        catchRoute: mon.catchRoute?.trim() || null,
+        heldItem: mon.heldItem?.trim() || null,
+        moves: mon.moves ?? [],
+        ivs: jsonStatOrNull(mon.ivs ?? null),
+        evs: jsonStatOrNull(mon.evs ?? null),
+        causeOfDeath:
+          mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null,
+        diedOnRun:
+          mon.slot === "GRAVEYARD"
+            ? currentRunNumber(trainer.wipeCount)
+            : null,
+        runId: null as string | null,
+        notes: `Imported from save (${mon.slot.toLowerCase()})`,
+      };
+    }
+
+    const livingRows = data.pokemon
+      .filter((mon) => mon.slot !== "GRAVEYARD" && replaceSet.has(mon.slot))
       .filter((mon) => {
         if (mon.slot !== "ENCOUNTERED") return true;
         const key = encounterDedupeKey(mon);
@@ -1984,59 +2438,14 @@ export async function importFromSaveAction(
         return true;
       })
       .map((mon) => {
-        const speciesMeta = findSpecies(mon.species);
-        const indexHit =
-          (mon.pokedexId ? findPokemonById(mon.pokedexId) : undefined) ??
-          (speciesMeta
-            ? findPokemonById(speciesMeta.pokedexId)
-            : undefined) ??
-          searchPokemonIndex(mon.species.trim().toLowerCase(), {
-            limit: 8,
-          }).find(
-            (p) => p.name.toLowerCase() === mon.species.trim().toLowerCase(),
-          );
-
         const partyIndex = indexes[mon.slot] ?? 0;
         indexes[mon.slot] = partyIndex + 1;
-
-        const pokedexId =
-          mon.pokedexId ??
-          speciesMeta?.pokedexId ??
-          indexHit?.pokedexId ??
-          null;
-
-        return {
-          trainerId: trainer.id,
-          slot: mon.slot,
-          partyIndex,
-          nickname: mon.nickname?.trim() || null,
-          species: mon.species.trim(),
-          pokedexId,
-          isShiny: mon.isShiny,
-          types: resolvePokemonTypes({
-            pokedexId,
-            species: mon.species,
-          }),
-          level: mon.level ?? null,
-          nature: mon.nature?.trim() || null,
-          ability: mon.ability?.trim() || null,
-          catchRoute: mon.catchRoute?.trim() || null,
-          heldItem: mon.heldItem?.trim() || null,
-          moves: mon.moves ?? [],
-          ivs: jsonStatOrNull(mon.ivs ?? null),
-          evs: jsonStatOrNull(mon.evs ?? null),
-          causeOfDeath:
-            mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null,
-          diedOnRun:
-            mon.slot === "GRAVEYARD"
-              ? currentRunNumber(trainer.wipeCount)
-              : null,
-          runId: null,
-          notes: `Imported from save (${mon.slot.toLowerCase()})`,
-        };
+        return buildImportRow(mon, partyIndex);
       });
 
-    const reviveTransition = await prisma.$transaction(async (tx) => {
+    const incomingGraves = data.pokemon.filter((mon) => mon.slot === "GRAVEYARD");
+
+    const txResult = await prisma.$transaction(async (tx) => {
       await captureTrainerBoardSnapshotInTx(tx, {
         challengeId: trainer.challengeId,
         trainerId: trainer.id,
@@ -2048,18 +2457,44 @@ export async function importFromSaveAction(
         wipeCount: trainer.wipeCount,
         activeRunId: trainer.activeRunId,
       });
-      const importRows = rows.map((row) => ({
-        ...row,
-        runId: activeRun.id,
-      }));
-      if (data.replaceSlots.length > 0) {
+
+      const slotsToClear = replaceMemorial
+        ? data.replaceSlots
+        : data.replaceSlots.filter((slot) => slot !== "GRAVEYARD");
+      if (slotsToClear.length > 0) {
         await tx.pokemonEntry.deleteMany({
           where: {
             trainerId: trainer.id,
-            slot: { in: data.replaceSlots },
+            slot: { in: slotsToClear },
           },
         });
       }
+
+      let graveRows: ReturnType<typeof buildImportRow>[] = [];
+      if (replaceMemorial) {
+        graveRows = incomingGraves.map((mon) => {
+          const partyIndex = indexes.GRAVEYARD ?? 0;
+          indexes.GRAVEYARD = partyIndex + 1;
+          return buildImportRow(mon, partyIndex);
+        });
+      } else if (incomingGraves.length > 0) {
+        const existingGraves = await tx.pokemonEntry.findMany({
+          where: { trainerId: trainer.id, slot: "GRAVEYARD" },
+          select: { species: true, nickname: true, partyIndex: true },
+          orderBy: { partyIndex: "asc" },
+        });
+        const { toCreate, nextPartyIndex } = importedGravesToAppend(
+          existingGraves,
+          incomingGraves,
+        );
+        let partyIndex = nextPartyIndex;
+        graveRows = toCreate.map((mon) => buildImportRow(mon, partyIndex++));
+      }
+
+      const importRows = [...livingRows, ...graveRows].map((row) => ({
+        ...row,
+        runId: activeRun.id,
+      }));
       if (importRows.length > 0) {
         await tx.pokemonEntry.createMany({ data: importRows });
       }
@@ -2112,6 +2547,7 @@ export async function importFromSaveAction(
         }
       }
 
+      let reviveTransition: { from: boolean; to: boolean } | null = null;
       // Imports may only spend a revive. Clearing it stays GM-only.
       if (
         data.applyRevive &&
@@ -2128,12 +2564,12 @@ export async function importFromSaveAction(
           },
           data.reviveUsed,
         );
-        return {
+        reviveTransition = {
           from: trainer.reviveUsed,
           to: data.reviveUsed,
         };
       }
-      return null;
+      return { reviveTransition, importedCount: importRows.length };
     });
 
     const handleLabel =
@@ -2146,10 +2582,11 @@ export async function importFromSaveAction(
       actorId: userId,
       trainerId: trainer.id,
       type: "NOTE",
-      message: `${handleLabel} imported save data (${rows.length} Pokémon)`,
+      message: `${handleLabel} imported save data (${txResult.importedCount} Pokémon)`,
     });
 
-    if (reviveTransition) {
+    if (txResult.reviveTransition) {
+      const reviveTransition = txResult.reviveTransition;
       await logActivity({
         challengeId: trainer.challengeId,
         actorId: userId,
@@ -2164,7 +2601,7 @@ export async function importFromSaveAction(
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return {
       ok: true,
-      message: `Imported ${rows.length} Pokémon from save`,
+      message: `Imported ${txResult.importedCount} Pokémon from save`,
     };
   } catch (e) {
     return {

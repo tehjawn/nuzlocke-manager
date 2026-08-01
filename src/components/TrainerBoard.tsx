@@ -963,6 +963,17 @@ export function TrainerBoard({
               <span>Import save</span>
             </button>
           ) : null}
+          {!isDemo && (isGm || showCompetitiveDetails) ? (
+            <button
+              type="button"
+              disabled={pending || wiping}
+              className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+              onClick={() => setBoardHistoryOpen(true)}
+            >
+              <BoardHistoryIcon />
+              Trainer history
+            </button>
+          ) : null}
           {canEdit ? (
             <button
               type="button"
@@ -974,17 +985,6 @@ export function TrainerBoard({
             >
               <WipeIcon />
               Record wipe
-            </button>
-          ) : null}
-          {!isDemo && (isGm || showCompetitiveDetails) ? (
-            <button
-              type="button"
-              disabled={pending || wiping}
-              className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
-              onClick={() => setBoardHistoryOpen(true)}
-            >
-              <BoardHistoryIcon />
-              Trainer history
             </button>
           ) : null}
           {isGm && !isDemo ? (
@@ -1365,8 +1365,8 @@ export function TrainerBoard({
       </div>
 
       <Frame title="Shortcuts">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch sm:justify-between sm:gap-6">
-          <div className="grid min-w-0 flex-1 grid-cols-3 gap-2 sm:grid-cols-5">
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {seasonLinkTiles.map((item) => (
               <ShortcutLinkTile
                 key={item.href}
@@ -1378,7 +1378,7 @@ export function TrainerBoard({
           </div>
 
           {canEdit || (isGm && !isDemo) ? (
-            <div className="flex w-full flex-col gap-2 sm:w-52 sm:shrink-0 sm:self-stretch">
+            <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(10rem,1fr))]">
               {canEdit && !isDemo && !reviveUsed ? (
                 <ShortcutActionTile
                   label="Use Revive Token"
@@ -1418,6 +1418,16 @@ export function TrainerBoard({
                   onClick={() => setSaveImportOpen(true)}
                 />
               ) : null}
+              {!isDemo && (isGm || showCompetitiveDetails) ? (
+                <ShortcutActionTile
+                  label="Trainer history"
+                  icon={<BoardHistoryIcon className="h-4 w-4" />}
+                  tone="neutral"
+                  disabled={pending || wiping}
+                  title="Runs, badge archives, and board snapshots"
+                  onClick={() => setBoardHistoryOpen(true)}
+                />
+              ) : null}
               {canEdit ? (
                 <ShortcutActionTile
                   label="Record wipe"
@@ -1427,16 +1437,6 @@ export function TrainerBoard({
                   onClick={() => {
                     void recordWipe();
                   }}
-                />
-              ) : null}
-              {!isDemo && (isGm || showCompetitiveDetails) ? (
-                <ShortcutActionTile
-                  label="Trainer history"
-                  icon={<BoardHistoryIcon className="h-4 w-4" />}
-                  tone="neutral"
-                  disabled={pending || wiping}
-                  title="Runs, badge archives, and board snapshots"
-                  onClick={() => setBoardHistoryOpen(true)}
                 />
               ) : null}
               {isGm && !isDemo ? (
@@ -1562,14 +1562,9 @@ export function TrainerBoard({
                 applyBadges: payload.applyBadges,
                 reviveUsed: payload.reviveUsed,
                 applyRevive: payload.applyRevive,
-                // Each category mirrors this save: unchecked mons clear that
-                // slot group (including Encountered / Pokédex seen).
-                replaceSlots: [
-                  "MAIN",
-                  "RESERVE",
-                  "GRAVEYARD",
-                  "ENCOUNTERED",
-                ],
+                // Living + Encountered mirror this save. Memorial is season-wide:
+                // imported R.I.P. appends (deduped); prior graves are kept.
+                replaceSlots: ["MAIN", "RESERVE", "ENCOUNTERED"],
               });
               if (result.ok) {
                 partySave.markSaved(result.message ?? "Save imported");
@@ -1600,6 +1595,10 @@ export function TrainerBoard({
           badges={badges}
           showCompetitiveDetails={showCompetitiveDetails}
           canClearSnapshots={isGm}
+          canRestoreMemorial={isGm}
+          onMemorialRestored={() => {
+            router.refresh();
+          }}
         />
       ) : null}
 

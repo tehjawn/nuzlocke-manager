@@ -3,8 +3,11 @@
 import { useEffect, useState, useTransition } from "react";
 import {
   getTrainerBoardSnapshotAction,
+  gmApplyMemorialBackfillAction,
   gmClearTrainerBoardHistoryAction,
   listTrainerHistoryAction,
+  previewMemorialBackfillAction,
+  type MemorialBackfillPreviewItem,
   type TrainerHistoryRunSummary,
 } from "@/app/actions/challenge";
 import { BadgeCase } from "@/components/BadgeCase";
@@ -29,6 +32,10 @@ type TrainerHistoryModalProps = {
   showCompetitiveDetails?: boolean;
   /** GM-only clear control; owners can still browse. */
   canClearSnapshots?: boolean;
+  /** GM-only: restore missing memorial rows from snapshots. */
+  canRestoreMemorial?: boolean;
+  /** Called after a successful memorial restore so the board can refresh. */
+  onMemorialRestored?: () => void;
 };
 
 function slotPokemon(
@@ -69,11 +76,15 @@ function TrainerHistoryBody({
   badges,
   showCompetitiveDetails = true,
   canClearSnapshots = false,
+  canRestoreMemorial = false,
+  onMemorialRestored,
 }: Omit<TrainerHistoryModalProps, "open">) {
   const [pending, startTransition] = useTransition();
   const [clearing, setClearing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [listLoading, setListLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [runs, setRuns] = useState<TrainerHistoryRunSummary[]>([]);
   const [allowClear, setAllowClear] = useState(canClearSnapshots);
   const [openRunIds, setOpenRunIds] = useState<Set<string>>(new Set());
@@ -178,6 +189,7 @@ function TrainerHistoryBody({
     if (!ok) return;
 
     setError(null);
+    setStatusMessage(null);
     setClearing(true);
     startTransition(async () => {
       try {
@@ -192,10 +204,85 @@ function TrainerHistoryBody({
         setDetail(null);
         setSelectedId(null);
         setDetailsPokemon(null);
+        setStatusMessage(result.message ?? "Snapshots cleared");
       } finally {
         setClearing(false);
       }
     });
+  }
+
+  async function restoreMemorial() {
+    setError(null);
+    setStatusMessage(null);
+    setRestoring(true);
+    try {
+      const preview = await previewMemorialBackfillAction({ trainerId });
+      if (!preview.ok) {
+        setError(preview.error);
+        return;
+      }
+      if (preview.candidates.length === 0) {
+        setStatusMessage(
+          "Memorial already has every recoverable R.I.P. from history.",
+        );
+        return;
+      }
+
+      const sample = preview.candidates
+        .slice(0, 8)
+        .map((c: MemorialBackfillPreviewItem) => {
+          const run = `Run ${c.diedOnRun}`;
+          return `${c.label} (${run})`;
+        })
+        .join(", ");
+      const extra =
+        preview.candidates.length > 8
+          ? ` +${preview.candidates.length - 8} more`
+          : "";
+
+      const ok = await confirm({
+        title: "Restore memorial from history?",
+        description: (
+          <>
+            Adds {preview.candidates.length} missing R.I.P. entr
+            {preview.candidates.length === 1 ? "y" : "ies"} for{" "}
+            {trainerHandle} from the last snapshot of each run. Existing graves
+            stay; duplicates (same species + nickname) are skipped.
+            {preview.runsRestored.length > 0 ? (
+              <>
+                {" "}
+                Runs covered: {preview.runsRestored.join(", ")}.
+              </>
+            ) : null}
+            {preview.runsSkipped.length > 0 ? (
+              <>
+                {" "}
+                No snapshot for run
+                {preview.runsSkipped.length === 1 ? "" : "s"}{" "}
+                {preview.runsSkipped.join(", ")}.
+              </>
+            ) : null}
+            <span className="mt-2 block text-muted">
+              {sample}
+              {extra}
+            </span>
+          </>
+        ),
+        confirmLabel: `Restore ${preview.candidates.length}`,
+        tone: "primary",
+      });
+      if (!ok) return;
+
+      const result = await gmApplyMemorialBackfillAction({ trainerId });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setStatusMessage(result.message ?? "Memorial restored");
+      onMemorialRestored?.();
+    } finally {
+      setRestoring(false);
+    }
   }
 
   const viewingDetail = detail != null;
@@ -211,6 +298,11 @@ function TrainerHistoryBody({
     : [];
   const canClearHistory =
     allowClear &&
+    !listLoading &&
+    runs.some((run) => run.snapshots.length > 0) &&
+    !viewingDetail;
+  const canRestore =
+    canRestoreMemorial &&
     !listLoading &&
     runs.some((run) => run.snapshots.length > 0) &&
     !viewingDetail;
@@ -236,23 +328,44 @@ function TrainerHistoryBody({
             >
               ← All runs
             </button>
-          ) : canClearHistory ? (
-            <button
-              type="button"
-              disabled={clearing || pending}
-              className="pressable border-danger/35 bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger disabled:opacity-60"
-              onClick={() => {
-                void clearHistory();
-              }}
-            >
-              {clearing ? "Clearing…" : "Clear snapshots"}
-            </button>
+          ) : canRestore || canClearHistory ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {canRestore ? (
+                <button
+                  type="button"
+                  disabled={restoring || clearing || pending}
+                  className="pressable border-interactive/35 bg-interactive-soft px-2.5 py-1 text-xs font-semibold text-ink disabled:opacity-60"
+                  onClick={() => {
+                    void restoreMemorial();
+                  }}
+                >
+                  {restoring ? "Restoring…" : "Restore memorial"}
+                </button>
+              ) : null}
+              {canClearHistory ? (
+                <button
+                  type="button"
+                  disabled={clearing || restoring || pending}
+                  className="pressable border-danger/35 bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger disabled:opacity-60"
+                  onClick={() => {
+                    void clearHistory();
+                  }}
+                >
+                  {clearing ? "Clearing…" : "Clear snapshots"}
+                </button>
+              ) : null}
+            </div>
           ) : null
         }
       >
         {error ? (
           <p className="mb-3 text-sm text-danger" role="alert">
             {error}
+          </p>
+        ) : null}
+        {statusMessage ? (
+          <p className="mb-3 text-sm text-interactive" role="status">
+            {statusMessage}
           </p>
         ) : null}
 
@@ -330,6 +443,9 @@ function TrainerHistoryBody({
               Each run keeps its revive + badge archive. Board snapshots sit
               inside the run they were taken from (before wipe, import, or GM
               reset).
+              {canRestoreMemorial
+                ? " GMs can restore missing memorial entries from those snapshots."
+                : null}
             </p>
             {listLoading ? (
               <p className="text-sm text-muted">Loading history…</p>
@@ -463,6 +579,8 @@ export function TrainerHistoryModal({
   badges,
   showCompetitiveDetails = true,
   canClearSnapshots = false,
+  canRestoreMemorial = false,
+  onMemorialRestored,
 }: TrainerHistoryModalProps) {
   if (!open) return null;
 
@@ -475,6 +593,8 @@ export function TrainerHistoryModal({
       badges={badges}
       showCompetitiveDetails={showCompetitiveDetails}
       canClearSnapshots={canClearSnapshots}
+      canRestoreMemorial={canRestoreMemorial}
+      onMemorialRestored={onMemorialRestored}
     />
   );
 }

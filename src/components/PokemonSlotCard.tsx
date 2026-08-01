@@ -94,7 +94,48 @@ export function PokemonSlotCard({
       ? pokemon.moves.map(resolveMoveName).filter(Boolean)
       : [];
 
-  if (size === "sm" || speciesOnly) {
+  if (speciesOnly) {
+    const encounter = (
+      <div
+        className={`flex h-full min-h-24 flex-col items-center justify-center gap-1.5 rounded-lg border border-frame bg-surface px-1.5 py-2 text-center ${
+          memorial ? "opacity-90" : ""
+        } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
+      >
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
+          <PokemonSpriteImage
+            alt=""
+            className="pixelated h-12 w-12 object-contain"
+            height={56}
+            pokedexId={pokemon.pokedexId}
+            shiny={pokemon.isShiny}
+            species={pokemon.species}
+            width={56}
+          />
+        </div>
+        <p className="w-full truncate px-0.5 text-[11px] font-bold leading-tight tracking-tight sm:text-xs">
+          {label}
+          {pokemon.isShiny ? (
+            <span className="ml-0.5 text-accent-2" title="Shiny">
+              ✦
+            </span>
+          ) : null}
+        </p>
+      </div>
+    );
+    if (!onSelect) return <article className="h-full">{encounter}</article>;
+    return (
+      <button
+        type="button"
+        className="h-full w-full cursor-pointer text-left"
+        aria-label={pokemon.species}
+        onClick={onSelect}
+      >
+        {encounter}
+      </button>
+    );
+  }
+
+  if (size === "sm") {
     const compact = (
       <div
         className={`flex h-full min-h-20 items-center gap-2 rounded-lg border border-frame bg-surface p-2 ${
@@ -121,13 +162,11 @@ export function PokemonSlotCard({
               </span>
             ) : null}
           </p>
-          {!speciesOnly ? (
-            <p className="truncate text-xs text-muted">
-              {pokemon.species}
-              {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
-              {selectHint ? ` · ${selectHint}` : ""}
-            </p>
-          ) : null}
+          <p className="truncate text-xs text-muted">
+            {pokemon.species}
+            {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
+            {selectHint ? ` · ${selectHint}` : ""}
+          </p>
         </div>
       </div>
     );
@@ -136,7 +175,6 @@ export function PokemonSlotCard({
       <button
         type="button"
         className="h-full w-full cursor-pointer text-left"
-        aria-label={speciesOnly ? pokemon.species : undefined}
         onClick={onSelect}
       >
         {compact}
