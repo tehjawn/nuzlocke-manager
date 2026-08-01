@@ -1,10 +1,12 @@
 import Fuse, { type IFuseOptions } from "fuse.js";
+import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
 import type {
   JumpFuseHit,
   JumpResult,
   JumpSeasonContext,
 } from "@/features/jump/jump-types";
 import { avatarImageUrl } from "@/lib/sprites";
+import { toolsHref } from "@/lib/tools-routes";
 
 const FUSE_OPTIONS: IFuseOptions<JumpResult> = {
   keys: [
@@ -252,7 +254,61 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
     })),
   ];
 
-  return [...navigate, ...trainers, ...pokemon, ...badges, ...rules];
+  const guide: JumpResult[] = [
+    {
+      id: `guide-hub-${ctx.slug}`,
+      title: "Game Guide",
+      subtitle: `${ctx.name} · What to do next`,
+      href: toolsHref(ctx.slug, "guide"),
+      category: "guide",
+      tags: [
+        "guide",
+        "game guide",
+        "walkthrough",
+        "next steps",
+        "steven",
+        "rock smash",
+        "rusturf",
+        "dive",
+        "modern emerald",
+        "tools",
+      ],
+    },
+    ...EMERALD_GUIDE.chapters.map((chapter) => ({
+      id: `guide-chapter-${chapter.id}`,
+      title: chapter.title,
+      subtitle: truncate(chapter.summary, 80),
+      href: toolsHref(ctx.slug, "guide", { chapter: chapter.id }),
+      category: "guide" as const,
+      tags: [
+        chapter.title,
+        chapter.summary,
+        "guide",
+        "chapter",
+        ...chapter.requiresBadges,
+      ],
+    })),
+    ...EMERALD_GUIDE.steps
+      .filter((s) => s.priority === "critical")
+      .map((step) => ({
+        id: `guide-step-${step.id}`,
+        title: step.title,
+        subtitle: truncate(step.summary, 80),
+        href: toolsHref(ctx.slug, "guide", { chapter: step.chapterId }),
+        category: "guide" as const,
+        tags: [
+          step.title,
+          step.summary,
+          step.detail ?? "",
+          "guide",
+          ...(step.hms ?? []),
+          ...(step.keyItems ?? []),
+          ...(step.locations ?? []),
+        ],
+      })),
+  ];
+
+  return [...navigate, ...trainers, ...pokemon, ...badges, ...rules, ...guide];
 }
 
 export function createJumpIndex(results: JumpResult[]) {

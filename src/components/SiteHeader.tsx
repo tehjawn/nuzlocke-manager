@@ -7,10 +7,11 @@ import {
 } from "@/components/GmToolsLauncher";
 import { MobileMenuAuth } from "@/components/MobileMenuAuth";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
-import { MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
+import { GuideIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { JumpTrigger } from "@/features/jump";
 import { getChallenge, getDefaultJumpChallenge } from "@/lib/challenges";
 import { readGmLensOn } from "@/lib/gm-lens.server";
+import { toolsHref } from "@/lib/tools-routes";
 
 /** Shared shell width for the site header, footer, and page content. */
 export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
@@ -109,13 +110,22 @@ export async function SiteHeader({
             </Link>
             */}
             {seasonSlug ? (
-              <Link
-                href={`/challenges/${seasonSlug}/rules`}
-                className="pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
-              >
-                <RulesIcon className="h-4 w-4 text-ink/70" />
-                Rules / FAQ
-              </Link>
+              <>
+                <Link
+                  href={`/challenges/${seasonSlug}/rules`}
+                  className="pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
+                >
+                  <RulesIcon className="h-4 w-4 text-ink/70" />
+                  Rules / FAQ
+                </Link>
+                <Link
+                  href={toolsHref(seasonSlug, "guide")}
+                  className="pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
+                >
+                  <GuideIcon className="h-4 w-4 text-ink/70" />
+                  Game Guide
+                </Link>
+              </>
             ) : null}
             {challengeSlug && myTrainerId ? (
               <Link

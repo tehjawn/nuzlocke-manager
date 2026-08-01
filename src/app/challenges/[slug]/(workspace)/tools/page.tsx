@@ -24,6 +24,7 @@ type PageProps = {
     a?: string;
     b?: string;
     id?: string;
+    chapter?: string;
   }>;
 };
 

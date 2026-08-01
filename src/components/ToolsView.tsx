@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Frame } from "@/components/Frame";
+import { GameGuidePanel } from "@/components/GameGuidePanel";
 import { PokedexPanel } from "@/components/PokedexPanel";
 import { TrainerCompare } from "@/components/TrainerCompare";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
@@ -88,7 +89,7 @@ function ToolsDirectory({
         </p>
       </header>
 
-      <ul className="grid gap-3 sm:grid-cols-3">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {TOOLS_CATALOG.map((entry) => (
           <li key={entry.id}>
             <Link
@@ -151,7 +152,9 @@ function ToolWorkspace({
       ? `Look up species for ${challengeName} — stats, matchups, and counters from your Main + Reserve.`
       : tool === "chart"
         ? `Attack × defense multipliers for ${challengeName}.`
-        : `Side-by-side squads and badges for ${challengeName}.`;
+        : tool === "guide"
+          ? `What to do next in the story for ${challengeName}.`
+          : `Side-by-side squads and badges for ${challengeName}.`;
 
   return (
     <div className="space-y-6">
@@ -192,6 +195,14 @@ function ToolWorkspace({
           badges={badges}
           initialA={initialCompareA}
           initialB={initialCompareB}
+        />
+      ) : null}
+
+      {tool === "guide" ? (
+        <GameGuidePanel
+          slug={slug}
+          trainers={trainers}
+          myTrainerId={myTrainerId}
         />
       ) : null}
     </div>

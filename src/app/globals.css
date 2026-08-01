@@ -3458,9 +3458,102 @@ button:disabled,
   }
 }
 
+.fx-celebration--guide_chapter {
+  border-color: color-mix(in srgb, #3f9f6e 55%, var(--frame));
+  background: color-mix(in srgb, var(--surface) 82%, #3f9f6e);
+}
+
+.fx-celebration--guide_complete {
+  border-color: color-mix(in srgb, var(--accent-2) 60%, #3f9f6e);
+  background: color-mix(in srgb, var(--surface) 72%, var(--accent-2));
+  font-size: 1.05rem;
+  padding: 0.8rem 1.35rem;
+}
+
+.fx-celebration-stage--finale {
+  background: radial-gradient(
+    ellipse at 50% 18%,
+    color-mix(in srgb, var(--accent-2) 18%, transparent) 0%,
+    transparent 55%
+  );
+}
+
+.fx-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fx-confetti__piece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: hsl(var(--fx-confetti-hue) 78% 58%);
+  opacity: 0;
+  transform: translate3d(0, 0, 0) rotate(var(--fx-confetti-rotate));
+  animation: fx-confetti-fall var(--fx-confetti-duration) linear
+    var(--fx-confetti-delay) both;
+}
+
+.fx-confetti--guide_chapter .fx-confetti__piece {
+  width: 6px;
+  height: 9px;
+}
+
+.fx-confetti--guide_complete .fx-confetti__piece:nth-child(3n) {
+  width: 10px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.fx-confetti--guide_complete .fx-confetti__piece:nth-child(4n) {
+  width: 7px;
+  height: 14px;
+}
+
+@keyframes fx-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(var(--fx-confetti-rotate));
+  }
+  8% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--fx-confetti-drift), 105vh, 0)
+      rotate(calc(var(--fx-confetti-rotate) + 540deg));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fx-celebration,
-  .fx-celebration__burst {
+  .fx-celebration__burst,
+  .fx-confetti__piece {
     animation: none !important;
   }
 }
+
+/* Cleared Game Guide chapters — muted green chrome when collapsed */
+.guide-chapter--cleared .gba-frame-title {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #3f9f6e 22%, var(--surface-2)) 0%,
+    color-mix(in srgb, #3f9f6e 10%, var(--surface-2)) 100%
+  );
+  border-bottom-color: color-mix(in srgb, #3f9f6e 40%, var(--frame));
+  color: color-mix(in srgb, var(--ink) 82%, #1f5c3d);
+}
+
+[data-theme="dark"] .guide-chapter--cleared .gba-frame-title {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #3f9f6e 14%, var(--surface-2)) 0%,
+    color-mix(in srgb, #3f9f6e 6%, var(--surface-2)) 100%
+  );
+  color: color-mix(in srgb, var(--ink) 88%, #9ee0bc);
+}
+

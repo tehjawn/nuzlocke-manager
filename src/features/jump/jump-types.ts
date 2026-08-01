@@ -4,6 +4,7 @@ export type JumpCategory =
   | "pokemon"
   | "badge"
   | "rules"
+  | "guide"
   | "action";
 
 export type JumpResult = {

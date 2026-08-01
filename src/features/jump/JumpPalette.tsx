@@ -33,6 +33,7 @@ const CATEGORY_ORDER: JumpCategory[] = [
   "pokemon",
   "badge",
   "rules",
+  "guide",
   "action",
 ];
 
@@ -42,6 +43,7 @@ const CATEGORY_LABEL: Record<JumpCategory, string> = {
   pokemon: "Pokémon",
   badge: "Badges",
   rules: "Rules & FAQ",
+  guide: "Game Guide",
   action: "Actions",
 };
 

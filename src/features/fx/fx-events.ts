@@ -16,7 +16,10 @@ export type FxEvent =
   | "champion"
   | "member_joined"
   | "ui_success"
-  | "ui_error";
+  | "ui_error"
+  | "guide_step_checked"
+  | "guide_chapter_cleared"
+  | "guide_complete";
 
 export type SfxId =
   | "catch"
@@ -29,7 +32,10 @@ export type SfxId =
   | "champion"
   | "join"
   | "success"
-  | "error";
+  | "error"
+  | "guide_check"
+  | "guide_chapter"
+  | "guide_complete";
 
 export type CelebrationKind =
   | "catch"
@@ -37,7 +43,9 @@ export type CelebrationKind =
   | "badge"
   | "champion"
   | "lock"
-  | "join";
+  | "join"
+  | "guide_chapter"
+  | "guide_complete";
 
 export type FxRecipe = {
   /** One-shot SFX to play (if sfxEnabled). */
@@ -69,6 +77,17 @@ export const FX_CATALOG: Record<FxEvent, FxRecipe> = {
   member_joined: { sfx: "join", celebration: "join", celebrationMs: 1200 },
   ui_success: { sfx: "success" },
   ui_error: { sfx: "error" },
+  guide_step_checked: { sfx: "guide_check" },
+  guide_chapter_cleared: {
+    sfx: "guide_chapter",
+    celebration: "guide_chapter",
+    celebrationMs: 1800,
+  },
+  guide_complete: {
+    sfx: "guide_complete",
+    celebration: "guide_complete",
+    celebrationMs: 4200,
+  },
 };
 
 /** Public asset paths — short WAV one-shots in `public/sfx/`. */
@@ -84,4 +103,7 @@ export const SFX_SRC: Record<SfxId, string> = {
   join: "/sfx/join.wav",
   success: "/sfx/success.wav",
   error: "/sfx/error.wav",
+  guide_check: "/sfx/guide-check.wav",
+  guide_chapter: "/sfx/guide-chapter.wav",
+  guide_complete: "/sfx/guide-complete.wav",
 };

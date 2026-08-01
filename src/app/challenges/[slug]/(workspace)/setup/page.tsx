@@ -16,6 +16,7 @@ import {
   resolveSeasonWelcomeVideoUrl,
   resolveWelcomeVideoEmbed,
 } from "@/lib/welcome-video";
+import { toolsHref } from "@/lib/tools-routes";
 
 export const dynamic = "force-dynamic";
 
@@ -347,6 +348,23 @@ export default async function SetupPage({ params }: PageProps) {
           </Frame>
         </li>
       </ol>
+
+      <div className="mt-8">
+        <Frame title="Stuck? Use the Game Guide tool!">
+          <p className="text-sm leading-relaxed text-muted">
+            Not sure what to do next in Modern Emerald? The Game Guide walks you
+            through story gates and easy-to-miss beats (Steven, Rock Smash /
+            Rusturf, Dive, and more) with a checklist you can check off as you
+            go.
+          </p>
+          <Link
+            href={toolsHref(challenge.slug, "guide")}
+            className={`${CTA_PRIMARY} mt-4`}
+          >
+            Open Game Guide →
+          </Link>
+        </Frame>
+      </div>
     </>
   );
 }

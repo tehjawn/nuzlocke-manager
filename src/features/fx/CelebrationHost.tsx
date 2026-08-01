@@ -1,13 +1,19 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { CelebrationKind } from "@/features/fx/fx-events";
 import { prefersReducedMotion } from "@/features/fx/fx-prefs";
 
+type CelebrationOptions = {
+  /** Override particle count for confetti kinds. */
+  confettiCount?: number;
+};
+
 type CelebrationItem = {
   id: string;
   kind: CelebrationKind;
+  confettiCount?: number;
 };
 
 let items: CelebrationItem[] = [];
@@ -36,14 +42,24 @@ function dismissCelebration(id: string) {
 }
 
 /** Fire-and-forget celebration — same module-store pattern as snackbars. */
-export function pushCelebration(kind: CelebrationKind, durationMs = 1600) {
+export function pushCelebration(
+  kind: CelebrationKind,
+  durationMs = 1600,
+  options: CelebrationOptions = {},
+) {
   if (typeof window === "undefined") return;
   if (prefersReducedMotion()) return;
 
   clearCelebrationTimers();
 
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  items = [{ id, kind }];
+  items = [
+    {
+      id,
+      kind,
+      confettiCount: options.confettiCount,
+    },
+  ];
   emit();
   timers.set(
     id,
@@ -75,7 +91,46 @@ const KIND_LABEL: Record<CelebrationKind, string> = {
   champion: "Champion!",
   lock: "Squad locked!",
   join: "Welcome!",
+  guide_chapter: "Chapter clear!",
+  guide_complete: "Guide complete!",
 };
+
+const CONFETTI_KINDS = new Set<CelebrationKind>([
+  "guide_chapter",
+  "guide_complete",
+]);
+
+/** Deterministic particle seeds so SSR/client markup stays stable for a given id. */
+function confettiPieces(
+  kind: CelebrationKind,
+  seed: string,
+  confettiCount?: number,
+) {
+  const count =
+    confettiCount ??
+    (kind === "guide_complete" ? 48 : 18);
+  const pieces = [];
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  for (let i = 0; i < count; i += 1) {
+    hash = (hash * 1664525 + 1013904223) >>> 0;
+    const left = (hash % 1000) / 10;
+    hash = (hash * 1664525 + 1013904223) >>> 0;
+    const delay = (hash % 450) / 1000;
+    hash = (hash * 1664525 + 1013904223) >>> 0;
+    const duration = 1.1 + (hash % 900) / 1000;
+    hash = (hash * 1664525 + 1013904223) >>> 0;
+    const drift = -40 + (hash % 80);
+    hash = (hash * 1664525 + 1013904223) >>> 0;
+    const hue = hash % 360;
+    hash = (hash * 1664525 + 1013904223) >>> 0;
+    const rotate = hash % 360;
+    pieces.push({ left, delay, duration, drift, hue, rotate });
+  }
+  return pieces;
+}
 
 /**
  * Mount once near the app root (next to SnackbarHost).
@@ -92,15 +147,44 @@ export function CelebrationHost() {
     return null;
   }
 
-  const active = celebrations[0];
+  const active = celebrations[0]!;
+  const showConfetti = CONFETTI_KINDS.has(active.kind);
+  const pieces = showConfetti
+    ? confettiPieces(active.kind, active.id, active.confettiCount)
+    : [];
 
   return createPortal(
     <div
-      className="pointer-events-none fixed inset-0 z-[115] flex items-start justify-center pt-[12vh]"
+      className={`pointer-events-none fixed inset-0 z-[115] flex items-start justify-center pt-[12vh] ${
+        active.kind === "guide_complete" ? "fx-celebration-stage--finale" : ""
+      }`}
       aria-live="polite"
       aria-relevant="additions"
       data-fx-celebration={active.kind}
     >
+      {showConfetti ? (
+        <div
+          className={`fx-confetti fx-confetti--${active.kind}`}
+          aria-hidden
+        >
+          {pieces.map((piece, index) => (
+            <span
+              key={index}
+              className="fx-confetti__piece"
+              style={
+                {
+                  left: `${piece.left}%`,
+                  "--fx-confetti-delay": `${piece.delay}s`,
+                  "--fx-confetti-duration": `${piece.duration}s`,
+                  "--fx-confetti-drift": `${piece.drift}px`,
+                  "--fx-confetti-hue": String(piece.hue),
+                  "--fx-confetti-rotate": `${piece.rotate}deg`,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </div>
+      ) : null}
       <div
         key={active.id}
         role="status"
