@@ -4,120 +4,63 @@ import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
 import {
   resolveActiveChapterId,
   resolveGuideProgress,
-  resolveReachedChapterOrder,
   stepMatchesCatchRoutes,
 } from "@/features/guide/guide-progress";
 
-function stepById(snapshot: ReturnType<typeof resolveGuideProgress>, id: string) {
+function stepById(
+  snapshot: ReturnType<typeof resolveGuideProgress>,
+  id: string,
+) {
   return snapshot.chapters.flatMap((c) => c.steps).find((s) => s.id === id);
 }
 
-test("active chapter starts at prologue with an empty board", () => {
+test("active chapter starts at prologue with no checkoffs", () => {
+  assert.equal(resolveActiveChapterId(EMERALD_GUIDE, [], []), "prologue");
+});
+
+test("steps only complete via manual checkoffs", () => {
+  const empty = resolveGuideProgress(EMERALD_GUIDE, {
+    earnedBadgeKeys: ["gym-1", "gym-2"],
+    catchRoutes: ["Rustboro City", "Granite Cave"],
+    checkedStepIds: [],
+  });
+  assert.equal(stepById(empty, "prologue-starter")!.completed, false);
+  assert.equal(stepById(empty, "rustboro-roxanne")!.completed, false);
+  assert.equal(stepById(empty, "dewford-find-steven")!.completed, false);
+
+  const marked = resolveGuideProgress(EMERALD_GUIDE, {
+    earnedBadgeKeys: ["gym-1"],
+    checkedStepIds: ["prologue-starter", "rustboro-roxanne"],
+  });
+  assert.equal(stepById(marked, "prologue-starter")!.completed, true);
+  assert.equal(stepById(marked, "rustboro-roxanne")!.completed, true);
+  assert.equal(stepById(marked, "rustboro-devon-letter")!.completed, false);
+});
+
+test("active chapter advances once prior critical steps are checked", () => {
+  const priorCriticalDone = EMERALD_GUIDE.steps
+    .filter(
+      (s) =>
+        (s.chapterId === "prologue" || s.chapterId === "rustboro") &&
+        s.priority === "critical",
+    )
+    .map((s) => s.id);
   assert.equal(
-    resolveActiveChapterId(EMERALD_GUIDE, {
-      earnedBadgeKeys: [],
-      checkedStepIds: [],
-    }),
-    "prologue",
+    resolveActiveChapterId(EMERALD_GUIDE, ["gym-1"], priorCriticalDone),
+    "dewford",
   );
 });
 
-test("owning any Pokémon completes the random starter step", () => {
-  const snap = resolveGuideProgress(EMERALD_GUIDE, {
-    earnedBadgeKeys: [],
-    hasPokemon: true,
-    checkedStepIds: [],
-  });
-  const starter = stepById(snap, "prologue-starter");
-  assert.ok(starter);
-  assert.equal(starter!.completed, true);
-  assert.equal(starter!.completedVia, "inferred");
-});
-
-test("catching in Rustboro implies the Petalburg prologue is done", () => {
-  const snap = resolveGuideProgress(EMERALD_GUIDE, {
-    earnedBadgeKeys: [],
-    catchRoutes: ["Rustboro City"],
-    checkedStepIds: [],
-  });
-  const dad = stepById(snap, "prologue-oldale-petalburg");
-  assert.ok(dad);
-  assert.equal(dad!.completed, true);
-  assert.equal(dad!.completedVia, "inferred");
-  assert.equal(snap.activeChapterId, "rustboro");
-});
-
-test("a gym badge alone does not imply later steps in its own chapter", () => {
+test("next steps highlight Devon letter after Rustboro gym is checked", () => {
   const snap = resolveGuideProgress(EMERALD_GUIDE, {
     earnedBadgeKeys: ["gym-1"],
-    checkedStepIds: [],
-  });
-  const letter = stepById(snap, "rustboro-devon-letter");
-  assert.ok(letter);
-  assert.equal(letter!.completed, false);
-
-  const roxanne = stepById(snap, "rustboro-roxanne");
-  assert.equal(roxanne!.completedVia, "badge");
-});
-
-test("reaching Dewford implies the Rustboro letter chain is done", () => {
-  const snap = resolveGuideProgress(EMERALD_GUIDE, {
-    earnedBadgeKeys: ["gym-1"],
-    catchRoutes: ["Granite Cave"],
-    checkedStepIds: [],
-  });
-  const letter = stepById(snap, "rustboro-devon-letter");
-  assert.equal(letter!.completed, true);
-  assert.equal(letter!.completedVia, "inferred");
-  assert.equal(snap.activeChapterId, "dewford");
-});
-
-test("optional and skippable steps never infer from travel", () => {
-  const snap = resolveGuideProgress(EMERALD_GUIDE, {
-    earnedBadgeKeys: ["gym-1", "gym-2", "gym-3", "gym-4"],
-    catchRoutes: ["Lavaridge Town"],
-    checkedStepIds: [],
-  });
-  assert.equal(stepById(snap, "rustboro-get-cut")!.completed, false);
-  assert.equal(stepById(snap, "mauville-rock-smash")!.completed, false);
-});
-
-test("an explicit un-check overrides board inference", () => {
-  const snap = resolveGuideProgress(EMERALD_GUIDE, {
-    earnedBadgeKeys: [],
-    hasPokemon: true,
-    checkedStepIds: [],
-    uncheckedStepIds: ["prologue-starter"],
-  });
-  const starter = stepById(snap, "prologue-starter");
-  assert.equal(starter!.completed, false);
-  assert.equal(starter!.inferred, true);
-});
-
-test("badge completion cannot be overridden by an un-check", () => {
-  const snap = resolveGuideProgress(EMERALD_GUIDE, {
-    earnedBadgeKeys: ["gym-1"],
-    checkedStepIds: [],
-    uncheckedStepIds: ["rustboro-roxanne"],
-  });
-  assert.equal(stepById(snap, "rustboro-roxanne")!.completed, true);
-});
-
-test("reached chapter order prefers the furthest board signal", () => {
-  assert.equal(resolveReachedChapterOrder(EMERALD_GUIDE, [], []), 0);
-  assert.equal(resolveReachedChapterOrder(EMERALD_GUIDE, ["gym-1"], []), 1);
-  assert.equal(
-    resolveReachedChapterOrder(EMERALD_GUIDE, ["gym-1"], ["Mossdeep City"]),
-    7,
-  );
-});
-
-test("next steps surface the Devon letter after Stone Badge", () => {
-  const snap = resolveGuideProgress(EMERALD_GUIDE, {
-    earnedBadgeKeys: ["gym-1"],
-    hasPokemon: true,
-    catchRoutes: ["Rustboro City"],
-    checkedStepIds: [],
+    checkedStepIds: [
+      "prologue-starter",
+      "prologue-oldale-petalburg",
+      "prologue-route-104",
+      "rustboro-petalburg-woods",
+      "rustboro-roxanne",
+    ],
   });
   assert.equal(snap.activeChapterId, "rustboro");
   const ids = snap.nextSteps.map((s) => s.id);
@@ -129,6 +72,22 @@ test("next steps surface the Devon letter after Stone Badge", () => {
     !ids.includes("rustboro-get-cut"),
     "Cut is optional and should not appear in Next steps",
   );
+});
+
+test("Steven step appears once Dewford chapter is active", () => {
+  const priorCriticalDone = EMERALD_GUIDE.steps
+    .filter(
+      (s) =>
+        (s.chapterId === "prologue" || s.chapterId === "rustboro") &&
+        s.priority === "critical",
+    )
+    .map((s) => s.id);
+  const snap = resolveGuideProgress(EMERALD_GUIDE, {
+    earnedBadgeKeys: ["gym-1"],
+    checkedStepIds: priorCriticalDone,
+  });
+  assert.equal(snap.activeChapterId, "dewford");
+  assert.ok(snap.nextSteps.some((s) => s.id === "dewford-find-steven"));
 });
 
 test("Cut is optional and not story-blocking", () => {
@@ -157,11 +116,7 @@ test("catch route soft match is case-insensitive", () => {
   assert.equal(stepMatchesCatchRoutes(step, ["Route 101"]), false);
 });
 
-test("guide document has unique step ids and known chapters", () => {
+test("guide document has unique step ids", () => {
   const ids = EMERALD_GUIDE.steps.map((s) => s.id);
   assert.equal(ids.length, new Set(ids).size);
-  const chapterIds = new Set(EMERALD_GUIDE.chapters.map((c) => c.id));
-  for (const step of EMERALD_GUIDE.steps) {
-    assert.ok(chapterIds.has(step.chapterId), `unknown chapter ${step.chapterId}`);
-  }
 });

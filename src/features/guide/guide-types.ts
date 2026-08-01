@@ -16,15 +16,6 @@ export type GuideStep = {
   requiresBadges?: string[];
   /** Prior step ids that should be done first. */
   requiresSteps?: string[];
-  /** When this badge is earned, treat the step as done. */
-  autoCompleteWhenBadge?: string;
-  /** Owning any Pokémon proves this step happened (e.g. the starter). */
-  autoCompleteWhenHasPokemon?: boolean;
-  /**
-   * Never infer this step from travel — it is skippable content the player
-   * can walk past (e.g. Rusturf / Strength).
-   */
-  skipInference?: boolean;
   /** Display-only gates until bag/HM save parse exists. */
   hms?: string[];
   keyItems?: string[];
@@ -42,12 +33,9 @@ export type GuideChapter = {
    * Empty = available from the start of the run.
    */
   requiresBadges: string[];
-  /** Earning this badge clears the chapter as “past”. */
+  /** Earning this badge marks the chapter as past (soft chapter nav only). */
   clearsWithBadge?: string;
-  /**
-   * Places the player physically visits during this chapter. A claimed catch
-   * route here proves every earlier chapter was completed.
-   */
+  /** Places associated with this chapter (soft “near route” hints). */
   locations: string[];
   sortOrder: number;
 };
@@ -60,25 +48,16 @@ export type GuideDocument = {
 };
 
 export type GuideProgressInput = {
+  /** Soft chapter gating only — does not auto-complete steps. */
   earnedBadgeKeys: readonly string[];
-  /** Catch / claim routes from the board — proves where the player has been. */
+  /** Soft “near a claimed route” hints only. */
   catchRoutes?: readonly string[];
-  /** Board has at least one Pokémon (party, box, or graveyard). */
-  hasPokemon?: boolean;
-  /** Manually completed step ids. */
+  /** Manually completed step ids (local checkoffs). */
   checkedStepIds: ReadonlySet<string> | readonly string[];
-  /** Steps the player explicitly un-checked, overriding inference. */
-  uncheckedStepIds?: ReadonlySet<string> | readonly string[];
 };
-
-export type GuideStepCompletionSource = "manual" | "badge" | "inferred";
 
 export type ResolvedGuideStep = GuideStep & {
   completed: boolean;
-  /** Why it counts as completed. */
-  completedVia: GuideStepCompletionSource | null;
-  /** Board-derived completion the player can override by clicking. */
-  inferred: boolean;
   blockedBySteps: string[];
   chapterTitle: string;
 };

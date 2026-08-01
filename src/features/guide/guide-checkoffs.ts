@@ -1,6 +1,6 @@
 /**
  * Per-season Game Guide checkoffs.
- * localStorage + custom event + useSyncExternalStore (same idea as fx-prefs).
+ * Stored in localStorage only (not the DB) — keyed by season + trainer.
  */
 
 export const GUIDE_CHECKOFFS_CHANGE_EVENT = "nuzlocke-guide-checkoffs-change";
@@ -8,13 +8,10 @@ export const GUIDE_CHECKOFFS_CHANGE_EVENT = "nuzlocke-guide-checkoffs-change";
 export type GuideCheckoffs = {
   /** Manually completed guide step ids. */
   checkedStepIds: string[];
-  /** Steps the player un-checked, overriding board-derived completion. */
-  uncheckedStepIds: string[];
 };
 
 export const EMPTY_GUIDE_CHECKOFFS: GuideCheckoffs = {
   checkedStepIds: [],
-  uncheckedStepIds: [],
 };
 
 const cacheByKey = new Map<string, GuideCheckoffs>();
@@ -27,16 +24,11 @@ export function guideCheckoffsStorageKey(
   return `nuzlocke-guide-checkoffs:${challengeSlug}:${trainer}`;
 }
 
-function uniqueStrings(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.filter((id): id is string => typeof id === "string"))];
-}
-
 function normalize(raw: Partial<GuideCheckoffs> | null | undefined): GuideCheckoffs {
-  return {
-    checkedStepIds: uniqueStrings(raw?.checkedStepIds),
-    uncheckedStepIds: uniqueStrings(raw?.uncheckedStepIds),
-  };
+  const ids = Array.isArray(raw?.checkedStepIds)
+    ? raw.checkedStepIds.filter((id): id is string => typeof id === "string")
+    : [];
+  return { checkedStepIds: [...new Set(ids)] };
 }
 
 function loadFromStorage(key: string): GuideCheckoffs {
@@ -71,10 +63,7 @@ export function writeGuideCheckoffs(
   const stable = normalize(next);
   cacheByKey.set(key, stable);
   try {
-    const isEmpty =
-      stable.checkedStepIds.length === 0 &&
-      stable.uncheckedStepIds.length === 0;
-    if (isEmpty) {
+    if (stable.checkedStepIds.length === 0) {
       localStorage.removeItem(key);
     } else {
       localStorage.setItem(key, JSON.stringify(stable));
@@ -86,10 +75,6 @@ export function writeGuideCheckoffs(
   return stable;
 }
 
-/**
- * Record an explicit choice for a step. Both sets are written so a manual
- * choice always beats board-derived inference in either direction.
- */
 export function setGuideStepChecked(
   key: string,
   stepId: string,
@@ -97,19 +82,10 @@ export function setGuideStepChecked(
 ): GuideCheckoffs {
   const current = readGuideCheckoffs(key);
   const checkedSet = new Set(current.checkedStepIds);
-  const uncheckedSet = new Set(current.uncheckedStepIds);
-
-  if (checked) {
-    checkedSet.add(stepId);
-    uncheckedSet.delete(stepId);
-  } else {
-    checkedSet.delete(stepId);
-    uncheckedSet.add(stepId);
-  }
-
+  if (checked) checkedSet.add(stepId);
+  else checkedSet.delete(stepId);
   return writeGuideCheckoffs(key, {
     checkedStepIds: [...checkedSet],
-    uncheckedStepIds: [...uncheckedSet],
   });
 }
 

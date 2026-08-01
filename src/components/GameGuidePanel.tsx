@@ -126,11 +126,9 @@ function GuideMeter({
 function StepMarker({
   index,
   checked,
-  locked,
 }: {
   index: number;
   checked: boolean;
-  locked: boolean;
 }) {
   return (
     <span
@@ -138,9 +136,7 @@ function StepMarker({
       className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border text-xs font-bold tabular-nums transition-colors ${
         checked
           ? "border-interactive bg-interactive text-[var(--surface)]"
-          : locked
-            ? "border-frame/70 bg-surface-2 text-muted"
-            : "border-frame bg-surface-2 text-muted group-hover:border-interactive group-hover:bg-interactive-soft group-hover:text-interactive"
+          : "border-frame bg-surface-2 text-muted group-hover:border-interactive group-hover:bg-interactive-soft group-hover:text-interactive"
       }`}
     >
       {checked ? "✓" : index}
@@ -152,9 +148,6 @@ function StepChips({ step }: { step: ResolvedGuideStep }) {
   const chips: string[] = [];
   if (step.priority === "critical") chips.push("Required");
   if (step.priority === "optional") chips.push("Optional");
-  if (step.completedVia === "badge") chips.push("From badge");
-  if (step.completedVia === "inferred") chips.push("From your board");
-
   if (chips.length === 0) return null;
 
   return (
@@ -191,7 +184,6 @@ function StepRow({
   onToggleExpand: () => void;
 }) {
   const done = step.completed;
-  const badgeLocked = step.completedVia === "badge";
   const hasDetails = Boolean(
     step.detail ||
       step.hms?.length ||
@@ -211,20 +203,11 @@ function StepRow({
         type="button"
         role="checkbox"
         aria-checked={done}
-        disabled={badgeLocked}
         onClick={onToggle}
-        title={
-          badgeLocked
-            ? "Completed automatically from your badge case"
-            : done
-              ? "Mark as not done"
-              : "Mark as done"
-        }
-        className={`flex w-full items-start gap-3 p-3.5 text-left transition-colors focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-interactive ${
-          badgeLocked ? "cursor-default" : "hover:bg-interactive-soft/30"
-        }`}
+        title={done ? "Mark as not done" : "Mark as done"}
+        className="flex w-full cursor-pointer items-start gap-3 p-3.5 text-left transition-colors hover:bg-interactive-soft/30 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-interactive"
       >
-        <StepMarker index={index} checked={done} locked={badgeLocked} />
+        <StepMarker index={index} checked={done} />
 
         <span className="min-w-0 flex-1">
           <span
@@ -247,13 +230,7 @@ function StepRow({
           </span>
         </span>
 
-        <span
-          className={`hidden shrink-0 self-center text-[0.7rem] font-semibold transition-opacity sm:block ${
-            badgeLocked
-              ? "opacity-0"
-              : "text-interactive opacity-0 group-hover:opacity-100"
-          }`}
-        >
+        <span className="hidden shrink-0 self-center text-[0.7rem] font-semibold text-interactive opacity-0 transition-opacity group-hover:opacity-100 sm:block">
           {done ? "Undo" : "Mark done"}
         </span>
       </button>
@@ -337,11 +314,9 @@ export function GameGuidePanel({
       resolveGuideProgress(EMERALD_GUIDE, {
         earnedBadgeKeys: selectedTrainer?.earnedBadgeKeys ?? [],
         catchRoutes,
-        hasPokemon: (selectedTrainer?.pokemon.length ?? 0) > 0,
         checkedStepIds: checkoffs.checkedStepIds,
-        uncheckedStepIds: checkoffs.uncheckedStepIds,
       }),
-    [selectedTrainer, catchRoutes, checkoffs],
+    [selectedTrainer, catchRoutes, checkoffs.checkedStepIds],
   );
 
   const overallCounts = useMemo(
@@ -367,7 +342,6 @@ export function GameGuidePanel({
   });
 
   function toggleStep(step: ResolvedGuideStep) {
-    if (step.completedVia === "badge") return;
     setGuideStepChecked(storageKey, step.id, !step.completed);
   }
 
@@ -406,8 +380,9 @@ export function GameGuidePanel({
       <Frame title="Overall progress">
         <GuideMeter label={EMERALD_GUIDE.gameLabel} counts={overallCounts} />
         <p className="mt-2.5 text-xs leading-relaxed text-muted">
-          Steps auto-check from your badges, encounters, and party — click any
-          row to correct it. Optional pickups like Cut don’t affect the bar.
+          Check off steps as you complete them — progress is saved on this
+          device for the selected trainer. Optional pickups like Cut don’t
+          affect the bar.
         </p>
       </Frame>
 
