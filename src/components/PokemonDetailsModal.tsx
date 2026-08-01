@@ -5,6 +5,7 @@ import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
+import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
@@ -262,9 +263,15 @@ export function PokemonDetailsModal({
         </div>
 
         {pokemon.causeOfDeath ? (
-          <p className="border-t border-frame/20 pt-3 text-sm leading-relaxed text-muted italic">
-            {pokemon.causeOfDeath}
-          </p>
+          <div className="border-t border-frame/20 pt-3">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+              <TombstoneIcon className="h-3.5 w-3.5 shrink-0" />
+              Cause of death
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-muted italic">
+              {pokemon.causeOfDeath}
+            </p>
+          </div>
         ) : null}
       </div>
     </Modal>

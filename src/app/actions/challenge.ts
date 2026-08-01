@@ -11,6 +11,7 @@ import {
   requireTrainerEditAccess,
   requireUserId,
 } from "@/lib/permissions";
+import { readGmLensOn } from "@/lib/gm-lens.server";
 import {
   AccountUpdateSchema,
   PokemonEntryInputSchema,
@@ -36,6 +37,16 @@ import {
   type ActivityCoalesceCategory,
   type ActivityCoalesceMeta,
 } from "@/lib/activity-coalesce";
+import {
+  createInitialActiveRunInTx,
+  closeActiveRunAndStartNextInTx,
+  ensureActiveRunInTx,
+  setActiveRunReviveInTx,
+} from "@/lib/trainer-runs";
+import {
+  currentRunNumber,
+  memorialRowsAfterWipe,
+} from "@/lib/wipe-memorial";
 import {
   canUseCustomTextureUrl,
   customTextureKey,
@@ -459,10 +470,29 @@ export async function claimTrainerAction(input: {
       };
     }
 
-    await prisma.trainerProfile.update({
-      where: { id: trainer.id },
-      data: { userId },
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (existing) {
+          // One claimed board per user: GM reassignment frees the previous claim.
+          await tx.trainerProfile.update({
+            where: { id: existing.id },
+            data: { userId: null },
+          });
+        }
+        await tx.trainerProfile.update({
+          where: { id: trainer.id },
+          data: { userId },
+        });
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002"
+      ) {
+        return { ok: false, error: "Trainer already claimed" };
+      }
+      throw e;
+    }
 
     await logActivity({
       challengeId: trainer.challengeId,
@@ -542,6 +572,7 @@ export async function updateTrainerBoardAction(input: {
       realName?: string | null;
       handle?: string;
     } = {};
+    let reviveTouched = false;
 
     if (updates.statusText !== undefined) data.statusText = updates.statusText;
     if (updates.statusEmoji !== undefined) data.statusEmoji = updates.statusEmoji;
@@ -652,7 +683,17 @@ export async function updateTrainerBoardAction(input: {
 
     if (updates.reviveUsed !== undefined) {
       if (updates.reviveUsed && !trainer.reviveUsed) {
-        data.reviveUsed = true;
+        await prisma.$transaction(async (tx) => {
+          await setActiveRunReviveInTx(
+            tx,
+            {
+              id: trainer.id,
+              wipeCount: trainer.wipeCount,
+              activeRunId: trainer.activeRunId,
+            },
+            true,
+          );
+        });
         await logActivity({
           challengeId: trainer.challengeId,
           actorId: userId,
@@ -660,8 +701,20 @@ export async function updateTrainerBoardAction(input: {
           type: "REVIVE_USED",
           message: `${data.handle ?? trainer.handle} used their Revive Token`,
         });
+        delete data.reviveUsed;
+        reviveTouched = true;
       } else if (!updates.reviveUsed && trainer.reviveUsed && access.isGm) {
-        data.reviveUsed = false;
+        await prisma.$transaction(async (tx) => {
+          await setActiveRunReviveInTx(
+            tx,
+            {
+              id: trainer.id,
+              wipeCount: trainer.wipeCount,
+              activeRunId: trainer.activeRunId,
+            },
+            false,
+          );
+        });
         await logActivity({
           challengeId: trainer.challengeId,
           actorId: userId,
@@ -669,12 +722,12 @@ export async function updateTrainerBoardAction(input: {
           type: "REVIVE_RESET",
           message: `GM reset Revive Token for ${data.handle ?? trainer.handle}`,
         });
+        delete data.reviveUsed;
+        reviveTouched = true;
       } else if (updates.reviveUsed === trainer.reviveUsed) {
         // no-op
       } else if (!access.isGm && !updates.reviveUsed) {
         return { ok: false, error: "Only a GM can reset a used Revive Token" };
-      } else {
-        data.reviveUsed = updates.reviveUsed;
       }
     }
 
@@ -698,14 +751,16 @@ export async function updateTrainerBoardAction(input: {
       });
     }
 
-    if (Object.keys(data).length === 0) {
+    if (Object.keys(data).length === 0 && !reviveTouched) {
       return { ok: true, message: "Nothing to update" };
     }
 
-    await prisma.trainerProfile.update({
-      where: { id: trainer.id },
-      data,
-    });
+    if (Object.keys(data).length > 0) {
+      await prisma.trainerProfile.update({
+        where: { id: trainer.id },
+        data,
+      });
+    }
 
     // Soft refresh: league cards + this trainer. Client keeps optimistic drafts.
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
@@ -715,8 +770,8 @@ export async function updateTrainerBoardAction(input: {
   }
 }
 
-/** Restart the living run: clear playable slots + badges, keep memorial/revive
- *  and player identity (handle, avatar, backdrops, status). */
+/** Restart the living run: memorializes Main/Reserve, clears Encountered +
+ *  badges, closes the active TrainerRun and opens the next. */
 export async function recordWipeAction(input: {
   trainerId: string;
 }): Promise<ActionResult> {
@@ -728,18 +783,87 @@ export async function recordWipeAction(input: {
     let wipeMessage = "";
 
     await prisma.$transaction(async (tx) => {
+      const activeBefore = await ensureActiveRunInTx(tx, {
+        id: trainer.id,
+        wipeCount: trainer.wipeCount,
+        activeRunId: trainer.activeRunId,
+      });
+      const earnedRows = await tx.badgeProgress.findMany({
+        where: { trainerId: trainer.id, earned: true },
+        select: { badge: { select: { key: true } } },
+      });
+      const earnedBadgeKeys = earnedRows.map((row) => row.badge.key);
+
       await captureTrainerBoardSnapshotInTx(tx, {
         challengeId: trainer.challengeId,
         trainerId: trainer.id,
         actorId: userId,
         trigger: "WIPE",
+        runId: activeBefore.id,
       });
-      await tx.pokemonEntry.deleteMany({
-        where: {
-          trainerId: trainer.id,
-          slot: { in: ["MAIN", "RESERVE", "ENCOUNTERED"] },
+
+      const { closed, next } = await closeActiveRunAndStartNextInTx(
+        tx,
+        {
+          id: trainer.id,
+          wipeCount: trainer.wipeCount,
+          activeRunId: activeBefore.id,
+        },
+        "WIPE",
+        {
+          reviveUsed: trainer.reviveUsed,
+          earnedBadgeKeys,
+        },
+      );
+      const nextWipe = closed.runNumber;
+
+      const board = await tx.pokemonEntry.findMany({
+        where: { trainerId: trainer.id },
+        select: {
+          id: true,
+          slot: true,
+          partyIndex: true,
+          causeOfDeath: true,
+          diedOnRun: true,
+          runId: true,
         },
       });
+      const after = memorialRowsAfterWipe(board, nextWipe, closed.id);
+      const keepIds = new Set(after.map((p) => p.id));
+      const byId = new Map(after.map((p) => [p.id, p]));
+      const dropIds = board
+        .filter((row) => !keepIds.has(row.id))
+        .map((row) => row.id);
+
+      for (const row of board) {
+        const memorial = byId.get(row.id);
+        if (!memorial) continue;
+        if (
+          row.slot === memorial.slot &&
+          row.partyIndex === memorial.partyIndex &&
+          row.causeOfDeath === memorial.causeOfDeath &&
+          row.diedOnRun === memorial.diedOnRun &&
+          row.runId === memorial.runId
+        ) {
+          continue;
+        }
+        await tx.pokemonEntry.update({
+          where: { id: row.id },
+          data: {
+            slot: memorial.slot,
+            partyIndex: memorial.partyIndex,
+            causeOfDeath: memorial.causeOfDeath,
+            diedOnRun: memorial.diedOnRun,
+            runId: memorial.runId,
+          },
+        });
+      }
+
+      if (dropIds.length > 0) {
+        await tx.pokemonEntry.deleteMany({
+          where: { id: { in: dropIds } },
+        });
+      }
       await tx.badgeProgress.updateMany({
         where: { trainerId: trainer.id },
         data: { earned: false, earnedAt: null },
@@ -750,11 +874,19 @@ export async function recordWipeAction(input: {
           wipeCount: { increment: 1 },
           // Living board is empty — unlock so the run can be rebuilt.
           mainSquadLocked: false,
+          activeRunId: next.id,
+          // Fresh run gets a fresh revive token.
+          reviveUsed: false,
         },
         select: { wipeCount: true },
       });
       wipeCount = updated.wipeCount;
-      wipeMessage = `${trainer.handle} restarted their run (wipe #${wipeCount})`;
+      const memorializedCount =
+        after.length - board.filter((p) => p.slot === "GRAVEYARD").length;
+      wipeMessage =
+        memorializedCount > 0
+          ? `${trainer.handle} restarted their run (wipe #${wipeCount}) — ${memorializedCount} partner${memorializedCount === 1 ? "" : "s"} memorialized`
+          : `${trainer.handle} restarted their run (wipe #${wipeCount})`;
       await tx.activityEvent.create({
         data: {
           challengeId: trainer.challengeId,
@@ -792,15 +924,20 @@ async function hardResetTrainerInTx(
   tx: TxClient,
   trainerId: string,
 ): Promise<void> {
+  await tx.trainerProfile.update({
+    where: { id: trainerId },
+    data: { activeRunId: null },
+  });
   await tx.pokemonEntry.deleteMany({ where: { trainerId } });
+  await tx.trainerRun.deleteMany({ where: { trainerId } });
   await tx.badgeProgress.updateMany({
     where: { trainerId },
     data: { earned: false, earnedAt: null },
   });
+  await createInitialActiveRunInTx(tx, trainerId);
   await tx.trainerProfile.update({
     where: { id: trainerId },
     data: {
-      wipeCount: 0,
       reviveUsed: false,
       mainSquadLocked: false,
     },
@@ -926,19 +1063,43 @@ export type ListTrainerBoardSnapshotsResult =
   | { ok: true; snapshots: TrainerBoardSnapshotSummary[] }
   | { ok: false; error: string };
 
-/** GM-only: list board history for a trainer (newest first). */
+async function requireTrainerHistoryAccess(trainerId: string) {
+  const prisma = getPrisma();
+  const trainer = await prisma.trainerProfile.findUnique({
+    where: { id: trainerId },
+    select: {
+      id: true,
+      challengeId: true,
+      userId: true,
+      handle: true,
+      challenge: { select: { slug: true } },
+    },
+  });
+  if (!trainer) throw new Error("Trainer not found");
+
+  const access = await getAccessForChallenge(trainer.challengeId);
+  if (!access) throw new Error("Sign in required");
+
+  if (access.ownsTrainer(trainer.userId)) {
+    return { trainer, access, isGm: access.isGm };
+  }
+
+  if (!access.isGm) {
+    throw new Error("You cannot view this trainer's history");
+  }
+  if (!(await readGmLensOn(trainer.challenge.slug))) {
+    throw new Error("Turn on GM view to browse another trainer's history");
+  }
+  return { trainer, access, isGm: true };
+}
+
+/** Owner or GM (with lens): list board history for a trainer (newest first). */
 export async function listTrainerBoardSnapshotsAction(input: {
   trainerId: string;
 }): Promise<ListTrainerBoardSnapshotsResult> {
   try {
+    const { trainer } = await requireTrainerHistoryAccess(input.trainerId);
     const prisma = getPrisma();
-    const trainer = await prisma.trainerProfile.findUnique({
-      where: { id: input.trainerId },
-      select: { id: true, challengeId: true },
-    });
-    if (!trainer) return { ok: false, error: "Trainer not found" };
-
-    await requireGm(trainer.challengeId);
 
     const rows = await prisma.trainerBoardSnapshot.findMany({
       where: { trainerId: trainer.id },
@@ -950,6 +1111,7 @@ export async function listTrainerBoardSnapshotsAction(input: {
         label: true,
         payload: true,
         createdAt: true,
+        runId: true,
       },
     });
 
@@ -965,6 +1127,7 @@ export async function listTrainerBoardSnapshotsAction(input: {
         createdAt: row.createdAt.toISOString(),
         wipeCount: payload.wipeCount,
         summary: buildSnapshotSummaryLine(payload),
+        runId: row.runId,
       });
     }
 
@@ -973,6 +1136,121 @@ export async function listTrainerBoardSnapshotsAction(input: {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Could not load board history",
+    };
+  }
+}
+
+export type TrainerHistoryRunSummary = {
+  id: string;
+  runNumber: number;
+  status: "ACTIVE" | "CLOSED";
+  startedAt: string;
+  endedAt: string | null;
+  endReason: "WIPE" | "GM_RESET" | null;
+  reviveUsed: boolean;
+  earnedBadgeKeys: string[];
+  snapshots: TrainerBoardSnapshotSummary[];
+};
+
+export type ListTrainerHistoryResult =
+  | { ok: true; runs: TrainerHistoryRunSummary[]; canClearSnapshots: boolean }
+  | { ok: false; error: string };
+
+/** Owner or GM (with lens): runs accordion data + nested board snapshots. */
+export async function listTrainerHistoryAction(input: {
+  trainerId: string;
+}): Promise<ListTrainerHistoryResult> {
+  try {
+    const { trainer, isGm } = await requireTrainerHistoryAccess(input.trainerId);
+    const prisma = getPrisma();
+
+    const [runs, snapRows] = await Promise.all([
+      prisma.trainerRun.findMany({
+        where: { trainerId: trainer.id },
+        orderBy: { runNumber: "desc" },
+        select: {
+          id: true,
+          runNumber: true,
+          status: true,
+          startedAt: true,
+          endedAt: true,
+          endReason: true,
+          reviveUsed: true,
+          earnedBadgeKeys: true,
+        },
+      }),
+      prisma.trainerBoardSnapshot.findMany({
+        where: { trainerId: trainer.id },
+        orderBy: { createdAt: "desc" },
+        take: 80,
+        select: {
+          id: true,
+          trigger: true,
+          label: true,
+          payload: true,
+          createdAt: true,
+          runId: true,
+        },
+      }),
+    ]);
+
+    const snapsByRun = new Map<string, TrainerBoardSnapshotSummary[]>();
+    const orphanSnaps: TrainerBoardSnapshotSummary[] = [];
+    for (const row of snapRows) {
+      const payload = parseSnapshotPayload(row.payload);
+      if (!payload) continue;
+      const summary: TrainerBoardSnapshotSummary = {
+        id: row.id,
+        trigger: row.trigger as BoardSnapshotTrigger,
+        label: row.label,
+        createdAt: row.createdAt.toISOString(),
+        wipeCount: payload.wipeCount,
+        summary: buildSnapshotSummaryLine(payload),
+        runId: row.runId,
+      };
+      if (row.runId) {
+        const list = snapsByRun.get(row.runId) ?? [];
+        list.push(summary);
+        snapsByRun.set(row.runId, list);
+      } else {
+        orphanSnaps.push(summary);
+      }
+    }
+
+    const historyRuns: TrainerHistoryRunSummary[] = runs.map((run) => ({
+      id: run.id,
+      runNumber: run.runNumber,
+      status: run.status,
+      startedAt: run.startedAt.toISOString(),
+      endedAt: run.endedAt?.toISOString() ?? null,
+      endReason: run.endReason,
+      reviveUsed: run.reviveUsed,
+      earnedBadgeKeys: run.earnedBadgeKeys,
+      snapshots: snapsByRun.get(run.id) ?? [],
+    }));
+
+    // Legacy snapshots without runId: attach to matching closed run by wipeCount,
+    // else leave under the active run as "ungrouped" via the newest run.
+    if (orphanSnaps.length > 0 && historyRuns.length > 0) {
+      for (const snap of orphanSnaps) {
+        const match =
+          historyRuns.find(
+            (run) =>
+              run.status === "CLOSED" &&
+              run.runNumber === snap.wipeCount + 1,
+          ) ?? historyRuns[0];
+        match?.snapshots.push(snap);
+      }
+      for (const run of historyRuns) {
+        run.snapshots.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      }
+    }
+
+    return { ok: true, runs: historyRuns, canClearSnapshots: isGm };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Could not load trainer history",
     };
   }
 }
@@ -992,7 +1270,7 @@ export type GetTrainerBoardSnapshotResult =
     }
   | { ok: false; error: string };
 
-/** GM-only: load one snapshot's full board payload. */
+/** Owner or GM (with lens): load one snapshot's full board payload. */
 export async function getTrainerBoardSnapshotAction(input: {
   snapshotId: string;
 }): Promise<GetTrainerBoardSnapshotResult> {
@@ -1002,6 +1280,7 @@ export async function getTrainerBoardSnapshotAction(input: {
       where: { id: input.snapshotId },
       select: {
         id: true,
+        trainerId: true,
         challengeId: true,
         trigger: true,
         label: true,
@@ -1011,7 +1290,7 @@ export async function getTrainerBoardSnapshotAction(input: {
     });
     if (!row) return { ok: false, error: "Snapshot not found" };
 
-    await requireGm(row.challengeId);
+    await requireTrainerHistoryAccess(row.trainerId);
 
     const payload = parseSnapshotPayload(row.payload);
     if (!payload) return { ok: false, error: "Snapshot data is unreadable" };
@@ -1254,6 +1533,13 @@ export async function upsertPokemonAction(
     });
 
     const prisma = getPrisma();
+    const enteringGraveyard = data.slot === "GRAVEYARD";
+    const runAtDeath = currentRunNumber(trainer.wipeCount);
+    const activeRun = await ensureActiveRunInTx(prisma, {
+      id: trainer.id,
+      wipeCount: trainer.wipeCount,
+      activeRunId: trainer.activeRunId,
+    });
     const payload = {
       slot: data.slot,
       partyIndex: data.partyIndex,
@@ -1279,14 +1565,28 @@ export async function upsertPokemonAction(
         where: { id: data.id, trainerId: trainer.id },
       });
       if (!existing) return { ok: false, error: "Pokémon not found" };
+      const becameGrave =
+        existing.slot !== "GRAVEYARD" && enteringGraveyard;
       await prisma.pokemonEntry.update({
         where: { id: data.id },
-        data: payload,
+        data: {
+          ...payload,
+          diedOnRun: enteringGraveyard
+            ? becameGrave || existing.diedOnRun == null
+              ? runAtDeath
+              : existing.diedOnRun
+            : null,
+          runId: enteringGraveyard
+            ? becameGrave ||
+              (existing.runId == null &&
+                (existing.diedOnRun == null ||
+                  existing.diedOnRun === runAtDeath))
+              ? activeRun.id
+              : existing.runId
+            : activeRun.id,
+        },
       });
-      if (
-        existing.slot !== "GRAVEYARD" &&
-        data.slot === "GRAVEYARD"
-      ) {
+      if (becameGrave) {
         const label = data.nickname || data.species;
         await logActivity({
           challengeId: trainer.challengeId,
@@ -1302,10 +1602,15 @@ export async function upsertPokemonAction(
       }
     } else {
       await prisma.pokemonEntry.create({
-        data: { trainerId: trainer.id, ...payload },
+        data: {
+          trainerId: trainer.id,
+          ...payload,
+          diedOnRun: enteringGraveyard ? runAtDeath : null,
+          runId: activeRun.id,
+        },
       });
       const label = data.nickname || data.species;
-      if (data.slot === "GRAVEYARD") {
+      if (enteringGraveyard) {
         await logActivity({
           challengeId: trainer.challengeId,
           actorId: userId,
@@ -1363,6 +1668,47 @@ export async function deletePokemonAction(input: {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Delete failed",
+    };
+  }
+}
+
+/** Memorial-only: update a grave's cause of death without opening the full form. */
+export async function updateGraveCauseAction(input: {
+  trainerId: string;
+  pokemonId: string;
+  causeOfDeath: string | null;
+}): Promise<ActionResult> {
+  try {
+    const cause = z
+      .string()
+      .max(500)
+      .nullable()
+      .optional()
+      .parse(input.causeOfDeath);
+    const { trainer } = await requireTrainerEditAccess(input.trainerId);
+    const prisma = getPrisma();
+    const mon = await prisma.pokemonEntry.findFirst({
+      where: {
+        id: input.pokemonId,
+        trainerId: trainer.id,
+        slot: "GRAVEYARD",
+      },
+      select: { id: true },
+    });
+    if (!mon) return { ok: false, error: "Memorial entry not found" };
+
+    const trimmed = cause?.trim() || null;
+    await prisma.pokemonEntry.update({
+      where: { id: mon.id },
+      data: { causeOfDeath: trimmed },
+    });
+
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: "Cause of death updated" };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Update failed",
     };
   }
 }
@@ -1477,6 +1823,12 @@ export async function relocatePokemonAction(
       }
 
       const memorialized: Array<{ id: string; label: string }> = [];
+      const runAtDeath = currentRunNumber(trainer.wipeCount);
+      const activeRun = await ensureActiveRunInTx(tx, {
+        id: trainer.id,
+        wipeCount: trainer.wipeCount,
+        activeRunId: trainer.activeRunId,
+      });
       for (const update of data.updates) {
         const mon = byId.get(update.id)!;
         if (mon.slot !== "GRAVEYARD" && update.slot === "GRAVEYARD") {
@@ -1485,9 +1837,24 @@ export async function relocatePokemonAction(
             label: mon.nickname || mon.species,
           });
         }
+        const enteringGraveyard =
+          mon.slot !== "GRAVEYARD" && update.slot === "GRAVEYARD";
+        const leavingGraveyard =
+          mon.slot === "GRAVEYARD" && update.slot !== "GRAVEYARD";
         await tx.pokemonEntry.update({
           where: { id: update.id },
-          data: { slot: update.slot, partyIndex: update.partyIndex },
+          data: {
+            slot: update.slot,
+            partyIndex: update.partyIndex,
+            ...(enteringGraveyard
+              ? {
+                  diedOnRun: mon.diedOnRun ?? runAtDeath,
+                  runId: mon.runId ?? activeRun.id,
+                }
+              : leavingGraveyard
+                ? { diedOnRun: null, runId: activeRun.id }
+                : { runId: mon.runId ?? activeRun.id }),
+          },
         });
       }
 
@@ -1660,6 +2027,11 @@ export async function importFromSaveAction(
           evs: jsonStatOrNull(mon.evs ?? null),
           causeOfDeath:
             mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null,
+          diedOnRun:
+            mon.slot === "GRAVEYARD"
+              ? currentRunNumber(trainer.wipeCount)
+              : null,
+          runId: null,
           notes: `Imported from save (${mon.slot.toLowerCase()})`,
         };
       });
@@ -1671,6 +2043,15 @@ export async function importFromSaveAction(
         actorId: userId,
         trigger: "IMPORT",
       });
+      const activeRun = await ensureActiveRunInTx(tx, {
+        id: trainer.id,
+        wipeCount: trainer.wipeCount,
+        activeRunId: trainer.activeRunId,
+      });
+      const importRows = rows.map((row) => ({
+        ...row,
+        runId: activeRun.id,
+      }));
       if (data.replaceSlots.length > 0) {
         await tx.pokemonEntry.deleteMany({
           where: {
@@ -1679,8 +2060,8 @@ export async function importFromSaveAction(
           },
         });
       }
-      if (rows.length > 0) {
-        await tx.pokemonEntry.createMany({ data: rows });
+      if (importRows.length > 0) {
+        await tx.pokemonEntry.createMany({ data: importRows });
       }
 
       if (data.applyTrainerName && data.trainerName) {
@@ -1738,10 +2119,15 @@ export async function importFromSaveAction(
         data.reviveUsed !== trainer.reviveUsed &&
         (data.reviveUsed || access.isGm)
       ) {
-        await tx.trainerProfile.update({
-          where: { id: trainer.id },
-          data: { reviveUsed: data.reviveUsed },
-        });
+        await setActiveRunReviveInTx(
+          tx,
+          {
+            id: trainer.id,
+            wipeCount: trainer.wipeCount,
+            activeRunId: trainer.activeRunId,
+          },
+          data.reviveUsed,
+        );
         return {
           from: trainer.reviveUsed,
           to: data.reviveUsed,

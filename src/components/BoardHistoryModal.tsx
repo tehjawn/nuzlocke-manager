@@ -4,7 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import {
   getTrainerBoardSnapshotAction,
   gmClearTrainerBoardHistoryAction,
-  listTrainerBoardSnapshotsAction,
+  listTrainerHistoryAction,
+  type TrainerHistoryRunSummary,
 } from "@/app/actions/challenge";
 import { BadgeCase } from "@/components/BadgeCase";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
@@ -16,19 +17,18 @@ import type {
   BadgeDefinition,
   PokemonEntry,
 } from "@/lib/challenge-types";
-import type {
-  TrainerBoardSnapshotPayload,
-  TrainerBoardSnapshotSummary,
-} from "@/lib/board-snapshot";
+import type { TrainerBoardSnapshotPayload } from "@/lib/board-snapshot";
 import { snapshotTriggerLabel } from "@/lib/board-snapshot";
 
-type BoardHistoryModalProps = {
+type TrainerHistoryModalProps = {
   open: boolean;
   onClose: () => void;
   trainerId: string;
   trainerHandle: string;
   badges: BadgeDefinition[];
   showCompetitiveDetails?: boolean;
+  /** GM-only clear control; owners can still browse. */
+  canClearSnapshots?: boolean;
 };
 
 function slotPokemon(
@@ -40,7 +40,7 @@ function slotPokemon(
     .sort((a, b) => a.partyIndex - b.partyIndex);
 }
 
-function formatSnapshotWhen(iso: string): string {
+function formatWhen(iso: string): string {
   try {
     return new Intl.DateTimeFormat(undefined, {
       dateStyle: "medium",
@@ -51,20 +51,32 @@ function formatSnapshotWhen(iso: string): string {
   }
 }
 
-function BoardHistoryBody({
+function runHeadline(run: TrainerHistoryRunSummary): string {
+  if (run.status === "ACTIVE") return `Run ${run.runNumber} · Active`;
+  const reason =
+    run.endReason === "GM_RESET"
+      ? "GM reset"
+      : run.endReason === "WIPE"
+        ? "Wiped"
+        : "Closed";
+  return `Run ${run.runNumber} · ${reason}`;
+}
+
+function TrainerHistoryBody({
   onClose,
   trainerId,
   trainerHandle,
   badges,
   showCompetitiveDetails = true,
-}: Omit<BoardHistoryModalProps, "open">) {
+  canClearSnapshots = false,
+}: Omit<TrainerHistoryModalProps, "open">) {
   const [pending, startTransition] = useTransition();
   const [clearing, setClearing] = useState(false);
   const [listLoading, setListLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [snapshots, setSnapshots] = useState<TrainerBoardSnapshotSummary[]>(
-    [],
-  );
+  const [runs, setRuns] = useState<TrainerHistoryRunSummary[]>([]);
+  const [allowClear, setAllowClear] = useState(canClearSnapshots);
+  const [openRunIds, setOpenRunIds] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{
     id: string;
@@ -82,30 +94,45 @@ function BoardHistoryBody({
   useEffect(() => {
     let cancelled = false;
 
-    void listTrainerBoardSnapshotsAction({ trainerId })
+    void listTrainerHistoryAction({ trainerId })
       .then((result) => {
         if (cancelled) return;
         setListLoading(false);
         if (!result.ok) {
           setError(result.error);
-          setSnapshots([]);
+          setRuns([]);
           return;
         }
-        setSnapshots(result.snapshots);
+        setRuns(result.runs);
+        setAllowClear(result.canClearSnapshots);
+        const initial = new Set<string>();
+        const active = result.runs.find((run) => run.status === "ACTIVE");
+        if (active) initial.add(active.id);
+        else if (result.runs[0]) initial.add(result.runs[0].id);
+        setOpenRunIds(initial);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setListLoading(false);
         setError(
-          e instanceof Error ? e.message : "Could not load board history",
+          e instanceof Error ? e.message : "Could not load trainer history",
         );
-        setSnapshots([]);
+        setRuns([]);
       });
 
     return () => {
       cancelled = true;
     };
   }, [trainerId]);
+
+  function toggleRun(id: string) {
+    setOpenRunIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function openSnapshot(id: string) {
     setSelectedId(id);
@@ -136,16 +163,16 @@ function BoardHistoryBody({
   }
 
   async function clearHistory() {
-    const count = snapshots.length;
     const ok = await confirm({
-      title: "Clear board history?",
+      title: "Clear board snapshots?",
       description: (
         <>
-          Permanently deletes all {count} snapshot{count === 1 ? "" : "s"} for{" "}
-          {trainerHandle}. The live board is unchanged. This cannot be undone.
+          Permanently deletes every board snapshot for {trainerHandle} (the
+          list below may only show the most recent ones). Run ledger (revive /
+          badge archives) stays. This cannot be undone.
         </>
       ),
-      confirmLabel: "Clear history",
+      confirmLabel: "Clear snapshots",
       tone: "danger",
     });
     if (!ok) return;
@@ -159,7 +186,9 @@ function BoardHistoryBody({
           setError(result.error);
           return;
         }
-        setSnapshots([]);
+        setRuns((prev) =>
+          prev.map((run) => ({ ...run, snapshots: [] })),
+        );
         setDetail(null);
         setSelectedId(null);
         setDetailsPokemon(null);
@@ -181,19 +210,22 @@ function BoardHistoryBody({
     ? slotPokemon(detail.payload.pokemon, "ENCOUNTERED")
     : [];
   const canClearHistory =
-    !listLoading && snapshots.length > 0 && !viewingDetail;
+    allowClear &&
+    !listLoading &&
+    runs.some((run) => run.snapshots.length > 0) &&
+    !viewingDetail;
 
   return (
     <>
       <Modal
         open
-        title={viewingDetail ? "Past board" : "Board history"}
+        title={viewingDetail ? "Past board" : "Trainer history"}
         subtitle={
           viewingDetail
-            ? `${trainerHandle} · ${detail.label ?? detail.triggerLabel} · ${formatSnapshotWhen(detail.createdAt)}`
-            : `${trainerHandle} · GM-only run archive`
+            ? `${trainerHandle} · ${detail.label ?? detail.triggerLabel} · ${formatWhen(detail.createdAt)}`
+            : `${trainerHandle} · runs & board snapshots`
         }
-        size="wide"
+        size="fullscreen"
         onClose={onClose}
         headerActions={
           viewingDetail ? (
@@ -202,7 +234,7 @@ function BoardHistoryBody({
               className="pressable border-interactive/35 bg-interactive-soft px-2.5 py-1 text-xs font-semibold text-ink"
               onClick={backToList}
             >
-              ← All snapshots
+              ← All runs
             </button>
           ) : canClearHistory ? (
             <button
@@ -213,7 +245,7 @@ function BoardHistoryBody({
                 void clearHistory();
               }}
             >
-              {clearing ? "Clearing…" : "Clear history"}
+              {clearing ? "Clearing…" : "Clear snapshots"}
             </button>
           ) : null
         }
@@ -234,7 +266,7 @@ function BoardHistoryBody({
               {detail.payload.reviveUsed ? " · revive used" : null}
             </p>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
               <div className="space-y-4">
                 <Frame title="Main Squad">
                   <PartyStrip
@@ -274,9 +306,7 @@ function BoardHistoryBody({
                   <Frame title="Encountered">
                     <PartyStrip
                       pokemon={encountered}
-                      size="sm"
-                      selectHint="Details"
-                      showCompetitiveDetails={showCompetitiveDetails}
+                      speciesOnly
                       onSelect={setDetailsPokemon}
                     />
                   </Frame>
@@ -288,6 +318,7 @@ function BoardHistoryBody({
                     badges={badges}
                     earnedKeys={detail.payload.earnedBadgeKeys}
                     layout="column"
+                    dense
                   />
                 </Frame>
               </aside>
@@ -296,42 +327,106 @@ function BoardHistoryBody({
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-muted">
-              Snapshots are taken before imports, wipes, and GM resets. Players
-              do not see this list.
+              Each run keeps its revive + badge archive. Board snapshots sit
+              inside the run they were taken from (before wipe, import, or GM
+              reset).
             </p>
             {listLoading ? (
               <p className="text-sm text-muted">Loading history…</p>
             ) : null}
-            {!listLoading && snapshots.length === 0 && !error ? (
+            {!listLoading && runs.length === 0 && !error ? (
               <p className="text-sm text-muted">
-                No snapshots yet for this trainer.
+                No runs recorded for this trainer yet.
               </p>
             ) : null}
-            {!listLoading && snapshots.length > 0 ? (
-              <ul className="divide-y divide-frame/25 border border-frame/40">
-                {snapshots.map((snap) => {
-                  const active = selectedId === snap.id && pending;
+            {!listLoading && runs.length > 0 ? (
+              <ul className="space-y-2">
+                {runs.map((run) => {
+                  const expanded = openRunIds.has(run.id);
                   return (
-                    <li key={snap.id}>
+                    <li
+                      key={run.id}
+                      className="overflow-hidden rounded-md border border-frame/40 bg-surface/50"
+                    >
                       <button
                         type="button"
-                        disabled={pending || clearing}
-                        className="pressable flex w-full flex-col gap-0.5 px-3 py-2.5 text-left hover:bg-surface-2/70 disabled:opacity-60"
-                        onClick={() => openSnapshot(snap.id)}
+                        className="pressable flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-surface-2/60"
+                        onClick={() => toggleRun(run.id)}
+                        aria-expanded={expanded}
                       >
-                        <span className="flex flex-wrap items-baseline justify-between gap-2">
-                          <span className="text-sm font-semibold text-ink">
-                            {snap.label ?? snapshotTriggerLabel(snap.trigger)}
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-ink">
+                            {runHeadline(run)}
                           </span>
-                          <span className="text-xs text-muted">
-                            {formatSnapshotWhen(snap.createdAt)}
+                          <span className="mt-0.5 block text-[11px] text-muted">
+                            {run.reviveUsed ? "Revive used" : "Revive unused"}
+                            {" · "}
+                            {run.status === "ACTIVE"
+                              ? "Badges live on the board"
+                              : `${run.earnedBadgeKeys.length} badge${run.earnedBadgeKeys.length === 1 ? "" : "s"} archived`}
+                            {" · "}
+                            {run.snapshots.length} snapshot
+                            {run.snapshots.length === 1 ? "" : "s"}
                           </span>
                         </span>
-                        <span className="text-xs text-muted">
-                          {snapshotTriggerLabel(snap.trigger)} · {snap.summary}
-                          {active ? " · Opening…" : null}
+                        <span className="shrink-0 text-xs font-bold text-muted">
+                          {expanded ? "▾" : "▸"}
                         </span>
                       </button>
+
+                      {expanded ? (
+                        <div className="space-y-3 border-t border-frame/30 px-3 py-3">
+                          {run.status === "CLOSED" &&
+                          run.earnedBadgeKeys.length > 0 ? (
+                            <Frame title="Badges at close" dense>
+                              <BadgeCase
+                                badges={badges}
+                                earnedKeys={run.earnedBadgeKeys}
+                                layout="column"
+                                dense
+                              />
+                            </Frame>
+                          ) : null}
+
+                          {run.snapshots.length === 0 ? (
+                            <p className="text-xs text-muted">
+                              No board snapshots for this run.
+                            </p>
+                          ) : (
+                            <ul className="divide-y divide-frame/25 border border-frame/35">
+                              {run.snapshots.map((snap) => {
+                                const active =
+                                  selectedId === snap.id && pending;
+                                return (
+                                  <li key={snap.id}>
+                                    <button
+                                      type="button"
+                                      disabled={pending || clearing}
+                                      className="pressable flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-surface-2/70 disabled:opacity-60"
+                                      onClick={() => openSnapshot(snap.id)}
+                                    >
+                                      <span className="flex flex-wrap items-baseline justify-between gap-2">
+                                        <span className="text-sm font-semibold text-ink">
+                                          {snap.label ??
+                                            snapshotTriggerLabel(snap.trigger)}
+                                        </span>
+                                        <span className="text-xs text-muted">
+                                          {formatWhen(snap.createdAt)}
+                                        </span>
+                                      </span>
+                                      <span className="text-xs text-muted">
+                                        {snapshotTriggerLabel(snap.trigger)} ·{" "}
+                                        {snap.summary}
+                                        {active ? " · Opening…" : null}
+                                      </span>
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </div>
+                      ) : null}
                     </li>
                   );
                 })}
@@ -355,25 +450,31 @@ function BoardHistoryBody({
   );
 }
 
-export function BoardHistoryModal({
+/** @deprecated Prefer TrainerHistoryModal — kept as alias for existing imports. */
+export function BoardHistoryModal(props: TrainerHistoryModalProps) {
+  return <TrainerHistoryModal {...props} />;
+}
+
+export function TrainerHistoryModal({
   open,
   onClose,
   trainerId,
   trainerHandle,
   badges,
   showCompetitiveDetails = true,
-}: BoardHistoryModalProps) {
+  canClearSnapshots = false,
+}: TrainerHistoryModalProps) {
   if (!open) return null;
 
-  // Remount on each open so loading state resets without sync setState in effects.
   return (
-    <BoardHistoryBody
+    <TrainerHistoryBody
       key={trainerId}
       onClose={onClose}
       trainerId={trainerId}
       trainerHandle={trainerHandle}
       badges={badges}
       showCompetitiveDetails={showCompetitiveDetails}
+      canClearSnapshots={canClearSnapshots}
     />
   );
 }

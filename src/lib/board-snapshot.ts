@@ -21,6 +21,7 @@ export type TrainerBoardSnapshotSummary = {
   createdAt: string;
   wipeCount: number;
   summary: string;
+  runId?: string | null;
 };
 
 /** Keep the most recent N snapshots per trainer. */
@@ -48,6 +49,8 @@ type DbPokemonRow = {
   ivs: unknown;
   evs: unknown;
   causeOfDeath: string | null;
+  diedOnRun: number | null;
+  runId: string | null;
 };
 
 function mapPokemonRow(p: DbPokemonRow): PokemonEntry {
@@ -79,6 +82,8 @@ function mapPokemonRow(p: DbPokemonRow): PokemonEntry {
     })(),
     evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
     causeOfDeath: p.causeOfDeath,
+    diedOnRun: p.diedOnRun ?? null,
+    runId: p.runId ?? null,
   };
 }
 
@@ -135,6 +140,8 @@ type CaptureSnapshotInput = {
   actorId?: string | null;
   trigger: BoardSnapshotTrigger;
   label?: string | null;
+  /** When omitted, uses the trainer's activeRunId. */
+  runId?: string | null;
 };
 
 const SNAPSHOT_SAVEPOINT = "board_snapshot_capture";
@@ -178,6 +185,7 @@ async function captureSnapshot(
       wipeCount: true,
       reviveUsed: true,
       mainSquadLocked: true,
+      activeRunId: true,
       pokemon: true,
       badges: {
         where: { earned: true },
@@ -199,11 +207,14 @@ async function captureSnapshot(
 
   const label =
     input.label ?? defaultSnapshotLabel(input.trigger, trainer.wipeCount);
+  const runId =
+    input.runId !== undefined ? input.runId : trainer.activeRunId;
 
   await tx.trainerBoardSnapshot.create({
     data: {
       challengeId: input.challengeId,
       trainerId: input.trainerId,
+      runId: runId ?? null,
       actorId: input.actorId ?? null,
       trigger: input.trigger,
       label,
@@ -280,6 +291,8 @@ export function parseSnapshotPayload(
       evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
       causeOfDeath:
         typeof p.causeOfDeath === "string" ? p.causeOfDeath : null,
+      diedOnRun: typeof p.diedOnRun === "number" ? p.diedOnRun : null,
+      runId: typeof p.runId === "string" ? p.runId : null,
     });
   }
 

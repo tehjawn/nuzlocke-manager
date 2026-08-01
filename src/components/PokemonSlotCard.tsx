@@ -1,6 +1,7 @@
 import { InfoTip } from "@/components/InfoTip";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
+import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
@@ -24,6 +25,10 @@ type PokemonSlotCardProps = {
   /** Soft hint under species line when the card is interactive. */
   selectHint?: string;
   /**
+   * Encounter ledger: sprite + species name only (no nickname / subtext).
+   */
+  speciesOnly?: boolean;
+  /**
    * When false, hide nature / ability / battle stats / moves on md cards
    * (public board viewers).
    */
@@ -37,6 +42,7 @@ export function PokemonSlotCard({
   onSelect,
   interactive = false,
   selectHint,
+  speciesOnly = false,
   showCompetitiveDetails = true,
 }: PokemonSlotCardProps) {
   const looksInteractive = Boolean(onSelect) || interactive;
@@ -65,8 +71,10 @@ export function PokemonSlotCard({
     );
   }
 
-  const label = pokemon.nickname || pokemon.species;
-  const battle = showCompetitiveDetails
+  const label = speciesOnly
+    ? pokemon.species
+    : pokemon.nickname || pokemon.species;
+  const battle = showCompetitiveDetails && !speciesOnly
     ? calcBattleStats({
         pokedexId: pokemon.pokedexId,
         level: pokemon.level,
@@ -75,17 +83,18 @@ export function PokemonSlotCard({
         nature: pokemon.nature,
       })
     : null;
-  const battleMax = showCompetitiveDetails
+  const battleMax = showCompetitiveDetails && !speciesOnly
     ? calcMaxBattleStats({
         pokedexId: pokemon.pokedexId,
         level: pokemon.level,
       })
     : null;
-  const moves = showCompetitiveDetails
-    ? pokemon.moves.map(resolveMoveName).filter(Boolean)
-    : [];
+  const moves =
+    showCompetitiveDetails && !speciesOnly
+      ? pokemon.moves.map(resolveMoveName).filter(Boolean)
+      : [];
 
-  if (size === "sm") {
+  if (size === "sm" || speciesOnly) {
     const compact = (
       <div
         className={`flex h-full min-h-20 items-center gap-2 rounded-lg border border-frame bg-surface p-2 ${
@@ -112,11 +121,13 @@ export function PokemonSlotCard({
               </span>
             ) : null}
           </p>
-          <p className="truncate text-xs text-muted">
-            {pokemon.species}
-            {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
-            {selectHint ? ` · ${selectHint}` : ""}
-          </p>
+          {!speciesOnly ? (
+            <p className="truncate text-xs text-muted">
+              {pokemon.species}
+              {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
+              {selectHint ? ` · ${selectHint}` : ""}
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -125,6 +136,7 @@ export function PokemonSlotCard({
       <button
         type="button"
         className="h-full w-full cursor-pointer text-left"
+        aria-label={speciesOnly ? pokemon.species : undefined}
         onClick={onSelect}
       >
         {compact}
@@ -271,9 +283,15 @@ export function PokemonSlotCard({
       )}
 
       {memorial && pokemon.causeOfDeath ? (
-        <p className="border-t border-frame/20 pt-2 text-xs leading-relaxed text-muted italic">
-          {pokemon.causeOfDeath}
-        </p>
+        <div className="border-t border-frame/20 pt-2">
+          <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+            <TombstoneIcon className="h-2.5 w-2.5 shrink-0" />
+            Cause of death
+          </p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted italic">
+            {pokemon.causeOfDeath}
+          </p>
+        </div>
       ) : null}
     </div>
   );

@@ -33,15 +33,6 @@ function evs(partial: Partial<StatSpread>): StatSpread {
   };
 }
 
-function mon(
-  partial: Omit<PokemonEntry, "id"> & { id?: string },
-): PokemonEntry {
-  return {
-    id: partial.id ?? `${partial.slot}-${partial.partyIndex}-${partial.species}`,
-    ...partial,
-  };
-}
-
 function trainer(
   partial: Omit<
     TrainerProfile,
@@ -51,6 +42,7 @@ function trainer(
     | "discordUsername"
     | "discordDisplayName"
     | "wipeCount"
+    | "activeRunNumber"
     | "avatarBackgroundKey"
     | "cardBackgroundKey"
   > & {
@@ -60,13 +52,16 @@ function trainer(
     discordUsername?: string | null;
     discordDisplayName?: string | null;
     wipeCount?: number;
+    activeRunNumber?: number;
     avatarBackgroundKey?: string | null;
     cardBackgroundKey?: string | null;
   },
 ): TrainerProfile {
+  const wipeCount = partial.wipeCount ?? 0;
   return {
     ...partial,
-    wipeCount: partial.wipeCount ?? 0,
+    wipeCount,
+    activeRunNumber: partial.activeRunNumber ?? wipeCount + 1,
     avatarBackgroundKey: partial.avatarBackgroundKey ?? null,
     cardBackgroundKey: partial.cardBackgroundKey ?? null,
     userId: partial.userId ?? null,
@@ -74,6 +69,22 @@ function trainer(
     discordUsername: partial.discordUsername ?? null,
     discordDisplayName: partial.discordDisplayName ?? null,
     pokemon: partial.pokemon ?? [],
+  };
+}
+
+function mon(
+  partial: Omit<PokemonEntry, "id" | "diedOnRun" | "runId"> & {
+    id?: string;
+    diedOnRun?: number | null;
+    runId?: string | null;
+  },
+): PokemonEntry {
+  const { id, diedOnRun, runId, ...rest } = partial;
+  return {
+    ...rest,
+    id: id ?? `${rest.slot}-${rest.partyIndex}-${rest.species}`,
+    diedOnRun: diedOnRun ?? null,
+    runId: runId ?? null,
   };
 }
 
@@ -110,7 +121,7 @@ const rules = [
     id: "r5",
     sortOrder: 5,
     title: "1 Revive Token",
-    body: "",
+    body: "One revive per run. Recording a wipe starts a new run with a fresh revive token.",
     isCore: false,
   },
   {
@@ -142,7 +153,7 @@ const faqs = [
     sortOrder: 2,
     question: "What if I don't have any more playable Pokémon?",
     answer:
-      'If all playable Pokémon are dead, then the Nuzlocke run is considered a wipe. You\'ll have to start the game over and try the Nuzlocke challenge again. Navigate to the "Game Mode Setting" page on how to set up your game again. On your trainer board, use Record wipe to clear Main, Reserves, and Encountered, reset badges, and count the restart — R.I.P. memorial and your profile (name, avatar, backdrops, status) stay.',
+      'If all playable Pokémon are dead, then the Nuzlocke run is considered a wipe. You\'ll have to start the game over and try the Nuzlocke challenge again. Navigate to the "Game Mode Setting" page on how to set up your game again. On your trainer board, use Record wipe to move Main and Reserves into the R.I.P. memorial, clear Encountered, reset badges, refresh your revive token for the next run, and count the restart — season memorial and your profile (name, avatar, backdrops, status) stay across wipes.',
   },
   {
     id: "f3",
@@ -450,6 +461,7 @@ const ashKetchum = trainer({
       ivs: ivs({ spa: 8 }),
       evs: evs({ atk: 128, spe: 128 }),
       causeOfDeath: "Crit Tackle from a wild Aron on Route 111. Gone too soon.",
+      diedOnRun: 1,
     }),
     mon({
       id: "ash-rip-1",
@@ -469,6 +481,7 @@ const ashKetchum = trainer({
       ivs: ivs({ atk: 30, spa: 14 }),
       evs: evs({ spe: 252, atk: 128, hp: 4 }),
       causeOfDeath: "Brawly's Machop hit a crit Karate Chop. Speed couldn't save him.",
+      diedOnRun: 1,
     }),
     mon({
       id: "ash-rip-2",
@@ -488,6 +501,7 @@ const ashKetchum = trainer({
       ivs: ivs({ spa: 10, def: 22 }),
       evs: evs({ atk: 252, spe: 128, hp: 4 }),
       causeOfDeath: "Flannery's Torkoal Overheat — held the line so Muddy could finish.",
+      diedOnRun: 1,
     }),
     mon({
       id: "ash-rip-3",
@@ -507,6 +521,7 @@ const ashKetchum = trainer({
       ivs: ivs({ hp: 0, def: 20 }),
       evs: evs({ atk: 252, spe: 252 }),
       causeOfDeath: "Wattson's Magnemite Thunder Wave + Struggle chip. Wonder Guard has limits.",
+      diedOnRun: 1,
     }),
 
     // —— Encountered (logged, not caught) ——

@@ -34,6 +34,10 @@ export type PokemonEntry = {
   ivs: StatSpread | null;
   evs: StatSpread | null;
   causeOfDeath: string | null;
+  /** 1-based run attempt when memorialized; null when unknown (legacy graves). */
+  diedOnRun: number | null;
+  /** TrainerRun id when known (living = active run; graves = run of death). */
+  runId: string | null;
 };
 
 export type TrainerProfile = {
@@ -48,8 +52,10 @@ export type TrainerProfile = {
   statusText: string | null;
   statusEmoji: string | null;
   reviveUsed: boolean;
-  /** Times this trainer restarted their run this season. */
+  /** Times this trainer restarted their run this season (= closed run count). */
   wipeCount: number;
+  /** 1-based living attempt; equals wipeCount + 1 when in sync. */
+  activeRunNumber: number;
   mainSquadLocked: boolean;
   sortOrder: number;
   userId: string | null;

@@ -105,6 +105,7 @@ async function main() {
         statusText: trainer.statusText,
         statusEmoji: trainer.statusEmoji,
         reviveUsed: trainer.reviveUsed,
+        wipeCount: trainer.wipeCount ?? 0,
         mainSquadLocked: trainer.mainSquadLocked,
         sortOrder: trainer.sortOrder,
         pokemon: {
@@ -125,9 +126,28 @@ async function main() {
             ivs: p.ivs ?? undefined,
             evs: p.evs ?? undefined,
             causeOfDeath: p.causeOfDeath,
+            diedOnRun: p.diedOnRun ?? null,
           })),
         },
       },
+    });
+
+    const { createInitialActiveRunInTx } = await import("../src/lib/trainer-runs");
+    const activeRun = await createInitialActiveRunInTx(prisma, created.id, {
+      wipeCount: trainer.wipeCount ?? 0,
+      reviveUsed: trainer.reviveUsed,
+    });
+    // Seed showcase graves are run 1 losses; living board sits on the active run.
+    await prisma.pokemonEntry.updateMany({
+      where: { trainerId: created.id, slot: "GRAVEYARD" },
+      data: { runId: activeRun.id },
+    });
+    await prisma.pokemonEntry.updateMany({
+      where: {
+        trainerId: created.id,
+        slot: { in: ["MAIN", "RESERVE", "ENCOUNTERED"] },
+      },
+      data: { runId: activeRun.id },
     });
 
     const earned = new Set(trainer.earnedBadgeKeys);

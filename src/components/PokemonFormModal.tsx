@@ -132,6 +132,8 @@ export function pokemonFormToEntry(form: PokemonFormState): PokemonEntry {
     ivs: isEmptySpread(form.ivs) ? null : form.ivs,
     evs: isEmptySpread(form.evs) ? null : form.evs,
     causeOfDeath: form.causeOfDeath.trim() || null,
+    diedOnRun: null,
+    runId: null,
   };
 }
 

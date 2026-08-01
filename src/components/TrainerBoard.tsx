@@ -48,6 +48,7 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import { pokemonInSlot } from "@/lib/trainer-display";
+import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { isEmptySpread } from "@/lib/stats";
@@ -707,7 +708,7 @@ export function TrainerBoard({
     const ok = await confirm({
       title: "Use revive token?",
       description:
-        "This spends your one revive for the season. You can’t undo it without a GM reset.",
+        "This spends your one revive for this run. A wipe starts a new run with a fresh revive. Only a GM can restore a spent revive mid-run.",
       confirmLabel: "Use revive",
       tone: "danger",
     });
@@ -758,14 +759,17 @@ export function TrainerBoard({
     const nextWipe = wipeCount + 1;
     const previousBadges = earnedBadgeKeys;
     const previousBoard = boardOverride;
+    const previousRevive = reviveUsed;
     const ok = await confirm({
       title: "Restart this run?",
       description: (
         <>
-          Clears Main Squad, Reserves, and Encountered, and resets badges. R.I.P.
-          memorial, revive token, and your profile (name, avatar, backdrops,
-          status) stay. Locked Main Squad unlocks so you can rebuild. This counts
-          as wipe #{nextWipe}. A board history snapshot is saved for GMs first.
+          Moves Main Squad and Reserves into the season R.I.P. memorial (cause:
+          run wiped), clears Encountered, resets badges, and refreshes your
+          revive token for the next run. Existing memorial and your profile
+          (name, avatar, backdrops, status) stay. Locked Main Squad unlocks so
+          you can rebuild. This counts as wipe #{nextWipe}. A board history
+          snapshot is saved first.
         </>
       ),
       confirmLabel: "Record wipe",
@@ -777,9 +781,10 @@ export function TrainerBoard({
     setEarnedBadgeKeys([]);
     setBoardOverride({
       wipeCount: nextWipe,
-      pokemon: boardPokemon.filter((p) => p.slot === "GRAVEYARD"),
+      pokemon: memorialPokemonAfterWipe(boardPokemon, nextWipe),
       mainSquadLocked: false,
     });
+    setReviveUsed(false);
     setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
@@ -793,6 +798,7 @@ export function TrainerBoard({
       } else {
         setBoardOverride(previousBoard);
         setEarnedBadgeKeys(previousBadges);
+        setReviveUsed(previousRevive);
         setBadgeEditorKey((k) => k + 1);
         wipeSave.markError(result.error);
       }
@@ -970,7 +976,7 @@ export function TrainerBoard({
               Record wipe
             </button>
           ) : null}
-          {isGm && !isDemo ? (
+          {!isDemo && (isGm || showCompetitiveDetails) ? (
             <button
               type="button"
               disabled={pending || wiping}
@@ -978,7 +984,7 @@ export function TrainerBoard({
               onClick={() => setBoardHistoryOpen(true)}
             >
               <BoardHistoryIcon />
-              Board history
+              Trainer history
             </button>
           ) : null}
           {isGm && !isDemo ? (
@@ -1303,7 +1309,7 @@ export function TrainerBoard({
                 {encountered.length > 0 ? (
                   <PartyStrip
                     pokemon={encountered}
-                    selectHint="View"
+                    speciesOnly
                     onSelect={openPokemon}
                   />
                 ) : null}
@@ -1311,8 +1317,7 @@ export function TrainerBoard({
             ) : encountered.length > 0 ? (
               <PartyStrip
                 pokemon={encountered}
-                selectHint="Details"
-                showCompetitiveDetails={showCompetitiveDetails}
+                speciesOnly
                 onSelect={openPokemon}
               />
             ) : (
@@ -1424,13 +1429,13 @@ export function TrainerBoard({
                   }}
                 />
               ) : null}
-              {isGm && !isDemo ? (
+              {!isDemo && (isGm || showCompetitiveDetails) ? (
                 <ShortcutActionTile
-                  label="Board history"
+                  label="Trainer history"
                   icon={<BoardHistoryIcon className="h-4 w-4" />}
                   tone="neutral"
                   disabled={pending || wiping}
-                  title="GM-only past boards"
+                  title="Runs, badge archives, and board snapshots"
                   onClick={() => setBoardHistoryOpen(true)}
                 />
               ) : null}
@@ -1586,7 +1591,7 @@ export function TrainerBoard({
         />
       ) : null}
 
-      {isGm && !isDemo && boardHistoryOpen ? (
+      {!isDemo && (isGm || showCompetitiveDetails) && boardHistoryOpen ? (
         <BoardHistoryModal
           open
           onClose={() => setBoardHistoryOpen(false)}
@@ -1594,6 +1599,7 @@ export function TrainerBoard({
           trainerHandle={trainer.handle}
           badges={badges}
           showCompetitiveDetails={showCompetitiveDetails}
+          canClearSnapshots={isGm}
         />
       ) : null}
 
