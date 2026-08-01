@@ -6,7 +6,7 @@ import {
 import { cssTextureUrl } from "@/lib/custom-texture";
 
 type FrameProps = {
-  title?: string;
+  title?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -18,6 +18,16 @@ type FrameProps = {
   /** Spotlight target for the first-run onboarding tour. */
   "data-tour"?: string;
 };
+
+/** Frame header with a muted count, e.g. Main Squad (6). */
+export function frameCountTitle(label: string, count: number): ReactNode {
+  return (
+    <>
+      {label}{" "}
+      <span className="font-medium tabular-nums text-muted">({count})</span>
+    </>
+  );
+}
 
 export function Frame({
   title,
@@ -46,7 +56,8 @@ export function Frame({
     >
       {title ? (
         <header className="gba-frame-title relative z-[1] flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base">
-          <span className="min-w-0 truncate font-semibold">{title}</span>
+          {/* min-w-0 without truncate: ReactNode titles (e.g. count suffixes) shouldn't ellipsis mid-number */}
+          <span className="min-w-0 font-semibold">{title}</span>
           {actions ? (
             <div className="relative z-[1] flex shrink-0 items-center gap-1.5">
               {actions}

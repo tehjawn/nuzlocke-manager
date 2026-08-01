@@ -16,7 +16,7 @@ import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
 import { BoardHistoryModal } from "@/components/BoardHistoryModal";
-import { Frame } from "@/components/Frame";
+import { Frame, frameCountTitle } from "@/components/Frame";
 import {
   EMPTY_POKEMON_FORM,
   PokemonFormModal,
@@ -481,11 +481,13 @@ export function TrainerBoard({
   const resetSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => p.id).join(",")}`;
+  // Include slot/partyIndex — memorial wipe rewrites slots without changing ids.
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
-  /** Optimistic board after wipe until RSC refresh lands. */
+  /** Optimistic board after wipe/reset until RSC refresh lands. */
   const [boardOverride, setBoardOverride] = useState<{
+    kind: "wipe" | "reset";
     wipeCount: number;
     pokemon: PokemonEntry[];
     mainSquadLocked: boolean;
@@ -556,6 +558,24 @@ export function TrainerBoard({
 
   if (serverStamp !== seenStamp) {
     setSeenStamp(serverStamp);
+
+    // Keep wipe/reset optimism until the RSC payload reflects the operation.
+    // Reset: empty board (including memorial). Wipe: higher wipeCount and no
+    // living mons — graves may remain. Avoid wipeCount !== so a server count
+    // ahead of optimism cannot pin a stale override.
+    const serverStillHasLiving = trainer.pokemon.some(
+      (p) =>
+        p.slot === "MAIN" ||
+        p.slot === "RESERVE" ||
+        p.slot === "ENCOUNTERED",
+    );
+    const wipeOrResetInFlight =
+      boardOverride != null &&
+      (boardOverride.kind === "reset"
+        ? trainer.pokemon.length > 0
+        : trainer.wipeCount < boardOverride.wipeCount ||
+          serverStillHasLiving);
+
     setCommitted({
       handle: trainer.handle,
       statusText: trainer.statusText ?? "",
@@ -564,7 +584,8 @@ export function TrainerBoard({
       avatarSpriteKey: trainer.avatarSpriteKey,
       avatarBackgroundKey: parseAvatarBackgroundKey(trainer.avatarBackgroundKey),
       cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
-      reviveUsed: trainer.reviveUsed,
+      // Don't let a stale RSC revive flag clobber wipe/reset optimism.
+      reviveUsed: wipeOrResetInFlight ? false : trainer.reviveUsed,
     });
     const nextAvatarBg = parseAvatarBackgroundKey(trainer.avatarBackgroundKey);
     if (nextAvatarBg && !isAvatarBackgroundKey(nextAvatarBg)) {
@@ -574,9 +595,12 @@ export function TrainerBoard({
     if (nextCardBg && !isCardBackgroundKey(nextCardBg)) {
       setSavedCustomCardBg(nextCardBg);
     }
-    setReviveUsed(trainer.reviveUsed);
-    setEarnedBadgeKeys(trainer.earnedBadgeKeys);
-    setBoardOverride(null);
+
+    if (!wipeOrResetInFlight) {
+      setReviveUsed(trainer.reviveUsed);
+      setEarnedBadgeKeys(trainer.earnedBadgeKeys);
+      setBoardOverride(null);
+    }
   }
 
   const boardPokemon = boardOverride?.pokemon ?? trainer.pokemon;
@@ -780,6 +804,7 @@ export function TrainerBoard({
     setBadgeEditorKey((k) => k + 1);
     setEarnedBadgeKeys([]);
     setBoardOverride({
+      kind: "wipe",
       wipeCount: nextWipe,
       pokemon: memorialPokemonAfterWipe(boardPokemon, nextWipe),
       mainSquadLocked: false,
@@ -828,6 +853,7 @@ export function TrainerBoard({
     setBadgeEditorKey((k) => k + 1);
     setEarnedBadgeKeys([]);
     setBoardOverride({
+      kind: "reset",
       wipeCount: 0,
       pokemon: [],
       mainSquadLocked: false,
@@ -1247,7 +1273,10 @@ export function TrainerBoard({
             />
           ) : (
             <>
-              <Frame title="Main Squad" data-tour="pokemon">
+              <Frame
+                title={frameCountTitle("Main Squad", main.length)}
+                data-tour="pokemon"
+              >
                 <PartyStrip
                   pokemon={main}
                   slots={6}
@@ -1257,7 +1286,7 @@ export function TrainerBoard({
                 />
               </Frame>
 
-              <Frame title="The Reserves">
+              <Frame title={frameCountTitle("The Reserves", reserves.length)}>
                 {reserves.length > 0 ? (
                   <PartyStrip
                     pokemon={reserves}
@@ -1270,7 +1299,10 @@ export function TrainerBoard({
                 )}
               </Frame>
 
-              <Frame title="R.I.P." tone="rip">
+              <Frame
+                title={frameCountTitle("R.I.P.", graveyard.length)}
+                tone="rip"
+              >
                 {graveyard.length > 0 ? (
                   <PartyStrip
                     pokemon={graveyard}
@@ -1288,7 +1320,7 @@ export function TrainerBoard({
             </>
           )}
 
-          <Frame title="Encountered">
+          <Frame title={frameCountTitle("Encountered", encountered.length)}>
             {canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
