@@ -23,7 +23,8 @@ export const TOOLS_CATALOG: ReadonlyArray<{
   {
     id: "guide",
     title: "Game Guide",
-    blurb: "What to do next — story gates, HMs, and easy-to-miss beats based on your badges.",
+    blurb:
+      "What to do next in Modern Emerald — story gates and easy-to-miss beats based on your badges.",
   },
 ];
 

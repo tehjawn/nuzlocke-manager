@@ -207,7 +207,7 @@ export function GameGuidePanel({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <p className="text-sm text-muted">
           Story beats for {EMERALD_GUIDE.gameLabel} — focused on easy-to-miss
-          gates (Cut, Steven, HMs), not 100% completion.
+          gates (Steven, Rock Smash / Rusturf, Dive), not 100% completion.
         </p>
         {trainers.length > 0 ? (
           <label className="flex flex-col gap-1 text-sm sm:min-w-[12rem]">

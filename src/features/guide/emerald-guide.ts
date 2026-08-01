@@ -1,24 +1,27 @@
 import type { GuideDocument } from "@/features/guide/guide-types";
 
 /**
- * Emerald / Modern Emerald story spine focused on non-obvious progression gates.
- * Assumed compatible with Modern Emerald unless a season notes otherwise.
+ * Story spine for Pokémon Modern Emerald (nzl_modern) — this league’s ROM.
+ * Focused on non-obvious progression gates, not 100% completion.
+ *
+ * Notable Modern Emerald vs vanilla callouts are baked into step copy
+ * (random starter, bag HMs, etc.).
  */
 export const EMERALD_GUIDE: GuideDocument = {
-  id: "emerald",
-  gameLabel: "Pokémon Emerald",
+  id: "modern-emerald",
+  gameLabel: "Pokémon Modern Emerald",
   chapters: [
     {
       id: "prologue",
       title: "Littleroot → Petalburg",
-      summary: "Starter, early routes, and Dad in Petalburg Gym.",
+      summary: "Random starter, early routes, and Dad in Petalburg Gym.",
       requiresBadges: [],
       sortOrder: 0,
     },
     {
       id: "rustboro",
-      title: "Rustboro & Cut",
-      summary: "Petalburg Woods, Roxanne, and the Cutter’s house.",
+      title: "Rustboro & Devon",
+      summary: "Petalburg Woods, Roxanne, and the letter for Steven.",
       requiresBadges: [],
       clearsWithBadge: "gym-1",
       sortOrder: 1,
@@ -34,7 +37,7 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "mauville",
       title: "Slateport → Mauville",
-      summary: "Ocean trip, Museum plot, Wattson, Rock Smash house.",
+      summary: "Museum plot, Wattson, Rock Smash → Rusturf Tunnel.",
       requiresBadges: ["gym-1", "gym-2"],
       clearsWithBadge: "gym-3",
       sortOrder: 3,
@@ -117,10 +120,11 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "prologue-starter",
       chapterId: "prologue",
-      title: "Get your starter",
-      summary: "Choose Mudkip, Torchic, or Treecko from Prof. Birch on Route 101.",
+      title: "Receive your random starter",
+      summary:
+        "Help Prof. Birch on Route 101 — Modern Emerald gives a randomized starter (not a fixed Hoenn trio pick).",
       detail:
-        "After the moving truck cutscene in **Littleroot**, help Birch on **Route 101**. Your starter choice locks your early typing — plan around it for Roxanne (Rock) and Brawly (Fighting).",
+        "After the moving truck cutscene in **Littleroot**, help Birch on **Route 101**. In **Modern Emerald** your starter is **randomized** from the challenge/randomizer settings — you don’t pick Mudkip / Torchic / Treecko unless that option is off.\n\nPlan early gym prep around whatever species you rolled (Roxanne is Rock; Brawly is Fighting).",
       locations: ["Littleroot Town", "Route 101"],
       priority: "critical",
       sortOrder: 10,
@@ -164,9 +168,9 @@ export const EMERALD_GUIDE: GuideDocument = {
       id: "rustboro-roxanne",
       chapterId: "rustboro",
       title: "Defeat Roxanne (Stone Badge)",
-      summary: "Rustboro Gym — Rock types. Stone Badge unlocks Cut outside battle.",
+      summary: "Rustboro Gym — Rock types. Stone Badge enables field Cut (optional).",
       detail:
-        "**Roxanne** leads with Geodude / Nosepass. Water, Grass, and Fighting hit hard. Earning the **Stone Badge** lets you use **Cut** in the overworld (once you have the HM).",
+        "**Roxanne** leads with Geodude / Nosepass. Water, Grass, and Fighting hit hard. The **Stone Badge** unlocks **Cut** in the overworld if you pick up that HM — Cut is **not** required for the main story.",
       locations: ["Rustboro City"],
       autoCompleteWhenBadge: "gym-1",
       nuzlockeNote: "Gym battles are free XP — still respect your level cap.",
@@ -176,15 +180,15 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "rustboro-get-cut",
       chapterId: "rustboro",
-      title: "Get Cut from the Cutter’s house",
+      title: "Optional: pick up Cut",
       summary:
-        "House south of the Rustboro Pokémon Center — easy to miss, required for Rusturf.",
+        "Cutter’s house near the Rustboro Center — useful for item trees, not story-required.",
       detail:
-        "From the **Rustboro Pokémon Center**, go **south one row of houses**. The Cutter’s house is on that street. Talk to the man inside for **HM01 Cut**.\n\nYou need the **Stone Badge** to use Cut outside battle. Cut opens the path into **Rusturf Tunnel** (east of Rustboro via Route 116) later.",
+        "From the **Rustboro Pokémon Center**, the **Cutter’s house** is nearby (west / same block as the Center in Modern Emerald layouts). Talk to him for **HM01 Cut**.\n\n**Cut is not needed for Rusturf Tunnel or main story progression.** It only removes thin trees for optional items and shortcuts (e.g. side pockets on early routes).\n\nIn Modern Emerald, field HMs work from the bag — you don’t need to teach Cut to a party mon.",
       locations: ["Rustboro City"],
       hms: ["Cut"],
       requiresSteps: ["rustboro-roxanne"],
-      priority: "critical",
+      priority: "optional",
       sortOrder: 30,
     },
     {
@@ -281,13 +285,14 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "mauville-rock-smash",
       chapterId: "mauville",
-      title: "Get Rock Smash",
-      summary: "Mauville house — needed to reopen Rusturf Tunnel toward Verdanturf.",
+      title: "Get Rock Smash and open Rusturf Tunnel",
+      summary:
+        "Mauville house → smash rocks in Rusturf to reach Verdanturf (and get Strength).",
       detail:
-        "In **Mauville**, visit the house where an NPC gives **HM06 Rock Smash** (often pointed out after Wattson’s event). With the **Dynamo Badge**, smash rocks in **Rusturf Tunnel** to open the shortcut to **Verdanturf**.",
+        "In **Mauville**, the house across from the Poké Mart gives **HM06 Rock Smash** (requires Stone + Knuckle badges to receive).\n\nWith the **Dynamo Badge**, use Rock Smash in **Rusturf Tunnel** (Route 116 from Rustboro, or from Verdanturf later) to clear the boulders blocking the tunnel. That reunites the couple inside and rewards **HM04 Strength**.\n\n**Rock Smash — not Cut — is what opens Rusturf.**",
       locations: ["Mauville City", "Rusturf Tunnel", "Verdanturf Town"],
       requiresBadges: ["gym-1", "gym-2"],
-      hms: ["Rock Smash"],
+      hms: ["Rock Smash", "Strength"],
       requiresSteps: ["mauville-wattson"],
       priority: "critical",
       sortOrder: 30,

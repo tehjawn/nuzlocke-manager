@@ -39,7 +39,7 @@ test("active chapter advances once prior critical steps are complete", () => {
   );
 });
 
-test("next steps highlight Cut after Stone Badge", () => {
+test("next steps highlight Devon letter after Stone Badge", () => {
   const snap = resolveGuideProgress(EMERALD_GUIDE, {
     earnedBadgeKeys: ["gym-1"],
     checkedStepIds: [
@@ -53,9 +53,33 @@ test("next steps highlight Cut after Stone Badge", () => {
   assert.equal(snap.activeChapterId, "rustboro");
   const ids = snap.nextSteps.map((s) => s.id);
   assert.ok(
-    ids.includes("rustboro-get-cut"),
-    `expected Cut in next steps, got ${ids.join(", ")}`,
+    ids.includes("rustboro-devon-letter"),
+    `expected Devon letter in next steps, got ${ids.join(", ")}`,
   );
+  assert.ok(
+    !ids.includes("rustboro-get-cut"),
+    "Cut is optional and should not appear in Next steps",
+  );
+});
+
+test("Cut is optional and not story-blocking", () => {
+  const cut = EMERALD_GUIDE.steps.find((s) => s.id === "rustboro-get-cut");
+  assert.ok(cut);
+  assert.equal(cut!.priority, "optional");
+});
+
+test("Rusturf progress is Rock Smash, not Cut", () => {
+  const smash = EMERALD_GUIDE.steps.find((s) => s.id === "mauville-rock-smash");
+  assert.ok(smash);
+  assert.equal(smash!.priority, "critical");
+  assert.ok(smash!.hms?.includes("Rock Smash"));
+  assert.ok(smash!.summary.toLowerCase().includes("rusturf"));
+});
+
+test("starter step reflects Modern Emerald random starter", () => {
+  const starter = EMERALD_GUIDE.steps.find((s) => s.id === "prologue-starter");
+  assert.ok(starter);
+  assert.match(starter!.summary, /random/i);
 });
 
 test("gym badges auto-complete matching steps", () => {
