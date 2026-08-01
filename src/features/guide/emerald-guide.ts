@@ -200,6 +200,14 @@ export const EMERALD_GUIDE: GuideDocument = {
       ],
       sortOrder: 9,
     },
+    {
+      id: "last-step",
+      title: "Last Step",
+      summary: "Ping the season hosts in Discord to lock in your team.",
+      requiresBadges: [],
+      locations: [],
+      sortOrder: 10,
+    },
   ],
   steps: [
     // —— Prologue ——
@@ -614,6 +622,22 @@ export const EMERALD_GUIDE: GuideDocument = {
       locations: ["Ever Grande City"],
       priority: "critical",
       sortOrder: 20,
+    },
+
+    // —— Last Step ——
+    {
+      id: "last-step-lock-in",
+      chapterId: "last-step",
+      title: "Lock in your team on Discord",
+      summary:
+        "Message #gaming @’ing Oubori, jawn, and chedda that you’re finished and want to lock in your team.",
+      detail:
+        "Post in the **#gaming** Discord channel and @ **Oubori**, **jawn**, and **chedda** to say you’ve finished and would like to lock in your team.\n\nYou can keep trying new teams on new saves, but **Nuzlocke Manager only supports one trainer per player this season** (for now!).",
+      requiresSteps: ["e4-league"],
+      priority: "critical",
+      sortOrder: 10,
+      nuzlockeNote:
+        "One trainer slot per player this season — lock in the run you want to keep.",
     },
   ],
 };

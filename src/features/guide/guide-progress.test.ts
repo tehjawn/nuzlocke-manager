@@ -164,3 +164,125 @@ test("guide document has unique step ids", () => {
   const ids = EMERALD_GUIDE.steps.map((s) => s.id);
   assert.equal(ids.length, new Set(ids).size);
 });
+
+test("every step prerequisite points at a real earlier step", () => {
+  const order = new Map(
+    EMERALD_GUIDE.chapters.map((c) => [c.id, c.sortOrder]),
+  );
+  const byId = new Map(EMERALD_GUIDE.steps.map((s) => [s.id, s]));
+  for (const step of EMERALD_GUIDE.steps) {
+    for (const req of step.requiresSteps ?? []) {
+      const prereq = byId.get(req);
+      assert.ok(prereq, `${step.id} requires missing step ${req}`);
+      const stepChapter = order.get(step.chapterId)!;
+      const prereqChapter = order.get(prereq!.chapterId)!;
+      assert.ok(
+        prereqChapter < stepChapter ||
+          (prereqChapter === stepChapter &&
+            prereq!.sortOrder < step.sortOrder),
+        `${step.id} requires ${req}, which does not come earlier`,
+      );
+    }
+  }
+});
+
+test("no story step is gated behind an optional prerequisite", () => {
+  const byId = new Map(EMERALD_GUIDE.steps.map((s) => [s.id, s]));
+  for (const step of EMERALD_GUIDE.steps) {
+    if (step.priority === "optional") continue;
+    for (const req of step.requiresSteps ?? []) {
+      assert.notEqual(
+        byId.get(req)!.priority,
+        "optional",
+        `${step.id} would stall behind optional ${req}`,
+      );
+    }
+  }
+});
+
+test("checking off Next steps walks the entire guide with no dead ends", () => {
+  const checked = new Set<string>();
+  const visitedChapters: string[] = [];
+  const totalStory = EMERALD_GUIDE.steps.filter(
+    (s) => s.priority !== "optional",
+  ).length;
+
+  // No badges at all — the worst case for a player who only uses checkoffs.
+  for (let guard = 0; guard <= totalStory + 5; guard += 1) {
+    const snap = resolveGuideProgress(EMERALD_GUIDE, {
+      earnedBadgeKeys: [],
+      checkedStepIds: checked,
+    });
+
+    if (visitedChapters.at(-1) !== snap.activeChapterId) {
+      visitedChapters.push(snap.activeChapterId);
+    }
+
+    if (checked.size === totalStory) {
+      assert.deepEqual(snap.nextSteps, []);
+      break;
+    }
+
+    assert.ok(
+      snap.nextSteps.length > 0,
+      `dead end in ${snap.activeChapterId} after ${checked.size}/${totalStory} steps`,
+    );
+    for (const step of snap.nextSteps) checked.add(step.id);
+  }
+
+  assert.equal(checked.size, totalStory);
+  assert.deepEqual(
+    visitedChapters,
+    EMERALD_GUIDE.chapters
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((c) => c.id),
+  );
+});
+
+test("finishing a chapter unlocks the next one without badges", () => {
+  const throughDewford = EMERALD_GUIDE.steps
+    .filter((s) =>
+      ["prologue", "rustboro", "dewford"].includes(s.chapterId),
+    )
+    .filter((s) => s.priority !== "optional")
+    .map((s) => s.id);
+
+  const snap = resolveGuideProgress(EMERALD_GUIDE, {
+    earnedBadgeKeys: [],
+    checkedStepIds: throughDewford,
+  });
+
+  const mauville = snap.chapters.find((c) => c.chapter.id === "mauville")!;
+  assert.equal(mauville.reachable, true);
+  assert.equal(snap.activeChapterId, "mauville");
+  assert.ok(snap.nextSteps.length > 0);
+
+  const dewford = snap.chapters.find((c) => c.chapter.id === "dewford")!;
+  assert.equal(dewford.cleared, true);
+});
+
+test("last step is Discord lock-in after the Champion", () => {
+  const throughLeague = EMERALD_GUIDE.steps
+    .filter((s) => s.chapterId !== "last-step")
+    .filter((s) => s.priority !== "optional")
+    .map((s) => s.id);
+
+  const snap = resolveGuideProgress(EMERALD_GUIDE, {
+    earnedBadgeKeys: [],
+    checkedStepIds: throughLeague,
+  });
+
+  assert.equal(snap.activeChapterId, "last-step");
+  assert.deepEqual(
+    snap.nextSteps.map((s) => s.id),
+    ["last-step-lock-in"],
+  );
+
+  const step = snap.nextSteps[0]!;
+  assert.match(step.summary, /#gaming/i);
+  assert.match(step.summary, /Oubori/);
+  assert.match(step.summary, /jawn/);
+  assert.match(step.summary, /chedda/i);
+  assert.ok(step.detail?.includes("one trainer per player"));
+});

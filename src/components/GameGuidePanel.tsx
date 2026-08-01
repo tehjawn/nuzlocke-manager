@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Frame } from "@/components/Frame";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { triggerFx } from "@/features/fx";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
 import {
   clearGuideCheckoffs,
@@ -18,10 +19,18 @@ import {
 } from "@/features/guide/guide-progress";
 import type {
   GuideChapter,
+  GuideProgressSnapshot,
   ResolvedGuideStep,
 } from "@/features/guide/guide-types";
 import type { TrainerProfile } from "@/lib/challenge-types";
-import { getEmeraldBadgeMeta } from "@/lib/emerald-badges";
+
+/** Shown when every story step (incl. Discord lock-in) is checked. */
+const GUIDE_COMPLETE_COPY = {
+  title: "Congrats!",
+  body: "You're ready to participate in the Nuzlocke tournament.",
+  dateLine: "Tentative tournament date — October 24th, 2026.",
+  signoff: "See you there!",
+} as const;
 
 type GameGuidePanelProps = {
   slug: string;
@@ -295,20 +304,19 @@ function chapterStatusLabel({
   return "Upcoming";
 }
 
-function badgeRequirementLabel(keys: readonly string[]): string | null {
-  if (!keys.length) return null;
-  const names = keys.map(
-    (key) => getEmeraldBadgeMeta(key)?.badgeName ?? key,
+function storyGuideComplete(snapshot: GuideProgressSnapshot): boolean {
+  return snapshot.chapters.every((chapter) =>
+    chapter.steps
+      .filter((step) => step.priority !== "optional")
+      .every((step) => step.completed),
   );
-  if (names.length === 1) return `Needs ${names[0]}`;
-  if (names.length === 2) return `Needs ${names[0]} and ${names[1]}`;
-  return `Needs ${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
 }
 
 function ChapterAccordion({
   chapter,
   steps,
   reachable,
+  unlockHint,
   cleared,
   isActive,
   open,
@@ -321,6 +329,7 @@ function ChapterAccordion({
   chapter: GuideChapter;
   steps: ResolvedGuideStep[];
   reachable: boolean;
+  unlockHint: string | null;
   cleared: boolean;
   isActive: boolean;
   open: boolean;
@@ -332,16 +341,19 @@ function ChapterAccordion({
 }) {
   const counts = countSteps(steps);
   const status = chapterStatusLabel({ cleared, isActive, reachable });
-  const lockHint = !reachable
-    ? badgeRequirementLabel(chapter.requiresBadges)
-    : null;
+  const lockHint =
+    !reachable && unlockHint ? `Finish ${unlockHint} first` : null;
   const panelId = `guide-chapter-panel-${chapter.id}`;
   const headerId = `guide-chapter-header-${chapter.id}`;
 
   return (
     <section
-      className={`gba-frame overflow-hidden ${
-        isActive ? "ring-1 ring-interactive/35" : ""
+      className={`gba-frame overflow-hidden transition-[opacity,filter] duration-500 ${
+        cleared
+          ? "guide-chapter--cleared opacity-[0.78]"
+          : isActive
+            ? "ring-1 ring-interactive/35"
+            : ""
       }`}
     >
       <h3 className="gba-frame-title relative z-[1] m-0">
@@ -368,9 +380,11 @@ function ChapterAccordion({
               </span>
               <span
                 className={`rounded-full border px-1.5 py-px text-[0.65rem] font-semibold tracking-tight ${
-                  isActive
-                    ? "border-interactive/45 bg-interactive-soft/70 text-interactive"
-                    : "border-frame/70 text-[var(--on-chrome)]/70"
+                  cleared
+                    ? "border-emerald-700/35 bg-emerald-700/15 text-emerald-800 dark:border-emerald-400/35 dark:bg-emerald-400/15 dark:text-emerald-200"
+                    : isActive
+                      ? "border-interactive/45 bg-interactive-soft/70 text-interactive"
+                      : "border-frame/70 text-[var(--on-chrome)]/70"
                 }`}
               >
                 {status}
@@ -458,11 +472,15 @@ export function GameGuidePanel({
     [progress.chapters],
   );
 
+  const guideComplete = storyGuideComplete(progress);
+
   const defaultOpenChapterId =
     chapterParam &&
     progress.chapters.some((c) => c.chapter.id === chapterParam)
       ? chapterParam
-      : progress.activeChapterId;
+      : guideComplete
+        ? null
+        : progress.activeChapterId;
 
   const [openChapterId, setOpenChapterId] = useState<string | null>(
     defaultOpenChapterId,
@@ -480,7 +498,38 @@ export function GameGuidePanel({
   );
 
   function toggleStep(step: ResolvedGuideStep) {
-    setGuideStepChecked(storageKey, step.id, !step.completed);
+    const checking = !step.completed;
+    const before = progress;
+    const nextCheckoffs = setGuideStepChecked(
+      storageKey,
+      step.id,
+      checking,
+    );
+    if (!checking) return;
+
+    const after = resolveGuideProgress(EMERALD_GUIDE, {
+      earnedBadgeKeys: selectedTrainer?.earnedBadgeKeys ?? [],
+      catchRoutes,
+      checkedStepIds: nextCheckoffs.checkedStepIds,
+    });
+
+    if (storyGuideComplete(after)) {
+      triggerFx("guide_complete");
+      return;
+    }
+
+    const clearedChapter = after.chapters.find(
+      (chapter) =>
+        chapter.cleared &&
+        !before.chapters.find((c) => c.chapter.id === chapter.chapter.id)
+          ?.cleared,
+    );
+    if (clearedChapter) {
+      triggerFx("guide_chapter_cleared");
+      return;
+    }
+
+    triggerFx("guide_step_checked");
   }
 
   function toggleExpanded(stepId: string) {
@@ -540,39 +589,58 @@ export function GameGuidePanel({
         </p>
       </Frame>
 
-      <Frame title="Next steps">
-        {progress.nextSteps.length === 0 ? (
-          <p className="text-sm text-muted">
-            No open recommendations for this board — browse chapters below or
-            mark remaining beats.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {progress.nextSteps.map((step, index) => (
-              <StepRow
-                key={step.id}
-                step={step}
-                index={index + 1}
-                nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
-                expanded={expandedStepId === step.id}
-                onToggleExpand={() => toggleExpanded(step.id)}
-                onToggle={() => toggleStep(step)}
-              />
-            ))}
-          </ul>
-        )}
-      </Frame>
+      {guideComplete ? (
+        <Frame title="You're ready">
+          <div className="space-y-2">
+            <p className="text-base font-semibold tracking-tight text-ink">
+              {GUIDE_COMPLETE_COPY.title} {GUIDE_COMPLETE_COPY.body}
+            </p>
+            <p className="text-sm leading-relaxed text-muted">
+              {GUIDE_COMPLETE_COPY.dateLine}
+            </p>
+            <p className="text-sm font-medium text-interactive">
+              {GUIDE_COMPLETE_COPY.signoff}
+            </p>
+          </div>
+        </Frame>
+      ) : (
+        <Frame title="Next steps">
+          {progress.nextSteps.length === 0 ? (
+            <p className="text-sm text-muted">
+              No open recommendations for this board — browse chapters below or
+              mark remaining beats.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {progress.nextSteps.map((step, index) => (
+                <StepRow
+                  key={step.id}
+                  step={step}
+                  index={index + 1}
+                  nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
+                  expanded={expandedStepId === step.id}
+                  onToggleExpand={() => toggleExpanded(step.id)}
+                  onToggle={() => toggleStep(step)}
+                />
+              ))}
+            </ul>
+          )}
+        </Frame>
+      )}
 
       <div className="space-y-3">
         <h3 className="text-sm font-semibold tracking-tight">Chapters</h3>
         <div className="space-y-3">
           {progress.chapters.map(
-            ({ chapter, steps, reachable, cleared, isActive }) => (
+            ({ chapter, steps, reachable, cleared, isActive }, index) => (
               <ChapterAccordion
                 key={chapter.id}
                 chapter={chapter}
                 steps={steps}
                 reachable={reachable}
+                unlockHint={
+                  progress.chapters[index - 1]?.chapter.title ?? null
+                }
                 cleared={cleared}
                 isActive={isActive}
                 open={openChapterId === chapter.id}

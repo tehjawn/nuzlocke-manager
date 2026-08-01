@@ -28,64 +28,86 @@ function isStoryPriority(priority: GuideStepPriority): boolean {
   return priority !== "optional";
 }
 
-export function chapterReachable(
-  chapter: GuideChapter,
-  earnedBadgeKeys: ReadonlySet<string> | readonly string[],
-): boolean {
-  const earned =
-    earnedBadgeKeys instanceof Set
-      ? earnedBadgeKeys
-      : new Set(earnedBadgeKeys);
-  return hasAllBadges(earned, chapter.requiresBadges);
+function sortedChapters(doc: GuideDocument): GuideChapter[] {
+  return [...doc.chapters].sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export function chapterCleared(
-  chapter: GuideChapter,
-  earnedBadgeKeys: ReadonlySet<string> | readonly string[],
+function chapterStorySteps(doc: GuideDocument, chapterId: string): GuideStep[] {
+  return doc.steps.filter(
+    (s) => s.chapterId === chapterId && isStoryPriority(s.priority),
+  );
+}
+
+function chapterStoryDone(
+  doc: GuideDocument,
+  chapterId: string,
+  completedIds: ReadonlySet<string>,
 ): boolean {
-  if (!chapter.clearsWithBadge) return false;
-  const earned =
-    earnedBadgeKeys instanceof Set
-      ? earnedBadgeKeys
-      : new Set(earnedBadgeKeys);
-  return earned.has(chapter.clearsWithBadge);
+  return chapterStorySteps(doc, chapterId).every((s) => completedIds.has(s.id));
 }
 
 /**
- * Earliest reachable chapter that still has incomplete story steps
- * (critical + recommended). Optional pickups never hold the chapter open.
+ * A chapter opens when the previous chapter's story steps are checked off.
+ * Badges are only a shortcut — a player who already has the badges can jump
+ * ahead without back-filling checkoffs, but missing badges never block a
+ * player who is working through the list.
+ */
+export function chapterReachable(
+  doc: GuideDocument,
+  chapter: GuideChapter,
+  earnedBadgeKeys: ReadonlySet<string> | readonly string[],
+  checkedStepIds: GuideProgressInput["checkedStepIds"] = [],
+): boolean {
+  const chapters = sortedChapters(doc);
+  const index = chapters.findIndex((c) => c.id === chapter.id);
+  if (index <= 0) return true;
+
+  const earned =
+    earnedBadgeKeys instanceof Set
+      ? earnedBadgeKeys
+      : new Set(earnedBadgeKeys);
+  if (hasAllBadges(earned, chapter.requiresBadges)) return true;
+
+  const completedIds = asCheckedSet(checkedStepIds);
+  const previous = chapters[index - 1]!;
+  return chapterStoryDone(doc, previous.id, completedIds);
+}
+
+/** Cleared once every story step is checked off. */
+export function chapterCleared(
+  doc: GuideDocument,
+  chapter: GuideChapter,
+  checkedStepIds: GuideProgressInput["checkedStepIds"] = [],
+): boolean {
+  const steps = chapterStorySteps(doc, chapter.id);
+  if (steps.length === 0) return false;
+  return chapterStoryDone(doc, chapter.id, asCheckedSet(checkedStepIds));
+}
+
+/**
+ * First chapter (in story order) that still has incomplete story steps.
+ * Never stops early on badge gates — checkoffs alone always move forward.
  */
 export function resolveActiveChapterId(
   doc: GuideDocument,
-  earnedBadgeKeys: readonly string[],
+  _earnedBadgeKeys: readonly string[],
   checkedStepIds: GuideProgressInput["checkedStepIds"] = [],
 ): string {
-  const earned = new Set(earnedBadgeKeys);
   const completedIds = asCheckedSet(checkedStepIds);
-  const chapters = [...doc.chapters].sort((a, b) => a.sortOrder - b.sortOrder);
-  let lastReachable = chapters[0]?.id ?? "";
+  const chapters = sortedChapters(doc);
 
   for (const chapter of chapters) {
-    if (!chapterReachable(chapter, earned)) break;
-    lastReachable = chapter.id;
-    const storyIncomplete = doc.steps.some(
-      (s) =>
-        s.chapterId === chapter.id &&
-        isStoryPriority(s.priority) &&
-        !completedIds.has(s.id),
-    );
-    if (storyIncomplete) return chapter.id;
+    if (!chapterStoryDone(doc, chapter.id, completedIds)) return chapter.id;
   }
 
-  return lastReachable;
+  return chapters.at(-1)?.id ?? "";
 }
 
+/** Steps unlock from their own prerequisites only — badges never gate them. */
 function stepAvailable(
   step: GuideStep,
-  earned: ReadonlySet<string>,
   completedIds: ReadonlySet<string>,
 ): boolean {
-  if (!hasAllBadges(earned, step.requiresBadges)) return false;
   for (const req of step.requiresSteps ?? []) {
     if (!completedIds.has(req)) return false;
   }
@@ -97,7 +119,6 @@ const PRIORITY_RANK = { critical: 0, recommended: 1, optional: 2 } as const;
 
 /**
  * Compute next steps + per-chapter checklists from manual checkoffs.
- * Badges only gate chapter reachability — they never auto-complete steps.
  * Next steps stay on the active chapter until its story beats are done.
  */
 export function resolveGuideProgress(
@@ -128,25 +149,20 @@ export function resolveGuideProgress(
     };
   }
 
-  const chapters = [...doc.chapters]
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((chapter) => {
-      const steps = doc.steps
-        .filter((s) => s.chapterId === chapter.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map(toResolved);
-      const storyDone = steps
-        .filter((s) => isStoryPriority(s.priority))
-        .every((s) => s.completed);
-      return {
-        chapter,
-        steps,
-        completedCount: steps.filter((s) => s.completed).length,
-        reachable: chapterReachable(chapter, earned),
-        cleared: chapterCleared(chapter, earned) && storyDone,
-        isActive: chapter.id === activeChapterId,
-      };
-    });
+  const chapters = sortedChapters(doc).map((chapter) => {
+    const steps = doc.steps
+      .filter((s) => s.chapterId === chapter.id)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(toResolved);
+    return {
+      chapter,
+      steps,
+      completedCount: steps.filter((s) => s.completed).length,
+      reachable: chapterReachable(doc, chapter, earned, completedIds),
+      cleared: chapterCleared(doc, chapter, completedIds),
+      isActive: chapter.id === activeChapterId,
+    };
+  });
 
   // Stay on the active chapter — don't leak later-chapter beats into Next steps
   // while earlier story steps (incl. recommended) are still open.
@@ -154,8 +170,8 @@ export function resolveGuideProgress(
     .map(toResolved)
     .filter((s) => s.chapterId === activeChapterId)
     .filter((s) => !s.completed)
-    .filter((s) => stepAvailable(s, earned, completedIds))
     .filter((s) => isStoryPriority(s.priority))
+    .filter((s) => stepAvailable(s, completedIds))
     .sort((a, b) => {
       if (PRIORITY_RANK[a.priority] !== PRIORITY_RANK[b.priority]) {
         return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
