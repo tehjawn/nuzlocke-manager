@@ -1,17 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { Frame } from "@/components/Frame";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type {
   BadgeDefinition,
   TrainerProfile,
 } from "@/lib/challenge-types";
-import { pokemonSpriteUrl } from "@/lib/sprites";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { toolsHref } from "@/lib/tools-routes";
 
@@ -178,16 +177,14 @@ function CompareColumn({
             >
               {mon ? (
                 <>
-                  <Image
-                    src={pokemonSpriteUrl(mon.species, {
-                      pokedexId: mon.pokedexId,
-                      shiny: mon.isShiny,
-                    })}
+                  <PokemonSpriteImage
                     alt=""
-                    width={40}
-                    height={40}
                     className="pixelated h-10 w-10 object-contain"
-                    unoptimized
+                    height={40}
+                    pokedexId={mon.pokedexId}
+                    shiny={mon.isShiny}
+                    species={mon.species}
+                    width={40}
                   />
                   <span className="mt-1 w-full truncate text-center text-[10px] font-semibold">
                     {mon.nickname?.trim() || mon.species}

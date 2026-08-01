@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
+import { PreferencesIcon } from "@/components/nav-icons";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 
 const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
@@ -23,6 +24,13 @@ export async function MobileMenuAuth() {
         >
           <ProfileIcon />
           My Profile
+        </Link>
+        <Link
+          className="flex h-11 items-center gap-2 rounded-md border border-transparent bg-surface px-3 text-sm font-medium hover:border-interactive/40 hover:bg-interactive-soft/60"
+          href="/preferences"
+        >
+          <PreferencesIcon className="h-4 w-4 text-accent-deep" />
+          Preferences
         </Link>
         <form
           action={async () => {

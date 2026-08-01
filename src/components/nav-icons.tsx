@@ -52,6 +52,18 @@ export function MyTrainerIcon({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+export function PreferencesIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="3" />
+      <path
+        d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6L18 18M18 6l-1.4 1.4M7.4 16.6L6 18"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function GmIcon({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg {...base} className={className}>

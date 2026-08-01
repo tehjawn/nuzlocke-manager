@@ -130,8 +130,14 @@ export function pokemonAnimatedSpriteId(speciesOrSlug: string): string {
   return slug.replace(/-mega-x$/, "-megax").replace(/-mega-y$/, "-megay");
 }
 
-export function pokemonAnimatedSpriteUrl(speciesOrSlug: string): string {
-  return `${SHOWDOWN_ANI_BASE}/${pokemonAnimatedSpriteId(speciesOrSlug)}.gif`;
+export function pokemonAnimatedSpriteUrl(
+  speciesOrSlug: string,
+  options?: { shiny?: boolean },
+): string {
+  const folder = options?.shiny
+    ? `${SHOWDOWN_ANI_BASE}-shiny`
+    : SHOWDOWN_ANI_BASE;
+  return `${folder}/${pokemonAnimatedSpriteId(speciesOrSlug)}.gif`;
 }
 
 export function customAvatarKey(url: string): string {

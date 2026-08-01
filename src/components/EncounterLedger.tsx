@@ -1,8 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Frame } from "@/components/Frame";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
-import { pokemonSpriteUrl } from "@/lib/sprites";
 
 type EncounterLedgerProps = {
   slug: string;
@@ -39,18 +38,16 @@ export function EncounterLedger({ slug, groups }: EncounterLedgerProps) {
                 key={claim.pokemonId}
                 className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
               >
-                <Image
-                  src={pokemonSpriteUrl(claim.species, {
-                    pokedexId: claim.pokedexId,
-                    shiny: claim.isShiny,
-                  })}
+                <PokemonSpriteImage
                   alt=""
-                  width={40}
-                  height={40}
                   className={`pixelated h-10 w-10 object-contain ${
                     claim.isAlive ? "" : "opacity-50 grayscale"
                   }`}
-                  unoptimized
+                  height={40}
+                  pokedexId={claim.pokedexId}
+                  shiny={claim.isShiny}
+                  species={claim.species}
+                  width={40}
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">

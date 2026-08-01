@@ -13,6 +13,7 @@ import {
   type RefObject,
 } from "react";
 import { Frame } from "@/components/Frame";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilitiesForSpecies } from "@/data/pokemon-lookups";
@@ -38,7 +39,6 @@ import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 import {
   avatarImageClassName,
   avatarImageUrl,
-  pokemonSpriteUrl,
 } from "@/lib/sprites";
 import { baseStatsForSpecies, STAT_KEYS } from "@/lib/stats";
 import {
@@ -296,18 +296,14 @@ export function PokedexPanel({
                           <span className="w-9 shrink-0 text-right font-mono text-[11px] font-bold tabular-nums text-muted">
                             {formatDexNo(mon.pokedexId)}
                           </span>
-                          {/* Native img: lighter than next/image for dense lists. */}
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={pokemonSpriteUrl(mon.name, {
-                              pokedexId: mon.pokedexId,
-                            })}
+                          <PokemonSpriteImage
                             alt=""
-                            width={32}
+                            className="pixelated h-8 w-8 shrink-0 object-contain"
                             height={32}
                             loading="lazy"
-                            decoding="async"
-                            className="pixelated h-8 w-8 shrink-0 object-contain"
+                            pokedexId={mon.pokedexId}
+                            species={mon.name}
+                            width={32}
                           />
                           <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">
                             {mon.name}
@@ -387,18 +383,15 @@ export function PokedexPanel({
                               }`}
                               onClick={() => selectFromRun(mon)}
                             >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={pokemonSpriteUrl(mon.species, {
-                                  pokedexId: mon.pokedexId,
-                                  shiny: mon.isShiny,
-                                })}
+                              <PokemonSpriteImage
                                 alt=""
-                                width={32}
+                                className="pixelated h-7 w-7 object-contain"
                                 height={32}
                                 loading="lazy"
-                                decoding="async"
-                                className="pixelated h-7 w-7 object-contain"
+                                pokedexId={mon.pokedexId}
+                                shiny={mon.isShiny}
+                                species={mon.species}
+                                width={32}
                               />
                             </button>
                           </li>
@@ -521,8 +514,6 @@ function PokedexEntry({
   onNext: () => void;
   onMoreTips: () => void;
 }) {
-  const sprite = pokemonSpriteUrl(entry.name, { pokedexId: entry.pokedexId });
-
   return (
     <Frame
       title={`${formatDexNo(entry.pokedexId)}  ${entry.name}`}
@@ -554,13 +545,13 @@ function PokedexEntry({
         <div className="grid gap-4 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:items-start">
           <div className="flex flex-col items-center gap-2 sm:items-stretch">
             <div className="mx-auto flex aspect-square w-36 items-center justify-center rounded-lg border border-frame bg-surface-2 sm:mx-0 sm:w-full">
-              <Image
-                src={sprite}
+              <PokemonSpriteImage
                 alt=""
-                width={144}
-                height={144}
                 className="pixelated h-[85%] w-[85%] object-contain"
-                unoptimized
+                height={144}
+                pokedexId={entry.pokedexId}
+                species={entry.name}
+                width={144}
               />
             </div>
             {types.length > 0 ? (
@@ -715,17 +706,14 @@ function PokedexEntry({
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface text-[11px] font-bold tabular-nums text-muted">
                       {i + 1}
                     </span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={pokemonSpriteUrl(tip.pokemon.name, {
-                        pokedexId: tip.pokemon.pokedexId,
-                      })}
+                    <PokemonSpriteImage
                       alt=""
-                      width={48}
+                      className="pixelated h-12 w-12 object-contain"
                       height={48}
                       loading="lazy"
-                      decoding="async"
-                      className="pixelated h-12 w-12 object-contain"
+                      pokedexId={tip.pokemon.pokedexId}
+                      species={tip.pokemon.name}
+                      width={48}
                     />
                     <div className="min-w-0">
                       <p className="font-bold leading-tight">

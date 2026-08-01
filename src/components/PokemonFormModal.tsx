@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { Modal } from "@/components/Modal";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { SearchSelect } from "@/components/SearchSelect";
 import { PokemonSpriteBrowser } from "@/components/SpriteBrowser";
 import { StatSpreadEditor } from "@/components/StatSpreadEditor";
@@ -16,7 +16,6 @@ import {
   searchNatures,
 } from "@/data/pokemon-lookups";
 import { resolveMoveName } from "@/lib/move-names";
-import { pokemonSpriteUrl } from "@/lib/sprites";
 import {
   findDuplicateHeldItems,
   findDuplicateSpecies,
@@ -329,16 +328,14 @@ function PokemonFormModalInner({
             <div className="flex flex-col items-center gap-2 sm:items-stretch">
               <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-lg border border-frame bg-surface-2 sm:mx-0 sm:aspect-square sm:h-auto sm:w-full">
                 {species ? (
-                  <Image
-                    src={pokemonSpriteUrl(species, {
-                      shiny: form.isShiny,
-                      pokedexId: form.pokedexId,
-                    })}
+                  <PokemonSpriteImage
                     alt=""
-                    width={144}
-                    height={144}
                     className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"
-                    unoptimized
+                    height={144}
+                    pokedexId={form.pokedexId}
+                    shiny={form.isShiny}
+                    species={species}
+                    width={144}
                   />
                 ) : (
                   <span className="text-sm text-muted">?</span>

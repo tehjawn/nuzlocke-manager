@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { Modal } from "@/components/Modal";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import {
   parsePokemonSaveAsync,
   type ParsedSavePokemon,
@@ -10,7 +10,6 @@ import {
 } from "@/lib/gen3-save";
 import type { PokemonSlot } from "@/lib/challenge-types";
 import { resolveMoveNames } from "@/lib/move-names";
-import { pokemonSpriteUrl } from "@/lib/sprites";
 
 export type SaveImportDraft = {
   pid: number;
@@ -362,16 +361,14 @@ export function SaveImportModal({
                                 })
                               }
                             />
-                            <Image
-                              src={pokemonSpriteUrl(mon.species, {
-                                shiny: mon.isShiny,
-                                pokedexId: mon.pokedexId,
-                              })}
+                            <PokemonSpriteImage
                               alt=""
-                              width={40}
-                              height={40}
-                              unoptimized
                               className="pixelated h-10 w-10"
+                              height={40}
+                              pokedexId={mon.pokedexId}
+                              shiny={mon.isShiny}
+                              species={mon.species}
+                              width={40}
                             />
                           </label>
                           <div className="min-w-0 flex-1 space-y-1">

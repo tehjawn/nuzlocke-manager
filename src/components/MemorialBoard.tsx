@@ -1,9 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
-import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { Frame } from "@/components/Frame";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TypeBadge } from "@/components/TypeBadge";
-import { pokemonSpriteUrl } from "@/lib/sprites";
+import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 
 type MemorialEntry = {
@@ -80,23 +79,20 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
               <ul className="grid gap-3 sm:grid-cols-2">
                 {graves.map((pokemon) => {
                   const label = pokemon.nickname || pokemon.species;
-                  const sprite = pokemonSpriteUrl(pokemon.species, {
-                    shiny: pokemon.isShiny,
-                    pokedexId: pokemon.pokedexId,
-                  });
                   return (
                     <li
                       key={pokemon.id}
                       className="flex gap-3 rounded-lg border border-frame/40 bg-surface/70 p-3"
                     >
                       <div className="relative h-16 w-16 shrink-0">
-                        <Image
-                          src={sprite}
+                        <PokemonSpriteImage
                           alt=""
-                          width={64}
-                          height={64}
                           className="pixelated h-full w-full object-contain opacity-90"
-                          unoptimized
+                          height={64}
+                          pokedexId={pokemon.pokedexId}
+                          shiny={pokemon.isShiny}
+                          species={pokemon.species}
+                          width={64}
                         />
                       </div>
                       <div className="min-w-0 flex-1">

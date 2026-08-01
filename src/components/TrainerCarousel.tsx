@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
-import { pokemonSpriteUrl } from "@/lib/sprites";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 
 export type CarouselTrainer = {
   id: string;
@@ -111,20 +110,18 @@ function CarouselRow({
               }`}
             >
               {trainer.leadPokemon ? (
-                <Image
-                  src={pokemonSpriteUrl(trainer.leadPokemon.species, {
-                    shiny: trainer.leadPokemon.isShiny,
-                    pokedexId: trainer.leadPokemon.pokedexId,
-                  })}
+                <PokemonSpriteImage
                   alt=""
-                  width={96}
-                  height={96}
                   className={`pixelated absolute top-1.5 left-1/2 -translate-x-[15%] object-contain opacity-80 transition-transform duration-300 group-hover:-translate-y-1 ${
                     compact
                       ? "h-14 w-14 sm:h-16 sm:w-16"
                       : "top-2 h-20 w-20 sm:h-24 sm:w-24"
                   }`}
-                  unoptimized
+                  height={96}
+                  pokedexId={trainer.leadPokemon.pokedexId}
+                  shiny={trainer.leadPokemon.isShiny}
+                  species={trainer.leadPokemon.species}
+                  width={96}
                 />
               ) : null}
               <AvatarPortrait

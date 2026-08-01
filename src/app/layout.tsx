@@ -7,6 +7,7 @@ import { SnackbarHost } from "@/components/Snackbar";
 import { CelebrationHost } from "@/features/fx/CelebrationHost";
 import { JumpHost } from "@/features/jump/JumpHost";
 import { challengeToJumpSeasonContext } from "@/features/jump/jump-season";
+import { PokemonSpritePreferenceProvider } from "@/features/preferences/PokemonSpritePreferenceProvider";
 import { getDefaultJumpChallenge } from "@/lib/challenges";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -70,12 +71,14 @@ export default async function RootLayout({
           {THEME_INIT_SCRIPT}
         </Script>
         <NavigationProgress />
-        <JumpHost defaultSeason={defaultSeason}>
-          {children}
-          <SiteFooter />
-          <SnackbarHost />
-          <CelebrationHost />
-        </JumpHost>
+        <PokemonSpritePreferenceProvider>
+          <JumpHost defaultSeason={defaultSeason}>
+            {children}
+            <SiteFooter />
+            <SnackbarHost />
+            <CelebrationHost />
+          </JumpHost>
+        </PokemonSpritePreferenceProvider>
       </body>
     </html>
   );

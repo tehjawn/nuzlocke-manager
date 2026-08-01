@@ -4,10 +4,7 @@ import type {
   JumpResult,
   JumpSeasonContext,
 } from "@/features/jump/jump-types";
-import {
-  avatarImageUrl,
-  pokemonSpriteUrl,
-} from "@/lib/sprites";
+import { avatarImageUrl } from "@/lib/sprites";
 
 const FUSE_OPTIONS: IFuseOptions<JumpResult> = {
   keys: [
@@ -218,10 +215,11 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
           "pokemon",
           "mon",
         ].filter(Boolean),
-        imageUrl: pokemonSpriteUrl(mon.species, {
+        pokemonSprite: {
           pokedexId: mon.pokedexId,
           shiny: mon.isShiny,
-        }),
+          species: mon.species,
+        },
       };
     }),
   );
