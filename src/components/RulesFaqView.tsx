@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Frame } from "@/components/Frame";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import {
   RuleIllustration,
   ruleIllustrationKind,
@@ -80,13 +81,11 @@ export function RulesFaqView({
                     <RuleIllustration kind={illustration} />
                   ) : null}
                   {showBody ? (
-                    <p
-                      className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                        illustration ? "mt-3" : ""
-                      }`}
-                    >
-                      {rule.body}
-                    </p>
+                    <MarkdownContent
+                      className={illustration ? "mt-3" : ""}
+                      content={rule.body}
+                      toolsHref={toolsHref}
+                    />
                   ) : null}
                 </Frame>
               </li>
@@ -97,45 +96,12 @@ export function RulesFaqView({
         <div className="space-y-4">
           {faqs.map((faq) => (
             <Frame key={faq.id} title={faq.question}>
-              <FaqAnswer answer={faq.answer} toolsHref={toolsHref} />
+              <MarkdownContent content={faq.answer} toolsHref={toolsHref} />
             </Frame>
           ))}
         </div>
       )}
     </div>
-  );
-}
-
-function FaqAnswer({
-  answer,
-  toolsHref,
-}: {
-  answer: string;
-  toolsHref: string;
-}) {
-  const parts = answer.split(/(\[Tools\])/g);
-  if (parts.length === 1) {
-    return (
-      <p className="text-sm leading-relaxed whitespace-pre-wrap">{answer}</p>
-    );
-  }
-
-  return (
-    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-      {parts.map((part, i) =>
-        part === "[Tools]" ? (
-          <Link
-            key={`tools-${i}`}
-            href={toolsHref}
-            className="font-semibold text-interactive underline decoration-interactive/40 underline-offset-2 hover:decoration-interactive"
-          >
-            Tools
-          </Link>
-        ) : (
-          <span key={`t-${i}`}>{part}</span>
-        ),
-      )}
-    </p>
   );
 }
 
