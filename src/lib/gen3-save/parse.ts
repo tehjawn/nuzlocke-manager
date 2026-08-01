@@ -633,14 +633,28 @@ function rankPartyBases(bytes: Uint8Array): {
   withPost: number[];
   withoutPost: number[];
 } {
-  const scored: { off: number; base: number; post: number }[] = [];
+  const scored: {
+    off: number;
+    base: number;
+    post: number;
+  }[] = [];
 
-  // Best (highest monScore) copy per PID — live party slots should reference these.
+  // Best (highest monScore) copy per PID — used as a soft ranking signal.
   const bestOffsetByPid = new Map<number, number>();
   const bestScoreByPid = new Map<number, number>();
-  for (let off = 0; off + MON_SIZE <= bytes.length; off += 4) {
+  /** PIDs that also exist as PC/box (80-byte) forms — stale party snapshots often still list them. */
+  const boxFormPids = new Set<number>();
+  /** PIDs marked dead via Modern Emerald nuzlocke ribbon. */
+  const ribbonedPids = new Set<number>();
+
+  for (let off = 0; off + BOX_SIZE <= bytes.length; off += 4) {
     const mon = tryParseMon(bytes, off);
-    if (!mon || mon.level == null) continue;
+    if (!mon) continue;
+    if (mon.level == null) {
+      boxFormPids.add(mon.pid);
+      continue;
+    }
+    if (mon.nuzlockeRibbon) ribbonedPids.add(mon.pid);
     const score = monScore(mon);
     const prev = bestScoreByPid.get(mon.pid);
     if (prev == null || score > prev) {
@@ -651,6 +665,7 @@ function rankPartyBases(bytes: Uint8Array): {
 
   for (let off = 0; off + PARTY_SLOTS * MON_SIZE <= bytes.length; off += 4) {
     let filled = 0;
+    let liveFilled = 0;
     let heal = 0;
     let valid = true;
     let seenEmpty = false;
@@ -679,10 +694,17 @@ function rankPartyBases(bytes: Uint8Array): {
       filled += 1;
       heal += mon.hp;
       if (bestOffsetByPid.get(mon.pid) === mon.offset) bestCopies += 1;
+      // Boxed or nuzlocke-dead mons in a party window usually mean a stale snapshot
+      // (SB1/heal buffer), not the live gPlayerParty.
+      if (
+        !boxFormPids.has(mon.pid) &&
+        !ribbonedPids.has(mon.pid) &&
+        !(mon.maxHp > 0 && mon.hp === 0)
+      ) {
+        liveFilled += 1;
+      }
     }
-    if (!valid || filled === 0) continue;
-    // Reject windows that stitch together stale secondary copies of party mons.
-    if (bestCopies < filled) continue;
+    if (!valid || filled === 0 || liveFilled === 0) continue;
 
     // Crest: post-party living mons (wild buffer). Always scored so Modern can
     // re-rank without a second full-buffer scan.
@@ -694,16 +716,18 @@ function rankPartyBases(bytes: Uint8Array): {
       post += 1;
     }
 
-    // Prefer windows that look like SaveBlock1.playerParty (badge flags coherent).
-    const badgesModern = readBadges(bytes, off, "modern");
-    const badgesCrest = badgesModern.reliable
-      ? badgesModern
-      : readBadges(bytes, off, "crest");
-    const saveblockBonus = badgesCrest.reliable ? 5000 : 0;
-
+    // Prefer more currently-live members; penalize windows padded with boxed/dead
+    // leftovers. bestCopies is a soft bonus only (live party can be more damaged
+    // than PC copies — hard-requiring it rejected pmv4_4 / pmv4_5).
+    const freshness = liveFilled / filled;
     scored.push({
       off,
-      base: saveblockBonus + filled * 1000 + heal - off * 0.0001,
+      base:
+        liveFilled * 1000 +
+        freshness * 200 +
+        bestCopies * 10 +
+        heal * 0.01 -
+        off * 0.0001,
       post,
     });
   }
@@ -1225,6 +1249,23 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
   const rankedParties = rankPartyBases(bytes);
   let partyBases = rankedParties.withPost;
   if (partyBases.length === 0) {
+    // Pre-starter Afterplay states have no party block yet — still a valid import.
+    if (bytes.length >= 0x10000) {
+      return {
+        ok: true,
+        format: formatLabel,
+        warnings: [
+          "No party Pokémon found (pre-starter or empty party).",
+        ],
+        trainer: null,
+        badges: { earnedKeys: [], reliable: false },
+        revive: EMPTY_REVIVE,
+        party: [],
+        box: [],
+        rip: [],
+        encountered: [],
+      };
+    }
     return {
       ok: false,
       error:
