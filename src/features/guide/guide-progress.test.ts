@@ -63,6 +63,22 @@ test("next steps highlight starting the Nuzlocke after the starter", () => {
   );
 });
 
+test("next steps stay on prologue until Head toward Rustboro is checked", () => {
+  const snap = resolveGuideProgress(EMERALD_GUIDE, {
+    earnedBadgeKeys: ["gym-1"],
+    checkedStepIds: [
+      "prologue-starter",
+      "prologue-start-nuzlocke",
+      "prologue-oldale-petalburg",
+    ],
+  });
+  assert.equal(snap.activeChapterId, "prologue");
+  const ids = snap.nextSteps.map((s) => s.id);
+  assert.deepEqual(ids, ["prologue-route-104"]);
+  assert.ok(!ids.includes("rustboro-devon-letter"));
+  assert.ok(!ids.includes("rustboro-petalburg-woods"));
+});
+
 test("next steps highlight Devon letter after Rustboro gym is checked", () => {
   const snap = resolveGuideProgress(EMERALD_GUIDE, {
     earnedBadgeKeys: ["gym-1"],

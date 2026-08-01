@@ -252,7 +252,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       summary: "North on Route 104 into Petalburg Woods, then out to Rustboro.",
       locations: ["Route 104", "Petalburg Woods", "Rustboro City"],
       requiresSteps: ["prologue-oldale-petalburg"],
-      priority: "recommended",
+      priority: "critical",
       sortOrder: 30,
     },
 
@@ -265,6 +265,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       detail:
         "In **Petalburg Woods**, help the Devon employee fight off the Team Magma/Aqua grunt. Afterward you can continue north to **Rustboro City**.",
       locations: ["Petalburg Woods", "Rustboro City"],
+      requiresSteps: ["prologue-route-104"],
       priority: "critical",
       sortOrder: 10,
     },

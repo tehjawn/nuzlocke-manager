@@ -4,6 +4,7 @@ import type {
   GuideProgressInput,
   GuideProgressSnapshot,
   GuideStep,
+  GuideStepPriority,
   ResolvedGuideStep,
 } from "@/features/guide/guide-types";
 
@@ -20,6 +21,11 @@ function hasAllBadges(
 ): boolean {
   if (!required?.length) return true;
   return required.every((key) => earned.has(key));
+}
+
+/** Critical + recommended count as story; optional never blocks chapter progress. */
+function isStoryPriority(priority: GuideStepPriority): boolean {
+  return priority !== "optional";
 }
 
 export function chapterReachable(
@@ -46,8 +52,8 @@ export function chapterCleared(
 }
 
 /**
- * Earliest reachable chapter that still has incomplete critical steps
- * (based on manual checkoffs only).
+ * Earliest reachable chapter that still has incomplete story steps
+ * (critical + recommended). Optional pickups never hold the chapter open.
  */
 export function resolveActiveChapterId(
   doc: GuideDocument,
@@ -62,13 +68,13 @@ export function resolveActiveChapterId(
   for (const chapter of chapters) {
     if (!chapterReachable(chapter, earned)) break;
     lastReachable = chapter.id;
-    const criticalIncomplete = doc.steps.some(
+    const storyIncomplete = doc.steps.some(
       (s) =>
         s.chapterId === chapter.id &&
-        s.priority === "critical" &&
+        isStoryPriority(s.priority) &&
         !completedIds.has(s.id),
     );
-    if (criticalIncomplete) return chapter.id;
+    if (storyIncomplete) return chapter.id;
   }
 
   return lastReachable;
@@ -92,6 +98,7 @@ const PRIORITY_RANK = { critical: 0, recommended: 1, optional: 2 } as const;
 /**
  * Compute next steps + per-chapter checklists from manual checkoffs.
  * Badges only gate chapter reachability — they never auto-complete steps.
+ * Next steps stay on the active chapter until its story beats are done.
  */
 export function resolveGuideProgress(
   doc: GuideDocument,
@@ -128,53 +135,34 @@ export function resolveGuideProgress(
         .filter((s) => s.chapterId === chapter.id)
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map(toResolved);
-      const criticalDone = steps
-        .filter((s) => s.priority === "critical")
+      const storyDone = steps
+        .filter((s) => isStoryPriority(s.priority))
         .every((s) => s.completed);
       return {
         chapter,
         steps,
         completedCount: steps.filter((s) => s.completed).length,
         reachable: chapterReachable(chapter, earned),
-        cleared: chapterCleared(chapter, earned) && criticalDone,
+        cleared: chapterCleared(chapter, earned) && storyDone,
         isActive: chapter.id === activeChapterId,
       };
     });
 
-  const nextSteps: ResolvedGuideStep[] = [];
-
-  const candidates = doc.steps
+  // Stay on the active chapter — don't leak later-chapter beats into Next steps
+  // while earlier story steps (incl. recommended) are still open.
+  const nextSteps = doc.steps
     .map(toResolved)
+    .filter((s) => s.chapterId === activeChapterId)
     .filter((s) => !s.completed)
     .filter((s) => stepAvailable(s, earned, completedIds))
-    .filter((s) => s.priority !== "optional")
+    .filter((s) => isStoryPriority(s.priority))
     .sort((a, b) => {
-      const aActive = a.chapterId === activeChapterId ? 0 : 1;
-      const bActive = b.chapterId === activeChapterId ? 0 : 1;
-      if (aActive !== bActive) return aActive - bActive;
       if (PRIORITY_RANK[a.priority] !== PRIORITY_RANK[b.priority]) {
         return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
       }
-      const aChapter = chapterById.get(a.chapterId)?.sortOrder ?? 0;
-      const bChapter = chapterById.get(b.chapterId)?.sortOrder ?? 0;
-      if (aChapter !== bChapter) return aChapter - bChapter;
       return a.sortOrder - b.sortOrder;
-    });
-
-  for (const step of candidates) {
-    nextSteps.push(step);
-    if (nextSteps.length >= NEXT_STEP_LIMIT) break;
-  }
-
-  if (nextSteps.length === 0) {
-    const fallback = doc.steps
-      .map(toResolved)
-      .filter((s) => s.chapterId === activeChapterId && !s.completed)
-      .filter((s) => stepAvailable(s, earned, completedIds))
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .slice(0, NEXT_STEP_LIMIT);
-    nextSteps.push(...fallback);
-  }
+    })
+    .slice(0, NEXT_STEP_LIMIT);
 
   return {
     activeChapterId,
