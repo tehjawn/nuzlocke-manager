@@ -18,6 +18,13 @@ export type GuideStep = {
   requiresSteps?: string[];
   /** When this badge is earned, treat the step as done. */
   autoCompleteWhenBadge?: string;
+  /** Owning any Pokémon proves this step happened (e.g. the starter). */
+  autoCompleteWhenHasPokemon?: boolean;
+  /**
+   * Never infer this step from travel — it is skippable content the player
+   * can walk past (e.g. Rusturf / Strength).
+   */
+  skipInference?: boolean;
   /** Display-only gates until bag/HM save parse exists. */
   hms?: string[];
   keyItems?: string[];
@@ -37,6 +44,11 @@ export type GuideChapter = {
   requiresBadges: string[];
   /** Earning this badge clears the chapter as “past”. */
   clearsWithBadge?: string;
+  /**
+   * Places the player physically visits during this chapter. A claimed catch
+   * route here proves every earlier chapter was completed.
+   */
+  locations: string[];
   sortOrder: number;
 };
 
@@ -49,16 +61,24 @@ export type GuideDocument = {
 
 export type GuideProgressInput = {
   earnedBadgeKeys: readonly string[];
-  /** Catch / claim routes from the board (soft signal). */
+  /** Catch / claim routes from the board — proves where the player has been. */
   catchRoutes?: readonly string[];
+  /** Board has at least one Pokémon (party, box, or graveyard). */
+  hasPokemon?: boolean;
   /** Manually completed step ids. */
   checkedStepIds: ReadonlySet<string> | readonly string[];
+  /** Steps the player explicitly un-checked, overriding inference. */
+  uncheckedStepIds?: ReadonlySet<string> | readonly string[];
 };
+
+export type GuideStepCompletionSource = "manual" | "badge" | "inferred";
 
 export type ResolvedGuideStep = GuideStep & {
   completed: boolean;
   /** Why it counts as completed. */
-  completedVia: "manual" | "badge" | null;
+  completedVia: GuideStepCompletionSource | null;
+  /** Board-derived completion the player can override by clicking. */
+  inferred: boolean;
   blockedBySteps: string[];
   chapterTitle: string;
 };

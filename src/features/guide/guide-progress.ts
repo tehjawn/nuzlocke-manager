@@ -4,14 +4,16 @@ import type {
   GuideProgressInput,
   GuideProgressSnapshot,
   GuideStep,
+  GuideStepCompletionSource,
   ResolvedGuideStep,
 } from "@/features/guide/guide-types";
 
-function asCheckedSet(
-  checked: GuideProgressInput["checkedStepIds"],
-): Set<string> {
-  if (checked instanceof Set) return checked;
-  return new Set(checked);
+function asSet(
+  value: ReadonlySet<string> | readonly string[] | undefined,
+): ReadonlySet<string> {
+  if (!value) return new Set<string>();
+  if (value instanceof Set) return value;
+  return new Set(value);
 }
 
 function hasAllBadges(
@@ -26,11 +28,7 @@ export function chapterReachable(
   chapter: GuideChapter,
   earnedBadgeKeys: ReadonlySet<string> | readonly string[],
 ): boolean {
-  const earned =
-    earnedBadgeKeys instanceof Set
-      ? earnedBadgeKeys
-      : new Set(earnedBadgeKeys);
-  return hasAllBadges(earned, chapter.requiresBadges);
+  return hasAllBadges(asSet(earnedBadgeKeys), chapter.requiresBadges);
 }
 
 export function chapterCleared(
@@ -38,37 +36,105 @@ export function chapterCleared(
   earnedBadgeKeys: ReadonlySet<string> | readonly string[],
 ): boolean {
   if (!chapter.clearsWithBadge) return false;
-  const earned =
-    earnedBadgeKeys instanceof Set
-      ? earnedBadgeKeys
-      : new Set(earnedBadgeKeys);
-  return earned.has(chapter.clearsWithBadge);
+  return asSet(earnedBadgeKeys).has(chapter.clearsWithBadge);
 }
 
-function stepIsComplete(
+/**
+ * Chapter the board says the player is currently standing in.
+ *
+ * Catch routes are the strong signal: reaching a chapter's map means every
+ * earlier chapter was played through. Badges are deliberately weaker — a gym
+ * win only proves the chapter it clears was entered, since chapters often
+ * continue past their gym (Rustboro's Devon letter comes after Roxanne).
+ */
+export function resolveReachedChapterOrder(
+  doc: GuideDocument,
+  earnedBadgeKeys: readonly string[],
+  catchRoutes: readonly string[] = [],
+): number {
+  const earned = asSet(earnedBadgeKeys);
+  const claimed = new Set(catchRoutes.map((route) => route.trim().toLowerCase()));
+  let reached = 0;
+
+  for (const chapter of doc.chapters) {
+    if (chapter.clearsWithBadge && earned.has(chapter.clearsWithBadge)) {
+      reached = Math.max(reached, chapter.sortOrder);
+    }
+    if (claimed.size > 0) {
+      const visited = chapter.locations.some((location) =>
+        claimed.has(location.toLowerCase()),
+      );
+      if (visited) reached = Math.max(reached, chapter.sortOrder);
+    }
+  }
+
+  return reached;
+}
+
+type CompletionContext = {
+  earned: ReadonlySet<string>;
+  checked: ReadonlySet<string>;
+  unchecked: ReadonlySet<string>;
+  hasPokemon: boolean;
+  reachedChapterOrder: number;
+  chapterOrderById: ReadonlyMap<string, number>;
+};
+
+function inferStepFromBoard(step: GuideStep, ctx: CompletionContext): boolean {
+  if (step.autoCompleteWhenHasPokemon && ctx.hasPokemon) return true;
+  if (step.skipInference || step.priority === "optional") return false;
+  const chapterOrder = ctx.chapterOrderById.get(step.chapterId);
+  if (chapterOrder == null) return false;
+  return chapterOrder < ctx.reachedChapterOrder;
+}
+
+function stepCompletion(
   step: GuideStep,
-  earned: ReadonlySet<string>,
-  checked: ReadonlySet<string>,
-): { completed: boolean; completedVia: "manual" | "badge" | null } {
-  if (step.autoCompleteWhenBadge && earned.has(step.autoCompleteWhenBadge)) {
-    return { completed: true, completedVia: "badge" };
+  ctx: CompletionContext,
+): { completed: boolean; completedVia: GuideStepCompletionSource | null; inferred: boolean } {
+  const inferred = inferStepFromBoard(step, ctx);
+
+  // Badges are authoritative — you cannot un-win a gym.
+  if (step.autoCompleteWhenBadge && ctx.earned.has(step.autoCompleteWhenBadge)) {
+    return { completed: true, completedVia: "badge", inferred };
   }
-  if (checked.has(step.id)) {
-    return { completed: true, completedVia: "manual" };
+  if (ctx.unchecked.has(step.id)) {
+    return { completed: false, completedVia: null, inferred };
   }
-  return { completed: false, completedVia: null };
+  if (ctx.checked.has(step.id)) {
+    return { completed: true, completedVia: "manual", inferred };
+  }
+  if (inferred) {
+    return { completed: true, completedVia: "inferred", inferred };
+  }
+  return { completed: false, completedVia: null, inferred };
+}
+
+function buildContext(
+  doc: GuideDocument,
+  input: GuideProgressInput,
+): CompletionContext {
+  return {
+    earned: asSet(input.earnedBadgeKeys),
+    checked: asSet(input.checkedStepIds),
+    unchecked: asSet(input.uncheckedStepIds),
+    hasPokemon: Boolean(input.hasPokemon),
+    reachedChapterOrder: resolveReachedChapterOrder(
+      doc,
+      input.earnedBadgeKeys,
+      input.catchRoutes ?? [],
+    ),
+    chapterOrderById: new Map(doc.chapters.map((c) => [c.id, c.sortOrder])),
+  };
 }
 
 function buildCompletedIds(
   doc: GuideDocument,
-  earned: ReadonlySet<string>,
-  checked: ReadonlySet<string>,
+  ctx: CompletionContext,
 ): Set<string> {
   const completedIds = new Set<string>();
   for (const step of doc.steps) {
-    if (stepIsComplete(step, earned, checked).completed) {
-      completedIds.add(step.id);
-    }
+    if (stepCompletion(step, ctx).completed) completedIds.add(step.id);
   }
   return completedIds;
 }
@@ -79,17 +145,15 @@ function buildCompletedIds(
  */
 export function resolveActiveChapterId(
   doc: GuideDocument,
-  earnedBadgeKeys: readonly string[],
-  checkedStepIds: GuideProgressInput["checkedStepIds"] = [],
+  input: GuideProgressInput,
 ): string {
-  const earned = new Set(earnedBadgeKeys);
-  const checked = asCheckedSet(checkedStepIds);
-  const completedIds = buildCompletedIds(doc, earned, checked);
+  const ctx = buildContext(doc, input);
+  const completedIds = buildCompletedIds(doc, ctx);
   const chapters = [...doc.chapters].sort((a, b) => a.sortOrder - b.sortOrder);
   let lastReachable = chapters[0]?.id ?? "";
 
   for (const chapter of chapters) {
-    if (!chapterReachable(chapter, earned)) break;
+    if (!chapterReachable(chapter, ctx.earned)) break;
     lastReachable = chapter.id;
     const criticalIncomplete = doc.steps.some(
       (s) =>
@@ -119,26 +183,20 @@ const NEXT_STEP_LIMIT = 3;
 const PRIORITY_RANK = { critical: 0, recommended: 1, optional: 2 } as const;
 
 /**
- * Compute next steps + per-chapter checklists from board badges and checkoffs.
+ * Compute next steps + per-chapter checklists from board signals and checkoffs.
  */
 export function resolveGuideProgress(
   doc: GuideDocument,
   input: GuideProgressInput,
 ): GuideProgressSnapshot {
-  const earned = new Set(input.earnedBadgeKeys);
-  const checked = asCheckedSet(input.checkedStepIds);
+  const ctx = buildContext(doc, input);
   const chapterById = new Map(doc.chapters.map((c) => [c.id, c]));
-  const completedIds = buildCompletedIds(doc, earned, checked);
-
-  const activeChapterId = resolveActiveChapterId(
-    doc,
-    input.earnedBadgeKeys,
-    input.checkedStepIds,
-  );
+  const completedIds = buildCompletedIds(doc, ctx);
+  const activeChapterId = resolveActiveChapterId(doc, input);
 
   function toResolved(step: GuideStep): ResolvedGuideStep {
     const chapter = chapterById.get(step.chapterId);
-    const { completed, completedVia } = stepIsComplete(step, earned, checked);
+    const { completed, completedVia, inferred } = stepCompletion(step, ctx);
     const blockedBySteps = (step.requiresSteps ?? []).filter(
       (id) => !completedIds.has(id),
     );
@@ -147,6 +205,7 @@ export function resolveGuideProgress(
       chapterTitle: chapter?.title ?? step.chapterId,
       completed,
       completedVia,
+      inferred,
       blockedBySteps,
     };
   }
@@ -165,8 +224,8 @@ export function resolveGuideProgress(
         chapter,
         steps,
         completedCount: steps.filter((s) => s.completed).length,
-        reachable: chapterReachable(chapter, earned),
-        cleared: chapterCleared(chapter, earned) && criticalDone,
+        reachable: chapterReachable(chapter, ctx.earned),
+        cleared: chapterCleared(chapter, ctx.earned) && criticalDone,
         isActive: chapter.id === activeChapterId,
       };
     });
@@ -176,7 +235,7 @@ export function resolveGuideProgress(
   const candidates = doc.steps
     .map(toResolved)
     .filter((s) => !s.completed)
-    .filter((s) => stepAvailable(s, earned, completedIds))
+    .filter((s) => stepAvailable(s, ctx.earned, completedIds))
     .filter((s) => s.priority !== "optional")
     .sort((a, b) => {
       const aActive = a.chapterId === activeChapterId ? 0 : 1;
@@ -200,7 +259,7 @@ export function resolveGuideProgress(
     const fallback = doc.steps
       .map(toResolved)
       .filter((s) => s.chapterId === activeChapterId && !s.completed)
-      .filter((s) => stepAvailable(s, earned, completedIds))
+      .filter((s) => stepAvailable(s, ctx.earned, completedIds))
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .slice(0, NEXT_STEP_LIMIT);
     nextSteps.push(...fallback);

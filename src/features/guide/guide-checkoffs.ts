@@ -8,10 +8,13 @@ export const GUIDE_CHECKOFFS_CHANGE_EVENT = "nuzlocke-guide-checkoffs-change";
 export type GuideCheckoffs = {
   /** Manually completed guide step ids. */
   checkedStepIds: string[];
+  /** Steps the player un-checked, overriding board-derived completion. */
+  uncheckedStepIds: string[];
 };
 
 export const EMPTY_GUIDE_CHECKOFFS: GuideCheckoffs = {
   checkedStepIds: [],
+  uncheckedStepIds: [],
 };
 
 const cacheByKey = new Map<string, GuideCheckoffs>();
@@ -24,11 +27,16 @@ export function guideCheckoffsStorageKey(
   return `nuzlocke-guide-checkoffs:${challengeSlug}:${trainer}`;
 }
 
+function uniqueStrings(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((id): id is string => typeof id === "string"))];
+}
+
 function normalize(raw: Partial<GuideCheckoffs> | null | undefined): GuideCheckoffs {
-  const ids = Array.isArray(raw?.checkedStepIds)
-    ? raw!.checkedStepIds.filter((id): id is string => typeof id === "string")
-    : [];
-  return { checkedStepIds: [...new Set(ids)] };
+  return {
+    checkedStepIds: uniqueStrings(raw?.checkedStepIds),
+    uncheckedStepIds: uniqueStrings(raw?.uncheckedStepIds),
+  };
 }
 
 function loadFromStorage(key: string): GuideCheckoffs {
@@ -63,7 +71,10 @@ export function writeGuideCheckoffs(
   const stable = normalize(next);
   cacheByKey.set(key, stable);
   try {
-    if (stable.checkedStepIds.length === 0) {
+    const isEmpty =
+      stable.checkedStepIds.length === 0 &&
+      stable.uncheckedStepIds.length === 0;
+    if (isEmpty) {
       localStorage.removeItem(key);
     } else {
       localStorage.setItem(key, JSON.stringify(stable));
@@ -75,18 +86,30 @@ export function writeGuideCheckoffs(
   return stable;
 }
 
-export function toggleGuideStepChecked(
+/**
+ * Record an explicit choice for a step. Both sets are written so a manual
+ * choice always beats board-derived inference in either direction.
+ */
+export function setGuideStepChecked(
   key: string,
   stepId: string,
-  checked?: boolean,
+  checked: boolean,
 ): GuideCheckoffs {
   const current = readGuideCheckoffs(key);
-  const set = new Set(current.checkedStepIds);
-  const shouldCheck = checked ?? !set.has(stepId);
-  if (shouldCheck) set.add(stepId);
-  else set.delete(stepId);
+  const checkedSet = new Set(current.checkedStepIds);
+  const uncheckedSet = new Set(current.uncheckedStepIds);
+
+  if (checked) {
+    checkedSet.add(stepId);
+    uncheckedSet.delete(stepId);
+  } else {
+    checkedSet.delete(stepId);
+    uncheckedSet.add(stepId);
+  }
+
   return writeGuideCheckoffs(key, {
-    checkedStepIds: [...set],
+    checkedStepIds: [...checkedSet],
+    uncheckedStepIds: [...uncheckedSet],
   });
 }
 

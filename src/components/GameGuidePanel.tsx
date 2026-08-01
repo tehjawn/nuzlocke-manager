@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import {
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type KeyboardEvent,
-  type MouseEvent,
-} from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Frame } from "@/components/Frame";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
@@ -16,8 +10,8 @@ import {
   clearGuideCheckoffs,
   guideCheckoffsStorageKey,
   readGuideCheckoffs,
+  setGuideStepChecked,
   subscribeGuideCheckoffs,
-  toggleGuideStepChecked,
 } from "@/features/guide/guide-checkoffs";
 import {
   resolveGuideProgress,
@@ -50,7 +44,9 @@ function uniqueCatchRoutes(trainer: TrainerProfile | null): string[] {
   return [...routes];
 }
 
-function countSteps(steps: ReadonlyArray<{ priority: string; completed: boolean }>): StepCounts {
+function countSteps(
+  steps: ReadonlyArray<{ priority: string; completed: boolean }>,
+): StepCounts {
   let storyDone = 0;
   let storyTotal = 0;
   let optionalDone = 0;
@@ -82,23 +78,31 @@ function GuideMeter({
   counts: StepCounts;
   size?: "sm" | "md";
 }) {
-  const trackH = size === "sm" ? "h-1.5" : "h-2";
+  const trackH = size === "sm" ? "h-1.5" : "h-2.5";
   return (
     <div className="min-w-0">
       <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <span
           className={`font-semibold tracking-tight ${
-            size === "sm" ? "text-xs" : "text-sm"
+            size === "sm" ? "text-xs text-muted" : "text-sm"
           }`}
         >
           {label}
         </span>
         <span className="text-xs text-muted">
-          {counts.storyDone}/{counts.storyTotal} story
-          {counts.optionalTotal > 0
-            ? ` · ${counts.optionalDone}/${counts.optionalTotal} optional`
-            : null}
-          <span className="ml-1.5 tabular-nums text-ink/80">{counts.percent}%</span>
+          <span className="tabular-nums font-semibold text-ink">
+            {counts.storyDone}/{counts.storyTotal}
+          </span>{" "}
+          story
+          {counts.optionalTotal > 0 ? (
+            <>
+              {" · "}
+              <span className="tabular-nums">
+                {counts.optionalDone}/{counts.optionalTotal}
+              </span>{" "}
+              optional
+            </>
+          ) : null}
         </span>
       </div>
       <div
@@ -107,10 +111,10 @@ function GuideMeter({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={counts.percent}
-        aria-label={`${label}: ${counts.percent}%`}
+        aria-label={`${label}: ${counts.percent}% of story steps done`}
       >
         <div
-          className={`${trackH} rounded-full bg-interactive transition-[width] duration-300 ease-out motion-reduce:transition-none`}
+          className={`${trackH} rounded-full bg-interactive transition-[width] duration-500 ease-out motion-reduce:transition-none`}
           style={{ width: `${counts.percent}%` }}
         />
       </div>
@@ -118,51 +122,69 @@ function GuideMeter({
   );
 }
 
-function PriorityLabel({
-  priority,
+/** Doubles as the step number and the checkbox control. */
+function StepMarker({
+  index,
+  checked,
+  locked,
 }: {
-  priority: ResolvedGuideStep["priority"];
+  index: number;
+  checked: boolean;
+  locked: boolean;
 }) {
-  const label =
-    priority === "critical"
-      ? "Critical"
-      : priority === "recommended"
-        ? "Recommended"
-        : "Optional";
   return (
     <span
-      className={`text-[0.65rem] font-semibold uppercase tracking-wide ${
-        priority === "critical" ? "text-interactive" : "text-muted"
+      aria-hidden
+      className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border text-xs font-bold tabular-nums transition-colors ${
+        checked
+          ? "border-interactive bg-interactive text-[var(--surface)]"
+          : locked
+            ? "border-frame/70 bg-surface-2 text-muted"
+            : "border-frame bg-surface-2 text-muted group-hover:border-interactive group-hover:bg-interactive-soft group-hover:text-interactive"
       }`}
     >
-      {label}
+      {checked ? "✓" : index}
     </span>
   );
 }
 
-function CheckMark({ checked }: { checked: boolean }) {
+function StepChips({ step }: { step: ResolvedGuideStep }) {
+  const chips: string[] = [];
+  if (step.priority === "critical") chips.push("Required");
+  if (step.priority === "optional") chips.push("Optional");
+  if (step.completedVia === "badge") chips.push("From badge");
+  if (step.completedVia === "inferred") chips.push("From your board");
+
+  if (chips.length === 0) return null;
+
   return (
-    <span
-      aria-hidden
-      className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border text-[0.7rem] font-bold transition-colors ${
-        checked
-          ? "border-interactive bg-interactive text-[var(--surface)]"
-          : "border-[var(--border)] bg-surface text-transparent"
-      }`}
-    >
-      ✓
+    <span className="flex flex-wrap items-center gap-1.5">
+      {chips.map((chip) => (
+        <span
+          key={chip}
+          className={`rounded-full border px-1.5 py-px text-[0.65rem] font-semibold tracking-tight ${
+            chip === "Required"
+              ? "border-interactive/40 bg-interactive-soft/60 text-interactive"
+              : "border-frame/70 text-muted"
+          }`}
+        >
+          {chip}
+        </span>
+      ))}
     </span>
   );
 }
 
 function StepRow({
   step,
+  index,
   onToggle,
   nearRoute,
   expanded,
   onToggleExpand,
 }: {
   step: ResolvedGuideStep;
+  index: number;
   onToggle: () => void;
   nearRoute: boolean;
   expanded: boolean;
@@ -171,101 +193,111 @@ function StepRow({
   const done = step.completed;
   const badgeLocked = step.completedVia === "badge";
   const hasDetails = Boolean(
-    step.detail || step.hms?.length || step.keyItems?.length || step.nuzlockeNote,
+    step.detail ||
+      step.hms?.length ||
+      step.keyItems?.length ||
+      step.nuzlockeNote,
   );
 
-  function handleActivate() {
-    if (badgeLocked) return;
-    onToggle();
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === " " || event.key === "Enter") {
-      event.preventDefault();
-      handleActivate();
-    }
-  }
-
-  function handleDetailsClick(event: MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation();
-    onToggleExpand();
-  }
-
   return (
-      <div
+    <li
+      className={`group overflow-hidden rounded-lg border transition-colors ${
+        done
+          ? "border-frame/60 bg-surface-2/50"
+          : "border-frame/80 bg-surface hover:border-interactive/55"
+      }`}
+    >
+      <button
+        type="button"
         role="checkbox"
         aria-checked={done}
-        aria-disabled={badgeLocked || undefined}
-        tabIndex={badgeLocked ? -1 : 0}
-        onClick={handleActivate}
-        onKeyDown={handleKeyDown}
-        className={`group w-full rounded-md border border-[var(--border)]/70 text-left transition-colors ${
+        disabled={badgeLocked}
+        onClick={onToggle}
+        title={
           badgeLocked
-            ? "cursor-default opacity-75"
-            : "cursor-pointer hover:border-interactive/45 hover:bg-interactive-soft/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive"
-        } ${done ? "bg-surface-2/60" : "bg-surface"}`}
+            ? "Completed automatically from your badge case"
+            : done
+              ? "Mark as not done"
+              : "Mark as done"
+        }
+        className={`flex w-full items-start gap-3 p-3.5 text-left transition-colors focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-interactive ${
+          badgeLocked ? "cursor-default" : "hover:bg-interactive-soft/30"
+        }`}
       >
-        <div className="flex items-start gap-3 p-3">
-          <CheckMark checked={done} />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <PriorityLabel priority={step.priority} />
-              {nearRoute ? (
-                <span className="text-[0.65rem] font-medium text-muted">
-                  Near a claimed route
-                </span>
-              ) : null}
-              {step.completedVia === "badge" ? (
-                <span className="text-[0.65rem] font-medium text-muted">
-                  From badge
-                </span>
-              ) : null}
-            </div>
-            <p
-              className={`mt-0.5 text-sm font-semibold ${
-                done ? "text-muted line-through" : ""
+        <StepMarker index={index} checked={done} locked={badgeLocked} />
+
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block text-[0.9375rem] font-semibold leading-snug ${
+              done ? "text-muted line-through" : "text-ink"
+            }`}
+          >
+            {step.title}
+          </span>
+          <span className="mt-1 block text-sm leading-relaxed text-muted">
+            {step.summary}
+          </span>
+          <span className="mt-2 flex flex-wrap items-center gap-1.5">
+            <StepChips step={step} />
+            {nearRoute && !done ? (
+              <span className="text-[0.65rem] font-medium text-muted">
+                You have an encounter here
+              </span>
+            ) : null}
+          </span>
+        </span>
+
+        <span
+          className={`hidden shrink-0 self-center text-[0.7rem] font-semibold transition-opacity sm:block ${
+            badgeLocked
+              ? "opacity-0"
+              : "text-interactive opacity-0 group-hover:opacity-100"
+          }`}
+        >
+          {done ? "Undo" : "Mark done"}
+        </span>
+      </button>
+
+      {hasDetails ? (
+        <div className="border-t border-frame/60">
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            aria-expanded={expanded}
+            className="flex w-full items-center gap-1.5 px-3.5 py-2 text-left text-xs font-semibold text-interactive transition-colors hover:bg-interactive-soft/25"
+          >
+            <span
+              aria-hidden
+              className={`inline-block transition-transform ${
+                expanded ? "rotate-90" : ""
               }`}
             >
-              {step.title}
-            </p>
-            <p className="mt-0.5 text-sm text-muted">{step.summary}</p>
+              ▸
+            </span>
+            {expanded ? "Hide details" : "How to do this"}
+          </button>
 
-            {hasDetails ? (
-              <button
-                type="button"
-                onClick={handleDetailsClick}
-                className="mt-2 text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-                aria-expanded={expanded}
-              >
-                {expanded ? "Hide details" : "Show details"}
-              </button>
-            ) : null}
-
-            {expanded && hasDetails ? (
-              <div
-                className="mt-2 border-t border-[var(--border)]/60 pt-2"
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => event.stopPropagation()}
-              >
-                {step.detail ? <MarkdownContent content={step.detail} /> : null}
-                {step.hms?.length ? (
-                  <p className="mt-2 text-xs text-muted">
-                    HM: {step.hms.join(", ")}
-                  </p>
-                ) : null}
-                {step.keyItems?.length ? (
-                  <p className="mt-1 text-xs text-muted">
-                    Key item: {step.keyItems.join(", ")}
-                  </p>
-                ) : null}
-                {step.nuzlockeNote ? (
-                  <p className="mt-1 text-xs text-muted">{step.nuzlockeNote}</p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+          {expanded ? (
+            <div className="px-3.5 pb-3.5">
+              {step.detail ? <MarkdownContent content={step.detail} /> : null}
+              {step.hms?.length ? (
+                <p className="mt-2 text-xs text-muted">
+                  HM: {step.hms.join(", ")}
+                </p>
+              ) : null}
+              {step.keyItems?.length ? (
+                <p className="mt-1 text-xs text-muted">
+                  Key item: {step.keyItems.join(", ")}
+                </p>
+              ) : null}
+              {step.nuzlockeNote ? (
+                <p className="mt-1 text-xs text-muted">{step.nuzlockeNote}</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-      </div>
+      ) : null}
+    </li>
   );
 }
 
@@ -305,9 +337,11 @@ export function GameGuidePanel({
       resolveGuideProgress(EMERALD_GUIDE, {
         earnedBadgeKeys: selectedTrainer?.earnedBadgeKeys ?? [],
         catchRoutes,
+        hasPokemon: (selectedTrainer?.pokemon.length ?? 0) > 0,
         checkedStepIds: checkoffs.checkedStepIds,
+        uncheckedStepIds: checkoffs.uncheckedStepIds,
       }),
-    [selectedTrainer, catchRoutes, checkoffs.checkedStepIds],
+    [selectedTrainer, catchRoutes, checkoffs],
   );
 
   const overallCounts = useMemo(
@@ -334,7 +368,11 @@ export function GameGuidePanel({
 
   function toggleStep(step: ResolvedGuideStep) {
     if (step.completedVia === "badge") return;
-    toggleGuideStepChecked(storageKey, step.id);
+    setGuideStepChecked(storageKey, step.id, !step.completed);
+  }
+
+  function toggleExpanded(stepId: string) {
+    setExpandedStepId((id) => (id === stepId ? null : stepId));
   }
 
   return (
@@ -350,7 +388,7 @@ export function GameGuidePanel({
               Progress from
             </span>
             <select
-              className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-sm"
+              className="rounded-md border border-frame bg-surface px-2.5 py-2 text-sm"
               value={selectedTrainerId}
               onChange={(e) => setSelectedTrainerId(e.target.value)}
             >
@@ -367,9 +405,9 @@ export function GameGuidePanel({
 
       <Frame title="Overall progress">
         <GuideMeter label={EMERALD_GUIDE.gameLabel} counts={overallCounts} />
-        <p className="mt-2 text-xs text-muted">
-          Story steps are critical + recommended beats. Optional items (like Cut)
-          don’t block the bar.
+        <p className="mt-2.5 text-xs leading-relaxed text-muted">
+          Steps auto-check from your badges, encounters, and party — click any
+          row to correct it. Optional pickups like Cut don’t affect the bar.
         </p>
       </Frame>
 
@@ -380,28 +418,19 @@ export function GameGuidePanel({
             mark remaining beats.
           </p>
         ) : (
-          <ol className="space-y-2">
+          <ul className="space-y-2">
             {progress.nextSteps.map((step, index) => (
-              <li key={step.id} className="flex gap-2">
-                <span className="mt-3 w-4 shrink-0 text-xs font-semibold text-muted">
-                  {index + 1}.
-                </span>
-                <div className="min-w-0 flex-1">
-                  <StepRow
-                    step={step}
-                    nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
-                    expanded={expandedStepId === step.id}
-                    onToggleExpand={() =>
-                      setExpandedStepId((id) =>
-                        id === step.id ? null : step.id,
-                      )
-                    }
-                    onToggle={() => toggleStep(step)}
-                  />
-                </div>
-              </li>
+              <StepRow
+                key={step.id}
+                step={step}
+                index={index + 1}
+                nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
+                expanded={expandedStepId === step.id}
+                onToggleExpand={() => toggleExpanded(step.id)}
+                onToggle={() => toggleStep(step)}
+              />
             ))}
-          </ol>
+          </ul>
         )}
       </Frame>
 
@@ -456,28 +485,25 @@ export function GameGuidePanel({
                   />
                 </div>
                 {!reachable ? (
-                  <p className="mt-2 text-xs text-muted">Locked by badges</p>
+                  <p className="mt-2 text-xs text-muted">
+                    Locked until you earn more badges
+                  </p>
                 ) : null}
-                {(isFocused || isActive) && (
+                {isFocused || isActive ? (
                   <ul className="mt-3 space-y-2">
-                    {steps.map((step) => (
-                      <li key={step.id}>
-                        <StepRow
-                          step={step}
-                          nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
-                          expanded={expandedStepId === step.id}
-                          onToggleExpand={() =>
-                            setExpandedStepId((id) =>
-                              id === step.id ? null : step.id,
-                            )
-                          }
-                          onToggle={() => toggleStep(step)}
-                        />
-                      </li>
+                    {steps.map((step, index) => (
+                      <StepRow
+                        key={step.id}
+                        step={step}
+                        index={index + 1}
+                        nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
+                        expanded={expandedStepId === step.id}
+                        onToggleExpand={() => toggleExpanded(step.id)}
+                        onToggle={() => toggleStep(step)}
+                      />
                     ))}
                   </ul>
-                )}
-                {!isFocused && !isActive ? (
+                ) : (
                   <p className="mt-3 text-xs text-muted">
                     <Link
                       href={toolsHref(slug, "guide", { chapter: chapter.id })}
@@ -486,7 +512,7 @@ export function GameGuidePanel({
                       Open checklist
                     </Link>
                   </p>
-                ) : null}
+                )}
               </Frame>
             );
           },
