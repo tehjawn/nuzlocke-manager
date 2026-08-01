@@ -3,9 +3,11 @@
 import { useEffect, useState, useTransition } from "react";
 import {
   getTrainerBoardSnapshotAction,
+  gmClearTrainerBoardHistoryAction,
   listTrainerBoardSnapshotsAction,
 } from "@/app/actions/challenge";
 import { BadgeCase } from "@/components/BadgeCase";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { Frame } from "@/components/Frame";
 import { Modal } from "@/components/Modal";
 import { PartyStrip } from "@/components/PartyStrip";
@@ -57,6 +59,7 @@ function BoardHistoryBody({
   showCompetitiveDetails = true,
 }: Omit<BoardHistoryModalProps, "open">) {
   const [pending, startTransition] = useTransition();
+  const [clearing, setClearing] = useState(false);
   const [listLoading, setListLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [snapshots, setSnapshots] = useState<TrainerBoardSnapshotSummary[]>(
@@ -74,6 +77,7 @@ function BoardHistoryBody({
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   useEffect(() => {
     let cancelled = false;
@@ -131,6 +135,40 @@ function BoardHistoryBody({
     setDetailsPokemon(null);
   }
 
+  async function clearHistory() {
+    const count = snapshots.length;
+    const ok = await confirm({
+      title: "Clear board history?",
+      description: (
+        <>
+          Permanently deletes all {count} snapshot{count === 1 ? "" : "s"} for{" "}
+          {trainerHandle}. The live board is unchanged. This cannot be undone.
+        </>
+      ),
+      confirmLabel: "Clear history",
+      tone: "danger",
+    });
+    if (!ok) return;
+
+    setError(null);
+    setClearing(true);
+    startTransition(async () => {
+      try {
+        const result = await gmClearTrainerBoardHistoryAction({ trainerId });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setSnapshots([]);
+        setDetail(null);
+        setSelectedId(null);
+        setDetailsPokemon(null);
+      } finally {
+        setClearing(false);
+      }
+    });
+  }
+
   const viewingDetail = detail != null;
   const main = detail ? slotPokemon(detail.payload.pokemon, "MAIN") : [];
   const reserves = detail
@@ -142,6 +180,8 @@ function BoardHistoryBody({
   const encountered = detail
     ? slotPokemon(detail.payload.pokemon, "ENCOUNTERED")
     : [];
+  const canClearHistory =
+    !listLoading && snapshots.length > 0 && !viewingDetail;
 
   return (
     <>
@@ -163,6 +203,17 @@ function BoardHistoryBody({
               onClick={backToList}
             >
               ← All snapshots
+            </button>
+          ) : canClearHistory ? (
+            <button
+              type="button"
+              disabled={clearing || pending}
+              className="pressable border-danger/35 bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger disabled:opacity-60"
+              onClick={() => {
+                void clearHistory();
+              }}
+            >
+              {clearing ? "Clearing…" : "Clear history"}
             </button>
           ) : null
         }
@@ -264,7 +315,7 @@ function BoardHistoryBody({
                     <li key={snap.id}>
                       <button
                         type="button"
-                        disabled={pending}
+                        disabled={pending || clearing}
                         className="pressable flex w-full flex-col gap-0.5 px-3 py-2.5 text-left hover:bg-surface-2/70 disabled:opacity-60"
                         onClick={() => openSnapshot(snap.id)}
                       >
@@ -298,6 +349,8 @@ function BoardHistoryBody({
           onClose={() => setDetailsPokemon(null)}
         />
       ) : null}
+
+      {confirmDialog}
     </>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { AboutIcon, RulesIcon } from "@/components/nav-icons";
 import type { ChallengeStatus } from "@/lib/challenge-types";
 
 type SeasonTabsProps = {
@@ -24,6 +25,18 @@ export function getSeasonTabs(
 ): SeasonTab[] {
   const base = `/challenges/${slug}`;
   return [
+    {
+      href: `${base}/about`,
+      label: "About",
+      match: "prefix",
+      icon: <AboutIcon />,
+    },
+    {
+      href: `${base}/rules`,
+      label: "Rules / FAQ",
+      match: "prefix",
+      icon: <RulesIcon />,
+    },
     { href: base, label: "Trainers", match: "exact", icon: <PlayersIcon /> },
     {
       href: `${base}/encounters`,

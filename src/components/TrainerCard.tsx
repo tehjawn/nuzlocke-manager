@@ -55,7 +55,9 @@ export function TrainerCard({
 
   return (
     <div
-      data-tour={isDemo ? "demo-trainer" : undefined}
+      data-tour={
+        isYou ? "your-trainer" : isDemo ? "demo-trainer" : undefined
+      }
       className={isYou ? "trainer-you-ring" : undefined}
     >
       {variant === "grid" ? (

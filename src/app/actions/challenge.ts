@@ -1037,6 +1037,59 @@ export async function getTrainerBoardSnapshotAction(input: {
   }
 }
 
+/** GM-only: permanently delete all board history snapshots for a trainer. */
+export async function gmClearTrainerBoardHistoryAction(input: {
+  trainerId: string;
+}): Promise<ActionResult> {
+  try {
+    const prisma = getPrisma();
+    const trainer = await prisma.trainerProfile.findUnique({
+      where: { id: input.trainerId },
+      include: {
+        challenge: { select: { id: true, slug: true, status: true } },
+      },
+    });
+    if (!trainer) return { ok: false, error: "Trainer not found" };
+    if (trainer.challenge.status === "ARCHIVED") {
+      return { ok: false, error: "This season is archived and read-only" };
+    }
+
+    const { userId } = await requireGm(trainer.challengeId);
+
+    const deleted = await prisma.$transaction(async (tx) => {
+      const result = await tx.trainerBoardSnapshot.deleteMany({
+        where: { trainerId: trainer.id },
+      });
+      if (result.count > 0) {
+        await tx.activityEvent.create({
+          data: {
+            challengeId: trainer.challengeId,
+            actorId: userId,
+            trainerId: trainer.id,
+            type: "NOTE",
+            message: `GM cleared ${result.count} board history snapshot${result.count === 1 ? "" : "s"} for ${trainer.handle}`,
+          },
+        });
+      }
+      return result.count;
+    });
+
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
+    return {
+      ok: true,
+      message:
+        deleted === 0
+          ? "No board history to clear"
+          : `Cleared ${deleted} snapshot${deleted === 1 ? "" : "s"}`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Could not clear board history",
+    };
+  }
+}
+
 const BadgeChangeSchema = z.object({
   badgeKey: z.string().min(1),
   earned: z.boolean(),
