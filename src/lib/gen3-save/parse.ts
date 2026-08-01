@@ -126,6 +126,8 @@ const MON_SIZE = PARTY_MON_SIZE;
 const BOX_SIZE = BOX_MON_SIZE;
 /** Cap dex-only stubs so late-game national dex cannot blow past import limits. */
 const DEX_SEEN_STUB_CAP = 200;
+/** Maximum credible seen-only species in a Modern Emerald state snapshot. */
+const MODERN_DEX_SEEN_OVER_OWNED_MAX = 120;
 
 function flagsAfterParty(mode: SpeciesIdMode): number {
   return mode === "modern" ? MODERN_FLAGS_AFTER_PARTY : CREST_FLAGS_AFTER_PARTY;
@@ -1087,7 +1089,9 @@ function readModernSeen1(
   }
   const seen = listDexBits(bytes, seenBase, MODERN_NUM_SPECIES);
   if (seen.length < ownedMust.length) return null;
-  if (seen.length > ownedMust.length + 120) return null;
+  if (seen.length > ownedMust.length + MODERN_DEX_SEEN_OVER_OWNED_MAX) {
+    return null;
+  }
   return seen;
 }
 
@@ -1133,7 +1137,12 @@ function locateModernSaveMeta(
     }
     if (!ok) continue;
     const seen = listDexBits(bytes, seenBase, MODERN_NUM_SPECIES);
-    if (seen.length < owned.length || seen.length > owned.length + 40) continue;
+    if (
+      seen.length < owned.length ||
+      seen.length > owned.length + MODERN_DEX_SEEN_OVER_OWNED_MAX
+    ) {
+      continue;
+    }
     hits.push({ ownedBase, seenBase, owned, seen });
   }
 
