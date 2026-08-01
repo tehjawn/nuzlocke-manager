@@ -1,4 +1,4 @@
-export type ToolsId = "pokedex" | "chart" | "compare";
+export type ToolsId = "pokedex" | "chart" | "compare" | "guide";
 
 export const TOOLS_CATALOG: ReadonlyArray<{
   id: ToolsId;
@@ -20,6 +20,11 @@ export const TOOLS_CATALOG: ReadonlyArray<{
     title: "Compare",
     blurb: "Side-by-side trainer squads and badge cases for any two boards.",
   },
+  {
+    id: "guide",
+    title: "Game Guide",
+    blurb: "What to do next — story gates, HMs, and easy-to-miss beats based on your badges.",
+  },
 ];
 
 export function toolsHubHref(slug: string): string {
@@ -33,6 +38,7 @@ export function toolsHref(
     id?: string | number | null;
     a?: string | null;
     b?: string | null;
+    chapter?: string | null;
   },
 ): string {
   const params = new URLSearchParams({ tool });
@@ -41,6 +47,7 @@ export function toolsHref(
   }
   if (query?.a) params.set("a", query.a);
   if (query?.b) params.set("b", query.b);
+  if (query?.chapter) params.set("chapter", query.chapter);
   return `/challenges/${slug}/tools?${params.toString()}`;
 }
 
@@ -50,7 +57,14 @@ export function parseToolsId(
   tab: string | null | undefined = null,
 ): ToolsId | null {
   const raw = tool ?? tab;
-  if (raw === "pokedex" || raw === "chart" || raw === "compare") return raw;
+  if (
+    raw === "pokedex" ||
+    raw === "chart" ||
+    raw === "compare" ||
+    raw === "guide"
+  ) {
+    return raw;
+  }
   return null;
 }
 
