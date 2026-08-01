@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { Frame } from "@/components/Frame";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
@@ -27,6 +33,14 @@ type GameGuidePanelProps = {
   myTrainerId?: string | null;
 };
 
+type StepCounts = {
+  storyDone: number;
+  storyTotal: number;
+  optionalDone: number;
+  optionalTotal: number;
+  percent: number;
+};
+
 function uniqueCatchRoutes(trainer: TrainerProfile | null): string[] {
   if (!trainer) return [];
   const routes = new Set<string>();
@@ -34,6 +48,74 @@ function uniqueCatchRoutes(trainer: TrainerProfile | null): string[] {
     if (mon.catchRoute?.trim()) routes.add(mon.catchRoute.trim());
   }
   return [...routes];
+}
+
+function countSteps(steps: ReadonlyArray<{ priority: string; completed: boolean }>): StepCounts {
+  let storyDone = 0;
+  let storyTotal = 0;
+  let optionalDone = 0;
+  let optionalTotal = 0;
+  for (const step of steps) {
+    if (step.priority === "optional") {
+      optionalTotal += 1;
+      if (step.completed) optionalDone += 1;
+    } else {
+      storyTotal += 1;
+      if (step.completed) storyDone += 1;
+    }
+  }
+  return {
+    storyDone,
+    storyTotal,
+    optionalDone,
+    optionalTotal,
+    percent: storyTotal === 0 ? 0 : Math.round((storyDone / storyTotal) * 100),
+  };
+}
+
+function GuideMeter({
+  label,
+  counts,
+  size = "md",
+}: {
+  label: string;
+  counts: StepCounts;
+  size?: "sm" | "md";
+}) {
+  const trackH = size === "sm" ? "h-1.5" : "h-2";
+  return (
+    <div className="min-w-0">
+      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <span
+          className={`font-semibold tracking-tight ${
+            size === "sm" ? "text-xs" : "text-sm"
+          }`}
+        >
+          {label}
+        </span>
+        <span className="text-xs text-muted">
+          {counts.storyDone}/{counts.storyTotal} story
+          {counts.optionalTotal > 0
+            ? ` · ${counts.optionalDone}/${counts.optionalTotal} optional`
+            : null}
+          <span className="ml-1.5 tabular-nums text-ink/80">{counts.percent}%</span>
+        </span>
+      </div>
+      <div
+        className={`overflow-hidden rounded-full bg-surface-2 ${trackH}`}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={counts.percent}
+        aria-label={`${label}: ${counts.percent}%`}
+      >
+        <div
+          className={`${trackH} rounded-full bg-interactive transition-[width] duration-300 ease-out motion-reduce:transition-none`}
+          style={{ width: `${counts.percent}%` }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function PriorityLabel({
@@ -58,84 +140,132 @@ function PriorityLabel({
   );
 }
 
+function CheckMark({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border text-[0.7rem] font-bold transition-colors ${
+        checked
+          ? "border-interactive bg-interactive text-[var(--surface)]"
+          : "border-[var(--border)] bg-surface text-transparent"
+      }`}
+    >
+      ✓
+    </span>
+  );
+}
+
 function StepRow({
   step,
   onToggle,
   nearRoute,
   expanded,
-  onExpand,
+  onToggleExpand,
 }: {
   step: ResolvedGuideStep;
   onToggle: () => void;
   nearRoute: boolean;
   expanded: boolean;
-  onExpand: () => void;
+  onToggleExpand: () => void;
 }) {
   const done = step.completed;
   const badgeLocked = step.completedVia === "badge";
+  const hasDetails = Boolean(
+    step.detail || step.hms?.length || step.keyItems?.length || step.nuzlockeNote,
+  );
+
+  function handleActivate() {
+    if (badgeLocked) return;
+    onToggle();
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      handleActivate();
+    }
+  }
+
+  function handleDetailsClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    onToggleExpand();
+  }
 
   return (
-    <li
-      className={`rounded-md border border-[var(--border)]/70 ${
-        done ? "opacity-70" : "bg-[var(--surface)]"
-      }`}
-    >
-      <div className="flex items-start gap-3 p-3">
-        <input
-          type="checkbox"
-          className="mt-1 size-4 shrink-0 accent-[var(--interactive)]"
-          checked={done}
-          disabled={badgeLocked}
-          onChange={onToggle}
-          aria-label={`Mark “${step.title}” ${done ? "incomplete" : "done"}`}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <PriorityLabel priority={step.priority} />
-            {nearRoute ? (
-              <span className="text-[0.65rem] font-medium text-muted">
-                Near a claimed route
-              </span>
-            ) : null}
-            {step.completedVia === "badge" ? (
-              <span className="text-[0.65rem] font-medium text-muted">
-                From badge
-              </span>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={onExpand}
-            className="mt-0.5 w-full text-left"
-          >
-            <span
-              className={`text-sm font-semibold ${done ? "line-through" : ""}`}
-            >
-              {step.title}
-            </span>
-            <p className="mt-0.5 text-sm text-muted">{step.summary}</p>
-          </button>
-          {expanded && (step.detail || step.hms || step.keyItems || step.nuzlockeNote) ? (
-            <div className="mt-2 border-t border-[var(--border)]/60 pt-2">
-              {step.detail ? <MarkdownContent content={step.detail} /> : null}
-              {step.hms?.length ? (
-                <p className="mt-2 text-xs text-muted">
-                  HM: {step.hms.join(", ")}
-                </p>
+      <div
+        role="checkbox"
+        aria-checked={done}
+        aria-disabled={badgeLocked || undefined}
+        tabIndex={badgeLocked ? -1 : 0}
+        onClick={handleActivate}
+        onKeyDown={handleKeyDown}
+        className={`group w-full rounded-md border border-[var(--border)]/70 text-left transition-colors ${
+          badgeLocked
+            ? "cursor-default opacity-75"
+            : "cursor-pointer hover:border-interactive/45 hover:bg-interactive-soft/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-interactive"
+        } ${done ? "bg-surface-2/60" : "bg-surface"}`}
+      >
+        <div className="flex items-start gap-3 p-3">
+          <CheckMark checked={done} />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <PriorityLabel priority={step.priority} />
+              {nearRoute ? (
+                <span className="text-[0.65rem] font-medium text-muted">
+                  Near a claimed route
+                </span>
               ) : null}
-              {step.keyItems?.length ? (
-                <p className="mt-1 text-xs text-muted">
-                  Key item: {step.keyItems.join(", ")}
-                </p>
-              ) : null}
-              {step.nuzlockeNote ? (
-                <p className="mt-1 text-xs text-muted">{step.nuzlockeNote}</p>
+              {step.completedVia === "badge" ? (
+                <span className="text-[0.65rem] font-medium text-muted">
+                  From badge
+                </span>
               ) : null}
             </div>
-          ) : null}
+            <p
+              className={`mt-0.5 text-sm font-semibold ${
+                done ? "text-muted line-through" : ""
+              }`}
+            >
+              {step.title}
+            </p>
+            <p className="mt-0.5 text-sm text-muted">{step.summary}</p>
+
+            {hasDetails ? (
+              <button
+                type="button"
+                onClick={handleDetailsClick}
+                className="mt-2 text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
+                aria-expanded={expanded}
+              >
+                {expanded ? "Hide details" : "Show details"}
+              </button>
+            ) : null}
+
+            {expanded && hasDetails ? (
+              <div
+                className="mt-2 border-t border-[var(--border)]/60 pt-2"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                {step.detail ? <MarkdownContent content={step.detail} /> : null}
+                {step.hms?.length ? (
+                  <p className="mt-2 text-xs text-muted">
+                    HM: {step.hms.join(", ")}
+                  </p>
+                ) : null}
+                {step.keyItems?.length ? (
+                  <p className="mt-1 text-xs text-muted">
+                    Key item: {step.keyItems.join(", ")}
+                  </p>
+                ) : null}
+                {step.nuzlockeNote ? (
+                  <p className="mt-1 text-xs text-muted">{step.nuzlockeNote}</p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
-    </li>
   );
 }
 
@@ -178,6 +308,11 @@ export function GameGuidePanel({
         checkedStepIds: checkoffs.checkedStepIds,
       }),
     [selectedTrainer, catchRoutes, checkoffs.checkedStepIds],
+  );
+
+  const overallCounts = useMemo(
+    () => countSteps(progress.chapters.flatMap((c) => c.steps)),
+    [progress.chapters],
   );
 
   const focusedChapterId =
@@ -230,6 +365,14 @@ export function GameGuidePanel({
         ) : null}
       </div>
 
+      <Frame title="Overall progress">
+        <GuideMeter label={EMERALD_GUIDE.gameLabel} counts={overallCounts} />
+        <p className="mt-2 text-xs text-muted">
+          Story steps are critical + recommended beats. Optional items (like Cut)
+          don’t block the bar.
+        </p>
+      </Frame>
+
       <Frame title="Next steps">
         {progress.nextSteps.length === 0 ? (
           <p className="text-sm text-muted">
@@ -243,19 +386,19 @@ export function GameGuidePanel({
                 <span className="mt-3 w-4 shrink-0 text-xs font-semibold text-muted">
                   {index + 1}.
                 </span>
-                <ul className="min-w-0 flex-1 list-none">
+                <div className="min-w-0 flex-1">
                   <StepRow
                     step={step}
                     nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
                     expanded={expandedStepId === step.id}
-                    onExpand={() =>
+                    onToggleExpand={() =>
                       setExpandedStepId((id) =>
                         id === step.id ? null : step.id,
                       )
                     }
                     onToggle={() => toggleStep(step)}
                   />
-                </ul>
+                </div>
               </li>
             ))}
           </ol>
@@ -286,8 +429,9 @@ export function GameGuidePanel({
 
       <div className="space-y-4">
         {visibleChapters.map(
-          ({ chapter, steps, completedCount, reachable, cleared, isActive }) => {
+          ({ chapter, steps, reachable, cleared, isActive }) => {
             const isFocused = chapter.id === focusedChapterId;
+            const chapterCounts = countSteps(steps);
             return (
               <Frame
                 key={chapter.id}
@@ -304,25 +448,32 @@ export function GameGuidePanel({
                 }
               >
                 <p className="text-sm text-muted">{chapter.summary}</p>
-                <p className="mt-1 text-xs text-muted">
-                  {completedCount}/{steps.length} steps
-                  {!reachable ? " · locked by badges" : null}
-                </p>
+                <div className="mt-3">
+                  <GuideMeter
+                    label="Chapter progress"
+                    counts={chapterCounts}
+                    size="sm"
+                  />
+                </div>
+                {!reachable ? (
+                  <p className="mt-2 text-xs text-muted">Locked by badges</p>
+                ) : null}
                 {(isFocused || isActive) && (
                   <ul className="mt-3 space-y-2">
                     {steps.map((step) => (
-                      <StepRow
-                        key={step.id}
-                        step={step}
-                        nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
-                        expanded={expandedStepId === step.id}
-                        onExpand={() =>
-                          setExpandedStepId((id) =>
-                            id === step.id ? null : step.id,
-                          )
-                        }
-                        onToggle={() => toggleStep(step)}
-                      />
+                      <li key={step.id}>
+                        <StepRow
+                          step={step}
+                          nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
+                          expanded={expandedStepId === step.id}
+                          onToggleExpand={() =>
+                            setExpandedStepId((id) =>
+                              id === step.id ? null : step.id,
+                            )
+                          }
+                          onToggle={() => toggleStep(step)}
+                        />
+                      </li>
                     ))}
                   </ul>
                 )}
