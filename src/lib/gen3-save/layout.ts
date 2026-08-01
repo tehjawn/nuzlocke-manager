@@ -36,6 +36,8 @@ export const SB1_SEEN2 = 0x3a38;
  * Vanilla 0x1270 + (58-52). Gym badges live in flags[SYSTEM_FLAGS…].
  */
 export const SB1_FLAGS = 0x1276;
+/** Vanilla/Crest Emerald SaveBlock1.flags (52-byte dex). */
+export const CREST_SB1_FLAGS = 0x1270;
 /**
  * Empirical from .ss0 fixtures (seen2 + ~0x26C).
  * NuzlockeEncounterFlags[9] then packed challenge bitfields.

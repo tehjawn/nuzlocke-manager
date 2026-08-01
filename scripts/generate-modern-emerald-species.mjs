@@ -77,9 +77,6 @@ const maxId = Math.max(...mapping.keys());
 const table = Array.from({ length: maxId + 1 }, () => 0);
 for (const [sid, nd] of mapping) table[sid] = nd;
 
-const numSpecies = species.get(
-  [...species.entries()].find(([, n]) => n === "EGG")?.[0] ?? 0,
-);
 const eggId = [...species.entries()].find(([, n]) => n === "EGG")?.[0] ?? 462;
 const dexFlagBytes = Math.ceil(eggId / 8);
 

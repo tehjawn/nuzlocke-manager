@@ -46,6 +46,8 @@ import {
   PARTY_SLOTS,
   REVIVES_USED_MASK,
   SB1_FLAGS,
+  CREST_SB1_FLAGS,
+  SB1_NUZLOCKE_ENCOUNTER_FLAGS,
   SB1_NUZLOCKE_FLAGS_LEN,
   SB1_PARTY,
   SB1_PARTY_COUNT,
@@ -627,12 +629,11 @@ function toParsed(
 }
 
 /** Find 6-slot party arrays; prefer healed storage copies. */
-function findPartyBases(
-  bytes: Uint8Array,
-  options?: { preferPostParty?: boolean },
-): number[] {
-  const preferPostParty = options?.preferPostParty ?? false;
-  const scored: { off: number; score: number }[] = [];
+function rankPartyBases(bytes: Uint8Array): {
+  withPost: number[];
+  withoutPost: number[];
+} {
+  const scored: { off: number; base: number; post: number }[] = [];
 
   // Best (highest monScore) copy per PID — live party slots should reference these.
   const bestOffsetByPid = new Map<number, number>();
@@ -683,15 +684,14 @@ function findPartyBases(
     // Reject windows that stitch together stale secondary copies of party mons.
     if (bestCopies < filled) continue;
 
-    // Crest: prefer arrays followed by more living Pokémon (wild buffer).
+    // Crest: post-party living mons (wild buffer). Always scored so Modern can
+    // re-rank without a second full-buffer scan.
     let post = 0;
-    if (preferPostParty) {
-      const postBase = off + PARTY_SLOTS * MON_SIZE;
-      for (let i = 0; i < 12; i++) {
-        const m = tryParseMon(bytes, postBase + i * MON_SIZE);
-        if (!m || m.level == null || m.hp <= 0) break;
-        post += 1;
-      }
+    const postBase = off + PARTY_SLOTS * MON_SIZE;
+    for (let i = 0; i < 12; i++) {
+      const m = tryParseMon(bytes, postBase + i * MON_SIZE);
+      if (!m || m.level == null || m.hp <= 0) break;
+      post += 1;
     }
 
     // Prefer windows that look like SaveBlock1.playerParty (badge flags coherent).
@@ -703,19 +703,33 @@ function findPartyBases(
 
     scored.push({
       off,
-      score: saveblockBonus + filled * 1000 + post * 100 + heal - off * 0.0001,
+      base: saveblockBonus + filled * 1000 + heal - off * 0.0001,
+      post,
     });
   }
 
-  scored.sort((a, b) => b.score - a.score);
-  // Dedupe overlapping windows — keep best only per ~600-byte neighborhood
-  const kept: number[] = [];
-  for (const s of scored) {
-    if (kept.some((k) => Math.abs(k - s.off) < PARTY_SLOTS * MON_SIZE)) continue;
-    kept.push(s.off);
-    if (kept.length >= 4) break;
-  }
-  return kept;
+  const keepTop = (preferPostParty: boolean): number[] => {
+    const sorted = [...scored].sort((a, b) => {
+      const scoreA = a.base + (preferPostParty ? a.post * 100 : 0);
+      const scoreB = b.base + (preferPostParty ? b.post * 100 : 0);
+      return scoreB - scoreA;
+    });
+    // Dedupe overlapping windows — keep best only per ~600-byte neighborhood
+    const kept: number[] = [];
+    for (const s of sorted) {
+      if (kept.some((k) => Math.abs(k - s.off) < PARTY_SLOTS * MON_SIZE)) {
+        continue;
+      }
+      kept.push(s.off);
+      if (kept.length >= 4) break;
+    }
+    return kept;
+  };
+
+  return {
+    withPost: keepTop(true),
+    withoutPost: keepTop(false),
+  };
 }
 
 function readSlotArray(
@@ -1058,11 +1072,16 @@ function locateModernSaveMeta(
 
   if (hits.length === 0) return null;
 
+  // Anchoring is O(hits × buffer) — keep only the tightest candidates.
+  hits.sort((a, b) => a.seen.length - b.seen.length);
+  const candidates = hits.slice(0, 8);
+
   // Prefer the hit whose seen pattern also appears at SB1.seen1 (flags coherent).
-  for (const hit of hits) {
+  for (const hit of candidates) {
     const pat = bytes.subarray(hit.seenBase, hit.seenBase + n);
+    const first = pat[0]!;
     for (let i = 0; i + n <= bytes.length; i++) {
-      if (i === hit.seenBase) continue;
+      if (i === hit.seenBase || bytes[i] !== first) continue;
       let match = true;
       for (let j = 0; j < n; j++) {
         if (bytes[i + j] !== pat[j]) {
@@ -1095,11 +1114,26 @@ function locateModernSaveMeta(
   return { sb1: -1, seen: hit.seen, owned: hit.owned, source: "seen1" };
 }
 
+function nuzlockeFlagsLookCoherent(
+  bytes: Uint8Array,
+  nuzBase: number,
+): boolean {
+  if (nuzBase + SB1_NUZLOCKE_FLAGS_LEN > bytes.length) return false;
+  const sample = bytes.subarray(nuzBase, nuzBase + SB1_NUZLOCKE_FLAGS_LEN);
+  let ff03 = 0;
+  for (let i = 0; i + 1 < sample.length; i += 2) {
+    if (sample[i] === 0xff && sample[i + 1] === 0x03) ff03 += 1;
+  }
+  // Uninitialized / garbage often looks like repeating 0xff03 words.
+  return ff03 < 3;
+}
+
 function readReviveAbsolute(sb1Bytes: Uint8Array, sb1Base = 0): ParsedSaveRevive {
   const flagsOff = sb1Base + SB1_REVIVES_USED;
   if (flagsOff >= sb1Bytes.length) return EMPTY_REVIVE;
+  const nuzBase = sb1Base + SB1_NUZLOCKE_ENCOUNTER_FLAGS;
+  if (!nuzlockeFlagsLookCoherent(sb1Bytes, nuzBase)) return EMPTY_REVIVE;
   const usedCount = (sb1Bytes[flagsOff]! & REVIVES_USED_MASK) >>> 0;
-  if (usedCount > 15) return EMPTY_REVIVE;
   return {
     used: usedCount >= MODERN_REVIVES_TOTAL,
     remaining: Math.max(0, MODERN_REVIVES_TOTAL - usedCount),
@@ -1121,17 +1155,9 @@ function readReviveToken(
   const nuzBase = partyBase + nuzlockeFlagsAfterParty(mode);
   const flagsOff = nuzBase + SB1_NUZLOCKE_FLAGS_LEN + SB1_REVIVES_USED_BYTE;
   if (flagsOff >= bytes.length) return EMPTY_REVIVE;
-
-  const sample = bytes.subarray(nuzBase, nuzBase + SB1_NUZLOCKE_FLAGS_LEN);
-  if (sample.length < SB1_NUZLOCKE_FLAGS_LEN) return EMPTY_REVIVE;
-  let ff03 = 0;
-  for (let i = 0; i + 1 < sample.length; i += 2) {
-    if (sample[i] === 0xff && sample[i + 1] === 0x03) ff03 += 1;
-  }
-  if (ff03 >= 3) return EMPTY_REVIVE;
+  if (!nuzlockeFlagsLookCoherent(bytes, nuzBase)) return EMPTY_REVIVE;
 
   const usedCount = (bytes[flagsOff]! & REVIVES_USED_MASK) >>> 0;
-  if (usedCount > 15) return EMPTY_REVIVE;
   return {
     used: usedCount >= MODERN_REVIVES_TOTAL,
     remaining: Math.max(0, MODERN_REVIVES_TOTAL - usedCount),
@@ -1195,7 +1221,9 @@ function dexSeenToParsed(speciesId: number): ParsedSavePokemon {
 function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult {
   const warnings: string[] = [];
   // First pass: locate any party so we can detect Modern vs Crest species IDs.
-  let partyBases = findPartyBases(bytes, { preferPostParty: true });
+  // Rank both weightings in one scan — Modern re-ranks without a second pass.
+  const rankedParties = rankPartyBases(bytes);
+  let partyBases = rankedParties.withPost;
   if (partyBases.length === 0) {
     return {
       ok: false,
@@ -1219,7 +1247,7 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
     warnings.push("Species IDs mapped with Modern Emerald (Gen 3) table.");
     // Modern Emerald has no Crest-style post-party wild buffer — re-rank parties
     // by living HP only so fainted PC mons aren't glued onto the party window.
-    partyBases = findPartyBases(bytes, { preferPostParty: false });
+    partyBases = rankedParties.withoutPost;
     partyBase = partyBases[0]!;
     party = [];
     for (let i = 0; i < PARTY_SLOTS; i++) {
@@ -1469,7 +1497,6 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
   }
 
   if (party.length === 0) {
-    warnings.push("Flash SaveBlock1 party empty — falling back to memory scan.");
     return null;
   }
 
@@ -1508,7 +1535,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
   }
 
   const trainer = readTrainerFromSaveBlock2(sb2) ?? findTrainerNearParty(sb1, partyLiving);
-  const flagsOff = speciesMode === "modern" ? SB1_FLAGS : 0x1270;
+  const flagsOff = speciesMode === "modern" ? SB1_FLAGS : CREST_SB1_FLAGS;
   const badges = readBadgesAbsolute(sb1, flagsOff);
   if (!badges.reliable) {
     warnings.push("Could not reliably read gym badge flags from SaveBlock1.");

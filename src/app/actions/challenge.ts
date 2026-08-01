@@ -1611,7 +1611,7 @@ export async function importFromSaveAction(
         };
       });
 
-    await prisma.$transaction(async (tx) => {
+    const reviveTransition = await prisma.$transaction(async (tx) => {
       await captureTrainerBoardSnapshotInTx(tx, {
         challengeId: trainer.challengeId,
         trainerId: trainer.id,
@@ -1678,12 +1678,23 @@ export async function importFromSaveAction(
         }
       }
 
-      if (data.applyRevive && data.reviveUsed != null) {
+      // Imports may only spend a revive. Clearing it stays GM-only.
+      if (
+        data.applyRevive &&
+        data.reviveUsed != null &&
+        data.reviveUsed !== trainer.reviveUsed &&
+        (data.reviveUsed || access.isGm)
+      ) {
         await tx.trainerProfile.update({
           where: { id: trainer.id },
           data: { reviveUsed: data.reviveUsed },
         });
+        return {
+          from: trainer.reviveUsed,
+          to: data.reviveUsed,
+        };
       }
+      return null;
     });
 
     const handleLabel =
@@ -1698,6 +1709,18 @@ export async function importFromSaveAction(
       type: "NOTE",
       message: `${handleLabel} imported save data (${rows.length} Pokémon)`,
     });
+
+    if (reviveTransition) {
+      await logActivity({
+        challengeId: trainer.challengeId,
+        actorId: userId,
+        trainerId: trainer.id,
+        type: reviveTransition.to ? "REVIVE_USED" : "REVIVE_RESET",
+        message: reviveTransition.to
+          ? `${handleLabel} marked Revive Token used via save import`
+          : `GM reset Revive Token for ${handleLabel} via save import`,
+      });
+    }
 
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return {

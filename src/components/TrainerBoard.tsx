@@ -1571,6 +1571,15 @@ export function TrainerBoard({
               if (result.ok) {
                 partySave.markSaved(result.message ?? "Save imported");
                 setSaveImportOpen(false);
+                // Mirror server gate: non-GMs may only spend a revive via import.
+                if (
+                  payload.applyRevive &&
+                  payload.reviveUsed != null &&
+                  (payload.reviveUsed || isGm)
+                ) {
+                  setReviveUsed(payload.reviveUsed);
+                }
+                router.refresh();
               } else {
                 partySave.markError(result.error);
               }
