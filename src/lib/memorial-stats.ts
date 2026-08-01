@@ -19,11 +19,24 @@ export type MemorialSeasonHighlights = {
   totalGraves: number;
   trainersWithLosses: number;
   heaviestMemorial: MemorialTrainerHighlight | null;
-  mostMourned: MemorialSpeciesHighlight | null;
+  mostPartyWipes: MemorialTrainerHighlight | null;
+  mostDeathProne: MemorialSpeciesHighlight | null;
 };
 
+function trainerHighlight(
+  leaders: TrainerProfile[],
+  count: number,
+): MemorialTrainerHighlight {
+  return {
+    trainerIds: leaders.map((trainer) => trainer.id),
+    labels: leaders.map((trainer) => displayName(trainer)),
+    count,
+    tied: leaders.length > 1,
+  };
+}
+
 /**
- * Season-wide memorial callouts from live GRAVEYARD rows.
+ * Season-wide memorial callouts from live GRAVEYARD rows + wipe counts.
  * Ties keep every leader (callouts can truncate in UI).
  */
 export function memorialSeasonHighlights(
@@ -43,13 +56,19 @@ export function memorialSeasonHighlights(
     const max = Math.max(...rows.map((row) => row.graves.length));
     const leaders = rows
       .filter((row) => row.graves.length === max)
-      .sort((a, b) => a.trainer.sortOrder - b.trainer.sortOrder);
-    heaviestMemorial = {
-      trainerIds: leaders.map((row) => row.trainer.id),
-      labels: leaders.map((row) => displayName(row.trainer)),
-      count: max,
-      tied: leaders.length > 1,
-    };
+      .map((row) => row.trainer)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    heaviestMemorial = trainerHighlight(leaders, max);
+  }
+
+  let mostPartyWipes: MemorialTrainerHighlight | null = null;
+  const wipeLeaders = trainers.filter((trainer) => (trainer.wipeCount ?? 0) > 0);
+  if (wipeLeaders.length > 0) {
+    const max = Math.max(...wipeLeaders.map((trainer) => trainer.wipeCount ?? 0));
+    const leaders = wipeLeaders
+      .filter((trainer) => (trainer.wipeCount ?? 0) === max)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    mostPartyWipes = trainerHighlight(leaders, max);
   }
 
   const speciesCounts = new Map<
@@ -58,7 +77,10 @@ export function memorialSeasonHighlights(
   >();
   for (const row of rows) {
     for (const mon of row.graves) {
-      const key = mon.pokedexId != null ? `id:${mon.pokedexId}` : `name:${mon.species.toLowerCase()}`;
+      const key =
+        mon.pokedexId != null
+          ? `id:${mon.pokedexId}`
+          : `name:${mon.species.toLowerCase()}`;
       const existing = speciesCounts.get(key);
       if (existing) {
         existing.count += 1;
@@ -75,7 +97,7 @@ export function memorialSeasonHighlights(
     }
   }
 
-  let mostMourned: MemorialSpeciesHighlight | null = null;
+  let mostDeathProne: MemorialSpeciesHighlight | null = null;
   if (speciesCounts.size > 0) {
     const ranked = [...speciesCounts.values()].sort((a, b) => {
       if (b.count !== a.count) return b.count - a.count;
@@ -83,7 +105,7 @@ export function memorialSeasonHighlights(
     });
     const top = ranked[0]!;
     const tied = ranked.filter((entry) => entry.count === top.count).length > 1;
-    mostMourned = {
+    mostDeathProne = {
       species: top.species,
       pokedexId: top.pokedexId,
       count: top.count,
@@ -95,6 +117,7 @@ export function memorialSeasonHighlights(
     totalGraves,
     trainersWithLosses: rows.length,
     heaviestMemorial,
-    mostMourned,
+    mostPartyWipes,
+    mostDeathProne,
   };
 }

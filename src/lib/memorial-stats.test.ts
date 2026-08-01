@@ -30,7 +30,7 @@ function mon(
 function trainer(
   partial: Pick<TrainerProfile, "id" | "handle" | "sortOrder"> & {
     pokemon: PokemonEntry[];
-  },
+  } & Partial<TrainerProfile>,
 ): TrainerProfile {
   return {
     realName: null,
@@ -52,12 +52,13 @@ function trainer(
   };
 }
 
-test("memorialSeasonHighlights finds heaviest memorial and most mourned species", () => {
+test("memorialSeasonHighlights finds heaviest memorial, party wipes, and death-prone species", () => {
   const highlights = memorialSeasonHighlights([
     trainer({
       id: "t1",
       handle: "Ash",
       sortOrder: 0,
+      wipeCount: 1,
       pokemon: [
         mon({ id: "a1", slot: "GRAVEYARD", partyIndex: 0, species: "Zigzagoon", pokedexId: 263 }),
         mon({ id: "a2", slot: "GRAVEYARD", partyIndex: 1, species: "Zigzagoon", pokedexId: 263 }),
@@ -68,6 +69,7 @@ test("memorialSeasonHighlights finds heaviest memorial and most mourned species"
       id: "t2",
       handle: "May",
       sortOrder: 1,
+      wipeCount: 3,
       pokemon: [
         mon({ id: "b1", slot: "GRAVEYARD", partyIndex: 0, species: "Zigzagoon", pokedexId: 263 }),
       ],
@@ -82,7 +84,13 @@ test("memorialSeasonHighlights finds heaviest memorial and most mourned species"
     count: 2,
     tied: false,
   });
-  assert.deepEqual(highlights.mostMourned, {
+  assert.deepEqual(highlights.mostPartyWipes, {
+    trainerIds: ["t2"],
+    labels: ["May"],
+    count: 3,
+    tied: false,
+  });
+  assert.deepEqual(highlights.mostDeathProne, {
     species: "Zigzagoon",
     pokedexId: 263,
     count: 3,
@@ -96,16 +104,35 @@ test("memorialSeasonHighlights marks trainer ties", () => {
       id: "t1",
       handle: "Ash",
       sortOrder: 0,
+      wipeCount: 2,
       pokemon: [mon({ id: "a1", slot: "GRAVEYARD", partyIndex: 0, species: "Ralts" })],
     }),
     trainer({
       id: "t2",
       handle: "May",
       sortOrder: 1,
+      wipeCount: 2,
       pokemon: [mon({ id: "b1", slot: "GRAVEYARD", partyIndex: 0, species: "Taillow" })],
     }),
   ]);
 
   assert.equal(highlights.heaviestMemorial?.tied, true);
   assert.deepEqual(highlights.heaviestMemorial?.labels, ["Ash", "May"]);
+  assert.equal(highlights.mostPartyWipes?.tied, true);
+  assert.deepEqual(highlights.mostPartyWipes?.labels, ["Ash", "May"]);
+  assert.equal(highlights.mostPartyWipes?.count, 2);
+});
+
+test("memorialSeasonHighlights omits party wipes when nobody has wiped", () => {
+  const highlights = memorialSeasonHighlights([
+    trainer({
+      id: "t1",
+      handle: "Ash",
+      sortOrder: 0,
+      wipeCount: 0,
+      pokemon: [mon({ id: "a1", slot: "GRAVEYARD", partyIndex: 0, species: "Ralts" })],
+    }),
+  ]);
+
+  assert.equal(highlights.mostPartyWipes, null);
 });

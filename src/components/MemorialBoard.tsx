@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { Frame } from "@/components/Frame";
 import { MemorialCauseEditor } from "@/components/MemorialCauseEditor";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -49,6 +50,26 @@ export function MemorialBoard({
     .filter((row) => row.graves.length > 0);
 
   const highlights = memorialSeasonHighlights(challenge.trainers);
+  const trainersById = new Map(
+    challenge.trainers.map((trainer) => [trainer.id, trainer]),
+  );
+
+  function trainersForHighlight(
+    highlight: { trainerIds: string[] } | null | undefined,
+  ): TrainerProfile[] {
+    if (!highlight) return [];
+    return highlight.trainerIds
+      .map((id) => trainersById.get(id))
+      .filter((trainer): trainer is TrainerProfile => Boolean(trainer));
+  }
+
+  const heaviestTrainers = trainersForHighlight(highlights.heaviestMemorial);
+  const wipeTrainers = trainersForHighlight(highlights.mostPartyWipes);
+  const hasCallouts = Boolean(
+    highlights.heaviestMemorial ||
+      highlights.mostPartyWipes ||
+      highlights.mostDeathProne,
+  );
 
   return (
     <div className="space-y-5">
@@ -71,44 +92,98 @@ export function MemorialBoard({
         </p>
       </header>
 
-      {entries.length > 0 &&
-      (highlights.heaviestMemorial || highlights.mostMourned) ? (
-        <div className="grid gap-2 sm:grid-cols-2">
+      {entries.length > 0 && hasCallouts ? (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {highlights.heaviestMemorial ? (
             <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
               <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
                 Heaviest memorial
                 {highlights.heaviestMemorial.tied ? " · tied" : ""}
               </p>
-              <p className="mt-0.5 font-display text-sm font-bold leading-tight">
-                {formatTiedLabels(highlights.heaviestMemorial.labels)}
-              </p>
-              <p className="text-[11px] text-muted">
-                {highlights.heaviestMemorial.count} RIP
-              </p>
+              <div className="mt-1 flex items-center gap-2.5">
+                {heaviestTrainers.length > 0 ? (
+                  <div className="flex shrink-0 items-end -space-x-2">
+                    {heaviestTrainers.slice(0, 3).map((trainer) => (
+                      <AvatarPortrait
+                        key={trainer.id}
+                        avatarSpriteKey={trainer.avatarSpriteKey}
+                        backgroundKey={trainer.avatarBackgroundKey}
+                        sizeClass="h-12 w-12"
+                        width={48}
+                        height={48}
+                        alt=""
+                      />
+                    ))}
+                  </div>
+                ) : null}
+                <div className="min-w-0">
+                  <p className="font-display text-sm font-bold leading-tight">
+                    {formatTiedLabels(highlights.heaviestMemorial.labels)}
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    {highlights.heaviestMemorial.count} RIP
+                  </p>
+                </div>
+              </div>
             </div>
           ) : null}
-          {highlights.mostMourned ? (
+          {highlights.mostPartyWipes ? (
             <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
               <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-                Most mourned
-                {highlights.mostMourned.tied ? " · tied" : ""}
+                Most party wipes
+                {highlights.mostPartyWipes.tied ? " · tied" : ""}
               </p>
-              <p className="mt-0.5 flex items-center gap-2 font-display text-sm font-bold leading-tight">
-                <span className="relative inline-block h-7 w-7 shrink-0">
+              <div className="mt-1 flex items-center gap-2.5">
+                {wipeTrainers.length > 0 ? (
+                  <div className="flex shrink-0 items-end -space-x-2">
+                    {wipeTrainers.slice(0, 3).map((trainer) => (
+                      <AvatarPortrait
+                        key={trainer.id}
+                        avatarSpriteKey={trainer.avatarSpriteKey}
+                        backgroundKey={trainer.avatarBackgroundKey}
+                        sizeClass="h-12 w-12"
+                        width={48}
+                        height={48}
+                        alt=""
+                      />
+                    ))}
+                  </div>
+                ) : null}
+                <div className="min-w-0">
+                  <p className="font-display text-sm font-bold leading-tight">
+                    {formatTiedLabels(highlights.mostPartyWipes.labels)}
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    {highlights.mostPartyWipes.count} wipe
+                    {highlights.mostPartyWipes.count === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {highlights.mostDeathProne ? (
+            <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
+              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
+                Most death-prone Pokémon
+                {highlights.mostDeathProne.tied ? " · tied" : ""}
+              </p>
+              <p className="mt-1 flex items-center gap-2.5 font-display text-sm font-bold leading-tight">
+                <span className="relative inline-block h-12 w-12 shrink-0">
                   <PokemonSpriteImage
                     alt=""
                     className="pixelated h-full w-full object-contain"
-                    height={28}
-                    pokedexId={highlights.mostMourned.pokedexId}
-                    species={highlights.mostMourned.species}
-                    width={28}
+                    height={48}
+                    pokedexId={highlights.mostDeathProne.pokedexId}
+                    species={highlights.mostDeathProne.species}
+                    width={48}
                   />
                 </span>
-                {highlights.mostMourned.species}
-              </p>
-              <p className="text-[11px] text-muted">
-                {highlights.mostMourned.count} RIP across the season
+                <span className="min-w-0">
+                  {highlights.mostDeathProne.species}
+                  <span className="mt-0.5 block font-sans text-[11px] font-normal text-muted">
+                    {highlights.mostDeathProne.count} RIP across the season
+                  </span>
+                </span>
               </p>
             </div>
           ) : null}
@@ -148,23 +223,23 @@ export function MemorialBoard({
                   </div>
                 }
               >
-                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {graves.map((pokemon) => {
                     const label = pokemon.nickname || pokemon.species;
                     return (
                       <li
                         key={pokemon.id}
-                        className="flex gap-2 rounded-md border border-frame/35 bg-surface/65 p-2"
+                        className="flex gap-3 rounded-md border border-frame/35 bg-surface/65 p-2.5"
                       >
-                        <div className="relative h-10 w-10 shrink-0">
+                        <div className="relative h-16 w-16 shrink-0">
                           <PokemonSpriteImage
                             alt=""
                             className="pixelated h-full w-full object-contain opacity-90"
-                            height={40}
+                            height={64}
                             pokedexId={pokemon.pokedexId}
                             shiny={pokemon.isShiny}
                             species={pokemon.species}
-                            width={40}
+                            width={64}
                           />
                         </div>
                         <div className="min-w-0 flex-1">
