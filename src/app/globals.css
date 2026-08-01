@@ -1822,6 +1822,143 @@ button:disabled,
   cursor: not-allowed;
 }
 
+.markdown-content {
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+  line-height: 1.625;
+}
+
+.markdown-content > :first-child {
+  margin-top: 0;
+}
+
+.markdown-content > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content p,
+.markdown-content ul,
+.markdown-content ol,
+.markdown-content blockquote,
+.markdown-content pre,
+.markdown-content table,
+.markdown-content hr {
+  margin-block: 0.75rem;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  margin-block: 1rem 0.45rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.markdown-content h1 {
+  font-size: 1.25rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.125rem;
+}
+
+.markdown-content h3,
+.markdown-content h4 {
+  font-size: 1rem;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-inline-start: 1.4rem;
+}
+
+.markdown-content ul {
+  list-style: disc;
+}
+
+.markdown-content ol {
+  list-style: decimal;
+}
+
+.markdown-content li + li {
+  margin-top: 0.25rem;
+}
+
+.markdown-content li > ul,
+.markdown-content li > ol {
+  margin-block: 0.25rem 0;
+}
+
+.markdown-content a {
+  font-weight: 650;
+  color: var(--interactive);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--interactive) 45%, transparent);
+  text-underline-offset: 2px;
+}
+
+.markdown-content a:hover {
+  text-decoration-color: var(--interactive);
+}
+
+.markdown-content blockquote {
+  border-inline-start: 3px solid var(--accent-2);
+  padding-inline-start: 0.85rem;
+  color: var(--muted);
+}
+
+.markdown-content code {
+  border-radius: 0.25rem;
+  background: var(--info);
+  padding: 0.1rem 0.3rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.8125rem;
+}
+
+.markdown-content pre {
+  overflow-x: auto;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-sm);
+  background: var(--info);
+  padding: 0.75rem;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--frame);
+  padding: 0.4rem 0.55rem;
+  text-align: start;
+}
+
+.markdown-content th {
+  background: var(--surface-2);
+  font-weight: 750;
+}
+
+.markdown-content hr {
+  border: 0;
+  border-top: 1px solid var(--frame);
+}
+
+.markdown-content img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+}
+
 /* ─── GM Console dashboard ─── */
 .gm-console-page {
   position: relative;

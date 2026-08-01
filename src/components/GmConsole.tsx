@@ -656,6 +656,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                         defaultValue={rule.body}
                         className="gm-console__textarea"
                       />
+                      <MarkdownHint />
                     </label>
                     <label className="gm-console__check">
                       <input
@@ -750,6 +751,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                       required
                       className="gm-console__textarea"
                     />
+                    <MarkdownHint />
                   </label>
                   <label className="gm-console__check">
                     <input name="isCore" type="checkbox" /> Core rule
@@ -821,6 +823,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                         defaultValue={faq.answer}
                         className="gm-console__textarea"
                       />
+                      <MarkdownHint />
                     </label>
                     <div className="gm-console__actions">
                       <button
@@ -894,6 +897,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                       required
                       className="gm-console__textarea"
                     />
+                    <MarkdownHint />
                   </label>
                   <div className="gm-console__actions">
                     <button
@@ -1023,5 +1027,14 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
 
       {confirmDialog}
     </div>
+  );
+}
+
+function MarkdownHint() {
+  return (
+    <span className="gm-console__hint">
+      Markdown supported: <code>**bold**</code>, <code>_italics_</code>, lists,
+      links, and tables.
+    </span>
   );
 }
