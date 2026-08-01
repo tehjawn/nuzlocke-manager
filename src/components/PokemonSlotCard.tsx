@@ -101,17 +101,15 @@ export function PokemonSlotCard({
           memorial ? "opacity-90" : ""
         } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
       >
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
-          <PokemonSpriteImage
-            alt=""
-            className="pixelated h-12 w-12 object-contain"
-            height={56}
-            pokedexId={pokemon.pokedexId}
-            shiny={pokemon.isShiny}
-            species={pokemon.species}
-            width={56}
-          />
-        </div>
+        <PokemonSpriteImage
+          alt=""
+          className="pixelated h-14 w-14 shrink-0 object-contain"
+          height={56}
+          pokedexId={pokemon.pokedexId}
+          shiny={pokemon.isShiny}
+          species={pokemon.species}
+          width={56}
+        />
         <p className="w-full truncate px-0.5 text-[11px] font-bold leading-tight tracking-tight sm:text-xs">
           {label}
           {pokemon.isShiny ? (
