@@ -2,11 +2,10 @@
  * Modern Emerald (nzl_modern) SaveBlock layout constants.
  *
  * Party/money/bag pocket *starts* match pret Emerald (BAG_ITEMS_COUNT stays 30).
- * After `seen1`, fields shift because NUM_DEX_FLAG_BYTES is 58 (vanilla 52):
- * +6 after seen1, +6 again after seen2 → +12 for NuzlockeEncounterFlags onward.
+ * Dex bitfields use National Dex indices (GetSetPokedexFlag), size 58.
  *
- * Header comments in global.h are stale vanilla addresses — do not trust them
- * past seen1.
+ * Offsets past seen1 were confirmed against live Afterplay .ss0 fixtures
+ * (global.h comments are stale vanilla addresses).
  */
 
 import modernSpeciesData from "@/data/modern-emerald-species.json";
@@ -30,27 +29,32 @@ export const SB1_MONEY = 0x490;
 /** Unchanged vs vanilla (bag still 30 slots). */
 export const SB1_SEEN1 = 0x988;
 /**
+ * Empirical: seen1 + 0x30B0 (vanilla gap shrank vs +6-only estimate).
+ */
+export const SB1_SEEN2 = 0x3a38;
+/**
  * Vanilla 0x1270 + (58-52). Gym badges live in flags[SYSTEM_FLAGS…].
  */
 export const SB1_FLAGS = 0x1276;
 /**
- * Vanilla 0x3D88 + 12 (seen1 + seen2 growth).
+ * Empirical from .ss0 fixtures (seen2 + ~0x26C).
+ * NuzlockeEncounterFlags[9] then packed challenge bitfields.
  */
-export const SB1_NUZLOCKE_ENCOUNTER_FLAGS = 0x3d94;
+export const SB1_NUZLOCKE_ENCOUNTER_FLAGS = 0x3ca4;
 export const SB1_NUZLOCKE_FLAGS_LEN = 9;
 /**
- * After the 9-byte encounter flags, packed u8 bitfields; ARM packing places
- * tx_Nuzlocke_RevivesUsed:4 at byte 11, bits 0–3.
+ * tx_Nuzlocke_RevivesUsed:4 — empirical absolute offset (= nuz flags + 9 + 11).
  */
+export const SB1_REVIVES_USED = 0x3cb8;
 export const SB1_REVIVES_USED_BYTE = 11;
 export const REVIVES_USED_MASK = 0xf;
 export const MODERN_REVIVES_TOTAL = 1;
 
-/** Relatives from playerParty (for EWRAM-anchored parses). */
+/** Relatives from playerParty (only valid when partyBase is SaveBlock1.playerParty). */
 export const SEEN1_AFTER_PARTY = SB1_SEEN1 - SB1_PARTY; // 0x750
 export const FLAGS_AFTER_PARTY = SB1_FLAGS - SB1_PARTY; // 0x103E
 export const NUZLOCKE_FLAGS_AFTER_PARTY =
-  SB1_NUZLOCKE_ENCOUNTER_FLAGS - SB1_PARTY; // 0x3B5C
+  SB1_NUZLOCKE_ENCOUNTER_FLAGS - SB1_PARTY; // 0x3A6C
 
 /** Crest / vanilla Emerald relatives (bag 30, dex 52). */
 export const CREST_FLAGS_AFTER_PARTY = 0x1038;

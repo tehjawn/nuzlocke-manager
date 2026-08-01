@@ -46,10 +46,10 @@ import {
   PARTY_SLOTS,
   REVIVES_USED_MASK,
   SB1_FLAGS,
-  SB1_NUZLOCKE_ENCOUNTER_FLAGS,
   SB1_NUZLOCKE_FLAGS_LEN,
   SB1_PARTY,
   SB1_PARTY_COUNT,
+  SB1_REVIVES_USED,
   SB1_REVIVES_USED_BYTE,
   SB1_SEEN1,
   SEEN1_AFTER_PARTY as MODERN_SEEN1_AFTER_PARTY,
@@ -1006,23 +1006,122 @@ function readModernSeen1(
   }
   const seen = listDexBits(bytes, seenBase, MODERN_NUM_SPECIES);
   if (seen.length < ownedMust.length) return null;
-  // Reject clearly uninitialized / sparse garbage (all zeros already handled).
   if (seen.length > ownedMust.length + 120) return null;
   return seen;
+}
+
+/**
+ * Locate Modern Emerald SaveBlock1 + national Pokédex bitfields in EWRAM.
+ * gPlayerParty is often ASLR'd separately from SB1 — never trust party-relative
+ * offsets for badges/revive/dex on screenshot states.
+ */
+function locateModernSaveMeta(
+  bytes: Uint8Array,
+  ownedMust: number[],
+): {
+  sb1: number;
+  seen: number[];
+  owned: number[];
+  source: "seen1";
+} | null {
+  if (ownedMust.length === 0) return null;
+  const n = MODERN_DEX_FLAG_BYTES;
+
+  type Hit = { ownedBase: number; seenBase: number; owned: number[]; seen: number[] };
+  const hits: Hit[] = [];
+
+  for (let ownedBase = 0; ownedBase + n * 2 <= bytes.length; ownedBase++) {
+    let ok = true;
+    for (const id of ownedMust) {
+      if (!dexBitSet(bytes, ownedBase, id)) {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok) continue;
+    const owned = listDexBits(bytes, ownedBase, 400);
+    if (owned.length < ownedMust.length || owned.length > ownedMust.length + 12) {
+      continue;
+    }
+    const seenBase = ownedBase + n;
+    for (const id of ownedMust) {
+      if (!dexBitSet(bytes, seenBase, id)) {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok) continue;
+    const seen = listDexBits(bytes, seenBase, 400);
+    if (seen.length < owned.length || seen.length > owned.length + 40) continue;
+    hits.push({ ownedBase, seenBase, owned, seen });
+  }
+
+  if (hits.length === 0) return null;
+
+  // Prefer the hit whose seen pattern also appears at SB1.seen1 (flags coherent).
+  for (const hit of hits) {
+    const pat = bytes.subarray(hit.seenBase, hit.seenBase + n);
+    for (let i = 0; i + n <= bytes.length; i++) {
+      if (i === hit.seenBase) continue;
+      let match = true;
+      for (let j = 0; j < n; j++) {
+        if (bytes[i + j] !== pat[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (!match) continue;
+      const sb1 = i - SB1_SEEN1;
+      if (sb1 < 0) continue;
+      const badges = readBadgesAbsolute(bytes, sb1 + SB1_FLAGS);
+      if (!badges.reliable && badges.earnedKeys.length > 0) continue;
+      // SYS_POKEMON_GET must be set for a real flags block.
+      if (!badges.reliable) {
+        // readBadgesAbsolute returns unreliable when SYS flag missing OR non-prefix.
+        // Early game with 0 badges is reliable when SYS is set — check directly.
+        const flagsBase = sb1 + SB1_FLAGS;
+        const sysIdx = SYSTEM_FLAGS >> 3;
+        if (flagsBase + sysIdx >= bytes.length) continue;
+        if (((bytes[flagsBase + sysIdx]! >> (SYSTEM_FLAGS & 7)) & 1) !== 1) {
+          continue;
+        }
+      }
+      return { sb1, seen: hit.seen, owned: hit.owned, source: "seen1" };
+    }
+  }
+
+  // Dex found but SB1 not anchored — still return seen via first hit.
+  const hit = hits[0]!;
+  return { sb1: -1, seen: hit.seen, owned: hit.owned, source: "seen1" };
+}
+
+function readReviveAbsolute(sb1Bytes: Uint8Array, sb1Base = 0): ParsedSaveRevive {
+  const flagsOff = sb1Base + SB1_REVIVES_USED;
+  if (flagsOff >= sb1Bytes.length) return EMPTY_REVIVE;
+  const usedCount = (sb1Bytes[flagsOff]! & REVIVES_USED_MASK) >>> 0;
+  if (usedCount > 15) return EMPTY_REVIVE;
+  return {
+    used: usedCount >= MODERN_REVIVES_TOTAL,
+    remaining: Math.max(0, MODERN_REVIVES_TOTAL - usedCount),
+    reliable: true,
+  };
 }
 
 function readReviveToken(
   bytes: Uint8Array,
   partyBase: number | null,
   mode: SpeciesIdMode = "modern",
+  sb1Base: number | null = null,
 ): ParsedSaveRevive {
-  if (partyBase == null || mode !== "modern") return EMPTY_REVIVE;
+  if (mode !== "modern") return EMPTY_REVIVE;
+  if (sb1Base != null && sb1Base >= 0) {
+    return readReviveAbsolute(bytes, sb1Base);
+  }
+  if (partyBase == null) return EMPTY_REVIVE;
   const nuzBase = partyBase + nuzlockeFlagsAfterParty(mode);
   const flagsOff = nuzBase + SB1_NUZLOCKE_FLAGS_LEN + SB1_REVIVES_USED_BYTE;
   if (flagsOff >= bytes.length) return EMPTY_REVIVE;
 
-  // Sanity: NuzlockeEncounterFlags should not be the repeating 0xFF/0x03 ASLR
-  // filler pattern seen when partyBase is gPlayerParty rather than SaveBlock1.
   const sample = bytes.subarray(nuzBase, nuzBase + SB1_NUZLOCKE_FLAGS_LEN);
   if (sample.length < SB1_NUZLOCKE_FLAGS_LEN) return EMPTY_REVIVE;
   let ff03 = 0;
@@ -1033,10 +1132,9 @@ function readReviveToken(
 
   const usedCount = (bytes[flagsOff]! & REVIVES_USED_MASK) >>> 0;
   if (usedCount > 15) return EMPTY_REVIVE;
-  const remaining = Math.max(0, MODERN_REVIVES_TOTAL - usedCount);
   return {
     used: usedCount >= MODERN_REVIVES_TOTAL,
-    remaining,
+    remaining: Math.max(0, MODERN_REVIVES_TOTAL - usedCount),
     reliable: true,
   };
 }
@@ -1143,17 +1241,20 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
       : [];
 
   // Collect other unique mons (best healed copies) for box / rip.
-  // Also remember any PID that appears fainted / nuzlocke-ribboned anywhere —
-  // summary buffers can hold a full-HP ghost copy of a dead mon.
+  // Modern Emerald: cemetery = nuzlocke ribbon only. Stale 0-HP summary
+  // buffers (e.g. old starter) must not become false R.I.P. entries.
   const bestByPid = new Map<number, RawMon>();
+  const boxFormPids = new Set<number>();
   const deadPids = new Set<number>(partyFainted.map((m) => m.pid));
   for (let off = 0; off + BOX_SIZE <= bytes.length; off += 4) {
     const mon = tryParseMon(bytes, off);
     if (!mon) continue;
-    const markedDead =
-      (speciesMode === "modern" && mon.nuzlockeRibbon) ||
-      (mon.maxHp > 0 && mon.hp === 0);
-    if (markedDead) deadPids.add(mon.pid);
+    if (mon.level == null) boxFormPids.add(mon.pid);
+    if (speciesMode === "modern" && mon.nuzlockeRibbon) {
+      deadPids.add(mon.pid);
+    } else if (speciesMode === "crest" && mon.maxHp > 0 && mon.hp === 0) {
+      deadPids.add(mon.pid);
+    }
     const prev = bestByPid.get(mon.pid);
     if (!prev || monScore(mon) > monScore(prev)) bestByPid.set(mon.pid, mon);
   }
@@ -1170,34 +1271,17 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
     if (claimed.has(mon.pid)) continue;
     if (deadPids.has(mon.pid)) {
       rip.push(mon);
-    } else if (mon.level != null || mon.speciesId > 0) {
+    } else if (
+      speciesMode === "crest" ||
+      boxFormPids.has(mon.pid) ||
+      mon.level == null
+    ) {
       box.push(mon);
     }
+    // else: modern party-sized ghost (not in live party, no box form) — skip
   }
   box.sort((a, b) => a.offset - b.offset);
   rip.sort((a, b) => a.offset - b.offset);
-
-  const trainer = findTrainerNearParty(bytes, party);
-  const badges = readBadges(bytes, partyBase, speciesMode);
-  if (!badges.reliable) {
-    warnings.push("Could not reliably read gym badge flags from this save.");
-  } else if (badges.earnedKeys.length === 0) {
-    warnings.push("No gym badges set in save (early game).");
-  }
-
-  const revive =
-    speciesMode === "modern"
-      ? readReviveToken(bytes, partyBase, speciesMode)
-      : EMPTY_REVIVE;
-  if (speciesMode === "modern" && !revive.reliable) {
-    warnings.push(
-      "Could not read revive token (SaveBlock1 not anchored — try a full .sav/.srm export).",
-    );
-  }
-
-  if (party.some((m) => m.crypto === "xor32")) {
-    warnings.push("Decoded with xor32 encryption (pid⊕otId).");
-  }
 
   const partyParsed = party.map((m) => toParsed(m, "party", speciesMode));
   const boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
@@ -1208,15 +1292,60 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
 
   const maxDex =
     speciesMode === "modern" ? MODERN_NUM_SPECIES : CREST_DEX_MAX_SPECIES;
-  // Anchor dex location on party + R.I.P. owned species. Box scans are noisy
-  // false-positives that would make ownedMust too large for a reliable match.
+  // Include box mons in ownedMust — Modern dex owned covers PC living mons.
   const ownedMust = [
     ...new Set(
-      [...partyParsed, ...ripParsed]
+      [...partyParsed, ...boxParsed, ...ripParsed]
         .map((m) => m.pokedexId)
         .filter((id) => id > 0 && id <= maxDex),
     ),
   ];
+
+  let badges = readBadges(bytes, partyBase, speciesMode);
+  let revive =
+    speciesMode === "modern"
+      ? readReviveToken(bytes, partyBase, speciesMode)
+      : EMPTY_REVIVE;
+  let dex: { seen: number[]; source: "table" | "bitfield" | "seen1" } | null =
+    null;
+
+  if (speciesMode === "modern") {
+    const meta = locateModernSaveMeta(bytes, ownedMust);
+    if (meta) {
+      if (meta.sb1 >= 0) {
+        badges = readBadgesAbsolute(bytes, meta.sb1 + SB1_FLAGS);
+        revive = readReviveAbsolute(bytes, meta.sb1);
+        warnings.push("Anchored SaveBlock1 via Pokédex seen1 (ASLR-safe).");
+      }
+      // Encounter stubs = seen but not owned (failed catches / dex-only).
+      const ownedSet = new Set(meta.owned);
+      dex = {
+        seen: meta.seen.filter((id) => !ownedSet.has(id)),
+        source: "seen1",
+      };
+      warnings.push(
+        `Pokédex: ${meta.seen.length} seen, ${meta.owned.length} owned.`,
+      );
+    }
+  }
+
+  const trainer = findTrainerNearParty(bytes, party);
+  if (!badges.reliable) {
+    warnings.push("Could not reliably read gym badge flags from this save.");
+  } else if (badges.earnedKeys.length === 0) {
+    warnings.push("No gym badges set in save (early game).");
+  }
+
+  if (speciesMode === "modern" && !revive.reliable) {
+    warnings.push(
+      "Could not read revive token (SaveBlock1 not anchored — try a full .sav/.srm export).",
+    );
+  }
+
+  if (party.some((m) => m.crypto === "xor32")) {
+    warnings.push("Decoded with xor32 encryption (pid⊕otId).");
+  }
+
   const seenMust = [
     ...new Set([
       ...ownedMust,
@@ -1225,13 +1354,15 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
         .filter((id) => id > 0 && id <= maxDex),
     ]),
   ];
-  const dex = readPokedexSeen(
-    bytes,
-    ownedMust,
-    seenMust,
-    speciesMode,
-    partyBase,
-  );
+  if (!dex) {
+    dex = readPokedexSeen(
+      bytes,
+      ownedMust,
+      seenMust,
+      speciesMode,
+      partyBase,
+    );
+  }
   if (dex) {
     const already = new Set(
       [...partyParsed, ...boxParsed, ...ripParsed, ...encounteredParsed].map(
@@ -1249,12 +1380,20 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
       })
       .map(dexSeenToParsed);
     encounteredParsed = [...encounteredParsed, ...dexOnly];
-    warnings.push(
-      `Pokédex seen: ${dex.seen.length} species (${dex.source}` +
-        (dexOnly.length ? `, +${dexOnly.length} not in party/box` : "") +
-        (truncated ? `, capped ${truncated} more` : "") +
-        ").",
-    );
+    if (!warnings.some((w) => w.startsWith("Pokédex:"))) {
+      warnings.push(
+        `Pokédex seen: ${dex.seen.length} species (${dex.source}` +
+          (dexOnly.length ? `, +${dexOnly.length} not in party/box` : "") +
+          (truncated ? `, capped ${truncated} more` : "") +
+          ").",
+      );
+    } else if (dexOnly.length) {
+      warnings.push(
+        `Encounter stubs: +${dexOnly.length} seen-not-owned` +
+          (truncated ? ` (capped ${truncated})` : "") +
+          ".",
+      );
+    }
   }
 
   return {
@@ -1300,19 +1439,6 @@ function readBadgesAbsolute(
     if (earnedKeys[i] !== `gym-${i + 1}`) return empty;
   }
   return { earnedKeys, reliable: true };
-}
-
-function readReviveAbsolute(sb1: Uint8Array): ParsedSaveRevive {
-  const nuzBase = SB1_NUZLOCKE_ENCOUNTER_FLAGS;
-  const flagsOff = nuzBase + SB1_NUZLOCKE_FLAGS_LEN + SB1_REVIVES_USED_BYTE;
-  if (flagsOff >= sb1.length) return EMPTY_REVIVE;
-  const usedCount = (sb1[flagsOff]! & REVIVES_USED_MASK) >>> 0;
-  if (usedCount > 15) return EMPTY_REVIVE;
-  return {
-    used: usedCount >= MODERN_REVIVES_TOTAL,
-    remaining: Math.max(0, MODERN_REVIVES_TOTAL - usedCount),
-    reliable: true,
-  };
 }
 
 /**
