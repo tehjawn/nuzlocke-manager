@@ -126,6 +126,12 @@ const MON_SIZE = PARTY_MON_SIZE;
 const BOX_SIZE = BOX_MON_SIZE;
 /** Cap dex-only stubs so late-game national dex cannot blow past import limits. */
 const DEX_SEEN_STUB_CAP = 200;
+/**
+ * Max seen−owned delta when validating Pokédex bitfield pairs in EWRAM.
+ * Mid-run Nuzlockes routinely exceed ~40 seen-not-owned (failed catches);
+ * keep this aligned with the stub import cap so states aren't rejected early.
+ */
+const DEX_SEEN_OWNED_DELTA_MAX = DEX_SEEN_STUB_CAP;
 
 function flagsAfterParty(mode: SpeciesIdMode): number {
   return mode === "modern" ? MODERN_FLAGS_AFTER_PARTY : CREST_FLAGS_AFTER_PARTY;
@@ -1040,7 +1046,12 @@ function locateDexSeenBitfieldInRange(
     const seenPc = dexPopcount(bytes, base, dexFlagBytes);
     if (ownedPc < ownedMust.length || ownedPc > ownedMust.length + 15) continue;
     if (seenPc < seenMust.length) continue;
-    if (seenPc > Math.max(seenMust.length + 40, ownedPc + 40)) continue;
+    if (
+      seenPc >
+      Math.max(seenMust.length + DEX_SEEN_OWNED_DELTA_MAX, ownedPc + DEX_SEEN_OWNED_DELTA_MAX)
+    ) {
+      continue;
+    }
     if (seenPc < ownedPc) continue;
 
     const score = seenPc + ownedPc * 2;
@@ -1087,7 +1098,7 @@ function readModernSeen1(
   }
   const seen = listDexBits(bytes, seenBase, MODERN_NUM_SPECIES);
   if (seen.length < ownedMust.length) return null;
-  if (seen.length > ownedMust.length + 120) return null;
+  if (seen.length > ownedMust.length + DEX_SEEN_OWNED_DELTA_MAX) return null;
   return seen;
 }
 
@@ -1133,14 +1144,23 @@ function locateModernSaveMeta(
     }
     if (!ok) continue;
     const seen = listDexBits(bytes, seenBase, MODERN_NUM_SPECIES);
-    if (seen.length < owned.length || seen.length > owned.length + 40) continue;
+    if (
+      seen.length < owned.length ||
+      seen.length > owned.length + DEX_SEEN_OWNED_DELTA_MAX
+    ) {
+      continue;
+    }
     hits.push({ ownedBase, seenBase, owned, seen });
   }
 
   if (hits.length === 0) return null;
 
-  // Anchoring is O(hits × buffer) — keep only the tightest candidates.
-  hits.sort((a, b) => a.seen.length - b.seen.length);
+  // Prefer tightest owned (closest to party/box), then shortest seen.
+  // Anchoring is O(hits × buffer) — keep only the best candidates.
+  hits.sort(
+    (a, b) =>
+      a.owned.length - b.owned.length || a.seen.length - b.seen.length,
+  );
   const candidates = hits.slice(0, 8);
 
   // Prefer the hit whose seen pattern also appears at SB1.seen1 (flags coherent).
