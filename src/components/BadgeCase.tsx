@@ -309,9 +309,9 @@ export function BadgeCase({
 
   return (
     <div className={`badge-case space-y-2 ${completeClass} ${className}`}>
-      {complete ? <CompleteBanner /> : null}
+      {complete ? <CompleteBanner dense={dense} /> : null}
       <ul
-        className={`grid grid-cols-1 gap-2 ${
+        className={`grid grid-cols-1 ${dense ? "gap-1.5" : "gap-2"} ${
           layout === "grid" ? "sm:grid-cols-2" : ""
         }`}
         aria-label={ariaProgress}
@@ -322,7 +322,11 @@ export function BadgeCase({
           const title = meta?.badgeName ?? badge.label;
           const preview = meta?.previewLabel ?? badge.label;
           const leader = badge.leaderName ?? meta?.previewLabel;
-          const cellClass = `badge-case__cell flex w-full items-center gap-3 rounded-lg border border-frame p-2 text-left ${
+          const leaderPx = dense ? 40 : 56;
+          const badgePx = dense ? 32 : 40;
+          const cellClass = `badge-case__cell flex w-full items-center ${
+            dense ? "gap-2 p-1.5" : "gap-3 p-2"
+          } rounded-lg border border-frame text-left ${
             on
               ? "bg-accent-2/30 ring-2 ring-accent-2/50"
               : "bg-surface-2 opacity-70"
@@ -336,9 +340,10 @@ export function BadgeCase({
                 <Image
                   src={trainerSpriteUrl(meta.leaderSpriteKey)}
                   alt=""
-                  width={56}
-                  height={56}
-                  className={`pixelated h-14 w-14 shrink-0 object-contain ${mysterySprite}`}
+                  width={leaderPx}
+                  height={leaderPx}
+                  className={`pixelated shrink-0 object-contain ${mysterySprite}`}
+                  style={{ width: leaderPx, height: leaderPx }}
                   unoptimized
                 />
               ) : null}
@@ -346,20 +351,35 @@ export function BadgeCase({
               <img
                 src={meta?.badgeSprite ?? "/badges/gym-1.png"}
                 alt=""
-                width={40}
-                height={40}
-                className={`badge-case__icon h-10 w-10 shrink-0 object-contain ${
+                width={badgePx}
+                height={badgePx}
+                className={`badge-case__icon shrink-0 object-contain ${
                   on ? "badge-case__icon--earned" : mysterySprite
                 }`}
+                style={{ width: badgePx, height: badgePx }}
               />
               <span className="min-w-0 flex-1">
-                <span className="block font-display text-xs font-semibold tracking-tight">
+                <span
+                  className={`block font-display font-semibold tracking-tight ${
+                    dense ? "text-[10px]" : "text-xs"
+                  }`}
+                >
                   {preview}
                 </span>
-                <span className="mt-0.5 block truncate text-sm font-bold">
+                <span
+                  className={`mt-0.5 block font-bold leading-snug ${
+                    dense ? "text-xs" : "truncate text-sm"
+                  }`}
+                >
                   {title}
                 </span>
-                <span className="mt-0.5 block truncate text-[11px] text-muted">
+                <span
+                  className={`mt-0.5 block text-muted ${
+                    dense
+                      ? "text-[10px] leading-snug"
+                      : "truncate text-[11px]"
+                  }`}
+                >
                   {leader}
                   {meta?.city ? ` · ${meta.city}` : ""}
                   {on ? " · Earned" : ""}

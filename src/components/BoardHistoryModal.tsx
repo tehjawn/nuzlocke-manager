@@ -267,7 +267,7 @@ function TrainerHistoryBody({
               {detail.payload.reviveUsed ? " · revive used" : null}
             </p>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
               <div className="space-y-4">
                 <Frame title="Main Squad">
                   <PartyStrip
@@ -321,6 +321,7 @@ function TrainerHistoryBody({
                     badges={badges}
                     earnedKeys={detail.payload.earnedBadgeKeys}
                     layout="column"
+                    dense
                   />
                 </Frame>
               </aside>
@@ -385,6 +386,7 @@ function TrainerHistoryBody({
                                 badges={badges}
                                 earnedKeys={run.earnedBadgeKeys}
                                 layout="column"
+                                dense
                               />
                             </Frame>
                           ) : null}
