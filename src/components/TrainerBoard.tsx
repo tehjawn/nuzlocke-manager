@@ -481,10 +481,11 @@ export function TrainerBoard({
   const resetSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => p.id).join(",")}`;
+  // Include slot/partyIndex — memorial wipe rewrites slots without changing ids.
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
-  /** Optimistic board after wipe until RSC refresh lands. */
+  /** Optimistic board after wipe/reset until RSC refresh lands. */
   const [boardOverride, setBoardOverride] = useState<{
     wipeCount: number;
     pokemon: PokemonEntry[];
@@ -574,9 +575,33 @@ export function TrainerBoard({
     if (nextCardBg && !isCardBackgroundKey(nextCardBg)) {
       setSavedCustomCardBg(nextCardBg);
     }
-    setReviveUsed(trainer.reviveUsed);
-    setEarnedBadgeKeys(trainer.earnedBadgeKeys);
-    setBoardOverride(null);
+
+    // Keep wipe/reset optimism if the RSC payload is still behind (wipeCount)
+    // or still shows living mons after we already cleared them client-side.
+    const overrideClearedLiving =
+      boardOverride != null &&
+      !boardOverride.pokemon.some(
+        (p) =>
+          p.slot === "MAIN" ||
+          p.slot === "RESERVE" ||
+          p.slot === "ENCOUNTERED",
+      );
+    const serverStillHasLiving = trainer.pokemon.some(
+      (p) =>
+        p.slot === "MAIN" ||
+        p.slot === "RESERVE" ||
+        p.slot === "ENCOUNTERED",
+    );
+    const wipeOrResetInFlight =
+      boardOverride != null &&
+      (trainer.wipeCount !== boardOverride.wipeCount ||
+        (overrideClearedLiving && serverStillHasLiving));
+
+    if (!wipeOrResetInFlight) {
+      setReviveUsed(trainer.reviveUsed);
+      setEarnedBadgeKeys(trainer.earnedBadgeKeys);
+      setBoardOverride(null);
+    }
   }
 
   const boardPokemon = boardOverride?.pokemon ?? trainer.pokemon;
