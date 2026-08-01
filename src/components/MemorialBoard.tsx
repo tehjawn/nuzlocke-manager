@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Frame } from "@/components/Frame";
+import { MemorialCauseEditor } from "@/components/MemorialCauseEditor";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import { memorialSeasonHighlights } from "@/lib/memorial-stats";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 
 type MemorialEntry = {
@@ -11,9 +13,21 @@ type MemorialEntry = {
 
 type MemorialBoardProps = {
   challenge: Challenge;
+  /** Trainer IDs the viewer may edit causes for (owner / GM with lens). */
+  editableTrainerIds?: string[];
 };
 
-export function MemorialBoard({ challenge }: MemorialBoardProps) {
+function formatTiedLabels(labels: string[]): string {
+  if (labels.length <= 1) return labels[0] ?? "";
+  if (labels.length === 2) return `${labels[0]} & ${labels[1]}`;
+  return `${labels[0]}, ${labels[1]} +${labels.length - 2}`;
+}
+
+export function MemorialBoard({
+  challenge,
+  editableTrainerIds = [],
+}: MemorialBoardProps) {
+  const editable = new Set(editableTrainerIds);
   const entries: MemorialEntry[] = challenge.trainers
     .flatMap((trainer) =>
       pokemonInSlot(trainer, "GRAVEYARD").map((pokemon) => ({
@@ -34,6 +48,8 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
     }))
     .filter((row) => row.graves.length > 0);
 
+  const highlights = memorialSeasonHighlights(challenge.trainers);
+
   return (
     <div className="space-y-5">
       <header className="space-y-1.5">
@@ -43,14 +59,61 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
         <h2 className="text-2xl font-bold tracking-tight">Memorial</h2>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
           Every fallen partner from {challenge.name}
-          {challenge.status === "ARCHIVED" ? " — season archived and read-only" : ""}
+          {challenge.status === "ARCHIVED"
+            ? " — season archived and read-only"
+            : ""}
           , including losses carried through run restarts. Nicknames first;
           causes when known.
         </p>
         <p className="text-xs text-muted">
-          {entries.length} memorialized · {byTrainer.length} trainers with losses
+          {highlights.totalGraves} memorialized ·{" "}
+          {highlights.trainersWithLosses} trainers with losses
         </p>
       </header>
+
+      {entries.length > 0 &&
+      (highlights.heaviestMemorial || highlights.mostMourned) ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {highlights.heaviestMemorial ? (
+            <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
+              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
+                Heaviest memorial
+                {highlights.heaviestMemorial.tied ? " · tied" : ""}
+              </p>
+              <p className="mt-0.5 font-display text-sm font-bold leading-tight">
+                {formatTiedLabels(highlights.heaviestMemorial.labels)}
+              </p>
+              <p className="text-[11px] text-muted">
+                {highlights.heaviestMemorial.count} RIP
+              </p>
+            </div>
+          ) : null}
+          {highlights.mostMourned ? (
+            <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
+              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
+                Most mourned
+                {highlights.mostMourned.tied ? " · tied" : ""}
+              </p>
+              <p className="mt-0.5 flex items-center gap-2 font-display text-sm font-bold leading-tight">
+                <span className="relative inline-block h-7 w-7 shrink-0">
+                  <PokemonSpriteImage
+                    alt=""
+                    className="pixelated h-full w-full object-contain"
+                    height={28}
+                    pokedexId={highlights.mostMourned.pokedexId}
+                    species={highlights.mostMourned.species}
+                    width={28}
+                  />
+                </span>
+                {highlights.mostMourned.species}
+              </p>
+              <p className="text-[11px] text-muted">
+                {highlights.mostMourned.count} RIP across the season
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {entries.length === 0 ? (
         <Frame title="R.I.P." tone="rip">
@@ -70,8 +133,8 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
                 dense
                 actions={
                   <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-semibold text-white/75">
-                      {graves.length} fallen
+                    <span className="text-[11px] font-semibold tabular-nums text-white/80">
+                      {graves.length} RIP
                       {wipes > 0
                         ? ` · ${wipes} wipe${wipes === 1 ? "" : "s"}`
                         : ""}
@@ -108,27 +171,29 @@ export function MemorialBoard({ challenge }: MemorialBoardProps) {
                           <p className="font-display truncate text-xs font-bold leading-tight">
                             {label}
                             {pokemon.isShiny ? (
-                              <span className="ml-0.5 text-accent-2" title="Shiny">
+                              <span
+                                className="ml-0.5 text-accent-2"
+                                title="Shiny"
+                              >
                                 ✦
                               </span>
                             ) : null}
                           </p>
                           <p className="truncate text-[11px] leading-tight text-muted">
                             {pokemon.species}
-                            {pokemon.level != null ? ` · Lv.${pokemon.level}` : ""}
+                            {pokemon.level != null
+                              ? ` · Lv.${pokemon.level}`
+                              : ""}
+                            {pokemon.diedOnRun != null
+                              ? ` · Run ${pokemon.diedOnRun}`
+                              : ""}
                           </p>
-                          {pokemon.causeOfDeath ? (
-                            <p
-                              className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-ink/90"
-                              title={pokemon.causeOfDeath}
-                            >
-                              {pokemon.causeOfDeath}
-                            </p>
-                          ) : (
-                            <p className="mt-0.5 text-[11px] italic text-muted">
-                              Cause unknown
-                            </p>
-                          )}
+                          <MemorialCauseEditor
+                            trainerId={trainer.id}
+                            pokemonId={pokemon.id}
+                            causeOfDeath={pokemon.causeOfDeath}
+                            canEdit={editable.has(trainer.id)}
+                          />
                         </div>
                       </li>
                     );
