@@ -487,6 +487,7 @@ export function TrainerBoard({
 
   /** Optimistic board after wipe/reset until RSC refresh lands. */
   const [boardOverride, setBoardOverride] = useState<{
+    kind: "wipe" | "reset";
     wipeCount: number;
     pokemon: PokemonEntry[];
     mainSquadLocked: boolean;
@@ -576,16 +577,10 @@ export function TrainerBoard({
       setSavedCustomCardBg(nextCardBg);
     }
 
-    // Keep wipe/reset optimism if the RSC payload is still behind (wipeCount)
-    // or still shows living mons after we already cleared them client-side.
-    const overrideClearedLiving =
-      boardOverride != null &&
-      !boardOverride.pokemon.some(
-        (p) =>
-          p.slot === "MAIN" ||
-          p.slot === "RESERVE" ||
-          p.slot === "ENCOUNTERED",
-      );
+    // Keep wipe/reset optimism until the RSC payload reflects the operation.
+    // Reset: empty board (including memorial). Wipe: higher wipeCount and no
+    // living mons — graves may remain. Do not use wipeCount !== ; a server
+    // count ahead of optimism must not pin an obsolete override.
     const serverStillHasLiving = trainer.pokemon.some(
       (p) =>
         p.slot === "MAIN" ||
@@ -594,8 +589,10 @@ export function TrainerBoard({
     );
     const wipeOrResetInFlight =
       boardOverride != null &&
-      (trainer.wipeCount !== boardOverride.wipeCount ||
-        (overrideClearedLiving && serverStillHasLiving));
+      (boardOverride.kind === "reset"
+        ? trainer.pokemon.length > 0
+        : trainer.wipeCount < boardOverride.wipeCount ||
+          serverStillHasLiving);
 
     if (!wipeOrResetInFlight) {
       setReviveUsed(trainer.reviveUsed);
@@ -805,6 +802,7 @@ export function TrainerBoard({
     setBadgeEditorKey((k) => k + 1);
     setEarnedBadgeKeys([]);
     setBoardOverride({
+      kind: "wipe",
       wipeCount: nextWipe,
       pokemon: memorialPokemonAfterWipe(boardPokemon, nextWipe),
       mainSquadLocked: false,
@@ -853,6 +851,7 @@ export function TrainerBoard({
     setBadgeEditorKey((k) => k + 1);
     setEarnedBadgeKeys([]);
     setBoardOverride({
+      kind: "reset",
       wipeCount: 0,
       pokemon: [],
       mainSquadLocked: false,
