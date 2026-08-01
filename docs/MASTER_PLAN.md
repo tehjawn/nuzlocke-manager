@@ -203,7 +203,11 @@ User
 
 **Season vs run:** A `Challenge` is the season. A `TrainerRun` is one Nuzlocke attempt on that board. Wipe closes the active run, memorializes living Main/Reserve into the season graveyard, and starts a new ACTIVE run. `wipeCount` stays as a denormalized closed-run counter (`active run number = wipeCount + 1`).
 
-**Revive token** stays season-scoped (not per-run) for now.
+**Revive token** is **per-run**: spending it marks the active `TrainerRun` (mirrored on `TrainerProfile.reviveUsed`). Wipe archives that flag on the closed run and starts the next run with a fresh revive.
+
+**Closed runs** store `earnedBadgeKeys` for career stats. Live badges still reset on wipe.
+
+**Trainer history** consolidates runs (accordion) with nested board snapshots for that attempt.
 
 **Challenge lifecycle:** `DRAFT` → `ACTIVE` → `TOURNAMENT` → `ARCHIVED`
 

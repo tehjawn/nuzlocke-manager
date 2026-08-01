@@ -246,11 +246,16 @@ model TrainerRun {
   endReason        TrainerRunEndReason?
   /// Trainer.wipeCount when this run began (0 for run 1).
   wipeCountAtStart Int                  @default(0)
+  /// Per-run revive token (mirrored on TrainerProfile.reviveUsed for the ACTIVE run).
+  reviveUsed       Boolean              @default(false)
+  /// Badge keys earned when this run closed (career archive). Empty while ACTIVE.
+  earnedBadgeKeys  String[]             @default([])
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
   trainer          TrainerProfile       @relation("TrainerRuns", fields: [trainerId], references: [id], onDelete: Cascade)
   pokemon          PokemonEntry[]
+  snapshots        TrainerBoardSnapshot[]
   activeForTrainer TrainerProfile?      @relation("ActiveTrainerRun")
 
   @@unique([trainerId, runNumber])
@@ -263,6 +268,8 @@ model TrainerBoardSnapshot {
   id          String               @id @default(cuid())
   challengeId String
   trainerId   String
+  /// Run this snapshot belonged to when captured (active run at capture time).
+  runId       String?
   actorId     String?
   trigger     BoardSnapshotTrigger
   label       String?
@@ -270,11 +277,13 @@ model TrainerBoardSnapshot {
   payload     Json
   createdAt   DateTime             @default(now())
 
-  challenge Challenge     @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  challenge Challenge      @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   trainer   TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  run       TrainerRun?    @relation(fields: [runId], references: [id], onDelete: SetNull)
 
   @@index([trainerId, createdAt])
   @@index([challengeId, createdAt])
+  @@index([runId, createdAt])
 }
 
 model BadgeProgress {

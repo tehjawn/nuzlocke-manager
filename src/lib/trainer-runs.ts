@@ -8,7 +8,19 @@ export type TrainerRunRow = {
   runNumber: number;
   status: "ACTIVE" | "CLOSED";
   wipeCountAtStart: number;
+  reviveUsed: boolean;
+  earnedBadgeKeys: string[];
 };
+
+const runSelect = {
+  id: true,
+  trainerId: true,
+  runNumber: true,
+  status: true,
+  wipeCountAtStart: true,
+  reviveUsed: true,
+  earnedBadgeKeys: true,
+} as const;
 
 /** Create run 1 and point the trainer at it (new boards / GM hard reset). */
 export async function createInitialActiveRunInTx(
@@ -21,19 +33,15 @@ export async function createInitialActiveRunInTx(
       runNumber: 1,
       status: "ACTIVE",
       wipeCountAtStart: 0,
+      reviveUsed: false,
+      earnedBadgeKeys: [],
       startedAt: new Date(),
     },
-    select: {
-      id: true,
-      trainerId: true,
-      runNumber: true,
-      status: true,
-      wipeCountAtStart: true,
-    },
+    select: runSelect,
   });
   await tx.trainerProfile.update({
     where: { id: trainerId },
-    data: { activeRunId: run.id, wipeCount: 0 },
+    data: { activeRunId: run.id, wipeCount: 0, reviveUsed: false },
   });
   return run;
 }
@@ -46,13 +54,7 @@ export async function ensureActiveRunInTx(
   if (trainer.activeRunId) {
     const existing = await tx.trainerRun.findUnique({
       where: { id: trainer.activeRunId },
-      select: {
-        id: true,
-        trainerId: true,
-        runNumber: true,
-        status: true,
-        wipeCountAtStart: true,
-      },
+      select: runSelect,
     });
     if (existing && existing.status === "ACTIVE") return existing;
   }
@@ -65,19 +67,18 @@ export async function ensureActiveRunInTx(
         runNumber: expectedNumber,
       },
     },
-    select: {
-      id: true,
-      trainerId: true,
-      runNumber: true,
-      status: true,
-      wipeCountAtStart: true,
-    },
+    select: runSelect,
   });
   if (byNumber) {
     if (byNumber.status !== "ACTIVE") {
       await tx.trainerRun.update({
         where: { id: byNumber.id },
-        data: { status: "ACTIVE", endedAt: null, endReason: null },
+        data: {
+          status: "ACTIVE",
+          endedAt: null,
+          endReason: null,
+          earnedBadgeKeys: [],
+        },
       });
     }
     await tx.trainerProfile.update({
@@ -93,15 +94,11 @@ export async function ensureActiveRunInTx(
       runNumber: expectedNumber,
       status: "ACTIVE",
       wipeCountAtStart: trainer.wipeCount,
+      reviveUsed: false,
+      earnedBadgeKeys: [],
       startedAt: new Date(),
     },
-    select: {
-      id: true,
-      trainerId: true,
-      runNumber: true,
-      status: true,
-      wipeCountAtStart: true,
-    },
+    select: runSelect,
   });
   await tx.trainerProfile.update({
     where: { id: trainer.id },
@@ -110,14 +107,21 @@ export async function ensureActiveRunInTx(
   return created;
 }
 
+export type CloseRunArchive = {
+  reviveUsed: boolean;
+  earnedBadgeKeys: string[];
+};
+
 /**
  * Close the active run (wipe) and open the next attempt.
+ * Archives revive + badges onto the closed run; new run starts with a fresh revive.
  * Caller increments trainer.wipeCount to match closed-run count.
  */
 export async function closeActiveRunAndStartNextInTx(
   tx: TxClient,
   trainer: { id: string; wipeCount: number; activeRunId: string | null },
   endReason: "WIPE" | "GM_RESET" = "WIPE",
+  archive: CloseRunArchive = { reviveUsed: false, earnedBadgeKeys: [] },
 ): Promise<{ closed: TrainerRunRow; next: TrainerRunRow }> {
   const active = await ensureActiveRunInTx(tx, trainer);
   const now = new Date();
@@ -128,14 +132,10 @@ export async function closeActiveRunAndStartNextInTx(
       status: "CLOSED",
       endedAt: now,
       endReason,
+      reviveUsed: archive.reviveUsed,
+      earnedBadgeKeys: archive.earnedBadgeKeys,
     },
-    select: {
-      id: true,
-      trainerId: true,
-      runNumber: true,
-      status: true,
-      wipeCountAtStart: true,
-    },
+    select: runSelect,
   });
 
   const nextNumber = active.runNumber + 1;
@@ -145,23 +145,36 @@ export async function closeActiveRunAndStartNextInTx(
       runNumber: nextNumber,
       status: "ACTIVE",
       wipeCountAtStart: trainer.wipeCount + 1,
+      reviveUsed: false,
+      earnedBadgeKeys: [],
       startedAt: now,
     },
-    select: {
-      id: true,
-      trainerId: true,
-      runNumber: true,
-      status: true,
-      wipeCountAtStart: true,
-    },
+    select: runSelect,
   });
 
   await tx.trainerProfile.update({
     where: { id: trainer.id },
-    data: { activeRunId: next.id },
+    data: { activeRunId: next.id, reviveUsed: false },
   });
 
   return { closed, next };
+}
+
+/** Sync TrainerProfile.reviveUsed + active TrainerRun.reviveUsed together. */
+export async function setActiveRunReviveInTx(
+  tx: TxClient,
+  trainer: { id: string; wipeCount: number; activeRunId: string | null },
+  reviveUsed: boolean,
+): Promise<void> {
+  const active = await ensureActiveRunInTx(tx, trainer);
+  await tx.trainerRun.update({
+    where: { id: active.id },
+    data: { reviveUsed },
+  });
+  await tx.trainerProfile.update({
+    where: { id: trainer.id },
+    data: { reviveUsed },
+  });
 }
 
 /** Clear run history and start a fresh run 1 (GM hard reset). */
@@ -174,6 +187,10 @@ export async function resetRunsForFreshStartInTx(
     data: { activeRunId: null },
   });
   await tx.pokemonEntry.updateMany({
+    where: { trainerId },
+    data: { runId: null },
+  });
+  await tx.trainerBoardSnapshot.updateMany({
     where: { trainerId },
     data: { runId: null },
   });

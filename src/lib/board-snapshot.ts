@@ -21,6 +21,7 @@ export type TrainerBoardSnapshotSummary = {
   createdAt: string;
   wipeCount: number;
   summary: string;
+  runId?: string | null;
 };
 
 /** Keep the most recent N snapshots per trainer. */
@@ -139,6 +140,8 @@ type CaptureSnapshotInput = {
   actorId?: string | null;
   trigger: BoardSnapshotTrigger;
   label?: string | null;
+  /** When omitted, uses the trainer's activeRunId. */
+  runId?: string | null;
 };
 
 const SNAPSHOT_SAVEPOINT = "board_snapshot_capture";
@@ -182,6 +185,7 @@ async function captureSnapshot(
       wipeCount: true,
       reviveUsed: true,
       mainSquadLocked: true,
+      activeRunId: true,
       pokemon: true,
       badges: {
         where: { earned: true },
@@ -203,11 +207,14 @@ async function captureSnapshot(
 
   const label =
     input.label ?? defaultSnapshotLabel(input.trigger, trainer.wipeCount);
+  const runId =
+    input.runId !== undefined ? input.runId : trainer.activeRunId;
 
   await tx.trainerBoardSnapshot.create({
     data: {
       challengeId: input.challengeId,
       trainerId: input.trainerId,
+      runId: runId ?? null,
       actorId: input.actorId ?? null,
       trigger: input.trigger,
       label,

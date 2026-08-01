@@ -121,7 +121,7 @@ const rules = [
     id: "r5",
     sortOrder: 5,
     title: "1 Revive Token",
-    body: "",
+    body: "One revive per run. Recording a wipe starts a new run with a fresh revive token.",
     isCore: false,
   },
   {
@@ -153,7 +153,7 @@ const faqs = [
     sortOrder: 2,
     question: "What if I don't have any more playable Pokémon?",
     answer:
-      'If all playable Pokémon are dead, then the Nuzlocke run is considered a wipe. You\'ll have to start the game over and try the Nuzlocke challenge again. Navigate to the "Game Mode Setting" page on how to set up your game again. On your trainer board, use Record wipe to move Main and Reserves into the R.I.P. memorial, clear Encountered, reset badges, and count the restart — season memorial and your profile (name, avatar, backdrops, status) stay across wipes.',
+      'If all playable Pokémon are dead, then the Nuzlocke run is considered a wipe. You\'ll have to start the game over and try the Nuzlocke challenge again. Navigate to the "Game Mode Setting" page on how to set up your game again. On your trainer board, use Record wipe to move Main and Reserves into the R.I.P. memorial, clear Encountered, reset badges, refresh your revive token for the next run, and count the restart — season memorial and your profile (name, avatar, backdrops, status) stay across wipes.',
   },
   {
     id: "f3",
