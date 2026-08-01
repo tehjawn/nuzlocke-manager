@@ -27,6 +27,7 @@ function mon(
     evs: null,
     causeOfDeath: null,
     diedOnRun: null,
+    runId: null,
     ...partial,
   };
 }
@@ -49,6 +50,7 @@ test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encou
         partyIndex: 0,
         causeOfDeath: "Crit",
         diedOnRun: 1,
+        runId: "run-1",
       },
       {
         id: "m0",
@@ -56,6 +58,7 @@ test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encou
         partyIndex: 0,
         causeOfDeath: null,
         diedOnRun: null,
+        runId: "run-2",
       },
       {
         id: "r0",
@@ -63,6 +66,7 @@ test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encou
         partyIndex: 0,
         causeOfDeath: null,
         diedOnRun: null,
+        runId: "run-2",
       },
       {
         id: "e0",
@@ -70,6 +74,7 @@ test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encou
         partyIndex: 0,
         causeOfDeath: null,
         diedOnRun: null,
+        runId: "run-2",
       },
       {
         id: "m1",
@@ -77,9 +82,11 @@ test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encou
         partyIndex: 1,
         causeOfDeath: null,
         diedOnRun: null,
+        runId: "run-2",
       },
     ],
     2,
+    "run-2",
   );
 
   assert.deepEqual(
@@ -93,8 +100,10 @@ test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encou
   );
   assert.equal(result[1]?.causeOfDeath, "Run wiped (#2)");
   assert.equal(result[1]?.diedOnRun, 2);
+  assert.equal(result[1]?.runId, "run-2");
   assert.equal(result[0]?.causeOfDeath, "Crit");
   assert.equal(result[0]?.diedOnRun, 1);
+  assert.equal(result[0]?.runId, "run-1");
 });
 
 test("memorialRowsAfterWipe preserves an existing cause of death", () => {
@@ -106,12 +115,15 @@ test("memorialRowsAfterWipe preserves an existing cause of death", () => {
         partyIndex: 0,
         causeOfDeath: "Already noted",
         diedOnRun: null,
+        runId: null,
       },
     ],
     1,
+    "run-1",
   );
   assert.equal(result[0]?.causeOfDeath, "Already noted");
   assert.equal(result[0]?.diedOnRun, 1);
+  assert.equal(result[0]?.runId, "run-1");
 });
 
 test("memorialPokemonAfterWipe preserves species payload while rewriting slot", () => {
@@ -127,6 +139,7 @@ test("memorialPokemonAfterWipe preserves species payload while rewriting slot", 
       }),
     ],
     1,
+    "run-1",
   );
   assert.equal(result.length, 1);
   assert.equal(result[0]?.id, "m0");
@@ -137,4 +150,5 @@ test("memorialPokemonAfterWipe preserves species payload while rewriting slot", 
   assert.equal(result[0]?.level, 16);
   assert.equal(result[0]?.causeOfDeath, "Run wiped (#1)");
   assert.equal(result[0]?.diedOnRun, 1);
+  assert.equal(result[0]?.runId, "run-1");
 });

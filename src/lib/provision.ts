@@ -2,6 +2,7 @@ import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { getPrisma } from "@/lib/db";
 import { allocateUniqueHandle } from "@/lib/handles";
 import { ensureWelcomeNotification } from "@/lib/notifications";
+import { createInitialActiveRunInTx } from "@/lib/trainer-runs";
 
 async function uniqueHandle(
   challengeId: string,
@@ -131,6 +132,8 @@ export async function ensureTrainerForChallenge(input: {
       sortOrder: (maxSort._max.sortOrder ?? 0) + 1,
     },
   });
+
+  await createInitialActiveRunInTx(prisma, trainer.id);
 
   const badges = await prisma.badgeDefinition.findMany({
     where: { challengeId: challenge.id },

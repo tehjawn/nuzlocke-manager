@@ -22,6 +22,7 @@ function mon(
     evs: null,
     causeOfDeath: null,
     diedOnRun: null,
+    runId: null,
     ...partial,
   };
 }
@@ -40,6 +41,7 @@ function trainer(
     statusEmoji: null,
     reviveUsed: false,
     wipeCount: 0,
+    activeRunNumber: 1,
     mainSquadLocked: false,
     userId: null,
     discordUsername: null,

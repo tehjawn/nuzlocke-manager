@@ -37,6 +37,11 @@ import {
   type ActivityCoalesceMeta,
 } from "@/lib/activity-coalesce";
 import {
+  createInitialActiveRunInTx,
+  closeActiveRunAndStartNextInTx,
+  ensureActiveRunInTx,
+} from "@/lib/trainer-runs";
+import {
   currentRunNumber,
   memorialRowsAfterWipe,
   wipeCauseOfDeath,
@@ -457,11 +462,18 @@ export async function claimTrainerAction(input: {
         NOT: { id: trainer.id },
       },
     });
-    if (existing && !access.isGm) {
-      return {
-        ok: false,
-        error: `You already claimed ${existing.handle}. Ask a GM to reassign.`,
-      };
+    if (existing) {
+      if (!access.isGm) {
+        return {
+          ok: false,
+          error: `You already claimed ${existing.handle}. Ask a GM to reassign.`,
+        };
+      }
+      // One claimed board per user: GM reassignment frees the previous claim.
+      await prisma.trainerProfile.update({
+        where: { id: existing.id },
+        data: { userId: null },
+      });
     }
 
     await prisma.trainerProfile.update({
@@ -721,7 +733,7 @@ export async function updateTrainerBoardAction(input: {
 }
 
 /** Restart the living run: memorializes Main/Reserve, clears Encountered +
- *  badges, keeps season memorial/revive and player identity. */
+ *  badges, closes the active TrainerRun and opens the next. */
 export async function recordWipeAction(input: {
   trainerId: string;
 }): Promise<ActionResult> {
@@ -740,7 +752,17 @@ export async function recordWipeAction(input: {
         trigger: "WIPE",
       });
 
-      const nextWipe = trainer.wipeCount + 1;
+      const { closed, next } = await closeActiveRunAndStartNextInTx(
+        tx,
+        {
+          id: trainer.id,
+          wipeCount: trainer.wipeCount,
+          activeRunId: trainer.activeRunId,
+        },
+        "WIPE",
+      );
+      const nextWipe = closed.runNumber;
+
       const board = await tx.pokemonEntry.findMany({
         where: { trainerId: trainer.id },
         select: {
@@ -749,9 +771,10 @@ export async function recordWipeAction(input: {
           partyIndex: true,
           causeOfDeath: true,
           diedOnRun: true,
+          runId: true,
         },
       });
-      const after = memorialRowsAfterWipe(board, nextWipe);
+      const after = memorialRowsAfterWipe(board, nextWipe, closed.id);
       const keepIds = new Set(after.map((p) => p.id));
       const byId = new Map(after.map((p) => [p.id, p]));
       const dropIds = board
@@ -765,7 +788,8 @@ export async function recordWipeAction(input: {
           row.slot === memorial.slot &&
           row.partyIndex === memorial.partyIndex &&
           row.causeOfDeath === memorial.causeOfDeath &&
-          row.diedOnRun === memorial.diedOnRun
+          row.diedOnRun === memorial.diedOnRun &&
+          row.runId === memorial.runId
         ) {
           continue;
         }
@@ -777,6 +801,7 @@ export async function recordWipeAction(input: {
             causeOfDeath:
               memorial.causeOfDeath ?? wipeCauseOfDeath(nextWipe),
             diedOnRun: memorial.diedOnRun,
+            runId: memorial.runId,
           },
         });
       }
@@ -796,11 +821,13 @@ export async function recordWipeAction(input: {
           wipeCount: { increment: 1 },
           // Living board is empty — unlock so the run can be rebuilt.
           mainSquadLocked: false,
+          activeRunId: next.id,
         },
         select: { wipeCount: true },
       });
       wipeCount = updated.wipeCount;
-      const memorializedCount = after.length - board.filter((p) => p.slot === "GRAVEYARD").length;
+      const memorializedCount =
+        after.length - board.filter((p) => p.slot === "GRAVEYARD").length;
       wipeMessage =
         memorializedCount > 0
           ? `${trainer.handle} restarted their run (wipe #${wipeCount}) — ${memorializedCount} partner${memorializedCount === 1 ? "" : "s"} memorialized`
@@ -842,15 +869,20 @@ async function hardResetTrainerInTx(
   tx: TxClient,
   trainerId: string,
 ): Promise<void> {
+  await tx.trainerProfile.update({
+    where: { id: trainerId },
+    data: { activeRunId: null },
+  });
   await tx.pokemonEntry.deleteMany({ where: { trainerId } });
+  await tx.trainerRun.deleteMany({ where: { trainerId } });
   await tx.badgeProgress.updateMany({
     where: { trainerId },
     data: { earned: false, earnedAt: null },
   });
+  await createInitialActiveRunInTx(tx, trainerId);
   await tx.trainerProfile.update({
     where: { id: trainerId },
     data: {
-      wipeCount: 0,
       reviveUsed: false,
       mainSquadLocked: false,
     },
@@ -1306,6 +1338,11 @@ export async function upsertPokemonAction(
     const prisma = getPrisma();
     const enteringGraveyard = data.slot === "GRAVEYARD";
     const runAtDeath = currentRunNumber(trainer.wipeCount);
+    const activeRun = await ensureActiveRunInTx(prisma, {
+      id: trainer.id,
+      wipeCount: trainer.wipeCount,
+      activeRunId: trainer.activeRunId,
+    });
     const payload = {
       slot: data.slot,
       partyIndex: data.partyIndex,
@@ -1342,6 +1379,11 @@ export async function upsertPokemonAction(
               ? runAtDeath
               : existing.diedOnRun
             : null,
+          runId: enteringGraveyard
+            ? becameGrave || existing.runId == null
+              ? activeRun.id
+              : existing.runId
+            : activeRun.id,
         },
       });
       if (becameGrave) {
@@ -1364,6 +1406,7 @@ export async function upsertPokemonAction(
           trainerId: trainer.id,
           ...payload,
           diedOnRun: enteringGraveyard ? runAtDeath : null,
+          runId: activeRun.id,
         },
       });
       const label = data.nickname || data.species;
@@ -1581,6 +1624,11 @@ export async function relocatePokemonAction(
 
       const memorialized: Array<{ id: string; label: string }> = [];
       const runAtDeath = currentRunNumber(trainer.wipeCount);
+      const activeRun = await ensureActiveRunInTx(tx, {
+        id: trainer.id,
+        wipeCount: trainer.wipeCount,
+        activeRunId: trainer.activeRunId,
+      });
       for (const update of data.updates) {
         const mon = byId.get(update.id)!;
         if (mon.slot !== "GRAVEYARD" && update.slot === "GRAVEYARD") {
@@ -1599,10 +1647,13 @@ export async function relocatePokemonAction(
             slot: update.slot,
             partyIndex: update.partyIndex,
             ...(enteringGraveyard
-              ? { diedOnRun: mon.diedOnRun ?? runAtDeath }
+              ? {
+                  diedOnRun: mon.diedOnRun ?? runAtDeath,
+                  runId: mon.runId ?? activeRun.id,
+                }
               : leavingGraveyard
-                ? { diedOnRun: null }
-                : {}),
+                ? { diedOnRun: null, runId: activeRun.id }
+                : { runId: mon.runId ?? activeRun.id }),
           },
         });
       }
@@ -1780,6 +1831,7 @@ export async function importFromSaveAction(
             mon.slot === "GRAVEYARD"
               ? currentRunNumber(trainer.wipeCount)
               : null,
+          runId: null,
           notes: `Imported from save (${mon.slot.toLowerCase()})`,
         };
       });
@@ -1791,6 +1843,15 @@ export async function importFromSaveAction(
         actorId: userId,
         trigger: "IMPORT",
       });
+      const activeRun = await ensureActiveRunInTx(tx, {
+        id: trainer.id,
+        wipeCount: trainer.wipeCount,
+        activeRunId: trainer.activeRunId,
+      });
+      const importRows = rows.map((row) => ({
+        ...row,
+        runId: activeRun.id,
+      }));
       if (data.replaceSlots.length > 0) {
         await tx.pokemonEntry.deleteMany({
           where: {
@@ -1799,8 +1860,8 @@ export async function importFromSaveAction(
           },
         });
       }
-      if (rows.length > 0) {
-        await tx.pokemonEntry.createMany({ data: rows });
+      if (importRows.length > 0) {
+        await tx.pokemonEntry.createMany({ data: importRows });
       }
 
       if (data.applyTrainerName && data.trainerName) {

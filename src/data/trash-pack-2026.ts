@@ -33,20 +33,6 @@ function evs(partial: Partial<StatSpread>): StatSpread {
   };
 }
 
-function mon(
-  partial: Omit<PokemonEntry, "id" | "diedOnRun"> & {
-    id?: string;
-    diedOnRun?: number | null;
-  },
-): PokemonEntry {
-  const { id, diedOnRun, ...rest } = partial;
-  return {
-    ...rest,
-    id: id ?? `${rest.slot}-${rest.partyIndex}-${rest.species}`,
-    diedOnRun: diedOnRun ?? null,
-  };
-}
-
 function trainer(
   partial: Omit<
     TrainerProfile,
@@ -56,6 +42,7 @@ function trainer(
     | "discordUsername"
     | "discordDisplayName"
     | "wipeCount"
+    | "activeRunNumber"
     | "avatarBackgroundKey"
     | "cardBackgroundKey"
   > & {
@@ -65,13 +52,16 @@ function trainer(
     discordUsername?: string | null;
     discordDisplayName?: string | null;
     wipeCount?: number;
+    activeRunNumber?: number;
     avatarBackgroundKey?: string | null;
     cardBackgroundKey?: string | null;
   },
 ): TrainerProfile {
+  const wipeCount = partial.wipeCount ?? 0;
   return {
     ...partial,
-    wipeCount: partial.wipeCount ?? 0,
+    wipeCount,
+    activeRunNumber: partial.activeRunNumber ?? wipeCount + 1,
     avatarBackgroundKey: partial.avatarBackgroundKey ?? null,
     cardBackgroundKey: partial.cardBackgroundKey ?? null,
     userId: partial.userId ?? null,
@@ -79,6 +69,22 @@ function trainer(
     discordUsername: partial.discordUsername ?? null,
     discordDisplayName: partial.discordDisplayName ?? null,
     pokemon: partial.pokemon ?? [],
+  };
+}
+
+function mon(
+  partial: Omit<PokemonEntry, "id" | "diedOnRun" | "runId"> & {
+    id?: string;
+    diedOnRun?: number | null;
+    runId?: string | null;
+  },
+): PokemonEntry {
+  const { id, diedOnRun, runId, ...rest } = partial;
+  return {
+    ...rest,
+    id: id ?? `${rest.slot}-${rest.partyIndex}-${rest.species}`,
+    diedOnRun: diedOnRun ?? null,
+    runId: runId ?? null,
   };
 }
 

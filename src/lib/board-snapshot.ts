@@ -49,6 +49,7 @@ type DbPokemonRow = {
   evs: unknown;
   causeOfDeath: string | null;
   diedOnRun: number | null;
+  runId: string | null;
 };
 
 function mapPokemonRow(p: DbPokemonRow): PokemonEntry {
@@ -81,6 +82,7 @@ function mapPokemonRow(p: DbPokemonRow): PokemonEntry {
     evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
     causeOfDeath: p.causeOfDeath,
     diedOnRun: p.diedOnRun ?? null,
+    runId: p.runId ?? null,
   };
 }
 
@@ -283,6 +285,7 @@ export function parseSnapshotPayload(
       causeOfDeath:
         typeof p.causeOfDeath === "string" ? p.causeOfDeath : null,
       diedOnRun: typeof p.diedOnRun === "number" ? p.diedOnRun : null,
+      runId: typeof p.runId === "string" ? p.runId : null,
     });
   }
 

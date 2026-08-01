@@ -187,16 +187,23 @@ Dark mode is **optional later**; default is warm light (matches Gen 3 menus bett
 ```
 User
   └── ChallengeMembership (PLAYER | GAME_MASTER | SPECTATOR)
-        └── Challenge (slug, year, game, visibility, status)
+        └── Challenge (slug, year, game, visibility, status)  // = season
               ├── ChallengeRule / FaqEntry
               ├── BadgeDefinition[]
-              ├── TrainerProfile[]
-              │     ├── BadgeProgress[]
-              │     ├── PokemonEntry[] (MAIN | RESERVE | GRAVEYARD)
-              │     └── (optional) EncounterClaim[]   // light QoL
+              ├── TrainerProfile[]   // 1 claimed board per user per season
+              │     ├── activeRun → TrainerRun (ACTIVE)
+              │     ├── TrainerRun[] (1:many attempts; wipe closes + opens next)
+              │     ├── BadgeProgress[]          // season board (resets on wipe)
+              │     ├── PokemonEntry[]           // living = active run; GRAVEYARD accumulates
+              │     │     runId?, diedOnRun?     // soft + FK attribution
+              │     └── TrainerBoardSnapshot[]   // pre-wipe / import / GM reset
               ├── ActivityEvent[]  (actor + optional trainer)
-              └── Tournament?      // Phase 3 ladder
+              └── Tournament?      // ladder (trainer-scoped, not run-scoped)
 ```
+
+**Season vs run:** A `Challenge` is the season. A `TrainerRun` is one Nuzlocke attempt on that board. Wipe closes the active run, memorializes living Main/Reserve into the season graveyard, and starts a new ACTIVE run. `wipeCount` stays as a denormalized closed-run counter (`active run number = wipeCount + 1`).
+
+**Revive token** stays season-scoped (not per-run) for now.
 
 **Challenge lifecycle:** `DRAFT` → `ACTIVE` → `TOURNAMENT` → `ARCHIVED`
 
@@ -209,9 +216,12 @@ User
 | `visibility` (`INVITE` \| `UNLISTED` \| `PUBLIC`) on `Challenge` | ✅ |
 | Optional `trainerId` on `ActivityEvent` | ✅ |
 | `mainSquadLocked` on `TrainerProfile` | ✅ (manual GM toggle) |
+| `TrainerRun` + `activeRunId` + `PokemonEntry.runId` | ✅ |
+| Partial unique `(challengeId, userId)` when claimed | ✅ |
 | `ActivityReaction` (emoji reactions on feed) | ✅ (shipped QoL; not originally planned) |
 | `Tournament` / `TournamentMatch` | ✅ stub + winner pick (Phase 3); round advance in Phase 5 |
 | Soft `EncounterClaim` | Phase 4 — only if group wants route transparency without leaving the season board |
+| Per-run badge archives / browse closed living boards | Later (snapshots cover history today) |
 
 ---
 

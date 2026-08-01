@@ -56,6 +56,7 @@ type DbChallenge = {
     statusEmoji: string | null;
     reviveUsed: boolean;
     wipeCount: number;
+    activeRunId: string | null;
     mainSquadLocked: boolean;
     sortOrder: number;
     userId: string | null;
@@ -85,6 +86,7 @@ type DbChallenge = {
       evs: unknown;
       causeOfDeath: string | null;
       diedOnRun: number | null;
+      runId: string | null;
       updatedAt: Date;
     }>;
   }>;
@@ -219,6 +221,7 @@ export function mapDbTrainer(
     statusEmoji: trainer.statusEmoji,
     reviveUsed: trainer.reviveUsed,
     wipeCount: trainer.wipeCount ?? 0,
+    activeRunNumber: (trainer.wipeCount ?? 0) + 1,
     mainSquadLocked: trainer.mainSquadLocked,
     sortOrder: trainer.sortOrder,
     userId: trainer.userId,
@@ -260,6 +263,7 @@ export function mapDbTrainer(
       evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
       causeOfDeath: p.causeOfDeath,
       diedOnRun: p.diedOnRun ?? null,
+      runId: p.runId ?? null,
     })),
   };
 }

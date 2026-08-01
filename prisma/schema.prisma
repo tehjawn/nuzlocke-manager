@@ -59,6 +59,17 @@ enum BoardSnapshotTrigger {
   GM_RESET
 }
 
+/// Lifecycle of a single Nuzlocke attempt on a trainer board.
+enum TrainerRunStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum TrainerRunEndReason {
+  WIPE
+  GM_RESET
+}
+
 model User {
   id              String   @id @default(cuid())
   email           String?  @unique
@@ -196,14 +207,19 @@ model TrainerProfile {
   statusText           String?
   statusEmoji          String?
   reviveUsed      Boolean  @default(false)
+  /// Closed-run count this season; active run number is wipeCount + 1.
   wipeCount       Int      @default(0)
   mainSquadLocked Boolean  @default(false)
   sortOrder       Int      @default(0)
+  /// Pointer to the living attempt; closed runs remain in `runs` for stats.
+  activeRunId     String?  @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   challenge  Challenge       @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user       User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  activeRun  TrainerRun?     @relation("ActiveTrainerRun", fields: [activeRunId], references: [id], onDelete: SetNull)
+  runs       TrainerRun[]    @relation("TrainerRuns")
   badges     BadgeProgress[]
   pokemon    PokemonEntry[]
   activities ActivityEvent[]
@@ -215,6 +231,30 @@ model TrainerProfile {
   @@unique([challengeId, handle])
   @@index([challengeId, sortOrder])
   @@index([userId])
+}
+
+/// One Nuzlocke attempt for a trainer within a season.
+/// Wipe closes the active run and opens the next; memorial graves stay on the trainer.
+model TrainerRun {
+  id               String               @id @default(cuid())
+  trainerId        String
+  /// 1-based attempt index (matches diedOnRun / wipeCount + 1 while active).
+  runNumber        Int
+  status           TrainerRunStatus     @default(ACTIVE)
+  startedAt        DateTime             @default(now())
+  endedAt          DateTime?
+  endReason        TrainerRunEndReason?
+  /// Trainer.wipeCount when this run began (0 for run 1).
+  wipeCountAtStart Int                  @default(0)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  trainer          TrainerProfile       @relation("TrainerRuns", fields: [trainerId], references: [id], onDelete: Cascade)
+  pokemon          PokemonEntry[]
+  activeForTrainer TrainerProfile?      @relation("ActiveTrainerRun")
+
+  @@unique([trainerId, runNumber])
+  @@index([trainerId, status])
 }
 
 /// Point-in-time board copy taken before import / wipe / GM reset.
@@ -273,13 +313,17 @@ model PokemonEntry {
   causeOfDeath String?
   /// 1-based run attempt when this mon entered GRAVEYARD (wipeCount + 1 at death).
   diedOnRun    Int?
+  /// Run this entry belongs to (living board = active run; graves = run of death).
+  runId        String?
   notes        String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
   trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  run     TrainerRun?    @relation(fields: [runId], references: [id], onDelete: SetNull)
 
   @@index([trainerId, slot, partyIndex])
+  @@index([runId])
 }
 
 model ActivityEvent {
