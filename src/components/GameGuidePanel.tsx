@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Frame } from "@/components/Frame";
@@ -17,9 +16,12 @@ import {
   resolveGuideProgress,
   stepMatchesCatchRoutes,
 } from "@/features/guide/guide-progress";
-import type { ResolvedGuideStep } from "@/features/guide/guide-types";
+import type {
+  GuideChapter,
+  ResolvedGuideStep,
+} from "@/features/guide/guide-types";
 import type { TrainerProfile } from "@/lib/challenge-types";
-import { toolsHref } from "@/lib/tools-routes";
+import { getEmeraldBadgeMeta } from "@/lib/emerald-badges";
 
 type GameGuidePanelProps = {
   slug: string;
@@ -278,6 +280,138 @@ function StepRow({
   );
 }
 
+function chapterStatusLabel({
+  cleared,
+  isActive,
+  reachable,
+}: {
+  cleared: boolean;
+  isActive: boolean;
+  reachable: boolean;
+}): string {
+  if (cleared) return "Done";
+  if (isActive) return "Current";
+  if (!reachable) return "Locked";
+  return "Upcoming";
+}
+
+function badgeRequirementLabel(keys: readonly string[]): string | null {
+  if (!keys.length) return null;
+  const names = keys.map(
+    (key) => getEmeraldBadgeMeta(key)?.badgeName ?? key,
+  );
+  if (names.length === 1) return `Needs ${names[0]}`;
+  if (names.length === 2) return `Needs ${names[0]} and ${names[1]}`;
+  return `Needs ${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+}
+
+function ChapterAccordion({
+  chapter,
+  steps,
+  reachable,
+  cleared,
+  isActive,
+  open,
+  onToggle,
+  catchRoutes,
+  expandedStepId,
+  onToggleExpand,
+  onToggleStep,
+}: {
+  chapter: GuideChapter;
+  steps: ResolvedGuideStep[];
+  reachable: boolean;
+  cleared: boolean;
+  isActive: boolean;
+  open: boolean;
+  onToggle: () => void;
+  catchRoutes: string[];
+  expandedStepId: string | null;
+  onToggleExpand: (stepId: string) => void;
+  onToggleStep: (step: ResolvedGuideStep) => void;
+}) {
+  const counts = countSteps(steps);
+  const status = chapterStatusLabel({ cleared, isActive, reachable });
+  const lockHint = !reachable
+    ? badgeRequirementLabel(chapter.requiresBadges)
+    : null;
+  const panelId = `guide-chapter-panel-${chapter.id}`;
+  const headerId = `guide-chapter-header-${chapter.id}`;
+
+  return (
+    <section
+      className={`gba-frame overflow-hidden ${
+        isActive ? "ring-1 ring-interactive/35" : ""
+      }`}
+    >
+      <h3 className="gba-frame-title relative z-[1] m-0">
+        <button
+          type="button"
+          id={headerId}
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={onToggle}
+          className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-black/5 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-interactive dark:hover:bg-white/5"
+        >
+          <span
+            aria-hidden
+            className={`text-xs text-[var(--on-chrome)]/70 transition-transform ${
+              open ? "rotate-90" : ""
+            }`}
+          >
+            ▸
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="truncate text-sm font-semibold sm:text-base">
+                {chapter.title}
+              </span>
+              <span
+                className={`rounded-full border px-1.5 py-px text-[0.65rem] font-semibold tracking-tight ${
+                  isActive
+                    ? "border-interactive/45 bg-interactive-soft/70 text-interactive"
+                    : "border-frame/70 text-[var(--on-chrome)]/70"
+                }`}
+              >
+                {status}
+              </span>
+            </span>
+          </span>
+          <span className="shrink-0 text-xs tabular-nums text-[var(--on-chrome)]/75">
+            {counts.storyDone}/{counts.storyTotal}
+          </span>
+        </button>
+      </h3>
+
+      {open ? (
+        <div
+          id={panelId}
+          role="region"
+          aria-labelledby={headerId}
+          className="relative z-[1] space-y-3 p-4 sm:p-5"
+        >
+          <p className="text-sm text-muted">{chapter.summary}</p>
+          <GuideMeter label="Chapter progress" counts={counts} size="sm" />
+          {lockHint ? <p className="text-xs text-muted">{lockHint}</p> : null}
+          <ul className="space-y-2">
+            {steps.map((step, index) => (
+              <StepRow
+                key={step.id}
+                step={step}
+                index={index + 1}
+                nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
+                expanded={expandedStepId === step.id}
+                onToggleExpand={() => onToggleExpand(step.id)}
+                onToggle={() => onToggleStep(step)}
+              />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export function GameGuidePanel({
   slug,
   trainers,
@@ -324,22 +458,26 @@ export function GameGuidePanel({
     [progress.chapters],
   );
 
-  const focusedChapterId =
+  const defaultOpenChapterId =
     chapterParam &&
     progress.chapters.some((c) => c.chapter.id === chapterParam)
       ? chapterParam
       : progress.activeChapterId;
 
+  const [openChapterId, setOpenChapterId] = useState<string | null>(
+    defaultOpenChapterId,
+  );
+  const [prevDefaultOpenChapterId, setPrevDefaultOpenChapterId] = useState(
+    defaultOpenChapterId,
+  );
+  if (prevDefaultOpenChapterId !== defaultOpenChapterId) {
+    setPrevDefaultOpenChapterId(defaultOpenChapterId);
+    setOpenChapterId(defaultOpenChapterId);
+  }
+
   const [expandedStepId, setExpandedStepId] = useState<string | null>(
     () => progress.nextSteps[0]?.id ?? null,
   );
-  const [showFuture, setShowFuture] = useState(false);
-
-  const visibleChapters = progress.chapters.filter((c) => {
-    if (showFuture) return true;
-    if (c.reachable) return true;
-    return c.chapter.id === focusedChapterId;
-  });
 
   function toggleStep(step: ResolvedGuideStep) {
     setGuideStepChecked(storageKey, step.id, !step.completed);
@@ -347,6 +485,10 @@ export function GameGuidePanel({
 
   function toggleExpanded(stepId: string) {
     setExpandedStepId((id) => (id === stepId ? null : stepId));
+  }
+
+  function toggleChapter(chapterId: string) {
+    setOpenChapterId((current) => (current === chapterId ? null : chapterId));
   }
 
   return (
@@ -421,80 +563,28 @@ export function GameGuidePanel({
         )}
       </Frame>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="space-y-3">
         <h3 className="text-sm font-semibold tracking-tight">Chapters</h3>
-        <label className="flex items-center gap-2 text-xs text-muted">
-          <input
-            type="checkbox"
-            className="size-3.5 accent-[var(--interactive)]"
-            checked={showFuture}
-            onChange={(e) => setShowFuture(e.target.checked)}
-          />
-          Show locked chapters
-        </label>
-      </div>
-
-      <div className="space-y-4">
-        {visibleChapters.map(
-          ({ chapter, steps, reachable, cleared, isActive }) => {
-            const isFocused = chapter.id === focusedChapterId;
-            const chapterCounts = countSteps(steps);
-            return (
-              <Frame
+        <div className="space-y-3">
+          {progress.chapters.map(
+            ({ chapter, steps, reachable, cleared, isActive }) => (
+              <ChapterAccordion
                 key={chapter.id}
-                title={`${chapter.title}${
-                  cleared ? " · done" : isActive ? " · current" : ""
-                }`}
-                actions={
-                  <Link
-                    href={toolsHref(slug, "guide", { chapter: chapter.id })}
-                    className="text-xs font-semibold text-[var(--on-chrome)]/80 underline-offset-2 hover:underline"
-                  >
-                    {isFocused ? "Focused" : "Focus"}
-                  </Link>
-                }
-              >
-                <p className="text-sm text-muted">{chapter.summary}</p>
-                <div className="mt-3">
-                  <GuideMeter
-                    label="Chapter progress"
-                    counts={chapterCounts}
-                    size="sm"
-                  />
-                </div>
-                {!reachable ? (
-                  <p className="mt-2 text-xs text-muted">
-                    Locked until you earn more badges
-                  </p>
-                ) : null}
-                {isFocused || isActive ? (
-                  <ul className="mt-3 space-y-2">
-                    {steps.map((step, index) => (
-                      <StepRow
-                        key={step.id}
-                        step={step}
-                        index={index + 1}
-                        nearRoute={stepMatchesCatchRoutes(step, catchRoutes)}
-                        expanded={expandedStepId === step.id}
-                        onToggleExpand={() => toggleExpanded(step.id)}
-                        onToggle={() => toggleStep(step)}
-                      />
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-3 text-xs text-muted">
-                    <Link
-                      href={toolsHref(slug, "guide", { chapter: chapter.id })}
-                      className="font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-                    >
-                      Open checklist
-                    </Link>
-                  </p>
-                )}
-              </Frame>
-            );
-          },
-        )}
+                chapter={chapter}
+                steps={steps}
+                reachable={reachable}
+                cleared={cleared}
+                isActive={isActive}
+                open={openChapterId === chapter.id}
+                onToggle={() => toggleChapter(chapter.id)}
+                catchRoutes={catchRoutes}
+                expandedStepId={expandedStepId}
+                onToggleExpand={toggleExpanded}
+                onToggleStep={toggleStep}
+              />
+            ),
+          )}
+        </div>
       </div>
     </div>
   );
