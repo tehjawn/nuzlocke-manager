@@ -21,9 +21,13 @@ const QUICK_STATUS_EMOJIS = [
   "🌱",
 ] as const;
 
-const POPOVER_WIDTH = 320;
+/** Matches `w-[min(100vw-2rem,20rem)]` on the popover. */
+const POPOVER_MAX_WIDTH = 320;
 const POPOVER_GAP = 6;
 const VIEWPORT_PAD = 8;
+/** Quick-pick row only / with full picker — enough for flip-above. */
+const POPOVER_HEIGHT_QUICK = 56;
+const POPOVER_HEIGHT_FULL = 390;
 
 type StatusEmojiPickerProps = {
   value: string | null;
@@ -55,28 +59,27 @@ export function StatusEmojiPicker({
     const trigger = triggerRef.current;
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
-    const width = Math.min(POPOVER_WIDTH, window.innerWidth - VIEWPORT_PAD * 2);
-    let left = rect.left;
-    left = Math.max(
+    const width = Math.min(
+      POPOVER_MAX_WIDTH,
+      window.innerWidth - VIEWPORT_PAD * 2,
+    );
+    const left = Math.max(
       VIEWPORT_PAD,
-      Math.min(left, window.innerWidth - width - VIEWPORT_PAD),
+      Math.min(rect.left, window.innerWidth - width - VIEWPORT_PAD),
     );
 
-    const popoverHeight = popoverRef.current?.offsetHeight ?? 0;
+    const height = moreOpen ? POPOVER_HEIGHT_FULL : POPOVER_HEIGHT_QUICK;
     const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_PAD;
     const spaceAbove = rect.top - VIEWPORT_PAD;
     const preferBelow =
-      popoverHeight === 0 ||
-      spaceBelow >= popoverHeight + POPOVER_GAP ||
-      spaceBelow >= spaceAbove;
+      spaceBelow >= height + POPOVER_GAP || spaceBelow >= spaceAbove;
     const top = preferBelow
       ? rect.bottom + POPOVER_GAP
-      : Math.max(
-          VIEWPORT_PAD,
-          rect.top - POPOVER_GAP - (popoverHeight || 0),
-        );
+      : Math.max(VIEWPORT_PAD, rect.top - POPOVER_GAP - height);
 
-    setPos({ top, left });
+    setPos((prev) =>
+      prev && prev.top === top && prev.left === left ? prev : { top, left },
+    );
   }
 
   useLayoutEffect(() => {
@@ -86,6 +89,10 @@ export function StatusEmojiPicker({
     }
     place();
   }, [open, moreOpen]);
+
+  useEffect(() => {
+    if (disabled && open) close();
+  }, [disabled, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -98,13 +105,20 @@ export function StatusEmojiPicker({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") close();
     }
-    function onReposition() {
+    function onReposition(event: Event) {
+      // Picker list scroll is capture-phase on window — don't chase it.
+      if (
+        event.type === "scroll" &&
+        event.target instanceof Node &&
+        popoverRef.current?.contains(event.target)
+      ) {
+        return;
+      }
       place();
     }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
     window.addEventListener("resize", onReposition);
-    // Capture scrolls from overflow parents (profile editor panel, etc.).
     window.addEventListener("scroll", onReposition, true);
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
@@ -112,10 +126,10 @@ export function StatusEmojiPicker({
       window.removeEventListener("resize", onReposition);
       window.removeEventListener("scroll", onReposition, true);
     };
-  }, [open]);
+  }, [open, moreOpen]);
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef}>
       <span className="mb-1 block font-bold text-muted">Status emoji</span>
       <div className="flex flex-wrap items-center gap-2">
         <button
@@ -147,19 +161,15 @@ export function StatusEmojiPicker({
         )}
       </div>
 
-      {open && typeof document !== "undefined"
+      {open && pos && typeof document !== "undefined"
         ? createPortal(
             <div
               ref={popoverRef}
               id={dialogId}
               role="dialog"
               aria-label="Pick status emoji"
-              className="fixed z-[120] w-[min(100vw-2rem,20rem)] rounded-lg border border-frame bg-surface p-1.5 shadow-lg"
-              style={
-                pos
-                  ? { top: pos.top, left: pos.left }
-                  : { top: -9999, left: -9999, visibility: "hidden" }
-              }
+              className="fixed z-[100] w-[min(100vw-2rem,20rem)] rounded-lg border border-frame bg-surface p-1.5 shadow-lg"
+              style={{ top: pos.top, left: pos.left }}
             >
               <div className="flex flex-wrap items-center gap-0.5">
                 {QUICK_STATUS_EMOJIS.map((emoji) => (

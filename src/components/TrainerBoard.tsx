@@ -558,29 +558,11 @@ export function TrainerBoard({
 
   if (serverStamp !== seenStamp) {
     setSeenStamp(serverStamp);
-    setCommitted({
-      handle: trainer.handle,
-      statusText: trainer.statusText ?? "",
-      statusEmoji: trainer.statusEmoji ?? null,
-      realName: trainer.realName ?? "",
-      avatarSpriteKey: trainer.avatarSpriteKey,
-      avatarBackgroundKey: parseAvatarBackgroundKey(trainer.avatarBackgroundKey),
-      cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
-      reviveUsed: trainer.reviveUsed,
-    });
-    const nextAvatarBg = parseAvatarBackgroundKey(trainer.avatarBackgroundKey);
-    if (nextAvatarBg && !isAvatarBackgroundKey(nextAvatarBg)) {
-      setSavedCustomAvatarBg(nextAvatarBg);
-    }
-    const nextCardBg = parseCardBackgroundKey(trainer.cardBackgroundKey);
-    if (nextCardBg && !isCardBackgroundKey(nextCardBg)) {
-      setSavedCustomCardBg(nextCardBg);
-    }
 
     // Keep wipe/reset optimism until the RSC payload reflects the operation.
     // Reset: empty board (including memorial). Wipe: higher wipeCount and no
-    // living mons — graves may remain. Do not use wipeCount !== ; a server
-    // count ahead of optimism must not pin an obsolete override.
+    // living mons — graves may remain. Avoid wipeCount !== so a server count
+    // ahead of optimism cannot pin a stale override.
     const serverStillHasLiving = trainer.pokemon.some(
       (p) =>
         p.slot === "MAIN" ||
@@ -593,6 +575,26 @@ export function TrainerBoard({
         ? trainer.pokemon.length > 0
         : trainer.wipeCount < boardOverride.wipeCount ||
           serverStillHasLiving);
+
+    setCommitted({
+      handle: trainer.handle,
+      statusText: trainer.statusText ?? "",
+      statusEmoji: trainer.statusEmoji ?? null,
+      realName: trainer.realName ?? "",
+      avatarSpriteKey: trainer.avatarSpriteKey,
+      avatarBackgroundKey: parseAvatarBackgroundKey(trainer.avatarBackgroundKey),
+      cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
+      // Don't let a stale RSC revive flag clobber wipe/reset optimism.
+      reviveUsed: wipeOrResetInFlight ? false : trainer.reviveUsed,
+    });
+    const nextAvatarBg = parseAvatarBackgroundKey(trainer.avatarBackgroundKey);
+    if (nextAvatarBg && !isAvatarBackgroundKey(nextAvatarBg)) {
+      setSavedCustomAvatarBg(nextAvatarBg);
+    }
+    const nextCardBg = parseCardBackgroundKey(trainer.cardBackgroundKey);
+    if (nextCardBg && !isCardBackgroundKey(nextCardBg)) {
+      setSavedCustomCardBg(nextCardBg);
+    }
 
     if (!wipeOrResetInFlight) {
       setReviveUsed(trainer.reviveUsed);

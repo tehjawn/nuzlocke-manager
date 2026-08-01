@@ -56,7 +56,8 @@ export function Frame({
     >
       {title ? (
         <header className="gba-frame-title relative z-[1] flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base">
-          <span className="min-w-0 truncate font-semibold">{title}</span>
+          {/* min-w-0 without truncate: ReactNode titles (e.g. count suffixes) shouldn't ellipsis mid-number */}
+          <span className="min-w-0 font-semibold">{title}</span>
           {actions ? (
             <div className="relative z-[1] flex shrink-0 items-center gap-1.5">
               {actions}
