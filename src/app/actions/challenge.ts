@@ -1501,6 +1501,8 @@ const ImportFromSaveSchema = z.object({
   applyTrainerName: z.boolean().default(false),
   badgeKeys: z.array(z.string().min(1).max(32)).max(16).default([]),
   applyBadges: z.boolean().default(false),
+  reviveUsed: z.boolean().optional().nullable(),
+  applyRevive: z.boolean().default(false),
   /** Which board slots to overwrite from this import. */
   replaceSlots: z
     .array(PokemonSlotSchema)
@@ -1674,6 +1676,13 @@ export async function importFromSaveAction(
             },
           });
         }
+      }
+
+      if (data.applyRevive && data.reviveUsed != null) {
+        await tx.trainerProfile.update({
+          where: { id: trainer.id },
+          data: { reviveUsed: data.reviveUsed },
+        });
       }
     });
 
