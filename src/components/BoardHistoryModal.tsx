@@ -163,13 +163,12 @@ function TrainerHistoryBody({
   }
 
   async function clearHistory() {
-    const count = runs.reduce((sum, run) => sum + run.snapshots.length, 0);
     const ok = await confirm({
       title: "Clear board snapshots?",
       description: (
         <>
-          Permanently deletes all {count} board snapshot
-          {count === 1 ? "" : "s"} for {trainerHandle}. Run ledger (revive /
+          Permanently deletes every board snapshot for {trainerHandle} (the
+          list below may only show the most recent ones). Run ledger (revive /
           badge archives) stays. This cannot be undone.
         </>
       ),

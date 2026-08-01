@@ -123,6 +123,39 @@ test("memorialSeasonHighlights marks trainer ties", () => {
   assert.equal(highlights.mostPartyWipes?.count, 2);
 });
 
+test("memorialSeasonHighlights merges same species with and without pokedexId", () => {
+  const highlights = memorialSeasonHighlights([
+    trainer({
+      id: "t1",
+      handle: "Ash",
+      sortOrder: 0,
+      pokemon: [
+        mon({
+          id: "a1",
+          slot: "GRAVEYARD",
+          partyIndex: 0,
+          species: "Zigzagoon",
+          pokedexId: 263,
+        }),
+        mon({
+          id: "a2",
+          slot: "GRAVEYARD",
+          partyIndex: 1,
+          species: "Zigzagoon",
+          pokedexId: null,
+        }),
+      ],
+    }),
+  ]);
+
+  assert.deepEqual(highlights.mostDeathProne, {
+    species: "Zigzagoon",
+    pokedexId: 263,
+    count: 2,
+    tied: false,
+  });
+});
+
 test("memorialSeasonHighlights omits party wipes when nobody has wiped", () => {
   const highlights = memorialSeasonHighlights([
     trainer({

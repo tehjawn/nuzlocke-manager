@@ -759,6 +759,7 @@ export function TrainerBoard({
     const nextWipe = wipeCount + 1;
     const previousBadges = earnedBadgeKeys;
     const previousBoard = boardOverride;
+    const previousRevive = reviveUsed;
     const ok = await confirm({
       title: "Restart this run?",
       description: (
@@ -783,7 +784,8 @@ export function TrainerBoard({
       pokemon: memorialPokemonAfterWipe(boardPokemon, nextWipe),
       mainSquadLocked: false,
     });
-    setReviveUsed(false);    setPokemonInspect(null);
+    setReviveUsed(false);
+    setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
 
@@ -796,6 +798,7 @@ export function TrainerBoard({
       } else {
         setBoardOverride(previousBoard);
         setEarnedBadgeKeys(previousBadges);
+        setReviveUsed(previousRevive);
         setBadgeEditorKey((k) => k + 1);
         wipeSave.markError(result.error);
       }

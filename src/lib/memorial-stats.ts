@@ -77,10 +77,7 @@ export function memorialSeasonHighlights(
   >();
   for (const row of rows) {
     for (const mon of row.graves) {
-      const key =
-        mon.pokedexId != null
-          ? `id:${mon.pokedexId}`
-          : `name:${mon.species.toLowerCase()}`;
+      const key = mon.species.trim().toLowerCase();
       const existing = speciesCounts.get(key);
       if (existing) {
         existing.count += 1;

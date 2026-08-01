@@ -229,6 +229,8 @@ model TrainerProfile {
   matchWins  TournamentMatch[] @relation("MatchWinner")
 
   @@unique([challengeId, handle])
+  /// One claimed board per user per season (DB: partial unique WHERE userId IS NOT NULL).
+  @@unique([challengeId, userId])
   @@index([challengeId, sortOrder])
   @@index([userId])
 }

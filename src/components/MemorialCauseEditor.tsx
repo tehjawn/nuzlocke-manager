@@ -40,17 +40,17 @@ export function MemorialCauseEditor({
   const router = useRouter();
   const [draft, setDraft] = useState(causeOfDeath ?? "");
   const [editing, setEditing] = useState(false);
+  const [syncedCause, setSyncedCause] = useState(causeOfDeath);
   const [, startTransition] = useTransition();
   const save = useSaveStatus();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const committedRef = useRef(causeOfDeath ?? "");
 
-  useEffect(() => {
-    if (!editing) {
-      setDraft(causeOfDeath ?? "");
-      committedRef.current = causeOfDeath ?? "";
-    }
-  }, [causeOfDeath, editing]);
+  if (!editing && causeOfDeath !== syncedCause) {
+    setSyncedCause(causeOfDeath);
+    setDraft(causeOfDeath ?? "");
+    committedRef.current = causeOfDeath ?? "";
+  }
 
   useEffect(() => {
     if (editing) textareaRef.current?.focus();

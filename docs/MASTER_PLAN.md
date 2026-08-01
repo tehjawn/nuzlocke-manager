@@ -225,7 +225,8 @@ User
 | `ActivityReaction` (emoji reactions on feed) | ✅ (shipped QoL; not originally planned) |
 | `Tournament` / `TournamentMatch` | ✅ stub + winner pick (Phase 3); round advance in Phase 5 |
 | Soft `EncounterClaim` | Phase 4 — only if group wants route transparency without leaving the season board |
-| Per-run badge archives / browse closed living boards | Later (snapshots cover history today) |
+| Per-run badge archives (`TrainerRun.earnedBadgeKeys`) | ✅ |
+| Browse closed living boards | Later (snapshots cover history today) |
 
 ---
 

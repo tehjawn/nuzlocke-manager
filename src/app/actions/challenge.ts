@@ -46,7 +46,6 @@ import {
 import {
   currentRunNumber,
   memorialRowsAfterWipe,
-  wipeCauseOfDeath,
 } from "@/lib/wipe-memorial";
 import {
   canUseCustomTextureUrl,
@@ -464,24 +463,36 @@ export async function claimTrainerAction(input: {
         NOT: { id: trainer.id },
       },
     });
-    if (existing) {
-      if (!access.isGm) {
-        return {
-          ok: false,
-          error: `You already claimed ${existing.handle}. Ask a GM to reassign.`,
-        };
-      }
-      // One claimed board per user: GM reassignment frees the previous claim.
-      await prisma.trainerProfile.update({
-        where: { id: existing.id },
-        data: { userId: null },
-      });
+    if (existing && !access.isGm) {
+      return {
+        ok: false,
+        error: `You already claimed ${existing.handle}. Ask a GM to reassign.`,
+      };
     }
 
-    await prisma.trainerProfile.update({
-      where: { id: trainer.id },
-      data: { userId },
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (existing) {
+          // One claimed board per user: GM reassignment frees the previous claim.
+          await tx.trainerProfile.update({
+            where: { id: existing.id },
+            data: { userId: null },
+          });
+        }
+        await tx.trainerProfile.update({
+          where: { id: trainer.id },
+          data: { userId },
+        });
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002"
+      ) {
+        return { ok: false, error: "Trainer already claimed" };
+      }
+      throw e;
+    }
 
     await logActivity({
       challengeId: trainer.challengeId,
@@ -672,15 +683,17 @@ export async function updateTrainerBoardAction(input: {
 
     if (updates.reviveUsed !== undefined) {
       if (updates.reviveUsed && !trainer.reviveUsed) {
-        await setActiveRunReviveInTx(
-          prisma,
-          {
-            id: trainer.id,
-            wipeCount: trainer.wipeCount,
-            activeRunId: trainer.activeRunId,
-          },
-          true,
-        );
+        await prisma.$transaction(async (tx) => {
+          await setActiveRunReviveInTx(
+            tx,
+            {
+              id: trainer.id,
+              wipeCount: trainer.wipeCount,
+              activeRunId: trainer.activeRunId,
+            },
+            true,
+          );
+        });
         await logActivity({
           challengeId: trainer.challengeId,
           actorId: userId,
@@ -691,15 +704,17 @@ export async function updateTrainerBoardAction(input: {
         delete data.reviveUsed;
         reviveTouched = true;
       } else if (!updates.reviveUsed && trainer.reviveUsed && access.isGm) {
-        await setActiveRunReviveInTx(
-          prisma,
-          {
-            id: trainer.id,
-            wipeCount: trainer.wipeCount,
-            activeRunId: trainer.activeRunId,
-          },
-          false,
-        );
+        await prisma.$transaction(async (tx) => {
+          await setActiveRunReviveInTx(
+            tx,
+            {
+              id: trainer.id,
+              wipeCount: trainer.wipeCount,
+              activeRunId: trainer.activeRunId,
+            },
+            false,
+          );
+        });
         await logActivity({
           challengeId: trainer.challengeId,
           actorId: userId,
@@ -713,18 +728,6 @@ export async function updateTrainerBoardAction(input: {
         // no-op
       } else if (!access.isGm && !updates.reviveUsed) {
         return { ok: false, error: "Only a GM can reset a used Revive Token" };
-      } else {
-        await setActiveRunReviveInTx(
-          prisma,
-          {
-            id: trainer.id,
-            wipeCount: trainer.wipeCount,
-            activeRunId: trainer.activeRunId,
-          },
-          updates.reviveUsed,
-        );
-        delete data.reviveUsed;
-        reviveTouched = true;
       }
     }
 
@@ -849,8 +852,7 @@ export async function recordWipeAction(input: {
           data: {
             slot: memorial.slot,
             partyIndex: memorial.partyIndex,
-            causeOfDeath:
-              memorial.causeOfDeath ?? wipeCauseOfDeath(nextWipe),
+            causeOfDeath: memorial.causeOfDeath,
             diedOnRun: memorial.diedOnRun,
             runId: memorial.runId,
           },
@@ -1575,7 +1577,10 @@ export async function upsertPokemonAction(
               : existing.diedOnRun
             : null,
           runId: enteringGraveyard
-            ? becameGrave || existing.runId == null
+            ? becameGrave ||
+              (existing.runId == null &&
+                (existing.diedOnRun == null ||
+                  existing.diedOnRun === runAtDeath))
               ? activeRun.id
               : existing.runId
             : activeRun.id,

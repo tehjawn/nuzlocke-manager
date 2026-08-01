@@ -133,7 +133,10 @@ async function main() {
     });
 
     const { createInitialActiveRunInTx } = await import("../src/lib/trainer-runs");
-    const activeRun = await createInitialActiveRunInTx(prisma, created.id);
+    const activeRun = await createInitialActiveRunInTx(prisma, created.id, {
+      wipeCount: trainer.wipeCount ?? 0,
+      reviveUsed: trainer.reviveUsed,
+    });
     // Seed showcase graves are run 1 losses; living board sits on the active run.
     await prisma.pokemonEntry.updateMany({
       where: { trainerId: created.id, slot: "GRAVEYARD" },
