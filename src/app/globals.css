@@ -1962,7 +1962,6 @@ button:disabled,
 /* ─── GM Console dashboard ─── */
 .gm-console-page {
   position: relative;
-  isolation: isolate;
   background:
     radial-gradient(
       1200px 480px at 12% -10%,
@@ -2006,8 +2005,8 @@ button:disabled,
   opacity: 0.18;
 }
 
-/* Flex items honor z-index without position; avoid overriding the FAB's `fixed`. */
-.gm-console-page > * {
+/* Lift content over the grid without trapping the fixed GM launcher. */
+.gm-console-page > main {
   z-index: 1;
 }
 
