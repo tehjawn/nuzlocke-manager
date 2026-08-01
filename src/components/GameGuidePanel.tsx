@@ -377,7 +377,19 @@ export function GameGuidePanel({
         ) : null}
       </div>
 
-      <Frame title="Overall progress">
+      <Frame
+        title="Overall progress"
+        actions={
+          <button
+            type="button"
+            className="text-xs font-semibold text-[var(--on-chrome)]/80 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={checkoffs.checkedStepIds.length === 0}
+            onClick={() => clearGuideCheckoffs(storageKey)}
+          >
+            Reset progress
+          </button>
+        }
+      >
         <GuideMeter label={EMERALD_GUIDE.gameLabel} counts={overallCounts} />
         <p className="mt-2.5 text-xs leading-relaxed text-muted">
           Check off steps as you complete them — progress is saved on this
@@ -411,24 +423,15 @@ export function GameGuidePanel({
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold tracking-tight">Chapters</h3>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-xs text-muted">
-            <input
-              type="checkbox"
-              className="size-3.5 accent-[var(--interactive)]"
-              checked={showFuture}
-              onChange={(e) => setShowFuture(e.target.checked)}
-            />
-            Show locked chapters
-          </label>
-          <button
-            type="button"
-            className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-            onClick={() => clearGuideCheckoffs(storageKey)}
-          >
-            Reset checkoffs
-          </button>
-        </div>
+        <label className="flex items-center gap-2 text-xs text-muted">
+          <input
+            type="checkbox"
+            className="size-3.5 accent-[var(--interactive)]"
+            checked={showFuture}
+            onChange={(e) => setShowFuture(e.target.checked)}
+          />
+          Show locked chapters
+        </label>
       </div>
 
       <div className="space-y-4">
