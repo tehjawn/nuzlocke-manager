@@ -7,6 +7,8 @@ type PartyStripProps = {
   slots?: number;
   size?: "sm" | "md";
   memorial?: boolean;
+  /** Encounter ledger: sprite + species name only. */
+  speciesOnly?: boolean;
   /** Select a filled slot (edit or view details). */
   onSelect?: (pokemon: PokemonEntry) => void;
   /** Soft hint under species when slots are selectable. */
@@ -22,6 +24,7 @@ export function PartyStrip({
   slots,
   size = "md",
   memorial = false,
+  speciesOnly = false,
   onSelect,
   selectHint,
   onSelectEmpty,
@@ -38,7 +41,7 @@ export function PartyStrip({
   return (
     <div
       className={`grid gap-2 ${
-        size === "sm"
+        size === "sm" || speciesOnly
           ? "grid-cols-3 sm:grid-cols-6"
           : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
       }`}
@@ -47,10 +50,13 @@ export function PartyStrip({
         <div key={p?.id ?? `empty-${i}`} className="h-full min-h-0">
           <PokemonSlotCard
             pokemon={p}
-            size={size}
+            size={speciesOnly ? "sm" : size}
             memorial={memorial}
+            speciesOnly={speciesOnly}
             showCompetitiveDetails={showCompetitiveDetails}
-            selectHint={p && onSelect ? selectHint : undefined}
+            selectHint={
+              p && onSelect && !speciesOnly ? selectHint : undefined
+            }
             onSelect={
               p && onSelect
                 ? () => onSelect(p)

@@ -1306,7 +1306,7 @@ export function TrainerBoard({
                 {encountered.length > 0 ? (
                   <PartyStrip
                     pokemon={encountered}
-                    selectHint="View"
+                    speciesOnly
                     onSelect={openPokemon}
                   />
                 ) : null}
@@ -1314,8 +1314,7 @@ export function TrainerBoard({
             ) : encountered.length > 0 ? (
               <PartyStrip
                 pokemon={encountered}
-                selectHint="Details"
-                showCompetitiveDetails={showCompetitiveDetails}
+                speciesOnly
                 onSelect={openPokemon}
               />
             ) : (

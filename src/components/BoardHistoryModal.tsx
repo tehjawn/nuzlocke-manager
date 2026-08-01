@@ -307,9 +307,7 @@ function TrainerHistoryBody({
                   <Frame title="Encountered">
                     <PartyStrip
                       pokemon={encountered}
-                      size="sm"
-                      selectHint="Details"
-                      showCompetitiveDetails={showCompetitiveDetails}
+                      speciesOnly
                       onSelect={setDetailsPokemon}
                     />
                   </Frame>
