@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PokemonSpriteToggle } from "@/components/PokemonSpriteToggle";
 import { SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SoundToggle } from "@/features/fx";
@@ -60,6 +61,7 @@ export function SiteFooter() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <PokemonSpriteToggle />
           <SoundToggle />
           <ThemeToggle />
         </div>

@@ -53,7 +53,7 @@ const CATEGORY_META: {
 }[] = [
   { key: "party", slot: "MAIN", title: "Party → Main Squad" },
   { key: "box", slot: "RESERVE", title: "Box → Reserves" },
-  { key: "rip", slot: "GRAVEYARD", title: "Fainted → R.I.P." },
+  { key: "rip", slot: "GRAVEYARD", title: "Fainted → R.I.P. (add to memorial)" },
   { key: "encountered", slot: "ENCOUNTERED", title: "Encountered" },
 ];
 
@@ -248,7 +248,8 @@ export function SaveImportModal({
           are detected separately — uncheck anything you want to skip. Nature,
           ability, moves, IVs, and EVs are imported when readable. Encountered
           is the wild buffer plus Pokédex “seen” species, and replaces your
-          current Encountered list on import.
+          current Encountered list on import. Fainted → R.I.P. is added to the
+          season memorial (duplicates skipped); existing graves are kept.
         </p>
 
         <label className="block">

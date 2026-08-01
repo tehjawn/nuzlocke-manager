@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useId, useState, useTransition, type ReactNode } from "react";
 import {
   gmExportChallengeAction,
+  gmReconstructMemorialHistoryAction,
   gmResetAllTrainerBoardsAction,
   gmSetTrainerLockAction,
   gmUnclaimTrainerAction,
   gmUpdateChallengeMetaAction,
   gmUpdateFaqAction,
   gmUpdateRuleAction,
+  previewSeasonMemorialBackfillAction,
 } from "@/app/actions/challenge";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
@@ -978,6 +980,82 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                     Download CSV
                   </button>
                 </div>
+              </Panel>
+
+              <Panel
+                kicker="05 · Ops"
+                title="Reconstruct memorial history"
+                description="Backfill missing R.I.P. entries from each trainer’s retained board snapshots (wipe / import / reset). Existing graves stay; duplicates are skipped."
+              >
+                <button
+                  type="button"
+                  disabled={pending}
+                  className="gm-console__btn gm-console__btn--primary"
+                  onClick={() => {
+                    void (async () => {
+                      const preview = await previewSeasonMemorialBackfillAction({
+                        challengeId,
+                      });
+                      if (!preview.ok) {
+                        flash(preview);
+                        return;
+                      }
+                      if (preview.totalCandidates === 0) {
+                        flash({
+                          ok: true,
+                          message:
+                            "No missing memorial entries found in retained board history",
+                        });
+                        return;
+                      }
+
+                      const sample = preview.trainers
+                        .slice(0, 6)
+                        .map((t) => {
+                          const names = t.sample.join(", ");
+                          return `${t.handle}: ${t.count}${
+                            names ? ` (${names})` : ""
+                          }`;
+                        })
+                        .join(" · ");
+                      const extra =
+                        preview.trainers.length > 6
+                          ? ` · +${preview.trainers.length - 6} trainers`
+                          : "";
+
+                      const ok = await confirm({
+                        title: "Reconstruct memorial history?",
+                        description: (
+                          <>
+                            Restores {preview.totalCandidates} missing R.I.P.
+                            entr
+                            {preview.totalCandidates === 1 ? "y" : "ies"} across{" "}
+                            {preview.trainersAffected} trainer
+                            {preview.trainersAffected === 1 ? "" : "s"} from
+                            retained board history. Live memorials are not
+                            cleared.
+                            <span className="mt-2 block text-muted">
+                              {sample}
+                              {extra}
+                            </span>
+                          </>
+                        ),
+                        confirmLabel: `Restore ${preview.totalCandidates}`,
+                        tone: "primary",
+                      });
+                      if (!ok) return;
+                      startTransition(async () => {
+                        flash(
+                          await gmReconstructMemorialHistoryAction({
+                            challengeId,
+                          }),
+                        );
+                      });
+                    })();
+                  }}
+                >
+                  Reconstruct memorial history
+                </button>
               </Panel>
 
               <Panel

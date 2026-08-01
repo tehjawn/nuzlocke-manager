@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import type { ReactNode } from "react";
 import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
+import { GuideIcon } from "@/components/nav-icons";
 import { PokedexPanel } from "@/components/PokedexPanel";
 import { TrainerCompare } from "@/components/TrainerCompare";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
@@ -89,7 +91,7 @@ function ToolsDirectory({
         </p>
       </header>
 
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {TOOLS_CATALOG.map((entry) => (
           <li key={entry.id}>
             <Link
@@ -97,7 +99,12 @@ function ToolsDirectory({
               className="pressable gba-frame group flex h-full flex-col overflow-hidden text-left transition-colors"
             >
               <span className="gba-frame-title relative z-[1] flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-semibold sm:text-base">
-                <span className="min-w-0 truncate">{entry.title}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 text-[var(--on-chrome)]/80" aria-hidden>
+                    {toolIcon(entry.id)}
+                  </span>
+                  <span className="min-w-0 truncate">{entry.title}</span>
+                </span>
                 <span
                   aria-hidden
                   className="shrink-0 text-sm text-[var(--on-chrome)]/70 transition-transform group-hover:translate-x-0.5"
@@ -118,6 +125,72 @@ function ToolsDirectory({
         ))}
       </ul>
     </div>
+  );
+}
+
+function toolIcon(id: ToolsId): ReactNode {
+  switch (id) {
+    case "pokedex":
+      return <PokedexToolIcon />;
+    case "chart":
+      return <TypeChartToolIcon />;
+    case "compare":
+      return <CompareToolIcon />;
+    case "guide":
+      return <GuideIcon className="h-5 w-5" />;
+  }
+}
+
+function PokedexToolIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <rect x="5" y="3.5" width="14" height="17" rx="2.5" />
+      <circle cx="12" cy="11" r="3.25" />
+      <path d="M9.5 17.5h5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TypeChartToolIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1" />
+      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1" />
+      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" />
+    </svg>
+  );
+}
+
+function CompareToolIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <circle cx="8" cy="8" r="3" />
+      <circle cx="16" cy="8" r="3" />
+      <path d="M3.5 19c.7-2.6 2.7-4 4.5-4s3.8 1.4 4.5 4" strokeLinecap="round" />
+      <path d="M11.5 19c.7-2.6 2.7-4 4.5-4s3.8 1.4 4.5 4" strokeLinecap="round" />
+    </svg>
   );
 }
 

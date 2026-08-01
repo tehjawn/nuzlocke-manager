@@ -11,6 +11,7 @@ import {
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
+import { sortTrainersForViewer } from "@/lib/trainer-display";
 
 export const dynamic = "force-dynamic";
 
@@ -48,13 +49,12 @@ export default async function LeagueBoardPage({ params }: PageProps) {
     .map((t) => t.id);
   const competitiveIdSet = new Set(competitiveTrainerIds);
 
-  const trainers = [...challenge.trainers]
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((trainer) =>
+  const trainers = sortTrainersForViewer(challenge.trainers, myTrainerId).map(
+    (trainer) =>
       competitiveIdSet.has(trainer.id)
         ? trainer
         : redactTrainerCompetitiveDetails(trainer),
-    );
+  );
 
   return (
     <>

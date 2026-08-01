@@ -48,6 +48,7 @@ export function PreferencesForm() {
             (preference) => (
               <PreferenceChoice
                 active={themePreference === preference}
+                icon={themePreferenceIcon(preference)}
                 key={preference}
                 label={themePreferenceLabel(preference)}
                 onSelect={() => setThemePreference(preference)}
@@ -68,11 +69,13 @@ export function PreferencesForm() {
         >
           <PreferenceChoice
             active={fxPrefs.sfxEnabled}
+            icon={<SfxOnIcon />}
             label="On"
             onSelect={() => patchFxPrefs({ sfxEnabled: true })}
           />
           <PreferenceChoice
             active={!fxPrefs.sfxEnabled}
+            icon={<SfxOffIcon />}
             label="Off"
             onSelect={() => patchFxPrefs({ sfxEnabled: false })}
           />
@@ -93,6 +96,13 @@ export function PreferencesForm() {
               (preference) => (
                 <PreferenceChoice
                   active={spritePreference === preference}
+                  icon={
+                    preference === "2d" ? (
+                      <SpriteStillIcon />
+                    ) : (
+                      <SpriteAnimatedIcon />
+                    )
+                  }
                   key={preference}
                   label={preference === "2d" ? "2D" : "Animated"}
                   onSelect={() => writePokemonSpritePreference(preference)}
@@ -155,17 +165,19 @@ function PreferenceSection({
 
 function PreferenceChoice({
   active,
+  icon,
   label,
   onSelect,
 }: {
   active: boolean;
+  icon?: ReactNode;
   label: string;
   onSelect: () => void;
 }) {
   return (
     <button
       aria-checked={active}
-      className={`pressable flex min-h-11 items-center justify-center px-3 py-2 text-sm font-semibold ${
+      className={`pressable flex min-h-11 items-center justify-center gap-2 px-3 py-2 text-sm font-semibold ${
         active
           ? "border-interactive/50 bg-interactive-soft text-ink"
           : "border-frame bg-surface text-muted hover:border-interactive/40 hover:text-ink"
@@ -174,6 +186,11 @@ function PreferenceChoice({
       role="radio"
       type="button"
     >
+      {icon ? (
+        <span className="shrink-0 opacity-90" aria-hidden>
+          {icon}
+        </span>
+      ) : null}
       {label}
     </button>
   );
@@ -188,4 +205,133 @@ function themePreferenceLabel(preference: ThemePreference): string {
     case "system":
       return "System";
   }
+}
+
+function themePreferenceIcon(preference: ThemePreference): ReactNode {
+  switch (preference) {
+    case "light":
+      return <SunIcon />;
+    case "dark":
+      return <MoonIcon />;
+    case "system":
+      return <SystemIcon />;
+  }
+}
+
+function SunIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <circle cx="10" cy="10" r="3.25" />
+      <path
+        d="M10 2.5v1.5M10 16v1.5M2.5 10H4M16 10h1.5M4.7 4.7l1.1 1.1M14.2 14.2l1.1 1.1M15.3 4.7l-1.1 1.1M5.8 14.2l-1.1 1.1"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <path
+        d="M12.5 3.2A6.5 6.5 0 1016.8 12 5.2 5.2 0 0112.5 3.2z"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SystemIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <rect x="2.5" y="3.5" width="15" height="10.5" rx="1.5" />
+      <path d="M7 17h6M10 14v3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SfxOnIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <path
+        d="M3.5 8.25v3.5h2.75L10.5 15V5L6.25 8.25H3.5z"
+        strokeLinejoin="round"
+      />
+      <path d="M13 7.5a3.2 3.2 0 010 5" strokeLinecap="round" />
+      <path d="M14.75 5.5a5.5 5.5 0 010 9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SfxOffIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <path
+        d="M3.5 8.25v3.5h2.75L10.5 15V5L6.25 8.25H3.5z"
+        strokeLinejoin="round"
+      />
+      <path d="M13.5 8l3 3M16.5 8l-3 3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SpriteStillIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <rect x="3.5" y="3.5" width="13" height="13" rx="2" />
+      <circle cx="8" cy="8" r="1.25" fill="currentColor" stroke="none" />
+      <path d="M3.5 13.5l3.5-3 3 2.5 2.5-2 4 2.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SpriteAnimatedIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <rect x="3.5" y="3.5" width="13" height="13" rx="2" />
+      <path d="M8 7.5l5 2.5-5 2.5V7.5z" strokeLinejoin="round" />
+    </svg>
+  );
 }

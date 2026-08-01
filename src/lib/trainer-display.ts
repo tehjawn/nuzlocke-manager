@@ -16,3 +16,19 @@ export function displayName(trainer: TrainerProfile): string {
     ? `${trainer.handle} (${trainer.realName})`
     : trainer.handle;
 }
+
+/**
+ * League board order: the viewer's claimed trainer first, then sortOrder.
+ */
+export function sortTrainersForViewer<T extends { id: string; sortOrder: number }>(
+  trainers: T[],
+  myTrainerId?: string | null,
+): T[] {
+  return [...trainers].sort((a, b) => {
+    if (myTrainerId) {
+      if (a.id === myTrainerId) return -1;
+      if (b.id === myTrainerId) return 1;
+    }
+    return a.sortOrder - b.sortOrder;
+  });
+}
