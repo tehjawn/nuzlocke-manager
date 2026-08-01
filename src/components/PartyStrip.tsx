@@ -7,7 +7,7 @@ type PartyStripProps = {
   slots?: number;
   size?: "sm" | "md";
   memorial?: boolean;
-  /** Encounter ledger: sprite + species name only. */
+  /** Encounter ledger: sprite + species name + dex #. */
   speciesOnly?: boolean;
   /** Select a filled slot (edit or view details). */
   onSelect?: (pokemon: PokemonEntry) => void;
