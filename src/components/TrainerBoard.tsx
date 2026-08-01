@@ -1557,6 +1557,8 @@ export function TrainerBoard({
                 applyTrainerName: payload.applyTrainerName,
                 badgeKeys: payload.badgeKeys,
                 applyBadges: payload.applyBadges,
+                reviveUsed: payload.reviveUsed,
+                applyRevive: payload.applyRevive,
                 // Each category mirrors this save: unchecked mons clear that
                 // slot group (including Encountered / Pokédex seen).
                 replaceSlots: [
@@ -1569,6 +1571,15 @@ export function TrainerBoard({
               if (result.ok) {
                 partySave.markSaved(result.message ?? "Save imported");
                 setSaveImportOpen(false);
+                // Mirror server gate: non-GMs may only spend a revive via import.
+                if (
+                  payload.applyRevive &&
+                  payload.reviveUsed != null &&
+                  (payload.reviveUsed || isGm)
+                ) {
+                  setReviveUsed(payload.reviveUsed);
+                }
+                router.refresh();
               } else {
                 partySave.markError(result.error);
               }

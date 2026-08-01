@@ -43,6 +43,9 @@ next-env.d.ts
 
 /src/generated/prisma
 
+# local ROM / reference checkouts
+.tmp/
+
 # Prisma CLI auto-installed agent skill packs
 .agents/
 .claude/

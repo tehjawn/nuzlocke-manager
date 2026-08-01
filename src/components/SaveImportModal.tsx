@@ -36,6 +36,8 @@ export type SaveImportPayload = {
   applyTrainerName: boolean;
   badgeKeys: string[];
   applyBadges: boolean;
+  reviveUsed: boolean | null;
+  applyRevive: boolean;
 };
 
 type SaveImportModalProps = {
@@ -97,6 +99,9 @@ export function SaveImportModal({
   const [badgeKeys, setBadgeKeys] = useState<string[]>([]);
   const [applyBadges, setApplyBadges] = useState(true);
   const [badgesReliable, setBadgesReliable] = useState(false);
+  const [reviveUsed, setReviveUsed] = useState<boolean | null>(null);
+  const [applyRevive, setApplyRevive] = useState(false);
+  const [reviveReliable, setReviveReliable] = useState(false);
   const [parsing, setParsing] = useState(false);
 
   if (!open) return null;
@@ -111,6 +116,9 @@ export function SaveImportModal({
     setBadgeKeys([]);
     setApplyBadges(true);
     setBadgesReliable(false);
+    setReviveUsed(null);
+    setApplyRevive(false);
+    setReviveReliable(false);
     setParsing(false);
   }
 
@@ -132,6 +140,9 @@ export function SaveImportModal({
       setBadgeKeys(result.badges.earnedKeys);
       setBadgesReliable(result.badges.reliable);
       setApplyBadges(result.badges.reliable);
+      setReviveUsed(result.revive.reliable ? result.revive.used : null);
+      setReviveReliable(result.revive.reliable);
+      setApplyRevive(result.revive.reliable);
       setSections({
         party: categoryToDrafts(result.party, "MAIN"),
         box: categoryToDrafts(result.box, "RESERVE"),
@@ -190,7 +201,10 @@ export function SaveImportModal({
           <button
             type="button"
             disabled={
-              (!included.length && !applyTrainerName && !applyBadges) ||
+              (!included.length &&
+                !applyTrainerName &&
+                !applyBadges &&
+                !applyRevive) ||
               pending ||
               parsing ||
               !sections
@@ -203,6 +217,10 @@ export function SaveImportModal({
                 applyTrainerName: Boolean(applyTrainerName && trainerName),
                 badgeKeys,
                 applyBadges: Boolean(applyBadges && badgesReliable),
+                reviveUsed,
+                applyRevive: Boolean(
+                  applyRevive && reviveReliable && reviveUsed != null,
+                ),
               })
             }
           >
@@ -215,14 +233,21 @@ export function SaveImportModal({
     >
       <div className="space-y-4 text-sm">
         <p className="text-muted">
-          Upload an Afterplay save state or Gen&nbsp;3{" "}
+          Upload a Modern Emerald save from Afterplay (
           <code className="text-ink">.sav</code> /{" "}
-          <code className="text-ink">.srm</code>. Party, box, R.I.P., and
-          encounters are detected separately — uncheck anything you want to
-          skip. Nature, ability, moves, IVs, and EVs are imported when readable.
-          Party, box, R.I.P., and Encountered all mirror this save — Encountered
-          is the wild buffer plus Pokédex “seen” species, and replaces your
-          current Encountered list on import.
+          <code className="text-ink">.srm</code>) or an mGBA/libretro state (
+          <code className="text-ink">.state</code>,{" "}
+          <code className="text-ink">.ss0</code>–
+          <code className="text-ink">.ss9</code>,{" "}
+          <code className="text-ink">.s0</code>–
+          <code className="text-ink">.s9</code>,{" "}
+          <code className="text-ink">.sr0</code>–
+          <code className="text-ink">.sr9</code>
+          ). Party, box, R.I.P., and encounters are detected separately —
+          uncheck anything you want to skip. Nature, ability, moves, IVs, and
+          EVs are imported when readable. Party, box, R.I.P., and Encountered
+          all mirror this save — Encountered is the wild buffer plus Pokédex
+          “seen” species, and replaces your current Encountered list on import.
         </p>
 
         <label className="block">
@@ -231,7 +256,7 @@ export function SaveImportModal({
           </span>
           <input
             type="file"
-            accept=".state,.sav,.srm,.ss0,.ss1,.ss2,.ss3,.ss4,.ss5,.ss6,.ss7,.ss8,.ss9,application/octet-stream"
+            accept=".state,.sav,.srm,.ss0,.ss1,.ss2,.ss3,.ss4,.ss5,.ss6,.ss7,.ss8,.ss9,.s0,.s1,.s2,.s3,.s4,.s5,.s6,.s7,.s8,.s9,.sr0,.sr1,.sr2,.sr3,.sr4,.sr5,.sr6,.sr7,.sr8,.sr9,application/octet-stream"
             disabled={parsing || pending}
             className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-frame file:bg-surface-2 file:px-3 file:py-1.5 file:text-xs file:font-semibold"
             onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
@@ -285,6 +310,22 @@ export function SaveImportModal({
                     ? badgeKeys.length
                       ? ` (${badgeKeys.length} earned)`
                       : " (none earned)"
+                    : " (unavailable)"}
+                </span>
+              </label>
+              <label className="flex flex-wrap items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={applyRevive && reviveReliable}
+                  disabled={!reviveReliable || reviveUsed == null}
+                  onChange={(e) => setApplyRevive(e.target.checked)}
+                />
+                <span>
+                  Sync revive token
+                  {reviveReliable && reviveUsed != null
+                    ? reviveUsed
+                      ? " (used)"
+                      : " (available)"
                     : " (unavailable)"}
                 </span>
               </label>
