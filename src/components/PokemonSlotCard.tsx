@@ -25,7 +25,7 @@ type PokemonSlotCardProps = {
   /** Soft hint under species line when the card is interactive. */
   selectHint?: string;
   /**
-   * Encounter ledger: sprite + species name only (no nickname / subtext).
+   * Encounter ledger: sprite + species name + dex # (no nickname / battle stats).
    */
   speciesOnly?: boolean;
   /**
@@ -110,14 +110,21 @@ export function PokemonSlotCard({
           species={pokemon.species}
           width={56}
         />
-        <p className="w-full truncate px-0.5 text-[11px] font-bold leading-tight tracking-tight sm:text-xs">
-          {label}
-          {pokemon.isShiny ? (
-            <span className="ml-0.5 text-accent-2" title="Shiny">
-              ✦
-            </span>
+        <div className="w-full min-w-0 px-0.5">
+          <p className="truncate text-[11px] font-bold leading-tight tracking-tight sm:text-xs">
+            {label}
+            {pokemon.isShiny ? (
+              <span className="ml-0.5 text-accent-2" title="Shiny">
+                ✦
+              </span>
+            ) : null}
+          </p>
+          {pokemon.pokedexId != null && pokemon.pokedexId > 0 ? (
+            <p className="truncate font-mono text-[10px] leading-tight tabular-nums text-muted">
+              #{formatEncounterDexNo(pokemon.pokedexId)}
+            </p>
           ) : null}
-        </p>
+        </div>
       </div>
     );
     if (!onSelect) return <article className="h-full">{encounter}</article>;
@@ -125,7 +132,11 @@ export function PokemonSlotCard({
       <button
         type="button"
         className="h-full w-full cursor-pointer text-left"
-        aria-label={pokemon.species}
+        aria-label={
+          pokemon.pokedexId != null && pokemon.pokedexId > 0
+            ? `${pokemon.species}, Pokédex #${formatEncounterDexNo(pokemon.pokedexId)}`
+            : pokemon.species
+        }
         onClick={onSelect}
       >
         {encounter}
@@ -344,4 +355,9 @@ export function PokemonSlotCard({
       {body}
     </button>
   );
+}
+
+function formatEncounterDexNo(id: number): string {
+  if (id >= 10000) return String(id);
+  return String(id).padStart(3, "0");
 }
