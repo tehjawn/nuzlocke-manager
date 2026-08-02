@@ -21,6 +21,7 @@
     "data:moves": "node scripts/generate-expansion-moves.mjs",
     "data:modern-species": "node scripts/generate-modern-emerald-species.mjs",
     "data:move-meta": "node scripts/generate-move-meta.mjs",
+    "data:held-items": "node scripts/generate-held-item-descriptions.mjs",
     "data:base-stats": "node scripts/generate-base-stats.mjs",
     "data:types": "node scripts/generate-pokemon-types.mjs"
   },

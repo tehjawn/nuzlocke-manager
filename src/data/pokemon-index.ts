@@ -14,10 +14,23 @@ export type PokemonIndexEntry = {
 export type HeldItemEntry = {
   slug: string;
   name: string;
+  /** Showdown shortDesc when known. */
+  description?: string | null;
 };
 
 export const POKEMON_INDEX = pokemonData.pokemon as PokemonIndexEntry[];
 export const HELD_ITEMS = heldItemsData.items as HeldItemEntry[];
+
+const HELD_ITEM_DESCRIPTION_BY_KEY: Record<string, string> = Object.fromEntries(
+  HELD_ITEMS.flatMap((item) => {
+    const desc = item.description?.trim();
+    if (!desc) return [];
+    return [
+      [item.name.toLowerCase(), desc],
+      [item.slug.toLowerCase(), desc],
+    ];
+  }),
+);
 
 export const POKEMON_GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
@@ -129,4 +142,18 @@ export function heldItemSpriteUrl(slugOrName: string): string {
     .replace(/['’.]/g, "")
     .replace(/\s+/g, "-");
   return showdownProxyUrl("itemicons", `${slug}.png`);
+}
+
+/** Battle effect text for a known held item name/slug (case-insensitive). */
+export function heldItemDescription(
+  nameOrSlug: string | null | undefined,
+): string | null {
+  if (!nameOrSlug?.trim()) return null;
+  const key = nameOrSlug.trim().toLowerCase();
+  const slug = key.replace(/['’.]/g, "").replace(/\s+/g, "-");
+  return (
+    HELD_ITEM_DESCRIPTION_BY_KEY[key] ??
+    HELD_ITEM_DESCRIPTION_BY_KEY[slug] ??
+    null
+  );
 }

@@ -1,3 +1,4 @@
+import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
@@ -291,9 +292,12 @@ export function PokemonSlotCard({
                 Item
               </dt>
               <dd className="mt-0.5">
-                <span className="info-chip max-w-full truncate text-xs">
-                  {pokemon.heldItem}
-                </span>
+                <HeldItemLabel
+                  name={pokemon.heldItem}
+                  embedded
+                  className="info-chip max-w-full text-xs"
+                  iconSize={14}
+                />
               </dd>
             </div>
           ) : null}
