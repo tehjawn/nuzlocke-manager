@@ -148,6 +148,22 @@ test("Rusturf progress is Rock Smash, not Cut", () => {
   assert.ok(smash!.summary.toLowerCase().includes("rusturf"));
 });
 
+test("Fallarbor chapter covers Meteor Falls and Go-Goggles before Lavaridge", () => {
+  const meteor = EMERALD_GUIDE.steps.find((s) => s.id === "fallarbor-meteor-falls");
+  const goggles = EMERALD_GUIDE.steps.find((s) => s.id === "fallarbor-go-goggles");
+  const chimney = EMERALD_GUIDE.steps.find((s) => s.id === "lavaridge-mt-chimney");
+  assert.ok(meteor);
+  assert.ok(goggles);
+  assert.equal(meteor!.chapterId, "fallarbor");
+  assert.equal(goggles!.chapterId, "fallarbor");
+  assert.ok(goggles!.keyItems?.includes("Go-Goggles"));
+  assert.equal(chimney!.chapterId, "lavaridge");
+  assert.equal(
+    EMERALD_GUIDE.steps.some((s) => s.id === "mauville-to-desert"),
+    false,
+  );
+});
+
 test("starter step reflects Modern Emerald random starter", () => {
   const starter = EMERALD_GUIDE.steps.find((s) => s.id === "prologue-starter");
   assert.ok(starter);

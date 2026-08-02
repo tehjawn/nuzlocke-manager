@@ -6,6 +6,9 @@ import type { GuideDocument } from "@/features/guide/guide-types";
  *
  * Notable Modern Emerald vs vanilla callouts are baked into step copy
  * (random starter, bag HMs, etc.).
+ *
+ * Gym party notes use vanilla Emerald teams (Modern Emerald Normal keeps them;
+ * Hard+ may differ).
  */
 export const EMERALD_GUIDE: GuideDocument = {
   id: "modern-emerald",
@@ -75,11 +78,10 @@ export const EMERALD_GUIDE: GuideDocument = {
       sortOrder: 3,
     },
     {
-      id: "lavaridge",
-      title: "Desert → Lavaridge",
-      summary: "Route 111 desert, Mt. Chimney, Flannery.",
+      id: "fallarbor",
+      title: "Fallarbor & Meteor Falls",
+      summary: "Route 111 north, Meteor Falls plot, Go-Goggles, cable car setup.",
       requiresBadges: ["gym-1", "gym-2", "gym-3"],
-      clearsWithBadge: "gym-4",
       locations: [
         "Route 111",
         "Route 112",
@@ -89,12 +91,22 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Route 114",
         "Meteor Falls",
         "Route 115",
+      ],
+      sortOrder: 4,
+    },
+    {
+      id: "lavaridge",
+      title: "Mt. Chimney → Lavaridge",
+      summary: "Cable car, Team Magma/Aqua on the summit, Flannery.",
+      requiresBadges: ["gym-1", "gym-2", "gym-3"],
+      clearsWithBadge: "gym-4",
+      locations: [
         "Mt. Chimney",
         "Jagged Pass",
         "Lavaridge Town",
         "Desert Underpass",
       ],
-      sortOrder: 4,
+      sortOrder: 5,
     },
     {
       id: "petalburg-gym",
@@ -103,7 +115,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       requiresBadges: ["gym-1", "gym-2", "gym-3", "gym-4"],
       clearsWithBadge: "gym-5",
       locations: [],
-      sortOrder: 5,
+      sortOrder: 6,
     },
     {
       id: "fortree",
@@ -118,7 +130,7 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Route 120",
         "Safari Zone",
       ],
-      sortOrder: 6,
+      sortOrder: 7,
     },
     {
       id: "mossdeep",
@@ -144,7 +156,7 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Route 125",
         "Shoal Cave",
       ],
-      sortOrder: 7,
+      sortOrder: 8,
     },
     {
       id: "sootopolis",
@@ -169,7 +181,7 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Sootopolis City",
         "Cave of Origin",
       ],
-      sortOrder: 8,
+      sortOrder: 9,
     },
     {
       id: "elite-four",
@@ -198,7 +210,7 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Ever Grande City",
         "Victory Road",
       ],
-      sortOrder: 9,
+      sortOrder: 10,
     },
     {
       id: "last-step",
@@ -206,7 +218,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       summary: "Ping the season hosts in Discord to lock in your team.",
       requiresBadges: [],
       locations: [],
-      sortOrder: 10,
+      sortOrder: 11,
     },
   ],
   steps: [
@@ -258,6 +270,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       chapterId: "prologue",
       title: "Head toward Rustboro",
       summary: "North on Route 104 into Petalburg Woods, then out to Rustboro.",
+      detail:
+        "From Petalburg, go **west/north on Route 104**. You’ll enter **Petalburg Woods**, then exit north toward **Rustboro City**. Don’t skip the woods event — a Devon researcher needs help before the north exit opens cleanly.",
       locations: ["Route 104", "Petalburg Woods", "Rustboro City"],
       requiresSteps: ["prologue-oldale-petalburg"],
       priority: "critical",
@@ -283,8 +297,16 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Defeat Roxanne (Stone Badge)",
       summary: "Rustboro Gym — Rock types. Stone Badge enables field Cut (optional).",
       detail:
-        "**Roxanne** leads with Geodude / Nosepass. Water, Grass, and Fighting hit hard. The **Stone Badge** unlocks **Cut** in the overworld if you pick up that HM — Cut is **not** required for the main story.",
+        "**Roxanne** is a Rock specialist. Water, Grass, and Fighting hit hard; Fire / Electric / Flying often bounce.\n\nThe **Stone Badge** unlocks **Cut** in the overworld if you pick up that HM — Cut is **not** required for the main story.",
       locations: ["Rustboro City"],
+      gymPrep: {
+        leaderName: "Roxanne",
+        specialtyTypes: ["Rock"],
+        recommendedTypes: ["Water", "Grass", "Fighting"],
+        cautionTypes: ["Fire", "Electric", "Flying", "Normal"],
+        partyNotes:
+          "Vanilla Emerald: Geodude ×2, Nosepass. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
+      },
       nuzlockeNote: "Gym battles are free XP — still respect your level cap.",
       priority: "critical",
       sortOrder: 20,
@@ -309,7 +331,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Take the letter from Mr. Stone",
       summary: "Devon Corp president gives you a letter for Steven in Dewford.",
       detail:
-        "After the Devon plot in Rustboro (researcher → Devon Corp), speak with **Mr. Stone** upstairs. He gives you a **letter** to deliver to **Steven** in **Dewford**. This is the gate into the Dewford chapter.",
+        "After the Devon plot in Rustboro (researcher → Devon Corp), speak with **Mr. Stone** upstairs. He gives you a **letter** to deliver to **Steven** in **Dewford**. This is the gate into the Dewford chapter.\n\nIf the letter isn’t offered yet: finish the Devon researcher rescue, return the stolen parts upstairs, then talk to Mr. Stone.",
       locations: ["Rustboro City"],
       keyItems: ["Letter"],
       requiresSteps: ["rustboro-roxanne"],
@@ -350,9 +372,17 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Defeat Brawly (Knuckle Badge)",
       summary: "Dewford Gym — Fighting types. Knuckle Badge enables Flash.",
       detail:
-        "**Brawly** uses Machop / Makuhita. Flying, Psychic, and Ghost are your friends. The **Knuckle Badge** lets you use **Flash** in the overworld.",
+        "**Brawly** is a Fighting specialist. Flying, Psychic, and Ghost are your friends; Normal / Rock / Steel / Ice / Dark often take heavy hits.\n\nThe **Knuckle Badge** lets you use **Flash** in the overworld.",
       locations: ["Dewford Town"],
       requiresBadges: ["gym-1"],
+      gymPrep: {
+        leaderName: "Brawly",
+        specialtyTypes: ["Fighting"],
+        recommendedTypes: ["Flying", "Psychic", "Ghost"],
+        cautionTypes: ["Normal", "Rock", "Steel", "Ice", "Dark"],
+        partyNotes:
+          "Vanilla Emerald: Machop, Meditite, Makuhita. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
+      },
       priority: "critical",
       sortOrder: 20,
     },
@@ -374,9 +404,9 @@ export const EMERALD_GUIDE: GuideDocument = {
       id: "mauville-slateport-museum",
       chapterId: "mauville",
       title: "Progress the Slateport Museum plot",
-      summary: "Team Magma/Aqua at the Museum — then head north to Mauville.",
+      summary: "Team Magma/Aqua at the Oceanic Museum — then head north to Mauville.",
       detail:
-        "In **Slateport**, follow the Team Magma/Aqua scene at the **Oceanic Museum**. Afterward continue **north on Route 110** toward **Mauville City** (bike path / grassy side — your choice).",
+        "In **Slateport**:\n\n1. Visit the **Oceanic Museum** (often after talking to the Team Magma/Aqua grunt blocking Dock / museum access).\n2. Clear the museum confrontation upstairs.\n3. Exit and continue **north on Route 110** toward **Mauville City**.\n\nBike path vs grassy side is your choice — both reach Mauville. Watch for the rival battle on the path if you take that route.",
       locations: ["Slateport City", "Route 110", "Mauville City"],
       requiresBadges: ["gym-1", "gym-2"],
       priority: "critical",
@@ -387,8 +417,18 @@ export const EMERALD_GUIDE: GuideDocument = {
       chapterId: "mauville",
       title: "Defeat Wattson (Dynamo Badge)",
       summary: "Mauville Gym — Electric. Dynamo Badge unlocks Rock Smash.",
+      detail:
+        "**Wattson** is an Electric specialist. **Ground** is ideal; Grass / Dragon / Electric often shrug shocks. Water and Flying usually hate this gym.\n\nSolve the electric-fence switches to reach him. The **Dynamo Badge** unlocks **Rock Smash** outdoors.",
       locations: ["Mauville City"],
       requiresBadges: ["gym-1", "gym-2"],
+      gymPrep: {
+        leaderName: "Wattson",
+        specialtyTypes: ["Electric"],
+        recommendedTypes: ["Ground"],
+        cautionTypes: ["Water", "Flying"],
+        partyNotes:
+          "Vanilla Emerald: Voltorb, Electrike, Magneton, Manectric. Magneton is Steel/Electric — Ground still hits hard. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
+      },
       priority: "critical",
       sortOrder: 20,
     },
@@ -407,16 +447,62 @@ export const EMERALD_GUIDE: GuideDocument = {
       priority: "critical",
       sortOrder: 30,
     },
+
+    // —— Fallarbor / Meteor Falls ——
     {
-      id: "mauville-to-desert",
-      chapterId: "mauville",
-      title: "Push west toward Fallarbor / Mt. Chimney",
-      summary: "Route 111 desert needs Go-Goggles from later — follow the story north-west.",
+      id: "fallarbor-to-fallarbor",
+      chapterId: "fallarbor",
+      title: "Reach Fallarbor via Route 111 / 113",
+      summary:
+        "Go north around the desert (don’t need Go-Goggles yet) — Fallarbor is west of Route 113 ash.",
       detail:
-        "From Mauville, the story pulls you toward **Route 111**, **Fallarbor**, and **Mt. Chimney**. You will receive **Go-Goggles** before you can fully cross the desert sands.",
-      locations: ["Route 111", "Fallarbor Town", "Mt. Chimney"],
-      requiresSteps: ["mauville-wattson"],
-      priority: "recommended",
+        "From **Mauville**, head **north on Route 111**. You can walk the **grassy / mountainous path around the desert** without Go-Goggles — the deep sand in the middle is blocked until later.\n\nContinue through **Route 112** (cable car area — skip the summit for now) → **Fiery Path** or around → **Route 113** (ash) → **Fallarbor Town**.\n\nTalk to people in Fallarbor (including **Lanette’s house** south of town) so the Meteor Falls plot is ready.",
+      locations: [
+        "Route 111",
+        "Route 112",
+        "Fiery Path",
+        "Route 113",
+        "Fallarbor Town",
+      ],
+      requiresBadges: ["gym-1", "gym-2", "gym-3"],
+      priority: "critical",
+      sortOrder: 10,
+    },
+    {
+      id: "fallarbor-meteor-falls",
+      chapterId: "fallarbor",
+      title: "Stop Team Magma/Aqua at Meteor Falls",
+      summary: "Route 114 west of Fallarbor — cave confrontation, then return to town.",
+      detail:
+        "From **Fallarbor**, go **south/west on Route 114** into **Meteor Falls**. Follow the story confrontation with Team Magma/Aqua inside.\n\nAfter the event, return toward Fallarbor. This plot is easy to miss if you rush the cable car to Mt. Chimney first — do Meteor Falls before (or right as) you push the summit arc.",
+      locations: ["Route 114", "Meteor Falls", "Fallarbor Town"],
+      requiresSteps: ["fallarbor-to-fallarbor"],
+      priority: "critical",
+      sortOrder: 20,
+    },
+    {
+      id: "fallarbor-go-goggles",
+      chapterId: "fallarbor",
+      title: "Pick up Go-Goggles",
+      summary: "Desert entrance on Route 111 — required before crossing the sands.",
+      detail:
+        "After the Meteor Falls events, talk to the researcher / man at the **Route 111 desert entrance**. He gives **Go-Goggles**, which let you walk the desert sand.\n\nYou need these before any “cross the desert” routing later (and for desert encounters). You do **not** need them just to take the **cable car** up Mt. Chimney from Route 112.",
+      locations: ["Route 111", "Fallarbor Town"],
+      keyItems: ["Go-Goggles"],
+      requiresSteps: ["fallarbor-meteor-falls"],
+      priority: "critical",
+      sortOrder: 30,
+    },
+    {
+      id: "fallarbor-to-cable-car",
+      chapterId: "fallarbor",
+      title: "Take the cable car toward Mt. Chimney",
+      summary: "Route 112 cable car — next chapter resolves the summit fight.",
+      detail:
+        "Return to **Route 112** and ride the **cable car** up **Mt. Chimney**. The Team Magma/Aqua summit battle and Jagged Pass down to Lavaridge are the next chapter.",
+      locations: ["Route 112", "Mt. Chimney"],
+      requiresSteps: ["fallarbor-go-goggles"],
+      priority: "critical",
       sortOrder: 40,
     },
 
@@ -425,7 +511,9 @@ export const EMERALD_GUIDE: GuideDocument = {
       id: "lavaridge-mt-chimney",
       chapterId: "lavaridge",
       title: "Resolve Mt. Chimney",
-      summary: "Cable car up Mt. Chimney — Team Magma/Aqua confrontation.",
+      summary: "Summit confrontation — then Jagged Pass down to Lavaridge.",
+      detail:
+        "On **Mt. Chimney**’s summit, finish the Team Magma/Aqua confrontation. Afterward descend **Jagged Pass** south into **Lavaridge Town**.\n\nHeal up before Flannery — Jagged Pass trainers and the gym come back-to-back for many runs.",
       locations: ["Mt. Chimney", "Jagged Pass", "Lavaridge Town"],
       requiresBadges: ["gym-1", "gym-2", "gym-3"],
       priority: "critical",
@@ -435,22 +523,20 @@ export const EMERALD_GUIDE: GuideDocument = {
       id: "lavaridge-flannery",
       chapterId: "lavaridge",
       title: "Defeat Flannery (Heat Badge)",
-      summary: "Lavaridge Gym — Fire. Heat Badge unlocks Strength.",
+      summary: "Lavaridge Gym — Fire. Heat Badge unlocks Strength outdoors.",
+      detail:
+        "**Flannery** is a Fire specialist. Water, Ground, and Rock are the classic answers; Grass / Bug / Steel / Ice usually melt.\n\nNavigate the basement hole maze to reach her. The **Heat Badge** unlocks **Strength** in the overworld (you should already have the HM from Rusturf).",
       locations: ["Lavaridge Town"],
+      gymPrep: {
+        leaderName: "Flannery",
+        specialtyTypes: ["Fire"],
+        recommendedTypes: ["Water", "Ground", "Rock"],
+        cautionTypes: ["Grass", "Bug", "Steel", "Ice"],
+        partyNotes:
+          "Vanilla Emerald: Numel, Slugma, Camerupt, Torkoal. Watch Drought / sunny Overheat turns. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
+      },
       priority: "critical",
       sortOrder: 20,
-    },
-    {
-      id: "lavaridge-go-goggles",
-      chapterId: "lavaridge",
-      title: "Pick up Go-Goggles",
-      summary: "Required to cross Route 111 desert toward Fortree later.",
-      detail:
-        "After the Mt. Chimney events / Flannery arc, make sure you have the **Go-Goggles** from the desert storyline before you need to cross **Route 111**’s sand.",
-      locations: ["Route 111", "Lavaridge Town"],
-      keyItems: ["Go-Goggles"],
-      priority: "critical",
-      sortOrder: 30,
     },
 
     // —— Petalburg Gym ——
@@ -460,9 +546,17 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Defeat Norman (Balance Badge)",
       summary: "Return to Petalburg Gym — Dad unlocks after four badges.",
       detail:
-        "With four badges, **Norman** will finally battle you in **Petalburg Gym**. Normal types — Fighting is ideal. The **Balance Badge** unlocks **Surf** (HM03 from the Petalburg Gym / Wally’s dad chain depending on timing — grab Surf when offered in the Petalburg area / Route 119 story).",
+        "With **four badges**, return to **Petalburg Gym**. Clear the room trainers (each door needs a win) before **Norman**.\n\nNormal types — Fighting is ideal; Rock / Steel also chip well. Slaking’s Truant is the famous turn pattern — punish the loaf turns.",
       locations: ["Petalburg City"],
       requiresBadges: ["gym-1", "gym-2", "gym-3", "gym-4"],
+      gymPrep: {
+        leaderName: "Norman",
+        specialtyTypes: ["Normal"],
+        recommendedTypes: ["Fighting"],
+        cautionTypes: ["Ghost"],
+        partyNotes:
+          "Vanilla Emerald: Spinda, Vigoroth, Linoone, Slaking. Ghost can’t touch Normal; Fighting is the clean answer. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
+      },
       priority: "critical",
       sortOrder: 10,
     },
@@ -472,7 +566,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Get Surf",
       summary: "HM03 Surf — required for almost everything after Norman.",
       detail:
-        "Obtain **HM03 Surf** from the story rewards around Petalburg / Wally’s family after Norman. Teach it and Surf north from Petalburg / along Route 105–108 toward later areas as needed — most critically, Surf opens **Route 118/119** toward Fortree.",
+        "After Norman, obtain **HM03 Surf** from **Wally’s father** in the Petalburg Gym area (story gift once Dad is beaten).\n\nIn Modern Emerald, field Surf works from the bag. Surf opens **Route 118/119** toward Fortree and nearly every late-game water route.",
       locations: ["Petalburg City"],
       hms: ["Surf"],
       requiresSteps: ["petalburg-norman"],
@@ -482,12 +576,27 @@ export const EMERALD_GUIDE: GuideDocument = {
 
     // —— Fortree ——
     {
+      id: "fortree-route-118",
+      chapterId: "fortree",
+      title: "Surf east from Route 118",
+      summary: "From Mauville’s east exit — Surf the river toward Route 119.",
+      detail:
+        "With Surf, leave **Mauville** east onto **Route 118**. Surf the water segments and continue north onto **Route 119** (long grass + weather plot).",
+      locations: ["Route 118", "Route 119"],
+      requiresBadges: ["gym-1", "gym-2", "gym-3", "gym-4", "gym-5"],
+      hms: ["Surf"],
+      priority: "critical",
+      sortOrder: 5,
+    },
+    {
       id: "fortree-weather-institute",
       chapterId: "fortree",
       title: "Clear the Weather Institute",
       summary: "Route 119 — Team Magma/Aqua; Castform reward; then Fortree.",
+      detail:
+        "Midway up **Route 119**, enter the **Weather Institute**. Clear Team Magma/Aqua floors, then talk to the scientists for **Castform** (optional catch / gift rules per season).\n\nExit north toward **Fortree City**. Your rival rematch on Route 119 is tied to receiving **Fly** after Winona — see the Fly step.",
       locations: ["Route 119", "Fortree City"],
-      requiresBadges: ["gym-1", "gym-2", "gym-3", "gym-4", "gym-5"],
+      requiresSteps: ["fortree-route-118"],
       priority: "critical",
       sortOrder: 10,
     },
@@ -496,7 +605,17 @@ export const EMERALD_GUIDE: GuideDocument = {
       chapterId: "fortree",
       title: "Defeat Winona (Feather Badge)",
       summary: "Fortree Gym — Flying. Feather Badge unlocks Fly.",
+      detail:
+        "**Winona** is a Flying specialist. Electric, Ice, and Rock are the usual answers; Ground moves whiff. Reach her via the spinning-bird gym puzzle (talk to the gym guide if you’re stuck on rotating platforms).",
       locations: ["Fortree City"],
+      gymPrep: {
+        leaderName: "Winona",
+        specialtyTypes: ["Flying"],
+        recommendedTypes: ["Electric", "Ice", "Rock"],
+        cautionTypes: ["Ground", "Grass", "Fighting", "Bug"],
+        partyNotes:
+          "Vanilla Emerald: Swablu, Tropius, Pelipper, Skarmory, Altaria. Skarmory is Steel/Flying — Fire / Electric / Fighting help. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
+      },
       priority: "critical",
       sortOrder: 20,
     },
@@ -506,7 +625,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Get Fly",
       summary: "HM02 Fly from Route 119 rival rematch / weather plot rewards.",
       detail:
-        "After the Weather Institute events, your rival gives **HM02 Fly** on **Route 119**. You need the **Feather Badge** to use it outdoors.",
+        "After the Weather Institute events and Winona, your rival gives **HM02 Fly** on **Route 119**. You need the **Feather Badge** to use it outdoors.",
       locations: ["Route 119", "Fortree City"],
       hms: ["Fly"],
       requiresSteps: ["fortree-winona"],
@@ -520,6 +639,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       chapterId: "mossdeep",
       title: "Climb Mt. Pyre",
       summary: "Team Magma/Aqua steal the Red/Blue Orb — chase the plot to Lilycove.",
+      detail:
+        "From Fortree / Route 120–121, enter **Mt. Pyre**. Climb to the summit for the Team Magma/Aqua orb theft cutscene, then head to **Lilycove City** to continue the chase.",
       locations: ["Route 121", "Mt. Pyre", "Lilycove City"],
       priority: "critical",
       sortOrder: 10,
@@ -528,7 +649,9 @@ export const EMERALD_GUIDE: GuideDocument = {
       id: "mossdeep-hideout",
       chapterId: "mossdeep",
       title: "Clear the Team Magma/Aqua hideout",
-      summary: "Lilycove harbor hideout — then sail / Surf to Mossdeep.",
+      summary: "Lilycove harbor hideout — then Surf / sail toward Mossdeep.",
+      detail:
+        "In **Lilycove**, enter the Team Magma/Aqua hideout via the harbor / cove entrance (story-marked after Mt. Pyre). Clear the warp maze and bosses, then continue across **Route 124** toward **Mossdeep City**.",
       locations: ["Lilycove City", "Route 124", "Mossdeep City"],
       requiresSteps: ["mossdeep-mt-pyre"],
       priority: "critical",
@@ -539,7 +662,17 @@ export const EMERALD_GUIDE: GuideDocument = {
       chapterId: "mossdeep",
       title: "Defeat Tate & Liza (Mind Badge)",
       summary: "Mossdeep Gym — dual Psychic battle. Mind Badge unlocks Dive.",
+      detail:
+        "**Tate & Liza** is a **Double Battle** Psychic gym. Dark, Ghost, and Bug pressure them; Fighting / Poison often struggle.\n\nBring two mons that can fight at once. The **Mind Badge** unlocks **Dive** outdoors.",
       locations: ["Mossdeep City"],
+      gymPrep: {
+        leaderName: "Tate & Liza",
+        specialtyTypes: ["Psychic"],
+        recommendedTypes: ["Dark", "Ghost", "Bug"],
+        cautionTypes: ["Fighting", "Poison"],
+        partyNotes:
+          "Vanilla Emerald (Doubles): Claydol, Xatu, Lunatone, Solrock. Wide coverage — prioritize speed control. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
+      },
       priority: "critical",
       sortOrder: 30,
     },
@@ -549,7 +682,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Get Dive",
       summary: "HM08 Dive from Steven’s house in Mossdeep — required for Seafloor Cavern.",
       detail:
-        "Visit **Steven’s house** in **Mossdeep** after the gym / space center events to receive **HM08 Dive**. You need the **Mind Badge** to Dive in the overworld. Dark water patches on the routes around Mossdeep lead to **Seafloor Cavern**.",
+        "Visit **Steven’s house** in **Mossdeep** after the gym / space center events to receive **HM08 Dive**. You need the **Mind Badge** to Dive in the overworld. Dark water patches on the routes around Mossdeep lead to **Seafloor Cavern**.\n\nIf Dive isn’t offered yet, finish the **Space Center** Magma/Aqua raid in Mossdeep first.",
       locations: ["Mossdeep City"],
       hms: ["Dive"],
       requiresSteps: ["mossdeep-tate-liza"],
@@ -563,6 +696,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       chapterId: "sootopolis",
       title: "Enter Seafloor Cavern",
       summary: "Dive on Route 128 — confront Team Magma/Aqua and awaken the legendaries.",
+      detail:
+        "Surf to the dark water on **Route 128**, **Dive**, and enter **Seafloor Cavern**. Traverse the Strength / current puzzles to the legendary awakening fight with Team Magma/Aqua.",
       locations: ["Route 128", "Seafloor Cavern"],
       hms: ["Dive"],
       priority: "critical",
@@ -573,6 +708,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       chapterId: "sootopolis",
       title: "Calm Sootopolis (Cave of Origin)",
       summary: "Meet Wallace/Juan and stop Kyogre/Groudon in Cave of Origin.",
+      detail:
+        "After Seafloor Cavern, you’re brought to **Sootopolis**. Talk to **Wallace** / the gym gatekeepers, then enter the **Cave of Origin** to stop the legendary crisis. Gym access opens once the city is calm.",
       locations: ["Sootopolis City", "Cave of Origin"],
       requiresSteps: ["sootopolis-seafloor"],
       priority: "critical",
@@ -581,9 +718,19 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "sootopolis-juan",
       chapterId: "sootopolis",
-      title: "Defeat Juan / Wallace (Rain Badge)",
+      title: "Defeat Juan (Rain Badge)",
       summary: "Sootopolis Gym — Water. Rain Badge unlocks Waterfall.",
+      detail:
+        "**Juan** is the Water specialist (Emerald / Modern Emerald). Electric and Grass are the clean answers; Fire / Rock / Ground often hate rain teams.\n\nIce-themed gym puzzle — slide carefully. The **Rain Badge** unlocks **Waterfall** outdoors.",
       locations: ["Sootopolis City"],
+      gymPrep: {
+        leaderName: "Juan",
+        specialtyTypes: ["Water"],
+        recommendedTypes: ["Electric", "Grass"],
+        cautionTypes: ["Fire", "Rock", "Ground"],
+        partyNotes:
+          "Vanilla Emerald: Luvdisc, Whiscash, Sealeo, Crawdaunt, Kingdra. Whiscash is Water/Ground (Electric immune); Crawdaunt is Water/Dark. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
+      },
       priority: "critical",
       sortOrder: 30,
     },
@@ -593,7 +740,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Get Waterfall",
       summary: "HM07 Waterfall — needed for Victory Road’s water climbs.",
       detail:
-        "After the Rain Badge, obtain **HM07 Waterfall** (story gift in the Sootopolis / Wallace chain) before tackling **Victory Road**.",
+        "After the Rain Badge, obtain **HM07 Waterfall** from the story gift in the Sootopolis / Wallace chain before tackling **Victory Road**.",
       locations: ["Sootopolis City", "Ever Grande City", "Victory Road"],
       hms: ["Waterfall"],
       requiresSteps: ["sootopolis-juan"],
@@ -607,6 +754,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       chapterId: "elite-four",
       title: "Clear Victory Road",
       summary: "Ever Grande — Strength, Rock Smash, Waterfall, and Surf puzzles.",
+      detail:
+        "Enter **Victory Road** from **Ever Grande**. You’ll need **Surf**, **Strength**, **Rock Smash**, and **Waterfall** for the full path. Bring a balanced team — trainers here are a warm-up for the League.",
       locations: ["Ever Grande City", "Victory Road"],
       hms: ["Strength", "Rock Smash", "Waterfall", "Surf"],
       priority: "critical",
@@ -618,8 +767,16 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Beat the Elite Four & Champion",
       summary: "Sidney → Phoebe → Glacia → Drake → Wallace (Champion).",
       detail:
-        "Prepare a balanced party. You heal between Elite Four members only if you leave — treat it as one long gauntlet. Mark **Championship** on your board when Wallace falls.",
+        "Order: **Sidney** (Dark) → **Phoebe** (Ghost) → **Glacia** (Ice) → **Drake** (Dragon) → **Wallace** (Water, Champion).\n\nPrepare a balanced party. You heal between members only if you leave — treat it as one long gauntlet. Mark **Championship** on your board when Wallace falls.",
       locations: ["Ever Grande City"],
+      gymPrep: {
+        leaderName: "Wallace (Champion)",
+        specialtyTypes: ["Water"],
+        recommendedTypes: ["Electric", "Grass"],
+        cautionTypes: ["Fire", "Rock", "Ground"],
+        partyNotes:
+          "Full League gauntlet before Wallace. Pack answers for Dark, Ghost, Ice, Dragon, and Water. Modern Emerald Normal keeps core parties; Hard+ may buff them.",
+      },
       priority: "critical",
       sortOrder: 20,
     },

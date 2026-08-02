@@ -1,6 +1,23 @@
 /** Curated story-guide content for “what do I do next?” (not 100% completion). */
 
+import type { PokemonType } from "@/lib/pokemon-types";
+
 export type GuideStepPriority = "critical" | "recommended" | "optional";
+
+/** Beginner-friendly gym prep attached to gym-leader steps. */
+export type GuideGymPrep = {
+  leaderName: string;
+  specialtyTypes: PokemonType[];
+  /** Types that generally hit the gym hard. */
+  recommendedTypes: PokemonType[];
+  /** Types that often struggle into this gym’s specialty. */
+  cautionTypes?: PokemonType[];
+  /**
+   * Short party note. Vanilla Emerald baseline — Modern Emerald Normal keeps
+   * gym parties; Hard+ may differ.
+   */
+  partyNotes: string;
+};
 
 export type GuideStep = {
   id: string;
@@ -20,6 +37,8 @@ export type GuideStep = {
   hms?: string[];
   keyItems?: string[];
   nuzlockeNote?: string;
+  /** Shown on gym-leader steps for squad type matching. */
+  gymPrep?: GuideGymPrep;
   priority: GuideStepPriority;
   sortOrder: number;
 };
