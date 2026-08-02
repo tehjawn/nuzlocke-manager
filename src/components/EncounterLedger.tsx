@@ -43,6 +43,9 @@ export function EncounterLedger({ slug, groups }: EncounterLedgerProps) {
                     title={`${label} · ${claim.trainerHandle} · ${slotLabel(claim.slot)}${
                       claim.isAlive ? "" : " · fallen"
                     }`}
+                    aria-label={`${label} · ${claim.trainerHandle}${
+                      claim.isAlive ? "" : " · fallen"
+                    }`}
                     className="pressable flex h-full flex-col items-center gap-0.5 rounded-md border border-frame/30 bg-surface/40 px-1 py-1.5 text-center hover:border-interactive/40 hover:bg-interactive-soft/30"
                   >
                     <PokemonSpriteImage

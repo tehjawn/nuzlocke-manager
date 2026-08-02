@@ -104,15 +104,36 @@ export function EncounterSeasonView({
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium">
-          <input
-            type="checkbox"
-            checked={showMissing}
-            onChange={(event) => setShowMissing(event.target.checked)}
-            className="size-4 rounded border-frame accent-[var(--accent)]"
-          />
-          Show missing Modern Emerald dex
-        </label>
+        <div
+          role="group"
+          aria-label="Encounter ledger view"
+          className="inline-flex rounded-[var(--radius-sm)] border border-frame/50 bg-surface/40 p-0.5"
+        >
+          <button
+            type="button"
+            aria-pressed={!showMissing}
+            onClick={() => setShowMissing(false)}
+            className={`pressable rounded-[calc(var(--radius-sm)-2px)] border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+              !showMissing
+                ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
+                : "border-transparent text-muted hover:bg-surface"
+            }`}
+          >
+            Route claims
+          </button>
+          <button
+            type="button"
+            aria-pressed={showMissing}
+            onClick={() => setShowMissing(true)}
+            className={`pressable rounded-[calc(var(--radius-sm)-2px)] border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+              showMissing
+                ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
+                : "border-transparent text-muted hover:bg-surface"
+            }`}
+          >
+            Missing dex
+          </button>
+        </div>
         <Link
           href={toolsHref(slug, "bounty")}
           className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
@@ -342,6 +363,7 @@ function MissingModernEmeraldGrid({
             <Link
               href={toolsHref(slug, "pokedex", { id: entry.pokedexId })}
               title={entry.species}
+              aria-label={`${entry.species} (#${String(entry.pokedexId).padStart(3, "0")})`}
               className="pressable flex flex-col items-center gap-0.5 rounded-md border border-frame/30 bg-surface/50 px-1 py-1.5 hover:border-interactive/40 hover:bg-interactive-soft/40"
             >
               <PokemonSpriteImage

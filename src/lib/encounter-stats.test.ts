@@ -312,6 +312,7 @@ test("personalMissingModernEmerald is relative to one trainer board", () => {
   assert.ok(ashGaps.some((entry) => entry.pokedexId === 255));
   assert.ok(!ashGaps.some((entry) => entry.pokedexId === 252));
   assert.equal(ashGaps.length, modernEmeraldDexTotal() - 1);
+  assert.deepEqual(personalMissingModernEmerald(trainers, "missing"), []);
 });
 
 test("encounterSeasonHighlights merges species with and without pokedexId", () => {

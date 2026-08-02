@@ -255,7 +255,7 @@ export function personalMissingModernEmerald(
   trainerId: string,
 ): ModernEmeraldSpeciesRef[] {
   const trainer = trainers.find((t) => t.id === trainerId);
-  if (!trainer) return modernEmeraldNationalIds().map(modernEmeraldSpeciesRef);
+  if (!trainer) return [];
   const mine = trainerTouchedPokedexIds(trainer);
   return modernEmeraldNationalIds()
     .filter((id) => !mine.has(id))

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -38,7 +37,6 @@ export function BountyHunterView({
   myTrainerId = null,
   initialMode = "open",
 }: BountyHunterViewProps) {
-  const router = useRouter();
   const [mode, setMode] = useState<BountyMode>(
     parseBountyMode(initialMode),
   );
@@ -65,9 +63,11 @@ export function BountyHunterView({
 
   function selectMode(next: BountyMode) {
     setMode(next);
-    router.replace(toolsHref(slug, "bounty", { mode: next }), {
-      scroll: false,
-    });
+    // Keep the shareable ?mode= URL without a tools-route RSC refetch.
+    const url = new URL(window.location.href);
+    url.searchParams.set("tool", "bounty");
+    url.searchParams.set("mode", next);
+    window.history.replaceState(window.history.state, "", url.href);
   }
 
   const q = query.trim().toLowerCase();
@@ -85,7 +85,7 @@ export function BountyHunterView({
   return (
     <div className="space-y-4">
       <div
-        role="tablist"
+        role="group"
         aria-label="Bounty Hunter modes"
         className="flex flex-wrap gap-1.5"
       >
@@ -95,8 +95,7 @@ export function BountyHunterView({
             <button
               key={entry.id}
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-pressed={active}
               onClick={() => selectMode(entry.id)}
               className={`pressable rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
                 active
@@ -217,6 +216,7 @@ function SpeciesGrid({
                 <Link
                   href={toolsHref(slug, "pokedex", { id: entry.pokedexId })}
                   title={entry.species}
+                  aria-label={`${entry.species} (#${String(entry.pokedexId).padStart(3, "0")})`}
                   className="pressable group flex h-full flex-col items-center gap-1 rounded-md border border-frame/30 bg-surface/50 px-1.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/40"
                 >
                   <PokemonSpriteImage
@@ -291,8 +291,9 @@ function ExclusivesList({
                     {entry.species}
                   </span>
                   <span className="text-[11px] text-muted">
-                    #{String(entry.pokedexId).padStart(3, "0")} · only @
-                    {entry.trainerHandle} ({entry.slot === "MAIN" ? "Main" : "Reserve"})
+                    #{String(entry.pokedexId).padStart(3, "0")} · only{" "}
+                    {`@${entry.trainerHandle}`} (
+                    {entry.slot === "MAIN" ? "Main" : "Reserve"})
                   </span>
                 </span>
               </Link>
