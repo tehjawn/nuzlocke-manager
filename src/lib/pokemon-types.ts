@@ -42,3 +42,56 @@ export const TYPE_COLORS: Record<PokemonType, string> = {
   Dark: "#705848",
   Fairy: "#ee99ac",
 };
+
+const NEAR_BLACK = "#111827";
+const WHITE = "#ffffff";
+
+function parseHexRgb(hex: string): [number, number, number] {
+  const raw = hex.replace("#", "").trim();
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  const n = Number.parseInt(full, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function srgbChannelToLinear(channel: number): number {
+  const s = channel / 255;
+  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+}
+
+/** WCAG relative luminance for a hex color (`#rgb` / `#rrggbb`). */
+export function relativeLuminance(hex: string): number {
+  const [r, g, b] = parseHexRgb(hex);
+  return (
+    0.2126 * srgbChannelToLinear(r) +
+    0.7152 * srgbChannelToLinear(g) +
+    0.0722 * srgbChannelToLinear(b)
+  );
+}
+
+function contrastRatio(l1: number, l2: number): number {
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * Near-black or white ink — whichever contrasts better against `bgHex`.
+ * Fixes unreadable white-on-Electric / Ground / Ice type chips.
+ */
+export function contrastInkForHex(bgHex: string): typeof NEAR_BLACK | typeof WHITE {
+  const bg = relativeLuminance(bgHex);
+  const vsWhite = contrastRatio(bg, relativeLuminance(WHITE));
+  const vsBlack = contrastRatio(bg, relativeLuminance(NEAR_BLACK));
+  return vsBlack >= vsWhite ? NEAR_BLACK : WHITE;
+}
+
+/** Text color for a type chip filled with {@link TYPE_COLORS}. */
+export function typeBadgeInk(type: PokemonType): typeof NEAR_BLACK | typeof WHITE {
+  return contrastInkForHex(TYPE_COLORS[type]);
+}
