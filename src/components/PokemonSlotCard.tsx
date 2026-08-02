@@ -6,6 +6,7 @@ import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
+import { specimenIsCracked } from "@/lib/iv-quality";
 import { moveTypeWashStyle } from "@/lib/move-meta";
 import { resolveMoveName } from "@/lib/move-names";
 import {
@@ -106,6 +107,15 @@ export function PokemonSlotCard({
       ? pokemon.moves.map((m) => m.trim()).filter(Boolean)
       : [];
   const showStatColumn = Boolean(battle || ivFallback);
+  const cracked =
+    showCompetitiveDetails &&
+    !speciesOnly &&
+    specimenIsCracked({
+      ivs: pokemon.ivs,
+      evs: isEmptySpread(pokemon.evs) ? null : pokemon.evs,
+      battle,
+      battleMax,
+    });
 
   if (speciesOnly) {
     const encounter = (
@@ -205,11 +215,16 @@ export function PokemonSlotCard({
   }
 
   const body = (
-    <div
-      className={`flex h-full flex-col gap-3 rounded-lg border border-frame bg-surface p-3 ${
-        memorial ? "opacity-90" : ""
-      } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
-    >
+    <div className={cracked ? "pokemon-cracked-ring h-full" : "h-full"}>
+      <div
+        className={`flex h-full flex-col gap-3 rounded-lg border bg-surface p-3 ${
+          cracked ? "border-transparent" : "border-frame"
+        } ${memorial ? "opacity-90" : ""} ${
+          looksInteractive
+            ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30"
+            : ""
+        }`}
+      >
       <div className="flex shrink-0 items-start gap-3">
         <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-frame bg-surface-2">
           <PokemonSpriteImage
@@ -371,6 +386,7 @@ export function PokemonSlotCard({
           </p>
         </div>
       ) : null}
+      </div>
     </div>
   );
 

@@ -4,6 +4,7 @@ import {
   classifyBattleStat,
   classifyEv,
   classifyIv,
+  specimenIsCracked,
   summarizeBattleStats,
   summarizeEvs,
   summarizeIvs,
@@ -110,4 +111,25 @@ test("summarizeBattleStats highlights near-max rows", () => {
   assert.deepEqual(summary.strong, ["atk"]);
   assert.deepEqual(summary.dump, ["def"]);
   assert.match(summary.headline ?? "", /Near-max/i);
+});
+
+test("specimenIsCracked detects strong IV or EV spreads", () => {
+  assert.equal(
+    specimenIsCracked({
+      ivs: { hp: 31, atk: 31, def: 31, spa: 10, spd: 10, spe: 10 },
+    }),
+    true,
+  );
+  assert.equal(
+    specimenIsCracked({
+      evs: { hp: 0, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },
+    }),
+    true,
+  );
+  assert.equal(
+    specimenIsCracked({
+      ivs: { hp: 15, atk: 16, def: 14, spa: 18, spd: 12, spe: 10 },
+    }),
+    false,
+  );
 });

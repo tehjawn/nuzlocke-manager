@@ -657,6 +657,53 @@ button:disabled,
   }
 }
 
+/* Cracked specimen cards — quiet gold revolving edge (IVs / EVs / near-max stats) */
+@property --cracked-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.pokemon-cracked-ring {
+  --cracked-angle: 0deg;
+
+  position: relative;
+  border-radius: calc(var(--radius) + 2px);
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--cracked-angle),
+    color-mix(in srgb, var(--accent-2) 12%, transparent),
+    color-mix(in srgb, var(--accent-2) 72%, transparent),
+    color-mix(in srgb, var(--accent) 35%, transparent),
+    color-mix(in srgb, var(--accent-2) 12%, transparent),
+    color-mix(in srgb, var(--accent-2) 72%, transparent),
+    color-mix(in srgb, var(--accent-2) 12%, transparent)
+  );
+  animation: pokemon-cracked-revolve 10s linear infinite;
+}
+
+.pokemon-cracked-ring > * {
+  border-radius: var(--radius);
+}
+
+@keyframes pokemon-cracked-revolve {
+  to {
+    --cracked-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pokemon-cracked-ring {
+    animation: none;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent-2) 55%, var(--frame)),
+      color-mix(in srgb, var(--accent) 35%, var(--frame)),
+      color-mix(in srgb, var(--accent-2) 55%, var(--frame))
+    );
+  }
+}
+
 .gba-frame-menu::before,
 .gba-frame:not([data-card-bg])::before {
   content: none;

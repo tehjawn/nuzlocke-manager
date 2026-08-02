@@ -198,3 +198,20 @@ export function summarizeBattleStats(
     withStrong: 2,
   });
 }
+
+/**
+ * True when IVs, EVs, or battle stats vs max look unusually strong.
+ * Used for board-card chrome (e.g. cracked revolving border).
+ */
+export function specimenIsCracked(input: {
+  ivs?: StatSpread | null;
+  evs?: StatSpread | null;
+  battle?: StatSpread | null;
+  battleMax?: StatSpread | null;
+}): boolean {
+  return Boolean(
+    summarizeIvs(input.ivs)?.cracked ||
+      summarizeEvs(input.evs)?.cracked ||
+      summarizeBattleStats(input.battle, input.battleMax)?.cracked,
+  );
+}
