@@ -235,7 +235,7 @@ function GymPrepDetails({
         matches.length > 0 ? (
           <div className="space-y-2 border-t border-frame/60 pt-2">
             <p className="text-[0.7rem] font-semibold text-muted">
-              On {trainer.handle}&apos;s Main / Reserve
+              Effective Pokémon you can use
             </p>
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {matches.map(({ entry, matchedTypes }) => {
