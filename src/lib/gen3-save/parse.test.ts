@@ -154,6 +154,24 @@ test("box / PC Pokémon derive level from experience (issue 135)", async () => {
   assert.equal(result.party[0]?.level, 32);
 });
 
+test("decrypts Pokédollars from Afterplay .state (issue 146)", async () => {
+  const buf = new Uint8Array(readFileSync(FIXTURE_PUNCT_NICK));
+  const result = await parsePokemonSaveAsync(buf);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.equal(result.money.reliable, true);
+  assert.equal(result.money.amount, 52070);
+
+  const early = await parsePokemonSaveAsync(
+    new Uint8Array(readFileSync(FIXTURE_114)),
+  );
+  assert.equal(early.ok, true);
+  if (!early.ok) return;
+  assert.equal(early.money.reliable, true);
+  assert.equal(early.money.amount, 18196);
+});
+
 test("party survives nicknames with ♂♀ and Western accents", async () => {
   const raw = new Uint8Array(readFileSync(FIXTURE_PUNCT_NICK));
   const { header } = inflateRzipEwram(raw);
