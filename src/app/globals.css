@@ -817,8 +817,8 @@ button:disabled,
 }
 
 .pokemon-catch-ring--shit:hover {
-  --catch-bleed: 16%;
-  --catch-bleed-soft: 7%;
+  --catch-bleed: 12%;
+  --catch-bleed-soft: 5%;
   border-color: color-mix(in srgb, var(--muted) 58%, transparent);
   opacity: 1;
   filter: saturate(0.8);
@@ -826,8 +826,8 @@ button:disabled,
 
 .pokemon-catch-ring--good:hover {
   --catch-peak: 48%;
-  --catch-bleed: 30%;
-  --catch-bleed-soft: 14%;
+  --catch-bleed: 22%;
+  --catch-bleed-soft: 10%;
   filter: saturate(1.08);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--interactive) 28%, transparent),
@@ -836,8 +836,8 @@ button:disabled,
 
 .pokemon-catch-ring--great:hover {
   --catch-peak: 58%;
-  --catch-bleed: 36%;
-  --catch-bleed-soft: 18%;
+  --catch-bleed: 27%;
+  --catch-bleed-soft: 13%;
   filter: saturate(1.12);
   box-shadow:
     0 0 0 1px color-mix(in srgb, #a78bfa 38%, transparent),
@@ -846,8 +846,8 @@ button:disabled,
 
 .pokemon-catch-ring--cracked:hover {
   --catch-peak: 68%;
-  --catch-bleed: 42%;
-  --catch-bleed-soft: 22%;
+  --catch-bleed: 31%;
+  --catch-bleed-soft: 16%;
   filter: saturate(1.2);
   box-shadow:
     0 0 0 1px color-mix(in srgb, #e0b04a 48%, transparent),
@@ -855,8 +855,8 @@ button:disabled,
 }
 
 .pokemon-catch-ring--god:hover {
-  --catch-bleed: 38%;
-  --catch-bleed-soft: 18%;
+  --catch-bleed: 28%;
+  --catch-bleed-soft: 13%;
   filter: saturate(1.22);
   box-shadow:
     0 0 0 1px color-mix(in srgb, #4ec4ff 40%, transparent),
@@ -868,9 +868,9 @@ button:disabled,
   background: radial-gradient(
     ellipse 92% 88% at 50% 48%,
     transparent 26%,
-    color-mix(in srgb, #4ec4ff 16%, transparent) 52%,
-    color-mix(in srgb, #c77dff 30%, transparent) 78%,
-    color-mix(in srgb, #ff6ec7 36%, transparent) 100%
+    color-mix(in srgb, #4ec4ff 12%, transparent) 52%,
+    color-mix(in srgb, #c77dff 22%, transparent) 78%,
+    color-mix(in srgb, #ff6ec7 27%, transparent) 100%
   );
 }
 
