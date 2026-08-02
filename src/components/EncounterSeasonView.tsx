@@ -241,11 +241,14 @@ function SpeciesTopCallout({
         {label}
       </p>
       <ol className="mt-2 space-y-1">
-        {entries.map((entry) => (
+        {entries.map((entry, index) => (
           <li
             key={`${entry.species}-${entry.pokedexId ?? "x"}`}
             className="flex items-center gap-2"
           >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface/80 text-sm font-bold tabular-nums text-muted">
+              {index + 1}
+            </span>
             <span className="relative inline-block h-10 w-10 shrink-0">
               <PokemonSpriteImage
                 alt=""
