@@ -194,19 +194,38 @@ const POS_OF_TYPE: readonly (readonly number[])[] = [
   [3, 2, 1, 0],
 ];
 
+/**
+ * Western Gen 3 text (pret pokeemerald charmap). Nickname screen punctuation
+ * must match — a single rejected `!` / `,` / space used to drop a whole party.
+ */
 const GEN3_CHAR: Record<number, string> = {
-  0x7f: " ",
-  0xab: "?",
+  0x00: " ",
+  0x2d: "&",
+  0x2e: "+",
+  0x7f: " ", // some dumps also use 0x7f as space
+  0xab: "!",
   0xac: "?",
-  0xb1: "&",
-  0xb2: "+",
-  0xb8: "!",
+  0xad: ".",
+  0xae: "-",
+  0xb0: "…",
+  0xb1: "“",
+  0xb2: "”",
+  0xb3: "‘",
+  0xb4: "'",
+  0xb5: "♂",
+  0xb6: "♀",
+  0xb8: ",",
+  0xb9: "×",
+  0xba: "/",
 };
 for (let i = 0; i < 10; i++) GEN3_CHAR[0xa1 + i] = String(i);
 for (let i = 0; i < 26; i++) {
   GEN3_CHAR[0xbb + i] = String.fromCharCode(65 + i);
   GEN3_CHAR[0xd5 + i] = String.fromCharCode(97 + i);
 }
+
+/** Characters a Gen 3 nickname / OT string may contain after decode. */
+const GEN3_NICK_RE = /^[A-Za-z0-9 &+.'“”‘'\-♀♂?!…,×/]+$/;
 
 function u16(view: DataView, offset: number): number {
   return view.getUint16(offset, true);
@@ -503,7 +522,7 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
   if (
     nickname.length < 1 ||
     nickname.length > 10 ||
-    !/^[A-Za-z0-9 .'\-♀♂?]+$/.test(nickname)
+    !GEN3_NICK_RE.test(nickname)
   ) {
     return null;
   }
