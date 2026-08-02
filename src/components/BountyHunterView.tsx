@@ -203,25 +203,25 @@ function SpeciesGrid({
           {empty}
         </p>
       ) : (
-        <ul className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
+        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
           {entries.map((entry) => (
             <li key={entry.pokedexId}>
               <Link
                 href={toolsHref(slug, "pokedex", { id: entry.pokedexId })}
                 title={entry.species}
-                className="pressable flex flex-col items-center gap-0.5 rounded-md border border-frame/30 bg-surface/50 px-1 py-1.5 hover:border-interactive/40 hover:bg-interactive-soft/40"
+                className="pressable flex flex-col items-center gap-1 rounded-md border border-frame/30 bg-surface/50 px-1.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/40"
               >
                 <PokemonSpriteImage
                   alt=""
-                  className={`pixelated h-8 w-8 object-contain ${
+                  className={`pixelated h-12 w-12 object-contain sm:h-14 sm:w-14 ${
                     mutedSprites ? "opacity-55 grayscale-[35%]" : ""
                   }`}
-                  height={32}
+                  height={56}
                   pokedexId={entry.pokedexId}
                   species={entry.species}
-                  width={32}
+                  width={56}
                 />
-                <span className="max-w-full truncate text-[9px] font-semibold text-ink">
+                <span className="max-w-full truncate text-[10px] font-semibold text-ink">
                   {entry.species}
                 </span>
                 <span className="text-[9px] font-semibold tabular-nums text-muted">
