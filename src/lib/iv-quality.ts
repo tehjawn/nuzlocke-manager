@@ -19,11 +19,14 @@ export type StatQualitySummary = {
   headline: string | null;
   /** True when the spread looks unusually strong overall. */
   cracked: boolean;
+  /** True when IVs look absurd for a wild catch (subset of cracked). */
+  god: boolean;
 };
 
 export type IvQualitySummary = StatQualitySummary;
 
 const IV_PERFECT = 31;
+const IV_NEAR_PERFECT = 28;
 const IV_STRONG = 25;
 const IV_DUMP = 5;
 
@@ -33,6 +36,11 @@ const EV_STRONG = 200;
 const BATTLE_PERFECT = 0.95;
 const BATTLE_STRONG = 0.82;
 const BATTLE_DUMP = 0.45;
+
+/** Dump IVs needed (with no strong/perfect) to call a catch "shit". */
+const SHIT_DUMP_MIN = 4;
+/** Perfect or near-perfect (≥28) IVs needed for "god". */
+const GOD_NEAR_PERFECT_MIN = 3;
 
 export function classifyIv(value: number): StatQualityBand {
   if (value >= IV_PERFECT) return "perfect";
@@ -121,12 +129,17 @@ function isCrackedSpread(
   return false;
 }
 
+function isGodIvSpread(nearPerfectCount: number): boolean {
+  return nearPerfectCount >= GOD_NEAR_PERFECT_MIN;
+}
+
 function summarizeBands(
   perfect: StatKey[],
   strong: StatKey[],
   dump: StatKey[],
   kind: SummaryKind,
   crackedRule: CrackedRule,
+  nearPerfectCount = 0,
 ): StatQualitySummary {
   if (perfect.length === 0 && strong.length === 0 && dump.length === 0) {
     return {
@@ -135,10 +148,13 @@ function summarizeBands(
       dump,
       headline: null,
       cracked: false,
+      god: false,
     };
   }
 
-  const cracked = isCrackedSpread(perfect.length, strong.length, crackedRule);
+  const god = kind === "iv" && isGodIvSpread(nearPerfectCount);
+  const cracked =
+    god || isCrackedSpread(perfect.length, strong.length, crackedRule);
 
   const parts: string[] = [];
   if (perfect.length > 0) parts.push(perfectPhrase(perfect, kind));
@@ -147,11 +163,13 @@ function summarizeBands(
   }
 
   let headline = parts.join(" · ") || null;
-  if (cracked && headline) {
+  if (god && headline) {
+    headline = `God — ${headline}`;
+  } else if (cracked && headline) {
     headline = `Cracked — ${headline}`;
   }
 
-  return { perfect, strong, dump, headline, cracked };
+  return { perfect, strong, dump, headline, cracked, god };
 }
 
 /**
@@ -160,6 +178,7 @@ function summarizeBands(
  *
  * Cracked bar is tuned for randomizer Nuzlockes (no breeding): a single 31
  * plus two strong IVs (like Snoop) counts, not only multi-perfect spreads.
+ * God is reserved for absurd wild spreads (3+ perfect / near-perfect).
  */
 export function summarizeIvs(
   ivs: StatSpread | null | undefined,
@@ -169,19 +188,29 @@ export function summarizeIvs(
   const perfect: StatKey[] = [];
   const strong: StatKey[] = [];
   const dump: StatKey[] = [];
+  let nearPerfect = 0;
 
   for (const key of STAT_KEYS) {
-    const band = classifyIv(ivs[key] ?? 0);
+    const value = ivs[key] ?? 0;
+    if (value >= IV_NEAR_PERFECT) nearPerfect += 1;
+    const band = classifyIv(value);
     if (band === "perfect") perfect.push(key);
     else if (band === "strong") strong.push(key);
     else if (band === "dump") dump.push(key);
   }
 
-  return summarizeBands(perfect, strong, dump, "iv", {
-    perfectAlone: 2,
-    combo: { perfect: 1, strong: 2 },
-    strongAlone: 3,
-  });
+  return summarizeBands(
+    perfect,
+    strong,
+    dump,
+    "iv",
+    {
+      perfectAlone: 2,
+      combo: { perfect: 1, strong: 2 },
+      strongAlone: 3,
+    },
+    nearPerfect,
+  );
 }
 
 /** Notable EV investments (max / near-max). */
@@ -231,7 +260,7 @@ export function summarizeBattleStats(
 
 /**
  * True when IVs, EVs, or battle stats vs max look unusually strong.
- * Used for board-card chrome (e.g. cracked revolving border).
+ * Used for board-card chrome (e.g. cracked / god revolving border).
  */
 export function specimenIsCracked(input: {
   ivs?: StatSpread | null;
@@ -239,21 +268,55 @@ export function specimenIsCracked(input: {
   battle?: StatSpread | null;
   battleMax?: StatSpread | null;
 }): boolean {
-  return specimenCatchTier(input) === "cracked";
+  const tier = specimenCatchTier(input);
+  return tier === "cracked" || tier === "god";
 }
 
-/** Randomizer catch quality for subtle board-card chrome. */
-export type CatchTier = "oof" | "good" | "great" | "cracked";
+/**
+ * Randomizer catch quality for board-card chrome + details labels.
+ *
+ * - shit: mostly dump IVs, nothing redeeming
+ * - oof: below average / nothing notable (no chrome)
+ * - good / great / cracked: existing randomizer bars
+ * - god: absurd wild IV luck (3+ perfect or near-perfect)
+ */
+export type CatchTier = "shit" | "oof" | "good" | "great" | "cracked" | "god";
 
 const CATCH_TIER_RANK: Record<CatchTier, number> = {
-  oof: 0,
-  good: 1,
-  great: 2,
-  cracked: 3,
+  shit: 0,
+  oof: 1,
+  good: 2,
+  great: 3,
+  cracked: 4,
+  god: 5,
+};
+
+const CATCH_TIER_LABEL: Record<CatchTier, string | null> = {
+  shit: "Shit catch",
+  oof: "Oof catch",
+  good: "Good catch",
+  great: "Great catch",
+  cracked: "Cracked catch",
+  god: "God catch",
 };
 
 function maxCatchTier(a: CatchTier, b: CatchTier): CatchTier {
   return CATCH_TIER_RANK[a] >= CATCH_TIER_RANK[b] ? a : b;
+}
+
+/** Beginner-facing label; null only when tier chrome should stay silent. */
+export function catchTierLabel(tier: CatchTier): string | null {
+  return CATCH_TIER_LABEL[tier];
+}
+
+/** Board / modal ring + sprite wash — oof stays plain. */
+export function catchTierHasChrome(tier: CatchTier): boolean {
+  return tier !== "oof";
+}
+
+/** Label tone class — brightness ramps with catch tier. */
+export function catchTierToneClass(tier: CatchTier): string {
+  return `pokemon-catch-label--${tier}`;
 }
 
 /** IV-only tier (primary signal for randomizer catches). */
@@ -261,11 +324,17 @@ export function ivCatchTier(ivs: StatSpread | null | undefined): CatchTier {
   if (!ivs) return "oof";
   let perfect = 0;
   let strong = 0;
+  let dump = 0;
+  let nearPerfect = 0;
   for (const key of STAT_KEYS) {
-    const band = classifyIv(ivs[key] ?? 0);
+    const value = ivs[key] ?? 0;
+    if (value >= IV_NEAR_PERFECT) nearPerfect += 1;
+    const band = classifyIv(value);
     if (band === "perfect") perfect += 1;
     else if (band === "strong") strong += 1;
+    else if (band === "dump") dump += 1;
   }
+  if (isGodIvSpread(nearPerfect)) return "god";
   if (
     isCrackedSpread(perfect, strong, {
       perfectAlone: 2,
@@ -277,12 +346,13 @@ export function ivCatchTier(ivs: StatSpread | null | undefined): CatchTier {
   }
   if ((perfect >= 1 && strong >= 1) || strong >= 2) return "great";
   if (perfect >= 1 || strong >= 1) return "good";
+  if (dump >= SHIT_DUMP_MIN) return "shit";
   return "oof";
 }
 
 /**
- * Board catch tier: IVs drive Good/Great/Cracked; cracked EVs or near-max
- * battle spreads can promote up to Cracked only.
+ * Board catch tier: IVs drive the ladder through God; cracked EVs or
+ * near-max battle spreads can promote up to Cracked only (not God).
  */
 export function specimenCatchTier(input: {
   ivs?: StatSpread | null;
