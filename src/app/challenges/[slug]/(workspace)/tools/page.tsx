@@ -15,7 +15,6 @@ import {
   type ToolsId,
 } from "@/lib/tools-routes";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;

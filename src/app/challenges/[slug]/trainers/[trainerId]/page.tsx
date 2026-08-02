@@ -20,7 +20,6 @@ import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { isSeasonReadOnly } from "@/lib/season-status";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string; trainerId: string }>;

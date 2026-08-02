@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: nuzlocke-pg
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: nuzlocke
+      POSTGRES_PASSWORD: nuzlocke
+      POSTGRES_DB: nuzlocke_manager
+    volumes:
+      # Postgres 18+ image expects the mount at /var/lib/postgresql (versioned subdir).
+      - nuzlocke_pg_data:/var/lib/postgresql
+
+volumes:
+  nuzlocke_pg_data:

@@ -13,7 +13,6 @@ import { isInviteOnly } from "@/lib/challenge-access";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;

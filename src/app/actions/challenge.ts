@@ -1,9 +1,16 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { findSpecies } from "@/data/species";
+import {
+  bumpActivityReactionRev,
+  encodeActivityHead,
+  publishActivityHead,
+  readActivityHead,
+  withReactionHead,
+} from "@/lib/activity-watermark";
 import { getPrisma } from "@/lib/db";
 import {
   getAccessForChallenge,
@@ -65,6 +72,7 @@ import { isCardBackgroundKey } from "@/data/card-backgrounds";
 import { findPokemonById, searchPokemonIndex } from "@/data/pokemon-index";
 import {
   getChallenge,
+  getChallengeAccessFields,
   listChallengeActivities,
   type ActivityPage,
 } from "@/lib/challenges";
@@ -108,6 +116,8 @@ function jsonStatOrNull(
 
 /** League board + trainer board only — avoids refreshing Setup/Rules/FAQ chrome. */
 function revalidateBoardViews(slug: string, trainerId?: string) {
+  updateTag(`season:${slug}:board`);
+  revalidateTag(`season:${slug}`, "max");
   revalidatePath(`/challenges/${slug}`);
   revalidatePath(`/challenges/${slug}/memorial`);
   revalidatePath(`/challenges/${slug}/activity`);
@@ -118,6 +128,10 @@ function revalidateBoardViews(slug: string, trainerId?: string) {
 
 /** Heavier season-wide invalidation (GM/meta/join flows). */
 function revalidateChallenge(slug: string, trainerId?: string) {
+  updateTag(`season:${slug}`);
+  updateTag(`season:${slug}:board`);
+  updateTag(`season:${slug}:meta`);
+  revalidateTag("seasons:index", "max");
   revalidateBoardViews(slug, trainerId);
   revalidatePath(`/challenges/${slug}/setup`);
   revalidatePath(`/challenges/${slug}/rules`);
@@ -165,7 +179,7 @@ type ActivityDb = {
         message: string;
         metadata?: ActivityCoalesceMeta;
       };
-    }) => Promise<unknown>;
+    }) => Promise<{ id: string; createdAt: Date }>;
     update: (args: {
       where: { id: string };
       data: {
@@ -282,6 +296,10 @@ async function writeActivityEvent(
         },
       });
       created = false;
+      void publishActivityHead(
+        input.challengeId,
+        encodeActivityHead(new Date(), existing.id),
+      );
     }
   }
 
@@ -290,7 +308,7 @@ async function writeActivityEvent(
   }
 
   if (created) {
-    await db.activityEvent.create({
+    const row = await db.activityEvent.create({
       data: {
         challengeId: input.challengeId,
         actorId: input.actorId,
@@ -300,6 +318,10 @@ async function writeActivityEvent(
         ...(metadata ? { metadata } : {}),
       },
     });
+    void publishActivityHead(
+      input.challengeId,
+      encodeActivityHead(row.createdAt, row.id),
+    );
 
     // Don't await — Discord outages must not block board saves.
     // Skip on coalesce updates so the channel isn't re-pinged for every merge.
@@ -1867,6 +1889,7 @@ export async function setBadgesProgressAction(
     }
 
     // League board only — avoid remounting the trainer editor mid-toggle.
+    updateTag(`season:${trainer.challenge.slug}:board`);
     revalidatePath(`/challenges/${trainer.challenge.slug}`);
     return { ok: true };
   } catch (e) {
@@ -3254,6 +3277,9 @@ export async function toggleActivityReactionAction(input: {
       });
     }
 
+    // Invalidate Upstash short-circuit so other clients refetch reaction state.
+    void bumpActivityReactionRev(activity.challengeId);
+
     // No revalidate — client is optimistic; Pack feed polls for freshness.
     return { ok: true };
   } catch (e) {
@@ -3269,14 +3295,17 @@ export async function fetchChallengeActivitiesAction(input: {
   slug: string;
   cursor?: string | null;
   limit?: number;
+  /** Client watermark — when it matches Redis/DB head, skip the fat read. */
+  head?: string | null;
 }): Promise<ActivityPage> {
   const session = await auth();
-  const challenge = await getChallenge(input.slug, session?.user?.id);
-  if (!challenge) return { items: [], nextCursor: null };
+  const challenge = await getChallengeAccessFields(input.slug);
+  if (!challenge) return { items: [], nextCursor: null, unchanged: false };
 
-  const access = challenge.id
-    ? await getAccessForChallenge(challenge.id)
-    : null;
+  const access =
+    challenge.source === "database"
+      ? await getAccessForChallenge(challenge.id)
+      : null;
   if (
     !canViewChallenge({
       visibility: challenge.visibility,
@@ -3284,11 +3313,41 @@ export async function fetchChallengeActivitiesAction(input: {
       hasMembership: Boolean(access?.role),
     })
   ) {
-    return { items: [], nextCursor: null };
+    return { items: [], nextCursor: null, unchanged: false };
   }
 
-  return listChallengeActivities(input.slug, session?.user?.id, {
+  // Upstash short-circuit for idle polls (zero Neon when head matches).
+  if (input.head && !input.cursor && challenge.source === "database") {
+    const cachedHead = await readActivityHead(challenge.id);
+    if (cachedHead && cachedHead === input.head) {
+      return {
+        items: [],
+        nextCursor: null,
+        head: cachedHead,
+        unchanged: true,
+      };
+    }
+  }
+
+  const page = await listChallengeActivities(input.slug, session?.user?.id, {
     cursor: input.cursor,
     limit: input.limit,
   });
+
+  if (
+    challenge.source === "database" &&
+    page.head &&
+    !input.cursor
+  ) {
+    void publishActivityHead(challenge.id, page.head);
+  }
+
+  if (challenge.source === "database" && page.head) {
+    return {
+      ...page,
+      head: await withReactionHead(challenge.id, page.head),
+    };
+  }
+
+  return page;
 }

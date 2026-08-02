@@ -8,7 +8,6 @@ import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { getTournamentForChallenge } from "@/lib/tournament";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;

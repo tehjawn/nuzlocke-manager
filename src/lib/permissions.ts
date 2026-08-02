@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { auth } from "@/auth";
 import type { MembershipRole } from "@/lib/challenge-types";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
@@ -36,27 +37,28 @@ export async function getMembership(
   return membership?.role ?? null;
 }
 
-export async function getAccessForChallenge(
-  challengeId: string,
-): Promise<AccessContext | null> {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId || !isDatabaseConfigured()) return null;
+/** Request-deduped — layout + page often both need access. */
+export const getAccessForChallenge = cache(
+  async (challengeId: string): Promise<AccessContext | null> => {
+    const session = await auth();
+    const userId = session?.user?.id;
+    if (!userId || !isDatabaseConfigured()) return null;
 
-  const role = await getMembership(challengeId, userId);
-  const isGm = role === "GAME_MASTER";
-  const isPlayer = role === "PLAYER" || isGm;
+    const role = await getMembership(challengeId, userId);
+    const isGm = role === "GAME_MASTER";
+    const isPlayer = role === "PLAYER" || isGm;
 
-  return {
-    userId,
-    role,
-    isGm,
-    isPlayer,
-    ownsTrainer: (trainerUserId) => trainerUserId === userId,
-    canEditTrainer: (trainerUserId) =>
-      isGm || (role === "PLAYER" && trainerUserId === userId),
-  };
-}
+    return {
+      userId,
+      role,
+      isGm,
+      isPlayer,
+      ownsTrainer: (trainerUserId) => trainerUserId === userId,
+      canEditTrainer: (trainerUserId) =>
+        isGm || (role === "PLAYER" && trainerUserId === userId),
+    };
+  },
+);
 
 export async function requireTrainerEditAccess(trainerId: string) {
   const userId = await requireUserId();

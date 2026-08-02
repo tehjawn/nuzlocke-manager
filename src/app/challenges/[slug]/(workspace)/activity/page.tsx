@@ -7,7 +7,6 @@ import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { getChallenge, listChallengeActivities } from "@/lib/challenges";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;

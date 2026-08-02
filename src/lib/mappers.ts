@@ -76,14 +76,14 @@ type DbChallenge = {
       pokedexId: number | null;
       isShiny: boolean;
       types: string[];
-      nature: string | null;
+      nature?: string | null;
       level: number | null;
-      ability: string | null;
+      ability?: string | null;
       catchRoute: string | null;
-      heldItem: string | null;
-      moves: string[];
-      ivs: unknown;
-      evs: unknown;
+      heldItem?: string | null;
+      moves?: string[];
+      ivs?: unknown;
+      evs?: unknown;
       causeOfDeath: string | null;
       diedOnRun: number | null;
       runId: string | null;
@@ -247,12 +247,12 @@ export function mapDbTrainer(
         pokedexId: p.pokedexId,
         species: p.species,
       }),
-      nature: p.nature,
+      nature: p.nature ?? null,
       level: p.level,
-      ability: p.ability,
+      ability: p.ability ?? null,
       catchRoute: p.catchRoute,
-      heldItem: p.heldItem,
-      moves: p.moves,
+      heldItem: p.heldItem ?? null,
+      moves: p.moves ?? [],
       ivs: (() => {
         if (p.ivs == null) return null;
         const parsed = IvsSchema.safeParse(p.ivs);

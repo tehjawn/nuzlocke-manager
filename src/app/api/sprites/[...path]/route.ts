@@ -3,7 +3,6 @@ import {
   SHOWDOWN_ORIGIN,
 } from "@/lib/showdown-sprites";
 
-export const runtime = "nodejs";
 
 /** Long browser/CDN cache — sprites are immutable by filename. */
 const CACHE_CONTROL =

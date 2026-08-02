@@ -21,15 +21,24 @@ import {
 } from "@/app/actions/challenge";
 import { Frame } from "@/components/Frame";
 import { coalesceActivityItems } from "@/lib/activity-messages";
+import { activityPollHead } from "@/lib/activity-poll";
 import type {
   ActivityItem,
   ActivityReactionSummary,
 } from "@/lib/challenge-types";
 
+type ActivityPollPage = {
+  items: ActivityItem[];
+  nextCursor: string | null;
+  head?: string | null;
+  unchanged?: boolean;
+};
+
 const APP_MARK = "/nuzlocke-mark.png";
 
 const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
 const POLL_MS = 12_000;
+const POLL_IDLE_MS = 30_000;
 const PAGE_SIZE = 30;
 
 type ActivityFeedProps = {
@@ -68,6 +77,90 @@ function activitiesKey(items: ActivityItem[]) {
     .join("|");
 }
 
+/**
+ * Shared Pack-feed poller. Resets watermarks when `resetKey` changes.
+ * Guards overlapping polls so out-of-order responses can't rewind `head`.
+ */
+function useActivityPoll(
+  slug: string,
+  limit: number,
+  onPage: (page: ActivityPollPage) => void,
+  resetKey: string,
+) {
+  const headRef = useRef<string | null>(null);
+  const lastChangeAtRef = useRef(0);
+  const onPageRef = useRef(onPage);
+  const unchangedPollsRef = useRef(0);
+
+  useEffect(() => {
+    onPageRef.current = onPage;
+  }, [onPage]);
+
+  useEffect(() => {
+    headRef.current = null;
+    lastChangeAtRef.current = Date.now();
+    unchangedPollsRef.current = 0;
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    async function poll() {
+      if (document.visibilityState === "hidden" || inFlight) return;
+      inFlight = true;
+      try {
+        const previousHead = headRef.current;
+        const next = await fetchChallengeActivitiesAction({
+          slug,
+          limit,
+          head: activityPollHead(previousHead, unchangedPollsRef.current),
+        });
+        if (cancelled) return;
+        if (next.head !== undefined) {
+          headRef.current = next.head ?? null;
+        }
+        if (next.unchanged) {
+          unchangedPollsRef.current += 1;
+          return;
+        }
+        unchangedPollsRef.current = 0;
+        if (headRef.current !== previousHead) {
+          lastChangeAtRef.current = Date.now();
+        }
+        onPageRef.current(next);
+      } catch {
+        // ignore transient poll failures
+      } finally {
+        inFlight = false;
+      }
+    }
+
+    function schedule() {
+      if (cancelled) return;
+      const idle =
+        Date.now() - lastChangeAtRef.current > POLL_IDLE_MS * 2
+          ? POLL_IDLE_MS
+          : POLL_MS;
+      timeoutId = setTimeout(async () => {
+        await poll();
+        schedule();
+      }, idle);
+    }
+
+    void poll().then(schedule);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [slug, limit, resetKey]);
+}
+
 export function ActivityFeed({
   slug,
   activities: activitiesProp,
@@ -85,36 +178,19 @@ export function ActivityFeed({
     setPolled(null);
   }
 
+  const pollLimit =
+    previewCount != null ? Math.max(previewCount * 4, 20) : 20;
+
+  useActivityPoll(
+    slug,
+    pollLimit,
+    (page) => {
+      setPolled(page.items);
+    },
+    propKey,
+  );
+
   const activities = coalesceActivityItems(polled ?? activitiesProp);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function poll() {
-      if (document.visibilityState === "hidden") return;
-      try {
-        const next = await fetchChallengeActivitiesAction({
-          slug,
-          limit: previewCount != null ? Math.max(previewCount * 4, 20) : 20,
-        });
-        if (!cancelled) setPolled(next.items);
-      } catch {
-        // ignore transient poll failures
-      }
-    }
-
-    const id = setInterval(poll, POLL_MS);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void poll();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [slug, previewCount]);
 
   const visible =
     typeof previewCount === "number"
@@ -177,44 +253,23 @@ export function ActivityFeedInfinite({
     cursorRef.current = cursor;
   }, [cursor]);
 
-  // Fresh first page while the tab is visible (same cadence as the rail).
-  useEffect(() => {
-    let cancelled = false;
-
-    async function poll() {
-      if (document.visibilityState === "hidden") return;
-      try {
-        const next = await fetchChallengeActivitiesAction({
-          slug,
-          limit: PAGE_SIZE,
-        });
-        if (cancelled) return;
-        if (!paginatedRef.current) {
-          setItems(coalesceActivityItems(next.items));
-          setCursor(next.nextCursor);
-          return;
-        }
-        setItems((prev) => {
-          const ids = new Set(next.items.map((item) => item.id));
-          const older = prev.filter((item) => !ids.has(item.id));
-          return coalesceActivityItems([...next.items, ...older]);
-        });
-      } catch {
-        // ignore
+  useActivityPoll(
+    slug,
+    PAGE_SIZE,
+    (page) => {
+      if (!paginatedRef.current) {
+        setItems(coalesceActivityItems(page.items));
+        setCursor(page.nextCursor);
+        return;
       }
-    }
-
-    const id = setInterval(poll, POLL_MS);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void poll();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [slug]);
+      setItems((prev) => {
+        const ids = new Set(page.items.map((item) => item.id));
+        const older = prev.filter((item) => !ids.has(item.id));
+        return coalesceActivityItems([...page.items, ...older]);
+      });
+    },
+    slug,
+  );
 
   useEffect(() => {
     const sentinel = sentinelRef.current;

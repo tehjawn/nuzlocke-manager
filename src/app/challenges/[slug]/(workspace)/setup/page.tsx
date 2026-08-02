@@ -18,7 +18,6 @@ import {
 } from "@/lib/welcome-video";
 import { toolsHref } from "@/lib/tools-routes";
 
-export const dynamic = "force-dynamic";
 
 const AFTERPLAY_URL = "https://afterplay.io";
 
