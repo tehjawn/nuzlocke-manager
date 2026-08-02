@@ -202,7 +202,12 @@ function TypeRow({
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="text-[0.7rem] font-semibold text-muted">{label}</span>
       {types.map((type) => (
-        <TypeBadge key={`${label}-${type}`} type={type} size="sm" />
+        <TypeBadge
+          key={`${label}-${type}`}
+          type={type}
+          size="sm"
+          variant="soft"
+        />
       ))}
     </div>
   );
@@ -267,6 +272,7 @@ function GymPrepDetails({
                           key={`${entry.id}-${type}`}
                           type={type}
                           size="sm"
+                          variant="soft"
                         />
                       ))}
                     </span>
