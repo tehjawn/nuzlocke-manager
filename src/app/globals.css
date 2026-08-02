@@ -657,6 +657,139 @@ button:disabled,
   }
 }
 
+/* Catch-tier card edges — quiet revolving tint (Good / Great / Cracked) */
+@property --catch-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.pokemon-catch-ring {
+  --catch-angle: 0deg;
+  --catch-tint: var(--interactive);
+  --catch-peak: 32%;
+
+  position: relative;
+  border-radius: calc(var(--radius) + 1px);
+  padding: 1px;
+  background: conic-gradient(
+    from var(--catch-angle),
+    color-mix(in srgb, var(--catch-tint) 6%, transparent),
+    color-mix(in srgb, var(--catch-tint) var(--catch-peak), transparent),
+    color-mix(in srgb, var(--catch-tint) 8%, transparent),
+    color-mix(in srgb, var(--catch-tint) calc(var(--catch-peak) - 8%), transparent),
+    color-mix(in srgb, var(--catch-tint) 6%, transparent)
+  );
+  animation: pokemon-catch-revolve 16s linear infinite;
+  transition: filter 180ms ease;
+}
+
+.pokemon-catch-ring--good {
+  --catch-tint: var(--interactive);
+  --catch-peak: 28%;
+}
+
+.pokemon-catch-ring--great {
+  --catch-tint: #a78bfa;
+  --catch-peak: 30%;
+}
+
+.pokemon-catch-ring--cracked {
+  --catch-tint: var(--accent-2);
+  --catch-peak: 34%;
+}
+
+.pokemon-catch-ring > * {
+  border-radius: var(--radius);
+}
+
+.pokemon-catch-ring:hover {
+  --catch-peak: 42%;
+}
+
+.pokemon-catch-ring--good:hover {
+  --catch-peak: 38%;
+}
+
+.pokemon-catch-ring--great:hover {
+  --catch-peak: 40%;
+}
+
+.pokemon-catch-ring--cracked:hover {
+  --catch-peak: 44%;
+}
+
+@keyframes pokemon-catch-revolve {
+  to {
+    --catch-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pokemon-catch-ring {
+    animation: none;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--catch-tint) 28%, var(--frame)),
+      color-mix(in srgb, var(--catch-tint) 12%, var(--frame)),
+      color-mix(in srgb, var(--catch-tint) 28%, var(--frame))
+    );
+  }
+}
+
+/* Sprite well tint — radial vignette behind the mon (catch-tier hue) */
+.pokemon-catch-sprite {
+  --catch-vignette-peak: 18%;
+  border-color: color-mix(in srgb, var(--catch-tint) 28%, var(--frame));
+  background:
+    radial-gradient(
+      circle at 50% 48%,
+      color-mix(in srgb, var(--catch-tint) var(--catch-vignette-peak), transparent) 0%,
+      color-mix(in srgb, var(--catch-tint) 8%, transparent) 42%,
+      var(--surface-2) 72%
+    );
+}
+
+.pokemon-catch-sprite--good {
+  --catch-tint: var(--interactive);
+}
+
+.pokemon-catch-sprite--great {
+  --catch-tint: #a78bfa;
+}
+
+.pokemon-catch-sprite--cracked {
+  --catch-tint: var(--accent-2);
+}
+
+/* Details modal — slightly stronger than board, still restrained */
+.pokemon-catch-sprite--emphasis {
+  --catch-vignette-peak: 22%;
+  border-color: color-mix(in srgb, var(--catch-tint) 34%, var(--frame));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--catch-tint) 12%, transparent);
+}
+
+.pokemon-catch-ring--emphasis {
+  padding: 2px;
+  --catch-peak: 48%;
+}
+
+.pokemon-catch-ring--emphasis.pokemon-catch-ring--good {
+  --catch-peak: 44%;
+}
+
+.pokemon-catch-ring--emphasis.pokemon-catch-ring--great {
+  --catch-peak: 46%;
+}
+
+.pokemon-catch-ring--emphasis.pokemon-catch-ring--cracked {
+  --catch-peak: 52%;
+}
+
+.pokemon-catch-ring--emphasis:hover {
+  --catch-peak: 58%;
+}
+
 .gba-frame-menu::before,
 .gba-frame:not([data-card-bg])::before {
   content: none;
@@ -989,6 +1122,21 @@ button:disabled,
   height: 100%;
   border-radius: 999px;
   transition: width 280ms ease;
+}
+
+/*
+  Perfect / maxed rows (31 IV, 252 EV, near-max battle): static gold ring +
+  fuller fill — no looping pulse (board grids stay quiet).
+*/
+.stat-meter-track--perfect {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 55%, transparent),
+    inset 0 1px 1px color-mix(in srgb, var(--shadow) 25%, transparent);
+  background: color-mix(in srgb, var(--accent-2) 10%, var(--frame) 28%, transparent);
+}
+
+.stat-meter-fill--perfect {
+  box-shadow: inset -2px 0 0 color-mix(in srgb, var(--accent-2) 70%, #fff);
 }
 
 /* Read-only value chip */

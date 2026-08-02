@@ -4,13 +4,21 @@ import type { ReactNode } from "react";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
+import { MoveLabel } from "@/components/MoveLabel";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
-import { resolveMoveName } from "@/lib/move-names";
+import {
+  specimenCatchTier,
+  summarizeBattleStats,
+  summarizeEvs,
+  summarizeIvs,
+  type CatchTier,
+} from "@/lib/iv-quality";
+import { recommendPlaystyle } from "@/lib/playstyle";
 import {
   calcBattleStats,
   calcMaxBattleStats,
@@ -48,6 +56,25 @@ function MetaChip({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+function PlaystyleChips({
+  primary,
+  secondary,
+}: {
+  primary: string;
+  secondary: string | null;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      <span className="info-chip text-xs font-semibold">{primary}</span>
+      {secondary ? (
+        <span className="info-chip text-xs font-semibold text-muted">
+          {secondary}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function PokemonDetailsModal({
   open,
   pokemon,
@@ -76,12 +103,40 @@ export function PokemonDetailsModal({
       })
     : null;
   const moves = showCompetitiveDetails
-    ? pokemon.moves.map(resolveMoveName).filter(Boolean)
+    ? pokemon.moves.map((m) => m.trim()).filter(Boolean)
     : [];
   const ivs = showCompetitiveDetails ? pokemon.ivs : null;
   const evs = showCompetitiveDetails ? pokemon.evs : null;
   const showIvs = !isEmptySpread(ivs);
   const showEvs = !isEmptySpread(evs);
+  const ivSummary = showIvs ? summarizeIvs(ivs) : null;
+  const evSummary = showEvs ? summarizeEvs(evs) : null;
+  const battleSummary =
+    battle && battleMax ? summarizeBattleStats(battle, battleMax) : null;
+  const playstyle = showCompetitiveDetails
+    ? recommendPlaystyle({
+        pokedexId: pokemon.pokedexId,
+        nature: pokemon.nature,
+        ability: pokemon.ability,
+        ivs: showIvs ? ivs : null,
+      })
+    : null;
+  const catchTier: CatchTier = showCompetitiveDetails
+    ? specimenCatchTier({
+        ivs: showIvs ? ivs : null,
+        evs: showEvs ? evs : null,
+        battle,
+        battleMax,
+      })
+    : "oof";
+  const catchTierLabel =
+    catchTier === "cracked"
+      ? "Cracked catch"
+      : catchTier === "great"
+        ? "Great catch"
+        : catchTier === "good"
+          ? "Good catch"
+          : null;
 
   const subtitleParts: string[] = [];
   if (showSpeciesInSubtitle) subtitleParts.push(pokemon.species);
@@ -154,17 +209,44 @@ export function PokemonDetailsModal({
         <div className="grid gap-4 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:items-start">
           {/* Identity rail — fills the old empty left column */}
           <div className="flex flex-col items-center gap-2 sm:items-stretch">
-            <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-lg border border-frame bg-surface-2 sm:mx-0 sm:h-auto sm:w-full sm:aspect-square">
-              <PokemonSpriteImage
-                alt=""
-                className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"
-                height={144}
-                pokedexId={pokemon.pokedexId}
-                shiny={pokemon.isShiny}
-                species={pokemon.species}
-                width={144}
-              />
+            <div
+              className={
+                catchTier === "oof"
+                  ? undefined
+                  : `pokemon-catch-ring pokemon-catch-ring--emphasis pokemon-catch-ring--${catchTier} w-full max-w-[9.5rem] sm:max-w-none`
+              }
+            >
+              <div
+                className={`mx-auto flex h-36 w-36 items-center justify-center rounded-lg border sm:mx-0 sm:h-auto sm:w-full sm:aspect-square ${
+                  catchTier === "oof"
+                    ? "border-frame bg-surface-2"
+                    : `pokemon-catch-sprite pokemon-catch-sprite--emphasis pokemon-catch-sprite--${catchTier}`
+                }`}
+              >
+                <PokemonSpriteImage
+                  alt=""
+                  className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"
+                  height={144}
+                  pokedexId={pokemon.pokedexId}
+                  shiny={pokemon.isShiny}
+                  species={pokemon.species}
+                  width={144}
+                />
+              </div>
             </div>
+            {catchTierLabel ? (
+              <p
+                className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${
+                  catchTier === "cracked"
+                    ? "text-accent-2"
+                    : catchTier === "great"
+                      ? "text-[#a78bfa]"
+                      : "text-interactive"
+                }`}
+              >
+                {catchTierLabel}
+              </p>
+            ) : null}
             {pokemon.types.length > 0 ? (
               <div className="flex flex-wrap justify-center gap-1 sm:justify-start">
                 {pokemon.types.map((t) => (
@@ -206,13 +288,55 @@ export function PokemonDetailsModal({
               </div>
             ) : null}
 
+            {playstyle ? (
+              <div>
+                <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-xs font-semibold tracking-tight text-muted">
+                    Playstyle
+                  </p>
+                  {pokemon.nature ? (
+                    <p
+                      className={`text-[10px] font-semibold tracking-tight ${
+                        playstyle.natureAlignment === "helps"
+                          ? "text-accent-deep"
+                          : playstyle.natureAlignment === "fights"
+                            ? "text-danger"
+                            : "text-muted"
+                      }`}
+                    >
+                      {playstyle.natureAlignmentLabel}
+                    </p>
+                  ) : null}
+                </div>
+                <PlaystyleChips
+                  primary={playstyle.primary}
+                  secondary={playstyle.secondary}
+                />
+                <p className="mt-1.5 text-[11px] leading-snug text-muted">
+                  {playstyle.tip}
+                </p>
+              </div>
+            ) : null}
+
             {battle ? (
               <div>
-                <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-xs font-semibold tracking-tight text-muted">
                     Battle stats
                   </p>
-                  <p className="text-[10px] text-muted">vs max at this level</p>
+                  {battleSummary?.headline ? (
+                    <p
+                      className={`text-[10px] font-semibold tracking-tight ${
+                        battleSummary.cracked
+                          ? "text-accent-2"
+                          : "text-muted"
+                      }`}
+                    >
+                      {battleSummary.headline}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-muted">vs max at this level</p>
+                  )}
                 </div>
                 <StatGrid
                   spread={battle}
@@ -231,17 +355,43 @@ export function PokemonDetailsModal({
               >
                 {showIvs && ivs ? (
                   <div>
-                    <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
-                      IVs
-                    </p>
+                    <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-xs font-semibold tracking-tight text-muted">
+                        IVs
+                      </p>
+                      {ivSummary?.headline ? (
+                        <p
+                          className={`text-[10px] font-semibold tracking-tight ${
+                            ivSummary.cracked
+                              ? "text-accent-2"
+                              : "text-muted"
+                          }`}
+                        >
+                          {ivSummary.headline}
+                        </p>
+                      ) : null}
+                    </div>
                     <StatGrid spread={ivs} tone="iv" compact />
                   </div>
                 ) : null}
                 {showEvs && evs ? (
                   <div>
-                    <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
-                      EVs
-                    </p>
+                    <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-xs font-semibold tracking-tight text-muted">
+                        EVs
+                      </p>
+                      {evSummary?.headline ? (
+                        <p
+                          className={`text-[10px] font-semibold tracking-tight ${
+                            evSummary.cracked
+                              ? "text-accent-2"
+                              : "text-muted"
+                          }`}
+                        >
+                          {evSummary.headline}
+                        </p>
+                      ) : null}
+                    </div>
                     <StatGrid spread={evs} tone="ev" compact />
                   </div>
                 ) : null}
@@ -259,7 +409,7 @@ export function PokemonDetailsModal({
                       key={`${index}-${move}`}
                       className="rounded-lg border border-frame/40 bg-info px-2 py-1.5 text-sm text-info-ink"
                     >
-                      {move}
+                      <MoveLabel move={move} />
                     </li>
                   ))}
                 </ul>

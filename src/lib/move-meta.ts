@@ -1,6 +1,7 @@
 import moveMetaData from "@/data/move-meta.json";
-import { TYPES, type PokemonType } from "@/lib/type-chart";
+import { TYPE_COLORS, type PokemonType as IndexedType } from "@/lib/pokemon-types";
 import { resolveMoveName } from "@/lib/move-names";
+import { TYPES, type PokemonType } from "@/lib/type-chart";
 
 export type MoveCategory = "Physical" | "Special" | "Status";
 
@@ -50,5 +51,35 @@ export function lookupMoveMeta(move: string): MoveMeta | null {
     type: raw.type as PokemonType,
     category: raw.category,
     power: raw.power,
+  };
+}
+
+/**
+ * Beginner tip for a move chip — type, category, and power when relevant.
+ * No effect text (that needs a richer catalog later).
+ */
+export function formatMoveMetaTip(meta: MoveMeta): string {
+  if (meta.category === "Status" || meta.power <= 0) {
+    return `${meta.type} · ${meta.category}`;
+  }
+  return `${meta.type} · ${meta.category} · ${meta.power} power`;
+}
+
+/**
+ * Subtle type gradient for compact board/dashboard move chips:
+ * original chip bg → light type wash.
+ * Returns undefined when the move type is unknown (caller keeps default bg).
+ */
+export function moveTypeWashStyle(
+  move: string,
+): { backgroundImage: string; borderColor: string } | undefined {
+  const meta = lookupMoveMeta(move);
+  if (!meta) return undefined;
+  const color = TYPE_COLORS[meta.type as IndexedType];
+  if (!color) return undefined;
+  const typeWash = `color-mix(in srgb, ${color} 16%, var(--info))`;
+  return {
+    backgroundImage: `linear-gradient(135deg, var(--info) 0%, ${typeWash} 100%)`,
+    borderColor: `color-mix(in srgb, ${color} 19%, var(--frame))`,
   };
 }

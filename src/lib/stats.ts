@@ -31,7 +31,9 @@ const SPECIES_BASE_STATS = baseStatsData.stats as Record<string, StatSpread>;
 type BattleStatKey = Exclude<StatKey, "hp">;
 
 /** Nature → raised / lowered attack stats (neutral natures omitted). */
-const NATURE_MODS: Record<string, { up: BattleStatKey; down: BattleStatKey }> = {
+export type NatureStatMod = { up: BattleStatKey; down: BattleStatKey };
+
+const NATURE_MODS: Record<string, NatureStatMod> = {
   Lonely: { up: "atk", down: "def" },
   Brave: { up: "atk", down: "spe" },
   Adamant: { up: "atk", down: "spa" },
@@ -54,10 +56,7 @@ const NATURE_MODS: Record<string, { up: BattleStatKey; down: BattleStatKey }> = 
   Careful: { up: "spd", down: "spa" },
 };
 
-const NATURE_MODS_LOOKUP: Record<
-  string,
-  { up: BattleStatKey; down: BattleStatKey }
-> = Object.fromEntries(
+const NATURE_MODS_LOOKUP: Record<string, NatureStatMod> = Object.fromEntries(
   Object.entries(NATURE_MODS).flatMap(([name, mod]) => [
     [name, mod],
     [name.toLowerCase(), mod],
@@ -73,15 +72,24 @@ const STAT_FULL_LABELS: Record<BattleStatKey, string> = {
 };
 
 /**
- * Human-readable nature effect (Bulbapedia-style), e.g.
- * "Increases a Pokémon's Special Attack stat by 10% and decreases its Speed stat by 10%."
+ * Raised / lowered battle stats for a nature, or null when neutral / unknown.
  */
+export function natureStatMod(
+  nature: string | null | undefined,
+): NatureStatMod | null {
+  if (!nature?.trim()) return null;
+  return (
+    NATURE_MODS_LOOKUP[nature] ??
+    NATURE_MODS_LOOKUP[nature.toLowerCase()] ??
+    null
+  );
+}
+
+/** Human-readable nature effect (Bulbapedia-style). */
 export function natureEffectDescription(
   nature: string | null | undefined,
 ): string {
-  if (!nature?.trim()) return "Does not modify stats.";
-  const mod =
-    NATURE_MODS_LOOKUP[nature] ?? NATURE_MODS_LOOKUP[nature.toLowerCase()];
+  const mod = natureStatMod(nature);
   if (!mod) return "Does not modify stats.";
   return `Increases a Pokémon's ${STAT_FULL_LABELS[mod.up]} stat by 10% and decreases its ${STAT_FULL_LABELS[mod.down]} stat by 10%.`;
 }
@@ -98,7 +106,7 @@ function natureMultiplier(
   key: StatKey,
 ): number {
   if (!nature || key === "hp") return 1;
-  const mod = NATURE_MODS_LOOKUP[nature] ?? NATURE_MODS_LOOKUP[nature.toLowerCase()];
+  const mod = natureStatMod(nature);
   if (!mod) return 1;
   if (mod.up === key) return 1.1;
   if (mod.down === key) return 0.9;

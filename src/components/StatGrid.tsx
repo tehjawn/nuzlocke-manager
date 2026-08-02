@@ -1,4 +1,11 @@
 import {
+  classifyBattleStat,
+  classifyEv,
+  classifyIv,
+  qualityToneClass,
+  type StatQualityBand,
+} from "@/lib/iv-quality";
+import {
   STAT_KEYS,
   STAT_LABELS,
   type StatKey,
@@ -42,9 +49,40 @@ function ceilingFor(
   return null;
 }
 
+function qualityFor(
+  tone: StatGridProps["tone"],
+  value: number,
+  max: number,
+  hasMaxSpread: boolean,
+): StatQualityBand {
+  if (tone === "iv") return classifyIv(value);
+  if (tone === "ev") return classifyEv(value);
+  if (hasMaxSpread) return classifyBattleStat(value, max);
+  return "average";
+}
+
+function labelClass(
+  band: StatQualityBand,
+  compact: boolean,
+): string {
+  const size = compact ? "text-[9px]" : "text-[11px]";
+  const tone = qualityToneClass(band);
+  return tone ? `${size} ${tone}` : `${size} text-muted`;
+}
+
+function valueClass(
+  band: StatQualityBand,
+  compact: boolean,
+): string {
+  const size = compact ? "text-[11px]" : "text-sm";
+  const tone = qualityToneClass(band);
+  return tone ? `${size} ${tone}` : size;
+}
+
 /** Weaker fills sit a bit washed; near-max reads fuller (length still primary). */
-function fillOpacity(pct: number): number {
-  return 0.55 + (Math.min(100, Math.max(0, pct)) / 100) * 0.4;
+function fillOpacity(pct: number, perfect: boolean): number {
+  const base = 0.55 + (Math.min(100, Math.max(0, pct)) / 100) * 0.4;
+  return perfect ? Math.min(1, base + 0.12) : base;
 }
 
 export function StatGrid({
@@ -56,6 +94,7 @@ export function StatGrid({
 }: StatGridProps) {
   const usesMeters =
     maxSpread != null || tone === "iv" || tone === "ev";
+  const hasMaxSpread = maxSpread != null;
 
   if (!usesMeters) {
     return (
@@ -102,6 +141,10 @@ export function StatGrid({
         const max = ceilingFor(key, maxSpread, tone) ?? 1;
         const pct = Math.min(100, Math.max(0, (value / max) * 100));
         const label = STAT_LABELS[key];
+        const band = qualityFor(tone, value, max, hasMaxSpread);
+        const highlight =
+          tone === "iv" || tone === "ev" || hasMaxSpread;
+        const perfect = highlight && band === "perfect";
 
         return (
           <div
@@ -111,32 +154,49 @@ export function StatGrid({
             title={`${label} ${value} / ${max}`}
           >
             <span
-              className={`font-semibold tracking-tight text-muted ${
-                compact ? "text-[9px]" : "text-[11px]"
+              className={`font-semibold tracking-tight ${
+                highlight
+                  ? labelClass(band, compact)
+                  : `text-muted ${compact ? "text-[9px]" : "text-[11px]"}`
               }`}
             >
               {label}
             </span>
             <span
               className={`text-right font-mono font-bold tabular-nums ${
-                compact ? "text-[11px]" : "text-sm"
+                highlight
+                  ? valueClass(band, compact)
+                  : compact
+                    ? "text-[11px]"
+                    : "text-sm"
               }`}
+              title={
+                highlight && band !== "average"
+                  ? `${label} ${value} — ${band}`
+                  : undefined
+              }
             >
               {value}
             </span>
             <div
-              className={`stat-meter-track ${compact ? "h-1.5" : "h-2"}`}
+              className={`stat-meter-track ${compact ? "h-1.5" : "h-2"}${
+                perfect ? " stat-meter-track--perfect" : ""
+              }`}
               role="meter"
-              aria-label={`${label} ${value} of ${max}`}
+              aria-label={`${label} ${value} of ${max}${
+                perfect ? ", perfect" : ""
+              }`}
               aria-valuemin={0}
               aria-valuemax={max}
               aria-valuenow={value}
             >
               <div
-                className={`stat-meter-fill ${STAT_FILL[key]}`}
+                className={`stat-meter-fill ${STAT_FILL[key]}${
+                  perfect ? " stat-meter-fill--perfect" : ""
+                }`}
                 style={{
                   width: `${pct}%`,
-                  opacity: fillOpacity(pct),
+                  opacity: fillOpacity(pct, perfect),
                 }}
               />
             </div>
