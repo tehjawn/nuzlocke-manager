@@ -263,8 +263,8 @@ function SpeciesTopCallout({
               {entry.species}
               {showCount ? (
                 <span className="font-sans font-normal text-muted">
-                  {" "}
-                  (x{entry.count})
+                  {" · x"}
+                  {entry.count}
                 </span>
               ) : null}
             </span>
