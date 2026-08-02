@@ -145,6 +145,7 @@ export function BountyHunterView({
           title={`Open bounties · ${filteredOpen.length} left in Modern Emerald`}
           empty="Nothing left — the pack has touched every ME species."
           entries={filteredOpen}
+          mutedSprites
         />
       ) : null}
 
@@ -185,11 +186,14 @@ function SpeciesGrid({
   title,
   empty,
   entries,
+  mutedSprites = false,
 }: {
   slug: string;
   title: string;
   empty: string;
   entries: ModernEmeraldSpeciesRef[];
+  /** Soften sprites for never-seen open bounties. */
+  mutedSprites?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -209,7 +213,9 @@ function SpeciesGrid({
               >
                 <PokemonSpriteImage
                   alt=""
-                  className="pixelated h-8 w-8 object-contain"
+                  className={`pixelated h-8 w-8 object-contain ${
+                    mutedSprites ? "opacity-55 grayscale-[35%]" : ""
+                  }`}
                   height={32}
                   pokedexId={entry.pokedexId}
                   species={entry.species}
