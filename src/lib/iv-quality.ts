@@ -316,7 +316,7 @@ export function catchTierHasChrome(tier: CatchTier): boolean {
 
 /** Tailwind text tone for catch-tier labels. */
 export function catchTierToneClass(tier: CatchTier): string {
-  if (tier === "god") return "text-accent-2";
+  if (tier === "god") return "pokemon-catch-label--god";
   if (tier === "cracked") return "text-accent-2";
   if (tier === "great") return "text-[#a78bfa]";
   if (tier === "good") return "text-interactive";

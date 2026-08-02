@@ -355,9 +355,11 @@ export function PokemonDetailsModal({
                       {ivSummary?.headline ? (
                         <p
                           className={`text-[10px] font-semibold tracking-tight ${
-                            ivSummary.cracked
-                              ? "text-accent-2"
-                              : "text-muted"
+                            ivSummary.god
+                              ? "pokemon-catch-label--god"
+                              : ivSummary.cracked
+                                ? "text-accent-2"
+                                : "text-muted"
                           }`}
                         >
                           {ivSummary.headline}

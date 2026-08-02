@@ -707,16 +707,22 @@ button:disabled,
 }
 
 .pokemon-catch-ring--god {
-  --catch-peak: 30%;
+  padding: 2px;
+  animation-duration: 9s;
   background: conic-gradient(
     from var(--catch-angle),
-    color-mix(in srgb, #ef6b6b 22%, transparent),
-    color-mix(in srgb, #e0b04a 24%, transparent),
-    color-mix(in srgb, #6bcf8a 22%, transparent),
-    color-mix(in srgb, #5eb4e8 24%, transparent),
-    color-mix(in srgb, #c48ad4 22%, transparent),
-    color-mix(in srgb, #ef6b6b 22%, transparent)
+    #ff5a5a,
+    #ffb020,
+    #5ee08a,
+    #4ec4ff,
+    #c77dff,
+    #ff6ec7,
+    #ff5a5a
   );
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #4ec4ff 35%, transparent),
+    0 0 14px 2px color-mix(in srgb, #ff6ec7 34%, transparent),
+    0 0 22px 4px color-mix(in srgb, #ffb020 22%, transparent);
 }
 
 .pokemon-catch-ring > * {
@@ -744,8 +750,11 @@ button:disabled,
 }
 
 .pokemon-catch-ring--god:hover {
-  --catch-peak: 38%;
-  filter: saturate(1.08);
+  filter: saturate(1.2) brightness(1.06);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #4ec4ff 45%, transparent),
+    0 0 18px 3px color-mix(in srgb, #ff6ec7 42%, transparent),
+    0 0 28px 6px color-mix(in srgb, #ffb020 28%, transparent);
 }
 
 @keyframes pokemon-catch-revolve {
@@ -772,12 +781,16 @@ button:disabled,
   .pokemon-catch-ring--god {
     background: linear-gradient(
       135deg,
-      color-mix(in srgb, #ef6b6b 28%, var(--frame)),
-      color-mix(in srgb, #e0b04a 22%, var(--frame)),
-      color-mix(in srgb, #6bcf8a 24%, var(--frame)),
-      color-mix(in srgb, #5eb4e8 26%, var(--frame)),
-      color-mix(in srgb, #c48ad4 24%, var(--frame))
+      #ff5a5a,
+      #ffb020,
+      #5ee08a,
+      #4ec4ff,
+      #c77dff,
+      #ff6ec7
     );
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, #4ec4ff 40%, transparent),
+      0 0 12px 2px color-mix(in srgb, #ff6ec7 30%, transparent);
   }
 }
 
@@ -814,15 +827,15 @@ button:disabled,
 }
 
 .pokemon-catch-sprite--god {
-  --catch-vignette-peak: 16%;
-  border-color: color-mix(in srgb, #5eb4e8 30%, var(--frame));
+  border-color: color-mix(in srgb, #c77dff 55%, var(--frame));
   background:
     radial-gradient(
-      circle at 50% 48%,
-      color-mix(in srgb, #e0b04a 14%, transparent) 0%,
-      color-mix(in srgb, #5eb4e8 10%, transparent) 38%,
-      color-mix(in srgb, #c48ad4 8%, transparent) 55%,
-      var(--surface-2) 76%
+      circle at 50% 42%,
+      color-mix(in srgb, #ffb020 42%, transparent) 0%,
+      color-mix(in srgb, #5ee08a 28%, transparent) 28%,
+      color-mix(in srgb, #4ec4ff 30%, transparent) 48%,
+      color-mix(in srgb, #ff6ec7 26%, transparent) 68%,
+      var(--surface-2) 88%
     );
 }
 
@@ -840,9 +853,10 @@ button:disabled,
 }
 
 .pokemon-catch-sprite--emphasis.pokemon-catch-sprite--god {
-  --catch-vignette-peak: 20%;
-  border-color: color-mix(in srgb, #5eb4e8 36%, var(--frame));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #c48ad4 14%, transparent);
+  border-color: color-mix(in srgb, #4ec4ff 60%, var(--frame));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #ff6ec7 28%, transparent),
+    inset 0 0 18px 2px color-mix(in srgb, #ffb020 18%, transparent);
 }
 
 .pokemon-catch-ring--emphasis {
@@ -868,11 +882,47 @@ button:disabled,
 }
 
 .pokemon-catch-ring--emphasis.pokemon-catch-ring--god {
-  --catch-peak: 40%;
+  padding: 3px;
+  animation-duration: 7s;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #4ec4ff 50%, transparent),
+    0 0 18px 3px color-mix(in srgb, #ff6ec7 44%, transparent),
+    0 0 32px 7px color-mix(in srgb, #ffb020 28%, transparent);
 }
 
 .pokemon-catch-ring--emphasis:hover {
   --catch-peak: 58%;
+}
+
+/* Prismatic label for God catch (details + anywhere tone class is used) */
+.pokemon-catch-label--god {
+  background-image: linear-gradient(
+    105deg,
+    #ff5a5a 0%,
+    #ffb020 22%,
+    #5ee08a 44%,
+    #4ec4ff 66%,
+    #c77dff 84%,
+    #ff6ec7 100%
+  );
+  background-size: 160% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pokemon-catch-label-shimmer 4.5s linear infinite;
+}
+
+@keyframes pokemon-catch-label-shimmer {
+  to {
+    background-position: 160% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pokemon-catch-label--god {
+    animation: none;
+    background-position: 40% 0;
+  }
 }
 
 .gba-frame-menu::before,
