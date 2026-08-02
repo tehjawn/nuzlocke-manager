@@ -80,8 +80,9 @@ function valueClass(
 }
 
 /** Weaker fills sit a bit washed; near-max reads fuller (length still primary). */
-function fillOpacity(pct: number): number {
-  return 0.55 + (Math.min(100, Math.max(0, pct)) / 100) * 0.4;
+function fillOpacity(pct: number, perfect: boolean): number {
+  const base = 0.55 + (Math.min(100, Math.max(0, pct)) / 100) * 0.4;
+  return perfect ? Math.min(1, base + 0.12) : base;
 }
 
 export function StatGrid({
@@ -143,6 +144,7 @@ export function StatGrid({
         const band = qualityFor(tone, value, max, hasMaxSpread);
         const highlight =
           tone === "iv" || tone === "ev" || hasMaxSpread;
+        const perfect = highlight && band === "perfect";
 
         return (
           <div
@@ -177,18 +179,24 @@ export function StatGrid({
               {value}
             </span>
             <div
-              className={`stat-meter-track ${compact ? "h-1.5" : "h-2"}`}
+              className={`stat-meter-track ${compact ? "h-1.5" : "h-2"}${
+                perfect ? " stat-meter-track--perfect" : ""
+              }`}
               role="meter"
-              aria-label={`${label} ${value} of ${max}`}
+              aria-label={`${label} ${value} of ${max}${
+                perfect ? ", perfect" : ""
+              }`}
               aria-valuemin={0}
               aria-valuemax={max}
               aria-valuenow={value}
             >
               <div
-                className={`stat-meter-fill ${STAT_FILL[key]}`}
+                className={`stat-meter-fill ${STAT_FILL[key]}${
+                  perfect ? " stat-meter-fill--perfect" : ""
+                }`}
                 style={{
                   width: `${pct}%`,
-                  opacity: fillOpacity(pct),
+                  opacity: fillOpacity(pct, perfect),
                 }}
               />
             </div>
