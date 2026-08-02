@@ -66,18 +66,46 @@ test("summarizeIvs prefixes cracked headline with four perfect IVs", () => {
   assert.equal(summary.headline, "Cracked — 4 perfect IVs");
 });
 
-test("summarizeIvs returns null headline when flat mid IVs", () => {
+test("summarizeIvs marks randomizer standouts cracked (1 perfect + 2 strong)", () => {
+  // Snoop the Gloom: 31 Spe · 27 SpA · 28 SpD
   const summary = summarizeIvs({
-    hp: 15,
-    atk: 16,
-    def: 14,
-    spa: 18,
-    spd: 12,
-    spe: 10,
+    hp: 19,
+    atk: 9,
+    def: 13,
+    spa: 27,
+    spd: 28,
+    spe: 31,
   });
   assert.ok(summary);
-  assert.equal(summary.headline, null);
-  assert.equal(summary.cracked, false);
+  assert.deepEqual(summary.perfect, ["spe"]);
+  assert.deepEqual(summary.strong, ["spa", "spd"]);
+  assert.equal(summary.cracked, true);
+  assert.equal(summary.headline, "Cracked — Perfect Spe · Strong SpA · SpD");
+});
+
+test("summarizeIvs does not crack a lone perfect or two strong", () => {
+  assert.equal(
+    summarizeIvs({
+      hp: 15,
+      atk: 16,
+      def: 14,
+      spa: 18,
+      spd: 12,
+      spe: 31,
+    })?.cracked,
+    false,
+  );
+  assert.equal(
+    summarizeIvs({
+      hp: 15,
+      atk: 16,
+      def: 14,
+      spa: 27,
+      spd: 28,
+      spe: 10,
+    })?.cracked,
+    false,
+  );
 });
 
 test("summarizeIvs null when missing", () => {
@@ -117,6 +145,13 @@ test("specimenIsCracked detects strong IV or EV spreads", () => {
   assert.equal(
     specimenIsCracked({
       ivs: { hp: 31, atk: 31, def: 31, spa: 10, spd: 10, spe: 10 },
+    }),
+    true,
+  );
+  assert.equal(
+    specimenIsCracked({
+      // Snoop-class randomizer hit
+      ivs: { hp: 19, atk: 9, def: 13, spa: 27, spd: 28, spe: 31 },
     }),
     true,
   );

@@ -93,12 +93,40 @@ function strongPhrase(keys: StatKey[], kind: SummaryKind): string {
   return `${word} ${labelList(keys)}`;
 }
 
+type CrackedRule = {
+  /** Perfect count alone is enough. */
+  perfectAlone: number;
+  /** Perfect + strong combo (e.g. 1×31 and 2×≥25). */
+  combo?: { perfect: number; strong: number };
+  /** Strong count alone is enough (IVs in a randomizer). */
+  strongAlone?: number;
+};
+
+function isCrackedSpread(
+  perfectCount: number,
+  strongCount: number,
+  rule: CrackedRule,
+): boolean {
+  if (perfectCount >= rule.perfectAlone) return true;
+  if (
+    rule.combo &&
+    perfectCount >= rule.combo.perfect &&
+    strongCount >= rule.combo.strong
+  ) {
+    return true;
+  }
+  if (rule.strongAlone != null && strongCount >= rule.strongAlone) {
+    return true;
+  }
+  return false;
+}
+
 function summarizeBands(
   perfect: StatKey[],
   strong: StatKey[],
   dump: StatKey[],
   kind: SummaryKind,
-  crackedThreshold: { perfect: number; withStrong: number },
+  crackedRule: CrackedRule,
 ): StatQualitySummary {
   if (perfect.length === 0 && strong.length === 0 && dump.length === 0) {
     return {
@@ -110,9 +138,7 @@ function summarizeBands(
     };
   }
 
-  const cracked =
-    perfect.length >= crackedThreshold.perfect ||
-    (perfect.length >= crackedThreshold.withStrong && strong.length >= 1);
+  const cracked = isCrackedSpread(perfect.length, strong.length, crackedRule);
 
   const parts: string[] = [];
   if (perfect.length > 0) parts.push(perfectPhrase(perfect, kind));
@@ -131,6 +157,9 @@ function summarizeBands(
 /**
  * Summarize which IVs stand out on a specimen.
  * Pure / render-time — does not persist.
+ *
+ * Cracked bar is tuned for randomizer Nuzlockes (no breeding): a single 31
+ * plus two strong IVs (like Snoop) counts, not only multi-perfect spreads.
  */
 export function summarizeIvs(
   ivs: StatSpread | null | undefined,
@@ -149,8 +178,9 @@ export function summarizeIvs(
   }
 
   return summarizeBands(perfect, strong, dump, "iv", {
-    perfect: 3,
-    withStrong: 2,
+    perfectAlone: 2,
+    combo: { perfect: 1, strong: 2 },
+    strongAlone: 3,
   });
 }
 
@@ -170,8 +200,8 @@ export function summarizeEvs(
   }
 
   return summarizeBands(perfect, strong, [], "ev", {
-    perfect: 2,
-    withStrong: 1,
+    perfectAlone: 2,
+    combo: { perfect: 1, strong: 1 },
   });
 }
 
@@ -194,8 +224,8 @@ export function summarizeBattleStats(
   }
 
   return summarizeBands(perfect, strong, dump, "battle", {
-    perfect: 3,
-    withStrong: 2,
+    perfectAlone: 3,
+    combo: { perfect: 2, strong: 1 },
   });
 }
 
