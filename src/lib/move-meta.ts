@@ -77,9 +77,9 @@ export function moveTypeWashStyle(
   if (!meta) return undefined;
   const color = TYPE_COLORS[meta.type as IndexedType];
   if (!color) return undefined;
-  const typeWash = `color-mix(in srgb, ${color} 32%, var(--info))`;
+  const typeWash = `color-mix(in srgb, ${color} 16%, var(--info))`;
   return {
     backgroundImage: `linear-gradient(135deg, var(--info) 0%, ${typeWash} 100%)`,
-    borderColor: `color-mix(in srgb, ${color} 38%, var(--frame))`,
+    borderColor: `color-mix(in srgb, ${color} 19%, var(--frame))`,
   };
 }
