@@ -11,7 +11,13 @@ import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
-import { summarizeIvs, summarizeEvs, summarizeBattleStats } from "@/lib/iv-quality";
+import {
+  specimenCatchTier,
+  summarizeBattleStats,
+  summarizeEvs,
+  summarizeIvs,
+  type CatchTier,
+} from "@/lib/iv-quality";
 import { recommendPlaystyle } from "@/lib/playstyle";
 import {
   calcBattleStats,
@@ -115,6 +121,22 @@ export function PokemonDetailsModal({
         ivs: showIvs ? ivs : null,
       })
     : null;
+  const catchTier: CatchTier = showCompetitiveDetails
+    ? specimenCatchTier({
+        ivs: showIvs ? ivs : null,
+        evs: showEvs ? evs : null,
+        battle,
+        battleMax,
+      })
+    : "oof";
+  const catchTierLabel =
+    catchTier === "cracked"
+      ? "Cracked catch"
+      : catchTier === "great"
+        ? "Great catch"
+        : catchTier === "good"
+          ? "Good catch"
+          : null;
 
   const subtitleParts: string[] = [];
   if (showSpeciesInSubtitle) subtitleParts.push(pokemon.species);
@@ -187,17 +209,44 @@ export function PokemonDetailsModal({
         <div className="grid gap-4 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:items-start">
           {/* Identity rail — fills the old empty left column */}
           <div className="flex flex-col items-center gap-2 sm:items-stretch">
-            <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-lg border border-frame bg-surface-2 sm:mx-0 sm:h-auto sm:w-full sm:aspect-square">
-              <PokemonSpriteImage
-                alt=""
-                className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"
-                height={144}
-                pokedexId={pokemon.pokedexId}
-                shiny={pokemon.isShiny}
-                species={pokemon.species}
-                width={144}
-              />
+            <div
+              className={
+                catchTier === "oof"
+                  ? undefined
+                  : `pokemon-catch-ring pokemon-catch-ring--emphasis pokemon-catch-ring--${catchTier} w-full max-w-[9.5rem] sm:max-w-none`
+              }
+            >
+              <div
+                className={`mx-auto flex h-36 w-36 items-center justify-center rounded-lg border sm:mx-0 sm:h-auto sm:w-full sm:aspect-square ${
+                  catchTier === "oof"
+                    ? "border-frame bg-surface-2"
+                    : `pokemon-catch-sprite pokemon-catch-sprite--emphasis pokemon-catch-sprite--${catchTier}`
+                }`}
+              >
+                <PokemonSpriteImage
+                  alt=""
+                  className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"
+                  height={144}
+                  pokedexId={pokemon.pokedexId}
+                  shiny={pokemon.isShiny}
+                  species={pokemon.species}
+                  width={144}
+                />
+              </div>
             </div>
+            {catchTierLabel ? (
+              <p
+                className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${
+                  catchTier === "cracked"
+                    ? "text-accent-2"
+                    : catchTier === "great"
+                      ? "text-[#a78bfa]"
+                      : "text-interactive"
+                }`}
+              >
+                {catchTierLabel}
+              </p>
+            ) : null}
             {pokemon.types.length > 0 ? (
               <div className="flex flex-wrap justify-center gap-1 sm:justify-start">
                 {pokemon.types.map((t) => (

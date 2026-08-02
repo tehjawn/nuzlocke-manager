@@ -755,6 +755,34 @@ button:disabled,
   --catch-tint: var(--accent-2);
 }
 
+/* Details modal — same hues, stronger read than board cards */
+.pokemon-catch-sprite--emphasis {
+  border-color: color-mix(in srgb, var(--catch-tint) 58%, var(--frame));
+  background: color-mix(in srgb, var(--catch-tint) 24%, var(--surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--catch-tint) 28%, transparent);
+}
+
+.pokemon-catch-ring--emphasis {
+  padding: 2px;
+  --catch-peak: 48%;
+}
+
+.pokemon-catch-ring--emphasis.pokemon-catch-ring--good {
+  --catch-peak: 44%;
+}
+
+.pokemon-catch-ring--emphasis.pokemon-catch-ring--great {
+  --catch-peak: 46%;
+}
+
+.pokemon-catch-ring--emphasis.pokemon-catch-ring--cracked {
+  --catch-peak: 52%;
+}
+
+.pokemon-catch-ring--emphasis:hover {
+  --catch-peak: 58%;
+}
+
 .gba-frame-menu::before,
 .gba-frame:not([data-card-bg])::before {
   content: none;
