@@ -1,3 +1,4 @@
+import { classifyIv } from "@/lib/iv-quality";
 import {
   STAT_KEYS,
   STAT_LABELS,
@@ -40,6 +41,22 @@ function ceilingFor(
   if (tone === "iv") return IV_CEILING;
   if (tone === "ev") return EV_CEILING;
   return null;
+}
+
+/** Call out cracked / dump IVs without changing bar length. */
+function ivValueClass(value: number, compact: boolean): string {
+  const band = classifyIv(value);
+  const size = compact ? "text-[11px]" : "text-sm";
+  if (band === "perfect") {
+    return `${size} text-accent-2`;
+  }
+  if (band === "strong") {
+    return `${size} text-accent-deep`;
+  }
+  if (band === "dump") {
+    return `${size} text-muted`;
+  }
+  return size;
 }
 
 /** Weaker fills sit a bit washed; near-max reads fuller (length still primary). */
@@ -119,8 +136,17 @@ export function StatGrid({
             </span>
             <span
               className={`text-right font-mono font-bold tabular-nums ${
-                compact ? "text-[11px]" : "text-sm"
+                tone === "iv"
+                  ? ivValueClass(value, compact)
+                  : compact
+                    ? "text-[11px]"
+                    : "text-sm"
               }`}
+              title={
+                tone === "iv"
+                  ? `${label} ${value} — ${classifyIv(value)}`
+                  : undefined
+              }
             >
               {value}
             </span>

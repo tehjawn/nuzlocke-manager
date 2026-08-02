@@ -10,7 +10,9 @@ import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
+import { summarizeIvs } from "@/lib/iv-quality";
 import { resolveMoveName } from "@/lib/move-names";
+import { recommendPlaystyle } from "@/lib/playstyle";
 import {
   calcBattleStats,
   calcMaxBattleStats,
@@ -44,6 +46,25 @@ function MetaChip({ label, value }: { label: string; value: ReactNode }) {
           value
         )}
       </div>
+    </div>
+  );
+}
+
+function PlaystyleChips({
+  primary,
+  secondary,
+}: {
+  primary: string;
+  secondary: string | null;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      <span className="info-chip text-xs font-semibold">{primary}</span>
+      {secondary ? (
+        <span className="info-chip text-xs font-semibold text-muted">
+          {secondary}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -82,6 +103,15 @@ export function PokemonDetailsModal({
   const evs = showCompetitiveDetails ? pokemon.evs : null;
   const showIvs = !isEmptySpread(ivs);
   const showEvs = !isEmptySpread(evs);
+  const ivSummary = showIvs ? summarizeIvs(ivs) : null;
+  const playstyle = showCompetitiveDetails
+    ? recommendPlaystyle({
+        pokedexId: pokemon.pokedexId,
+        nature: pokemon.nature,
+        ability: pokemon.ability,
+        ivs: showIvs ? ivs : null,
+      })
+    : null;
 
   const subtitleParts: string[] = [];
   if (showSpeciesInSubtitle) subtitleParts.push(pokemon.species);
@@ -206,6 +236,34 @@ export function PokemonDetailsModal({
               </div>
             ) : null}
 
+            {playstyle ? (
+              <div>
+                <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-xs font-semibold tracking-tight text-muted">
+                    Playstyle
+                  </p>
+                  {pokemon.nature ? (
+                    <p
+                      className={`text-[10px] font-semibold tracking-tight ${
+                        playstyle.natureAlignment === "helps"
+                          ? "text-accent-deep"
+                          : "text-muted"
+                      }`}
+                    >
+                      {playstyle.natureAlignmentLabel}
+                    </p>
+                  ) : null}
+                </div>
+                <PlaystyleChips
+                  primary={playstyle.primary}
+                  secondary={playstyle.secondary}
+                />
+                <p className="mt-1.5 text-[11px] leading-snug text-muted">
+                  {playstyle.tip}
+                </p>
+              </div>
+            ) : null}
+
             {battle ? (
               <div>
                 <div className="mb-1.5 flex items-baseline justify-between gap-2">
@@ -231,9 +289,22 @@ export function PokemonDetailsModal({
               >
                 {showIvs && ivs ? (
                   <div>
-                    <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
-                      IVs
-                    </p>
+                    <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-xs font-semibold tracking-tight text-muted">
+                        IVs
+                      </p>
+                      {ivSummary?.headline ? (
+                        <p
+                          className={`text-[10px] font-semibold tracking-tight ${
+                            ivSummary.cracked
+                              ? "text-accent-2"
+                              : "text-muted"
+                          }`}
+                        >
+                          {ivSummary.headline}
+                        </p>
+                      ) : null}
+                    </div>
                     <StatGrid spread={ivs} tone="iv" compact />
                   </div>
                 ) : null}
