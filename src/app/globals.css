@@ -737,6 +737,24 @@ button:disabled,
   }
 }
 
+/* Sprite well tint — same catch-tier hues, quieter than the card edge */
+.pokemon-catch-sprite {
+  border-color: color-mix(in srgb, var(--catch-tint) 38%, var(--frame));
+  background: color-mix(in srgb, var(--catch-tint) 12%, var(--surface-2));
+}
+
+.pokemon-catch-sprite--good {
+  --catch-tint: var(--interactive);
+}
+
+.pokemon-catch-sprite--great {
+  --catch-tint: #a78bfa;
+}
+
+.pokemon-catch-sprite--cracked {
+  --catch-tint: var(--accent-2);
+}
+
 .gba-frame-menu::before,
 .gba-frame:not([data-card-bg])::before {
   content: none;

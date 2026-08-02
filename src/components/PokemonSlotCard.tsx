@@ -230,7 +230,13 @@ export function PokemonSlotCard({
         }`}
       >
       <div className="flex shrink-0 items-start gap-3">
-        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-frame bg-surface-2">
+        <div
+          className={`flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border bg-surface-2 ${
+            catchTier === "oof"
+              ? "border-frame"
+              : `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
+          }`}
+        >
           <PokemonSpriteImage
             alt=""
             className="pixelated h-20 w-20 object-contain"
