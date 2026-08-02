@@ -56,10 +56,7 @@ const NATURE_MODS: Record<string, NatureStatMod> = {
   Careful: { up: "spd", down: "spa" },
 };
 
-const NATURE_MODS_LOOKUP: Record<
-  string,
-  { up: BattleStatKey; down: BattleStatKey }
-> = Object.fromEntries(
+const NATURE_MODS_LOOKUP: Record<string, NatureStatMod> = Object.fromEntries(
   Object.entries(NATURE_MODS).flatMap(([name, mod]) => [
     [name, mod],
     [name.toLowerCase(), mod],

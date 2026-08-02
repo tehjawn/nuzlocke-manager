@@ -24,7 +24,7 @@ export function MoveLabel({ move, className = "" }: MoveLabelProps) {
     <span
       className={`inline-flex min-w-0 max-w-full items-center gap-1.5 ${className}`}
     >
-      {meta ? <TypeBadge type={meta.type} /> : null}
+      {meta ? <TypeBadge type={meta.type} size="sm" /> : null}
       <span className="min-w-0 truncate">{name}</span>
     </span>
   );

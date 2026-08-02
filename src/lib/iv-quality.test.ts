@@ -50,6 +50,21 @@ test("summarizeIvs lists perfect and strong", () => {
   assert.match(summary.headline ?? "", /Cracked/i);
 });
 
+test("summarizeIvs prefixes cracked headline with four perfect IVs", () => {
+  const summary = summarizeIvs({
+    hp: 31,
+    atk: 31,
+    def: 31,
+    spa: 31,
+    spd: 10,
+    spe: 12,
+  });
+  assert.ok(summary);
+  assert.equal(summary.perfect.length, 4);
+  assert.equal(summary.cracked, true);
+  assert.equal(summary.headline, "Cracked — 4 perfect IVs");
+});
+
 test("summarizeIvs returns null headline when flat mid IVs", () => {
   const summary = summarizeIvs({
     hp: 15,

@@ -122,11 +122,7 @@ function summarizeBands(
 
   let headline = parts.join(" · ") || null;
   if (cracked && headline) {
-    if (perfect.length >= 4) {
-      headline = `Cracked — ${perfectPhrase(perfect, kind)}`;
-    } else {
-      headline = `Cracked — ${headline}`;
-    }
+    headline = `Cracked — ${headline}`;
   }
 
   return { perfect, strong, dump, headline, cracked };

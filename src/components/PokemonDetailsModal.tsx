@@ -250,7 +250,9 @@ export function PokemonDetailsModal({
                       className={`text-[10px] font-semibold tracking-tight ${
                         playstyle.natureAlignment === "helps"
                           ? "text-accent-deep"
-                          : "text-muted"
+                          : playstyle.natureAlignment === "fights"
+                            ? "text-danger"
+                            : "text-muted"
                       }`}
                     >
                       {playstyle.natureAlignmentLabel}
