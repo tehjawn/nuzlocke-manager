@@ -3,6 +3,7 @@ import test from "node:test";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import {
   encounterSeasonHighlights,
+  encounterSpeciesRarity,
   exclusiveOwnedSpecies,
   missingModernEmeraldSpecies,
   personalMissingModernEmerald,
@@ -188,6 +189,91 @@ test("encounterSeasonHighlights returns top-3 lists and skips Zigzagoon", () => 
   });
   assert.equal(highlights.meDexLogged, 6);
   assert.equal(highlights.meDexTotal, modernEmeraldDexTotal());
+});
+
+test("encounterSpeciesRarity returns the complete least-to-most ranking", () => {
+  const ranking = encounterSpeciesRarity([
+    trainer({
+      handle: "Ash",
+      id: "t1",
+      pokemon: [
+        mon({
+          id: "a1",
+          partyIndex: 0,
+          pokedexId: 41,
+          slot: "MAIN",
+          species: "Zubat",
+        }),
+        mon({
+          id: "a2",
+          partyIndex: 0,
+          pokedexId: 280,
+          slot: "RESERVE",
+          species: "Ralts",
+        }),
+        mon({
+          id: "a3",
+          partyIndex: 0,
+          pokedexId: 359,
+          slot: "ENCOUNTERED",
+          species: "Absol",
+        }),
+        mon({
+          id: "a4",
+          partyIndex: 1,
+          pokedexId: 304,
+          slot: "ENCOUNTERED",
+          species: "Aron",
+        }),
+        mon({
+          id: "a5",
+          partyIndex: 1,
+          pokedexId: 263,
+          slot: "MAIN",
+          species: "Zigzagoon",
+        }),
+      ],
+      sortOrder: 0,
+    }),
+    trainer({
+      handle: "May",
+      id: "t2",
+      pokemon: [
+        mon({
+          id: "b1",
+          partyIndex: 0,
+          pokedexId: 41,
+          slot: "GRAVEYARD",
+          species: "Zubat",
+        }),
+        mon({
+          id: "b2",
+          partyIndex: 0,
+          pokedexId: 280,
+          slot: "MAIN",
+          species: "Ralts",
+        }),
+        mon({
+          id: "b3",
+          partyIndex: 0,
+          pokedexId: 280,
+          slot: "RESERVE",
+          species: "Ralts",
+        }),
+      ],
+      sortOrder: 1,
+    }),
+  ]);
+
+  assert.deepEqual(
+    ranking.map((entry) => [entry.species, entry.count]),
+    [
+      ["Absol", 1],
+      ["Aron", 1],
+      ["Zubat", 2],
+      ["Ralts", 3],
+    ],
+  );
 });
 
 test("missingModernEmeraldSpecies excludes touched ids including ENCOUNTERED stubs", () => {
