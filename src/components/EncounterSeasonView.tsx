@@ -81,14 +81,13 @@ export function EncounterSeasonView({
             <SpeciesTopCallout
               label="Most logged"
               entries={highlights.mostLogged}
-              countLabel={(n) => `${n}`}
+              showCount
             />
           ) : null}
           {highlights.rarestSeen.length > 0 ? (
             <SpeciesTopCallout
               label="Rarest seen"
               entries={highlights.rarestSeen}
-              countLabel={(n) => `${n}`}
             />
           ) : null}
           {highlights.deadliestRoutes.length > 0 ? (
@@ -152,43 +151,43 @@ function StatBlock({
 function SpeciesTopCallout({
   label,
   entries,
-  countLabel,
+  showCount = false,
 }: {
   label: string;
   entries: EncounterSpeciesHighlight[];
-  countLabel: (count: number) => string;
+  showCount?: boolean;
 }) {
   return (
     <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
       <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
         {label}
       </p>
-      <ol className="mt-2 space-y-1.5">
-        {entries.map((entry, index) => (
+      <ol className="mt-2 space-y-1">
+        {entries.map((entry) => (
           <li
             key={`${entry.species}-${entry.pokedexId ?? "x"}`}
-            className="flex items-center gap-2.5"
+            className="flex items-center gap-2"
           >
-            <span className="w-3 shrink-0 text-[10px] font-bold tabular-nums text-muted">
-              {index + 1}
-            </span>
-            <span className="relative inline-block h-11 w-11 shrink-0">
+            <span className="relative inline-block h-10 w-10 shrink-0">
               <PokemonSpriteImage
                 alt=""
                 className="pixelated h-full w-full object-contain"
-                height={44}
+                height={40}
                 pokedexId={entry.pokedexId}
                 species={entry.species}
-                width={44}
+                width={40}
               />
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-display text-sm font-bold leading-tight">
-                {entry.species}
-              </span>
-              <span className="text-[10px] tabular-nums text-muted">
-                ×{countLabel(entry.count)}
-              </span>
+            <span className="min-w-0 truncate font-display text-sm font-bold leading-none">
+              {showCount ? (
+                <>
+                  <span className="tabular-nums text-muted">{entry.count}</span>
+                  {" "}
+                  {entry.species}
+                </>
+              ) : (
+                entry.species
+              )}
             </span>
           </li>
         ))}
@@ -209,20 +208,21 @@ function RouteTopCallout({
       <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
         {label}
       </p>
-      <ol className="mt-2 space-y-2">
+      <ol className="mt-2 space-y-1.5">
         {entries.map((entry, index) => (
-          <li key={entry.route} className="flex items-baseline gap-2">
-            <span className="w-3 shrink-0 text-[10px] font-bold tabular-nums text-muted">
+          <li
+            key={entry.route}
+            className="flex min-w-0 items-baseline gap-1.5 text-sm leading-none"
+          >
+            <span className="shrink-0 tabular-nums text-muted">
               {index + 1}
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-display text-sm font-bold leading-tight">
-                {entry.route}
-              </span>
-              <span className="text-[10px] text-muted">
-                {entry.graveCount} RIP · {entry.trainerCount} trainer
-                {entry.trainerCount === 1 ? "" : "s"}
-              </span>
+            <span className="min-w-0 truncate font-display font-bold">
+              {entry.route}
+            </span>
+            <span className="shrink-0 text-muted">·</span>
+            <span className="shrink-0 tabular-nums text-muted">
+              {entry.graveCount} fallen
             </span>
           </li>
         ))}
