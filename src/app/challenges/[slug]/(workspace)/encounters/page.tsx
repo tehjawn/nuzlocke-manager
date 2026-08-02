@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { EncounterLedger } from "@/components/EncounterLedger";
+import { EncounterSeasonView } from "@/components/EncounterSeasonView";
 import { getChallenge } from "@/lib/challenges";
 import { buildEncounterLedger } from "@/lib/encounter-ledger";
+import {
+  encounterSeasonHighlights,
+  missingModernEmeraldSpecies,
+} from "@/lib/encounter-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -28,17 +32,15 @@ export default async function EncountersPage({ params }: PageProps) {
   if (!challenge) notFound();
 
   const groups = buildEncounterLedger(challenge.trainers);
+  const highlights = encounterSeasonHighlights(challenge.trainers);
+  const missing = missingModernEmeraldSpecies(challenge.trainers);
 
   return (
-    <>
-      <header className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight">Encounter ledger</h2>
-        <p className="mt-2 text-muted">
-          Light route claims pulled from catch routes on trainer boards — not a
-          full encounter tracker.
-        </p>
-      </header>
-      <EncounterLedger slug={challenge.slug} groups={groups} />
-    </>
+    <EncounterSeasonView
+      slug={challenge.slug}
+      groups={groups}
+      highlights={highlights}
+      missing={missing}
+    />
   );
 }

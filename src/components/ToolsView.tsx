@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
+import { BountyHunterView } from "@/components/BountyHunterView";
 import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
 import { GuideIcon } from "@/components/nav-icons";
@@ -18,6 +19,7 @@ import {
   TOOLS_CATALOG,
   toolsHref,
   toolsHubHref,
+  type BountyMode,
   type ToolsId,
 } from "@/lib/tools-routes";
 
@@ -34,6 +36,7 @@ type ToolsViewProps = {
   initialCompareA?: string | null;
   initialCompareB?: string | null;
   initialDexId?: number | null;
+  initialBountyMode?: BountyMode | null;
 };
 
 export function ToolsView({
@@ -47,6 +50,7 @@ export function ToolsView({
   initialCompareA = null,
   initialCompareB = null,
   initialDexId = null,
+  initialBountyMode = null,
 }: ToolsViewProps) {
   const searchParams = useSearchParams();
   const tool =
@@ -71,6 +75,7 @@ export function ToolsView({
       initialCompareA={initialCompareA}
       initialCompareB={initialCompareB}
       initialDexId={initialDexId}
+      initialBountyMode={initialBountyMode}
     />
   );
 }
@@ -138,6 +143,8 @@ function toolIcon(id: ToolsId): ReactNode {
       return <CompareToolIcon />;
     case "guide":
       return <GuideIcon className="h-5 w-5" />;
+    case "bounty":
+      return <BountyToolIcon />;
   }
 }
 
@@ -194,6 +201,23 @@ function CompareToolIcon() {
   );
 }
 
+function BountyToolIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="7.25" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2.75v2.5M12 18.75v2.5M2.75 12h2.5M18.75 12h2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ToolWorkspace({
   slug,
   challengeName,
@@ -205,6 +229,7 @@ function ToolWorkspace({
   initialCompareA,
   initialCompareB,
   initialDexId,
+  initialBountyMode,
 }: {
   slug: string;
   challengeName: string;
@@ -216,6 +241,7 @@ function ToolWorkspace({
   initialCompareA?: string | null;
   initialCompareB?: string | null;
   initialDexId?: number | null;
+  initialBountyMode?: BountyMode | null;
 }) {
   const meta = TOOLS_CATALOG.find((t) => t.id === tool)!;
   const hubHref = toolsHubHref(slug);
@@ -227,7 +253,9 @@ function ToolWorkspace({
         ? `Attack × defense multipliers for ${challengeName}.`
         : tool === "guide"
           ? `What to do next in the story for ${challengeName}.`
-          : `Side-by-side squads and badges for ${challengeName}.`;
+          : tool === "bounty"
+            ? `Open bounties, personal gaps, and pack exclusives for ${challengeName}.`
+            : `Side-by-side squads and badges for ${challengeName}.`;
 
   return (
     <div className="space-y-6">
@@ -276,6 +304,15 @@ function ToolWorkspace({
           slug={slug}
           trainers={trainers}
           myTrainerId={myTrainerId}
+        />
+      ) : null}
+
+      {tool === "bounty" ? (
+        <BountyHunterView
+          slug={slug}
+          trainers={trainers}
+          myTrainerId={myTrainerId}
+          initialMode={initialBountyMode}
         />
       ) : null}
     </div>
