@@ -1,6 +1,7 @@
 import moveMetaData from "@/data/move-meta.json";
-import { TYPES, type PokemonType } from "@/lib/type-chart";
+import { TYPE_COLORS, type PokemonType as IndexedType } from "@/lib/pokemon-types";
 import { resolveMoveName } from "@/lib/move-names";
+import { TYPES, type PokemonType } from "@/lib/type-chart";
 
 export type MoveCategory = "Physical" | "Special" | "Status";
 
@@ -62,4 +63,21 @@ export function formatMoveMetaTip(meta: MoveMeta): string {
     return `${meta.type} · ${meta.category}`;
   }
   return `${meta.type} · ${meta.category} · ${meta.power} power`;
+}
+
+/**
+ * Subtle type wash for compact board/dashboard move chips.
+ * Returns undefined when the move type is unknown (caller keeps default bg).
+ */
+export function moveTypeWashStyle(
+  move: string,
+): { backgroundColor: string; borderColor: string } | undefined {
+  const meta = lookupMoveMeta(move);
+  if (!meta) return undefined;
+  const color = TYPE_COLORS[meta.type as IndexedType];
+  if (!color) return undefined;
+  return {
+    backgroundColor: `color-mix(in srgb, ${color} 20%, var(--info))`,
+    borderColor: `color-mix(in srgb, ${color} 38%, var(--frame))`,
+  };
 }

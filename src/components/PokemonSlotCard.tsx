@@ -1,12 +1,13 @@
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
-import { MoveLabel } from "@/components/MoveLabel";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
+import { moveTypeWashStyle } from "@/lib/move-meta";
+import { resolveMoveName } from "@/lib/move-names";
 import {
   calcBattleStats,
   calcMaxBattleStats,
@@ -319,18 +320,19 @@ export function PokemonSlotCard({
             Moves
           </p>
           <ul className="grid grid-cols-2 gap-1.5">
-            {moves.map((move, index) => (
-              <li
-                key={`${index}-${move}`}
-                className="rounded-lg border border-frame/40 bg-info px-2 py-1.5 text-[11px] text-info-ink"
-              >
-                <MoveLabel
-                  move={move}
-                  compact
-                  embedded={looksInteractive}
-                />
-              </li>
-            ))}
+            {moves.map((move, index) => {
+              const name = resolveMoveName(move) || move;
+              return (
+                <li
+                  key={`${index}-${move}`}
+                  className="truncate rounded-lg border border-frame/40 bg-info px-2 py-1.5 text-[11px] text-info-ink"
+                  style={moveTypeWashStyle(move)}
+                  title={name}
+                >
+                  {name}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : (

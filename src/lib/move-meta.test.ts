@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatMoveMetaTip, lookupMoveMeta } from "@/lib/move-meta";
+import {
+  formatMoveMetaTip,
+  lookupMoveMeta,
+  moveTypeWashStyle,
+} from "@/lib/move-meta";
 
 test("lookupMoveMeta resolves common damaging and status moves", () => {
   const flame = lookupMoveMeta("Flamethrower");
@@ -36,4 +40,12 @@ test("formatMoveMetaTip includes power only for damaging moves", () => {
     }),
     "Normal · Status",
   );
+});
+
+test("moveTypeWashStyle tints known moves and skips unknowns", () => {
+  const wash = moveTypeWashStyle("Flamethrower");
+  assert.ok(wash);
+  assert.match(wash.backgroundColor, /f08030/i);
+  assert.match(wash.borderColor, /f08030/i);
+  assert.equal(moveTypeWashStyle("not-a-real-move"), undefined);
 });
