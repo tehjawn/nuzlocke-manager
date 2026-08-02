@@ -16,6 +16,7 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:pull-neon": "bash scripts/db-pull-neon.sh",
     "data:pokemon": "node scripts/generate-pokemon-catalog.mjs",
     "data:lookups": "node scripts/generate-pokemon-lookups.mjs",
     "data:moves": "node scripts/generate-expansion-moves.mjs",
