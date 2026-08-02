@@ -222,16 +222,18 @@ export function PokemonSlotCard({
   }
 
   const body = (
-    <div className={tierRing ? `${tierRing} h-full` : "h-full"}>
+    <div
+      className={
+        tierRing
+          ? `${tierRing} h-full`
+          : `pokemon-catch-ring pokemon-catch-ring--oof h-full`
+      }
+    >
       <div
         className={`flex h-full flex-col gap-3 rounded-lg border bg-surface p-3 ${
           tierRing ? "border-transparent" : "border-frame"
         } ${memorial ? "opacity-90" : ""} ${
-          looksInteractive && !tierRing
-            ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30"
-            : looksInteractive
-              ? "cursor-pointer"
-              : ""
+          looksInteractive ? "cursor-pointer" : ""
         }`}
       >
       <div className="flex shrink-0 items-start gap-3">
