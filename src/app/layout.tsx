@@ -40,13 +40,31 @@ export const viewport: Viewport = {
   ],
 };
 
+const SITE_URL = "https://nuzlocke-manager.vercel.app";
+const SITE_TITLE = "Trash Pack's Nuzlocke Challenge Manager";
+const SITE_DESCRIPTION =
+  "Trash Pack's Nuzlocke Challenge Manager — league boards, graves, badges, and season archives.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Trash Pack's Nuzlocke Challenge Manager",
+    default: SITE_TITLE,
     template: "%s · Nuzlocke Manager",
   },
-  description:
-    "Trash Pack's Nuzlocke Challenge Manager — league boards, graves, badges, and season archives.",
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "Nuzlocke Manager",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default async function RootLayout({
