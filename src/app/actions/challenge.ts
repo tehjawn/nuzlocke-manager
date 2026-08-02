@@ -1889,6 +1889,7 @@ export async function setBadgesProgressAction(
     }
 
     // League board only — avoid remounting the trainer editor mid-toggle.
+    updateTag(`season:${trainer.challenge.slug}:board`);
     revalidatePath(`/challenges/${trainer.challenge.slug}`);
     return { ok: true };
   } catch (e) {

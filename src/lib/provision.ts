@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import {
   encodeActivityHead,
@@ -31,6 +32,11 @@ export type ProvisionResult =
       role: "PLAYER" | "GAME_MASTER" | "SPECTATOR";
     }
   | { ok: false; reason: "not_found" | "invite_required" | "no_user" };
+
+export function revalidateProvisionedChallenge(slug: string) {
+  revalidateTag(`season:${slug}:board`, { expire: 0 });
+  revalidateTag("seasons:index", { expire: 0 });
+}
 
 /**
  * Ensure a Discord user is a PLAYER (or existing role) with a personal trainer board.
@@ -67,6 +73,7 @@ export async function ensureTrainerForChallenge(input: {
   const membership = existing.memberships[0] ?? null;
   const trainer = existing.trainers[0] ?? null;
   const isDefaultLeague = existing.slug === DEFAULT_CHALLENGE_SLUG;
+  let changed = false;
 
   if (membership && trainer) {
     // Welcome is ensured at Discord sign-in — not on every season enter.
@@ -113,6 +120,7 @@ export async function ensureTrainerForChallenge(input: {
       existing.id,
       encodeActivityHead(joined.createdAt, joined.id),
     );
+    changed = true;
   }
 
   const role =
@@ -129,6 +137,7 @@ export async function ensureTrainerForChallenge(input: {
     ).role;
 
   if (trainer) {
+    if (changed) revalidateProvisionedChallenge(existing.slug);
     return {
       ok: true,
       challengeId: existing.id,
@@ -194,6 +203,8 @@ export async function ensureTrainerForChallenge(input: {
   if (isDefaultLeague) {
     await ensureWelcomeNotification(input.userId);
   }
+
+  revalidateProvisionedChallenge(existing.slug);
 
   return {
     ok: true,

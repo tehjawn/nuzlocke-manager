@@ -21,6 +21,7 @@ import {
 } from "@/app/actions/challenge";
 import { Frame } from "@/components/Frame";
 import { coalesceActivityItems } from "@/lib/activity-messages";
+import { activityPollHead } from "@/lib/activity-poll";
 import type {
   ActivityItem,
   ActivityReactionSummary,
@@ -89,6 +90,7 @@ function useActivityPoll(
   const headRef = useRef<string | null>(null);
   const lastChangeAtRef = useRef(0);
   const onPageRef = useRef(onPage);
+  const unchangedPollsRef = useRef(0);
 
   useEffect(() => {
     onPageRef.current = onPage;
@@ -97,6 +99,7 @@ function useActivityPoll(
   useEffect(() => {
     headRef.current = null;
     lastChangeAtRef.current = Date.now();
+    unchangedPollsRef.current = 0;
 
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -106,17 +109,25 @@ function useActivityPoll(
       if (document.visibilityState === "hidden" || inFlight) return;
       inFlight = true;
       try {
+        const previousHead = headRef.current;
         const next = await fetchChallengeActivitiesAction({
           slug,
           limit,
-          head: headRef.current,
+          head: activityPollHead(previousHead, unchangedPollsRef.current),
         });
         if (cancelled) return;
-        if (next.head) headRef.current = next.head;
-        if (!next.unchanged) {
-          lastChangeAtRef.current = Date.now();
-          onPageRef.current(next);
+        if (next.head !== undefined) {
+          headRef.current = next.head ?? null;
         }
+        if (next.unchanged) {
+          unchangedPollsRef.current += 1;
+          return;
+        }
+        unchangedPollsRef.current = 0;
+        if (headRef.current !== previousHead) {
+          lastChangeAtRef.current = Date.now();
+        }
+        onPageRef.current(next);
       } catch {
         // ignore transient poll failures
       } finally {

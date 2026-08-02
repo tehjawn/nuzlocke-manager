@@ -9,7 +9,6 @@ import {
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
-import { ensureTrainerForChallenge } from "@/lib/provision";
 
 
 type LayoutProps = {
@@ -28,25 +27,8 @@ export default async function SeasonWorkspaceLayout({
 }: LayoutProps) {
   const { slug } = await params;
   const session = await auth();
-  let challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
-
-  let myTrainerId: string | null = null;
-
-  if (session?.user?.id && challenge.source === "database") {
-    const provisioned = await ensureTrainerForChallenge({
-      userId: session.user.id,
-      slug: challenge.slug,
-      allowAutoJoin: challenge.visibility !== "INVITE",
-    });
-    if (provisioned.ok) {
-      myTrainerId = provisioned.trainerId;
-      if (provisioned.created) {
-        challenge =
-          (await getChallenge(slug, session.user.id)) ?? challenge;
-      }
-    }
-  }
 
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
@@ -60,6 +42,19 @@ export default async function SeasonWorkspaceLayout({
     })
   ) {
     redirect(`/challenges/${slug}/join`);
+  }
+
+  const myTrainerId = session?.user?.id
+    ? challenge.trainers.find((trainer) => trainer.userId === session.user.id)
+        ?.id ?? null
+    : null;
+
+  if (
+    session?.user?.id &&
+    challenge.source === "database" &&
+    !myTrainerId
+  ) {
+    redirect(`/challenges/${slug}/me`);
   }
 
   const showGm = Boolean(access?.isGm);

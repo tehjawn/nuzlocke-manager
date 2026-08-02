@@ -17,6 +17,21 @@ export {
   withPinnedWelcome,
 } from "@/lib/notification-types";
 
+type WelcomeRow = {
+  type: string;
+  actionKey: string | null;
+};
+
+export async function prependPersistedWelcome<T extends WelcomeRow>(
+  rows: T[],
+  findWelcome: () => Promise<T | null>,
+  ensureWelcome: () => Promise<T>,
+): Promise<T[]> {
+  if (rows.some(isWelcomeNotification)) return rows;
+  const welcome = (await findWelcome()) ?? (await ensureWelcome());
+  return [welcome, ...rows];
+}
+
 function toItem(row: {
   id: string;
   type: string;
@@ -83,10 +98,29 @@ export async function listNotificationsForUser(
       createdAt: true,
     },
   });
-  if (!rows.some(isWelcomeNotification)) {
-    const welcome = await ensureWelcomeNotification(userId);
-    rows = [welcome, ...rows];
-  }
+  rows = await prependPersistedWelcome(
+    rows,
+    () =>
+      prisma.notification.findUnique({
+        where: {
+          userId_type_actionKey: {
+            userId,
+            type: NOTIFICATION_TYPE_WELCOME,
+            actionKey: NOTIFICATION_ACTION_WELCOME,
+          },
+        },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          body: true,
+          actionKey: true,
+          readAt: true,
+          createdAt: true,
+        },
+      }),
+    () => ensureWelcomeNotification(userId),
+  );
   return withPinnedWelcome(rows.map(toItem));
 }
 
