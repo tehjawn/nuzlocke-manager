@@ -56,6 +56,8 @@ export type TrainerProfile = {
   wipeCount: number;
   /** 1-based living attempt; equals wipeCount + 1 when in sync. */
   activeRunNumber: number;
+  /** Last imported Pokédollars; null when never imported / unknown. */
+  money: number | null;
   mainSquadLocked: boolean;
   sortOrder: number;
   userId: string | null;

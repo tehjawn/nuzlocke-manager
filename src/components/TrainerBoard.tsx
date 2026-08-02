@@ -1594,6 +1594,8 @@ export function TrainerBoard({
                 applyBadges: payload.applyBadges,
                 reviveUsed: payload.reviveUsed,
                 applyRevive: payload.applyRevive,
+                money: payload.money,
+                applyMoney: payload.applyMoney,
                 // Living + Encountered mirror this save. Memorial is season-wide:
                 // imported R.I.P. appends (deduped); prior graves are kept.
                 replaceSlots: ["MAIN", "RESERVE", "ENCOUNTERED"],

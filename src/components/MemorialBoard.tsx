@@ -65,10 +65,12 @@ export function MemorialBoard({
 
   const heaviestTrainers = trainersForHighlight(highlights.heaviestMemorial);
   const wipeTrainers = trainersForHighlight(highlights.mostPartyWipes);
+  const richestTrainers = trainersForHighlight(highlights.richest);
   const hasCallouts = Boolean(
     highlights.heaviestMemorial ||
       highlights.mostPartyWipes ||
-      highlights.mostDeathProne,
+      highlights.mostDeathProne ||
+      highlights.richest,
   );
 
   return (
@@ -92,8 +94,8 @@ export function MemorialBoard({
         </p>
       </header>
 
-      {entries.length > 0 && hasCallouts ? (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {hasCallouts ? (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {highlights.heaviestMemorial ? (
             <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
               <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
@@ -185,6 +187,39 @@ export function MemorialBoard({
                   </span>
                 </span>
               </p>
+            </div>
+          ) : null}
+          {highlights.richest ? (
+            <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
+              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
+                Richest
+                {highlights.richest.tied ? " · tied" : ""}
+              </p>
+              <div className="mt-1 flex items-center gap-2.5">
+                {richestTrainers.length > 0 ? (
+                  <div className="flex shrink-0 items-end -space-x-2">
+                    {richestTrainers.slice(0, 3).map((trainer) => (
+                      <AvatarPortrait
+                        key={trainer.id}
+                        avatarSpriteKey={trainer.avatarSpriteKey}
+                        backgroundKey={trainer.avatarBackgroundKey}
+                        sizeClass="h-12 w-12"
+                        width={48}
+                        height={48}
+                        alt=""
+                      />
+                    ))}
+                  </div>
+                ) : null}
+                <div className="min-w-0">
+                  <p className="font-display text-sm font-bold leading-tight">
+                    {formatTiedLabels(highlights.richest.labels)}
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    ${highlights.richest.count.toLocaleString("en-US")}
+                  </p>
+                </div>
+              </div>
             </div>
           ) : null}
         </div>

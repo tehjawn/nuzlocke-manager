@@ -30,6 +30,17 @@ export const SECTOR_ID_PKMN_STORAGE_END = 13;
 export const SB1_PARTY_COUNT = 0x234;
 export const SB1_PARTY = 0x238;
 export const SB1_MONEY = 0x490;
+/** Gen 3 wallet cap (GetMoney / SetMoney). */
+export const MAX_MONEY = 999_999;
+/**
+ * Pokémon Day Care — vanilla Emerald `SaveBlock1.daycare`.
+ * Modern Emerald shifts later SB1 fields by the bag expansion (~+0xF0).
+ */
+export const SB1_DAYCARE = 0x3030;
+export const MODERN_SB1_DAYCARE = 0x3120;
+/** `struct DaycareMon` stride (BoxPokemon + mail + steps). */
+export const DAYCARE_MON_STRIDE = 0x8c;
+export const DAYCARE_MON_COUNT = 2;
 /** National dex seen[1]; owned bitfield immediately precedes this (58 bytes). */
 export const SB1_SEEN1 = 0xa78;
 /**
@@ -71,6 +82,8 @@ export const CREST_NUZLOCKE_FLAGS_AFTER_PARTY = 0x3b50;
 export const SB2_PLAYER_NAME = 0x00;
 export const SB2_PLAYER_GENDER = 0x08;
 export const SB2_TRAINER_ID = 0x0a;
+/** XOR key for money / coins / encrypted bag fields. */
+export const SB2_ENCRYPTION_KEY = 0xac;
 
 /** PokemonStorage */
 export const STORAGE_CURRENT_BOX = 0x00;

@@ -56,6 +56,7 @@ type DbChallenge = {
     statusEmoji: string | null;
     reviveUsed: boolean;
     wipeCount: number;
+    money?: number | null;
     activeRunId: string | null;
     mainSquadLocked: boolean;
     sortOrder: number;
@@ -222,6 +223,7 @@ export function mapDbTrainer(
     reviveUsed: trainer.reviveUsed,
     wipeCount: trainer.wipeCount ?? 0,
     activeRunNumber: (trainer.wipeCount ?? 0) + 1,
+    money: trainer.money ?? null,
     mainSquadLocked: trainer.mainSquadLocked,
     sortOrder: trainer.sortOrder,
     userId: trainer.userId,

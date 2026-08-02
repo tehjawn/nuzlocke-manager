@@ -27,7 +27,9 @@ import {
 import { gen3MoveName } from "@/lib/move-names";
 import type { StatSpread } from "@/lib/stats";
 import { EMPTY_EVS, EMPTY_IVS } from "@/lib/stats";
+import { levelFromExperienceForSpecies } from "./experience";
 import { looksLikeFlashSave, parseFlashSave } from "./flash";
+import { decryptGen3Money } from "./money";
 import { decodeGen3Name, isValidGen3TrainerName } from "./text";
 import {
   BOX_MON_SIZE,
@@ -36,19 +38,24 @@ import {
   CREST_FLAGS_AFTER_PARTY,
   CREST_NUZLOCKE_FLAGS_AFTER_PARTY,
   CREST_SEEN1_AFTER_PARTY,
+  DAYCARE_MON_COUNT,
+  DAYCARE_MON_STRIDE,
   FLAG_BADGE01,
   FLAGS_AFTER_PARTY as MODERN_FLAGS_AFTER_PARTY,
   MODERN_DEX_FLAG_BYTES,
   MODERN_NUM_SPECIES,
   MODERN_REVIVES_TOTAL,
   MODERN_ROM_DEX_TO_NATIONAL,
+  MODERN_SB1_DAYCARE,
   MODERN_SPECIES_TO_NATIONAL,
   NUZLOCKE_FLAGS_AFTER_PARTY as MODERN_NUZLOCKE_FLAGS_AFTER_PARTY,
   PARTY_MON_SIZE,
   PARTY_SLOTS,
   REVIVES_USED_MASK,
+  SB1_DAYCARE,
   SB1_FLAGS,
   CREST_SB1_FLAGS,
+  SB1_MONEY,
   SB1_NUZLOCKE_ENCOUNTER_FLAGS,
   SB1_NUZLOCKE_FLAGS_LEN,
   SB1_PARTY,
@@ -56,6 +63,7 @@ import {
   SB1_REVIVES_USED,
   SB1_REVIVES_USED_BYTE,
   SB1_SEEN1,
+  SB2_ENCRYPTION_KEY,
   SEEN1_AFTER_PARTY as MODERN_SEEN1_AFTER_PARTY,
   STORAGE_BOX_CAPACITY,
   STORAGE_BOX_COUNT,
@@ -105,6 +113,12 @@ export type ParsedSaveRevive = {
   reliable: boolean;
 };
 
+/** Decrypted Pokédollars from SaveBlock1.money ⊕ SaveBlock2.encryptionKey. */
+export type ParsedSaveMoney = {
+  amount: number;
+  reliable: boolean;
+};
+
 export type ParseSaveResult =
   | {
       ok: true;
@@ -113,12 +127,15 @@ export type ParseSaveResult =
       trainer: ParsedSaveTrainer | null;
       badges: ParsedSaveBadges;
       revive: ParsedSaveRevive;
+      money: ParsedSaveMoney;
       party: ParsedSavePokemon[];
       box: ParsedSavePokemon[];
       rip: ParsedSavePokemon[];
       encountered: ParsedSavePokemon[];
     }
   | { ok: false; error: string };
+
+const EMPTY_MONEY: ParsedSaveMoney = { amount: 0, reliable: false };
 
 const GBA_STATE_SIZE = 0x61000;
 const EWRAM_OFFSET = 0x21000;
@@ -467,6 +484,8 @@ type RawMon = {
   nuzlockeRibbon: boolean;
   /** Modern Emerald growth.box_hp (0 on party; PC uses 0 for fainted). */
   boxHp: number | null;
+  /** Growth experience (u32) — used to derive level for box / daycare forms. */
+  experience: number;
   offset: number;
   crypto: "xor32" | "lcg";
 };
@@ -528,6 +547,7 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
 
   const itemId = growthView.getUint16(2, true);
   const heldItem = gen3ItemName(itemId);
+  const experience = growthView.getUint32(4, true);
 
   const moves: string[] = [];
   for (let i = 0; i < 4; i++) {
@@ -604,6 +624,7 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
     evs,
     nuzlockeRibbon,
     boxHp: maxHp > 0 ? null : boxHp, // only meaningful for BoxPokemon
+    experience,
     offset,
     crypto,
   };
@@ -630,12 +651,17 @@ function toParsed(
       ? mon.nickname
       : null;
 
+  // Prefer party trailer level; box / daycare forms derive from experience.
+  const level =
+    mon.level ??
+    levelFromExperienceForSpecies(mon.experience, pokedexId);
+
   return {
     pid: mon.pid,
     nickname: nick,
     species,
     pokedexId,
-    level: mon.level,
+    level,
     isShiny: mon.isShiny,
     nature: mon.nature,
     ability: abilityForSpecies(pokedexId, mon.abilitySlot),
@@ -1292,6 +1318,117 @@ function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedS
   };
 }
 
+function daycareBaseCandidates(mode: SpeciesIdMode): number[] {
+  return mode === "modern"
+    ? [MODERN_SB1_DAYCARE, SB1_DAYCARE, MODERN_SB1_DAYCARE + 4]
+    : [SB1_DAYCARE, MODERN_SB1_DAYCARE];
+}
+
+/**
+ * Pull up to 2 Day Care BoxPokemon into the box/Reserves path.
+ * Prefers the mode-native SB1 offset; falls back when a shifted layout holds mons.
+ */
+function readDaycareMons(
+  sb1: Uint8Array,
+  mode: SpeciesIdMode,
+  claimed: Set<number>,
+): RawMon[] {
+  const preferred = daycareBaseCandidates(mode)[0]!;
+  for (const base of daycareBaseCandidates(mode)) {
+    if (base + DAYCARE_MON_COUNT * DAYCARE_MON_STRIDE > sb1.length) continue;
+    const mons: RawMon[] = [];
+    let anySlot = false;
+    for (let i = 0; i < DAYCARE_MON_COUNT; i++) {
+      const mon = tryParseMon(sb1, base + i * DAYCARE_MON_STRIDE);
+      if (!mon) continue;
+      anySlot = true;
+      if (!claimed.has(mon.pid)) mons.push(mon);
+    }
+    if (anySlot || base === preferred) return mons;
+  }
+  return [];
+}
+
+function readMoney(sb1: Uint8Array, sb2: Uint8Array): ParsedSaveMoney {
+  if (sb1.length < SB1_MONEY + 4 || sb2.length < SB2_ENCRYPTION_KEY + 4) {
+    return EMPTY_MONEY;
+  }
+  const encView = new DataView(sb1.buffer, sb1.byteOffset + SB1_MONEY, 4);
+  const keyView = new DataView(
+    sb2.buffer,
+    sb2.byteOffset + SB2_ENCRYPTION_KEY,
+    4,
+  );
+  const amount = decryptGen3Money(
+    encView.getUint32(0, true),
+    keyView.getUint32(0, true),
+  );
+  if (amount == null) return EMPTY_MONEY;
+  return { amount, reliable: true };
+}
+
+/**
+ * Locate SaveBlock2 for money decryption. Prefer an exact trainer-name match
+ * with a non-zero encryption key — ASLR .state dumps are full of false hits.
+ */
+function findSaveBlock2Offset(
+  bytes: Uint8Array,
+  trainerName?: string | null,
+): number | null {
+  let fallback: number | null = null;
+  for (let i = 0; i + SB2_ENCRYPTION_KEY + 4 < bytes.length; i++) {
+    const name = decodeGen3Name(bytes.subarray(i, i + 8));
+    if (!name || !isValidGen3TrainerName(name)) continue;
+    if (trainerName && name !== trainerName) continue;
+    const genderByte = bytes[i + 8] ?? 0xff;
+    if (genderByte > 1) continue;
+    let hasEos = false;
+    for (let j = 0; j < 8; j++) {
+      if (bytes[i + j] === 0xff) {
+        hasEos = true;
+        break;
+      }
+    }
+    if (!hasEos) continue;
+    const key = new DataView(
+      bytes.buffer,
+      bytes.byteOffset + i + SB2_ENCRYPTION_KEY,
+      4,
+    ).getUint32(0, true);
+    if (key === 0) continue;
+    if (trainerName && name === trainerName) return i;
+    if (fallback == null) fallback = i;
+  }
+  return trainerName ? null : fallback;
+}
+
+function readMoneyFromEwram(
+  bytes: Uint8Array,
+  sb1Base: number,
+  trainerName?: string | null,
+): ParsedSaveMoney {
+  if (sb1Base + SB1_MONEY + 4 > bytes.length) return EMPTY_MONEY;
+  const sb2Base = findSaveBlock2Offset(bytes, trainerName);
+  if (sb2Base == null) return EMPTY_MONEY;
+  if (sb2Base + SB2_ENCRYPTION_KEY + 4 > bytes.length) return EMPTY_MONEY;
+  const encView = new DataView(
+    bytes.buffer,
+    bytes.byteOffset + sb1Base + SB1_MONEY,
+    4,
+  );
+  const keyView = new DataView(
+    bytes.buffer,
+    bytes.byteOffset + sb2Base + SB2_ENCRYPTION_KEY,
+    4,
+  );
+  const amount = decryptGen3Money(
+    encView.getUint32(0, true),
+    keyView.getUint32(0, true),
+  );
+  if (amount == null) return EMPTY_MONEY;
+  return { amount, reliable: true };
+}
+
 function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult {
   const warnings: string[] = [];
   // First pass: locate any party so we can detect Modern vs Crest species IDs.
@@ -1310,6 +1447,7 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
         trainer: null,
         badges: { earnedKeys: [], reliable: false },
         revive: EMPTY_REVIVE,
+        money: EMPTY_MONEY,
         party: [],
         box: [],
         rip: [],
@@ -1402,17 +1540,18 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
   box.sort((a, b) => a.offset - b.offset);
   rip.sort((a, b) => a.offset - b.offset);
 
-  const partyParsed = party.map((m) => toParsed(m, "party", speciesMode));
-  const boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
-  const ripParsed = rip.map((m) => toParsed(m, "rip", speciesMode));
-  let encounteredParsed = encounteredRaw.map((m) =>
-    toParsed(m, "encountered", speciesMode),
-  );
-
   const maxDex =
     speciesMode === "modern" ? MODERN_NUM_SPECIES : CREST_DEX_MAX_SPECIES;
   // Include box mons in ownedMust — Modern dex owned covers PC living mons.
   // Bitfield indices are ROM NATIONAL_DEX for modern, real ND for crest.
+  // Parsed after daycare merge so National ids stay consistent.
+  let partyParsed = party.map((m) => toParsed(m, "party", speciesMode));
+  let boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
+  let ripParsed = rip.map((m) => toParsed(m, "rip", speciesMode));
+  let encounteredParsed = encounteredRaw.map((m) =>
+    toParsed(m, "encountered", speciesMode),
+  );
+
   const ownedMust = dexBitIdsForMode(
     [...partyParsed, ...boxParsed, ...ripParsed].map((m) => m.pokedexId),
     speciesMode,
@@ -1423,8 +1562,14 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
     speciesMode === "modern"
       ? readReviveToken(bytes, partyBase, speciesMode)
       : EMPTY_REVIVE;
+  let money = EMPTY_MONEY;
   let dex: { seen: number[]; source: "table" | "bitfield" | "seen1" } | null =
     null;
+
+  const claimedPids = new Set(
+    [...party, ...box, ...rip].map((m) => m.pid),
+  );
+  const trainer = findTrainerNearParty(bytes, party);
 
   if (speciesMode === "modern") {
     const meta = locateModernSaveMeta(bytes, ownedMust);
@@ -1432,6 +1577,19 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
       if (meta.sb1 >= 0) {
         badges = readBadgesAbsolute(bytes, meta.sb1 + SB1_FLAGS);
         revive = readReviveAbsolute(bytes, meta.sb1);
+        money = readMoneyFromEwram(bytes, meta.sb1, trainer?.name ?? null);
+        const sb1View = bytes.subarray(meta.sb1);
+        const daycare = readDaycareMons(sb1View, speciesMode, claimedPids);
+        for (const mon of daycare) {
+          claimedPids.add(mon.pid);
+          box.push(mon);
+        }
+        if (daycare.length > 0) {
+          boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
+          warnings.push(
+            `Day Care: imported ${daycare.length} Pokémon into Reserves.`,
+          );
+        }
         warnings.push("Anchored SaveBlock1 via Pokédex seen1 (ASLR-safe).");
       }
       // Encounter stubs = seen but not owned (failed catches / dex-only).
@@ -1445,8 +1603,6 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
       );
     }
   }
-
-  const trainer = findTrainerNearParty(bytes, party);
   if (!badges.reliable) {
     warnings.push("Could not reliably read gym badge flags from this save.");
   } else if (badges.earnedKeys.length === 0) {
@@ -1525,6 +1681,7 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
     trainer,
     badges,
     revive,
+    money,
     party: partyParsed,
     box: boxParsed,
     rip: ripParsed,
@@ -1628,6 +1785,17 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
     }
   }
 
+  const daycare = readDaycareMons(sb1, speciesMode, claimed);
+  for (const mon of daycare) {
+    claimed.add(mon.pid);
+    box.push(mon);
+  }
+  if (daycare.length > 0) {
+    warnings.push(
+      `Day Care: imported ${daycare.length} Pokémon into Reserves.`,
+    );
+  }
+
   const trainer = readTrainerFromSaveBlock2(sb2) ?? findTrainerNearParty(sb1, partyLiving);
   const flagsOff = speciesMode === "modern" ? SB1_FLAGS : CREST_SB1_FLAGS;
   const badges = readBadgesAbsolute(sb1, flagsOff);
@@ -1639,6 +1807,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
   if (speciesMode === "modern" && !revive.reliable) {
     warnings.push("Could not read revive token from SaveBlock1.");
   }
+  const money = readMoney(sb1, sb2);
 
   const partyParsed = partyLiving.map((m) => toParsed(m, "party", speciesMode));
   const boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
@@ -1694,6 +1863,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
     trainer,
     badges,
     revive,
+    money,
     party: partyParsed,
     box: boxParsed,
     rip: ripParsed,

@@ -321,6 +321,9 @@ export function TrainerCard({
                   {(trainer.wipeCount ?? 0) > 0
                     ? ` • ${trainer.wipeCount} wipe${trainer.wipeCount === 1 ? "" : "s"}`
                     : ""}
+                  {trainer.money != null
+                    ? ` • $${trainer.money.toLocaleString("en-US")}`
+                    : ""}
                 </p>
                 <ReviveToken
                   used={trainer.reviveUsed}

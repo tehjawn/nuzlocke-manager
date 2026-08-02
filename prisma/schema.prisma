@@ -209,6 +209,8 @@ model TrainerProfile {
   reviveUsed      Boolean  @default(false)
   /// Closed-run count this season; active run number is wipeCount + 1.
   wipeCount       Int      @default(0)
+  /// Last imported Pokédollars from Gen 3 save (null = unknown / never imported).
+  money           Int?
   mainSquadLocked Boolean  @default(false)
   sortOrder       Int      @default(0)
   /// Pointer to the living attempt; closed runs remain in `runs` for stats.

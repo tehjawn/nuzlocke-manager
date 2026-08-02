@@ -2348,6 +2348,8 @@ const ImportFromSaveSchema = z.object({
   applyBadges: z.boolean().default(false),
   reviveUsed: z.boolean().optional().nullable(),
   applyRevive: z.boolean().default(false),
+  money: z.number().int().min(0).max(999_999).optional().nullable(),
+  applyMoney: z.boolean().default(false),
   /**
    * Which living / Encountered slots to overwrite from this import.
    * GRAVEYARD is season-wide: omitted here means append imported R.I.P.
@@ -2592,6 +2594,14 @@ export async function importFromSaveAction(
           to: data.reviveUsed,
         };
       }
+
+      if (data.applyMoney && data.money != null) {
+        await tx.trainerProfile.update({
+          where: { id: trainer.id },
+          data: { money: data.money },
+        });
+      }
+
       return { reviveTransition, importedCount: importRows.length };
     });
 

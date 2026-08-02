@@ -52,6 +52,7 @@ function trainer(
     reviveUsed: false,
     wipeCount: 0,
     activeRunNumber: 1,
+    money: null,
     mainSquadLocked: false,
     userId: null,
     discordUsername: null,
