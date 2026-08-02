@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from "react";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { SearchSelect } from "@/components/SearchSelect";
@@ -9,7 +10,11 @@ import { PokemonSpriteBrowser } from "@/components/SpriteBrowser";
 import { StatSpreadEditor } from "@/components/StatSpreadEditor";
 import { TypeBadge } from "@/components/TypeBadge";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
-import { heldItemSpriteUrl, searchHeldItems } from "@/data/pokemon-index";
+import {
+  heldItemDescription,
+  heldItemSpriteUrl,
+  searchHeldItems,
+} from "@/data/pokemon-index";
 import {
   searchAbilities,
   searchCatchRoutes,
@@ -468,14 +473,20 @@ function PokemonFormModalInner({
                   <span className={LABEL}>Held item</span>
                   <div className="flex items-center gap-1.5">
                     {form.heldItem ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={heldItemSpriteUrl(form.heldItem)}
-                        alt=""
-                        width={28}
-                        height={28}
-                        className="pixelated h-7 w-7 shrink-0 object-contain"
-                      />
+                      <InfoTip
+                        tip={heldItemDescription(form.heldItem) ?? ""}
+                        embedded
+                        className="shrink-0"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={heldItemSpriteUrl(form.heldItem)}
+                          alt=""
+                          width={28}
+                          height={28}
+                          className="pixelated h-7 w-7 object-contain"
+                        />
+                      </InfoTip>
                     ) : null}
                     <input
                       className={INPUT}
@@ -510,6 +521,7 @@ function PokemonFormModalInner({
                               setItemQuery(item.name);
                               setForm((f) => ({ ...f, heldItem: item.name }));
                             }}
+                            title={item.description ?? undefined}
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
@@ -519,7 +531,9 @@ function PokemonFormModalInner({
                               height={24}
                               className="pixelated h-6 w-6 object-contain"
                             />
-                            {item.name}
+                            <span className="min-w-0 flex-1 truncate">
+                              {item.name}
+                            </span>
                           </button>
                         </li>
                       ))}

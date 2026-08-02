@@ -86,24 +86,24 @@ test("pokemon animated avatar keys resolve to Showdown ani GIFs", () => {
   );
   assert.equal(
     pokemonAnimatedSpriteUrl("venusaur-mega"),
-    "https://play.pokemonshowdown.com/sprites/ani/venusaur-mega.gif",
+    "/api/sprites/ani/venusaur-mega.gif",
   );
   assert.equal(
     pokemonAnimatedSpriteUrl("Charizard-Mega-X", { shiny: true }),
-    "https://play.pokemonshowdown.com/sprites/ani-shiny/charizard-megax.gif",
+    "/api/sprites/ani-shiny/charizard-megax.gif",
   );
   assert.equal(
     avatarImageUrl("pokeani:306"),
-    "https://play.pokemonshowdown.com/sprites/ani/aggron.gif",
+    "/api/sprites/ani/aggron.gif",
   );
   // Forme ids (≥10000) still round-trip via index slug → Showdown ani stem.
   assert.equal(
     avatarImageUrl("pokeani:10034"),
-    "https://play.pokemonshowdown.com/sprites/ani/charizard-megax.gif",
+    "/api/sprites/ani/charizard-megax.gif",
   );
   assert.equal(
     avatarImageUrl("pokeani:10091"),
-    "https://play.pokemonshowdown.com/sprites/ani/rattata-alola.gif",
+    "/api/sprites/ani/rattata-alola.gif",
   );
   assert.equal(
     avatarStillImageUrl("pokeani:306"),

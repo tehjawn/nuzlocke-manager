@@ -1,27 +1,21 @@
 /**
  * Free/open sprite helpers.
  * Prefer PokeAPI numeric IDs; fall back to Showdown gen5 name sprites.
- * Trainers: Pokemon Showdown trainer sprite CDN.
+ * Trainers / ani / Showdown fallbacks: same-origin `/api/sprites` proxy
+ * (avoids intermittent Cloudflare 403s on play.pokemonshowdown.com).
  */
 
 import { findPokemonById } from "@/data/pokemon-index";
+import { showdownProxyUrl } from "@/lib/showdown-sprites";
 
-const SHOWDOWN_TRAINER_BASE =
-  "https://play.pokemonshowdown.com/sprites/trainers";
+export {
+  SHOWDOWN_ANI_SPRITES_DIR,
+  SHOWDOWN_POKEMON_SPRITES_DIR,
+  SHOWDOWN_TRAINER_SPRITES_DIR,
+} from "@/lib/showdown-sprites";
 
 const POKEAPI_SPRITE_BASE =
   "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
-
-const SHOWDOWN_POKE_BASE = "https://play.pokemonshowdown.com/sprites/gen5";
-const SHOWDOWN_ANI_BASE = "https://play.pokemonshowdown.com/sprites/ani";
-
-/** Browseable Showdown sprite indexes (open in a new tab from pickers). */
-export const SHOWDOWN_TRAINER_SPRITES_DIR =
-  "https://play.pokemonshowdown.com/sprites/trainers/?sort=name&view=dir";
-export const SHOWDOWN_POKEMON_SPRITES_DIR =
-  "https://play.pokemonshowdown.com/sprites/gen5/?sort=name&view=dir";
-export const SHOWDOWN_ANI_SPRITES_DIR =
-  "https://play.pokemonshowdown.com/sprites/ani/?sort=name&view=dir";
 
 /** Normalize spreadsheet-style names like "(Shiny) Charizard" or "Nidoran-M". */
 export function parseSpeciesInput(raw: string): {
@@ -64,13 +58,19 @@ export function pokemonSpriteUrl(
       : `${POKEAPI_SPRITE_BASE}/${id}.png`;
   }
 
-  const folder = shiny ? `${SHOWDOWN_POKE_BASE}-shiny` : SHOWDOWN_POKE_BASE;
-  return `${folder}/${showdownId}.png`;
+  const folder = shiny ? "gen5-shiny" : "gen5";
+  return showdownProxyUrl(folder, `${showdownId}.png`);
 }
 
 export function trainerSpriteUrl(spriteKey: string): string {
-  const key = spriteKey.replace(/\.png$/i, "").replace(/^.*\//, "");
-  return `${SHOWDOWN_TRAINER_BASE}/${key}.png`;
+  const key = spriteKey
+    .replace(/\.png$/i, "")
+    .replace(/^.*\//, "")
+    .toLowerCase();
+  if (!/^[a-z0-9][a-z0-9._-]*$/.test(key)) {
+    return showdownProxyUrl("trainers", "brendan.png");
+  }
+  return showdownProxyUrl("trainers", `${key}.png`);
 }
 
 /** Prefix for Pokémon species avatars stored in `avatarSpriteKey`. */
@@ -134,10 +134,11 @@ export function pokemonAnimatedSpriteUrl(
   speciesOrSlug: string,
   options?: { shiny?: boolean },
 ): string {
-  const folder = options?.shiny
-    ? `${SHOWDOWN_ANI_BASE}-shiny`
-    : SHOWDOWN_ANI_BASE;
-  return `${folder}/${pokemonAnimatedSpriteId(speciesOrSlug)}.gif`;
+  const folder = options?.shiny ? "ani-shiny" : "ani";
+  return showdownProxyUrl(
+    folder,
+    `${pokemonAnimatedSpriteId(speciesOrSlug)}.gif`,
+  );
 }
 
 export function customAvatarKey(url: string): string {

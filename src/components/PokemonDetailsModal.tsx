@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -122,7 +123,12 @@ export function PokemonDetailsModal({
         }
       : null,
     pokemon.catchRoute ? { label: "Route", value: pokemon.catchRoute } : null,
-    pokemon.heldItem ? { label: "Item", value: pokemon.heldItem } : null,
+    pokemon.heldItem
+      ? {
+          label: "Item",
+          value: <HeldItemLabel name={pokemon.heldItem} iconSize={18} />,
+        }
+      : null,
   ].filter(Boolean) as Array<{ label: string; value: ReactNode }>;
 
   return (

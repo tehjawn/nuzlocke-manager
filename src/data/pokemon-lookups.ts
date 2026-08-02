@@ -44,6 +44,7 @@ const SPECIES_ABILITIES = speciesAbilitiesData.species as Record<
 >;
 
 export { CATCH_ROUTES, searchCatchRoutes, HELD_ITEMS, searchHeldItems };
+export { heldItemDescription, heldItemSpriteUrl } from "@/data/pokemon-index";
 export {
   GEN3_MOVES,
   gen3MoveName,
