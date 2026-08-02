@@ -12,6 +12,9 @@ import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import {
+  catchTierHasChrome,
+  catchTierLabel,
+  catchTierToneClass,
   specimenCatchTier,
   summarizeBattleStats,
   summarizeEvs,
@@ -129,14 +132,10 @@ export function PokemonDetailsModal({
         battleMax,
       })
     : "oof";
-  const catchTierLabel =
-    catchTier === "cracked"
-      ? "Cracked catch"
-      : catchTier === "great"
-        ? "Great catch"
-        : catchTier === "good"
-          ? "Good catch"
-          : null;
+  const catchLabel =
+    showCompetitiveDetails && (showIvs || catchTierHasChrome(catchTier))
+      ? catchTierLabel(catchTier)
+      : null;
 
   const subtitleParts: string[] = [];
   if (showSpeciesInSubtitle) subtitleParts.push(pokemon.species);
@@ -211,16 +210,16 @@ export function PokemonDetailsModal({
           <div className="flex flex-col items-center gap-2 sm:items-stretch">
             <div
               className={
-                catchTier === "oof"
-                  ? undefined
-                  : `pokemon-catch-ring pokemon-catch-ring--emphasis pokemon-catch-ring--${catchTier} w-full max-w-[9.5rem] sm:max-w-none`
+                catchTierHasChrome(catchTier)
+                  ? `pokemon-catch-ring pokemon-catch-ring--emphasis pokemon-catch-ring--${catchTier} w-full max-w-[9.5rem] sm:max-w-none`
+                  : undefined
               }
             >
               <div
                 className={`mx-auto flex h-36 w-36 items-center justify-center rounded-lg border sm:mx-0 sm:h-auto sm:w-full sm:aspect-square ${
-                  catchTier === "oof"
-                    ? "border-frame bg-surface-2"
-                    : `pokemon-catch-sprite pokemon-catch-sprite--emphasis pokemon-catch-sprite--${catchTier}`
+                  catchTierHasChrome(catchTier)
+                    ? `pokemon-catch-sprite pokemon-catch-sprite--emphasis pokemon-catch-sprite--${catchTier}`
+                    : "border-frame bg-surface-2"
                 }`}
               >
                 <PokemonSpriteImage
@@ -234,17 +233,11 @@ export function PokemonDetailsModal({
                 />
               </div>
             </div>
-            {catchTierLabel ? (
+            {catchLabel ? (
               <p
-                className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${
-                  catchTier === "cracked"
-                    ? "text-accent-2"
-                    : catchTier === "great"
-                      ? "text-[#a78bfa]"
-                      : "text-interactive"
-                }`}
+                className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${catchTierToneClass(catchTier)}`}
               >
-                {catchTierLabel}
+                {catchLabel}
               </p>
             ) : null}
             {pokemon.types.length > 0 ? (

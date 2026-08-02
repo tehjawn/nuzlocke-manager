@@ -6,7 +6,11 @@ import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
-import { specimenCatchTier, type CatchTier } from "@/lib/iv-quality";
+import {
+  catchTierHasChrome,
+  specimenCatchTier,
+  type CatchTier,
+} from "@/lib/iv-quality";
 import { moveTypeWashStyle } from "@/lib/move-meta";
 import { resolveMoveName } from "@/lib/move-names";
 import {
@@ -116,8 +120,9 @@ export function PokemonSlotCard({
           battleMax,
         })
       : "oof";
-  const tierRing =
-    catchTier === "oof" ? null : `pokemon-catch-ring pokemon-catch-ring--${catchTier}`;
+  const tierRing = catchTierHasChrome(catchTier)
+    ? `pokemon-catch-ring pokemon-catch-ring--${catchTier}`
+    : null;
 
   if (speciesOnly) {
     const encounter = (
@@ -232,9 +237,9 @@ export function PokemonSlotCard({
       <div className="flex shrink-0 items-start gap-3">
         <div
           className={`flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border bg-surface-2 ${
-            catchTier === "oof"
-              ? "border-frame"
-              : `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
+            catchTierHasChrome(catchTier)
+              ? `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
+              : "border-frame"
           }`}
         >
           <PokemonSpriteImage

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  catchTierHasChrome,
+  catchTierLabel,
   classifyBattleStat,
   classifyEv,
   classifyIv,
@@ -49,11 +51,12 @@ test("summarizeIvs lists perfect and strong", () => {
   assert.deepEqual(summary.strong, ["spd"]);
   assert.deepEqual(summary.dump, ["spa"]);
   assert.equal(summary.cracked, true);
+  assert.equal(summary.god, true);
   assert.match(summary.headline ?? "", /Perfect/i);
-  assert.match(summary.headline ?? "", /Cracked/i);
+  assert.match(summary.headline ?? "", /God/i);
 });
 
-test("summarizeIvs prefixes cracked headline with four perfect IVs", () => {
+test("summarizeIvs prefixes god headline with four perfect IVs", () => {
   const summary = summarizeIvs({
     hp: 31,
     atk: 31,
@@ -64,8 +67,9 @@ test("summarizeIvs prefixes cracked headline with four perfect IVs", () => {
   });
   assert.ok(summary);
   assert.equal(summary.perfect.length, 4);
+  assert.equal(summary.god, true);
   assert.equal(summary.cracked, true);
-  assert.equal(summary.headline, "Cracked — 4 perfect IVs");
+  assert.equal(summary.headline, "God — 4 perfect IVs");
 });
 
 test("summarizeIvs marks randomizer standouts cracked (1 perfect + 2 strong)", () => {
@@ -82,6 +86,7 @@ test("summarizeIvs marks randomizer standouts cracked (1 perfect + 2 strong)", (
   assert.deepEqual(summary.perfect, ["spe"]);
   assert.deepEqual(summary.strong, ["spa", "spd"]);
   assert.equal(summary.cracked, true);
+  assert.equal(summary.god, false);
   assert.equal(summary.headline, "Cracked — Perfect Spe · Strong SpA · SpD");
 });
 
@@ -127,6 +132,7 @@ test("summarizeEvs highlights max investment", () => {
   assert.ok(summary);
   assert.deepEqual(summary.perfect, ["atk"]);
   assert.deepEqual(summary.strong, ["spe"]);
+  assert.equal(summary.god, false);
   assert.match(summary.headline ?? "", /Max Atk/i);
   assert.match(summary.headline ?? "", /High Spe/i);
 });
@@ -140,6 +146,7 @@ test("summarizeBattleStats highlights near-max rows", () => {
   assert.deepEqual(summary.perfect, ["hp", "spe"]);
   assert.deepEqual(summary.strong, ["atk"]);
   assert.deepEqual(summary.dump, ["def"]);
+  assert.equal(summary.god, false);
   assert.match(summary.headline ?? "", /Near-max/i);
 });
 
@@ -171,7 +178,11 @@ test("specimenIsCracked detects strong IV or EV spreads", () => {
   );
 });
 
-test("ivCatchTier maps randomizer catches to oof/good/great/cracked", () => {
+test("ivCatchTier maps randomizer catches across shit→god", () => {
+  assert.equal(
+    ivCatchTier({ hp: 2, atk: 1, def: 0, spa: 3, spd: 4, spe: 5 }),
+    "shit",
+  );
   assert.equal(
     ivCatchTier({ hp: 15, atk: 16, def: 14, spa: 18, spd: 12, spe: 10 }),
     "oof",
@@ -188,6 +199,22 @@ test("ivCatchTier maps randomizer catches to oof/good/great/cracked", () => {
     ivCatchTier({ hp: 19, atk: 9, def: 13, spa: 27, spd: 28, spe: 31 }),
     "cracked",
   );
+  assert.equal(
+    ivCatchTier({ hp: 31, atk: 30, def: 28, spa: 10, spd: 12, spe: 14 }),
+    "god",
+  );
+  assert.equal(
+    ivCatchTier({ hp: 31, atk: 31, def: 31, spa: 10, spd: 12, spe: 14 }),
+    "god",
+  );
+});
+
+test("catchTier labels and chrome gate oof", () => {
+  assert.equal(catchTierLabel("shit"), "Shit catch");
+  assert.equal(catchTierLabel("god"), "God catch");
+  assert.equal(catchTierHasChrome("oof"), false);
+  assert.equal(catchTierHasChrome("shit"), true);
+  assert.equal(catchTierHasChrome("god"), true);
 });
 
 test("specimenCatchTier lets cracked EVs promote a mid IV mon", () => {
@@ -195,6 +222,16 @@ test("specimenCatchTier lets cracked EVs promote a mid IV mon", () => {
     specimenCatchTier({
       ivs: { hp: 15, atk: 16, def: 14, spa: 18, spd: 12, spe: 10 },
       evs: { hp: 0, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },
+    }),
+    "cracked",
+  );
+});
+
+test("specimenCatchTier does not promote EVs past cracked into god", () => {
+  assert.equal(
+    specimenCatchTier({
+      ivs: { hp: 15, atk: 16, def: 14, spa: 18, spd: 12, spe: 31 },
+      evs: { hp: 252, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },
     }),
     "cracked",
   );

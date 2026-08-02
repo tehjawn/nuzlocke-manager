@@ -657,7 +657,7 @@ button:disabled,
   }
 }
 
-/* Catch-tier card edges — quiet revolving tint (Good / Great / Cracked) */
+/* Catch-tier card edges — quiet revolving tint (+ muted dotted shit / prismatic god) */
 @property --catch-angle {
   syntax: "<angle>";
   inherits: false;
@@ -684,6 +684,13 @@ button:disabled,
   transition: filter 180ms ease;
 }
 
+.pokemon-catch-ring--shit {
+  animation: none;
+  padding: 0;
+  background: transparent;
+  border: 1.5px dotted color-mix(in srgb, var(--muted) 52%, transparent);
+}
+
 .pokemon-catch-ring--good {
   --catch-tint: var(--interactive);
   --catch-peak: 28%;
@@ -699,12 +706,29 @@ button:disabled,
   --catch-peak: 34%;
 }
 
+.pokemon-catch-ring--god {
+  --catch-peak: 30%;
+  background: conic-gradient(
+    from var(--catch-angle),
+    color-mix(in srgb, #ef6b6b 22%, transparent),
+    color-mix(in srgb, #e0b04a 24%, transparent),
+    color-mix(in srgb, #6bcf8a 22%, transparent),
+    color-mix(in srgb, #5eb4e8 24%, transparent),
+    color-mix(in srgb, #c48ad4 22%, transparent),
+    color-mix(in srgb, #ef6b6b 22%, transparent)
+  );
+}
+
 .pokemon-catch-ring > * {
   border-radius: var(--radius);
 }
 
 .pokemon-catch-ring:hover {
   --catch-peak: 42%;
+}
+
+.pokemon-catch-ring--shit:hover {
+  border-color: color-mix(in srgb, var(--muted) 68%, transparent);
 }
 
 .pokemon-catch-ring--good:hover {
@@ -717,6 +741,11 @@ button:disabled,
 
 .pokemon-catch-ring--cracked:hover {
   --catch-peak: 44%;
+}
+
+.pokemon-catch-ring--god:hover {
+  --catch-peak: 38%;
+  filter: saturate(1.08);
 }
 
 @keyframes pokemon-catch-revolve {
@@ -735,6 +764,21 @@ button:disabled,
       color-mix(in srgb, var(--catch-tint) 28%, var(--frame))
     );
   }
+
+  .pokemon-catch-ring--shit {
+    background: transparent;
+  }
+
+  .pokemon-catch-ring--god {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, #ef6b6b 28%, var(--frame)),
+      color-mix(in srgb, #e0b04a 22%, var(--frame)),
+      color-mix(in srgb, #6bcf8a 24%, var(--frame)),
+      color-mix(in srgb, #5eb4e8 26%, var(--frame)),
+      color-mix(in srgb, #c48ad4 24%, var(--frame))
+    );
+  }
 }
 
 /* Sprite well tint — radial vignette behind the mon (catch-tier hue) */
@@ -750,6 +794,13 @@ button:disabled,
     );
 }
 
+.pokemon-catch-sprite--shit {
+  --catch-tint: var(--muted);
+  --catch-vignette-peak: 10%;
+  border-style: dotted;
+  border-color: color-mix(in srgb, var(--muted) 42%, var(--frame));
+}
+
 .pokemon-catch-sprite--good {
   --catch-tint: var(--interactive);
 }
@@ -762,6 +813,19 @@ button:disabled,
   --catch-tint: var(--accent-2);
 }
 
+.pokemon-catch-sprite--god {
+  --catch-vignette-peak: 16%;
+  border-color: color-mix(in srgb, #5eb4e8 30%, var(--frame));
+  background:
+    radial-gradient(
+      circle at 50% 48%,
+      color-mix(in srgb, #e0b04a 14%, transparent) 0%,
+      color-mix(in srgb, #5eb4e8 10%, transparent) 38%,
+      color-mix(in srgb, #c48ad4 8%, transparent) 55%,
+      var(--surface-2) 76%
+    );
+}
+
 /* Details modal — slightly stronger than board, still restrained */
 .pokemon-catch-sprite--emphasis {
   --catch-vignette-peak: 22%;
@@ -769,9 +833,26 @@ button:disabled,
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--catch-tint) 12%, transparent);
 }
 
+.pokemon-catch-sprite--emphasis.pokemon-catch-sprite--shit {
+  --catch-vignette-peak: 12%;
+  border-color: color-mix(in srgb, var(--muted) 48%, var(--frame));
+  box-shadow: none;
+}
+
+.pokemon-catch-sprite--emphasis.pokemon-catch-sprite--god {
+  --catch-vignette-peak: 20%;
+  border-color: color-mix(in srgb, #5eb4e8 36%, var(--frame));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #c48ad4 14%, transparent);
+}
+
 .pokemon-catch-ring--emphasis {
   padding: 2px;
   --catch-peak: 48%;
+}
+
+.pokemon-catch-ring--emphasis.pokemon-catch-ring--shit {
+  padding: 0;
+  border-width: 2px;
 }
 
 .pokemon-catch-ring--emphasis.pokemon-catch-ring--good {
@@ -784,6 +865,10 @@ button:disabled,
 
 .pokemon-catch-ring--emphasis.pokemon-catch-ring--cracked {
   --catch-peak: 52%;
+}
+
+.pokemon-catch-ring--emphasis.pokemon-catch-ring--god {
+  --catch-peak: 40%;
 }
 
 .pokemon-catch-ring--emphasis:hover {
