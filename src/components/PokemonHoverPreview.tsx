@@ -12,25 +12,79 @@ import { createPortal } from "react-dom";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TypeBadge } from "@/components/TypeBadge";
 import type { PokemonEntry } from "@/lib/challenge-types";
+import type { PokemonType } from "@/lib/pokemon-types";
+import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
+
+type SpeciesPreview = {
+  species: string;
+  pokedexId: number | null;
+  /** Extra muted line under the name (e.g. "Open bounty"). */
+  subtitle?: string;
+};
 
 type PokemonHoverPreviewProps = {
-  pokemon: PokemonEntry;
   children: ReactNode;
   /** Extra classes on the hover trigger wrapper. */
   className?: string;
-};
+} & (
+  | { pokemon: PokemonEntry; speciesPreview?: never }
+  | { speciesPreview: SpeciesPreview; pokemon?: never }
+);
 
 type PreviewPos = { top: number; left: number; above: boolean };
+
+type HoverModel = {
+  species: string;
+  pokedexId: number | null;
+  nickname: string | null;
+  level: number | null;
+  isShiny: boolean;
+  types: PokemonType[];
+  subtitle: string | null;
+};
+
+function modelFromPokemon(pokemon: PokemonEntry): HoverModel {
+  return {
+    species: pokemon.species,
+    pokedexId: pokemon.pokedexId,
+    nickname: pokemon.nickname,
+    level: pokemon.level,
+    isShiny: pokemon.isShiny,
+    types: pokemon.types,
+    subtitle: null,
+  };
+}
+
+function modelFromSpecies(preview: SpeciesPreview): HoverModel {
+  const types =
+    preview.pokedexId != null && preview.pokedexId > 0
+      ? typesForPokedexId(preview.pokedexId)
+      : [];
+  return {
+    species: preview.species,
+    pokedexId: preview.pokedexId,
+    nickname: null,
+    level: null,
+    isShiny: false,
+    types,
+    subtitle: preview.subtitle?.trim() || null,
+  };
+}
 
 /**
  * Desktop hover glance: larger sprite + nickname / species / level / types.
  * Touch devices keep the child click behavior (no sticky popover).
+ *
+ * Accepts a live board `pokemon` entry, or a catalog `speciesPreview` (e.g.
+ * Bounty Hunter open targets — popup always renders full-color sprites).
  */
-export function PokemonHoverPreview({
-  pokemon,
-  children,
-  className = "",
-}: PokemonHoverPreviewProps) {
+export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
+  const { children, className = "" } = props;
+  const model =
+    "pokemon" in props && props.pokemon
+      ? modelFromPokemon(props.pokemon)
+      : modelFromSpecies(props.speciesPreview!);
+
   const panelId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,11 +151,15 @@ export function PokemonHoverPreview({
     return () => window.removeEventListener("scroll", onScroll, true);
   }, [open]);
 
-  const nickname = pokemon.nickname?.trim() ?? "";
-  const label = nickname || pokemon.species;
+  const nickname = model.nickname?.trim() ?? "";
+  const label = nickname || model.species;
   const showSpeciesLine =
     Boolean(nickname) &&
-    nickname.toLowerCase() !== pokemon.species.toLowerCase();
+    nickname.toLowerCase() !== model.species.toLowerCase();
+  const dexLine =
+    model.pokedexId != null && model.pokedexId > 0
+      ? `#${String(model.pokedexId).padStart(3, "0")}`
+      : null;
 
   return (
     <div
@@ -131,16 +189,16 @@ export function PokemonHoverPreview({
                     alt=""
                     className="pixelated h-20 w-20 object-contain"
                     height={96}
-                    pokedexId={pokemon.pokedexId}
-                    shiny={pokemon.isShiny}
-                    species={pokemon.species}
+                    pokedexId={model.pokedexId}
+                    shiny={model.isShiny}
+                    species={model.species}
                     width={96}
                   />
                 </div>
                 <div className="min-w-0 w-full">
                   <p className="truncate text-sm font-bold leading-tight tracking-tight">
                     {label}
-                    {pokemon.isShiny ? (
+                    {model.isShiny ? (
                       <span className="ml-1 text-accent-2" title="Shiny">
                         ✦
                       </span>
@@ -148,18 +206,28 @@ export function PokemonHoverPreview({
                   </p>
                   {showSpeciesLine ? (
                     <p className="truncate text-[11px] text-muted">
-                      {pokemon.species}
+                      {model.species}
                     </p>
                   ) : null}
-                  {pokemon.level != null ? (
+                  {model.level != null ? (
                     <p className="mt-0.5 text-[11px] font-semibold text-muted">
-                      Lv {pokemon.level}
+                      Lv {model.level}
+                    </p>
+                  ) : null}
+                  {model.subtitle ? (
+                    <p className="mt-0.5 text-[11px] text-muted">
+                      {model.subtitle}
+                      {dexLine ? ` · ${dexLine}` : ""}
+                    </p>
+                  ) : dexLine && !showSpeciesLine && model.level == null ? (
+                    <p className="mt-0.5 text-[11px] tabular-nums text-muted">
+                      {dexLine}
                     </p>
                   ) : null}
                 </div>
-                {pokemon.types.length > 0 ? (
+                {model.types.length > 0 ? (
                   <div className="flex flex-wrap justify-center gap-1">
-                    {pokemon.types.map((t) => (
+                    {model.types.map((t) => (
                       <TypeBadge key={t} type={t} />
                     ))}
                   </div>

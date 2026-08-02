@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import {
@@ -146,6 +147,7 @@ export function BountyHunterView({
           empty="Nothing left — the pack has touched every ME species."
           entries={filteredOpen}
           mutedSprites
+          hoverSubtitle="Open bounty · not logged by the pack"
         />
       ) : null}
 
@@ -155,6 +157,7 @@ export function BountyHunterView({
           title={`My gaps · ${filteredGaps.length} still missing from this board`}
           empty="This board already has every Modern Emerald species logged. Show-off."
           entries={filteredGaps}
+          hoverSubtitle="Missing from this board"
         />
       ) : null}
 
@@ -187,13 +190,15 @@ function SpeciesGrid({
   empty,
   entries,
   mutedSprites = false,
+  hoverSubtitle,
 }: {
   slug: string;
   title: string;
   empty: string;
   entries: ModernEmeraldSpeciesRef[];
-  /** Soften sprites for never-seen open bounties. */
+  /** Soften sprites for never-seen open bounties (restored on hover). */
   mutedSprites?: boolean;
+  hoverSubtitle: string;
 }) {
   return (
     <div className="space-y-3">
@@ -206,28 +211,39 @@ function SpeciesGrid({
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
           {entries.map((entry) => (
             <li key={entry.pokedexId}>
-              <Link
-                href={toolsHref(slug, "pokedex", { id: entry.pokedexId })}
-                title={entry.species}
-                className="pressable flex flex-col items-center gap-1 rounded-md border border-frame/30 bg-surface/50 px-1.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/40"
+              <PokemonHoverPreview
+                className="h-full"
+                speciesPreview={{
+                  species: entry.species,
+                  pokedexId: entry.pokedexId,
+                  subtitle: hoverSubtitle,
+                }}
               >
-                <PokemonSpriteImage
-                  alt=""
-                  className={`pixelated h-12 w-12 object-contain sm:h-14 sm:w-14 ${
-                    mutedSprites ? "opacity-55 grayscale-[35%]" : ""
-                  }`}
-                  height={56}
-                  pokedexId={entry.pokedexId}
-                  species={entry.species}
-                  width={56}
-                />
-                <span className="max-w-full truncate text-[10px] font-semibold text-ink">
-                  {entry.species}
-                </span>
-                <span className="text-[9px] font-semibold tabular-nums text-muted">
-                  #{String(entry.pokedexId).padStart(3, "0")}
-                </span>
-              </Link>
+                <Link
+                  href={toolsHref(slug, "pokedex", { id: entry.pokedexId })}
+                  title={entry.species}
+                  className="pressable group flex h-full flex-col items-center gap-1 rounded-md border border-frame/30 bg-surface/50 px-1.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/40"
+                >
+                  <PokemonSpriteImage
+                    alt=""
+                    className={`pixelated h-12 w-12 object-contain transition-[filter,opacity] duration-150 sm:h-14 sm:w-14 ${
+                      mutedSprites
+                        ? "opacity-55 grayscale-[35%] group-hover:opacity-100 group-hover:grayscale-0"
+                        : ""
+                    }`}
+                    height={56}
+                    pokedexId={entry.pokedexId}
+                    species={entry.species}
+                    width={56}
+                  />
+                  <span className="max-w-full truncate text-[10px] font-semibold text-ink">
+                    {entry.species}
+                  </span>
+                  <span className="text-[9px] font-semibold tabular-nums text-muted">
+                    #{String(entry.pokedexId).padStart(3, "0")}
+                  </span>
+                </Link>
+              </PokemonHoverPreview>
             </li>
           ))}
         </ul>
