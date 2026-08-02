@@ -1,6 +1,7 @@
 /**
  * Gen 3 Pokédollars: SaveBlock1.money is XOR-encrypted with
  * SaveBlock2.encryptionKey (pret GetMoney / SetMoney).
+ * Modern Emerald stores that key at SB2+0xBC (vanilla/Crest: +0xAC).
  */
 
 import { MAX_MONEY } from "./layout";

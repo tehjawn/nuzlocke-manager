@@ -82,8 +82,15 @@ export const CREST_NUZLOCKE_FLAGS_AFTER_PARTY = 0x3b50;
 export const SB2_PLAYER_NAME = 0x00;
 export const SB2_PLAYER_GENDER = 0x08;
 export const SB2_TRAINER_ID = 0x0a;
-/** XOR key for money / coins / encrypted bag fields. */
-export const SB2_ENCRYPTION_KEY = 0xac;
+/**
+ * XOR key for money / coins / encrypted bag fields.
+ * Vanilla/Crest pokeemerald: offsetof(SaveBlock2, encryptionKey) == 0xAC.
+ * Modern Emerald inserts ~0x10 bytes before the key (confirmed on Afterplay
+ * .srm/.state: 0xAC holds a small junk field; bag qty ⊕ key@0xBC decodes cleanly).
+ */
+export const SB2_ENCRYPTION_KEY = 0xbc;
+/** Vanilla / Crest SaveBlock2.encryptionKey. */
+export const CREST_SB2_ENCRYPTION_KEY = 0xac;
 
 /** PokemonStorage */
 export const STORAGE_CURRENT_BOX = 0x00;

@@ -63,7 +63,10 @@ import {
   SB1_REVIVES_USED,
   SB1_REVIVES_USED_BYTE,
   SB1_SEEN1,
+  CREST_SB2_ENCRYPTION_KEY,
   SB2_ENCRYPTION_KEY,
+  SECTOR_SIGNATURE,
+  SECTOR_SIZE,
   SEEN1_AFTER_PARTY as MODERN_SEEN1_AFTER_PARTY,
   STORAGE_BOX_CAPACITY,
   STORAGE_BOX_COUNT,
@@ -1349,34 +1352,51 @@ function readDaycareMons(
   return [];
 }
 
-function readMoney(sb1: Uint8Array, sb2: Uint8Array): ParsedSaveMoney {
-  if (sb1.length < SB1_MONEY + 4 || sb2.length < SB2_ENCRYPTION_KEY + 4) {
-    return EMPTY_MONEY;
-  }
-  const encView = new DataView(sb1.buffer, sb1.byteOffset + SB1_MONEY, 4);
-  const keyView = new DataView(
-    sb2.buffer,
-    sb2.byteOffset + SB2_ENCRYPTION_KEY,
+/** Prefer Modern Emerald key@0xBC; fall back to vanilla/Crest@0xAC. */
+function encryptionKeyOffsets(mode: SpeciesIdMode): number[] {
+  return mode === "modern"
+    ? [SB2_ENCRYPTION_KEY, CREST_SB2_ENCRYPTION_KEY]
+    : [CREST_SB2_ENCRYPTION_KEY, SB2_ENCRYPTION_KEY];
+}
+
+function readMoney(
+  sb1: Uint8Array,
+  sb2: Uint8Array,
+  mode: SpeciesIdMode = "modern",
+): ParsedSaveMoney {
+  if (sb1.length < SB1_MONEY + 4) return EMPTY_MONEY;
+  const enc = new DataView(
+    sb1.buffer,
+    sb1.byteOffset + SB1_MONEY,
     4,
-  );
-  const amount = decryptGen3Money(
-    encView.getUint32(0, true),
-    keyView.getUint32(0, true),
-  );
-  if (amount == null) return EMPTY_MONEY;
-  return { amount, reliable: true };
+  ).getUint32(0, true);
+  for (const keyOff of encryptionKeyOffsets(mode)) {
+    if (sb2.length < keyOff + 4) continue;
+    const key = new DataView(
+      sb2.buffer,
+      sb2.byteOffset + keyOff,
+      4,
+    ).getUint32(0, true);
+    const amount = decryptGen3Money(enc, key);
+    if (amount != null) return { amount, reliable: true };
+  }
+  return EMPTY_MONEY;
 }
 
 /**
- * Locate SaveBlock2 for money decryption. Prefer an exact trainer-name match
- * with a non-zero encryption key — ASLR .state dumps are full of false hits.
+ * Locate SaveBlock2 candidates for money decryption. ASLR .state dumps contain
+ * multiple trainer-name ghosts — callers must try each key against SB1.money.
  */
-function findSaveBlock2Offset(
+function findSaveBlock2Offsets(
   bytes: Uint8Array,
   trainerName?: string | null,
-): number | null {
-  let fallback: number | null = null;
-  for (let i = 0; i + SB2_ENCRYPTION_KEY + 4 < bytes.length; i++) {
+  mode: SpeciesIdMode = "modern",
+): number[] {
+  const keyOffs = encryptionKeyOffsets(mode);
+  const span = Math.max(...keyOffs) + 4;
+  const named: number[] = [];
+  const fallback: number[] = [];
+  for (let i = 0; i + span < bytes.length; i++) {
     const name = decodeGen3Name(bytes.subarray(i, i + 8));
     if (!name || !isValidGen3TrainerName(name)) continue;
     if (trainerName && name !== trainerName) continue;
@@ -1390,43 +1410,89 @@ function findSaveBlock2Offset(
       }
     }
     if (!hasEos) continue;
-    const key = new DataView(
-      bytes.buffer,
-      bytes.byteOffset + i + SB2_ENCRYPTION_KEY,
-      4,
-    ).getUint32(0, true);
+    let key = 0;
+    for (const keyOff of keyOffs) {
+      key = new DataView(
+        bytes.buffer,
+        bytes.byteOffset + i + keyOff,
+        4,
+      ).getUint32(0, true);
+      if (key !== 0) break;
+    }
     if (key === 0) continue;
-    if (trainerName && name === trainerName) return i;
-    if (fallback == null) fallback = i;
+    if (trainerName && name === trainerName) named.push(i);
+    else if (!trainerName) fallback.push(i);
   }
-  return trainerName ? null : fallback;
+  return trainerName ? named : fallback;
 }
 
 function readMoneyFromEwram(
   bytes: Uint8Array,
   sb1Base: number,
   trainerName?: string | null,
+  mode: SpeciesIdMode = "modern",
 ): ParsedSaveMoney {
   if (sb1Base + SB1_MONEY + 4 > bytes.length) return EMPTY_MONEY;
-  const sb2Base = findSaveBlock2Offset(bytes, trainerName);
-  if (sb2Base == null) return EMPTY_MONEY;
-  if (sb2Base + SB2_ENCRYPTION_KEY + 4 > bytes.length) return EMPTY_MONEY;
-  const encView = new DataView(
+  const enc = new DataView(
     bytes.buffer,
     bytes.byteOffset + sb1Base + SB1_MONEY,
     4,
-  );
-  const keyView = new DataView(
-    bytes.buffer,
-    bytes.byteOffset + sb2Base + SB2_ENCRYPTION_KEY,
-    4,
-  );
-  const amount = decryptGen3Money(
-    encView.getUint32(0, true),
-    keyView.getUint32(0, true),
-  );
-  if (amount == null) return EMPTY_MONEY;
-  return { amount, reliable: true };
+  ).getUint32(0, true);
+  const sb2Bases = findSaveBlock2Offsets(bytes, trainerName, mode);
+  // A wrong SB2 key almost always decrypts outside 0…MAX_MONEY; the matching
+  // live/flash pair is typically unique for a given SB1.money word.
+  for (const sb2Base of sb2Bases) {
+    for (const keyOff of encryptionKeyOffsets(mode)) {
+      if (sb2Base + keyOff + 4 > bytes.length) continue;
+      const key = new DataView(
+        bytes.buffer,
+        bytes.byteOffset + sb2Base + keyOff,
+        4,
+      ).getUint32(0, true);
+      if (key === 0) continue;
+      const amount = decryptGen3Money(enc, key);
+      if (amount != null) return { amount, reliable: true };
+    }
+  }
+  return EMPTY_MONEY;
+}
+
+/**
+ * mGBA/Afterplay .state dumps often embed a copy of the 128 KiB flash image as
+ * save sectors (footer signature 0x08012025). When ASLR prevents anchoring live
+ * SaveBlock1, money can still be recovered from that embedded flash.
+ */
+function extractEmbeddedFlash(mem: Uint8Array): Uint8Array | null {
+  const view = new DataView(mem.buffer, mem.byteOffset, mem.byteLength);
+  const byId = new Map<number, { base: number; counter: number }>();
+  for (let i = 0; i + 4 <= mem.length; i += 4) {
+    if (view.getUint32(i, true) !== SECTOR_SIGNATURE) continue;
+    const base = i - 0xff8;
+    if (base < 0 || base + SECTOR_SIZE > mem.length) continue;
+    const id = view.getUint16(base + 0xff4, true);
+    if (id > 27) continue;
+    const counter = view.getUint32(base + 0xffc, true);
+    const prev = byId.get(id);
+    if (!prev || counter >= prev.counter) byId.set(id, { base, counter });
+  }
+  // Need SaveBlock2 + SaveBlock1 start at minimum.
+  if (!byId.has(0) || !byId.has(1)) return null;
+  const flash = new Uint8Array(0x20000);
+  for (const [id, sec] of byId) {
+    flash.set(mem.subarray(sec.base, sec.base + SECTOR_SIZE), id * SECTOR_SIZE);
+  }
+  return flash;
+}
+
+function readMoneyFromEmbeddedFlash(
+  bytes: Uint8Array,
+  mode: SpeciesIdMode,
+): ParsedSaveMoney {
+  const flash = extractEmbeddedFlash(bytes);
+  if (!flash) return EMPTY_MONEY;
+  const blocks = parseFlashSave(flash);
+  if (!blocks) return EMPTY_MONEY;
+  return readMoney(blocks.saveBlock1, blocks.saveBlock2, mode);
 }
 
 function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult {
@@ -1577,7 +1643,12 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
       if (meta.sb1 >= 0) {
         badges = readBadgesAbsolute(bytes, meta.sb1 + SB1_FLAGS);
         revive = readReviveAbsolute(bytes, meta.sb1);
-        money = readMoneyFromEwram(bytes, meta.sb1, trainer?.name ?? null);
+        money = readMoneyFromEwram(
+          bytes,
+          meta.sb1,
+          trainer?.name ?? null,
+          speciesMode,
+        );
         const sb1View = bytes.subarray(meta.sb1);
         const daycare = readDaycareMons(sb1View, speciesMode, claimedPids);
         for (const mon of daycare) {
@@ -1603,6 +1674,15 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
       );
     }
   }
+
+  if (!money.reliable) {
+    const fromFlash = readMoneyFromEmbeddedFlash(bytes, speciesMode);
+    if (fromFlash.reliable) {
+      money = fromFlash;
+      warnings.push("Money read from embedded flash sectors in save state.");
+    }
+  }
+
   if (!badges.reliable) {
     warnings.push("Could not reliably read gym badge flags from this save.");
   } else if (badges.earnedKeys.length === 0) {
@@ -1807,7 +1887,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
   if (speciesMode === "modern" && !revive.reliable) {
     warnings.push("Could not read revive token from SaveBlock1.");
   }
-  const money = readMoney(sb1, sb2);
+  const money = readMoney(sb1, sb2, speciesMode);
 
   const partyParsed = partyLiving.map((m) => toParsed(m, "party", speciesMode));
   const boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
@@ -1877,8 +1957,23 @@ function parseUncompressedState(
 ): ParseSaveResult {
   const mem = extractRastateMem(state) ?? state;
   const ewram = extractMgbaEwram(mem);
-  if (ewram) return classifyEwram(ewram, formatLabel);
-  return classifyEwram(mem, formatLabel);
+  // Party/dex scan the EWRAM window; flash sectors often live outside it in
+  // the full mGBA dump — keep `mem` for money fallback.
+  const result = classifyEwram(ewram ?? mem, formatLabel);
+  if (result.ok && !result.money.reliable) {
+    const fromFlash = readMoneyFromEmbeddedFlash(mem, "modern");
+    if (fromFlash.reliable) {
+      return {
+        ...result,
+        money: fromFlash,
+        warnings: [
+          ...result.warnings,
+          "Money read from embedded flash sectors in save state.",
+        ],
+      };
+    }
+  }
+  return result;
 }
 
 /** Parse uncompressed dumps / flash saves (no RZIP). */

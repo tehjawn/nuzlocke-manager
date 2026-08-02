@@ -17,3 +17,12 @@ test("formatPokedollars", () => {
   assert.equal(formatPokedollars(0), "$0");
   assert.equal(formatPokedollars(48250), "$48,250");
 });
+
+test("Modern Emerald key@0xBC decrypts known wallet (74870)", () => {
+  // Encrypted money@SB1+0x490 and key@SB2+0xBC from game (2).srm / save (14).state.
+  const enc = 678239745;
+  const keyModern = 678181495;
+  const keyVanillaJunk = 32; // value at legacy 0xAC on the same save
+  assert.equal(decryptGen3Money(enc, keyModern), 74870);
+  assert.equal(decryptGen3Money(enc, keyVanillaJunk), null);
+});
