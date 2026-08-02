@@ -29,51 +29,41 @@ export function EncounterLedger({ slug, groups }: EncounterLedgerProps) {
           dense
           actions={
             <span className="text-[11px] font-semibold tabular-nums text-white/80">
-              {group.claims.length} claim
-              {group.claims.length === 1 ? "" : "s"}
+              {group.claims.length}
             </span>
           }
         >
-          <ul className="divide-y divide-frame/40">
+          <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
             {group.claims.map((claim) => {
               const label = claim.nickname?.trim() || claim.species;
-              const showSpecies =
-                Boolean(claim.nickname?.trim()) &&
-                claim.nickname!.trim() !== claim.species;
               return (
-                <li
-                  key={claim.pokemonId}
-                  className="flex items-center gap-2 py-1 first:pt-0 last:pb-0"
-                >
-                  <PokemonSpriteImage
-                    alt=""
-                    className={`pixelated h-7 w-7 shrink-0 object-contain ${
-                      claim.isAlive ? "" : "opacity-50 grayscale"
+                <li key={claim.pokemonId}>
+                  <Link
+                    href={`/challenges/${slug}/trainers/${claim.trainerId}`}
+                    title={`${label} · ${claim.trainerHandle} · ${slotLabel(claim.slot)}${
+                      claim.isAlive ? "" : " · fallen"
                     }`}
-                    height={28}
-                    pokedexId={claim.pokedexId}
-                    shiny={claim.isShiny}
-                    species={claim.species}
-                    width={28}
-                  />
-                  <p className="min-w-0 flex-1 truncate text-xs leading-snug">
-                    <span className="font-semibold">{label}</span>
-                    {showSpecies ? (
-                      <span className="text-muted"> ({claim.species})</span>
-                    ) : null}
-                    <span className="text-muted">
-                      {" · "}
-                      <Link
-                        href={`/challenges/${slug}/trainers/${claim.trainerId}`}
-                        className="font-medium hover:text-ink"
-                      >
-                        {claim.trainerHandle}
-                      </Link>
-                      {" · "}
-                      {slotLabel(claim.slot)}
-                      {!claim.isAlive ? " · fallen" : ""}
+                    className="pressable flex h-full flex-col items-center gap-0.5 rounded-md border border-frame/30 bg-surface/40 px-1 py-1.5 text-center hover:border-interactive/40 hover:bg-interactive-soft/30"
+                  >
+                    <PokemonSpriteImage
+                      alt=""
+                      className={`pixelated h-12 w-12 object-contain sm:h-14 sm:w-14 ${
+                        claim.isAlive ? "" : "opacity-50 grayscale"
+                      }`}
+                      height={56}
+                      pokedexId={claim.pokedexId}
+                      shiny={claim.isShiny}
+                      species={claim.species}
+                      width={56}
+                    />
+                    <span className="w-full truncate text-[11px] font-semibold leading-tight">
+                      {label}
                     </span>
-                  </p>
+                    <span className="w-full truncate text-[9px] leading-tight text-muted">
+                      {claim.trainerHandle}
+                      {!claim.isAlive ? " · RIP" : ""}
+                    </span>
+                  </Link>
                 </li>
               );
             })}

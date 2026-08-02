@@ -32,24 +32,47 @@ export function EncounterSeasonView({
     highlights.rarestSeen.length > 0 ||
     highlights.deadliestRoutes.length > 0;
 
+  const mePct =
+    highlights.meDexTotal > 0
+      ? Math.round((highlights.meDexLogged / highlights.meDexTotal) * 100)
+      : 0;
+
   return (
-    <div className="space-y-5">
-      <header className="space-y-1.5">
-        <p className="text-xs font-semibold tracking-tight text-accent-deep">
-          Season route claims
-        </p>
-        <h2 className="text-2xl font-bold tracking-tight">Encounter ledger</h2>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Light route claims from catch routes on trainer boards — not a full
-          encounter tracker. Stats reflect currently logged board state
-          (Zigzagoon skipped in popularity rankings).
-        </p>
-        <p className="text-xs text-muted">
-          {highlights.totalLogged} logged · {highlights.uniqueSpecies} unique
-          species · {highlights.meDexLogged} / {highlights.meDexTotal} ME dex ·{" "}
-          {highlights.routesClaimed} route
-          {highlights.routesClaimed === 1 ? "" : "s"} claimed
-        </p>
+    <div className="space-y-4">
+      <header className="space-y-3">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold tracking-tight text-accent-deep">
+            Season route claims
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Encounter ledger</h2>
+          <p className="max-w-2xl text-sm text-muted">
+            Catch routes from trainer boards. Zigzagoon skipped in popularity
+            rankings.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <StatBlock
+            value={String(highlights.totalLogged)}
+            label="Logged"
+            hint="All board rows"
+          />
+          <StatBlock
+            value={String(highlights.uniqueSpecies)}
+            label="Unique"
+            hint="Distinct species"
+          />
+          <StatBlock
+            value={`${highlights.meDexLogged}`}
+            label="ME dex"
+            hint={`${mePct}% of ${highlights.meDexTotal}`}
+          />
+          <StatBlock
+            value={String(highlights.routesClaimed)}
+            label="Routes"
+            hint="With a claim"
+          />
+        </div>
       </header>
 
       {hasCallouts ? (
@@ -58,19 +81,19 @@ export function EncounterSeasonView({
             <SpeciesTopCallout
               label="Most logged"
               entries={highlights.mostLogged}
-              countLabel={(n) => `${n} on boards`}
+              countLabel={(n) => `${n}`}
             />
           ) : null}
           {highlights.rarestSeen.length > 0 ? (
             <SpeciesTopCallout
               label="Rarest seen"
               entries={highlights.rarestSeen}
-              countLabel={(n) => `${n} on boards`}
+              countLabel={(n) => `${n}`}
             />
           ) : null}
           {highlights.deadliestRoutes.length > 0 ? (
             <RouteTopCallout
-              label="Deadliest catch routes"
+              label="Deadliest routes"
               entries={highlights.deadliestRoutes}
             />
           ) : null}
@@ -104,6 +127,28 @@ export function EncounterSeasonView({
   );
 }
 
+function StatBlock({
+  value,
+  label,
+  hint,
+}: {
+  value: string;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
+      <p className="font-display text-2xl font-bold tabular-nums leading-none tracking-tight">
+        {value}
+      </p>
+      <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-muted">
+        {label}
+      </p>
+      <p className="text-[10px] text-muted/80">{hint}</p>
+    </div>
+  );
+}
+
 function SpeciesTopCallout({
   label,
   entries,
@@ -118,31 +163,31 @@ function SpeciesTopCallout({
       <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
         {label}
       </p>
-      <ol className="mt-1.5 space-y-1">
+      <ol className="mt-2 space-y-1.5">
         {entries.map((entry, index) => (
           <li
             key={`${entry.species}-${entry.pokedexId ?? "x"}`}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2.5"
           >
             <span className="w-3 shrink-0 text-[10px] font-bold tabular-nums text-muted">
               {index + 1}
             </span>
-            <span className="relative inline-block h-7 w-7 shrink-0">
+            <span className="relative inline-block h-11 w-11 shrink-0">
               <PokemonSpriteImage
                 alt=""
                 className="pixelated h-full w-full object-contain"
-                height={28}
+                height={44}
                 pokedexId={entry.pokedexId}
                 species={entry.species}
-                width={28}
+                width={44}
               />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-display text-xs font-bold leading-tight">
+              <span className="block truncate font-display text-sm font-bold leading-tight">
                 {entry.species}
               </span>
-              <span className="text-[10px] text-muted">
-                {countLabel(entry.count)}
+              <span className="text-[10px] tabular-nums text-muted">
+                ×{countLabel(entry.count)}
               </span>
             </span>
           </li>
@@ -164,14 +209,14 @@ function RouteTopCallout({
       <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
         {label}
       </p>
-      <ol className="mt-1.5 space-y-1.5">
+      <ol className="mt-2 space-y-2">
         {entries.map((entry, index) => (
-          <li key={entry.route} className="flex items-start gap-2">
-            <span className="w-3 shrink-0 pt-0.5 text-[10px] font-bold tabular-nums text-muted">
+          <li key={entry.route} className="flex items-baseline gap-2">
+            <span className="w-3 shrink-0 text-[10px] font-bold tabular-nums text-muted">
               {index + 1}
             </span>
-            <span className="min-w-0">
-              <span className="block truncate font-display text-xs font-bold leading-tight">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-display text-sm font-bold leading-tight">
                 {entry.route}
               </span>
               <span className="text-[10px] text-muted">
@@ -202,17 +247,17 @@ function MissingModernEmeraldGrid({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <p className="text-xs text-muted">
-        {missing.length} Modern Emerald species with zero pack appearances.{" "}
+        {missing.length} never logged.{" "}
         <Link
           href={toolsHref(slug, "bounty")}
           className="font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
         >
-          Hunt them in Bounty Hunter
+          Hunt in Bounty Hunter
         </Link>
       </p>
-      <ul className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
+      <ul className="grid grid-cols-5 gap-1.5 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-12">
         {missing.map((entry) => (
           <li key={entry.pokedexId}>
             <Link
@@ -222,11 +267,11 @@ function MissingModernEmeraldGrid({
             >
               <PokemonSpriteImage
                 alt=""
-                className="pixelated h-8 w-8 object-contain"
-                height={32}
+                className="pixelated h-10 w-10 object-contain"
+                height={40}
                 pokedexId={entry.pokedexId}
                 species={entry.species}
-                width={32}
+                width={40}
               />
               <span className="text-[9px] font-semibold tabular-nums text-muted">
                 #{String(entry.pokedexId).padStart(3, "0")}
