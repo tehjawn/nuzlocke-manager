@@ -286,21 +286,21 @@ function RouteTopCallout({
       <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
         {label}
       </p>
-      <ol className="mt-2 space-y-1.5">
+      <ol className="mt-2 space-y-1">
         {entries.map((entry, index) => (
           <li
             key={entry.route}
-            className="flex min-w-0 items-baseline gap-1.5 text-sm leading-none"
+            className="flex items-center gap-2"
           >
-            <span className="shrink-0 tabular-nums text-muted">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface/80 text-sm font-bold tabular-nums text-muted">
               {index + 1}
             </span>
-            <span className="min-w-0 truncate font-display font-bold">
+            <span className="min-w-0 truncate font-display text-sm font-bold leading-none">
               {entry.route}
-            </span>
-            <span className="shrink-0 text-muted">·</span>
-            <span className="shrink-0 tabular-nums text-muted">
-              {entry.graveCount} fallen
+              <span className="font-sans font-normal text-muted">
+                {" · "}
+                {entry.graveCount} fallen
+              </span>
             </span>
           </li>
         ))}
