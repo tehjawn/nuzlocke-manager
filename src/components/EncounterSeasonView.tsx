@@ -5,7 +5,11 @@ import { useState } from "react";
 import { EncounterLedger } from "@/components/EncounterLedger";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
-import type { EncounterSeasonHighlights } from "@/lib/encounter-stats";
+import type {
+  EncounterRouteHighlight,
+  EncounterSeasonHighlights,
+  EncounterSpeciesHighlight,
+} from "@/lib/encounter-stats";
 import type { ModernEmeraldSpeciesRef } from "@/lib/modern-emerald-dex";
 import { toolsHref } from "@/lib/tools-routes";
 
@@ -23,11 +27,10 @@ export function EncounterSeasonView({
   missing,
 }: EncounterSeasonViewProps) {
   const [showMissing, setShowMissing] = useState(false);
-  const hasCallouts = Boolean(
-    highlights.mostLogged ||
-      highlights.leastLogged ||
-      highlights.hottestRoute,
-  );
+  const hasCallouts =
+    highlights.mostLogged.length > 0 ||
+    highlights.rarestSeen.length > 0 ||
+    highlights.deadliestRoutes.length > 0;
 
   return (
     <div className="space-y-5">
@@ -38,7 +41,8 @@ export function EncounterSeasonView({
         <h2 className="text-2xl font-bold tracking-tight">Encounter ledger</h2>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
           Light route claims from catch routes on trainer boards — not a full
-          encounter tracker. Stats reflect currently logged board state.
+          encounter tracker. Stats reflect currently logged board state
+          (Zigzagoon skipped in popularity rankings).
         </p>
         <p className="text-xs text-muted">
           {highlights.totalLogged} logged · {highlights.uniqueSpecies} unique
@@ -50,40 +54,25 @@ export function EncounterSeasonView({
 
       {hasCallouts ? (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {highlights.mostLogged ? (
-            <SpeciesCallout
+          {highlights.mostLogged.length > 0 ? (
+            <SpeciesTopCallout
               label="Most logged"
-              tied={highlights.mostLogged.tied}
-              species={highlights.mostLogged.species}
-              pokedexId={highlights.mostLogged.pokedexId}
-              detail={`${highlights.mostLogged.count} on boards`}
+              entries={highlights.mostLogged}
+              countLabel={(n) => `${n} on boards`}
             />
           ) : null}
-          {highlights.leastLogged ? (
-            <SpeciesCallout
+          {highlights.rarestSeen.length > 0 ? (
+            <SpeciesTopCallout
               label="Rarest seen"
-              tied={highlights.leastLogged.tied}
-              species={highlights.leastLogged.species}
-              pokedexId={highlights.leastLogged.pokedexId}
-              detail={`${highlights.leastLogged.count} on boards`}
+              entries={highlights.rarestSeen}
+              countLabel={(n) => `${n} on boards`}
             />
           ) : null}
-          {highlights.hottestRoute ? (
-            <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
-              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-                Hottest route
-                {highlights.hottestRoute.tied ? " · tied" : ""}
-              </p>
-              <p className="mt-1 font-display text-sm font-bold leading-tight">
-                {highlights.hottestRoute.route}
-              </p>
-              <p className="mt-0.5 text-[11px] text-muted">
-                {highlights.hottestRoute.claimCount} claim
-                {highlights.hottestRoute.claimCount === 1 ? "" : "s"} ·{" "}
-                {highlights.hottestRoute.trainerCount} trainer
-                {highlights.hottestRoute.trainerCount === 1 ? "" : "s"}
-              </p>
-            </div>
+          {highlights.deadliestRoutes.length > 0 ? (
+            <RouteTopCallout
+              label="Deadliest catch routes"
+              entries={highlights.deadliestRoutes}
+            />
           ) : null}
         </div>
       ) : null}
@@ -115,43 +104,84 @@ export function EncounterSeasonView({
   );
 }
 
-function SpeciesCallout({
+function SpeciesTopCallout({
   label,
-  tied,
-  species,
-  pokedexId,
-  detail,
+  entries,
+  countLabel,
 }: {
   label: string;
-  tied: boolean;
-  species: string;
-  pokedexId: number | null;
-  detail: string;
+  entries: EncounterSpeciesHighlight[];
+  countLabel: (count: number) => string;
 }) {
   return (
     <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
       <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
         {label}
-        {tied ? " · tied" : ""}
       </p>
-      <p className="mt-1 flex items-center gap-2.5 font-display text-sm font-bold leading-tight">
-        <span className="relative inline-block h-10 w-10 shrink-0">
-          <PokemonSpriteImage
-            alt=""
-            className="pixelated h-full w-full object-contain"
-            height={40}
-            pokedexId={pokedexId}
-            species={species}
-            width={40}
-          />
-        </span>
-        <span className="min-w-0">
-          {species}
-          <span className="mt-0.5 block font-sans text-[11px] font-normal text-muted">
-            {detail}
-          </span>
-        </span>
+      <ol className="mt-1.5 space-y-1">
+        {entries.map((entry, index) => (
+          <li
+            key={`${entry.species}-${entry.pokedexId ?? "x"}`}
+            className="flex items-center gap-2"
+          >
+            <span className="w-3 shrink-0 text-[10px] font-bold tabular-nums text-muted">
+              {index + 1}
+            </span>
+            <span className="relative inline-block h-7 w-7 shrink-0">
+              <PokemonSpriteImage
+                alt=""
+                className="pixelated h-full w-full object-contain"
+                height={28}
+                pokedexId={entry.pokedexId}
+                species={entry.species}
+                width={28}
+              />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-display text-xs font-bold leading-tight">
+                {entry.species}
+              </span>
+              <span className="text-[10px] text-muted">
+                {countLabel(entry.count)}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function RouteTopCallout({
+  label,
+  entries,
+}: {
+  label: string;
+  entries: EncounterRouteHighlight[];
+}) {
+  return (
+    <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
+      <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
+        {label}
       </p>
+      <ol className="mt-1.5 space-y-1.5">
+        {entries.map((entry, index) => (
+          <li key={entry.route} className="flex items-start gap-2">
+            <span className="w-3 shrink-0 pt-0.5 text-[10px] font-bold tabular-nums text-muted">
+              {index + 1}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-display text-xs font-bold leading-tight">
+                {entry.route}
+              </span>
+              <span className="text-[10px] text-muted">
+                {entry.graveCount} RIP · {entry.trainerCount} trainer
+                {entry.trainerCount === 1 ? "" : "s"}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

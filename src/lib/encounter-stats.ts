@@ -9,18 +9,23 @@ import {
 } from "@/lib/modern-emerald-dex";
 import { displayName } from "@/lib/trainer-display";
 
+/** Noise species excluded from popularity / rarity callout rankings. */
+const RANKING_EXCLUDED_NAMES = new Set(["zigzagoon"]);
+const RANKING_EXCLUDED_DEX = new Set([263]);
+
+export const ENCOUNTER_STATS_TOP_N = 3;
+
 export type EncounterSpeciesHighlight = {
   species: string;
   pokedexId: number | null;
   count: number;
-  tied: boolean;
 };
 
 export type EncounterRouteHighlight = {
   route: string;
-  claimCount: number;
+  /** Graves logged with this catch route. */
+  graveCount: number;
   trainerCount: number;
-  tied: boolean;
 };
 
 export type EncounterSeasonHighlights = {
@@ -30,10 +35,15 @@ export type EncounterSeasonHighlights = {
   routesClaimed: number;
   meDexLogged: number;
   meDexTotal: number;
-  mostLogged: EncounterSpeciesHighlight | null;
-  /** Rarest among species that appear at least once. */
-  leastLogged: EncounterSpeciesHighlight | null;
-  hottestRoute: EncounterRouteHighlight | null;
+  /** Top N by raw board appearances (Zigzagoon excluded). */
+  mostLogged: EncounterSpeciesHighlight[];
+  /** Top N rarest among seen (Zigzagoon excluded). */
+  rarestSeen: EncounterSpeciesHighlight[];
+  /**
+   * Top N catch routes by grave count — Soft Lock lore without early-route
+   * claim bias (Route 101 always “wins” raw claims).
+   */
+  deadliestRoutes: EncounterRouteHighlight[];
 };
 
 export type ExclusiveSpecies = ModernEmeraldSpeciesRef & {
@@ -62,6 +72,14 @@ function resolvePokedexId(
   return findPokemonByName(mon.species)?.pokedexId ?? null;
 }
 
+function isRankingExcluded(
+  mon: Pick<PokemonEntry, "species" | "pokedexId">,
+): boolean {
+  if (RANKING_EXCLUDED_NAMES.has(speciesNameKey(mon.species))) return true;
+  const dex = resolvePokedexId(mon);
+  return dex != null && RANKING_EXCLUDED_DEX.has(dex);
+}
+
 function bumpSpecies(
   map: Map<string, SpeciesBucket>,
   mon: Pick<PokemonEntry, "species" | "pokedexId">,
@@ -84,11 +102,12 @@ function bumpSpecies(
   });
 }
 
-function toSpeciesHighlight(
+function toSpeciesList(
   ranked: SpeciesBucket[],
   pick: "most" | "least",
-): EncounterSpeciesHighlight | null {
-  if (ranked.length === 0) return null;
+  limit: number,
+): EncounterSpeciesHighlight[] {
+  if (ranked.length === 0) return [];
   const ordered =
     pick === "most"
       ? [...ranked].sort((a, b) => {
@@ -99,14 +118,11 @@ function toSpeciesHighlight(
           if (a.count !== b.count) return a.count - b.count;
           return a.species.localeCompare(b.species);
         });
-  const top = ordered[0]!;
-  const tied = ordered.filter((entry) => entry.count === top.count).length > 1;
-  return {
-    species: top.species,
-    pokedexId: top.pokedexId,
-    count: top.count,
-    tied,
-  };
+  return ordered.slice(0, limit).map((entry) => ({
+    species: entry.species,
+    pokedexId: entry.pokedexId,
+    count: entry.count,
+  }));
 }
 
 /**
@@ -145,46 +161,56 @@ export function seasonTouchedPokedexIds(
 
 /**
  * Season encounter meta from live boards (any slot counts as logged).
- * Route heat still comes from `catchRoute` via the encounter ledger.
+ * Popularity rankings skip Zigzagoon; third callout is deadliest catch routes.
  */
 export function encounterSeasonHighlights(
   trainers: TrainerProfile[],
 ): EncounterSeasonHighlights {
   const speciesCounts = new Map<string, SpeciesBucket>();
+  const graveRoutes = new Map<
+    string,
+    { route: string; graveCount: number; trainers: Set<string> }
+  >();
   let totalLogged = 0;
 
   for (const trainer of trainers) {
     for (const mon of trainer.pokemon) {
       totalLogged += 1;
       bumpSpecies(speciesCounts, mon);
+
+      if (mon.slot !== "GRAVEYARD") continue;
+      const route = mon.catchRoute?.trim();
+      if (!route) continue;
+      const key = route.toLowerCase();
+      const row = graveRoutes.get(key) ?? {
+        route,
+        graveCount: 0,
+        trainers: new Set<string>(),
+      };
+      row.graveCount += 1;
+      row.trainers.add(trainer.id);
+      graveRoutes.set(key, row);
     }
   }
 
-  const ranked = [...speciesCounts.values()];
+  const allRanked = [...speciesCounts.values()];
+  const rankingPool = allRanked.filter((entry) => !isRankingExcluded(entry));
   const ledger = buildEncounterLedger(trainers);
 
-  let hottestRoute: EncounterRouteHighlight | null = null;
-  if (ledger.length > 0) {
-    const routeRows = ledger.map((group) => {
-      const trainerIds = new Set(group.claims.map((c) => c.trainerId));
-      return {
-        route: group.route,
-        claimCount: group.claims.length,
-        trainerCount: trainerIds.size,
-      };
-    });
-    routeRows.sort((a, b) => {
-      if (b.claimCount !== a.claimCount) return b.claimCount - a.claimCount;
-      if (b.trainerCount !== a.trainerCount) {
-        return b.trainerCount - a.trainerCount;
+  const deadliestRoutes = [...graveRoutes.values()]
+    .sort((a, b) => {
+      if (b.graveCount !== a.graveCount) return b.graveCount - a.graveCount;
+      if (b.trainers.size !== a.trainers.size) {
+        return b.trainers.size - a.trainers.size;
       }
       return a.route.localeCompare(b.route);
-    });
-    const top = routeRows[0]!;
-    const tied =
-      routeRows.filter((row) => row.claimCount === top.claimCount).length > 1;
-    hottestRoute = { ...top, tied };
-  }
+    })
+    .slice(0, ENCOUNTER_STATS_TOP_N)
+    .map((row) => ({
+      route: row.route,
+      graveCount: row.graveCount,
+      trainerCount: row.trainers.size,
+    }));
 
   const meTotal = modernEmeraldDexTotal();
   const meLogged = [...seasonTouchedPokedexIds(trainers)].filter((id) =>
@@ -193,13 +219,13 @@ export function encounterSeasonHighlights(
 
   return {
     totalLogged,
-    uniqueSpecies: ranked.length,
+    uniqueSpecies: allRanked.length,
     routesClaimed: ledger.length,
     meDexLogged: meLogged,
     meDexTotal: meTotal,
-    mostLogged: toSpeciesHighlight(ranked, "most"),
-    leastLogged: toSpeciesHighlight(ranked, "least"),
-    hottestRoute,
+    mostLogged: toSpeciesList(rankingPool, "most", ENCOUNTER_STATS_TOP_N),
+    rarestSeen: toSpeciesList(rankingPool, "least", ENCOUNTER_STATS_TOP_N),
+    deadliestRoutes,
   };
 }
 

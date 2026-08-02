@@ -72,7 +72,7 @@ test("modernEmeraldNationalIds is unique, positive, and stable-sized", () => {
   assert.ok(ids.includes(470)); // Leafeon (ME extra)
 });
 
-test("encounterSeasonHighlights ranks most/least logged and hottest route", () => {
+test("encounterSeasonHighlights returns top-3 lists and skips Zigzagoon", () => {
   const highlights = encounterSeasonHighlights([
     trainer({
       id: "t1",
@@ -103,6 +103,38 @@ test("encounterSeasonHighlights ranks most/least logged and hottest route", () =
           pokedexId: 359,
           catchRoute: "Route 120",
         }),
+        mon({
+          id: "a4",
+          slot: "MAIN",
+          partyIndex: 1,
+          species: "Ralts",
+          pokedexId: 280,
+          catchRoute: "Route 102",
+        }),
+        mon({
+          id: "a5",
+          slot: "MAIN",
+          partyIndex: 2,
+          species: "Ralts",
+          pokedexId: 280,
+          catchRoute: "Route 102",
+        }),
+        mon({
+          id: "a6",
+          slot: "GRAVEYARD",
+          partyIndex: 0,
+          species: "Taillow",
+          pokedexId: 276,
+          catchRoute: "Route 104",
+        }),
+        mon({
+          id: "a7",
+          slot: "GRAVEYARD",
+          partyIndex: 1,
+          species: "Wingull",
+          pokedexId: 278,
+          catchRoute: "Route 104",
+        }),
       ],
     }),
     trainer({
@@ -118,29 +150,43 @@ test("encounterSeasonHighlights ranks most/least logged and hottest route", () =
           pokedexId: 263,
           catchRoute: "Route 101",
         }),
+        mon({
+          id: "b2",
+          slot: "MAIN",
+          partyIndex: 1,
+          species: "Ralts",
+          pokedexId: 280,
+          catchRoute: "Route 102",
+        }),
+        mon({
+          id: "b3",
+          slot: "GRAVEYARD",
+          partyIndex: 0,
+          species: "Makuhita",
+          pokedexId: 296,
+          catchRoute: "Granite Cave",
+        }),
       ],
     }),
   ]);
 
-  assert.equal(highlights.totalLogged, 4);
-  assert.equal(highlights.uniqueSpecies, 2);
-  assert.equal(highlights.routesClaimed, 2);
-  assert.deepEqual(highlights.mostLogged, {
-    species: "Zigzagoon",
-    pokedexId: 263,
-    count: 3,
-    tied: false,
+  assert.equal(highlights.totalLogged, 10);
+  assert.equal(highlights.uniqueSpecies, 6);
+  assert.equal(highlights.routesClaimed, 5);
+  assert.deepEqual(
+    highlights.mostLogged.map((e) => e.species),
+    ["Ralts", "Absol", "Makuhita"],
+  );
+  assert.equal(highlights.mostLogged[0]?.count, 3);
+  assert.ok(!highlights.mostLogged.some((e) => e.species === "Zigzagoon"));
+  assert.ok(highlights.rarestSeen.every((e) => e.count === 1));
+  assert.ok(!highlights.rarestSeen.some((e) => e.species === "Zigzagoon"));
+  assert.deepEqual(highlights.deadliestRoutes[0], {
+    route: "Route 104",
+    graveCount: 2,
+    trainerCount: 1,
   });
-  assert.deepEqual(highlights.leastLogged, {
-    species: "Absol",
-    pokedexId: 359,
-    count: 1,
-    tied: false,
-  });
-  assert.equal(highlights.hottestRoute?.route, "Route 101");
-  assert.equal(highlights.hottestRoute?.claimCount, 3);
-  assert.equal(highlights.hottestRoute?.trainerCount, 2);
-  assert.equal(highlights.meDexLogged, 2);
+  assert.equal(highlights.meDexLogged, 6);
   assert.equal(highlights.meDexTotal, modernEmeraldDexTotal());
 });
 
@@ -279,25 +325,29 @@ test("encounterSeasonHighlights merges species with and without pokedexId", () =
           id: "a1",
           slot: "MAIN",
           partyIndex: 0,
-          species: "Zigzagoon",
-          pokedexId: 263,
+          species: "Ralts",
+          pokedexId: 280,
         }),
         mon({
           id: "a2",
           slot: "RESERVE",
           partyIndex: 0,
-          species: "Zigzagoon",
+          species: "Ralts",
           pokedexId: null,
+        }),
+        mon({
+          id: "a3",
+          slot: "MAIN",
+          partyIndex: 1,
+          species: "Zigzagoon",
+          pokedexId: 263,
         }),
       ],
     }),
   ]);
 
-  assert.deepEqual(highlights.mostLogged, {
-    species: "Zigzagoon",
-    pokedexId: 263,
-    count: 2,
-    tied: false,
-  });
-  assert.equal(highlights.uniqueSpecies, 1);
+  assert.deepEqual(highlights.mostLogged, [
+    { species: "Ralts", pokedexId: 280, count: 2 },
+  ]);
+  assert.equal(highlights.uniqueSpecies, 2);
 });
