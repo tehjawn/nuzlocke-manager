@@ -28,6 +28,7 @@ import { gen3MoveName } from "@/lib/move-names";
 import type { StatSpread } from "@/lib/stats";
 import { EMPTY_EVS, EMPTY_IVS } from "@/lib/stats";
 import { looksLikeFlashSave, parseFlashSave } from "./flash";
+import { decodeGen3Name } from "./text";
 import {
   BOX_MON_SIZE,
   CREST_DEX_FLAG_BYTES,
@@ -194,54 +195,12 @@ const POS_OF_TYPE: readonly (readonly number[])[] = [
   [3, 2, 1, 0],
 ];
 
-/**
- * Western Gen 3 text (pret pokeemerald charmap). Nickname screen punctuation
- * must match — a single rejected `!` / `,` / space used to drop a whole party.
- */
-const GEN3_CHAR: Record<number, string> = {
-  0x00: " ",
-  0x2d: "&",
-  0x2e: "+",
-  0x7f: " ", // some dumps also use 0x7f as space
-  0xab: "!",
-  0xac: "?",
-  0xad: ".",
-  0xae: "-",
-  0xb0: "…",
-  0xb1: "“",
-  0xb2: "”",
-  0xb3: "‘",
-  0xb4: "'",
-  0xb5: "♂",
-  0xb6: "♀",
-  0xb8: ",",
-  0xb9: "×",
-  0xba: "/",
-};
-for (let i = 0; i < 10; i++) GEN3_CHAR[0xa1 + i] = String(i);
-for (let i = 0; i < 26; i++) {
-  GEN3_CHAR[0xbb + i] = String.fromCharCode(65 + i);
-  GEN3_CHAR[0xd5 + i] = String.fromCharCode(97 + i);
-}
-
-/** Characters a Gen 3 nickname / OT string may contain after decode. */
-const GEN3_NICK_RE = /^[A-Za-z0-9 &+.'“”‘'\-♀♂?!…,×/]+$/;
-
 function u16(view: DataView, offset: number): number {
   return view.getUint16(offset, true);
 }
 
 function u32(view: DataView, offset: number): number {
   return view.getUint32(offset, true);
-}
-
-function decodeGen3Text(bytes: Uint8Array): string {
-  let out = "";
-  for (const b of bytes) {
-    if (b === 0xff) break;
-    out += GEN3_CHAR[b] ?? "";
-  }
-  return out.trim();
 }
 
 function readRzipChunks(
@@ -519,12 +478,8 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
   const oid = u32(view, 4);
   if (pid === 0) return null;
 
-  const nickname = decodeGen3Text(bytes.subarray(offset + 8, offset + 18));
-  if (
-    nickname.length < 1 ||
-    nickname.length > 10 ||
-    !GEN3_NICK_RE.test(nickname)
-  ) {
+  const nickname = decodeGen3Name(bytes.subarray(offset + 8, offset + 18));
+  if (!nickname || nickname.length > 10) {
     return null;
   }
 
@@ -858,8 +813,8 @@ function findTrainer(bytes: Uint8Array, partyOid: number | null): ParsedSaveTrai
   // SaveBlock2 starts with playerName[8]; gender at +8; trainerId at +0xA
   for (let i = 0; i + 16 < bytes.length; i++) {
     if (bytes[i + 7] !== 0xff && bytes[i + 3] !== 0xff) continue;
-    const name = decodeGen3Text(bytes.subarray(i, i + 8));
-    if (!/^[A-Za-z][A-Za-z0-9]{1,6}$/.test(name)) continue;
+    const name = decodeGen3Name(bytes.subarray(i, i + 8));
+    if (!name || !/^[A-Za-z][A-Za-z0-9]{1,6}$/.test(name)) continue;
     const genderByte = bytes[i + 8] ?? 0xff;
     if (genderByte > 1) continue;
     const tid = new DataView(bytes.buffer, bytes.byteOffset + i + 0xa, 4).getUint32(
@@ -884,11 +839,11 @@ function findTrainerNearParty(
   partyMons: RawMon[],
 ): ParsedSaveTrainer | null {
   if (partyMons.length === 0) return findTrainer(bytes, null);
-  const otName = decodeGen3Text(
+  const otName = decodeGen3Name(
     // OT is on the mon at +20; party OT name should match trainer
     bytes.subarray(partyMons[0]!.offset + 20, partyMons[0]!.offset + 27),
   );
-  if (/^[A-Za-z][A-Za-z0-9]{1,6}$/.test(otName)) {
+  if (otName && /^[A-Za-z][A-Za-z0-9]{1,6}$/.test(otName)) {
     return { name: otName, gender: null };
   }
   return findTrainer(bytes, partyMons[0]!.oid);
@@ -1582,8 +1537,8 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
 
 function readTrainerFromSaveBlock2(sb2: Uint8Array): ParsedSaveTrainer | null {
   if (sb2.length < 16) return null;
-  const name = decodeGen3Text(sb2.subarray(0, 8));
-  if (!/^[A-Za-z][A-Za-z0-9]{0,6}$/.test(name)) return null;
+  const name = decodeGen3Name(sb2.subarray(0, 8));
+  if (!name || !/^[A-Za-z][A-Za-z0-9]{0,6}$/.test(name)) return null;
   const genderByte = sb2[8] ?? 0xff;
   if (genderByte > 1) return { name, gender: null };
   return { name, gender: genderByte === 1 ? "F" : "M" };
