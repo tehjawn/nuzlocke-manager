@@ -1,4 +1,10 @@
-import { classifyIv } from "@/lib/iv-quality";
+import {
+  classifyBattleStat,
+  classifyEv,
+  classifyIv,
+  qualityToneClass,
+  type StatQualityBand,
+} from "@/lib/iv-quality";
 import {
   STAT_KEYS,
   STAT_LABELS,
@@ -43,27 +49,34 @@ function ceilingFor(
   return null;
 }
 
-/** Shared IV quality color for label + value. */
-function ivToneClass(value: number): string {
-  const band = classifyIv(value);
-  if (band === "perfect") return "text-accent-2";
-  if (band === "strong") return "text-accent-deep";
-  if (band === "dump") return "text-muted";
-  return "";
+function qualityFor(
+  tone: StatGridProps["tone"],
+  value: number,
+  max: number,
+  hasMaxSpread: boolean,
+): StatQualityBand {
+  if (tone === "iv") return classifyIv(value);
+  if (tone === "ev") return classifyEv(value);
+  if (hasMaxSpread) return classifyBattleStat(value, max);
+  return "average";
 }
 
-/** Call out cracked / dump IVs without changing bar length. */
-function ivValueClass(value: number, compact: boolean): string {
-  const size = compact ? "text-[11px]" : "text-sm";
-  const tone = ivToneClass(value);
-  return tone ? `${size} ${tone}` : size;
-}
-
-function ivLabelClass(value: number, compact: boolean): string {
+function labelClass(
+  band: StatQualityBand,
+  compact: boolean,
+): string {
   const size = compact ? "text-[9px]" : "text-[11px]";
-  const tone = ivToneClass(value);
-  // Average IVs keep the default muted label; standouts match the number.
+  const tone = qualityToneClass(band);
   return tone ? `${size} ${tone}` : `${size} text-muted`;
+}
+
+function valueClass(
+  band: StatQualityBand,
+  compact: boolean,
+): string {
+  const size = compact ? "text-[11px]" : "text-sm";
+  const tone = qualityToneClass(band);
+  return tone ? `${size} ${tone}` : size;
 }
 
 /** Weaker fills sit a bit washed; near-max reads fuller (length still primary). */
@@ -80,6 +93,7 @@ export function StatGrid({
 }: StatGridProps) {
   const usesMeters =
     maxSpread != null || tone === "iv" || tone === "ev";
+  const hasMaxSpread = maxSpread != null;
 
   if (!usesMeters) {
     return (
@@ -126,6 +140,9 @@ export function StatGrid({
         const max = ceilingFor(key, maxSpread, tone) ?? 1;
         const pct = Math.min(100, Math.max(0, (value / max) * 100));
         const label = STAT_LABELS[key];
+        const band = qualityFor(tone, value, max, hasMaxSpread);
+        const highlight =
+          tone === "iv" || tone === "ev" || hasMaxSpread;
 
         return (
           <div
@@ -136,8 +153,8 @@ export function StatGrid({
           >
             <span
               className={`font-semibold tracking-tight ${
-                tone === "iv"
-                  ? ivLabelClass(value, compact)
+                highlight
+                  ? labelClass(band, compact)
                   : `text-muted ${compact ? "text-[9px]" : "text-[11px]"}`
               }`}
             >
@@ -145,15 +162,15 @@ export function StatGrid({
             </span>
             <span
               className={`text-right font-mono font-bold tabular-nums ${
-                tone === "iv"
-                  ? ivValueClass(value, compact)
+                highlight
+                  ? valueClass(band, compact)
                   : compact
                     ? "text-[11px]"
                     : "text-sm"
               }`}
               title={
-                tone === "iv"
-                  ? `${label} ${value} — ${classifyIv(value)}`
+                highlight && band !== "average"
+                  ? `${label} ${value} — ${band}`
                   : undefined
               }
             >

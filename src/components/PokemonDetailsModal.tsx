@@ -11,7 +11,7 @@ import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
-import { summarizeIvs } from "@/lib/iv-quality";
+import { summarizeIvs, summarizeEvs, summarizeBattleStats } from "@/lib/iv-quality";
 import { recommendPlaystyle } from "@/lib/playstyle";
 import {
   calcBattleStats,
@@ -104,6 +104,9 @@ export function PokemonDetailsModal({
   const showIvs = !isEmptySpread(ivs);
   const showEvs = !isEmptySpread(evs);
   const ivSummary = showIvs ? summarizeIvs(ivs) : null;
+  const evSummary = showEvs ? summarizeEvs(evs) : null;
+  const battleSummary =
+    battle && battleMax ? summarizeBattleStats(battle, battleMax) : null;
   const playstyle = showCompetitiveDetails
     ? recommendPlaystyle({
         pokedexId: pokemon.pokedexId,
@@ -266,11 +269,23 @@ export function PokemonDetailsModal({
 
             {battle ? (
               <div>
-                <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-xs font-semibold tracking-tight text-muted">
                     Battle stats
                   </p>
-                  <p className="text-[10px] text-muted">vs max at this level</p>
+                  {battleSummary?.headline ? (
+                    <p
+                      className={`text-[10px] font-semibold tracking-tight ${
+                        battleSummary.cracked
+                          ? "text-accent-2"
+                          : "text-muted"
+                      }`}
+                    >
+                      {battleSummary.headline}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-muted">vs max at this level</p>
+                  )}
                 </div>
                 <StatGrid
                   spread={battle}
@@ -310,9 +325,22 @@ export function PokemonDetailsModal({
                 ) : null}
                 {showEvs && evs ? (
                   <div>
-                    <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
-                      EVs
-                    </p>
+                    <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-xs font-semibold tracking-tight text-muted">
+                        EVs
+                      </p>
+                      {evSummary?.headline ? (
+                        <p
+                          className={`text-[10px] font-semibold tracking-tight ${
+                            evSummary.cracked
+                              ? "text-accent-2"
+                              : "text-muted"
+                          }`}
+                        >
+                          {evSummary.headline}
+                        </p>
+                      ) : null}
+                    </div>
                     <StatGrid spread={evs} tone="ev" compact />
                   </div>
                 ) : null}
