@@ -358,7 +358,7 @@ export function PokemonDetailsModal({
                             ivSummary.god
                               ? "pokemon-catch-label--god"
                               : ivSummary.cracked
-                                ? "text-accent-2"
+                                ? "pokemon-catch-label--cracked"
                                 : "text-muted"
                           }`}
                         >

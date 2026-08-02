@@ -657,7 +657,10 @@ button:disabled,
   }
 }
 
-/* Catch-tier card edges — quiet revolving tint (+ muted dotted shit / prismatic god) */
+/*
+ * Catch-tier card edges — intensity ramps toward God:
+ * shit (muted dotted) → good (soft) → great → cracked → god (prismatic)
+ */
 @property --catch-angle {
   syntax: "<angle>";
   inherits: false;
@@ -668,6 +671,8 @@ button:disabled,
   --catch-angle: 0deg;
   --catch-tint: var(--interactive);
   --catch-peak: 32%;
+  --catch-glow: transparent;
+  --catch-spin: 16s;
 
   position: relative;
   border-radius: calc(var(--radius) + 1px);
@@ -680,35 +685,60 @@ button:disabled,
     color-mix(in srgb, var(--catch-tint) calc(var(--catch-peak) - 8%), transparent),
     color-mix(in srgb, var(--catch-tint) 6%, transparent)
   );
-  animation: pokemon-catch-revolve 16s linear infinite;
-  transition: filter 180ms ease;
+  box-shadow: 0 0 0 0 transparent, 0 0 0 0 var(--catch-glow);
+  animation: pokemon-catch-revolve var(--catch-spin) linear infinite;
+  transition:
+    filter 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .pokemon-catch-ring--shit {
   animation: none;
   padding: 0;
   background: transparent;
-  border: 1.5px dotted color-mix(in srgb, var(--muted) 52%, transparent);
+  border: 1.5px dotted color-mix(in srgb, var(--muted) 48%, transparent);
+  filter: saturate(0.7);
+  opacity: 0.92;
 }
 
+/* Soft cool blue — quiet start of the ladder */
 .pokemon-catch-ring--good {
-  --catch-tint: var(--interactive);
-  --catch-peak: 28%;
+  --catch-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
+  --catch-peak: 24%;
+  --catch-spin: 18s;
+  padding: 1px;
 }
 
+/* Richer violet — clearly a step up */
 .pokemon-catch-ring--great {
-  --catch-tint: #a78bfa;
-  --catch-peak: 30%;
-}
-
-.pokemon-catch-ring--cracked {
-  --catch-tint: var(--accent-2);
-  --catch-peak: 34%;
-}
-
-.pokemon-catch-ring--god {
+  --catch-tint: #b794f6;
+  --catch-peak: 36%;
+  --catch-spin: 14s;
+  --catch-glow: color-mix(in srgb, #a78bfa 18%, transparent);
   padding: 1.5px;
-  animation-duration: 12s;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #a78bfa 16%, transparent),
+    0 0 8px 1px var(--catch-glow);
+}
+
+/* Warm gold — bright, high-impact before prismatic */
+.pokemon-catch-ring--cracked {
+  --catch-tint: #f0c14a;
+  --catch-peak: 48%;
+  --catch-spin: 11s;
+  --catch-glow: color-mix(in srgb, #e0b04a 32%, transparent);
+  padding: 2px;
+  filter: saturate(1.08);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #e0b04a 28%, transparent),
+    0 0 12px 2px var(--catch-glow);
+}
+
+/* Prismatic peak of the ladder */
+.pokemon-catch-ring--god {
+  --catch-spin: 10s;
+  padding: 2px;
+  filter: saturate(1.12);
   background: conic-gradient(
     from var(--catch-angle),
     color-mix(in srgb, #ff5a5a 58%, transparent),
@@ -721,7 +751,7 @@ button:disabled,
   );
   box-shadow:
     0 0 0 1px color-mix(in srgb, #4ec4ff 22%, transparent),
-    0 0 10px 1px color-mix(in srgb, #ff6ec7 20%, transparent);
+    0 0 12px 2px color-mix(in srgb, #ff6ec7 22%, transparent);
 }
 
 .pokemon-catch-ring > * {
@@ -733,26 +763,34 @@ button:disabled,
 }
 
 .pokemon-catch-ring--shit:hover {
-  border-color: color-mix(in srgb, var(--muted) 68%, transparent);
+  border-color: color-mix(in srgb, var(--muted) 62%, transparent);
+  opacity: 1;
 }
 
 .pokemon-catch-ring--good:hover {
-  --catch-peak: 38%;
+  --catch-peak: 34%;
 }
 
 .pokemon-catch-ring--great:hover {
-  --catch-peak: 40%;
+  --catch-peak: 46%;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #a78bfa 26%, transparent),
+    0 0 12px 2px color-mix(in srgb, #a78bfa 26%, transparent);
 }
 
 .pokemon-catch-ring--cracked:hover {
-  --catch-peak: 44%;
+  --catch-peak: 58%;
+  filter: saturate(1.14);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #e0b04a 40%, transparent),
+    0 0 16px 3px color-mix(in srgb, #e0b04a 40%, transparent);
 }
 
 .pokemon-catch-ring--god:hover {
-  filter: saturate(1.1);
+  filter: saturate(1.18);
   box-shadow:
     0 0 0 1px color-mix(in srgb, #4ec4ff 32%, transparent),
-    0 0 14px 2px color-mix(in srgb, #ff6ec7 28%, transparent);
+    0 0 16px 3px color-mix(in srgb, #ff6ec7 30%, transparent);
 }
 
 @keyframes pokemon-catch-revolve {
@@ -776,6 +814,24 @@ button:disabled,
     background: transparent;
   }
 
+  .pokemon-catch-ring--great {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, #a78bfa 36%, var(--frame)),
+      color-mix(in srgb, #a78bfa 16%, var(--frame)),
+      color-mix(in srgb, #a78bfa 36%, var(--frame))
+    );
+  }
+
+  .pokemon-catch-ring--cracked {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, #f0c14a 48%, var(--frame)),
+      color-mix(in srgb, #e0b04a 22%, var(--frame)),
+      color-mix(in srgb, #f0c14a 48%, var(--frame))
+    );
+  }
+
   .pokemon-catch-ring--god {
     background: linear-gradient(
       135deg,
@@ -791,7 +847,7 @@ button:disabled,
   }
 }
 
-/* Sprite well tint — radial vignette behind the mon (catch-tier hue) */
+/* Sprite well tint — radial vignette ramps with tier */
 .pokemon-catch-sprite {
   --catch-vignette-peak: 18%;
   border-color: color-mix(in srgb, var(--catch-tint) 28%, var(--frame));
@@ -806,36 +862,44 @@ button:disabled,
 
 .pokemon-catch-sprite--shit {
   --catch-tint: var(--muted);
-  --catch-vignette-peak: 10%;
+  --catch-vignette-peak: 8%;
   border-style: dotted;
-  border-color: color-mix(in srgb, var(--muted) 42%, var(--frame));
+  border-color: color-mix(in srgb, var(--muted) 38%, var(--frame));
+  filter: saturate(0.75);
 }
 
 .pokemon-catch-sprite--good {
-  --catch-tint: var(--interactive);
+  --catch-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
+  --catch-vignette-peak: 14%;
+  border-color: color-mix(in srgb, var(--interactive) 24%, var(--frame));
 }
 
 .pokemon-catch-sprite--great {
-  --catch-tint: #a78bfa;
+  --catch-tint: #b794f6;
+  --catch-vignette-peak: 22%;
+  border-color: color-mix(in srgb, #a78bfa 38%, var(--frame));
 }
 
 .pokemon-catch-sprite--cracked {
-  --catch-tint: var(--accent-2);
+  --catch-tint: #f0c14a;
+  --catch-vignette-peak: 30%;
+  border-color: color-mix(in srgb, #e0b04a 48%, var(--frame));
+  box-shadow: inset 0 0 10px 0 color-mix(in srgb, #e0b04a 14%, transparent);
 }
 
 .pokemon-catch-sprite--god {
-  border-color: color-mix(in srgb, #c77dff 40%, var(--frame));
+  border-color: color-mix(in srgb, #c77dff 42%, var(--frame));
   background:
     radial-gradient(
       circle at 50% 45%,
-      color-mix(in srgb, #ffb020 26%, transparent) 0%,
-      color-mix(in srgb, #4ec4ff 20%, transparent) 36%,
-      color-mix(in srgb, #ff6ec7 16%, transparent) 58%,
+      color-mix(in srgb, #ffb020 28%, transparent) 0%,
+      color-mix(in srgb, #4ec4ff 22%, transparent) 36%,
+      color-mix(in srgb, #ff6ec7 18%, transparent) 58%,
       var(--surface-2) 82%
     );
 }
 
-/* Details modal — slightly stronger than board, still restrained */
+/* Details modal — same ramp, slightly louder */
 .pokemon-catch-sprite--emphasis {
   --catch-vignette-peak: 22%;
   border-color: color-mix(in srgb, var(--catch-tint) 34%, var(--frame));
@@ -843,16 +907,35 @@ button:disabled,
 }
 
 .pokemon-catch-sprite--emphasis.pokemon-catch-sprite--shit {
-  --catch-vignette-peak: 12%;
-  border-color: color-mix(in srgb, var(--muted) 48%, var(--frame));
+  --catch-vignette-peak: 10%;
+  border-color: color-mix(in srgb, var(--muted) 44%, var(--frame));
   box-shadow: none;
+}
+
+.pokemon-catch-sprite--emphasis.pokemon-catch-sprite--good {
+  --catch-vignette-peak: 18%;
+  border-color: color-mix(in srgb, var(--interactive) 32%, var(--frame));
+}
+
+.pokemon-catch-sprite--emphasis.pokemon-catch-sprite--great {
+  --catch-vignette-peak: 26%;
+  border-color: color-mix(in srgb, #a78bfa 46%, var(--frame));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #a78bfa 18%, transparent);
+}
+
+.pokemon-catch-sprite--emphasis.pokemon-catch-sprite--cracked {
+  --catch-vignette-peak: 34%;
+  border-color: color-mix(in srgb, #e0b04a 55%, var(--frame));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #e0b04a 22%, transparent),
+    inset 0 0 14px 1px color-mix(in srgb, #e0b04a 16%, transparent);
 }
 
 .pokemon-catch-sprite--emphasis.pokemon-catch-sprite--god {
   border-color: color-mix(in srgb, #4ec4ff 48%, var(--frame));
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, #ff6ec7 18%, transparent),
-    inset 0 0 12px 1px color-mix(in srgb, #ffb020 12%, transparent);
+    inset 0 0 14px 1px color-mix(in srgb, #ffb020 14%, transparent);
 }
 
 .pokemon-catch-ring--emphasis {
@@ -866,30 +949,59 @@ button:disabled,
 }
 
 .pokemon-catch-ring--emphasis.pokemon-catch-ring--good {
-  --catch-peak: 44%;
+  --catch-peak: 36%;
+  padding: 1.5px;
 }
 
 .pokemon-catch-ring--emphasis.pokemon-catch-ring--great {
-  --catch-peak: 46%;
+  --catch-peak: 48%;
+  padding: 2px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #a78bfa 24%, transparent),
+    0 0 12px 2px color-mix(in srgb, #a78bfa 24%, transparent);
 }
 
 .pokemon-catch-ring--emphasis.pokemon-catch-ring--cracked {
-  --catch-peak: 52%;
+  --catch-peak: 58%;
+  padding: 2.5px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #e0b04a 36%, transparent),
+    0 0 16px 3px color-mix(in srgb, #e0b04a 36%, transparent);
 }
 
 .pokemon-catch-ring--emphasis.pokemon-catch-ring--god {
-  padding: 2px;
-  animation-duration: 10s;
+  padding: 2.5px;
+  --catch-spin: 9s;
   box-shadow:
     0 0 0 1px color-mix(in srgb, #4ec4ff 30%, transparent),
-    0 0 14px 2px color-mix(in srgb, #ff6ec7 26%, transparent);
+    0 0 16px 3px color-mix(in srgb, #ff6ec7 26%, transparent);
 }
 
 .pokemon-catch-ring--emphasis:hover {
   --catch-peak: 58%;
 }
 
-/* Prismatic label for God catch (details + anywhere tone class is used) */
+/* Label tones — same brightness ramp as the chrome */
+.pokemon-catch-label--shit {
+  color: color-mix(in srgb, var(--muted) 88%, transparent);
+}
+
+.pokemon-catch-label--oof {
+  color: var(--muted);
+}
+
+.pokemon-catch-label--good {
+  color: color-mix(in srgb, var(--interactive) 88%, #9ad0ef);
+}
+
+.pokemon-catch-label--great {
+  color: #c4b5fd;
+}
+
+.pokemon-catch-label--cracked {
+  color: #f0c14a;
+}
+
 .pokemon-catch-label--god {
   background-image: linear-gradient(
     105deg,

@@ -314,14 +314,9 @@ export function catchTierHasChrome(tier: CatchTier): boolean {
   return tier !== "oof";
 }
 
-/** Tailwind text tone for catch-tier labels. */
+/** Label tone class — brightness ramps with catch tier. */
 export function catchTierToneClass(tier: CatchTier): string {
-  if (tier === "god") return "pokemon-catch-label--god";
-  if (tier === "cracked") return "text-accent-2";
-  if (tier === "great") return "text-[#a78bfa]";
-  if (tier === "good") return "text-interactive";
-  if (tier === "shit") return "text-muted";
-  return "text-muted";
+  return `pokemon-catch-label--${tier}`;
 }
 
 /** IV-only tier (primary signal for randomizer catches). */
