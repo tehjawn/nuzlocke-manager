@@ -500,7 +500,8 @@ type RawMon = {
   nature: string;
   abilitySlot: number;
   heldItem: string | null;
-  catchRoute: string | null;
+  /** Raw MAPSEC byte; resolved to a name once species mode is known. */
+  metLocation: number;
   moves: string[];
   ivs: StatSpread;
   evs: StatSpread;
@@ -593,7 +594,6 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
   };
 
   const metLocation = miscView.getUint8(1);
-  const catchRoute = gen3MetLocationName(metLocation);
 
   const ivAbility = miscView.getUint32(4, true);
   const ivs: StatSpread = {
@@ -646,7 +646,7 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
     nature: natureFromPid(pid),
     abilitySlot,
     heldItem,
-    catchRoute,
+    metLocation,
     moves,
     ivs,
     evs,
@@ -688,7 +688,10 @@ function toParsed(
     nature: mon.nature,
     ability: abilityForSpecies(pokedexId, mon.abilitySlot),
     heldItem: mon.heldItem,
-    catchRoute: mon.catchRoute,
+    catchRoute: gen3MetLocationName(
+      mon.metLocation,
+      mode === "modern" ? "modern" : "vanilla",
+    ),
     moves: mon.moves,
     ivs: mon.ivs ?? { ...EMPTY_IVS },
     evs: mon.evs ?? { ...EMPTY_EVS },

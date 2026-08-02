@@ -308,7 +308,31 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
       })),
   ];
 
-  return [...navigate, ...trainers, ...pokemon, ...badges, ...rules, ...guide];
+  return [
+    ...navigate,
+    ...trainers,
+    ...pokemon,
+    ...badges,
+    ...rules,
+    ...guide,
+    {
+      id: `bounty-${ctx.slug}`,
+      title: "Bounty Hunter",
+      subtitle: `${ctx.name} · Open bounties & exclusives`,
+      href: toolsHref(ctx.slug, "bounty"),
+      category: "navigate" as const,
+      tags: [
+        "bounty",
+        "hunter",
+        "missing",
+        "exclusives",
+        "gaps",
+        "modern emerald",
+        "tools",
+        "encounters",
+      ],
+    },
+  ];
 }
 
 export function createJumpIndex(results: JumpResult[]) {

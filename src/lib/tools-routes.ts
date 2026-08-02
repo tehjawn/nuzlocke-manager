@@ -1,4 +1,4 @@
-export type ToolsId = "pokedex" | "chart" | "compare" | "guide";
+export type ToolsId = "pokedex" | "chart" | "compare" | "guide" | "bounty";
 
 export const TOOLS_CATALOG: ReadonlyArray<{
   id: ToolsId;
@@ -8,7 +8,8 @@ export const TOOLS_CATALOG: ReadonlyArray<{
   {
     id: "pokedex",
     title: "Pokédex",
-    blurb: "Search species — sprite, typing, base stats, matchups, and counters from your Main + Reserve.",
+    blurb:
+      "Search species — sprite, typing, base stats, matchups, and counters from your Main + Reserve.",
   },
   {
     id: "chart",
@@ -26,6 +27,12 @@ export const TOOLS_CATALOG: ReadonlyArray<{
     blurb:
       "What to do next in Modern Emerald — story gates and easy-to-miss beats based on your badges.",
   },
+  {
+    id: "bounty",
+    title: "Bounty Hunter",
+    blurb:
+      "What’s still free game in Modern Emerald — open bounties, your gaps, and pack exclusives.",
+  },
 ];
 
 export function toolsHubHref(slug: string): string {
@@ -40,6 +47,7 @@ export function toolsHref(
     a?: string | null;
     b?: string | null;
     chapter?: string | null;
+    mode?: string | null;
   },
 ): string {
   const params = new URLSearchParams({ tool });
@@ -49,6 +57,7 @@ export function toolsHref(
   if (query?.a) params.set("a", query.a);
   if (query?.b) params.set("b", query.b);
   if (query?.chapter) params.set("chapter", query.chapter);
+  if (query?.mode) params.set("mode", query.mode);
   return `/challenges/${slug}/tools?${params.toString()}`;
 }
 
@@ -62,7 +71,8 @@ export function parseToolsId(
     raw === "pokedex" ||
     raw === "chart" ||
     raw === "compare" ||
-    raw === "guide"
+    raw === "guide" ||
+    raw === "bounty"
   ) {
     return raw;
   }
@@ -72,4 +82,13 @@ export function parseToolsId(
 export function toolsTitle(tool: ToolsId | null): string {
   if (!tool) return "Tools";
   return TOOLS_CATALOG.find((t) => t.id === tool)?.title ?? "Tools";
+}
+
+export type BountyMode = "open" | "gaps" | "exclusives";
+
+export function parseBountyMode(
+  raw: string | null | undefined,
+): BountyMode {
+  if (raw === "gaps" || raw === "exclusives") return raw;
+  return "open";
 }

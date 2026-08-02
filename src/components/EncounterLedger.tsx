@@ -11,7 +11,7 @@ type EncounterLedgerProps = {
 export function EncounterLedger({ slug, groups }: EncounterLedgerProps) {
   if (groups.length === 0) {
     return (
-      <Frame title="No routes logged yet">
+      <Frame title="No routes logged yet" dense>
         <p className="text-sm text-muted">
           When trainers set a catch route on a Pokémon, that claim shows up here
           so the pack can see who locked which area.
@@ -21,57 +21,55 @@ export function EncounterLedger({ slug, groups }: EncounterLedgerProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {groups.map((group) => (
         <Frame
           key={group.route}
           title={group.route}
+          dense
           actions={
-            <span className="text-xs font-semibold text-white/80">
-              {group.claims.length} claim{group.claims.length === 1 ? "" : "s"}
+            <span className="text-[11px] font-semibold tabular-nums text-white/80">
+              {group.claims.length}
             </span>
           }
         >
-          <ul className="divide-y divide-frame/50">
-            {group.claims.map((claim) => (
-              <li
-                key={claim.pokemonId}
-                className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
-              >
-                <PokemonSpriteImage
-                  alt=""
-                  className={`pixelated h-10 w-10 object-contain ${
-                    claim.isAlive ? "" : "opacity-50 grayscale"
-                  }`}
-                  height={40}
-                  pokedexId={claim.pokedexId}
-                  shiny={claim.isShiny}
-                  species={claim.species}
-                  width={40}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">
-                    {claim.nickname?.trim() || claim.species}
-                    {claim.nickname?.trim() ? (
-                      <span className="ml-1 font-normal text-muted">
-                        ({claim.species})
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className="truncate text-xs text-muted">
-                    <Link
-                      href={`/challenges/${slug}/trainers/${claim.trainerId}`}
-                      className="font-medium hover:text-ink"
-                    >
+          <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+            {group.claims.map((claim) => {
+              const label = claim.nickname?.trim() || claim.species;
+              return (
+                <li key={claim.pokemonId}>
+                  <Link
+                    href={`/challenges/${slug}/trainers/${claim.trainerId}`}
+                    title={`${label} · ${claim.trainerHandle} · ${slotLabel(claim.slot)}${
+                      claim.isAlive ? "" : " · fallen"
+                    }`}
+                    aria-label={`${label} · ${claim.trainerHandle}${
+                      claim.isAlive ? "" : " · fallen"
+                    }`}
+                    className="pressable flex h-full flex-col items-center gap-0.5 rounded-md border border-frame/30 bg-surface/40 px-1 py-1.5 text-center hover:border-interactive/40 hover:bg-interactive-soft/30"
+                  >
+                    <PokemonSpriteImage
+                      alt=""
+                      className={`pixelated h-12 w-12 object-contain sm:h-14 sm:w-14 ${
+                        claim.isAlive ? "" : "opacity-50 grayscale"
+                      }`}
+                      height={56}
+                      pokedexId={claim.pokedexId}
+                      shiny={claim.isShiny}
+                      species={claim.species}
+                      width={56}
+                    />
+                    <span className="w-full truncate text-[11px] font-semibold leading-tight">
+                      {label}
+                    </span>
+                    <span className="w-full truncate text-[9px] leading-tight text-muted">
                       {claim.trainerHandle}
-                    </Link>
-                    {" · "}
-                    {slotLabel(claim.slot)}
-                    {!claim.isAlive ? " · fallen" : ""}
-                  </p>
-                </div>
-              </li>
-            ))}
+                      {!claim.isAlive ? " · RIP" : ""}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </Frame>
       ))}

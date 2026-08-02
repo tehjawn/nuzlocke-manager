@@ -9,6 +9,7 @@ import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 import {
+  parseBountyMode,
   parseToolsId,
   toolsTitle,
   type ToolsId,
@@ -25,6 +26,7 @@ type PageProps = {
     b?: string;
     id?: string;
     chapter?: string;
+    mode?: string;
   }>;
 };
 
@@ -58,7 +60,7 @@ export async function generateMetadata({
 
 export default async function ToolsPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { tool, tab, a, b, id } = await searchParams;
+  const { tool, tab, a, b, id, mode } = await searchParams;
   const session = await auth();
   const challenge = await getChallenge(slug, session?.user?.id);
   if (!challenge) notFound();
@@ -83,6 +85,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const dexIdRaw = id != null ? Number(id) : NaN;
   const initialDexId =
     Number.isFinite(dexIdRaw) && dexIdRaw > 0 ? dexIdRaw : null;
+  const initialBountyMode = parseBountyMode(mode);
 
   return (
     <Suspense
@@ -99,6 +102,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         initialCompareA={a}
         initialCompareB={b}
         initialDexId={initialDexId}
+        initialBountyMode={initialBountyMode}
       />
     </Suspense>
   );
