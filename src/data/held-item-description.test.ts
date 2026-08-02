@@ -27,8 +27,17 @@ test("heldItemSpriteUrl proxies through same-origin itemicons", () => {
     heldItemSpriteUrl("Leftovers"),
     "/api/sprites/itemicons/leftovers.png",
   );
+  // Showdown stores some icons without hyphens (blackglasses, nevermeltice).
+  assert.equal(
+    heldItemSpriteUrl("Black Glasses"),
+    "/api/sprites/itemicons/blackglasses.png",
+  );
   assert.equal(
     heldItemSpriteUrl("Never-Melt Ice"),
-    "/api/sprites/itemicons/never-melt-ice.png",
+    "/api/sprites/itemicons/nevermeltice.png",
+  );
+  assert.equal(
+    heldItemSpriteUrl("black-belt"),
+    "/api/sprites/itemicons/black-belt.png",
   );
 });
