@@ -20,8 +20,11 @@ Plan: [`docs/MASTER_PLAN.md`](./docs/MASTER_PLAN.md).
 
 ## Local setup
 
+**Prefer local Postgres for development** so `next dev` does not burn Neon data-transfer quota. Production stays on Neon (or similar) via Vercel env.
+
 ```bash
 npm install
+docker compose up -d
 cp .env.example .env
 ```
 
@@ -29,10 +32,11 @@ Fill in:
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | Postgres connection |
+| `DATABASE_URL` | Postgres — localhost via Docker for local; Neon pooled URL on Vercel |
 | `AUTH_SECRET` | Auth.js secret (`openssl rand -base64 32`) |
 | `AUTH_DISCORD_ID` / `AUTH_DISCORD_SECRET` | Discord OAuth app |
 | `AUTH_URL` / `NEXT_PUBLIC_APP_URL` | e.g. `http://localhost:3000` |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash (activity poll watermark) |
 
 Discord redirect URL:
 
@@ -42,10 +46,12 @@ Then:
 
 ```bash
 npm run db:generate
-npx prisma db push
+npx prisma migrate deploy
 npm run db:seed
 npm run dev
 ```
+
+Set `PRISMA_QUERY_LOG=1` to log query counts while tuning egress.
 
 After seed:
 

@@ -3,20 +3,32 @@ import { CHALLENGES } from "@/data/trash-pack-2026";
 import type {
   ActivityItem,
   Challenge,
+  PokemonSlot,
   TrainerProfile,
 } from "@/lib/challenge-types";
 import {
-  coalesceActivityItems,
-} from "@/lib/activity-messages";
+  fetchChallengeBoardRow,
+  fetchChallengeMetaRow,
+  fetchChallengeSlotRow,
+  fetchDefaultJumpBrief,
+  fetchHomeCarouselRow,
+  fetchSeasonIndexRows,
+} from "@/lib/challenge-cache";
+import {
+  activityPreviewInclude,
+  challengeMetaInclude,
+  pokemonSummarySelect,
+  trainerRelationInclude,
+} from "@/lib/challenge-queries";
+import { coalesceActivityItems } from "@/lib/activity-messages";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { mapDbChallenge, resolveActivityAvatarSrc } from "@/lib/mappers";
 
-const PREVIEW_ACTIVITY_TAKE = 20;
 const DEFAULT_ACTIVITY_PAGE_SIZE = 30;
 const MAX_ACTIVITY_PAGE_SIZE = 50;
 
 /** Opaque cursor for activity pagination (`createdAt|id`). */
-function encodeActivityCursor(createdAt: Date, id: string): string {
+export function encodeActivityCursor(createdAt: Date, id: string): string {
   return Buffer.from(`${createdAt.toISOString()}|${id}`, "utf8").toString(
     "base64url",
   );
@@ -38,34 +50,6 @@ function decodeActivityCursor(
   }
 }
 
-const challengeInclude = {
-  badges: true,
-  rules: true,
-  faqs: true,
-  trainers: {
-    include: {
-      badges: { include: { badge: true } },
-      pokemon: true,
-      user: {
-        select: {
-          discordUsername: true,
-          displayName: true,
-          name: true,
-        },
-      },
-    },
-  },
-  activities: {
-    orderBy: { createdAt: "desc" as const },
-    take: PREVIEW_ACTIVITY_TAKE,
-    include: {
-      trainer: { select: { handle: true, avatarSpriteKey: true } },
-      actor: { select: { image: true } },
-      reactions: { select: { emoji: true, userId: true } },
-    },
-  },
-};
-
 function seedAsChallenge(raw: (typeof CHALLENGES)[number]): Challenge {
   return {
     ...raw,
@@ -81,11 +65,121 @@ function seedAsChallenge(raw: (typeof CHALLENGES)[number]): Challenge {
   };
 }
 
+function summaryBoardInclude() {
+  return {
+    ...challengeMetaInclude,
+    trainers: {
+      include: {
+        ...trainerRelationInclude,
+        pokemon: {
+          select: pokemonSummarySelect,
+          orderBy: [{ slot: "asc" as const }, { partyIndex: "asc" as const }],
+        },
+      },
+    },
+    activities: activityPreviewInclude,
+  };
+}
+
+/**
+ * Full season board. Cross-request Data Cache via fetchChallengeBoardRow;
+ * viewer redaction applied in-process so metadata + page share one row shape.
+ */
+export async function getChallenge(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
+  const row = await fetchChallengeBoardRow(slug);
+  if (row) return mapDbChallenge(row, viewerUserId);
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  return seed ? seedAsChallenge(seed) : null;
+}
+
+/** Rules / about / join — no Pokémon rows. */
+export async function getChallengeMeta(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
+  const row = await fetchChallengeMetaRow(slug);
+  if (row) {
+    return mapDbChallenge(
+      {
+        ...row,
+        trainers: [],
+        activities: [],
+      },
+      viewerUserId,
+    );
+  }
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  if (!seed) return null;
+  const full = seedAsChallenge(seed);
+  return { ...full, trainers: [], activities: [] };
+}
+
+/** Memorial / encounters — slot-filtered Pokémon only. */
+export async function getChallengeWithPokemonSlots(
+  slug: string,
+  slots: PokemonSlot[],
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
+  const row = await fetchChallengeSlotRow(slug, slots);
+  if (row) return mapDbChallenge(row, viewerUserId);
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  if (!seed) return null;
+  const full = seedAsChallenge(seed);
+  const slotSet = new Set(slots);
+  return {
+    ...full,
+    trainers: full.trainers.map((t) => ({
+      ...t,
+      pokemon: t.pokemon.filter((p) => slotSet.has(p.slot)),
+    })),
+  };
+}
+
+/** Season list for home / index — zero Pokémon. */
+export type SeasonIndexItem = Pick<
+  Challenge,
+  "slug" | "name" | "year" | "game" | "status" | "visibility" | "source"
+> & { id?: string; trainerCount: number };
+
+export async function listSeasonIndex(): Promise<SeasonIndexItem[]> {
+  const rows = await fetchSeasonIndexRows();
+  if (rows) {
+    return rows.map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      year: row.year,
+      game: row.game ?? "Unknown",
+      status: row.status,
+      visibility: row.visibility,
+      source: "database" as const,
+      trainerCount: row._count.trainers,
+    }));
+  }
+  return CHALLENGES.map((c) => ({
+    slug: c.slug,
+    name: c.name,
+    year: c.year,
+    game: c.game,
+    status: c.status,
+    visibility: c.visibility ?? "PUBLIC",
+    source: "seed" as const,
+    trainerCount: c.trainers.length,
+  }));
+}
+
+/**
+ * @deprecated Prefer listSeasonIndex + getHomeCarouselChallenge.
+ * Kept for callers that still expect Challenge[].
+ */
 export async function listChallenges(): Promise<Challenge[]> {
   if (isDatabaseConfigured()) {
     try {
       const rows = await getPrisma().challenge.findMany({
-        include: challengeInclude,
+        include: summaryBoardInclude(),
         orderBy: [{ year: "desc" }, { name: "asc" }],
       });
       if (rows.length > 0) {
@@ -98,27 +192,22 @@ export async function listChallenges(): Promise<Challenge[]> {
   return CHALLENGES.map(seedAsChallenge);
 }
 
-/** Request-deduped so layout + page can both call without double-fetching. */
-export const getChallenge = cache(
-  async (
-    slug: string,
-    viewerUserId?: string | null,
-  ): Promise<Challenge | null> => {
-    if (isDatabaseConfigured()) {
-      try {
-        const row = await getPrisma().challenge.findUnique({
-          where: { slug },
-          include: challengeInclude,
-        });
-        if (row) return mapDbChallenge(row, viewerUserId);
-      } catch {
-        // fall through
-      }
-    }
-    const seed = CHALLENGES.find((c) => c.slug === slug);
-    return seed ? seedAsChallenge(seed) : null;
-  },
-);
+/** Home carousel: one season, MAIN lead only, summary columns. */
+export async function getHomeCarouselChallenge(
+  slug: string,
+): Promise<Challenge | null> {
+  const row = await fetchHomeCarouselRow(slug);
+  if (row) {
+    return mapDbChallenge({
+      ...row,
+      badges: [],
+      rules: [],
+      faqs: [],
+      activities: [],
+    });
+  }
+  return getChallenge(slug);
+}
 
 export async function getTrainer(
   slug: string,
@@ -131,35 +220,53 @@ export async function getTrainer(
   return { challenge, trainer };
 }
 
+export type JumpSeasonBrief = {
+  slug: string;
+  name: string;
+  year: number;
+  status: Challenge["status"];
+};
+
 /**
- * Active (else newest) season for omnipresent Jump on global pages.
- * Request-deduped; prefers ACTIVE to match the homepage league CTA.
+ * Active (else newest) season brief for root Jump / header — no trainers,
+ * no Pokémon. Season pages register the full Jump index via SeasonJumpRegistrar.
  */
-export const getDefaultJumpChallenge = cache(async (): Promise<Challenge | null> => {
+export const getDefaultJumpChallenge = cache(
+  async (): Promise<JumpSeasonBrief | null> => {
+    return fetchDefaultJumpBrief();
+  },
+);
+
+/** Lean access fields for activity poll — never the fat board. */
+export async function getChallengeAccessFields(slug: string): Promise<{
+  id: string;
+  slug: string;
+  visibility: Challenge["visibility"];
+  source: Challenge["source"];
+} | null> {
   if (isDatabaseConfigured()) {
     try {
-      const prisma = getPrisma();
-      const active = await prisma.challenge.findFirst({
-        where: { status: "ACTIVE" },
-        orderBy: { year: "desc" },
-        select: { slug: true },
+      const row = await getPrisma().challenge.findUnique({
+        where: { slug },
+        select: { id: true, slug: true, visibility: true },
       });
-      if (active) return getChallenge(active.slug);
-
-      const newest = await prisma.challenge.findFirst({
-        orderBy: { year: "desc" },
-        select: { slug: true },
-      });
-      if (newest) return getChallenge(newest.slug);
+      if (row) {
+        return { ...row, source: "database" };
+      }
     } catch {
-      // fall through to seed
+      // fall through
     }
   }
-
-  const seed =
-    CHALLENGES.find((c) => c.status === "ACTIVE") ?? CHALLENGES[0] ?? null;
-  return seed ? seedAsChallenge(seed) : null;
-});
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  return seed
+    ? {
+        id: seed.slug,
+        slug: seed.slug,
+        visibility: seed.visibility ?? "PUBLIC",
+        source: "seed",
+      }
+    : null;
+}
 
 export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
   const challenge = await getChallenge(slug);
@@ -169,6 +276,9 @@ export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
 export type ActivityPage = {
   items: ActivityItem[];
   nextCursor: string | null;
+  /** Latest activity watermark for poll short-circuit. */
+  head?: string | null;
+  unchanged?: boolean;
 };
 
 type ActivityRow = {
@@ -236,7 +346,7 @@ export async function listChallengeActivities(
         where: { slug },
         select: { id: true },
       });
-      if (!challenge) return { items: [], nextCursor: null };
+      if (!challenge) return { items: [], nextCursor: null, head: null };
 
       const rows = await prisma.activityEvent.findMany({
         where: {
@@ -267,6 +377,7 @@ export async function listChallengeActivities(
       const pageRows = rows.slice(0, limit);
       const hasMore = rows.length > limit;
       const last = pageRows[pageRows.length - 1];
+      const first = pageRows[0];
       const items = coalesceActivityItems(
         mapActivityRows(pageRows, viewerUserId),
       );
@@ -277,6 +388,7 @@ export async function listChallengeActivities(
           hasMore && last
             ? encodeActivityCursor(last.createdAt, last.id)
             : null,
+        head: first ? encodeActivityCursor(first.createdAt, first.id) : null,
       };
     } catch {
       // fall through
@@ -284,5 +396,11 @@ export async function listChallengeActivities(
   }
 
   const seedItems = await getRecentActivity(slug);
-  return { items: seedItems, nextCursor: null };
+  return {
+    items: seedItems,
+    nextCursor: null,
+    head: seedItems[0]
+      ? encodeActivityCursor(new Date(seedItems[0].createdAt), seedItems[0].id)
+      : null,
+  };
 }

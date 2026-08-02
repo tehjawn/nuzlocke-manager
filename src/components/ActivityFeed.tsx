@@ -30,6 +30,7 @@ const APP_MARK = "/nuzlocke-mark.png";
 
 const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
 const POLL_MS = 12_000;
+const POLL_IDLE_MS = 30_000;
 const PAGE_SIZE = 30;
 
 type ActivityFeedProps = {
@@ -79,16 +80,21 @@ export function ActivityFeed({
   const propKey = activitiesKey(activitiesProp);
   const [seenPropKey, setSeenPropKey] = useState(propKey);
   const [polled, setPolled] = useState<ActivityItem[] | null>(null);
+  const headRef = useRef<string | null>(null);
+  const lastChangeAtRef = useRef<number>(Date.now());
 
   if (propKey !== seenPropKey) {
     setSeenPropKey(propKey);
     setPolled(null);
+    headRef.current = null;
+    lastChangeAtRef.current = Date.now();
   }
 
   const activities = coalesceActivityItems(polled ?? activitiesProp);
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     async function poll() {
       if (document.visibilityState === "hidden") return;
@@ -96,14 +102,32 @@ export function ActivityFeed({
         const next = await fetchChallengeActivitiesAction({
           slug,
           limit: previewCount != null ? Math.max(previewCount * 4, 20) : 20,
+          head: headRef.current,
         });
-        if (!cancelled) setPolled(next.items);
+        if (cancelled) return;
+        if (next.head) headRef.current = next.head;
+        if (!next.unchanged) {
+          lastChangeAtRef.current = Date.now();
+          setPolled(next.items);
+        }
       } catch {
         // ignore transient poll failures
       }
     }
 
-    const id = setInterval(poll, POLL_MS);
+    function schedule() {
+      if (cancelled) return;
+      const idle =
+        Date.now() - lastChangeAtRef.current > POLL_IDLE_MS * 2
+          ? POLL_IDLE_MS
+          : POLL_MS;
+      timeoutId = setTimeout(async () => {
+        await poll();
+        schedule();
+      }, idle);
+    }
+
+    void poll().then(schedule);
     const onVisible = () => {
       if (document.visibilityState === "visible") void poll();
     };
@@ -111,7 +135,7 @@ export function ActivityFeed({
 
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (timeoutId) clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [slug, previewCount]);
@@ -172,6 +196,8 @@ export function ActivityFeedInfinite({
   const loadingRef = useRef(false);
   const cursorRef = useRef<string | null>(initialCursor);
   const paginatedRef = useRef(false);
+  const headRef = useRef<string | null>(null);
+  const lastChangeAtRef = useRef<number>(Date.now());
 
   useEffect(() => {
     cursorRef.current = cursor;
@@ -180,6 +206,7 @@ export function ActivityFeedInfinite({
   // Fresh first page while the tab is visible (same cadence as the rail).
   useEffect(() => {
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     async function poll() {
       if (document.visibilityState === "hidden") return;
@@ -187,8 +214,12 @@ export function ActivityFeedInfinite({
         const next = await fetchChallengeActivitiesAction({
           slug,
           limit: PAGE_SIZE,
+          head: headRef.current,
         });
         if (cancelled) return;
+        if (next.head) headRef.current = next.head;
+        if (next.unchanged) return;
+        lastChangeAtRef.current = Date.now();
         if (!paginatedRef.current) {
           setItems(coalesceActivityItems(next.items));
           setCursor(next.nextCursor);
@@ -204,14 +235,26 @@ export function ActivityFeedInfinite({
       }
     }
 
-    const id = setInterval(poll, POLL_MS);
+    function schedule() {
+      if (cancelled) return;
+      const idle =
+        Date.now() - lastChangeAtRef.current > POLL_IDLE_MS * 2
+          ? POLL_IDLE_MS
+          : POLL_MS;
+      timeoutId = setTimeout(async () => {
+        await poll();
+        schedule();
+      }, idle);
+    }
+
+    void poll().then(schedule);
     const onVisible = () => {
       if (document.visibilityState === "visible") void poll();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (timeoutId) clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [slug]);

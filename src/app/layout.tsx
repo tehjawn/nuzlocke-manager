@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SnackbarHost } from "@/components/Snackbar";
 import { CelebrationHost } from "@/features/fx/CelebrationHost";
 import { JumpHost } from "@/features/jump/JumpHost";
-import { challengeToJumpSeasonContext } from "@/features/jump/jump-season";
+import { briefToJumpSeasonContext } from "@/features/jump/jump-season";
 import { PokemonSpritePreferenceProvider } from "@/features/preferences/PokemonSpritePreferenceProvider";
 import { getDefaultJumpChallenge } from "@/lib/challenges";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
@@ -74,7 +75,7 @@ export default async function RootLayout({
 }>) {
   const defaultChallenge = await getDefaultJumpChallenge();
   const defaultSeason = defaultChallenge
-    ? challengeToJumpSeasonContext(defaultChallenge)
+    ? briefToJumpSeasonContext(defaultChallenge)
     : null;
 
   return (
@@ -88,7 +89,9 @@ export default async function RootLayout({
         <Script id="theme-init" strategy="beforeInteractive">
           {THEME_INIT_SCRIPT}
         </Script>
-        <NavigationProgress />
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
         <PokemonSpritePreferenceProvider>
           <JumpHost defaultSeason={defaultSeason}>
             {children}

@@ -10,10 +10,21 @@ import { PrismaClient } from "@/generated/prisma/client";
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
   pgPool: Pool | undefined;
+  queryCount?: number;
 };
 
 export function isDatabaseConfigured(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim());
+}
+
+function createPool(): Pool {
+  // Serverless-friendly: few connections per isolate; prefer Neon pooler URL.
+  return new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: Number(process.env.PG_POOL_MAX ?? 3),
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+  });
 }
 
 export function getPrisma(): PrismaClient {
@@ -25,20 +36,37 @@ export function getPrisma(): PrismaClient {
     return globalForPrisma.prisma;
   }
 
-  const pool =
-    globalForPrisma.pgPool ??
-    new Pool({
-      connectionString: process.env.DATABASE_URL,
-    });
-
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.pgPool = pool;
-  }
+  const pool = globalForPrisma.pgPool ?? createPool();
+  // Persist across HMR and serverless isolate reuse in all envs.
+  globalForPrisma.pgPool = pool;
 
   const adapter = new PrismaPg(pool);
-  const prisma = new PrismaClient({ adapter });
+  const prisma = new PrismaClient({
+    adapter,
+    log:
+      process.env.PRISMA_QUERY_LOG === "1"
+        ? [{ emit: "event", level: "query" }]
+        : undefined,
+  });
+
+  if (process.env.PRISMA_QUERY_LOG === "1") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma as any).$on("query", () => {
+      globalForPrisma.queryCount = (globalForPrisma.queryCount ?? 0) + 1;
+    });
+  }
+
   globalForPrisma.prisma = prisma;
   return prisma;
+}
+
+/** Dev-only: read Prisma query counter when PRISMA_QUERY_LOG=1. */
+export function getPrismaQueryCount(): number {
+  return globalForPrisma.queryCount ?? 0;
+}
+
+export function resetPrismaQueryCount(): void {
+  globalForPrisma.queryCount = 0;
 }
 
 /** @deprecated Prefer getPrisma() — kept for gradual migration */

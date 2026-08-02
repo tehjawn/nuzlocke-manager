@@ -11,7 +11,6 @@ import { getChallenge } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
 import { getAccessForChallenge } from "@/lib/permissions";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;

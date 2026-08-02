@@ -66,8 +66,7 @@ export async function listNotificationsForUser(
   limit = 20,
 ): Promise<NotificationItem[]> {
   const prisma = getPrisma();
-  // Every signed-in player gets the hard-coded welcome row (for read-state).
-  await ensureWelcomeNotification(userId);
+  // Read-only — welcome upsert happens at sign-in / provision, not every header render.
   const rows = await prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },

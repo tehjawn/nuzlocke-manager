@@ -3,7 +3,6 @@ import { auth } from "@/auth";
 import { getChallenge } from "@/lib/challenges";
 import { ensureTrainerForChallenge } from "@/lib/provision";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;

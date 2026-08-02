@@ -11,7 +11,6 @@ import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { ensureTrainerForChallenge } from "@/lib/provision";
 
-export const dynamic = "force-dynamic";
 
 type LayoutProps = {
   children: ReactNode;

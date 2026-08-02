@@ -3,9 +3,8 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { RulesFaqView } from "@/components/RulesFaqView";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeMeta } from "@/lib/challenges";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -18,7 +17,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const { tab } = await searchParams;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   if (!challenge) return { title: "Rules / FAQ" };
   return {
     title:
@@ -32,7 +31,7 @@ export default async function RulesPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const { tab } = await searchParams;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeMeta(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const initialTab = tab === "faq" ? "faq" : "rules";

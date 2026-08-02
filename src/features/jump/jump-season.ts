@@ -55,3 +55,24 @@ export function challengeToJumpSeasonContext(
     })),
   };
 }
+
+/** Root-layout default: identity only until a season page registers the index. */
+export function briefToJumpSeasonContext(brief: {
+  slug: string;
+  name: string;
+  year: number;
+  status: Challenge["status"];
+}): JumpSeasonContext {
+  return {
+    slug: brief.slug,
+    name: brief.name,
+    year: brief.year,
+    status: brief.status,
+    showGm: false,
+    myTrainerId: null,
+    trainers: [],
+    badges: [],
+    rules: [],
+    faqs: [],
+  };
+}

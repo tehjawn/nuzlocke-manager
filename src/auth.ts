@@ -107,19 +107,51 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         console.error("Auto-provision failed", err);
       }
 
+      // Welcome once at sign-in (idempotent) — not on every header render.
+      try {
+        const { ensureWelcomeNotification } = await import(
+          "@/lib/notifications"
+        );
+        await ensureWelcomeNotification(dbUser.id);
+      } catch (err) {
+        console.error("Welcome notification ensure failed", err);
+      }
+
       return true;
     },
-    async jwt({ token, profile }) {
-      if (profile?.id != null && isDatabaseConfigured()) {
-        const discordId = String(profile.id);
-        const user = await getPrisma().user.findUnique({
-          where: { discordId },
+    async jwt({ token, user, profile, trigger }) {
+      // Only hit Neon when the JWT is being established / refreshed with a
+      // Discord profile — not on every subsequent session read.
+      const discordIdFromProfile =
+        profile?.id != null ? String(profile.id) : null;
+      const needsDbLookup =
+        isDatabaseConfigured() &&
+        discordIdFromProfile != null &&
+        (trigger === "signIn" ||
+          trigger === "signUp" ||
+          typeof token.userId !== "string" ||
+          !token.userId);
+
+      if (needsDbLookup && discordIdFromProfile) {
+        const dbUser = await getPrisma().user.findUnique({
+          where: { discordId: discordIdFromProfile },
+          select: {
+            id: true,
+            displayName: true,
+            name: true,
+            image: true,
+          },
         });
-        if (user) {
-          token.userId = user.id;
-          token.discordId = discordId;
-          token.displayName = user.displayName ?? user.name;
-          token.picture = user.image ?? token.picture;
+        if (dbUser) {
+          token.userId = dbUser.id;
+          token.discordId = discordIdFromProfile;
+          token.displayName = dbUser.displayName ?? dbUser.name;
+          token.picture = dbUser.image ?? token.picture;
+        }
+      } else if (user && typeof (user as { id?: string }).id === "string") {
+        // OAuth account id is Discord snowflake; DB user id is set above on sign-in.
+        if (typeof token.discordId !== "string" && profile?.id != null) {
+          token.discordId = String(profile.id);
         }
       }
       return token;
