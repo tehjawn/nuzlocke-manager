@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
+import { MoveLabel } from "@/components/MoveLabel";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
@@ -11,7 +12,6 @@ import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import { summarizeIvs } from "@/lib/iv-quality";
-import { resolveMoveName } from "@/lib/move-names";
 import { recommendPlaystyle } from "@/lib/playstyle";
 import {
   calcBattleStats,
@@ -97,7 +97,7 @@ export function PokemonDetailsModal({
       })
     : null;
   const moves = showCompetitiveDetails
-    ? pokemon.moves.map(resolveMoveName).filter(Boolean)
+    ? pokemon.moves.map((m) => m.trim()).filter(Boolean)
     : [];
   const ivs = showCompetitiveDetails ? pokemon.ivs : null;
   const evs = showCompetitiveDetails ? pokemon.evs : null;
@@ -330,7 +330,7 @@ export function PokemonDetailsModal({
                       key={`${index}-${move}`}
                       className="rounded-lg border border-frame/40 bg-info px-2 py-1.5 text-sm text-info-ink"
                     >
-                      {move}
+                      <MoveLabel move={move} />
                     </li>
                   ))}
                 </ul>

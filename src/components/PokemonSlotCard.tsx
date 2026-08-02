@@ -1,12 +1,12 @@
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
+import { MoveLabel } from "@/components/MoveLabel";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
-import { resolveMoveName } from "@/lib/move-names";
 import {
   calcBattleStats,
   calcMaxBattleStats,
@@ -92,7 +92,7 @@ export function PokemonSlotCard({
     : null;
   const moves =
     showCompetitiveDetails && !speciesOnly
-      ? pokemon.moves.map(resolveMoveName).filter(Boolean)
+      ? pokemon.moves.map((m) => m.trim()).filter(Boolean)
       : [];
 
   if (speciesOnly) {
@@ -324,7 +324,11 @@ export function PokemonSlotCard({
                 key={`${index}-${move}`}
                 className="rounded-lg border border-frame/40 bg-info px-2 py-1.5 text-[11px] text-info-ink"
               >
-                {move}
+                <MoveLabel
+                  move={move}
+                  compact
+                  embedded={looksInteractive}
+                />
               </li>
             ))}
           </ul>

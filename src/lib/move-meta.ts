@@ -52,3 +52,14 @@ export function lookupMoveMeta(move: string): MoveMeta | null {
     power: raw.power,
   };
 }
+
+/**
+ * Beginner tip for a move chip — type, category, and power when relevant.
+ * No effect text (that needs a richer catalog later).
+ */
+export function formatMoveMetaTip(meta: MoveMeta): string {
+  if (meta.category === "Status" || meta.power <= 0) {
+    return `${meta.type} · ${meta.category}`;
+  }
+  return `${meta.type} · ${meta.category} · ${meta.power} power`;
+}
