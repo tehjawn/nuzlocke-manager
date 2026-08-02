@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { contrastInkForHex } from "@/lib/pokemon-types";
 import {
   formatMultiplier,
   TYPE_COLORS,
@@ -158,14 +159,15 @@ function TypePip({
   short?: boolean;
   emphasis?: boolean;
 }) {
+  const fill = TYPE_COLORS[type];
   return (
     <span
-      className={`inline-flex min-w-7 items-center justify-center rounded px-1 py-0.5 font-bold text-white transition-[box-shadow,transform] duration-100 ${
+      className={`inline-flex min-w-7 items-center justify-center rounded px-1 py-0.5 font-bold transition-[box-shadow,transform] duration-100 ${
         emphasis
           ? "scale-105 shadow-[0_0_0_2px_color-mix(in_srgb,var(--ink)_45%,transparent)]"
           : ""
       }`}
-      style={{ backgroundColor: TYPE_COLORS[type] }}
+      style={{ backgroundColor: fill, color: contrastInkForHex(fill) }}
     >
       {short ? type.slice(0, 3) : type}
     </span>

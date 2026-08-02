@@ -4,6 +4,8 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Frame } from "@/components/Frame";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { TypeBadge } from "@/components/TypeBadge";
 import { triggerFx } from "@/features/fx";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
 import {
@@ -14,6 +16,11 @@ import {
   subscribeGuideCheckoffs,
 } from "@/features/guide/guide-checkoffs";
 import {
+  guideChapterLabel,
+  guideChapterNumber,
+  squadMatchesForGymPrep,
+} from "@/features/guide/guide-gym-prep";
+import {
   resolveGuideProgress,
   stepMatchesCatchRoutes,
 } from "@/features/guide/guide-progress";
@@ -23,6 +30,7 @@ import type {
   ResolvedGuideStep,
 } from "@/features/guide/guide-types";
 import type { TrainerProfile } from "@/lib/challenge-types";
+import type { PokemonType } from "@/lib/pokemon-types";
 
 /** Shown when every story step (incl. Discord lock-in) is checked. */
 const GUIDE_COMPLETE_COPY = {
@@ -159,6 +167,7 @@ function StepChips({ step }: { step: ResolvedGuideStep }) {
   const chips: string[] = [];
   if (step.priority === "critical") chips.push("Required");
   if (step.priority === "optional") chips.push("Optional");
+  if (step.gymPrep) chips.push("Gym prep");
   if (chips.length === 0) return null;
 
   return (
@@ -169,13 +178,117 @@ function StepChips({ step }: { step: ResolvedGuideStep }) {
           className={`rounded-full border px-1.5 py-px text-[0.65rem] font-semibold tracking-tight ${
             chip === "Required"
               ? "border-interactive/40 bg-interactive-soft/60 text-interactive"
-              : "border-frame/70 text-muted"
+              : chip === "Gym prep"
+                ? "border-amber-700/35 bg-amber-700/10 text-amber-900 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100"
+                : "border-frame/70 text-muted"
           }`}
         >
           {chip}
         </span>
       ))}
     </span>
+  );
+}
+
+function TypeRow({
+  label,
+  types,
+}: {
+  label: string;
+  types: readonly PokemonType[];
+}) {
+  if (types.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-[0.7rem] font-semibold text-muted">{label}</span>
+      {types.map((type) => (
+        <TypeBadge
+          key={`${label}-${type}`}
+          type={type}
+          size="sm"
+          variant="soft"
+        />
+      ))}
+    </div>
+  );
+}
+
+function GymPrepDetails({
+  step,
+  trainer,
+}: {
+  step: ResolvedGuideStep;
+  trainer: TrainerProfile | null;
+}) {
+  const prep = step.gymPrep;
+  if (!prep) return null;
+
+  const matches = trainer ? squadMatchesForGymPrep(trainer.pokemon, prep) : [];
+
+  return (
+    <div className="mt-3 space-y-2 rounded-md border border-frame/70 bg-surface-2/60 p-3">
+      <p className="text-xs font-semibold tracking-tight text-ink">
+        Gym prep — {prep.leaderName}
+      </p>
+      <TypeRow label="Specialty" types={prep.specialtyTypes} />
+      <TypeRow label="Bring" types={prep.recommendedTypes} />
+      {prep.cautionTypes?.length ? (
+        <TypeRow label="Be careful" types={prep.cautionTypes} />
+      ) : null}
+      <p className="text-xs leading-relaxed text-muted">{prep.partyNotes}</p>
+      {trainer ? (
+        matches.length > 0 ? (
+          <div className="space-y-2 border-t border-frame/60 pt-2">
+            <p className="text-[0.7rem] font-semibold text-muted">
+              Effective Pokémon you can use
+            </p>
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {matches.map(({ entry, matchedTypes }) => {
+                const label = entry.nickname?.trim() || entry.species;
+                return (
+                  <li
+                    key={entry.id}
+                    className="flex flex-col items-center gap-1.5 rounded-md border border-frame/50 bg-surface/70 px-2 py-2.5"
+                  >
+                    <PokemonSpriteImage
+                      alt={label}
+                      className="pixelated h-16 w-16 object-contain sm:h-[4.5rem] sm:w-[4.5rem]"
+                      height={72}
+                      loading="lazy"
+                      pokedexId={entry.pokedexId}
+                      shiny={entry.isShiny}
+                      species={entry.species}
+                      width={72}
+                    />
+                    <span className="max-w-full truncate text-center text-xs font-semibold leading-tight text-ink">
+                      {label}
+                    </span>
+                    <span className="text-[0.65rem] font-medium text-muted">
+                      {entry.slot === "MAIN" ? "Main" : "Reserve"}
+                    </span>
+                    <span className="flex flex-wrap items-center justify-center gap-1">
+                      {matchedTypes.map((type) => (
+                        <TypeBadge
+                          key={`${entry.id}-${type}`}
+                          type={type}
+                          size="sm"
+                          variant="soft"
+                        />
+                      ))}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : (
+          <p className="border-t border-frame/60 pt-2 text-xs text-muted">
+            No Main / Reserve mons match the recommended types yet — check the
+            Pokédex tool or your boxes for {prep.recommendedTypes.join(" / ")}.
+          </p>
+        )
+      ) : null}
+    </div>
   );
 }
 
@@ -186,6 +299,7 @@ function StepRow({
   nearRoute,
   expanded,
   onToggleExpand,
+  trainer,
 }: {
   step: ResolvedGuideStep;
   index: number;
@@ -193,13 +307,15 @@ function StepRow({
   nearRoute: boolean;
   expanded: boolean;
   onToggleExpand: () => void;
+  trainer: TrainerProfile | null;
 }) {
   const done = step.completed;
   const hasDetails = Boolean(
     step.detail ||
       step.hms?.length ||
       step.keyItems?.length ||
-      step.nuzlockeNote,
+      step.nuzlockeNote ||
+      step.gymPrep,
   );
 
   return (
@@ -268,6 +384,7 @@ function StepRow({
           {expanded ? (
             <div className="px-3.5 pb-3.5">
               {step.detail ? <MarkdownContent content={step.detail} /> : null}
+              <GymPrepDetails step={step} trainer={trainer} />
               {step.hms?.length ? (
                 <p className="mt-2 text-xs text-muted">
                   HM: {step.hms.join(", ")}
@@ -325,6 +442,7 @@ function ChapterAccordion({
   expandedStepId,
   onToggleExpand,
   onToggleStep,
+  trainer,
 }: {
   chapter: GuideChapter;
   steps: ResolvedGuideStep[];
@@ -338,6 +456,7 @@ function ChapterAccordion({
   expandedStepId: string | null;
   onToggleExpand: (stepId: string) => void;
   onToggleStep: (step: ResolvedGuideStep) => void;
+  trainer: TrainerProfile | null;
 }) {
   const counts = countSteps(steps);
   const status = chapterStatusLabel({ cleared, isActive, reachable });
@@ -375,6 +494,12 @@ function ChapterAccordion({
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span
+                aria-hidden
+                className="shrink-0 rounded-md border border-[var(--on-chrome)]/25 bg-black/10 px-1.5 py-px text-[0.65rem] font-bold tabular-nums text-[var(--on-chrome)]/85 dark:bg-white/10"
+              >
+                Ch. {guideChapterNumber(chapter)}
+              </span>
               <span className="truncate text-sm font-semibold sm:text-base">
                 {chapter.title}
               </span>
@@ -417,6 +542,7 @@ function ChapterAccordion({
                 expanded={expandedStepId === step.id}
                 onToggleExpand={() => onToggleExpand(step.id)}
                 onToggle={() => onToggleStep(step)}
+                trainer={trainer}
               />
             ))}
           </ul>
@@ -623,6 +749,7 @@ export function GameGuidePanel({
                   expanded={expandedStepId === step.id}
                   onToggleExpand={() => toggleExpanded(step.id)}
                   onToggle={() => toggleStep(step)}
+                  trainer={selectedTrainer}
                 />
               ))}
             </ul>
@@ -641,7 +768,9 @@ export function GameGuidePanel({
                 steps={steps}
                 reachable={reachable}
                 unlockHint={
-                  progress.chapters[index - 1]?.chapter.title ?? null
+                  progress.chapters[index - 1]
+                    ? guideChapterLabel(progress.chapters[index - 1]!.chapter)
+                    : null
                 }
                 cleared={cleared}
                 isActive={isActive}
@@ -651,6 +780,7 @@ export function GameGuidePanel({
                 expandedStepId={expandedStepId}
                 onToggleExpand={toggleExpanded}
                 onToggleStep={toggleStep}
+                trainer={selectedTrainer}
               />
             ),
           )}

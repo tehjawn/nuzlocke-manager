@@ -1,5 +1,6 @@
 import Fuse, { type IFuseOptions } from "fuse.js";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
+import { guideChapterLabel } from "@/features/guide/guide-gym-prep";
 import type {
   JumpFuseHit,
   JumpResult,
@@ -274,20 +275,25 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
         "tools",
       ],
     },
-    ...EMERALD_GUIDE.chapters.map((chapter) => ({
-      id: `guide-chapter-${chapter.id}`,
-      title: chapter.title,
-      subtitle: truncate(chapter.summary, 80),
-      href: toolsHref(ctx.slug, "guide", { chapter: chapter.id }),
-      category: "guide" as const,
-      tags: [
-        chapter.title,
-        chapter.summary,
-        "guide",
-        "chapter",
-        ...chapter.requiresBadges,
-      ],
-    })),
+    ...EMERALD_GUIDE.chapters.map((chapter) => {
+      const chapterLabel = guideChapterLabel(chapter);
+      return {
+        id: `guide-chapter-${chapter.id}`,
+        title: chapterLabel,
+        subtitle: truncate(chapter.summary, 80),
+        href: toolsHref(ctx.slug, "guide", { chapter: chapter.id }),
+        category: "guide" as const,
+        tags: [
+          chapterLabel,
+          chapter.title,
+          chapter.summary,
+          "guide",
+          "chapter",
+          `ch ${chapter.sortOrder + 1}`,
+          ...chapter.requiresBadges,
+        ],
+      };
+    }),
     ...EMERALD_GUIDE.steps
       .filter((s) => s.priority === "critical")
       .map((step) => ({
