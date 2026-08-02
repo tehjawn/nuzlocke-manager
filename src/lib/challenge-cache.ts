@@ -1,6 +1,9 @@
 /**
  * Cross-request cached challenge loaders (Next.js Cache Components).
  * Never read cookies/auth here — map viewer redaction after the cache hit.
+ *
+ * Do not catch Prisma errors inside `"use cache"` — a thrown error must not
+ * become a cached `null` (seed/demo fallback) for the cache lifetime.
  */
 
 import { cacheLife, cacheTag } from "next/cache";
@@ -40,14 +43,10 @@ export async function fetchChallengeBoardRow(slug: string) {
   cacheLife("minutes");
   cacheTag(`season:${slug}`, `season:${slug}:board`);
   if (!isDatabaseConfigured()) return null;
-  try {
-    return await getPrisma().challenge.findUnique({
-      where: { slug },
-      include: boardInclude(),
-    });
-  } catch {
-    return null;
-  }
+  return getPrisma().challenge.findUnique({
+    where: { slug },
+    include: boardInclude(),
+  });
 }
 
 export async function fetchChallengeMetaRow(slug: string) {
@@ -55,24 +54,10 @@ export async function fetchChallengeMetaRow(slug: string) {
   cacheLife("hours");
   cacheTag(`season:${slug}`, `season:${slug}:meta`);
   if (!isDatabaseConfigured()) return null;
-  try {
-    return await getPrisma().challenge.findUnique({
-      where: { slug },
-      include: {
-        ...challengeMetaInclude,
-        trainers: {
-          select: {
-            id: true,
-            handle: true,
-            sortOrder: true,
-            userId: true,
-          },
-        },
-      },
-    });
-  } catch {
-    return null;
-  }
+  return getPrisma().challenge.findUnique({
+    where: { slug },
+    include: challengeMetaInclude,
+  });
 }
 
 export async function fetchChallengeSlotRow(
@@ -84,14 +69,10 @@ export async function fetchChallengeSlotRow(
   cacheTag(`season:${slug}`, `season:${slug}:board`);
   if (!isDatabaseConfigured()) return null;
   const pokemonSlots = [...slots].sort() as PokemonSlotFilter[];
-  try {
-    return await getPrisma().challenge.findUnique({
-      where: { slug },
-      include: boardInclude(pokemonSlots),
-    });
-  } catch {
-    return null;
-  }
+  return getPrisma().challenge.findUnique({
+    where: { slug },
+    include: boardInclude(pokemonSlots),
+  });
 }
 
 export async function fetchSeasonIndexRows() {
@@ -99,24 +80,20 @@ export async function fetchSeasonIndexRows() {
   cacheLife("hours");
   cacheTag("seasons:index");
   if (!isDatabaseConfigured()) return null;
-  try {
-    const rows = await getPrisma().challenge.findMany({
-      orderBy: [{ year: "desc" }, { name: "asc" }],
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        year: true,
-        game: true,
-        status: true,
-        visibility: true,
-        _count: { select: { trainers: true } },
-      },
-    });
-    return rows.length > 0 ? rows : null;
-  } catch {
-    return null;
-  }
+  const rows = await getPrisma().challenge.findMany({
+    orderBy: [{ year: "desc" }, { name: "asc" }],
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      year: true,
+      game: true,
+      status: true,
+      visibility: true,
+      _count: { select: { trainers: true } },
+    },
+  });
+  return rows.length > 0 ? rows : null;
 }
 
 export async function fetchHomeCarouselRow(slug: string) {
@@ -124,26 +101,22 @@ export async function fetchHomeCarouselRow(slug: string) {
   cacheLife("minutes");
   cacheTag(`season:${slug}`, `season:${slug}:board`);
   if (!isDatabaseConfigured()) return null;
-  try {
-    return await getPrisma().challenge.findUnique({
-      where: { slug },
-      include: {
-        trainers: {
-          include: {
-            ...trainerRelationInclude,
-            pokemon: {
-              where: { slot: "MAIN" },
-              select: pokemonSummarySelect,
-              orderBy: { partyIndex: "asc" },
-              take: 1,
-            },
+  return getPrisma().challenge.findUnique({
+    where: { slug },
+    include: {
+      trainers: {
+        include: {
+          ...trainerRelationInclude,
+          pokemon: {
+            where: { slot: "MAIN" },
+            select: pokemonSummarySelect,
+            orderBy: { partyIndex: "asc" },
+            take: 1,
           },
         },
       },
-    });
-  } catch {
-    return null;
-  }
+    },
+  });
 }
 
 export async function fetchDefaultJumpBrief() {
@@ -162,19 +135,15 @@ export async function fetchDefaultJumpBrief() {
         }
       : null;
   }
-  try {
-    const prisma = getPrisma();
-    const active = await prisma.challenge.findFirst({
-      where: { status: "ACTIVE" },
-      orderBy: { year: "desc" },
-      select: { slug: true, name: true, year: true, status: true },
-    });
-    if (active) return active;
-    return await prisma.challenge.findFirst({
-      orderBy: { year: "desc" },
-      select: { slug: true, name: true, year: true, status: true },
-    });
-  } catch {
-    return null;
-  }
+  const prisma = getPrisma();
+  const active = await prisma.challenge.findFirst({
+    where: { status: "ACTIVE" },
+    orderBy: { year: "desc" },
+    select: { slug: true, name: true, year: true, status: true },
+  });
+  if (active) return active;
+  return prisma.challenge.findFirst({
+    orderBy: { year: "desc" },
+    select: { slug: true, name: true, year: true, status: true },
+  });
 }

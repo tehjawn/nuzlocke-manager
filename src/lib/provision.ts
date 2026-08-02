@@ -69,9 +69,7 @@ export async function ensureTrainerForChallenge(input: {
   const isDefaultLeague = existing.slug === DEFAULT_CHALLENGE_SLUG;
 
   if (membership && trainer) {
-    if (isDefaultLeague) {
-      await ensureWelcomeNotification(input.userId);
-    }
+    // Welcome is ensured at Discord sign-in — not on every season enter.
     return {
       ok: true,
       challengeId: existing.id,
@@ -131,9 +129,6 @@ export async function ensureTrainerForChallenge(input: {
     ).role;
 
   if (trainer) {
-    if (isDefaultLeague) {
-      await ensureWelcomeNotification(input.userId);
-    }
     return {
       ok: true,
       challengeId: existing.id,

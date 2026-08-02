@@ -89,8 +89,15 @@ export async function getChallenge(
   slug: string,
   viewerUserId?: string | null,
 ): Promise<Challenge | null> {
-  const row = await fetchChallengeBoardRow(slug);
-  if (row) return mapDbChallenge(row, viewerUserId);
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeBoardRow(slug);
+      if (row) return mapDbChallenge(row, viewerUserId);
+    } catch {
+      // Outage — don't fall through to seed (would look like a missing season).
+      return null;
+    }
+  }
   const seed = CHALLENGES.find((c) => c.slug === slug);
   return seed ? seedAsChallenge(seed) : null;
 }
@@ -100,16 +107,22 @@ export async function getChallengeMeta(
   slug: string,
   viewerUserId?: string | null,
 ): Promise<Challenge | null> {
-  const row = await fetchChallengeMetaRow(slug);
-  if (row) {
-    return mapDbChallenge(
-      {
-        ...row,
-        trainers: [],
-        activities: [],
-      },
-      viewerUserId,
-    );
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeMetaRow(slug);
+      if (row) {
+        return mapDbChallenge(
+          {
+            ...row,
+            trainers: [],
+            activities: [],
+          },
+          viewerUserId,
+        );
+      }
+    } catch {
+      return null;
+    }
   }
   const seed = CHALLENGES.find((c) => c.slug === slug);
   if (!seed) return null;
@@ -123,8 +136,14 @@ export async function getChallengeWithPokemonSlots(
   slots: PokemonSlot[],
   viewerUserId?: string | null,
 ): Promise<Challenge | null> {
-  const row = await fetchChallengeSlotRow(slug, slots);
-  if (row) return mapDbChallenge(row, viewerUserId);
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeSlotRow(slug, slots);
+      if (row) return mapDbChallenge(row, viewerUserId);
+    } catch {
+      return null;
+    }
+  }
   const seed = CHALLENGES.find((c) => c.slug === slug);
   if (!seed) return null;
   const full = seedAsChallenge(seed);
@@ -145,19 +164,25 @@ export type SeasonIndexItem = Pick<
 > & { id?: string; trainerCount: number };
 
 export async function listSeasonIndex(): Promise<SeasonIndexItem[]> {
-  const rows = await fetchSeasonIndexRows();
-  if (rows) {
-    return rows.map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      name: row.name,
-      year: row.year,
-      game: row.game ?? "Unknown",
-      status: row.status,
-      visibility: row.visibility,
-      source: "database" as const,
-      trainerCount: row._count.trainers,
-    }));
+  if (isDatabaseConfigured()) {
+    try {
+      const rows = await fetchSeasonIndexRows();
+      if (rows) {
+        return rows.map((row) => ({
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          year: row.year,
+          game: row.game ?? "Unknown",
+          status: row.status,
+          visibility: row.visibility,
+          source: "database" as const,
+          trainerCount: row._count.trainers,
+        }));
+      }
+    } catch {
+      return [];
+    }
   }
   return CHALLENGES.map((c) => ({
     slug: c.slug,
@@ -196,15 +221,21 @@ export async function listChallenges(): Promise<Challenge[]> {
 export async function getHomeCarouselChallenge(
   slug: string,
 ): Promise<Challenge | null> {
-  const row = await fetchHomeCarouselRow(slug);
-  if (row) {
-    return mapDbChallenge({
-      ...row,
-      badges: [],
-      rules: [],
-      faqs: [],
-      activities: [],
-    });
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchHomeCarouselRow(slug);
+      if (row) {
+        return mapDbChallenge({
+          ...row,
+          badges: [],
+          rules: [],
+          faqs: [],
+          activities: [],
+        });
+      }
+    } catch {
+      return null;
+    }
   }
   return getChallenge(slug);
 }
@@ -233,7 +264,11 @@ export type JumpSeasonBrief = {
  */
 export const getDefaultJumpChallenge = cache(
   async (): Promise<JumpSeasonBrief | null> => {
-    return fetchDefaultJumpBrief();
+    try {
+      return await fetchDefaultJumpBrief();
+    } catch {
+      return null;
+    }
   },
 );
 

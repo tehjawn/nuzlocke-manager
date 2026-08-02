@@ -6,13 +6,21 @@
 #   DATABASE_URL       — local target (must be localhost)
 #
 # Usage:
-#   pn db:pull-neon
+#   npm run db:pull-neon
 #   NEON_DATABASE_URL=… DATABASE_URL=… ./scripts/db-pull-neon.sh
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+# Keys present in the process environment before loading dotenv files.
+# File values must not override these (so `NEON_DATABASE_URL=… pn db:pull-neon` wins).
+declare -A PRESET_ENV=()
+while IFS= read -r line; do
+  [[ "$line" == *=* ]] || continue
+  PRESET_ENV["${line%%=*}"]=1
+done < <(env)
 
 load_env_file() {
   local file="$1"
@@ -32,6 +40,10 @@ load_env_file() {
     val="${val%"${val##*[![:space:]]}"}"
     if [[ "$val" == \"*\" ]]; then val="${val:1:${#val}-2}"; fi
     if [[ "$val" == \'*\' ]]; then val="${val:1:${#val}-2}"; fi
+    # Preserve process-supplied env; later dotenv files may still fill unset keys.
+    if [[ -n "${PRESET_ENV[$key]:-}" ]]; then
+      continue
+    fi
     export "$key=$val"
   done < "$file"
   set +a
@@ -63,22 +75,37 @@ if [[ "$SOURCE_URL" == *"-pooler."* ]]; then
   echo "note: stripped -pooler from Neon host for pg_dump"
 fi
 
+pg_url_hostname() {
+  # Parse hostname from a Postgres URL (handles userinfo with '@').
+  node -e 'const u=new URL(process.argv[1]); process.stdout.write(u.hostname||"")' "$1"
+}
+
+SOURCE_HOST="$(pg_url_hostname "$SOURCE_URL")"
+TARGET_HOST="$(pg_url_hostname "$TARGET_URL")"
+
 # Safety: never overwrite Neon with itself / refuse non-local targets by default.
-if [[ "$TARGET_URL" == *"neon.tech"* ]]; then
+if [[ "$TARGET_HOST" == *".neon.tech" || "$TARGET_HOST" == "neon.tech" ]]; then
   echo "error: DATABASE_URL points at Neon — refusing to overwrite remote." >&2
   echo "       Point DATABASE_URL at localhost Docker first." >&2
   exit 1
 fi
-if [[ "$TARGET_URL" != *"localhost"* && "$TARGET_URL" != *"127.0.0.1"* ]]; then
-  if [[ "${FORCE_REMOTE_TARGET:-}" != "1" ]]; then
-    echo "error: DATABASE_URL is not localhost (set FORCE_REMOTE_TARGET=1 to override)." >&2
+
+case "$TARGET_HOST" in
+  localhost|127.0.0.1|::1) ;;
+  *)
+    if [[ "${FORCE_REMOTE_TARGET:-}" != "1" ]]; then
+      echo "error: DATABASE_URL host '$TARGET_HOST' is not loopback (set FORCE_REMOTE_TARGET=1 to override)." >&2
+      exit 1
+    fi
+    ;;
+esac
+
+case "$SOURCE_HOST" in
+  localhost|127.0.0.1|::1|"")
+    echo "error: NEON_DATABASE_URL looks local — expected a Neon URL." >&2
     exit 1
-  fi
-fi
-if [[ "$SOURCE_URL" == *"localhost"* || "$SOURCE_URL" == *"127.0.0.1"* ]]; then
-  echo "error: NEON_DATABASE_URL looks local — expected a Neon URL." >&2
-  exit 1
-fi
+    ;;
+esac
 
 PG18_BIN="${PG18_BIN:-/opt/homebrew/opt/postgresql@18/bin}"
 if [[ ! -x "$PG18_BIN/pg_dump" ]]; then

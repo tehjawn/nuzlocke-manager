@@ -3,6 +3,7 @@ import {
   NOTIFICATION_ACTION_WELCOME,
   NOTIFICATION_TYPE_WELCOME,
   WELCOME_NOTIFICATION,
+  isWelcomeNotification,
   withPinnedWelcome,
   type NotificationItem,
 } from "@/lib/notification-types";
@@ -66,8 +67,9 @@ export async function listNotificationsForUser(
   limit = 20,
 ): Promise<NotificationItem[]> {
   const prisma = getPrisma();
-  // Read-only — welcome upsert happens at sign-in / provision, not every header render.
-  const rows = await prisma.notification.findMany({
+  // Happy path is read-only. Backfill welcome only when the row is missing
+  // (failed sign-in upsert) — not on every header render.
+  let rows = await prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -81,6 +83,10 @@ export async function listNotificationsForUser(
       createdAt: true,
     },
   });
+  if (!rows.some(isWelcomeNotification)) {
+    const welcome = await ensureWelcomeNotification(userId);
+    rows = [welcome, ...rows];
+  }
   return withPinnedWelcome(rows.map(toItem));
 }
 

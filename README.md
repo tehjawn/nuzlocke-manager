@@ -67,16 +67,16 @@ Without DB/Discord env, the app still serves **seed read-only** pages.
 
 | Script | Purpose |
 |---|---|
-| `pn dev` | Local server |
-| `pn build` | Local / preview build (`prisma generate` + `next build`) |
-| `pn vercel-build` | Vercel build; production deploys also run `migrate deploy` |
-| `pn db:generate` | Prisma client |
-| `pn db:migrate` | Migrations (dev) |
-| `pn db:migrate:deploy` | Apply committed migrations (any env) |
-| `pn db:push` | Push schema (dev) |
-| `pn db:seed` | Seed Trash Pack 2026 |
-| `pn db:pull-neon` | Replace local DB with a dump from `NEON_DATABASE_URL` |
-| `pn db:studio` | Prisma Studio |
+| `npm run dev` | Local server |
+| `npm run build` | Local / preview build (`prisma generate` + `next build`) |
+| `npm run vercel-build` | Vercel build; production deploys also run `migrate deploy` |
+| `npm run db:generate` | Prisma client |
+| `npm run db:migrate` | Migrations (dev) |
+| `npm run db:migrate:deploy` | Apply committed migrations (any env) |
+| `npm run db:push` | Push schema (dev) |
+| `npm run db:seed` | Seed Trash Pack 2026 |
+| `npm run db:pull-neon` | Replace local DB with a dump from `NEON_DATABASE_URL` |
+| `npm run db:studio` | Prisma Studio |
 
 ## Deploy on Vercel
 

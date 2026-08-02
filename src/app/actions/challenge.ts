@@ -5,9 +5,11 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { findSpecies } from "@/data/species";
 import {
+  bumpActivityReactionRev,
   encodeActivityHead,
   publishActivityHead,
   readActivityHead,
+  withReactionHead,
 } from "@/lib/activity-watermark";
 import { getPrisma } from "@/lib/db";
 import {
@@ -3274,6 +3276,9 @@ export async function toggleActivityReactionAction(input: {
       });
     }
 
+    // Invalidate Upstash short-circuit so other clients refetch reaction state.
+    void bumpActivityReactionRev(activity.challengeId);
+
     // No revalidate — client is optimistic; Pack feed polls for freshness.
     return { ok: true };
   } catch (e) {
@@ -3334,6 +3339,13 @@ export async function fetchChallengeActivitiesAction(input: {
     !input.cursor
   ) {
     void publishActivityHead(challenge.id, page.head);
+  }
+
+  if (challenge.source === "database" && page.head) {
+    return {
+      ...page,
+      head: await withReactionHead(challenge.id, page.head),
+    };
   }
 
   return page;
