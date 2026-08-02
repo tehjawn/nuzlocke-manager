@@ -4,6 +4,8 @@ import {
   classifyBattleStat,
   classifyEv,
   classifyIv,
+  ivCatchTier,
+  specimenCatchTier,
   specimenIsCracked,
   summarizeBattleStats,
   summarizeEvs,
@@ -166,5 +168,34 @@ test("specimenIsCracked detects strong IV or EV spreads", () => {
       ivs: { hp: 15, atk: 16, def: 14, spa: 18, spd: 12, spe: 10 },
     }),
     false,
+  );
+});
+
+test("ivCatchTier maps randomizer catches to oof/good/great/cracked", () => {
+  assert.equal(
+    ivCatchTier({ hp: 15, atk: 16, def: 14, spa: 18, spd: 12, spe: 10 }),
+    "oof",
+  );
+  assert.equal(
+    ivCatchTier({ hp: 15, atk: 16, def: 14, spa: 18, spd: 12, spe: 31 }),
+    "good",
+  );
+  assert.equal(
+    ivCatchTier({ hp: 15, atk: 16, def: 14, spa: 27, spd: 12, spe: 31 }),
+    "great",
+  );
+  assert.equal(
+    ivCatchTier({ hp: 19, atk: 9, def: 13, spa: 27, spd: 28, spe: 31 }),
+    "cracked",
+  );
+});
+
+test("specimenCatchTier lets cracked EVs promote a mid IV mon", () => {
+  assert.equal(
+    specimenCatchTier({
+      ivs: { hp: 15, atk: 16, def: 14, spa: 18, spd: 12, spe: 10 },
+      evs: { hp: 0, atk: 252, def: 0, spa: 0, spd: 0, spe: 252 },
+    }),
+    "cracked",
   );
 });

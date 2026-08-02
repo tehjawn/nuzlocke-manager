@@ -657,49 +657,82 @@ button:disabled,
   }
 }
 
-/* Cracked specimen cards — quiet gold revolving edge (IVs / EVs / near-max stats) */
-@property --cracked-angle {
+/* Catch-tier card edges — quiet revolving tint (Good / Great / Cracked) */
+@property --catch-angle {
   syntax: "<angle>";
   inherits: false;
   initial-value: 0deg;
 }
 
-.pokemon-cracked-ring {
-  --cracked-angle: 0deg;
+.pokemon-catch-ring {
+  --catch-angle: 0deg;
+  --catch-tint: var(--interactive);
+  --catch-peak: 32%;
 
   position: relative;
-  border-radius: calc(var(--radius) + 2px);
-  padding: 1.5px;
+  border-radius: calc(var(--radius) + 1px);
+  padding: 1px;
   background: conic-gradient(
-    from var(--cracked-angle),
-    color-mix(in srgb, var(--accent-2) 12%, transparent),
-    color-mix(in srgb, var(--accent-2) 72%, transparent),
-    color-mix(in srgb, var(--accent) 35%, transparent),
-    color-mix(in srgb, var(--accent-2) 12%, transparent),
-    color-mix(in srgb, var(--accent-2) 72%, transparent),
-    color-mix(in srgb, var(--accent-2) 12%, transparent)
+    from var(--catch-angle),
+    color-mix(in srgb, var(--catch-tint) 6%, transparent),
+    color-mix(in srgb, var(--catch-tint) var(--catch-peak), transparent),
+    color-mix(in srgb, var(--catch-tint) 8%, transparent),
+    color-mix(in srgb, var(--catch-tint) calc(var(--catch-peak) - 8%), transparent),
+    color-mix(in srgb, var(--catch-tint) 6%, transparent)
   );
-  animation: pokemon-cracked-revolve 10s linear infinite;
+  animation: pokemon-catch-revolve 16s linear infinite;
+  transition: filter 180ms ease;
 }
 
-.pokemon-cracked-ring > * {
+.pokemon-catch-ring--good {
+  --catch-tint: var(--interactive);
+  --catch-peak: 28%;
+}
+
+.pokemon-catch-ring--great {
+  --catch-tint: #a78bfa;
+  --catch-peak: 30%;
+}
+
+.pokemon-catch-ring--cracked {
+  --catch-tint: var(--accent-2);
+  --catch-peak: 34%;
+}
+
+.pokemon-catch-ring > * {
   border-radius: var(--radius);
 }
 
-@keyframes pokemon-cracked-revolve {
+.pokemon-catch-ring:hover {
+  --catch-peak: 42%;
+}
+
+.pokemon-catch-ring--good:hover {
+  --catch-peak: 38%;
+}
+
+.pokemon-catch-ring--great:hover {
+  --catch-peak: 40%;
+}
+
+.pokemon-catch-ring--cracked:hover {
+  --catch-peak: 44%;
+}
+
+@keyframes pokemon-catch-revolve {
   to {
-    --cracked-angle: 360deg;
+    --catch-angle: 360deg;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pokemon-cracked-ring {
+  .pokemon-catch-ring {
     animation: none;
     background: linear-gradient(
       135deg,
-      color-mix(in srgb, var(--accent-2) 55%, var(--frame)),
-      color-mix(in srgb, var(--accent) 35%, var(--frame)),
-      color-mix(in srgb, var(--accent-2) 55%, var(--frame))
+      color-mix(in srgb, var(--catch-tint) 28%, var(--frame)),
+      color-mix(in srgb, var(--catch-tint) 12%, var(--frame)),
+      color-mix(in srgb, var(--catch-tint) 28%, var(--frame))
     );
   }
 }

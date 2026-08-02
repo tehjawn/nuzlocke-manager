@@ -239,9 +239,63 @@ export function specimenIsCracked(input: {
   battle?: StatSpread | null;
   battleMax?: StatSpread | null;
 }): boolean {
-  return Boolean(
-    summarizeIvs(input.ivs)?.cracked ||
-      summarizeEvs(input.evs)?.cracked ||
-      summarizeBattleStats(input.battle, input.battleMax)?.cracked,
-  );
+  return specimenCatchTier(input) === "cracked";
+}
+
+/** Randomizer catch quality for subtle board-card chrome. */
+export type CatchTier = "oof" | "good" | "great" | "cracked";
+
+const CATCH_TIER_RANK: Record<CatchTier, number> = {
+  oof: 0,
+  good: 1,
+  great: 2,
+  cracked: 3,
+};
+
+function maxCatchTier(a: CatchTier, b: CatchTier): CatchTier {
+  return CATCH_TIER_RANK[a] >= CATCH_TIER_RANK[b] ? a : b;
+}
+
+/** IV-only tier (primary signal for randomizer catches). */
+export function ivCatchTier(ivs: StatSpread | null | undefined): CatchTier {
+  if (!ivs) return "oof";
+  let perfect = 0;
+  let strong = 0;
+  for (const key of STAT_KEYS) {
+    const band = classifyIv(ivs[key] ?? 0);
+    if (band === "perfect") perfect += 1;
+    else if (band === "strong") strong += 1;
+  }
+  if (
+    isCrackedSpread(perfect, strong, {
+      perfectAlone: 2,
+      combo: { perfect: 1, strong: 2 },
+      strongAlone: 3,
+    })
+  ) {
+    return "cracked";
+  }
+  if ((perfect >= 1 && strong >= 1) || strong >= 2) return "great";
+  if (perfect >= 1 || strong >= 1) return "good";
+  return "oof";
+}
+
+/**
+ * Board catch tier: IVs drive Good/Great/Cracked; cracked EVs or near-max
+ * battle spreads can promote up to Cracked only.
+ */
+export function specimenCatchTier(input: {
+  ivs?: StatSpread | null;
+  evs?: StatSpread | null;
+  battle?: StatSpread | null;
+  battleMax?: StatSpread | null;
+}): CatchTier {
+  let tier = ivCatchTier(input.ivs);
+  if (
+    summarizeEvs(input.evs)?.cracked ||
+    summarizeBattleStats(input.battle, input.battleMax)?.cracked
+  ) {
+    tier = maxCatchTier(tier, "cracked");
+  }
+  return tier;
 }

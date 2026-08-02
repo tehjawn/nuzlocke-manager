@@ -6,7 +6,7 @@ import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
-import { specimenIsCracked } from "@/lib/iv-quality";
+import { specimenCatchTier, type CatchTier } from "@/lib/iv-quality";
 import { moveTypeWashStyle } from "@/lib/move-meta";
 import { resolveMoveName } from "@/lib/move-names";
 import {
@@ -107,15 +107,17 @@ export function PokemonSlotCard({
       ? pokemon.moves.map((m) => m.trim()).filter(Boolean)
       : [];
   const showStatColumn = Boolean(battle || ivFallback);
-  const cracked =
-    showCompetitiveDetails &&
-    !speciesOnly &&
-    specimenIsCracked({
-      ivs: pokemon.ivs,
-      evs: isEmptySpread(pokemon.evs) ? null : pokemon.evs,
-      battle,
-      battleMax,
-    });
+  const catchTier: CatchTier =
+    showCompetitiveDetails && !speciesOnly
+      ? specimenCatchTier({
+          ivs: pokemon.ivs,
+          evs: isEmptySpread(pokemon.evs) ? null : pokemon.evs,
+          battle,
+          battleMax,
+        })
+      : "oof";
+  const tierRing =
+    catchTier === "oof" ? null : `pokemon-catch-ring pokemon-catch-ring--${catchTier}`;
 
   if (speciesOnly) {
     const encounter = (
@@ -215,14 +217,16 @@ export function PokemonSlotCard({
   }
 
   const body = (
-    <div className={cracked ? "pokemon-cracked-ring h-full" : "h-full"}>
+    <div className={tierRing ? `${tierRing} h-full` : "h-full"}>
       <div
         className={`flex h-full flex-col gap-3 rounded-lg border bg-surface p-3 ${
-          cracked ? "border-transparent" : "border-frame"
+          tierRing ? "border-transparent" : "border-frame"
         } ${memorial ? "opacity-90" : ""} ${
-          looksInteractive
+          looksInteractive && !tierRing
             ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30"
-            : ""
+            : looksInteractive
+              ? "cursor-pointer"
+              : ""
         }`}
       >
       <div className="flex shrink-0 items-start gap-3">
