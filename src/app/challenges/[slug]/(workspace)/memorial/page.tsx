@@ -4,13 +4,12 @@ import { auth } from "@/auth";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { MemorialBoard } from "@/components/MemorialBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeWithPokemonSlots } from "@/lib/challenges";
 import { canEditTrainerBoard } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { isSeasonReadOnly } from "@/lib/season-status";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -20,7 +19,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeWithPokemonSlots(slug, ["GRAVEYARD"]);
   if (!challenge) return { title: "Memorial" };
   return { title: `Memorial · ${challenge.name}` };
 }
@@ -28,7 +27,11 @@ export async function generateMetadata({
 export default async function MemorialPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeWithPokemonSlots(
+    slug,
+    ["GRAVEYARD"],
+    session?.user?.id,
+  );
   if (!challenge) notFound();
 
   const access = challenge.id

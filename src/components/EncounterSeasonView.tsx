@@ -90,8 +90,9 @@ export function EncounterSeasonView({
           ) : null}
           {highlights.rarestSeen.length > 0 ? (
             <SpeciesTopCallout
-              label="Rarest seen"
               entries={highlights.rarestSeen}
+              href={`/challenges/${slug}/encounters/rarest`}
+              label="Rarest seen"
             />
           ) : null}
           {highlights.deadliestRoutes.length > 0 ? (
@@ -248,19 +249,28 @@ function RouteStatIcon() {
 }
 
 function SpeciesTopCallout({
-  label,
   entries,
+  href,
+  label,
   showCount = false,
 }: {
-  label: string;
   entries: EncounterSpeciesHighlight[];
+  href?: string;
+  label: string;
   showCount?: boolean;
 }) {
-  return (
-    <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
-      <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-        {label}
-      </p>
+  const content = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
+          {label}
+        </p>
+        {href && (
+          <span className="text-[10px] font-semibold text-interactive">
+            View all →
+          </span>
+        )}
+      </div>
       <ol className="mt-2 space-y-1">
         {entries.map((entry, index) => (
           <li
@@ -292,6 +302,27 @@ function SpeciesTopCallout({
           </li>
         ))}
       </ol>
+    </>
+  );
+
+  const className =
+    "rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5";
+
+  if (href) {
+    return (
+      <Link
+        aria-label={`View all ${label.toLowerCase()}`}
+        className={`${className} pressable transition-colors hover:border-interactive/40 hover:bg-interactive-soft/25`}
+        href={href}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
     </div>
   );
 }

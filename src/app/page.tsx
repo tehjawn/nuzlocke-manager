@@ -5,14 +5,20 @@ import {
   TrainerCarousel,
   type CarouselTrainer,
 } from "@/components/TrainerCarousel";
-import { listChallenges } from "@/lib/challenges";
+import {
+  getHomeCarouselChallenge,
+  listSeasonIndex,
+} from "@/lib/challenges";
 import { CTA_PRIMARY_LG, CTA_SECONDARY_LG } from "@/lib/cta";
 import { pokemonInSlot } from "@/lib/trainer-display";
 
 export default async function HomePage() {
   const session = await auth();
-  const challenges = await listChallenges();
-  const active = challenges.find((c) => c.status === "ACTIVE");
+  const seasons = await listSeasonIndex();
+  const activeMeta = seasons.find((c) => c.status === "ACTIVE");
+  const active = activeMeta
+    ? await getHomeCarouselChallenge(activeMeta.slug)
+    : null;
 
   const carouselTrainers: CarouselTrainer[] = (active?.trainers ?? [])
     .slice()
@@ -52,12 +58,12 @@ export default async function HomePage() {
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          {active ? (
+          {activeMeta ? (
             <Link
-              href={`/challenges/${active.slug}`}
+              href={`/challenges/${activeMeta.slug}`}
               className={CTA_PRIMARY_LG}
             >
-              Open {active.year} League →
+              Open {activeMeta.year} League →
             </Link>
           ) : (
             // TEMP: Seasons index hidden while only one season exists
@@ -72,9 +78,9 @@ export default async function HomePage() {
           ) : null}
         </div>
 
-        {active && carouselTrainers.length > 0 ? (
+        {activeMeta && carouselTrainers.length > 0 ? (
           <TrainerCarousel
-            challengeSlug={active.slug}
+            challengeSlug={activeMeta.slug}
             trainers={carouselTrainers}
           />
         ) : null}

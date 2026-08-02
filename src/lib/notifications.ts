@@ -3,6 +3,7 @@ import {
   NOTIFICATION_ACTION_WELCOME,
   NOTIFICATION_TYPE_WELCOME,
   WELCOME_NOTIFICATION,
+  isWelcomeNotification,
   withPinnedWelcome,
   type NotificationItem,
 } from "@/lib/notification-types";
@@ -15,6 +16,21 @@ export {
   isWelcomeNotification,
   withPinnedWelcome,
 } from "@/lib/notification-types";
+
+type WelcomeRow = {
+  type: string;
+  actionKey: string | null;
+};
+
+export async function prependPersistedWelcome<T extends WelcomeRow>(
+  rows: T[],
+  findWelcome: () => Promise<T | null>,
+  ensureWelcome: () => Promise<T>,
+): Promise<T[]> {
+  if (rows.some(isWelcomeNotification)) return rows;
+  const welcome = (await findWelcome()) ?? (await ensureWelcome());
+  return [welcome, ...rows];
+}
 
 function toItem(row: {
   id: string;
@@ -66,9 +82,9 @@ export async function listNotificationsForUser(
   limit = 20,
 ): Promise<NotificationItem[]> {
   const prisma = getPrisma();
-  // Every signed-in player gets the hard-coded welcome row (for read-state).
-  await ensureWelcomeNotification(userId);
-  const rows = await prisma.notification.findMany({
+  // Happy path is read-only. Backfill welcome only when the row is missing
+  // (failed sign-in upsert) — not on every header render.
+  let rows = await prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -82,6 +98,29 @@ export async function listNotificationsForUser(
       createdAt: true,
     },
   });
+  rows = await prependPersistedWelcome(
+    rows,
+    () =>
+      prisma.notification.findUnique({
+        where: {
+          userId_type_actionKey: {
+            userId,
+            type: NOTIFICATION_TYPE_WELCOME,
+            actionKey: NOTIFICATION_ACTION_WELCOME,
+          },
+        },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          body: true,
+          actionKey: true,
+          readAt: true,
+          createdAt: true,
+        },
+      }),
+    () => ensureWelcomeNotification(userId),
+  );
   return withPinnedWelcome(rows.map(toItem));
 }
 

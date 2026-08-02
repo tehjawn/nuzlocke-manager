@@ -9,7 +9,6 @@ import {
   missingModernEmeraldSpecies,
 } from "@/lib/encounter-stats";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;

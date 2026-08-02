@@ -104,7 +104,7 @@ function bumpSpecies(
 function toSpeciesList(
   ranked: SpeciesBucket[],
   pick: "most" | "least",
-  limit: number,
+  limit = ranked.length,
 ): EncounterSpeciesHighlight[] {
   if (ranked.length === 0) return [];
   const ordered =
@@ -122,6 +122,23 @@ function toSpeciesList(
     pokedexId: entry.pokedexId,
     count: entry.count,
   }));
+}
+
+/** Every ranked species, ordered from fewest board appearances to most. */
+export function encounterSpeciesRarity(
+  trainers: TrainerProfile[],
+): EncounterSpeciesHighlight[] {
+  const speciesCounts = new Map<string, SpeciesBucket>();
+  for (const trainer of trainers) {
+    for (const mon of trainer.pokemon) {
+      bumpSpecies(speciesCounts, mon);
+    }
+  }
+
+  const rankingPool = [...speciesCounts.values()].filter(
+    (entry) => !isRankingExcluded(entry),
+  );
+  return toSpeciesList(rankingPool, "least");
 }
 
 /**

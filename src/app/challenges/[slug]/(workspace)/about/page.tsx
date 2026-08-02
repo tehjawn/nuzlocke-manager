@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AboutView } from "@/components/AboutView";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeMeta } from "@/lib/challenges";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -13,7 +12,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   return {
     title: challenge ? `About · ${challenge.name}` : "About",
     description:
@@ -23,7 +22,7 @@ export async function generateMetadata({
 
 export default async function SeasonAboutPage({ params }: PageProps) {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   if (!challenge) notFound();
 
   return <AboutView />;

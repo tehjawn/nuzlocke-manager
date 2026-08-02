@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { toolsHref } from "@/lib/tools-routes";
 
-export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
