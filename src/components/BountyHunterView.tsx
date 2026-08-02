@@ -147,7 +147,6 @@ export function BountyHunterView({
           empty="Nothing left — the pack has touched every ME species."
           entries={filteredOpen}
           mutedSprites
-          hoverSubtitle="Open bounty · not logged by the pack"
         />
       ) : null}
 
@@ -157,7 +156,6 @@ export function BountyHunterView({
           title={`My gaps · ${filteredGaps.length} still missing from this board`}
           empty="This board already has every Modern Emerald species logged. Show-off."
           entries={filteredGaps}
-          hoverSubtitle="Missing from this board"
         />
       ) : null}
 
@@ -190,7 +188,6 @@ function SpeciesGrid({
   empty,
   entries,
   mutedSprites = false,
-  hoverSubtitle,
 }: {
   slug: string;
   title: string;
@@ -198,7 +195,6 @@ function SpeciesGrid({
   entries: ModernEmeraldSpeciesRef[];
   /** Soften sprites for never-seen open bounties (restored on hover). */
   mutedSprites?: boolean;
-  hoverSubtitle: string;
 }) {
   return (
     <div className="space-y-3">
@@ -216,7 +212,6 @@ function SpeciesGrid({
                 speciesPreview={{
                   species: entry.species,
                   pokedexId: entry.pokedexId,
-                  subtitle: hoverSubtitle,
                 }}
               >
                 <Link
