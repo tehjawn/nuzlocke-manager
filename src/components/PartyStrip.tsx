@@ -40,7 +40,7 @@ export function PartyStrip({
 
   return (
     <div
-      className={`grid gap-2 ${
+      className={`grid items-start gap-2 ${
         speciesOnly
           ? "grid-cols-4 sm:grid-cols-6 md:grid-cols-8"
           : size === "sm"

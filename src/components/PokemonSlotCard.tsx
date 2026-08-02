@@ -11,6 +11,7 @@ import { resolveMoveName } from "@/lib/move-names";
 import {
   calcBattleStats,
   calcMaxBattleStats,
+  isEmptySpread,
   natureEffectDescription,
 } from "@/lib/stats";
 
@@ -91,10 +92,20 @@ export function PokemonSlotCard({
         level: pokemon.level,
       })
     : null;
+  // Box / some memorial mons lack party level — battle formula can't run, but
+  // IVs are still on the specimen and worth showing on the board card.
+  const ivFallback =
+    showCompetitiveDetails &&
+    !speciesOnly &&
+    !battle &&
+    !isEmptySpread(pokemon.ivs)
+      ? pokemon.ivs
+      : null;
   const moves =
     showCompetitiveDetails && !speciesOnly
       ? pokemon.moves.map((m) => m.trim()).filter(Boolean)
       : [];
+  const showStatColumn = Boolean(battle || ivFallback);
 
   if (speciesOnly) {
     const encounter = (
@@ -199,7 +210,7 @@ export function PokemonSlotCard({
         memorial ? "opacity-90" : ""
       } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex shrink-0 items-start gap-3">
         <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-frame bg-surface-2">
           <PokemonSpriteImage
             alt=""
@@ -236,11 +247,11 @@ export function PokemonSlotCard({
       </div>
 
       <div
-        className={
-          battle
+        className={`shrink-0 ${
+          showStatColumn
             ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-2.5"
-            : undefined
-        }
+            : ""
+        }`}
       >
         <dl className="flex min-w-0 flex-col gap-1.5">
           {showCompetitiveDetails && pokemon.nature ? (
@@ -311,11 +322,21 @@ export function PokemonSlotCard({
             </p>
             <StatGrid spread={battle} maxSpread={battleMax} compact />
           </div>
+        ) : ivFallback ? (
+          <div className="min-w-0">
+            <p className="mb-1 text-[10px] font-semibold tracking-tight text-muted">
+              IVs
+              <span className="ml-1 font-medium text-muted/80">
+                (no level on file)
+              </span>
+            </p>
+            <StatGrid spread={ivFallback} tone="iv" compact />
+          </div>
         ) : null}
       </div>
 
       {moves.length > 0 ? (
-        <div className="mt-auto">
+        <div className="mt-auto shrink-0">
           <p className="mb-1.5 text-[10px] font-semibold tracking-tight text-muted">
             Moves
           </p>
@@ -340,7 +361,7 @@ export function PokemonSlotCard({
       )}
 
       {memorial && pokemon.causeOfDeath ? (
-        <div className="border-t border-frame/20 pt-2">
+        <div className="shrink-0 border-t border-frame/20 pt-2">
           <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
             <TombstoneIcon className="h-2.5 w-2.5 shrink-0" />
             Cause of death
