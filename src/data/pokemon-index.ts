@@ -1,5 +1,6 @@
 import pokemonData from "@/data/pokemon.json";
 import heldItemsData from "@/data/held-items.json";
+import { showdownProxyUrl } from "@/lib/showdown-sprites";
 
 export type PokemonIndexEntry = {
   name: string;
@@ -127,5 +128,5 @@ export function heldItemSpriteUrl(slugOrName: string): string {
     .toLowerCase()
     .replace(/['’.]/g, "")
     .replace(/\s+/g, "-");
-  return `https://play.pokemonshowdown.com/sprites/itemicons/${slug}.png`;
+  return showdownProxyUrl("itemicons", `${slug}.png`);
 }

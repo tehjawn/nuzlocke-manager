@@ -13,11 +13,7 @@ const nextConfig: NextConfig = {
         hostname: "raw.githubusercontent.com",
         pathname: "/PokeAPI/sprites/**",
       },
-      {
-        protocol: "https",
-        hostname: "play.pokemonshowdown.com",
-        pathname: "/sprites/**",
-      },
+      // Showdown sprites are served via same-origin `/api/sprites` (no remote).
       {
         protocol: "https",
         hostname: "cdn.discordapp.com",
