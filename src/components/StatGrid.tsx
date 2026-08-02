@@ -43,20 +43,27 @@ function ceilingFor(
   return null;
 }
 
+/** Shared IV quality color for label + value. */
+function ivToneClass(value: number): string {
+  const band = classifyIv(value);
+  if (band === "perfect") return "text-accent-2";
+  if (band === "strong") return "text-accent-deep";
+  if (band === "dump") return "text-muted";
+  return "";
+}
+
 /** Call out cracked / dump IVs without changing bar length. */
 function ivValueClass(value: number, compact: boolean): string {
-  const band = classifyIv(value);
   const size = compact ? "text-[11px]" : "text-sm";
-  if (band === "perfect") {
-    return `${size} text-accent-2`;
-  }
-  if (band === "strong") {
-    return `${size} text-accent-deep`;
-  }
-  if (band === "dump") {
-    return `${size} text-muted`;
-  }
-  return size;
+  const tone = ivToneClass(value);
+  return tone ? `${size} ${tone}` : size;
+}
+
+function ivLabelClass(value: number, compact: boolean): string {
+  const size = compact ? "text-[9px]" : "text-[11px]";
+  const tone = ivToneClass(value);
+  // Average IVs keep the default muted label; standouts match the number.
+  return tone ? `${size} ${tone}` : `${size} text-muted`;
 }
 
 /** Weaker fills sit a bit washed; near-max reads fuller (length still primary). */
@@ -128,8 +135,10 @@ export function StatGrid({
             title={`${label} ${value} / ${max}`}
           >
             <span
-              className={`font-semibold tracking-tight text-muted ${
-                compact ? "text-[9px]" : "text-[11px]"
+              className={`font-semibold tracking-tight ${
+                tone === "iv"
+                  ? ivLabelClass(value, compact)
+                  : `text-muted ${compact ? "text-[9px]" : "text-[11px]"}`
               }`}
             >
               {label}
