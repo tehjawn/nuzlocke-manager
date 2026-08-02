@@ -261,48 +261,45 @@ function ExclusivesList({
       <p className="text-xs text-muted">
         Exclusives · {entries.length}
         {entries.length !== total ? ` of ${total}` : ""} pack monopolies
-        (Main / Reserve only)
       </p>
       {entries.length === 0 ? (
         <p className="rounded-md border border-frame/40 bg-surface/60 px-4 py-5 text-sm text-muted">
           No exclusives right now — every living species is shared or untouched.
         </p>
       ) : (
-        <ul className="divide-y divide-frame/40 rounded-md border border-frame/40 bg-surface/50">
+        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
           {entries.map((entry) => (
-            <li
-              key={`${entry.pokedexId}-${entry.trainerId}`}
-              className="flex items-center gap-2.5 px-3 py-1.5"
-            >
-              <Link
-                href={toolsHref(slug, "pokedex", { id: entry.pokedexId })}
-                className="flex min-w-0 flex-1 items-center gap-2.5 hover:text-ink"
+            <li key={`${entry.pokedexId}-${entry.trainerId}`}>
+              <PokemonHoverPreview
+                className="h-full"
+                speciesPreview={{
+                  species: entry.species,
+                  pokedexId: entry.pokedexId,
+                }}
               >
-                <PokemonSpriteImage
-                  alt=""
-                  className="pixelated h-8 w-8 shrink-0 object-contain"
-                  height={32}
-                  pokedexId={entry.pokedexId}
-                  species={entry.species}
-                  width={32}
-                />
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold">
+                <Link
+                  href={`/challenges/${slug}/trainers/${entry.trainerId}`}
+                  title={`${entry.species} · only ${entry.trainerHandle}`}
+                  aria-label={`${entry.species}, only ${entry.trainerHandle}`}
+                  className="pressable flex h-full flex-col items-center gap-1 rounded-md border border-frame/30 bg-surface/50 px-1.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/40"
+                >
+                  <PokemonSpriteImage
+                    alt=""
+                    className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+                    height={56}
+                    pokedexId={entry.pokedexId}
+                    species={entry.species}
+                    width={56}
+                  />
+                  <span className="max-w-full truncate text-[10px] font-semibold leading-tight text-ink">
                     {entry.species}
                   </span>
-                  <span className="text-[11px] text-muted">
-                    #{String(entry.pokedexId).padStart(3, "0")} · only{" "}
-                    {`@${entry.trainerHandle}`} (
-                    {entry.slot === "MAIN" ? "Main" : "Reserve"})
+                  <span className="max-w-full truncate text-[9px] leading-tight text-muted">
+                    #{String(entry.pokedexId).padStart(3, "0")} ·{" "}
+                    {entry.trainerHandle}
                   </span>
-                </span>
-              </Link>
-              <Link
-                href={`/challenges/${slug}/trainers/${entry.trainerId}`}
-                className="shrink-0 text-[11px] font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-              >
-                Board
-              </Link>
+                </Link>
+              </PokemonHoverPreview>
             </li>
           ))}
         </ul>

@@ -7,7 +7,6 @@ import {
   modernEmeraldSpeciesRef,
   type ModernEmeraldSpeciesRef,
 } from "@/lib/modern-emerald-dex";
-import { displayName } from "@/lib/trainer-display";
 
 /** Noise species excluded from popularity / rarity callout rankings. */
 const RANKING_EXCLUDED_NAMES = new Set(["zigzagoon"]);
@@ -313,7 +312,7 @@ export function exclusiveOwnedSpecies(
       pokedexId: only.pokedexId,
       species: only.species,
       trainerId: only.trainer.id,
-      trainerHandle: displayName(only.trainer),
+      trainerHandle: only.trainer.handle,
       slot: only.slot,
     });
   }
