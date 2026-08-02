@@ -15,7 +15,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 # Keys present in the process environment before loading dotenv files.
-# File values must not override these (so `NEON_DATABASE_URL=… pn db:pull-neon` wins).
+# File values must not override these (so `NEON_DATABASE_URL=… npm run db:pull-neon` wins).
 declare -A PRESET_ENV=()
 while IFS= read -r line; do
   [[ "$line" == *=* ]] || continue
