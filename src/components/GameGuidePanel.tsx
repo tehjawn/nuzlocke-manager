@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Frame } from "@/components/Frame";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TypeBadge } from "@/components/TypeBadge";
 import { triggerFx } from "@/features/fx";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
@@ -232,31 +233,46 @@ function GymPrepDetails({
       <p className="text-xs leading-relaxed text-muted">{prep.partyNotes}</p>
       {trainer ? (
         matches.length > 0 ? (
-          <div className="space-y-1.5 border-t border-frame/60 pt-2">
+          <div className="space-y-2 border-t border-frame/60 pt-2">
             <p className="text-[0.7rem] font-semibold text-muted">
               On {trainer.handle}&apos;s Main / Reserve
             </p>
-            <ul className="space-y-1">
-              {matches.map(({ entry, matchedTypes }) => (
-                <li
-                  key={entry.id}
-                  className="flex flex-wrap items-center gap-1.5 text-xs text-ink"
-                >
-                  <span className="font-semibold">
-                    {entry.nickname?.trim() || entry.species}
-                  </span>
-                  <span className="text-muted">
-                    ({entry.slot === "MAIN" ? "Main" : "Reserve"})
-                  </span>
-                  {matchedTypes.map((type) => (
-                    <TypeBadge
-                      key={`${entry.id}-${type}`}
-                      type={type}
-                      size="sm"
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {matches.map(({ entry, matchedTypes }) => {
+                const label = entry.nickname?.trim() || entry.species;
+                return (
+                  <li
+                    key={entry.id}
+                    className="flex flex-col items-center gap-1.5 rounded-md border border-frame/50 bg-surface/70 px-2 py-2.5"
+                  >
+                    <PokemonSpriteImage
+                      alt={label}
+                      className="pixelated h-16 w-16 object-contain sm:h-[4.5rem] sm:w-[4.5rem]"
+                      height={72}
+                      loading="lazy"
+                      pokedexId={entry.pokedexId}
+                      shiny={entry.isShiny}
+                      species={entry.species}
+                      width={72}
                     />
-                  ))}
-                </li>
-              ))}
+                    <span className="max-w-full truncate text-center text-xs font-semibold leading-tight text-ink">
+                      {label}
+                    </span>
+                    <span className="text-[0.65rem] font-medium text-muted">
+                      {entry.slot === "MAIN" ? "Main" : "Reserve"}
+                    </span>
+                    <span className="flex flex-wrap items-center justify-center gap-1">
+                      {matchedTypes.map((type) => (
+                        <TypeBadge
+                          key={`${entry.id}-${type}`}
+                          type={type}
+                          size="sm"
+                        />
+                      ))}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ) : (
