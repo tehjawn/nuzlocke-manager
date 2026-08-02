@@ -4,6 +4,7 @@ import {
   decodeGen3Name,
   encodeGen3NameForTest,
   GEN3_ENGLISH_NICK_SYMBOL_BYTES,
+  isValidGen3TrainerName,
 } from "@/lib/gen3-save/text";
 
 test("decodeGen3Name accepts English naming-screen symbols including ♂♀", () => {
@@ -28,6 +29,21 @@ test("decodeGen3Name accepts Western accents and German umlauts", () => {
   assert.equal(decodeGen3Name(Uint8Array.from([0xf1, 0xf2, 0xf3, 0xff])), "ÄÖÜ");
   assert.equal(decodeGen3Name(Uint8Array.from([0xf4, 0xf5, 0xf6, 0xff])), "äöü");
   assert.equal(decodeGen3Name(Uint8Array.from([0x14, 0xd5, 0xff])), "Ña");
+  // pret pokeemerald Western charmap gaps that used to reject names.
+  assert.equal(decodeGen3Name(Uint8Array.from([0x5a, 0xff])), "Í");
+  assert.equal(decodeGen3Name(Uint8Array.from([0x68, 0xff])), "â");
+  assert.equal(decodeGen3Name(Uint8Array.from([0x6f, 0xff])), "í");
+  assert.equal(decodeGen3Name(Uint8Array.from([0x5a, 0x68, 0x6f, 0xff])), "Íâí");
+});
+
+test("isValidGen3TrainerName accepts accented OT / trainer names", () => {
+  assert.equal(isValidGen3TrainerName("Zevin"), true);
+  assert.equal(isValidGen3TrainerName("Éclair"), true);
+  assert.equal(isValidGen3TrainerName("ÄÖÜmäd"), true);
+  assert.equal(isValidGen3TrainerName("Íâí"), true);
+  assert.equal(isValidGen3TrainerName(""), false);
+  assert.equal(isValidGen3TrainerName("TooLongName"), false);
+  assert.equal(isValidGen3TrainerName("Bad☺"), false);
 });
 
 test("decodeGen3Name rejects unmapped / control bytes instead of stripping them", () => {

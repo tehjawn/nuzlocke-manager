@@ -28,7 +28,7 @@ import { gen3MoveName } from "@/lib/move-names";
 import type { StatSpread } from "@/lib/stats";
 import { EMPTY_EVS, EMPTY_IVS } from "@/lib/stats";
 import { looksLikeFlashSave, parseFlashSave } from "./flash";
-import { decodeGen3Name } from "./text";
+import { decodeGen3Name, isValidGen3TrainerName } from "./text";
 import {
   BOX_MON_SIZE,
   CREST_DEX_FLAG_BYTES,
@@ -523,11 +523,8 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
 
   const speciesId = growthView.getUint16(0, true);
   if (speciesId === 0 || speciesId > 1500) return null;
-  const modernId = modernNationalId(speciesId);
-  const known =
-    findPokemonById(speciesId) != null ||
-    (modernId != null && findPokemonById(modernId) != null);
-  if (!known && !/^[A-Z]/.test(nickname)) return null;
+  // Nickname already validated by decodeGen3Name (Western name alphabet). Do not
+  // re-apply ASCII-only heuristics here — they rejected accented / symbol nicks.
 
   const itemId = growthView.getUint16(2, true);
   const heldItem = gen3ItemName(itemId);
@@ -814,7 +811,7 @@ function findTrainer(bytes: Uint8Array, partyOid: number | null): ParsedSaveTrai
   for (let i = 0; i + 16 < bytes.length; i++) {
     if (bytes[i + 7] !== 0xff && bytes[i + 3] !== 0xff) continue;
     const name = decodeGen3Name(bytes.subarray(i, i + 8));
-    if (!name || !/^[A-Za-z][A-Za-z0-9]{1,6}$/.test(name)) continue;
+    if (!name || !isValidGen3TrainerName(name)) continue;
     const genderByte = bytes[i + 8] ?? 0xff;
     if (genderByte > 1) continue;
     const tid = new DataView(bytes.buffer, bytes.byteOffset + i + 0xa, 4).getUint32(
@@ -843,7 +840,7 @@ function findTrainerNearParty(
     // OT is on the mon at +20; party OT name should match trainer
     bytes.subarray(partyMons[0]!.offset + 20, partyMons[0]!.offset + 27),
   );
-  if (otName && /^[A-Za-z][A-Za-z0-9]{1,6}$/.test(otName)) {
+  if (otName && isValidGen3TrainerName(otName)) {
     return { name: otName, gender: null };
   }
   return findTrainer(bytes, partyMons[0]!.oid);
@@ -1538,7 +1535,7 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
 function readTrainerFromSaveBlock2(sb2: Uint8Array): ParsedSaveTrainer | null {
   if (sb2.length < 16) return null;
   const name = decodeGen3Name(sb2.subarray(0, 8));
-  if (!name || !/^[A-Za-z][A-Za-z0-9]{0,6}$/.test(name)) return null;
+  if (!name || !isValidGen3TrainerName(name)) return null;
   const genderByte = sb2[8] ?? 0xff;
   if (genderByte > 1) return { name, gender: null };
   return { name, gender: genderByte === 1 ? "F" : "M" };

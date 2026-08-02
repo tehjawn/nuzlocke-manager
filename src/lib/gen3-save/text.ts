@@ -50,6 +50,9 @@ const GEN3_NAME_CHAR: Record<number, string> = {
   0x2b: "ª",
   0x2d: "&",
   0x2e: "+",
+  0x5a: "Í",
+  0x68: "â",
+  0x6f: "í",
   0xab: "!",
   0xac: "?",
   0xad: ".",
@@ -75,6 +78,20 @@ for (let i = 0; i < 10; i++) GEN3_NAME_CHAR[0xa1 + i] = String(i);
 for (let i = 0; i < 26; i++) {
   GEN3_NAME_CHAR[0xbb + i] = String.fromCharCode(65 + i);
   GEN3_NAME_CHAR[0xd5 + i] = String.fromCharCode(97 + i);
+}
+
+const GEN3_NAME_CHAR_SET = new Set(Object.values(GEN3_NAME_CHAR));
+
+/**
+ * True for a non-empty Gen 3 trainer / OT name (≤7 chars, Western name alphabet).
+ * Used after `decodeGen3Name` so character coverage stays aligned with the charmap.
+ */
+export function isValidGen3TrainerName(name: string): boolean {
+  if (!name || name.length > 7) return false;
+  for (const ch of name) {
+    if (!GEN3_NAME_CHAR_SET.has(ch)) return false;
+  }
+  return true;
 }
 
 /** English naming-screen symbol row (plus space / letters / digits covered above). */

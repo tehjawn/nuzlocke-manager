@@ -143,7 +143,7 @@ test("party survives nicknames with ♂♀ and Western accents", async () => {
     [0xc9, 0xe3, 0x00, 0xe3, 0xe3, 0xb8, 0xd5, 0x00, 0xd5, 0xab],
   );
 
-  for (const nick of ["♂♀!?/-…", "Éclair", "ÄÖÜmäd"]) {
+  for (const nick of ["♂♀!?/-…", "Éclair", "ÄÖÜmäd", "Íâí"]) {
     const { ewram: copy } = inflateRzipEwram(raw);
     const repl = encodeGen3NameForTest(nick, 10);
     assert.ok(
@@ -156,5 +156,26 @@ test("party survives nicknames with ♂♀ and Western accents", async () => {
     assert.equal(result.party.length, 6, `party collapsed for nick ${nick}`);
     assert.equal(result.party[5]?.species, "Aipom");
     assert.equal(result.party[5]?.nickname, nick);
+  }
+});
+
+test("accented OT / trainer names survive save import", async () => {
+  const raw = new Uint8Array(readFileSync(FIXTURE_114));
+  const { header } = inflateRzipEwram(raw);
+  // Party OT is 7 bytes; SB2 playerName is 8 (same prefix + 0xFF pad).
+  const oldTrainer = encodeGen3NameForTest("Zevin", 7);
+
+  for (const name of ["Éclair", "ÄÖÜmäd", "Íâí"]) {
+    const { ewram: copy } = inflateRzipEwram(raw);
+    const repl = encodeGen3NameForTest(name, 7);
+    assert.ok(
+      replaceAll(copy, oldTrainer, repl) >= 1,
+      `expected to patch trainer to ${name}`,
+    );
+    const result = await parsePokemonSaveAsync(repackRzip(header, copy));
+    assert.equal(result.ok, true, `import failed for trainer ${name}`);
+    if (!result.ok) return;
+    assert.equal(result.trainer?.name, name, `trainer mismatch for ${name}`);
+    assert.equal(result.party.length, 6, `party collapsed for trainer ${name}`);
   }
 });
