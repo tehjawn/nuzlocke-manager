@@ -66,18 +66,20 @@ export function formatMoveMetaTip(meta: MoveMeta): string {
 }
 
 /**
- * Subtle type wash for compact board/dashboard move chips.
+ * Subtle type gradient for compact board/dashboard move chips:
+ * original chip bg → light type wash.
  * Returns undefined when the move type is unknown (caller keeps default bg).
  */
 export function moveTypeWashStyle(
   move: string,
-): { backgroundColor: string; borderColor: string } | undefined {
+): { backgroundImage: string; borderColor: string } | undefined {
   const meta = lookupMoveMeta(move);
   if (!meta) return undefined;
   const color = TYPE_COLORS[meta.type as IndexedType];
   if (!color) return undefined;
+  const typeWash = `color-mix(in srgb, ${color} 32%, var(--info))`;
   return {
-    backgroundColor: `color-mix(in srgb, ${color} 20%, var(--info))`,
+    backgroundImage: `linear-gradient(135deg, var(--info) 0%, ${typeWash} 100%)`,
     borderColor: `color-mix(in srgb, ${color} 38%, var(--frame))`,
   };
 }

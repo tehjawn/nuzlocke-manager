@@ -42,10 +42,12 @@ test("formatMoveMetaTip includes power only for damaging moves", () => {
   );
 });
 
-test("moveTypeWashStyle tints known moves and skips unknowns", () => {
+test("moveTypeWashStyle gradients known moves and skips unknowns", () => {
   const wash = moveTypeWashStyle("Flamethrower");
   assert.ok(wash);
-  assert.match(wash.backgroundColor, /f08030/i);
+  assert.match(wash.backgroundImage, /linear-gradient/i);
+  assert.match(wash.backgroundImage, /var\(--info\)/);
+  assert.match(wash.backgroundImage, /f08030/i);
   assert.match(wash.borderColor, /f08030/i);
   assert.equal(moveTypeWashStyle("not-a-real-move"), undefined);
 });
