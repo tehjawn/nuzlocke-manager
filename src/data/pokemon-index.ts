@@ -16,6 +16,11 @@ export type HeldItemEntry = {
   name: string;
   /** Showdown shortDesc when known. */
   description?: string | null;
+  /**
+   * Showdown `/sprites/itemicons/{icon}.png` stem when known.
+   * Sometimes differs from `slug` (e.g. blackglasses, nevermeltice).
+   */
+  icon?: string | null;
 };
 
 export const POKEMON_INDEX = pokemonData.pokemon as PokemonIndexEntry[];
@@ -28,6 +33,17 @@ const HELD_ITEM_DESCRIPTION_BY_KEY: Record<string, string> = Object.fromEntries(
     return [
       [item.name.toLowerCase(), desc],
       [item.slug.toLowerCase(), desc],
+    ];
+  }),
+);
+
+/** name/slug → itemicons filename stem (falls back to hyphenated slug). */
+const HELD_ITEM_ICON_BY_KEY: Record<string, string> = Object.fromEntries(
+  HELD_ITEMS.flatMap((item) => {
+    const icon = (item.icon?.trim() || item.slug).toLowerCase();
+    return [
+      [item.name.toLowerCase(), icon],
+      [item.slug.toLowerCase(), icon],
     ];
   }),
 );
@@ -136,12 +152,17 @@ export function searchHeldItems(query: string, limit = 40): HeldItemEntry[] {
 }
 
 export function heldItemSpriteUrl(slugOrName: string): string {
-  const slug = slugOrName
+  const key = slugOrName
     .trim()
     .toLowerCase()
-    .replace(/['’.]/g, "")
-    .replace(/\s+/g, "-");
-  return showdownProxyUrl("itemicons", `${slug}.png`);
+    .replace(/['’.]/g, "");
+  const hyphenSlug = key.replace(/\s+/g, "-");
+  const icon =
+    HELD_ITEM_ICON_BY_KEY[key] ??
+    HELD_ITEM_ICON_BY_KEY[hyphenSlug] ??
+    // Unknown free-typed items: try hyphen form (matches most Showdown icons).
+    hyphenSlug;
+  return showdownProxyUrl("itemicons", `${icon}.png`);
 }
 
 /** Battle effect text for a known held item name/slug (case-insensitive). */

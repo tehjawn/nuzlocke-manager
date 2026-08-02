@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * Enrich src/data/held-items.json with Pokémon Showdown shortDesc text.
+ * Enrich src/data/held-items.json with Pokémon Showdown shortDesc text and
+ * the real itemicons filename stem (Showdown is inconsistent: blackglasses vs
+ * black-belt, nevermeltice vs mystic-water, etc.).
+ *
  * Usage: node scripts/generate-held-item-descriptions.mjs
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -11,6 +14,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const path = join(root, "src/data/held-items.json");
 
 const ITEMS_JS_URL = "https://play.pokemonshowdown.com/data/items.js";
+const ITEMICONS_DIR_URL =
+  "https://play.pokemonshowdown.com/sprites/itemicons/?sort=name&view=dir";
 
 function unescapeJsString(raw) {
   return raw
@@ -46,12 +51,42 @@ function itemLookupKeys(slug, name) {
   return [...new Set([slugKey, nameKey, slug.toLowerCase()])];
 }
 
-const res = await fetch(ITEMS_JS_URL);
-if (!res.ok) throw new Error(`${ITEMS_JS_URL} → ${res.status}`);
-const byKey = parseShowdownItemsJs(await res.text());
+/** Resolve Showdown `/sprites/itemicons/{stem}.png` filename stem. */
+function resolveIconStem(slug, name, files) {
+  const fromName = name
+    .toLowerCase()
+    .replace(/['’.]/g, "")
+    .replace(/\s+/g, "-");
+  const candidates = [
+    slug,
+    slug.replace(/-/g, ""),
+    fromName,
+    fromName.replace(/-/g, ""),
+  ];
+  for (const stem of candidates) {
+    if (files.has(`${stem}.png`)) return stem;
+  }
+  return null;
+}
+
+const [itemsRes, iconsRes] = await Promise.all([
+  fetch(ITEMS_JS_URL),
+  fetch(ITEMICONS_DIR_URL, {
+    headers: { Referer: "https://play.pokemonshowdown.com/" },
+  }),
+]);
+if (!itemsRes.ok) throw new Error(`${ITEMS_JS_URL} → ${itemsRes.status}`);
+if (!iconsRes.ok) throw new Error(`${ITEMICONS_DIR_URL} → ${iconsRes.status}`);
+
+const byKey = parseShowdownItemsJs(await itemsRes.text());
+const iconHtml = await iconsRes.text();
+const files = new Set(
+  [...iconHtml.matchAll(/href="\.\/([^"]+\.png)"/gi)].map((m) => m[1]),
+);
 
 const data = JSON.parse(readFileSync(path, "utf8"));
-let matched = 0;
+let matchedDesc = 0;
+let matchedIcon = 0;
 const items = data.items.map((item) => {
   let description = null;
   for (const key of itemLookupKeys(item.slug, item.name)) {
@@ -60,17 +95,21 @@ const items = data.items.map((item) => {
       break;
     }
   }
-  if (description) matched += 1;
-  return { ...item, description };
+  if (description) matchedDesc += 1;
+
+  const icon = resolveIconStem(item.slug, item.name, files);
+  if (icon) matchedIcon += 1;
+
+  return { ...item, description, icon };
 });
 
 writeFileSync(
   path,
   `${JSON.stringify(
     {
-      version: 2,
+      version: 3,
       count: items.length,
-      source: "catalog+pokemon-showdown-items",
+      source: "catalog+pokemon-showdown-items+itemicons",
       items,
     },
     null,
@@ -78,12 +117,24 @@ writeFileSync(
   )}\n`,
 );
 
-const missing = items.filter((i) => !i.description).map((i) => i.name);
+const missingDesc = items.filter((i) => !i.description).map((i) => i.name);
+const missingIcon = items.filter((i) => !i.icon).map((i) => i.slug);
+const iconOverrides = items.filter((i) => i.icon && i.icon !== i.slug);
 console.log(
-  `Wrote descriptions for ${matched}/${items.length} held items (${missing.length} missing).`,
+  `Descriptions: ${matchedDesc}/${items.length} (${missingDesc.length} missing).`,
 );
-if (missing.length && missing.length <= 40) {
-  console.log("Missing:", missing.join(", "));
-} else if (missing.length) {
-  console.log(`Missing sample: ${missing.slice(0, 20).join(", ")}…`);
+console.log(
+  `Icons: ${matchedIcon}/${items.length} (${missingIcon.length} missing, ${iconOverrides.length} filename overrides).`,
+);
+if (iconOverrides.length) {
+  console.log(
+    "Overrides:",
+    iconOverrides.map((i) => `${i.slug}→${i.icon}`).join(", "),
+  );
+}
+if (missingIcon.length) {
+  console.log(
+    "No individual PNG (sheet-only / unknown):",
+    missingIcon.join(", "),
+  );
 }
