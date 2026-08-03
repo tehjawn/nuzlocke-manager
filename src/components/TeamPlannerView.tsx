@@ -910,6 +910,7 @@ function PrepCard({
   guideHref?: string;
   defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   const matches = squadMatchesForGymPrep(
     draft.map((p) => ({ ...p, slot: "MAIN" as const })),
     prep,
@@ -918,8 +919,11 @@ function PrepCard({
 
   return (
     <li>
-      <details defaultOpen={defaultOpen} className="group open:bg-surface-2/40">
-        <summary className="flex cursor-pointer list-none flex-col gap-1.5 px-2.5 py-2 sm:flex-row sm:items-center sm:gap-2 [&::-webkit-details-marker]:hidden">
+      <details
+        open={open}
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+        className="group open:bg-surface-2/40"
+      >        <summary className="flex cursor-pointer list-none flex-col gap-1.5 px-2.5 py-2 sm:flex-row sm:items-center sm:gap-2 [&::-webkit-details-marker]:hidden">
           <span className="flex min-w-0 items-center gap-2">
             <span
               aria-hidden
