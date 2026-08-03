@@ -2336,6 +2336,7 @@ const ImportFromSaveSchema = z.object({
   applyRevive: z.boolean().default(false),
   money: z.number().int().min(0).max(999_999).optional().nullable(),
   applyMoney: z.boolean().default(false),
+  safariZoneAreas: z.array(z.string().max(64)).max(6).optional().nullable(),
   /**
    * Which living / Encountered slots to overwrite from this import.
    * GRAVEYARD is season-wide: omitted here means append imported R.I.P.
@@ -2585,6 +2586,16 @@ export async function importFromSaveAction(
         await tx.trainerProfile.update({
           where: { id: trainer.id },
           data: { money: data.money },
+        });
+      }
+
+      if (data.safariZoneAreas != null) {
+        await tx.trainerProfile.update({
+          where: { id: trainer.id },
+          data: {
+            safariZoneAreas: data.safariZoneAreas,
+            safariZoneAreasReliable: true,
+          },
         });
       }
 

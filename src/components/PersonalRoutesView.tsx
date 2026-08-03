@@ -40,6 +40,7 @@ export function PersonalRoutesView({
   const openRoutes = filterRoutes(status.openRoutes, normalizedQuery);
   const claimedRoutes = filterGroups(status.claimedRoutes, normalizedQuery);
   const otherRoutes = filterGroups(status.otherRoutes, normalizedQuery);
+  const unresolvedRoutes = filterRoutes(status.unresolvedRoutes, normalizedQuery);
 
   return (
     <section aria-labelledby="personal-routes-heading" className="space-y-4">
@@ -84,6 +85,12 @@ export function PersonalRoutesView({
           {" · "}
           {status.claimedRoutes.length} claimed of {status.catalogSize} catalog
           locations
+          {status.unresolvedRoutes.length > 0 && (
+            <>
+              {" · "}
+              {status.unresolvedRoutes.length} need save re-import
+            </>
+          )}
         </p>
       </div>
 
@@ -110,6 +117,21 @@ export function PersonalRoutesView({
           trainerId={status.trainerId}
         />
       </div>
+
+      {status.unresolvedRoutes.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted">
+            Modern Emerald stores Safari-area claims separately from each
+            Pokémon&apos;s generic Safari met location. Import a current save to
+            synchronize these areas.
+          </p>
+          <RouteChecklist
+            empty={`No Safari routes need resync matching “${query.trim()}”.`}
+            routes={unresolvedRoutes}
+            title={`Needs save re-import · ${unresolvedRoutes.length}`}
+          />
+        </div>
+      )}
 
       {status.otherRoutes.length > 0 && (
         <ClaimedRoutes
@@ -188,19 +210,23 @@ function ClaimedRoutes({
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-bold text-ink">{group.route}</span>
                 <span className="text-[10px] tabular-nums text-muted">
-                  {group.claims.length}
+                  {group.source === "encounter-flag"
+                    ? "Game encounter flag"
+                    : group.claims.length}
                 </span>
               </div>
-              <ul className="mt-1.5 flex flex-wrap gap-1">
-                {group.claims.map((claim) => (
-                  <ClaimChip
-                    claim={claim}
-                    key={claim.pokemonId}
-                    slug={slug}
-                    trainerId={trainerId}
-                  />
-                ))}
-              </ul>
+              {group.claims.length > 0 && (
+                <ul className="mt-1.5 flex flex-wrap gap-1">
+                  {group.claims.map((claim) => (
+                    <ClaimChip
+                      claim={claim}
+                      key={claim.pokemonId}
+                      slug={slug}
+                      trainerId={trainerId}
+                    />
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

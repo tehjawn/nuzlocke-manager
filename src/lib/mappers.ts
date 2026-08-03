@@ -57,6 +57,8 @@ type DbChallenge = {
     reviveUsed: boolean;
     wipeCount: number;
     money?: number | null;
+    safariZoneAreas?: string[];
+    safariZoneAreasReliable?: boolean;
     activeRunId: string | null;
     mainSquadLocked: boolean;
     sortOrder: number;
@@ -223,6 +225,8 @@ export function mapDbTrainer(
     statusText: trainer.statusText,
     statusEmoji: trainer.statusEmoji,
     reviveUsed: trainer.reviveUsed,
+    safariZoneAreas: trainer.safariZoneAreas,
+    safariZoneAreasReliable: trainer.safariZoneAreasReliable,
     wipeCount: trainer.wipeCount ?? 0,
     activeRunNumber: (trainer.wipeCount ?? 0) + 1,
     money: trainer.money ?? null,

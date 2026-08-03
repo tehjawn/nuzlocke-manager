@@ -245,6 +245,9 @@ model TrainerProfile {
   statusText           String?
   statusEmoji          String?
   reviveUsed      Boolean  @default(false)
+  /// Modern Emerald Safari-area claims imported from the Nuzlocke flagset.
+  safariZoneAreas String[] @default([])
+  safariZoneAreasReliable Boolean @default(false)
   /// Closed-run count this season; active run number is wipeCount + 1.
   wipeCount       Int      @default(0)
   /// Last imported Pokédollars from Gen 3 save (null = unknown / never imported).

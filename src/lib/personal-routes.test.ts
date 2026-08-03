@@ -50,6 +50,8 @@ function trainer(pokemon: PokemonEntry[]): TrainerProfile {
     userId: null,
     wipeCount: 0,
     money: null,
+    safariZoneAreas: [],
+    safariZoneAreasReliable: false,
   };
 }
 
@@ -116,7 +118,7 @@ test("reports the all-open and fully-claimed boundaries", () => {
   assert.equal(fullyClaimed.claimedRoutes.length, catalog.length);
 });
 
-test("does not let an unspecified Safari claim expanded Safari areas", () => {
+test("keeps an unspecified Safari catch unresolved until its flags are imported", () => {
   const safariAreas = [
     "Safari Zone (South)",
     "Safari Zone (Southwest)",
@@ -130,7 +132,8 @@ test("does not let an unspecified Safari claim expanded Safari areas", () => {
     safariAreas,
   );
 
-  assert.deepEqual(status.openRoutes, safariAreas);
+  assert.deepEqual(status.openRoutes, []);
+  assert.deepEqual(status.unresolvedRoutes, safariAreas);
   assert.equal(status.claimedRoutes.length, 0);
   assert.equal(status.otherRoutes[0]?.route, "Safari Zone");
 });
@@ -157,5 +160,45 @@ test("legacy Safari Zone claims only the umbrella catalog entry", () => {
     status.claimedRoutes.map((g) => g.route),
     ["Safari Zone (South)", "Safari Zone"],
   );
+  assert.deepEqual(status.openRoutes, []);
+  assert.deepEqual(status.unresolvedRoutes, ["Safari Zone (Southwest)"]);
+});
+
+test("uses imported Safari encounter flags instead of generic met locations", () => {
+  const profile = trainer([
+    mon({ catchRoute: "Safari Zone", id: "legacy", slot: "MAIN" }),
+  ]);
+  profile.safariZoneAreas = [
+    "Safari Zone (South)",
+    "Safari Zone (Northeast)",
+  ];
+  profile.safariZoneAreasReliable = true;
+
+  const status = buildPersonalRouteStatus(profile, [
+    "Safari Zone (South)",
+    "Safari Zone (Southwest)",
+    "Safari Zone (Northeast)",
+    "Safari Zone",
+  ]);
+
+  assert.deepEqual(
+    status.claimedRoutes.map((group) => group.route),
+    ["Safari Zone (South)", "Safari Zone (Northeast)", "Safari Zone"],
+  );
+  assert.equal(status.claimedRoutes[0]?.source, "encounter-flag");
   assert.deepEqual(status.openRoutes, ["Safari Zone (Southwest)"]);
+  assert.deepEqual(status.unresolvedRoutes, []);
+});
+
+test("does not mark legacy Safari areas as open before their flags are imported", () => {
+  const status = buildPersonalRouteStatus(
+    trainer([mon({ catchRoute: "Safari Zone", id: "legacy", slot: "MAIN" })]),
+    ["Safari Zone (South)", "Safari Zone (Southwest)", "Safari Zone"],
+  );
+
+  assert.deepEqual(status.openRoutes, []);
+  assert.deepEqual(status.unresolvedRoutes, [
+    "Safari Zone (South)",
+    "Safari Zone (Southwest)",
+  ]);
 });

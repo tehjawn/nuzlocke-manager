@@ -18,6 +18,7 @@
  */
 
 import { findPokemonById } from "@/data/pokemon-index";
+import { modernSafariZoneAreasFromEncounterFlags } from "@/data/safari-zone";
 import {
   abilityForSpecies,
   gen3ItemName,
@@ -122,6 +123,12 @@ export type ParsedSaveMoney = {
   reliable: boolean;
 };
 
+/** Modern Emerald Safari-area claims from the Nuzlocke encounter flagset. */
+export type ParsedSaveSafariZoneAreas = {
+  areas: string[];
+  reliable: boolean;
+};
+
 export type ParseSaveResult =
   | {
       ok: true;
@@ -131,6 +138,7 @@ export type ParseSaveResult =
       badges: ParsedSaveBadges;
       revive: ParsedSaveRevive;
       money: ParsedSaveMoney;
+      safariZoneAreas: ParsedSaveSafariZoneAreas;
       party: ParsedSavePokemon[];
       box: ParsedSavePokemon[];
       rip: ParsedSavePokemon[];
@@ -139,6 +147,10 @@ export type ParseSaveResult =
   | { ok: false; error: string };
 
 const EMPTY_MONEY: ParsedSaveMoney = { amount: 0, reliable: false };
+const EMPTY_SAFARI_ZONE_AREAS: ParsedSaveSafariZoneAreas = {
+  areas: [],
+  reliable: false,
+};
 
 const GBA_STATE_SIZE = 0x61000;
 const EWRAM_OFFSET = 0x21000;
@@ -1283,6 +1295,45 @@ function readReviveToken(
   };
 }
 
+function readSafariZoneAreasAbsolute(
+  sb1Bytes: Uint8Array,
+  sb1Base = 0,
+): ParsedSaveSafariZoneAreas {
+  const nuzBase = sb1Base + SB1_NUZLOCKE_ENCOUNTER_FLAGS;
+  if (!nuzlockeFlagsLookCoherent(sb1Bytes, nuzBase)) {
+    return EMPTY_SAFARI_ZONE_AREAS;
+  }
+  return {
+    areas: modernSafariZoneAreasFromEncounterFlags(
+      sb1Bytes.subarray(nuzBase, nuzBase + SB1_NUZLOCKE_FLAGS_LEN),
+    ),
+    reliable: true,
+  };
+}
+
+function readSafariZoneAreas(
+  bytes: Uint8Array,
+  partyBase: number | null,
+  mode: SpeciesIdMode = "modern",
+  sb1Base: number | null = null,
+): ParsedSaveSafariZoneAreas {
+  if (mode !== "modern") return EMPTY_SAFARI_ZONE_AREAS;
+  if (sb1Base != null && sb1Base >= 0) {
+    return readSafariZoneAreasAbsolute(bytes, sb1Base);
+  }
+  if (partyBase == null) return EMPTY_SAFARI_ZONE_AREAS;
+  const nuzBase = partyBase + nuzlockeFlagsAfterParty(mode);
+  if (!nuzlockeFlagsLookCoherent(bytes, nuzBase)) {
+    return EMPTY_SAFARI_ZONE_AREAS;
+  }
+  return {
+    areas: modernSafariZoneAreasFromEncounterFlags(
+      bytes.subarray(nuzBase, nuzBase + SB1_NUZLOCKE_FLAGS_LEN),
+    ),
+    reliable: true,
+  };
+}
+
 function readPokedexSeen(
   bytes: Uint8Array,
   ownedMust: number[],
@@ -1525,6 +1576,7 @@ function readModernDexFromEmbeddedFlash(
   seen: number[];
   badges: ParsedSaveBadges;
   revive: ParsedSaveRevive;
+  safariZoneAreas: ParsedSaveSafariZoneAreas;
 } | null {
   const flash = extractEmbeddedFlash(bytes);
   if (!flash) return null;
@@ -1542,6 +1594,7 @@ function readModernDexFromEmbeddedFlash(
     seen: listDexBits(sb1, SB1_SEEN1, MODERN_NUM_SPECIES),
     badges: readBadgesAbsolute(sb1, SB1_FLAGS),
     revive: readReviveAbsolute(sb1),
+    safariZoneAreas: readSafariZoneAreasAbsolute(sb1),
   };
 }
 
@@ -1569,6 +1622,7 @@ function classifyEwram(
         badges: { earnedKeys: [], reliable: false },
         revive: EMPTY_REVIVE,
         money: EMPTY_MONEY,
+        safariZoneAreas: EMPTY_SAFARI_ZONE_AREAS,
         party: [],
         box: [],
         rip: [],
@@ -1685,6 +1739,10 @@ function classifyEwram(
       ? readReviveToken(bytes, partyBase, speciesMode)
       : EMPTY_REVIVE;
   let money = EMPTY_MONEY;
+  let safariZoneAreas =
+    speciesMode === "modern"
+      ? readSafariZoneAreas(bytes, partyBase, speciesMode)
+      : EMPTY_SAFARI_ZONE_AREAS;
   let dex: { seen: number[]; source: "table" | "bitfield" | "seen1" } | null =
     null;
 
@@ -1696,6 +1754,7 @@ function classifyEwram(
       if (meta.sb1 >= 0) {
         badges = readBadgesAbsolute(bytes, meta.sb1 + SB1_FLAGS);
         revive = readReviveAbsolute(bytes, meta.sb1);
+        safariZoneAreas = readSafariZoneAreasAbsolute(bytes, meta.sb1);
         money = readMoneyFromEwram(
           bytes,
           meta.sb1,
@@ -1755,6 +1814,9 @@ function classifyEwram(
         }
         if (!revive.reliable && fromFlash.revive.reliable) {
           revive = fromFlash.revive;
+        }
+        if (!safariZoneAreas.reliable && fromFlash.safariZoneAreas.reliable) {
+          safariZoneAreas = fromFlash.safariZoneAreas;
         }
         warnings.push(
           `Pokédex: ${fromFlash.seen.length} seen (embedded flash seen1).`,
@@ -1853,6 +1915,7 @@ function classifyEwram(
     badges,
     revive,
     money,
+    safariZoneAreas,
     party: partyParsed,
     box: boxParsed,
     rip: ripParsed,
@@ -1975,6 +2038,10 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
   }
   const revive =
     speciesMode === "modern" ? readReviveAbsolute(sb1) : EMPTY_REVIVE;
+  const safariZoneAreas =
+    speciesMode === "modern"
+      ? readSafariZoneAreasAbsolute(sb1)
+      : EMPTY_SAFARI_ZONE_AREAS;
   if (speciesMode === "modern" && !revive.reliable) {
     warnings.push("Could not read revive token from SaveBlock1.");
   }
@@ -2035,6 +2102,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
     badges,
     revive,
     money,
+    safariZoneAreas,
     party: partyParsed,
     box: boxParsed,
     rip: ripParsed,
