@@ -1,4 +1,10 @@
-export type ToolsId = "pokedex" | "chart" | "compare" | "guide" | "bounty";
+export type ToolsId =
+  | "pokedex"
+  | "chart"
+  | "compare"
+  | "guide"
+  | "bounty"
+  | "planner";
 
 export const TOOLS_CATALOG: ReadonlyArray<{
   id: ToolsId;
@@ -32,6 +38,12 @@ export const TOOLS_CATALOG: ReadonlyArray<{
     title: "Bounty Hunter",
     blurb:
       "What’s still free game in Modern Emerald — open bounties, your gaps, and pack exclusives.",
+  },
+  {
+    id: "planner",
+    title: "Team Planner",
+    blurb:
+      "Sandbox a Main of 6 — type coverage, defensive holes, and Elite Four / gym prep.",
   },
 ];
 
@@ -72,7 +84,8 @@ export function parseToolsId(
     raw === "chart" ||
     raw === "compare" ||
     raw === "guide" ||
-    raw === "bounty"
+    raw === "bounty" ||
+    raw === "planner"
   ) {
     return raw;
   }
@@ -91,4 +104,13 @@ export function parseBountyMode(
 ): BountyMode {
   if (raw === "gaps" || raw === "exclusives") return raw;
   return "open";
+}
+
+export type PlannerMode = "coverage" | "prep" | "vs";
+
+export function parsePlannerMode(
+  raw: string | null | undefined,
+): PlannerMode {
+  if (raw === "prep" || raw === "vs") return raw;
+  return "coverage";
 }

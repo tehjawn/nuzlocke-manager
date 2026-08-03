@@ -1,0 +1,223 @@
+/**
+ * Team-level type coverage helpers for the Team Planner tool.
+ * Built on type-matchups — STAB first, then known damaging moves when present.
+ */
+
+import type { PokemonEntry } from "@/lib/challenge-types";
+import { lookupMoveMeta } from "@/lib/move-meta";
+import type { PokemonType as ChipType } from "@/lib/pokemon-types";
+import {
+  attackMultiplierVs,
+  defensiveMatchups,
+  formatMatchupMult,
+  type DefensiveMatchups,
+  type MatchupMult,
+} from "@/lib/type-matchups";
+import { TYPES, type PokemonType as ChartType } from "@/lib/type-chart";
+
+export type OffensiveCoverageCell = {
+  defendingType: ChartType;
+  /** Best multiplier any draft mon can land on this mono-type. */
+  bestMult: number;
+  /** Attack type that achieves bestMult (STAB or move). */
+  attackType: ChartType | null;
+  /** Which draft mon contributes the best hit. */
+  viaEntryId: string | null;
+  /** Move name when the best hit comes from a stored move; null = STAB typing. */
+  viaMove: string | null;
+};
+
+export type OffensiveCoverage = {
+  cells: OffensiveCoverageCell[];
+  /** Defending types where bestMult < SE_THRESHOLD (default 2). */
+  gaps: OffensiveCoverageCell[];
+};
+
+export type SharedDefensiveHole = {
+  attackType: ChartType;
+  /** Worst (highest) incoming mult among draft mons for this attack type. */
+  worstMult: MatchupMult;
+  /** How many draft mons take ≥2× from this attack type. */
+  weakCount: number;
+  /** Entry ids of mons weak (≥2×) to this attack. */
+  weakEntryIds: string[];
+};
+
+export type TeamDefensiveProfile = {
+  /** Per-mon defensive buckets (for detail UI). */
+  perMon: Array<{ entryId: string; matchups: DefensiveMatchups }>;
+  /** Attack types that hit ≥2 draft mons for ≥2× (shared holes). */
+  sharedHoles: SharedDefensiveHole[];
+  /** Attack types the whole team is immune to (every mon has 0×). */
+  teamImmunities: ChartType[];
+};
+
+const SE_THRESHOLD = 2;
+
+function asChartType(type: string): ChartType | null {
+  return (TYPES as readonly string[]).includes(type)
+    ? (type as ChartType)
+    : null;
+}
+
+function resolveTypes(mon: PokemonEntry): ChipType[] {
+  return mon.types.filter((t) => asChartType(t) != null);
+}
+
+/**
+ * Best offensive multiplier this mon can land on a mono-type defender,
+ * preferring stored damaging moves, falling back to STAB typing.
+ */
+export function bestOffenseVsType(
+  mon: PokemonEntry,
+  defendingType: ChartType,
+): {
+  mult: number;
+  attackType: ChartType | null;
+  viaMove: string | null;
+} {
+  const defenders: ChipType[] = [defendingType];
+  let bestMult = 0;
+  let bestAttack: ChartType | null = null;
+  let bestMove: string | null = null;
+
+  for (const rawMove of mon.moves) {
+    const meta = lookupMoveMeta(rawMove);
+    if (!meta || meta.category === "Status") continue;
+    const attackType = asChartType(meta.type);
+    if (!attackType) continue;
+    const mult = attackMultiplierVs(attackType, defenders);
+    if (
+      mult > bestMult ||
+      (mult === bestMult && bestMove == null)
+    ) {
+      bestMult = mult;
+      bestAttack = attackType;
+      bestMove = meta.name;
+    }
+  }
+
+  for (const t of resolveTypes(mon)) {
+    const attackType = asChartType(t);
+    if (!attackType) continue;
+    const mult = attackMultiplierVs(attackType, defenders);
+    // Prefer an equal STAB hit over a move only when no move found yet,
+    // or when STAB beats the best move.
+    if (mult > bestMult) {
+      bestMult = mult;
+      bestAttack = attackType;
+      bestMove = null;
+    } else if (mult === bestMult && bestAttack == null) {
+      bestMult = mult;
+      bestAttack = attackType;
+      bestMove = null;
+    }
+  }
+
+  return { mult: bestMult, attackType: bestAttack, viaMove: bestMove };
+}
+
+/** Offensive coverage grid + gap list for a planned Main of up to 6. */
+export function offensiveCoverage(
+  draft: readonly PokemonEntry[],
+  options?: { seThreshold?: number },
+): OffensiveCoverage {
+  const threshold = options?.seThreshold ?? SE_THRESHOLD;
+  const cells: OffensiveCoverageCell[] = [];
+
+  for (const defendingType of TYPES) {
+    let best: OffensiveCoverageCell = {
+      defendingType,
+      bestMult: 0,
+      attackType: null,
+      viaEntryId: null,
+      viaMove: null,
+    };
+
+    for (const mon of draft) {
+      const hit = bestOffenseVsType(mon, defendingType);
+      if (hit.mult > best.bestMult) {
+        best = {
+          defendingType,
+          bestMult: hit.mult,
+          attackType: hit.attackType,
+          viaEntryId: mon.id,
+          viaMove: hit.viaMove,
+        };
+      }
+    }
+
+    cells.push(best);
+  }
+
+  return {
+    cells,
+    gaps: cells.filter((c) => c.bestMult < threshold),
+  };
+}
+
+/** Shared defensive weaknesses across the draft party. */
+export function teamDefensiveProfile(
+  draft: readonly PokemonEntry[],
+): TeamDefensiveProfile {
+  const perMon = draft.map((mon) => ({
+    entryId: mon.id,
+    matchups: defensiveMatchups(resolveTypes(mon)),
+  }));
+
+  const sharedHoles: SharedDefensiveHole[] = [];
+  const teamImmunities: ChartType[] = [];
+
+  for (const attackType of TYPES) {
+    const weakEntryIds: string[] = [];
+    let worstMult: MatchupMult = 0;
+    let immuneCount = 0;
+
+    for (const mon of draft) {
+      const types = resolveTypes(mon);
+      if (types.length === 0) continue;
+      const raw = attackMultiplierVs(attackType, types);
+      const bucket: MatchupMult =
+        raw === 0
+          ? 0
+          : raw >= 4
+            ? 4
+            : raw >= 2
+              ? 2
+              : raw >= 1
+                ? 1
+                : raw >= 0.5
+                  ? 0.5
+                  : 0.25;
+      if (bucket === 0) immuneCount += 1;
+      if (bucket >= 2) {
+        weakEntryIds.push(mon.id);
+        if (bucket > worstMult) worstMult = bucket;
+      }
+    }
+
+    if (draft.length > 0 && immuneCount === draft.length) {
+      teamImmunities.push(attackType);
+    }
+
+    if (weakEntryIds.length >= 2) {
+      sharedHoles.push({
+        attackType,
+        worstMult: worstMult >= 2 ? worstMult : 2,
+        weakCount: weakEntryIds.length,
+        weakEntryIds,
+      });
+    }
+  }
+
+  sharedHoles.sort(
+    (a, b) =>
+      b.weakCount - a.weakCount ||
+      b.worstMult - a.worstMult ||
+      a.attackType.localeCompare(b.attackType),
+  );
+
+  return { perMon, sharedHoles, teamImmunities };
+}
+
+export { formatMatchupMult };
