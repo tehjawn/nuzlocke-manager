@@ -863,6 +863,7 @@ function PrepPanels({
               prep={entry.prep}
               draft={draft}
               subtitle={entry.title}
+              defaultOpen
               guideHref={toolsHref(slug, "guide", {
                 chapter: entry.chapterId,
               })}
@@ -900,11 +901,13 @@ function PrepCard({
   draft,
   subtitle,
   guideHref,
+  defaultOpen = false,
 }: {
   prep: GuideGymPrep;
   draft: PokemonEntry[];
   subtitle?: string;
   guideHref?: string;
+  defaultOpen?: boolean;
 }) {
   const matches = squadMatchesForGymPrep(
     draft.map((p) => ({ ...p, slot: "MAIN" as const })),
@@ -914,7 +917,7 @@ function PrepCard({
 
   return (
     <li>
-      <details className="group open:bg-surface-2/40">
+      <details defaultOpen={defaultOpen} className="group open:bg-surface-2/40">
         <summary className="flex cursor-pointer list-none flex-col gap-1.5 px-2.5 py-2 sm:flex-row sm:items-center sm:gap-2 [&::-webkit-details-marker]:hidden">
           <span className="flex min-w-0 items-center gap-2">
             <span
