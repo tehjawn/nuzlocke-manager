@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build move name → type/category lookup from Pokémon Showdown moves data.
+ * Build move name → battle details lookup from Pokémon Showdown moves data.
  * Keys are normalized (lowercase alphanumeric) so "U Turn" / "U-turn" match.
  * Usage: node scripts/generate-move-meta.mjs
  */
@@ -24,7 +24,7 @@ const res = await fetch(MOVES_URL);
 if (!res.ok) throw new Error(`moves.json → ${res.status}`);
 const raw = await res.json();
 
-/** @type {Record<string, { name: string; type: string; category: string; power: number }>} */
+/** @type {Record<string, { category: string; description: string; name: string; power: number; type: string }>} */
 const byKey = Object.create(null);
 let count = 0;
 
@@ -41,10 +41,16 @@ for (const entry of Object.values(raw)) {
   const key = normalizeMoveKey(entry.name);
   if (!key) continue;
   byKey[key] = {
-    name: entry.name,
-    type: entry.type,
     category,
+    description:
+      typeof entry.shortDesc === "string"
+        ? entry.shortDesc.trim()
+        : typeof entry.desc === "string"
+          ? entry.desc.trim()
+          : "",
+    name: entry.name,
     power: typeof entry.basePower === "number" ? entry.basePower : 0,
+    type: entry.type,
   };
   count += 1;
 }
@@ -52,9 +58,9 @@ for (const entry of Object.values(raw)) {
 writeFileSync(
   outPath,
   `${JSON.stringify({
-    version: 1,
-    source: "pokemon-showdown/moves.json",
     byKey,
+    source: "pokemon-showdown/moves.json",
+    version: 2,
   })}\n`,
 );
 
