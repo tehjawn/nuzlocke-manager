@@ -70,6 +70,19 @@ enum TrainerRunEndReason {
   GM_RESET
 }
 
+enum FeedbackCategory {
+  BUG
+  FEATURE_REQUEST
+  SUPPORT
+  OTHER
+}
+
+enum FeedbackStatus {
+  NEW
+  IN_REVIEW
+  RESOLVED
+}
+
 model User {
   id              String   @id @default(cuid())
   email           String?  @unique
@@ -86,6 +99,7 @@ model User {
   memberships   ChallengeMembership[]
   trainers      TrainerProfile[]
   activities    ActivityEvent[]       @relation("ActivityActor")
+  feedback      FeedbackSubmission[]
   reactions     ActivityReaction[]
   notifications Notification[]
 }
@@ -141,6 +155,25 @@ model Challenge {
   activities  ActivityEvent[]
   snapshots   TrainerBoardSnapshot[]
   tournament  Tournament?
+  feedback    FeedbackSubmission[]
+}
+
+model FeedbackSubmission {
+  id          String           @id @default(cuid())
+  challengeId String
+  userId      String
+  category    FeedbackCategory
+  subject     String
+  message     String
+  status      FeedbackStatus   @default(NEW)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId, status, createdAt])
+  @@index([userId, createdAt])
 }
 
 model ChallengeRule {

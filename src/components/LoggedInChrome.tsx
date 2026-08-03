@@ -12,9 +12,10 @@ import {
   writeOnboardingActive,
   writeOnboardingStep,
 } from "@/lib/onboarding";
-import type { NotificationItem } from "@/lib/notification-types";
+import { feedbackNotificationHref } from "@/lib/feedback-types";
 import {
   isWelcomeNotification,
+  type NotificationItem,
   withPinnedWelcome,
 } from "@/lib/notification-types";
 
@@ -25,6 +26,7 @@ type LoggedInChromeProps = {
   signOutAction: () => Promise<void>;
   /** Desktop profile-menu GM entry (mobile uses the hamburger drawer). */
   gmHref?: string | null;
+  feedbackHref?: string | null;
 };
 
 function hasUnreadWelcome(items: NotificationItem[]) {
@@ -41,6 +43,7 @@ export function LoggedInChrome({
   notifications: initialNotifications,
   signOutAction,
   gmHref = null,
+  feedbackHref = null,
 }: LoggedInChromeProps) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -122,6 +125,8 @@ export function LoggedInChrome({
       return;
     }
     await markRead(notification);
+    const href = feedbackNotificationHref(notification.actionKey);
+    if (href) router.push(href);
   }
 
   return (
@@ -135,9 +140,10 @@ export function LoggedInChrome({
         {/* On mobile the account actions live in the nav drawer instead. */}
         <span className="hidden sm:block">
           <UserMenu
-            name={name}
-            image={image}
+            feedbackHref={feedbackHref}
             gmHref={gmHref}
+            image={image}
+            name={name}
             signOutAction={signOutAction}
           />
         </span>

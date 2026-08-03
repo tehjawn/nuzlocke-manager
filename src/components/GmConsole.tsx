@@ -13,9 +13,19 @@ import {
   gmUpdateRuleAction,
   previewSeasonMemorialBackfillAction,
 } from "@/app/actions/challenge";
+import { updateFeedbackStatusAction } from "@/app/actions/feedback";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { displayActionError } from "@/lib/action-error-display";
 import type { Challenge } from "@/lib/challenge-types";
+import {
+  FEEDBACK_STATUSES,
+  feedbackCategoryLabel,
+  feedbackStatusClass,
+  feedbackStatusLabel,
+  formatFeedbackDate,
+  type FeedbackSubmissionItem,
+} from "@/lib/feedback-types";
 import {
   DEFAULT_ROM_DOWNLOAD_URL,
   fromEasternDatetimeLocalInput,
@@ -28,14 +38,21 @@ const hintLinkClass =
 
 const FALLBACK_WELCOME_VIDEO_URL = getWelcomeVideoUrl();
 
-type ConsoleTab = "season" | "roster" | "rules" | "faq" | "ops";
+type ConsoleTab =
+  | "season"
+  | "roster"
+  | "rules"
+  | "faq"
+  | "feedback"
+  | "ops";
 
 const TABS: Array<{ id: ConsoleTab; label: string; index: string }> = [
   { id: "season", label: "Season", index: "01" },
   { id: "roster", label: "Roster", index: "02" },
   { id: "rules", label: "Rules", index: "03" },
   { id: "faq", label: "FAQ", index: "04" },
-  { id: "ops", label: "Ops", index: "05" },
+  { id: "feedback", label: "Feedback", index: "05" },
+  { id: "ops", label: "Ops", index: "06" },
 ];
 
 function downloadTextFile(filename: string, content: string, mimeType: string) {
@@ -108,10 +125,18 @@ function Panel({
   );
 }
 
-export function GmConsole({ challenge }: { challenge: Challenge }) {
+export function GmConsole({
+  challenge,
+  feedbackSubmissions,
+  initialTab,
+}: {
+  challenge: Challenge;
+  feedbackSubmissions: FeedbackSubmissionItem[];
+  initialTab: ConsoleTab;
+}) {
   const [pending, startTransition] = useTransition();
   const [, startTabTransition] = useTransition();
-  const [tab, setTab] = useState<ConsoleTab>("season");
+  const [tab, setTab] = useState<ConsoleTab>(initialTab);
   const [flashState, setFlashState] = useState<{
     tone: "ok" | "err";
     text: string;
@@ -138,6 +163,9 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
     { claimed: 0, locked: 0, wipeTotal: 0 },
   );
   const boardHref = `/challenges/${challenge.slug}`;
+  const openFeedbackCount = feedbackSubmissions.filter(
+    (submission) => submission.status !== "RESOLVED",
+  ).length;
 
   function flash(
     result: { ok: true; message?: string } | { ok: false; error: string },
@@ -256,6 +284,9 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                 tab === item.id ? " gm-console__nav-btn--active" : ""
               }`}
               aria-current={tab === item.id ? "page" : undefined}
+              data-testid={
+                item.id === "feedback" ? "gm-tab-feedback" : undefined
+              }
               onClick={() => {
                 startTabTransition(() => setTab(item.id));
               }}
@@ -264,6 +295,11 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
                 {item.index}
               </span>
               {item.label}
+              {item.id === "feedback" && openFeedbackCount > 0 && (
+                <span className="ml-auto rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-bold leading-none text-[var(--on-accent)]">
+                  {openFeedbackCount}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -915,10 +951,109 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
             </Panel>
           ) : null}
 
+          {tab === "feedback" && (
+            <Panel
+              description="Player bug reports, feature requests, and support questions."
+              kicker="05 · Inbox"
+              title="Feedback"
+              trailing={
+                <span className="gm-console__chip">
+                  {openFeedbackCount} open
+                </span>
+              }
+            >
+              {feedbackSubmissions.length === 0 ? (
+                <p className="gm-console__hint">No player feedback yet.</p>
+              ) : (
+                <ol className="space-y-3">
+                  {feedbackSubmissions.map((submission) => (
+                    <li key={submission.id}>
+                      <form
+                        className="gm-console__editor"
+                        key={`${submission.id}-${submission.status}`}
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          const data = new FormData(event.currentTarget);
+                          startTransition(async () => {
+                            try {
+                              flash(
+                                await updateFeedbackStatusAction({
+                                  challengeId,
+                                  status: String(data.get("status")),
+                                  submissionId: submission.id,
+                                }),
+                              );
+                            } catch (error) {
+                              flash({
+                                error: displayActionError(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Could not update feedback",
+                                ),
+                                ok: false,
+                              });
+                            }
+                          });
+                        }}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="gm-console__panel-kicker">
+                              {feedbackCategoryLabel(submission.category)} ·{" "}
+                              {submission.requesterName} ·{" "}
+                              {formatFeedbackDate(submission.createdAt)}
+                            </p>
+                            <h3 className="mt-1 font-bold tracking-tight">
+                              {submission.subject}
+                            </h3>
+                          </div>
+                          <span
+                            className={`rounded-lg border px-2 py-1 text-xs font-bold ${feedbackStatusClass(submission.status)}`}
+                          >
+                            {feedbackStatusLabel(submission.status)}
+                          </span>
+                        </div>
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">
+                          {submission.message}
+                        </p>
+                        <div className="flex flex-wrap items-end gap-2">
+                          <label className="gm-console__field min-w-40 flex-1 sm:max-w-52">
+                            <span className="gm-console__label">Status</span>
+                            <select
+                              className="gm-console__select"
+                              data-testid={`feedback-status-${submission.id}`}
+                              defaultValue={submission.status}
+                              disabled={pending}
+                              name="status"
+                            >
+                              {FEEDBACK_STATUSES.map((status) => (
+                                <option key={status} value={status}>
+                                  {feedbackStatusLabel(status)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <button
+                            className="gm-console__btn gm-console__btn--primary"
+                            data-testid={`feedback-status-update-${submission.id}`}
+                            disabled={pending}
+                            type="submit"
+                          >
+                            Update status
+                          </button>
+                        </div>
+                      </form>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </Panel>
+          )}
+
           {tab === "ops" ? (
             <div className="gm-console__ops-grid">
               <Panel
-                kicker="05 · Ops"
+                kicker="06 · Ops"
                 title="Export"
                 description="Full season backup — trainers, badges, Pokémon, rules, and FAQ."
               >
@@ -983,7 +1118,7 @@ export function GmConsole({ challenge }: { challenge: Challenge }) {
               </Panel>
 
               <Panel
-                kicker="05 · Ops"
+                kicker="06 · Ops"
                 title="Reconstruct memorial history"
                 description="Backfill missing R.I.P. entries from each trainer’s retained board snapshots (wipe / import / reset). Existing graves stay; duplicates are skipped."
               >
