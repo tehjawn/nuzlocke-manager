@@ -726,8 +726,8 @@ function VsTrainerPanel({
   return (
     <Frame title={`vs ${displayName(opponent)}`}>
       <p className="mb-3 text-xs text-muted">
-        Counter tips from your draft into each of their Main types (uses stored
-        damaging moves when present).
+        Counter tips from your draft into each of their Main types — stored
+        damaging moves when present, otherwise STAB.
       </p>
       <ul className="space-y-3">
         {opponentMain.map((target) => {
