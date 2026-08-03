@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Frame, frameCountTitle } from "@/components/Frame";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -19,11 +19,11 @@ import {
 } from "@/features/planner/planner-drafts";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { CTA_SECONDARY_SM } from "@/lib/cta";
-import { recommendSquadCounters } from "@/lib/pokedex-squad-counter";
 import type { PokemonType } from "@/lib/pokemon-types";
 import {
   formatMatchupMult,
   offensiveCoverage,
+  recommendDraftCoverageTips,
   teamDefensiveProfile,
 } from "@/lib/team-coverage";
 import {
@@ -76,15 +76,21 @@ export function TeamPlannerView({
   const [mode, setMode] = useState<PlannerMode>(
     parsePlannerMode(initialMode),
   );
-  const [viewerId, setViewerId] = useState(
-    () => myTrainerId ?? trainers[0]?.id ?? "",
-  );
+  const [viewerId, setViewerId] = useState(() => {
+    if (myTrainerId) return myTrainerId;
+    const withLiving = trainers.find((t) => livingBox(t).length > 0);
+    return withLiving?.id ?? trainers[0]?.id ?? "";
+  });
   const [opponentId, setOpponentId] = useState(() => {
-    const other = trainers.find((t) => t.id !== (myTrainerId ?? trainers[0]?.id));
-    return other?.id ?? trainers[0]?.id ?? "";
+    const self = myTrainerId ?? trainers.find((t) => livingBox(t).length > 0)?.id;
+    const other = trainers.find(
+      (t) => t.id !== self && pokemonInSlot(t, "MAIN").length > 0,
+    );
+    return other?.id ?? trainers.find((t) => t.id !== self)?.id ?? trainers[0]?.id ?? "";
   });
   const [draftIds, setDraftIds] = useState<string[]>([]);
   const [draftHydrated, setDraftHydrated] = useState(false);
+  const skipPersistRef = useRef(false);
 
   const viewer = trainers.find((t) => t.id === viewerId) ?? null;
   const opponent = trainers.find((t) => t.id === opponentId) ?? null;
@@ -98,6 +104,7 @@ export function TeamPlannerView({
   // Hydrate / reset draft when trainer changes.
   useEffect(() => {
     if (!viewerId) {
+      skipPersistRef.current = true;
       setDraftIds([]);
       setDraftHydrated(true);
       return;
@@ -106,29 +113,28 @@ export function TeamPlannerView({
     const stored = readPlannerDraft(key);
     const trainer = trainers.find((t) => t.id === viewerId);
     if (!trainer) {
+      skipPersistRef.current = true;
       setDraftIds([]);
       setDraftHydrated(true);
       return;
     }
     const valid = new Set(livingBox(trainer).map((p) => p.id));
     const fromStorage = stored.entryIds.filter((id) => valid.has(id));
+    skipPersistRef.current = true;
     setDraftIds(
       fromStorage.length > 0 ? fromStorage : defaultDraftIds(trainer),
     );
     setDraftHydrated(true);
   }, [slug, viewerId, trainers]);
 
-  // Persist draft (skip initial empty hydrate race).
+  // Persist draft after user edits (skip the hydrate write).
   useEffect(() => {
     if (!draftHydrated || !viewerId) return;
-    const key = plannerDraftStorageKey(slug, viewerId);
-    const stored = readPlannerDraft(key);
-    const same =
-      stored.entryIds.length === draftIds.length &&
-      stored.entryIds.every((id, i) => id === draftIds[i]);
-    if (same) return;
-    // Only write when user has a non-default or changed draft; still ok to write defaults.
-    setPlannerDraftIds(key, draftIds);
+    if (skipPersistRef.current) {
+      skipPersistRef.current = false;
+      return;
+    }
+    setPlannerDraftIds(plannerDraftStorageKey(slug, viewerId), draftIds);
   }, [draftIds, draftHydrated, slug, viewerId]);
 
   const draft = useMemo(
@@ -725,10 +731,9 @@ function VsTrainerPanel({
       </p>
       <ul className="space-y-3">
         {opponentMain.map((target) => {
-          const tips = recommendSquadCounters(target.types, draft, {
-            excludePokedexId: target.pokedexId,
+          const tips = recommendDraftCoverageTips(target.types, draft, {
             limit: 3,
-            minOffenseMult: 2,
+            minMult: 2,
           });
           return (
             <li
@@ -763,33 +768,39 @@ function VsTrainerPanel({
                 </p>
               ) : (
                 <ul className="mt-2 space-y-1.5 border-t border-frame/50 pt-2">
-                  {tips.map((tip) => (
-                    <li
-                      key={tip.entryId}
-                      className="flex items-start gap-2 text-xs"
-                    >
-                      <PokemonSpriteImage
-                        alt={tip.displayName}
-                        className="pixelated h-8 w-8 shrink-0 object-contain"
-                        height={32}
-                        loading="lazy"
-                        pokedexId={tip.pokemon.pokedexId}
-                        species={tip.pokemon.name}
-                        width={32}
-                      />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-ink">
-                          {tip.displayName}{" "}
-                          <span className="font-bold tabular-nums text-accent">
-                            {formatMatchupMult(tip.offenseMult)}
-                          </span>
-                        </p>
-                        <p className="text-[11px] leading-snug text-muted">
-                          {tip.reason}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
+                  {tips.map((tip) => {
+                    const tipMon = draft.find((p) => p.id === tip.entryId);
+                    return (
+                      <li
+                        key={tip.entryId}
+                        className="flex items-start gap-2 text-xs"
+                      >
+                        {tipMon ? (
+                          <PokemonSpriteImage
+                            alt={tip.displayName}
+                            className="pixelated h-8 w-8 shrink-0 object-contain"
+                            height={32}
+                            loading="lazy"
+                            pokedexId={tipMon.pokedexId}
+                            shiny={tipMon.isShiny}
+                            species={tipMon.species}
+                            width={32}
+                          />
+                        ) : null}
+                        <div className="min-w-0">
+                          <p className="font-semibold text-ink">
+                            {tip.displayName}{" "}
+                            <span className="font-bold tabular-nums text-accent">
+                              {formatMatchupMult(tip.mult)}
+                            </span>
+                          </p>
+                          <p className="text-[11px] leading-snug text-muted">
+                            {tip.reason}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </li>

@@ -221,3 +221,79 @@ export function teamDefensiveProfile(
 }
 
 export { formatMatchupMult };
+
+export type DraftCoverageTip = {
+  entryId: string;
+  displayName: string;
+  attackType: ChartType;
+  mult: number;
+  viaMove: string | null;
+  reason: string;
+};
+
+/**
+ * Rank draft mons that hit targetTypes for ≥ minMult.
+ * Prefers stored damaging moves; falls back to STAB typing.
+ */
+export function recommendDraftCoverageTips(
+  targetTypes: readonly ChipType[],
+  draft: readonly PokemonEntry[],
+  options?: { limit?: number; minMult?: number },
+): DraftCoverageTip[] {
+  if (targetTypes.length === 0 || draft.length === 0) return [];
+  const limit = Math.max(1, options?.limit ?? 3);
+  const minMult = options?.minMult ?? 2;
+  const tips: DraftCoverageTip[] = [];
+
+  for (const mon of draft) {
+    let bestMult = 0;
+    let bestAttack: ChartType | null = null;
+    let bestMove: string | null = null;
+
+    for (const rawMove of mon.moves) {
+      const meta = lookupMoveMeta(rawMove);
+      if (!meta || meta.category === "Status") continue;
+      const attackType = asChartType(meta.type);
+      if (!attackType) continue;
+      const mult = attackMultiplierVs(attackType, targetTypes);
+      if (mult > bestMult) {
+        bestMult = mult;
+        bestAttack = attackType;
+        bestMove = meta.name;
+      }
+    }
+
+    for (const t of resolveTypes(mon)) {
+      const attackType = asChartType(t);
+      if (!attackType) continue;
+      const mult = attackMultiplierVs(attackType, targetTypes);
+      if (mult > bestMult) {
+        bestMult = mult;
+        bestAttack = attackType;
+        bestMove = null;
+      }
+    }
+
+    if (!bestAttack || bestMult < minMult) continue;
+    const nick = mon.nickname?.trim();
+    const displayName = nick || mon.species;
+    tips.push({
+      entryId: mon.id,
+      displayName,
+      attackType: bestAttack,
+      mult: bestMult,
+      viaMove: bestMove,
+      reason: bestMove
+        ? `${formatMatchupMult(bestMult)} ${bestAttack} via ${bestMove}`
+        : `${formatMatchupMult(bestMult)} ${bestAttack} STAB`,
+    });
+  }
+
+  tips.sort(
+    (a, b) =>
+      b.mult - a.mult ||
+      a.displayName.localeCompare(b.displayName) ||
+      a.entryId.localeCompare(b.entryId),
+  );
+  return tips.slice(0, limit);
+}

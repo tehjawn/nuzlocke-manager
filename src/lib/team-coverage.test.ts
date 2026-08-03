@@ -4,6 +4,7 @@ import type { PokemonEntry } from "@/lib/challenge-types";
 import {
   bestOffenseVsType,
   offensiveCoverage,
+  recommendDraftCoverageTips,
   teamDefensiveProfile,
 } from "@/lib/team-coverage";
 
@@ -133,4 +134,16 @@ test("empty draft returns empty coverage", () => {
   assert.equal(profile.perMon.length, 0);
   assert.equal(profile.sharedHoles.length, 0);
   assert.equal(profile.teamImmunities.length, 0);
+});
+
+test("recommendDraftCoverageTips falls back to STAB", () => {
+  const draft = [
+    mon({ id: "a", species: "Swampert", types: ["Water", "Ground"] }),
+    mon({ id: "b", species: "Gardevoir", types: ["Psychic", "Fairy"] }),
+  ];
+  const tips = recommendDraftCoverageTips(["Dragon"], draft);
+  assert.ok(tips.length >= 1);
+  assert.equal(tips[0]!.attackType, "Fairy");
+  assert.equal(tips[0]!.mult, 2);
+  assert.equal(tips[0]!.viaMove, null);
 });
