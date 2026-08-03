@@ -57,7 +57,6 @@ import {
 } from "@/lib/trainer-runs";
 import {
   currentRunNumber,
-  memorialRowsAfterWipe,
 } from "@/lib/wipe-memorial";
 import {
   DEFAULT_IMPORT_REPLACE_SLOTS,
@@ -839,7 +838,7 @@ export async function recordWipeAction(input: {
         runId: activeBefore.id,
       });
 
-      const { closed, next } = await closeActiveRunAndStartNextInTx(
+      const { next } = await closeActiveRunAndStartNextInTx(
         tx,
         {
           id: trainer.id,
@@ -852,55 +851,17 @@ export async function recordWipeAction(input: {
           earnedBadgeKeys,
         },
       );
-      const nextWipe = closed.runNumber;
 
-      const board = await tx.pokemonEntry.findMany({
-        where: { trainerId: trainer.id },
-        select: {
-          id: true,
-          slot: true,
-          partyIndex: true,
-          causeOfDeath: true,
-          diedOnRun: true,
-          runId: true,
+      const livingLost = await tx.pokemonEntry.count({
+        where: {
+          trainerId: trainer.id,
+          slot: { in: ["MAIN", "RESERVE"] },
         },
       });
-      const after = memorialRowsAfterWipe(board, nextWipe, closed.id);
-      const keepIds = new Set(after.map((p) => p.id));
-      const byId = new Map(after.map((p) => [p.id, p]));
-      const dropIds = board
-        .filter((row) => !keepIds.has(row.id))
-        .map((row) => row.id);
 
-      for (const row of board) {
-        const memorial = byId.get(row.id);
-        if (!memorial) continue;
-        if (
-          row.slot === memorial.slot &&
-          row.partyIndex === memorial.partyIndex &&
-          row.causeOfDeath === memorial.causeOfDeath &&
-          row.diedOnRun === memorial.diedOnRun &&
-          row.runId === memorial.runId
-        ) {
-          continue;
-        }
-        await tx.pokemonEntry.update({
-          where: { id: row.id },
-          data: {
-            slot: memorial.slot,
-            partyIndex: memorial.partyIndex,
-            causeOfDeath: memorial.causeOfDeath,
-            diedOnRun: memorial.diedOnRun,
-            runId: memorial.runId,
-          },
-        });
-      }
-
-      if (dropIds.length > 0) {
-        await tx.pokemonEntry.deleteMany({
-          where: { id: { in: dropIds } },
-        });
-      }
+      // Clear the live board (party, box, encountered, R.I.P.). Pre-wipe state
+      // is already in the board history snapshot; money resets with the run.
+      await tx.pokemonEntry.deleteMany({ where: { trainerId: trainer.id } });
       await tx.badgeProgress.updateMany({
         where: { trainerId: trainer.id },
         data: { earned: false, earnedAt: null },
@@ -914,15 +875,14 @@ export async function recordWipeAction(input: {
           activeRunId: next.id,
           // Fresh run gets a fresh revive token.
           reviveUsed: false,
+          money: 0,
         },
         select: { wipeCount: true },
       });
       wipeCount = updated.wipeCount;
-      const memorializedCount =
-        after.length - board.filter((p) => p.slot === "GRAVEYARD").length;
       wipeMessage =
-        memorializedCount > 0
-          ? `${trainer.handle} restarted their run (wipe #${wipeCount}) — ${memorializedCount} partner${memorializedCount === 1 ? "" : "s"} memorialized`
+        livingLost > 0
+          ? `${trainer.handle} restarted their run (wipe #${wipeCount}) — ${livingLost} partner${livingLost === 1 ? "" : "s"} lost`
           : `${trainer.handle} restarted their run (wipe #${wipeCount})`;
       await tx.activityEvent.create({
         data: {

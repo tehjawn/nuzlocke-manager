@@ -553,8 +553,8 @@ export function TrainerBoard({
   const resetSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
-  // Include slot/partyIndex — memorial wipe rewrites slots without changing ids.
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}`;
+  // Include slot/partyIndex — wipe/reset clear or rewrite the board.
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.money ?? ""}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
   /** Optimistic board after wipe/reset until RSC refresh lands. */
@@ -563,6 +563,7 @@ export function TrainerBoard({
     wipeCount: number;
     pokemon: PokemonEntry[];
     mainSquadLocked: boolean;
+    money: number | null;
   } | null>(null);
   /** Remount badge editor to drop pending debounced writes before wipe. */
   const [badgeEditorKey, setBadgeEditorKey] = useState(0);
@@ -633,21 +634,16 @@ export function TrainerBoard({
     setSeenStamp(serverStamp);
 
     // Keep wipe/reset optimism until the RSC payload reflects the operation.
-    // Reset: empty board (including memorial). Wipe: higher wipeCount and no
-    // living mons — graves may remain. Avoid wipeCount !== so a server count
-    // ahead of optimism cannot pin a stale override.
-    const serverStillHasLiving = trainer.pokemon.some(
-      (p) =>
-        p.slot === "MAIN" ||
-        p.slot === "RESERVE" ||
-        p.slot === "ENCOUNTERED",
-    );
+    // Both clear the live board (including R.I.P.). Wipe also bumps wipeCount
+    // and zeros money. Avoid wipeCount !== so a server count ahead of optimism
+    // cannot pin a stale override.
     const wipeOrResetInFlight =
       boardOverride != null &&
       (boardOverride.kind === "reset"
         ? trainer.pokemon.length > 0
         : trainer.wipeCount < boardOverride.wipeCount ||
-          serverStillHasLiving);
+          trainer.pokemon.length > 0 ||
+          (trainer.money ?? 0) !== 0);
 
     setCommitted({
       handle: trainer.handle,
@@ -680,11 +676,14 @@ export function TrainerBoard({
   const wipeCount = boardOverride?.wipeCount ?? trainer.wipeCount ?? 0;
   const mainSquadLocked =
     boardOverride?.mainSquadLocked ?? trainer.mainSquadLocked;
+  const boardMoney =
+    boardOverride != null ? boardOverride.money : trainer.money;
   const boardTrainer = {
     ...trainer,
     pokemon: boardPokemon,
     wipeCount,
     mainSquadLocked,
+    money: boardMoney,
   };
 
   const main = pokemonInSlot(boardTrainer, "MAIN");
@@ -875,12 +874,12 @@ export function TrainerBoard({
       title: "Restart this run?",
       description: (
         <>
-          Moves Main Squad and Reserves into the season R.I.P. memorial (cause:
-          run wiped), clears Encountered, resets badges, and refreshes your
-          revive token for the next run. Existing memorial and your profile
-          (name, avatar, backdrops, status) stay. Locked Main Squad unlocks so
-          you can rebuild. This counts as wipe #{nextWipe}. A board history
-          snapshot is saved first.
+          Clears Main Squad, Reserves, Encountered, and R.I.P. on this board,
+          resets badges and money to 0, and refreshes your revive token for the
+          next run. Profile (name, avatar, backdrops, status) stays. Locked Main
+          Squad unlocks so you can rebuild. This counts as wipe #{nextWipe}. A
+          board history snapshot is saved first — prior partners live in History
+          / Memorial, not the live board.
         </>
       ),
       confirmLabel: "Record wipe",
@@ -895,6 +894,7 @@ export function TrainerBoard({
       wipeCount: nextWipe,
       pokemon: memorialPokemonAfterWipe(boardPokemon, nextWipe),
       mainSquadLocked: false,
+      money: 0,
     });
     setReviveUsed(false);
     setPokemonInspect(null);
@@ -944,6 +944,7 @@ export function TrainerBoard({
       wipeCount: 0,
       pokemon: [],
       mainSquadLocked: false,
+      money: trainer.money,
     });
     setCommitted((prev) => ({
       ...prev,
@@ -1637,7 +1638,7 @@ export function TrainerBoard({
               badgesEarned={earnedBadgeKeys.length}
               badgesTotal={badges.length}
               wipes={wipeCount}
-              money={trainer.money}
+              money={boardTrainer.money}
               updatedAt={trainer.updatedAt}
             />
           </Frame>

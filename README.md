@@ -40,8 +40,10 @@ Fill in:
 | `NEON_DATABASE_URL` | Optional local — Neon direct URL for `npm run db:pull-neon` |
 | `AUTH_SECRET` | Auth.js secret (`openssl rand -base64 32`) |
 | `AUTH_DISCORD_ID` / `AUTH_DISCORD_SECRET` | Discord OAuth app |
-| `AUTH_URL` / `NEXT_PUBLIC_APP_URL` | e.g. `http://localhost:3000` |
+| `AUTH_URL` / `NEXT_PUBLIC_APP_URL` | Optional locally (`trustHost` + pinned `:3000`). Set on Vercel to the canonical origin. |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash — Pack-feed poll watermark only |
+
+`npm run dev` / `npm start` bind to **port 3000** (fail if busy) so Discord callbacks stay stable.
 
 Default local DB URL:
 
@@ -52,6 +54,8 @@ postgresql://nuzlocke:nuzlocke@localhost:5432/nuzlocke_manager
 Discord redirect URL:
 
 `http://localhost:3000/api/auth/callback/discord`
+
+(Optional: also register `:3001` / `:3002` if you ever override the port.)
 
 Then:
 
