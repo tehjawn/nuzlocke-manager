@@ -14,6 +14,7 @@ type BadgeCaseEditorProps = {
   /** Snapshot for rejecting badge writes that race a wipe. */
   wipeCount?: number;
   compact?: boolean;
+  dense?: boolean;
   layout?: "grid" | "column";
   disabled?: boolean;
   onEarnedKeysChange?: (keys: string[]) => void;
@@ -35,6 +36,7 @@ export function BadgeCaseEditor({
   earnedKeys,
   wipeCount = 0,
   compact,
+  dense,
   layout,
   disabled = false,
   onEarnedKeysChange,
@@ -158,6 +160,7 @@ export function BadgeCaseEditor({
         badges={badges}
         earnedKeys={optimisticKeys}
         compact={compact}
+        dense={dense}
         layout={layout}
         onToggle={disabled ? undefined : onToggle}
       />

@@ -1320,24 +1320,34 @@ export function TrainerBoard({
             </>
           )}
 
-          <Frame title={frameCountTitle("Encountered", encountered.length)}>
+          <Frame
+            title={frameCountTitle("Encountered", encountered.length)}
+            collapsible
+            defaultOpen={false}
+            actions={
+              canEdit ? (
+                <button
+                  type="button"
+                  disabled={wiping}
+                  className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight disabled:opacity-60"
+                  onClick={(event) => {
+                    // Keep disclosure from toggling when using the header action.
+                    event.preventDefault();
+                    openAddPokemon("ENCOUNTERED");
+                  }}
+                >
+                  + Add
+                </button>
+              ) : undefined
+            }
+          >
             {canEdit ? (
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-muted">
-                    {encountered.length === 0
-                      ? "No extra encounters logged."
-                      : "Caught / seen outside the active party."}
-                  </p>
-                  <button
-                    type="button"
-                    disabled={wiping}
-                    className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight disabled:opacity-60"
-                    onClick={() => openAddPokemon("ENCOUNTERED")}
-                  >
-                    + Add
-                  </button>
-                </div>
+                <p className="text-xs text-muted">
+                  {encountered.length === 0
+                    ? "No extra encounters logged."
+                    : "Caught / seen outside the active party."}
+                </p>
                 {encountered.length > 0 ? (
                   <PartyStrip
                     pokemon={encountered}
@@ -1382,7 +1392,8 @@ export function TrainerBoard({
                   earnedKeys={earnedBadgeKeys}
                   wipeCount={wipeCount}
                   disabled={wiping}
-                  layout="column"
+                  dense
+                  layout="grid"
                   onEarnedKeysChange={setEarnedBadgeKeys}
                 />
               </div>
@@ -1390,7 +1401,8 @@ export function TrainerBoard({
               <BadgeCase
                 badges={badges}
                 earnedKeys={earnedBadgeKeys}
-                layout="column"
+                dense
+                layout="grid"
               />
             )}
           </Frame>

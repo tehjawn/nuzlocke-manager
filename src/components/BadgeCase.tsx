@@ -311,8 +311,8 @@ export function BadgeCase({
     <div className={`badge-case space-y-2 ${completeClass} ${className}`}>
       {complete ? <CompleteBanner dense={dense} /> : null}
       <ul
-        className={`grid grid-cols-1 ${dense ? "gap-1.5" : "gap-2"} ${
-          layout === "grid" ? "sm:grid-cols-2" : ""
+        className={`grid ${dense ? "gap-1.5" : "gap-2"} ${
+          layout === "grid" ? "grid-cols-2" : "grid-cols-1"
         }`}
         aria-label={ariaProgress}
       >
@@ -322,10 +322,10 @@ export function BadgeCase({
           const title = meta?.badgeName ?? badge.label;
           const preview = meta?.previewLabel ?? badge.label;
           const leader = badge.leaderName ?? meta?.previewLabel;
-          const leaderPx = dense ? 40 : 56;
-          const badgePx = dense ? 32 : 40;
+          const leaderPx = dense ? 36 : 56;
+          const badgePx = dense ? 28 : 40;
           const cellClass = `badge-case__cell flex w-full items-center ${
-            dense ? "gap-2 p-1.5" : "gap-3 p-2"
+            dense ? "gap-1.5 p-1.5" : "gap-3 p-2"
           } rounded-lg border border-frame text-left ${
             on
               ? "bg-accent-2/30 ring-2 ring-accent-2/50"
@@ -334,7 +334,39 @@ export function BadgeCase({
           const mysterySprite = on
             ? ""
             : "pixelated blur-[1.5px] grayscale opacity-55";
-          const body = (
+          const sprites = dense ? (
+            <span
+              className="badge-case__stack relative flex w-9 shrink-0 flex-col items-center"
+              aria-hidden
+            >
+              {meta ? (
+                <Image
+                  src={trainerSpriteUrl(meta.leaderSpriteKey)}
+                  alt=""
+                  width={leaderPx}
+                  height={leaderPx}
+                  className={`pixelated relative z-0 object-contain ${mysterySprite}`}
+                  style={{
+                    width: leaderPx,
+                    height: leaderPx,
+                    marginBottom: -12,
+                  }}
+                  unoptimized
+                />
+              ) : null}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={meta?.badgeSprite ?? "/badges/gym-1.png"}
+                alt=""
+                width={badgePx}
+                height={badgePx}
+                className={`badge-case__icon relative z-[1] object-contain drop-shadow-sm ${
+                  on ? "badge-case__icon--earned" : mysterySprite
+                }`}
+                style={{ width: badgePx, height: badgePx }}
+              />
+            </span>
+          ) : (
             <>
               {meta ? (
                 <Image
@@ -358,6 +390,11 @@ export function BadgeCase({
                 }`}
                 style={{ width: badgePx, height: badgePx }}
               />
+            </>
+          );
+          const body = (
+            <>
+              {sprites}
               <span className="min-w-0 flex-1">
                 <span
                   className={`block font-display font-semibold tracking-tight ${
