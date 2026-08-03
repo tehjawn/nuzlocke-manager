@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { feedbackNotificationHref } from "@/lib/feedback-types";
 import type { NotificationItem } from "@/lib/notification-types";
 import { isWelcomeNotification } from "@/lib/notification-types";
 import { useCoarsePointer } from "@/lib/use-coarse-pointer";
@@ -91,6 +92,9 @@ export function NotificationsMenu({
               <ul className="relative z-[1] max-h-80 overflow-y-auto">
                 {notifications.map((notification) => {
                   const unread = !notification.readAt;
+                  const feedbackHref = feedbackNotificationHref(
+                    notification.actionKey,
+                  );
                   return (
                     <li key={notification.id}>
                       <button
@@ -127,6 +131,11 @@ export function NotificationsMenu({
                                 Start tour →
                               </span>
                             ) : null}
+                            {feedbackHref && (
+                              <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
+                                Open feedback →
+                              </span>
+                            )}
                           </span>
                         </span>
                       </button>

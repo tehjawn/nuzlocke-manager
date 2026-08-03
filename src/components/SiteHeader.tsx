@@ -61,6 +61,9 @@ export async function SiteHeader({
 
   const gmViewOn =
     showGm && challengeSlug ? await readGmLensOn(challengeSlug) : false;
+  const feedbackHref = seasonSlug
+    ? `/challenges/${seasonSlug}/feedback`
+    : null;
 
   return (
     <>
@@ -138,6 +141,7 @@ export async function SiteHeader({
             ) : null}
           </div>
           <AuthButtons
+            feedbackHref={feedbackHref}
             hideMyTrainer={Boolean(myTrainerId)}
             gmHref={
               showGm && challengeSlug
@@ -151,7 +155,7 @@ export async function SiteHeader({
             showGm={showGm}
             myTrainerId={myTrainerId}
           >
-            <MobileMenuAuth />
+            <MobileMenuAuth feedbackHref={feedbackHref} />
           </MobileNavDrawer>
         </nav>
       </header>

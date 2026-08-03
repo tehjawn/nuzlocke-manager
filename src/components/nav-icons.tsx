@@ -64,6 +64,18 @@ export function PreferencesIcon({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+export function FeedbackIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path
+        d="M5.5 5.5A2.5 2.5 0 018 3h8a2.5 2.5 0 012.5 2.5v7A2.5 2.5 0 0116 15H11l-4.5 4v-4.5a2.5 2.5 0 01-1-2v-7z"
+        strokeLinejoin="round"
+      />
+      <path d="M9 7.5h6M9 11h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function GmIcon({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg {...base} className={className}>

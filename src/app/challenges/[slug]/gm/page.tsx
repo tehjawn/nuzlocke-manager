@@ -9,11 +9,13 @@ import {
 import type { Challenge } from "@/lib/challenge-types";
 import { getChallenge } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
+import { listFeedbackForGm } from "@/lib/feedback";
 import { getAccessForChallenge } from "@/lib/permissions";
 
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
 };
 
 /** Console does not need live party rows or the activity feed — strip before Flight. */
@@ -46,7 +48,7 @@ export async function generateMetadata({
   return { title: challenge ? `GM · ${challenge.name}` : "GM" };
 }
 
-export default async function GmPage({ params }: PageProps) {
+export default async function GmPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const challenge = await getChallenge(slug);
   if (!challenge) notFound();
@@ -70,6 +72,10 @@ export default async function GmPage({ params }: PageProps) {
     redirect(`/challenges/${slug}/join?gm=1`);
   }
 
+  const [feedbackSubmissions, query] = await Promise.all([
+    listFeedbackForGm(challenge.id),
+    searchParams,
+  ]);
   const jumpSeason = challengeToJumpSeasonContext(challenge, { showGm: true });
 
   return (
@@ -90,6 +96,9 @@ export default async function GmPage({ params }: PageProps) {
             playerInviteCode: secrets?.playerInviteCode ?? null,
             gmInviteCode: secrets?.gmInviteCode ?? null,
           })}
+          feedbackSubmissions={feedbackSubmissions}
+          initialTab={query.tab === "feedback" ? "feedback" : "season"}
+          key={query.tab === "feedback" ? "feedback" : "season"}
         />
       </main>
     </div>

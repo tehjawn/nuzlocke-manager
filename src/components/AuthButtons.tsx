@@ -13,9 +13,11 @@ type AuthButtonsProps = {
   hideMyTrainer?: boolean;
   /** Desktop profile menu GM link; mobile keeps GM in the hamburger drawer. */
   gmHref?: string | null;
+  feedbackHref?: string | null;
 };
 
 export async function AuthButtons({
+  feedbackHref = null,
   hideMyTrainer = false,
   gmHref = null,
 }: AuthButtonsProps) {
@@ -42,10 +44,11 @@ export async function AuthButtons({
           </Link>
         ) : null}
         <LoggedInChrome
-          name={name}
-          image={image}
-          notifications={notifications}
+          feedbackHref={feedbackHref}
           gmHref={gmHref}
+          image={image}
+          name={name}
+          notifications={notifications}
           signOutAction={async () => {
             "use server";
             await signOut({ redirectTo: "/" });

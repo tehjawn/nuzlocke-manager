@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
-import { PreferencesIcon } from "@/components/nav-icons";
+import { FeedbackIcon, PreferencesIcon } from "@/components/nav-icons";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 
 const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
@@ -12,7 +12,11 @@ const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
  * can live here; the client drawer just slots it in as children. On desktop the
  * same actions live in the header's UserMenu / Discord button.
  */
-export async function MobileMenuAuth() {
+export async function MobileMenuAuth({
+  feedbackHref = null,
+}: {
+  feedbackHref?: string | null;
+}) {
   const session = await auth();
 
   if (session?.user) {
@@ -32,6 +36,16 @@ export async function MobileMenuAuth() {
           <PreferencesIcon className="h-4 w-4 text-accent-deep" />
           Preferences
         </Link>
+        {feedbackHref && (
+          <Link
+            className="flex h-11 items-center gap-2 rounded-md border border-transparent bg-surface px-3 text-sm font-medium hover:border-interactive/40 hover:bg-interactive-soft/60"
+            data-testid="feedback-menu-link"
+            href={feedbackHref}
+          >
+            <FeedbackIcon className="h-4 w-4 text-accent-deep" />
+            Feedback / Support
+          </Link>
+        )}
         <form
           action={async () => {
             "use server";
