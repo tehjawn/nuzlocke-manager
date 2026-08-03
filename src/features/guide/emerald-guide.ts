@@ -32,7 +32,7 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "rustboro",
       title: "Rustboro & Devon",
-      summary: "Petalburg Woods, Roxanne, and the letter for Steven.",
+      summary: "Petalburg Woods, Rusturf Devon Goods, Roxanne, letter for Steven.",
       requiresBadges: [],
       clearsWithBadge: "gym-1",
       locations: [
@@ -63,7 +63,7 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "mauville",
       title: "Slateport → Mauville",
-      summary: "Museum plot, Wattson, Rock Smash → Rusturf Tunnel.",
+      summary: "Stern’s Shipyard / museum, Wattson, Rock Smash → Rusturf Tunnel.",
       requiresBadges: ["gym-1", "gym-2"],
       clearsWithBadge: "gym-3",
       locations: [
@@ -111,16 +111,16 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "petalburg-gym",
       title: "Petalburg Gym",
-      summary: "Norman unlocks after four badges.",
+      summary: "Norman unlocks after four badges; Surf from Wally’s dad.",
       requiresBadges: ["gym-1", "gym-2", "gym-3", "gym-4"],
       clearsWithBadge: "gym-5",
-      locations: [],
+      locations: ["Petalburg City"],
       sortOrder: 6,
     },
     {
       id: "fortree",
       title: "Fortree & Weather Institute",
-      summary: "Surf north, Team Magma/Aqua, Winona.",
+      summary: "Surf north, Weather Institute, Devon Scope, Winona, Fly.",
       requiresBadges: ["gym-1", "gym-2", "gym-3", "gym-4", "gym-5"],
       clearsWithBadge: "gym-6",
       locations: [
@@ -135,7 +135,8 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "mossdeep",
       title: "Lilycove → Mossdeep",
-      summary: "Mt. Pyre, Team hideout, Tate & Liza.",
+      summary:
+        "Route 121 → Mt. Pyre → Magma Hideout → Slateport sub theft → Aqua Hideout → Mossdeep / Space Center / Dive.",
       requiresBadges: [
         "gym-1",
         "gym-2",
@@ -146,13 +147,18 @@ export const EMERALD_GUIDE: GuideDocument = {
       ],
       clearsWithBadge: "gym-7",
       locations: [
+        "Route 120",
         "Route 121",
         "Mt. Pyre",
+        "Jagged Pass",
+        "Magma Hideout",
+        "Slateport City",
         "Lilycove City",
         "Route 122",
         "Route 123",
         "Route 124",
         "Mossdeep City",
+        "Mossdeep Space Center",
         "Route 125",
         "Shoal Cave",
       ],
@@ -161,7 +167,7 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "sootopolis",
       title: "Seafloor → Sootopolis",
-      summary: "Dive, Kyogre/Groudon, Wallace/Juan.",
+      summary: "Dive, Seafloor Cavern, Sky Pillar, Dive re-entry, Juan.",
       requiresBadges: [
         "gym-1",
         "gym-2",
@@ -180,6 +186,8 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Seafloor Cavern",
         "Sootopolis City",
         "Cave of Origin",
+        "Route 131",
+        "Sky Pillar",
       ],
       sortOrder: 9,
     },
@@ -206,7 +214,6 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Route 132",
         "Route 133",
         "Route 134",
-        "Sky Pillar",
         "Ever Grande City",
         "Victory Road",
       ],
@@ -292,6 +299,20 @@ export const EMERALD_GUIDE: GuideDocument = {
       sortOrder: 10,
     },
     {
+      id: "rustboro-devon-goods",
+      chapterId: "rustboro",
+      title: "Recover the Devon Goods (Rusturf Tunnel)",
+      summary:
+        "Deliver the researcher’s parcel, chase the thief to Route 116 / Rusturf, return the goods.",
+      detail:
+        "In **Rustboro**:\n\n1. Talk to the **Devon researcher** in the house near the south gate and give him the recovered parcel from Petalburg Woods.\n2. When Magma/Aqua steals the **Devon Goods**, chase the grunt east onto **Route 116** into **Rusturf Tunnel**.\n3. Battle the grunt, recover the goods, and return them upstairs at **Devon Corporation**.\n\nMr. Stone will not hand out the Dewford letter until this chase is done. You can battle **Roxanne** before or after — both orders work.",
+      locations: ["Rustboro City", "Route 116", "Rusturf Tunnel"],
+      requiresSteps: ["rustboro-petalburg-woods"],
+      keyItems: ["Devon Goods"],
+      priority: "critical",
+      sortOrder: 15,
+    },
+    {
       id: "rustboro-roxanne",
       chapterId: "rustboro",
       title: "Defeat Roxanne (Stone Badge)",
@@ -299,6 +320,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       detail:
         "**Roxanne** is a Rock specialist. Water, Grass, and Fighting hit hard; Fire / Electric / Flying often bounce.\n\nThe **Stone Badge** unlocks **Cut** in the overworld if you pick up that HM — Cut is **not** required for the main story.",
       locations: ["Rustboro City"],
+      requiresSteps: ["rustboro-petalburg-woods"],
       gymPrep: {
         leaderName: "Roxanne",
         specialtyTypes: ["Rock"],
@@ -329,12 +351,13 @@ export const EMERALD_GUIDE: GuideDocument = {
       id: "rustboro-devon-letter",
       chapterId: "rustboro",
       title: "Take the letter from Mr. Stone",
-      summary: "Devon Corp president gives you a letter for Steven in Dewford.",
+      summary:
+        "Devon president gives a letter for Steven — and Devon Goods to deliver later in Slateport.",
       detail:
-        "After the Devon plot in Rustboro (researcher → Devon Corp), speak with **Mr. Stone** upstairs. He gives you a **letter** to deliver to **Steven** in **Dewford**. This is the gate into the Dewford chapter.\n\nIf the letter isn’t offered yet: finish the Devon researcher rescue, return the stolen parts upstairs, then talk to Mr. Stone.",
+        "After recovering the **Devon Goods**, speak with **Mr. Stone** upstairs at Devon Corp. He gives you:\n\n- A **letter** for **Steven** in **Dewford** (next chapter)\n- The **Devon Goods** package to deliver to **Capt. Stern** in **Slateport** (after Dewford)\n\nIf nothing is offered yet, finish the Rusturf chase and return the goods first.",
       locations: ["Rustboro City"],
-      keyItems: ["Letter"],
-      requiresSteps: ["rustboro-roxanne"],
+      keyItems: ["Letter", "Devon Goods"],
+      requiresSteps: ["rustboro-devon-goods", "rustboro-roxanne"],
       priority: "critical",
       sortOrder: 40,
     },
@@ -359,7 +382,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       summary:
         "Granite Cave north of Dewford — go to the lowest floor; he is easy to walk past.",
       detail:
-        "From Dewford, go **north** into **Granite Cave**. Descend to the **bottom floor**. **Steven** stands in a side alcove on that floor — talk to him to deliver Mr. Stone’s letter.\n\nBring a Pokémon that can handle Rock types (and Flash later if you want the dark rooms).",
+        "From Dewford, go **north** into **Granite Cave**. Descend to the **bottom floor**. **Steven** stands in a side alcove on that floor — talk to him to deliver Mr. Stone’s letter.\n\nBring a Pokémon that can handle Rock types. Optional **Flash** (next step) lights the dark rooms.",
       locations: ["Dewford Town", "Granite Cave"],
       requiresBadges: ["gym-1"],
       keyItems: ["Letter"],
@@ -387,28 +410,58 @@ export const EMERALD_GUIDE: GuideDocument = {
       sortOrder: 20,
     },
     {
+      id: "dewford-get-flash",
+      chapterId: "dewford",
+      title: "Optional: pick up Flash",
+      summary: "Hiker in Granite Cave — lights dark rooms; needs Knuckle Badge outdoors.",
+      detail:
+        "In **Granite Cave**, talk to the **Hiker** for **HM05 Flash**. The **Knuckle Badge** unlocks field Flash.\n\nNot story-required, but the dark rooms are much easier with it. In Modern Emerald, field Flash works from the bag.",
+      locations: ["Granite Cave", "Dewford Town"],
+      hms: ["Flash"],
+      requiresSteps: ["dewford-brawly"],
+      priority: "optional",
+      sortOrder: 25,
+    },
+    {
       id: "dewford-to-slateport",
       chapterId: "dewford",
       title: "Sail to Slateport with Briney",
       summary: "After Steven, Briney takes you east to Route 109 / Slateport.",
       detail:
-        "Once the letter is delivered, talk to **Mr. Briney** again in Dewford to sail to **Route 109** (beach south of Slateport).",
+        "Once the letter is delivered, talk to **Mr. Briney** again in Dewford to sail to **Route 109** (beach south of Slateport). Bring the **Devon Goods** — you’ll deliver them in the next chapter.",
       locations: ["Dewford Town", "Route 109", "Slateport City"],
       requiresSteps: ["dewford-find-steven"],
+      keyItems: ["Devon Goods"],
       priority: "critical",
       sortOrder: 30,
     },
 
     // —— Mauville ——
     {
+      id: "mauville-slateport-dock",
+      chapterId: "mauville",
+      title: "Talk to Dock at Stern’s Shipyard",
+      summary:
+        "Shipyard first — Dock points you to Capt. Stern at the Oceanic Museum.",
+      detail:
+        "In **Slateport**, enter **Stern’s Shipyard** (the large building by the water). Talk to **Dock** (the engineer with the blueprints) and try to deliver the **Devon Goods**.\n\nHe sends you to find **Capt. Stern** at the **Oceanic Museum**. After this conversation, the Aqua/Magma line outside the museum clears so you can enter.",
+      locations: ["Slateport City"],
+      requiresBadges: ["gym-1", "gym-2"],
+      keyItems: ["Devon Goods"],
+      priority: "critical",
+      sortOrder: 5,
+    },
+    {
       id: "mauville-slateport-museum",
       chapterId: "mauville",
-      title: "Progress the Slateport Museum plot",
-      summary: "Team Magma/Aqua at the Oceanic Museum — then head north to Mauville.",
+      title: "Clear the Oceanic Museum",
+      summary:
+        "Deliver Devon Goods to Capt. Stern upstairs — then Route 110 to Mauville.",
       detail:
-        "In **Slateport**:\n\n1. Visit the **Oceanic Museum** (often after talking to the Team Magma/Aqua grunt blocking Dock / museum access).\n2. Clear the museum confrontation upstairs.\n3. Exit and continue **north on Route 110** toward **Mauville City**.\n\nBike path vs grassy side is your choice — both reach Mauville. Watch for the rival battle on the path if you take that route.",
+        "Pay the small fee to enter the **Oceanic Museum**. Go **upstairs**, talk to **Capt. Stern**, and deliver the **Devon Goods**. Battle the Magma/Aqua grunts when they interrupt.\n\nExit the museum, then continue **north on Route 110** toward **Mauville City**. Bike path vs grassy side both work — watch for the rival battle on the cycling road side.",
       locations: ["Slateport City", "Route 110", "Mauville City"],
-      requiresBadges: ["gym-1", "gym-2"],
+      requiresSteps: ["mauville-slateport-dock"],
+      keyItems: ["Devon Goods"],
       priority: "critical",
       sortOrder: 10,
     },
@@ -420,7 +473,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       detail:
         "**Wattson** is an Electric specialist. **Ground** is ideal; Grass / Dragon / Electric often shrug shocks. Water and Flying usually hate this gym.\n\nSolve the electric-fence switches to reach him. The **Dynamo Badge** unlocks **Rock Smash** outdoors.",
       locations: ["Mauville City"],
-      requiresBadges: ["gym-1", "gym-2"],
+      requiresSteps: ["mauville-slateport-museum"],
       gymPrep: {
         leaderName: "Wattson",
         specialtyTypes: ["Electric"],
@@ -431,6 +484,19 @@ export const EMERALD_GUIDE: GuideDocument = {
       },
       priority: "critical",
       sortOrder: 20,
+    },
+    {
+      id: "mauville-get-bike",
+      chapterId: "mauville",
+      title: "Optional: get the Mach Bike",
+      summary: "Mauville Bike Shop — speeds up Route 111+ routing.",
+      detail:
+        "After Wattson (or once the shop will serve you), visit the **Mauville Bike Shop** for the **Mach Bike**. It makes ash routes and long treks much faster. You can swap to the Acro Bike later if you care about tricks — Mach is the story-friendly default.",
+      locations: ["Mauville City"],
+      requiresSteps: ["mauville-wattson"],
+      keyItems: ["Mach Bike"],
+      priority: "optional",
+      sortOrder: 25,
     },
     {
       id: "mauville-rock-smash",
@@ -594,11 +660,25 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Clear the Weather Institute",
       summary: "Route 119 — Team Magma/Aqua; Castform reward; then Fortree.",
       detail:
-        "Midway up **Route 119**, enter the **Weather Institute**. Clear Team Magma/Aqua floors, then talk to the scientists for **Castform** (optional catch / gift rules per season).\n\nExit north toward **Fortree City**. Your rival rematch on Route 119 is tied to receiving **Fly** after Winona — see the Fly step.",
+        "Midway up **Route 119**, enter the **Weather Institute**. Clear Team Magma/Aqua floors, then talk to the scientists for **Castform** (optional catch / gift rules per season).\n\nExit north toward **Fortree City**. The gym door is blocked by an invisible **Kecleon** until you get the **Devon Scope** (next step).",
       locations: ["Route 119", "Fortree City"],
       requiresSteps: ["fortree-route-118"],
       priority: "critical",
       sortOrder: 10,
+    },
+    {
+      id: "fortree-devon-scope",
+      chapterId: "fortree",
+      title: "Get the Devon Scope (Route 120)",
+      summary:
+        "Steven on Route 120 → Devon Scope → clear the Kecleon blocking Fortree Gym.",
+      detail:
+        "From **Fortree**, head east onto **Route 120**. Meet **Steven** and receive the **Devon Scope**.\n\nReturn to **Fortree Gym** and use the Scope to reveal the invisible **Kecleon** blocking the door, then battle it. You cannot challenge **Winona** until this is done.\n\nKeep the Scope — you’ll need it again on Route 120’s bridge toward Mt. Pyre.",
+      locations: ["Route 120", "Fortree City"],
+      requiresSteps: ["fortree-weather-institute"],
+      keyItems: ["Devon Scope"],
+      priority: "critical",
+      sortOrder: 15,
     },
     {
       id: "fortree-winona",
@@ -608,6 +688,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       detail:
         "**Winona** is a Flying specialist. Electric, Ice, and Rock are the usual answers; Ground moves whiff. Reach her via the spinning-bird gym puzzle (talk to the gym guide if you’re stuck on rotating platforms).",
       locations: ["Fortree City"],
+      requiresSteps: ["fortree-devon-scope"],
       gymPrep: {
         leaderName: "Winona",
         specialtyTypes: ["Flying"],
@@ -632,30 +713,92 @@ export const EMERALD_GUIDE: GuideDocument = {
       priority: "critical",
       sortOrder: 30,
     },
+    {
+      id: "fortree-safari",
+      chapterId: "fortree",
+      title: "Optional: visit the Safari Zone",
+      summary: "Route 121 west pocket — encounter hunting, not story-required.",
+      detail:
+        "The **Safari Zone** sits off **Route 121** (accessible once you push east from Fortree / Route 120). Useful for Nuzlocke encounter options, but nothing here gates the Magma/Aqua plot.",
+      locations: ["Safari Zone", "Route 121"],
+      requiresSteps: ["fortree-get-fly"],
+      priority: "optional",
+      sortOrder: 40,
+    },
 
-    // —— Mossdeep ——
+    // —— Mossdeep (Lilycove Magma/Aqua arc) ——
+    {
+      id: "mossdeep-route-121",
+      chapterId: "mossdeep",
+      title: "Open the path to Route 121",
+      summary:
+        "Route 120 bridge Kecleon (Devon Scope) — then Mt. Pyre / Lilycove routing.",
+      detail:
+        "With the **Devon Scope** from Fortree, return to **Route 120** and clear the invisible **Kecleon** on the bridge so you can continue east/south toward **Route 121**.\n\nFrom Route 121 you can peel toward **Mt. Pyre** (story) or **Lilycove** / Safari. Heal before the Pyre climb.",
+      locations: ["Route 120", "Route 121"],
+      requiresSteps: ["fortree-get-fly"],
+      keyItems: ["Devon Scope"],
+      nuzlockeNote:
+        "Route 120 / 121 encounter locks matter before you commit to Mt. Pyre or Lilycove routing.",
+      priority: "critical",
+      sortOrder: 5,
+    },
     {
       id: "mossdeep-mt-pyre",
       chapterId: "mossdeep",
       title: "Climb Mt. Pyre",
-      summary: "Team Magma/Aqua steal the Red/Blue Orb — chase the plot to Lilycove.",
+      summary:
+        "Summit orb theft — both teams take Red/Blue Orbs; receive the Magma Emblem.",
       detail:
-        "From Fortree / Route 120–121, enter **Mt. Pyre**. Climb to the summit for the Team Magma/Aqua orb theft cutscene, then head to **Lilycove City** to continue the chase.",
-      locations: ["Route 121", "Mt. Pyre", "Lilycove City"],
+        "From **Route 121**, enter **Mt. Pyre** (surf **Route 122** if you use the pier approach). Climb to the **summit** for the Team Magma/Aqua confrontation.\n\nIn **Emerald**, both teams appear: they steal the **Red Orb** and **Blue Orb**. Talk to the old couple afterward for the **Magma Emblem** — that key item opens Magma’s hideout on **Jagged Pass**.\n\nDo **not** rush straight to the Lilycove Aqua Hideout yet; Magma Hideout and the Slateport submarine theft come first.",
+      locations: ["Route 121", "Route 122", "Mt. Pyre"],
+      requiresSteps: ["mossdeep-route-121"],
+      keyItems: ["Magma Emblem"],
       priority: "critical",
       sortOrder: 10,
     },
     {
-      id: "mossdeep-hideout",
+      id: "mossdeep-magma-hideout",
       chapterId: "mossdeep",
-      title: "Clear the Team Magma/Aqua hideout",
-      summary: "Lilycove harbor hideout — then Surf / sail toward Mossdeep.",
+      title: "Clear Magma Hideout (Jagged Pass)",
+      summary:
+        "Return to Jagged Pass — Magma Emblem opens the cave; Maxie awakens Groudon.",
       detail:
-        "In **Lilycove**, enter the Team Magma/Aqua hideout via the harbor / cove entrance (story-marked after Mt. Pyre). Clear the warp maze and bosses, then continue across **Route 124** toward **Mossdeep City**.",
-      locations: ["Lilycove City", "Route 124", "Mossdeep City"],
+        "Fly or travel back to **Lavaridge** / **Jagged Pass** (the path down Mt. Chimney). With the **Magma Emblem**, a secret entrance opens beside the large boulder.\n\nClear **Team Magma Hideout** (Strength puzzles, trainers, Maxie). Maxie uses an orb to awaken **Groudon**, which immediately flees. This is a long gauntlet — heal like a mini-gym.\n\n**Emerald-only layout:** Magma’s main hideout is here under the volcano, not the Lilycove cove (that’s Aqua).",
+      locations: ["Jagged Pass", "Magma Hideout", "Mt. Chimney", "Lavaridge Town"],
       requiresSteps: ["mossdeep-mt-pyre"],
+      keyItems: ["Magma Emblem"],
+      hms: ["Strength"],
+      nuzlockeNote:
+        "Long trainer stretch plus Maxie — bank a heal before the leader fight.",
       priority: "critical",
       sortOrder: 20,
+    },
+    {
+      id: "mossdeep-submarine-theft",
+      chapterId: "mossdeep",
+      title: "Witness the submarine theft",
+      summary:
+        "Slateport Harbor — Archie steals Capt. Stern’s Submarine Explorer 1.",
+      detail:
+        "After Magma Hideout, go to **Slateport City**’s **Harbor** (Capt. Stern / submarine dock — **not** Lilycove).\n\nWatch **Team Aqua** steal the **Submarine Explorer 1**. That cutscene is the gate into the Lilycove Aqua Hideout chase. Players who skip Slateport often soft-stall looking for the wrong event in Lilycove.",
+      locations: ["Slateport City"],
+      requiresSteps: ["mossdeep-magma-hideout"],
+      priority: "critical",
+      sortOrder: 30,
+    },
+    {
+      id: "mossdeep-aqua-hideout",
+      chapterId: "mossdeep",
+      title: "Clear Team Aqua Hideout",
+      summary:
+        "Lilycove northeast shore warp maze — chase Archie; the sub launches for Seafloor Cavern.",
+      detail:
+        "In **Lilycove**, enter **Team Aqua Hideout** via the **northeast shore / cove** (past the Wailmer blockers once the plot has advanced).\n\nClear the **warp-tile maze** and admins. Archie escapes aboard the stolen submarine toward **Seafloor Cavern**. Optional: the Master Ball room is easy to miss in the warp puzzle.\n\nAfterward, Surf **Route 124** toward **Mossdeep City**.",
+      locations: ["Lilycove City", "Route 124", "Mossdeep City"],
+      requiresSteps: ["mossdeep-submarine-theft"],
+      priority: "critical",
+      sortOrder: 40,
     },
     {
       id: "mossdeep-tate-liza",
@@ -665,6 +808,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       detail:
         "**Tate & Liza** is a **Double Battle** Psychic gym. Dark, Ghost, and Bug pressure them; Fighting / Poison often struggle.\n\nBring two mons that can fight at once. The **Mind Badge** unlocks **Dive** outdoors.",
       locations: ["Mossdeep City"],
+      requiresSteps: ["mossdeep-aqua-hideout"],
       gymPrep: {
         leaderName: "Tate & Liza",
         specialtyTypes: ["Psychic"],
@@ -674,7 +818,20 @@ export const EMERALD_GUIDE: GuideDocument = {
           "Vanilla Emerald (Doubles): Claydol, Xatu, Lunatone, Solrock. Wide coverage — prioritize speed control. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
       },
       priority: "critical",
-      sortOrder: 30,
+      sortOrder: 50,
+    },
+    {
+      id: "mossdeep-space-center",
+      chapterId: "mossdeep",
+      title: "Stop Magma at the Space Center",
+      summary:
+        "Mossdeep Space Center raid — double battle with Steven vs Maxie.",
+      detail:
+        "After (or around) the gym, Team Magma attacks the **Mossdeep Space Center**. Clear the raid and fight the **double battle** alongside **Steven** against Maxie and an admin.\n\nThis Magma beat is required before Steven hands over Dive — don’t skip it if HM08 isn’t offered yet.",
+      locations: ["Mossdeep City", "Mossdeep Space Center"],
+      requiresSteps: ["mossdeep-tate-liza"],
+      priority: "critical",
+      sortOrder: 60,
     },
     {
       id: "mossdeep-get-dive",
@@ -682,12 +839,12 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Get Dive",
       summary: "HM08 Dive from Steven’s house in Mossdeep — required for Seafloor Cavern.",
       detail:
-        "Visit **Steven’s house** in **Mossdeep** after the gym / space center events to receive **HM08 Dive**. You need the **Mind Badge** to Dive in the overworld. Dark water patches on the routes around Mossdeep lead to **Seafloor Cavern**.\n\nIf Dive isn’t offered yet, finish the **Space Center** Magma/Aqua raid in Mossdeep first.",
+        "Visit **Steven’s house** in **Mossdeep** after the **Space Center** raid to receive **HM08 Dive**. You need the **Mind Badge** to Dive in the overworld. Dark water patches on the routes around Mossdeep lead to **Seafloor Cavern**.",
       locations: ["Mossdeep City"],
       hms: ["Dive"],
-      requiresSteps: ["mossdeep-tate-liza"],
+      requiresSteps: ["mossdeep-space-center"],
       priority: "critical",
-      sortOrder: 40,
+      sortOrder: 70,
     },
 
     // —— Sootopolis ——
@@ -700,29 +857,73 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Surf to the dark water on **Route 128**, **Dive**, and enter **Seafloor Cavern**. Traverse the Strength / current puzzles to the legendary awakening fight with Team Magma/Aqua.",
       locations: ["Route 128", "Seafloor Cavern"],
       hms: ["Dive"],
+      requiresSteps: ["mossdeep-get-dive"],
       priority: "critical",
       sortOrder: 10,
     },
     {
       id: "sootopolis-cave-of-origin",
       chapterId: "sootopolis",
-      title: "Calm Sootopolis (Cave of Origin)",
-      summary: "Meet Wallace/Juan and stop Kyogre/Groudon in Cave of Origin.",
+      title: "Enter the Cave of Origin",
+      summary:
+        "Sootopolis crisis briefing — Cave of Origin does not end the fight in Emerald.",
       detail:
-        "After Seafloor Cavern, you’re brought to **Sootopolis**. Talk to **Wallace** / the gym gatekeepers, then enter the **Cave of Origin** to stop the legendary crisis. Gym access opens once the city is calm.",
+        "After Seafloor Cavern, you’re brought to **Sootopolis**. Talk to **Wallace** / the gym gatekeepers, then enter the **Cave of Origin**.\n\nIn **Emerald / Modern Emerald**, watching Kyogre and Groudon clash here does **not** calm the city — you still need **Sky Pillar** and **Rayquaza** next. (Ruby/Sapphire resolve differently; don’t follow those guides.)",
       locations: ["Sootopolis City", "Cave of Origin"],
       requiresSteps: ["sootopolis-seafloor"],
       priority: "critical",
       sortOrder: 20,
     },
     {
+      id: "sootopolis-sky-pillar",
+      chapterId: "sootopolis",
+      title: "Awaken Rayquaza at Sky Pillar",
+      summary:
+        "Route 131 Sky Pillar — Rayquaza stops the Sootopolis clash (Emerald-required).",
+      detail:
+        "Leave Sootopolis and Surf to **Route 131** (near **Pacifidlog**). Enter **Sky Pillar**, climb the collapsing-floor tower, and awaken **Rayquaza**.\n\nRayquaza flies to Sootopolis and stops Kyogre/Groudon. Only then does the city calm and the gym path open.",
+      locations: ["Route 131", "Sky Pillar", "Pacifidlog Town", "Sootopolis City"],
+      requiresSteps: ["sootopolis-cave-of-origin"],
+      priority: "critical",
+      sortOrder: 30,
+    },
+    {
+      id: "sootopolis-return",
+      chapterId: "sootopolis",
+      title: "Dive back into Sootopolis",
+      summary:
+        "Route 126 dark water — Dive to re-enter the crater city after Sky Pillar.",
+      detail:
+        "After Sky Pillar, **Sootopolis**’s front door is not a normal walk-in. Surf the crater lake on **Route 126**, find the **dark water**, and **Dive** to warp back into the city.\n\nTalk to **Wallace** next for Waterfall once you’re inside again.",
+      locations: ["Route 126", "Sootopolis City"],
+      hms: ["Dive"],
+      requiresSteps: ["sootopolis-sky-pillar"],
+      priority: "critical",
+      sortOrder: 35,
+    },
+    {
+      id: "sootopolis-waterfall",
+      chapterId: "sootopolis",
+      title: "Get Waterfall",
+      summary:
+        "HM07 Waterfall from Wallace after Rayquaza — needed for Victory Road climbs.",
+      detail:
+        "Back in calm **Sootopolis**, talk to **Wallace** for **HM07 Waterfall**. You need the **Rain Badge** later to use it outdoors, but pick it up now before challenging Juan.\n\nIn Modern Emerald, field Waterfall works from the bag once the badge is earned.",
+      locations: ["Sootopolis City"],
+      hms: ["Waterfall"],
+      requiresSteps: ["sootopolis-return"],
+      priority: "critical",
+      sortOrder: 40,
+    },
+    {
       id: "sootopolis-juan",
       chapterId: "sootopolis",
       title: "Defeat Juan (Rain Badge)",
-      summary: "Sootopolis Gym — Water. Rain Badge unlocks Waterfall.",
+      summary: "Sootopolis Gym — Water. Rain Badge unlocks Waterfall outdoors.",
       detail:
-        "**Juan** is the Water specialist (Emerald / Modern Emerald). Electric and Grass are the clean answers; Fire / Rock / Ground often hate rain teams.\n\nIce-themed gym puzzle — slide carefully. The **Rain Badge** unlocks **Waterfall** outdoors.",
+        "**Juan** is the Water specialist (Emerald / Modern Emerald). Electric and Grass are the clean answers; Fire / Rock / Ground often hate rain teams.\n\nIce-themed gym puzzle — slide carefully. The **Rain Badge** unlocks **Waterfall** in the overworld.",
       locations: ["Sootopolis City"],
+      requiresSteps: ["sootopolis-waterfall"],
       gymPrep: {
         leaderName: "Juan",
         specialtyTypes: ["Water"],
@@ -732,23 +933,24 @@ export const EMERALD_GUIDE: GuideDocument = {
           "Vanilla Emerald: Luvdisc, Whiscash, Sealeo, Crawdaunt, Kingdra. Whiscash is Water/Ground (Electric immune); Crawdaunt is Water/Dark. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
       },
       priority: "critical",
-      sortOrder: 30,
-    },
-    {
-      id: "sootopolis-waterfall",
-      chapterId: "sootopolis",
-      title: "Get Waterfall",
-      summary: "HM07 Waterfall — needed for Victory Road’s water climbs.",
-      detail:
-        "After the Rain Badge, obtain **HM07 Waterfall** from the story gift in the Sootopolis / Wallace chain before tackling **Victory Road**.",
-      locations: ["Sootopolis City", "Ever Grande City", "Victory Road"],
-      hms: ["Waterfall"],
-      requiresSteps: ["sootopolis-juan"],
-      priority: "critical",
-      sortOrder: 40,
+      sortOrder: 50,
     },
 
     // —— Elite Four ——
+    {
+      id: "e4-ever-grande",
+      chapterId: "elite-four",
+      title: "Reach Ever Grande City",
+      summary:
+        "Surf east from Sootopolis / Route 128 — Waterfall the cliff into Ever Grande.",
+      detail:
+        "With the **Rain Badge** and **HM07 Waterfall**, Surf the ocean routes east of Sootopolis (**Route 128** area) to the waterfall cliff at **Ever Grande City**. Use **Waterfall** to climb into town, heal at the Center, then enter **Victory Road**.",
+      locations: ["Route 128", "Ever Grande City"],
+      hms: ["Surf", "Waterfall"],
+      requiresSteps: ["sootopolis-juan"],
+      priority: "critical",
+      sortOrder: 5,
+    },
     {
       id: "e4-victory-road",
       chapterId: "elite-four",
@@ -758,6 +960,7 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Enter **Victory Road** from **Ever Grande**. You’ll need **Surf**, **Strength**, **Rock Smash**, and **Waterfall** for the full path. Bring a balanced team — trainers here are a warm-up for the League.",
       locations: ["Ever Grande City", "Victory Road"],
       hms: ["Strength", "Rock Smash", "Waterfall", "Surf"],
+      requiresSteps: ["e4-ever-grande"],
       priority: "critical",
       sortOrder: 10,
     },
@@ -769,6 +972,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       detail:
         "Order: **Sidney** (Dark) → **Phoebe** (Ghost) → **Glacia** (Ice) → **Drake** (Dragon) → **Wallace** (Water, Champion).\n\nPrepare a balanced party. You heal between members only if you leave — treat it as one long gauntlet. Mark **Championship** on your board when Wallace falls.",
       locations: ["Ever Grande City"],
+      requiresSteps: ["e4-victory-road"],
       gymPrep: {
         leaderName: "Wallace (Champion)",
         specialtyTypes: ["Water"],
