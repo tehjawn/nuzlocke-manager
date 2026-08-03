@@ -13,6 +13,7 @@ import {
   type RefObject,
 } from "react";
 import { Frame } from "@/components/Frame";
+import { EvolutionPath } from "@/components/EvolutionPath";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
@@ -429,6 +430,10 @@ export function PokedexPanel({
               onPrev={() => step(-1)}
               onNext={() => step(1)}
               onMoreTips={showMoreTips}
+              onSelectSpecies={(pokedexId) => {
+                const next = findPokemonById(pokedexId);
+                if (next) selectEntry(next);
+              }}
             />
           </div>
         ) : (
@@ -493,6 +498,7 @@ function PokedexEntry({
   onPrev,
   onNext,
   onMoreTips,
+  onSelectSpecies,
 }: {
   entry: PokemonIndexEntry;
   types: PokemonType[];
@@ -513,6 +519,7 @@ function PokedexEntry({
   onPrev: () => void;
   onNext: () => void;
   onMoreTips: () => void;
+  onSelectSpecies: (pokedexId: number) => void;
 }) {
   return (
     <Frame
@@ -665,6 +672,13 @@ function PokedexEntry({
             <p className="text-sm text-muted">No typing on file for moves.</p>
           )}
         </div>
+
+        <EvolutionPath
+          pokedexId={entry.pokedexId}
+          species={entry.name}
+          currentLabel="Current"
+          onSelectSpecies={onSelectSpecies}
+        />
 
         <div className="border-t border-frame/40 pt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
