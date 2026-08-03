@@ -208,6 +208,7 @@ body::before {
 
 body:has([data-modal-open]) {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* Minimal macOS/iOS-like scrollbars (thin thumb, invisible track). */
