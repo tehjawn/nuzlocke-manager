@@ -10,12 +10,14 @@ type NotificationsMenuProps = {
   notifications: NotificationItem[];
   unreadCount: number;
   onSelect: (notification: NotificationItem) => void;
+  onDismiss: (notification: NotificationItem) => void;
 };
 
 export function NotificationsMenu({
   notifications,
   unreadCount,
   onSelect,
+  onDismiss,
 }: NotificationsMenuProps) {
   const [open, setOpen] = useState(false);
   const coarse = useCoarsePointer();
@@ -42,6 +44,20 @@ export function NotificationsMenu({
     };
   }, [open]);
 
+  function onMenuMouseLeave() {
+    if (coarse) return;
+    // Dismiss removes the row under the cursor; that can fire a spurious
+    // mouseleave even though the pointer is still over the menu. Defer and
+    // keep open when :hover still matches.
+    requestAnimationFrame(() => {
+      if (rootRef.current?.matches(":hover")) {
+        setOpen(true);
+        return;
+      }
+      setOpen(false);
+    });
+  }
+
   return (
     <div
       ref={rootRef}
@@ -49,7 +65,7 @@ export function NotificationsMenu({
       // Hover-open is a desktop affordance only. On touch the emulated
       // mouseenter would fight the click toggle, so tap drives it there.
       onMouseEnter={coarse ? undefined : () => setOpen(true)}
-      onMouseLeave={coarse ? undefined : () => setOpen(false)}
+      onMouseLeave={coarse ? undefined : onMenuMouseLeave}
     >
       <button
         type="button"
@@ -95,14 +111,15 @@ export function NotificationsMenu({
                   const feedbackHref = feedbackNotificationHref(
                     notification.actionKey,
                   );
+                  const pinnedWelcome = isWelcomeNotification(notification);
                   return (
-                    <li key={notification.id}>
+                    <li key={notification.id} className="relative">
                       <button
                         type="button"
                         role="menuitem"
-                        className={`flex w-full flex-col gap-0.5 px-3 py-2.5 text-left hover:bg-accent/15 ${
-                          unread ? "bg-accent/8" : ""
-                        }`}
+                        className={`flex w-full flex-col gap-0.5 py-2.5 pl-3 text-left hover:bg-accent/15 ${
+                          pinnedWelcome ? "pr-3" : "pr-10"
+                        } ${unread ? "bg-accent/8" : ""}`}
                         onClick={() => {
                           onSelect(notification);
                           setOpen(false);
@@ -115,7 +132,10 @@ export function NotificationsMenu({
                               className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-sm bg-accent"
                             />
                           ) : (
-                            <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0" />
+                            <span
+                              aria-hidden
+                              className="mt-1.5 h-1.5 w-1.5 shrink-0"
+                            />
                           )}
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-medium">
@@ -126,19 +146,35 @@ export function NotificationsMenu({
                                 {notification.body}
                               </span>
                             ) : null}
-                            {isWelcomeNotification(notification) ? (
+                            {pinnedWelcome ? (
                               <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
                                 Start tour →
                               </span>
                             ) : null}
-                            {feedbackHref && (
+                            {feedbackHref ? (
                               <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
                                 Open feedback →
                               </span>
-                            )}
+                            ) : null}
                           </span>
                         </span>
                       </button>
+                      {!pinnedWelcome ? (
+                        <button
+                          type="button"
+                          aria-label={`Dismiss ${notification.title}`}
+                          className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-frame/50 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            // Keep the drawer open so several can be cleared in a row.
+                            setOpen(true);
+                            onDismiss(notification);
+                          }}
+                        >
+                          <DismissIcon />
+                        </button>
+                      ) : null}
                     </li>
                   );
                 })}
@@ -166,6 +202,22 @@ function BellIcon() {
         strokeLinejoin="round"
       />
       <path d="M8.2 14.8a1.8 1.8 0 003.6 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DismissIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M5 5l10 10M15 5L5 15" />
     </svg>
   );
 }

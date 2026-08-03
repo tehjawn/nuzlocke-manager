@@ -3,7 +3,7 @@
 export const NOTIFICATION_TYPE_WELCOME = "WELCOME";
 export const NOTIFICATION_ACTION_WELCOME = "welcome";
 
-/** Hard-coded welcome inbox row — always pinned first for every player. */
+/** Hard-coded welcome inbox row — always pinned first; not dismissable. */
 export const WELCOME_NOTIFICATION = {
   type: NOTIFICATION_TYPE_WELCOME,
   actionKey: NOTIFICATION_ACTION_WELCOME,

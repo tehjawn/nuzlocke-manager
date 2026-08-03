@@ -73,6 +73,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Cached season brief only — GM membership is request-time and is applied
+  // from SiteHeaderSession (Suspense) on global pages / SeasonJumpRegistrar
+  // on challenge pages.
   const defaultChallenge = await getDefaultJumpChallenge();
   const defaultSeason = defaultChallenge
     ? briefToJumpSeasonContext(defaultChallenge)

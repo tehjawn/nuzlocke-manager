@@ -1,16 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
-import { AuthButtons } from "@/components/AuthButtons";
-import {
-  GmToolsLauncher,
-  GmViewBanner,
-} from "@/components/GmToolsLauncher";
-import { MobileMenuAuth } from "@/components/MobileMenuAuth";
-import { MobileNavDrawer } from "@/components/MobileNavDrawer";
+import { Suspense } from "react";
 import { GuideIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
+import {
+  SiteHeaderGmChrome,
+  SiteHeaderSession,
+  SiteHeaderSessionFallback,
+} from "@/components/SiteHeaderSession";
 import { JumpTrigger } from "@/features/jump";
+import type { Challenge } from "@/lib/challenge-types";
 import { getChallenge, getDefaultJumpChallenge } from "@/lib/challenges";
-import { readGmLensOn } from "@/lib/gm-lens.server";
 import { toolsHref } from "@/lib/tools-routes";
 
 /** Shared shell width for the site header, footer, and page content. */
@@ -35,35 +34,42 @@ export async function SiteHeader({
   // Global pages omit season props — fall back to the live default. Only fetch
   // that default when both are absent so we never pair slug/year from different
   // seasons. If only one prop is set, resolve the other from that challenge.
+  // These reads are `"use cache"` / static-friendly; request-time auth/GM work
+  // lives in SiteHeaderSession under Suspense.
   let seasonSlug = challengeSlug ?? null;
   let seasonYear = challengeYear ?? null;
   let seasonName = challengeName ?? null;
+  let seasonStatus: Challenge["status"] | null = null;
 
   if (seasonSlug == null && seasonYear == null) {
     const defaults = await getDefaultJumpChallenge();
     seasonSlug = defaults?.slug ?? null;
     seasonYear = defaults?.year ?? null;
+    seasonStatus = defaults?.status ?? null;
     if (seasonName == null) seasonName = defaults?.name ?? null;
   } else if (seasonSlug != null && seasonYear == null) {
     const challenge = await getChallenge(seasonSlug);
     seasonYear = challenge?.year ?? null;
+    seasonStatus = challenge?.status ?? null;
     if (seasonName == null) seasonName = challenge?.name ?? null;
   } else if (seasonSlug == null && seasonYear != null) {
     const defaults = await getDefaultJumpChallenge();
     if (defaults?.year === seasonYear) {
       seasonSlug = defaults.slug;
+      seasonStatus = defaults.status;
       if (seasonName == null) seasonName = defaults.name ?? null;
     }
   } else if (seasonSlug != null && seasonName == null) {
     const challenge = await getChallenge(seasonSlug);
     seasonName = challenge?.name ?? null;
+    seasonStatus = challenge?.status ?? null;
   }
 
-  const gmViewOn =
-    showGm && challengeSlug ? await readGmLensOn(challengeSlug) : false;
-  const feedbackHref = seasonSlug
-    ? `/challenges/${seasonSlug}/feedback`
-    : null;
+  // Status is only needed for the global-page Jump GM registrar.
+  if (!challengeSlug && seasonSlug != null && seasonStatus == null) {
+    const challenge = await getChallenge(seasonSlug);
+    seasonStatus = challenge?.status ?? null;
+  }
 
   return (
     <>
@@ -140,41 +146,33 @@ export async function SiteHeader({
               </Link>
             ) : null}
           </div>
-          <AuthButtons
-            feedbackHref={feedbackHref}
-            hideMyTrainer={Boolean(myTrainerId)}
-            gmHref={
-              showGm && challengeSlug
-                ? `/challenges/${challengeSlug}/gm`
-                : null
+          <Suspense
+            fallback={
+              <SiteHeaderSessionFallback
+                hideMyTrainer={Boolean(myTrainerId)}
+              />
             }
-          />
-          <MobileNavDrawer
-            className="sm:hidden"
-            challengeSlug={seasonSlug ?? undefined}
-            showGm={showGm}
-            myTrainerId={myTrainerId}
           >
-            <MobileMenuAuth feedbackHref={feedbackHref} />
-          </MobileNavDrawer>
+            <SiteHeaderSession
+              seasonSlug={seasonSlug}
+              seasonYear={seasonYear}
+              seasonName={seasonName}
+              seasonStatus={seasonStatus}
+              challengeSlug={challengeSlug}
+              showGm={showGm}
+              myTrainerId={myTrainerId}
+            />
+          </Suspense>
         </nav>
       </header>
 
-      {showGm && challengeSlug ? (
-        <>
-          <GmViewBanner
-            key={`gm-view-banner-${challengeSlug}`}
-            slug={challengeSlug}
-            initialOn={gmViewOn}
-          />
-          <GmToolsLauncher
-            key={`gm-tools-${challengeSlug}`}
-            slug={challengeSlug}
-            seasonLabel={seasonName}
-            initialOn={gmViewOn}
-          />
-        </>
-      ) : null}
+      <Suspense fallback={null}>
+        <SiteHeaderGmChrome
+          challengeSlug={challengeSlug}
+          challengeName={seasonName}
+          showGm={showGm}
+        />
+      </Suspense>
     </>
   );
 }

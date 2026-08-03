@@ -96,3 +96,20 @@ export async function requireGm(challengeId: string) {
   if (!access?.isGm) throw new Error("Game Master access required");
   return { userId, access };
 }
+
+/**
+ * Whether the signed-in user is GM for a season slug. Request-time (auth + DB)
+ * — only call from a Suspense-wrapped server component such as SiteHeaderSession.
+ */
+export const isGmForChallengeSlug = cache(
+  async (slug: string | null | undefined): Promise<boolean> => {
+    if (!slug || !isDatabaseConfigured()) return false;
+    const challenge = await getPrisma().challenge.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!challenge) return false;
+    const access = await getAccessForChallenge(challenge.id);
+    return Boolean(access?.isGm);
+  },
+);

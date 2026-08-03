@@ -52,6 +52,16 @@ function toItem(row: {
   };
 }
 
+const notificationListSelect = {
+  id: true,
+  type: true,
+  title: true,
+  body: true,
+  actionKey: true,
+  readAt: true,
+  createdAt: true,
+} as const;
+
 /** First-login welcome for Trash Pack 2026 — idempotent per user. */
 export async function ensureWelcomeNotification(userId: string) {
   const prisma = getPrisma();
@@ -83,51 +93,59 @@ export async function listNotificationsForUser(
 ): Promise<NotificationItem[]> {
   const prisma = getPrisma();
   // Happy path is read-only. Backfill welcome only when the row is missing
-  // (failed sign-in upsert) — not on every header render.
+  // (failed sign-in upsert) — not on every header render. Welcome is always
+  // shown (not dismissable); clear a stale archive if one was set earlier.
   let rows = await prisma.notification.findMany({
-    where: { userId },
+    where: {
+      userId,
+      archivedAt: null,
+      NOT: {
+        OR: [
+          { type: NOTIFICATION_TYPE_WELCOME },
+          { actionKey: NOTIFICATION_ACTION_WELCOME },
+        ],
+      },
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
-    select: {
-      id: true,
-      type: true,
-      title: true,
-      body: true,
-      actionKey: true,
-      readAt: true,
-      createdAt: true,
-    },
+    select: notificationListSelect,
   });
-  rows = await prependPersistedWelcome(
-    rows,
-    () =>
-      prisma.notification.findUnique({
-        where: {
-          userId_type_actionKey: {
-            userId,
-            type: NOTIFICATION_TYPE_WELCOME,
-            actionKey: NOTIFICATION_ACTION_WELCOME,
-          },
-        },
-        select: {
-          id: true,
-          type: true,
-          title: true,
-          body: true,
-          actionKey: true,
-          readAt: true,
-          createdAt: true,
-        },
-      }),
-    () => ensureWelcomeNotification(userId),
-  );
+
+  const welcome = await prisma.notification.findUnique({
+    where: {
+      userId_type_actionKey: {
+        userId,
+        type: NOTIFICATION_TYPE_WELCOME,
+        actionKey: NOTIFICATION_ACTION_WELCOME,
+      },
+    },
+    select: { ...notificationListSelect, archivedAt: true },
+  });
+
+  let welcomeRow = welcome;
+  if (!welcomeRow) {
+    welcomeRow = {
+      ...(await ensureWelcomeNotification(userId)),
+      archivedAt: null,
+    };
+  } else if (welcomeRow.archivedAt != null) {
+    welcomeRow = await prisma.notification.update({
+      where: { id: welcomeRow.id },
+      data: { archivedAt: null },
+      select: { ...notificationListSelect, archivedAt: true },
+    });
+  }
+
+  const { archivedAt: _archivedAt, ...welcomeItem } = welcomeRow;
+  rows = [welcomeItem, ...rows];
+
   return withPinnedWelcome(rows.map(toItem));
 }
 
 export async function countUnreadNotifications(userId: string): Promise<number> {
   const prisma = getPrisma();
   return prisma.notification.count({
-    where: { userId, readAt: null },
+    where: { userId, readAt: null, archivedAt: null },
   });
 }
 
@@ -140,12 +158,43 @@ export async function markNotificationRead(
     where: { id: notificationId, userId },
   });
   if (!existing) return null;
-  if (existing.readAt) {
+  // Welcome is never dismissable; other archived rows stay out of the inbox.
+  if (existing.archivedAt && !isWelcomeNotification(existing)) return null;
+  if (existing.readAt && !existing.archivedAt) {
     return toItem(existing);
   }
   const updated = await prisma.notification.update({
     where: { id: notificationId },
-    data: { readAt: new Date() },
+    data: {
+      readAt: existing.readAt ?? new Date(),
+      ...(isWelcomeNotification(existing) ? { archivedAt: null } : {}),
+    },
+  });
+  return toItem(updated);
+}
+
+/** Soft-dismiss from the inbox. Also marks read so badges stay clear. */
+export async function archiveNotification(
+  userId: string,
+  notificationId: string,
+): Promise<NotificationItem | null> {
+  const prisma = getPrisma();
+  const existing = await prisma.notification.findFirst({
+    where: { id: notificationId, userId },
+  });
+  if (!existing) return null;
+  // Pinned welcome tour entry stays in the inbox permanently.
+  if (isWelcomeNotification(existing)) return null;
+  if (existing.archivedAt) {
+    return toItem(existing);
+  }
+  const now = new Date();
+  const updated = await prisma.notification.update({
+    where: { id: notificationId },
+    data: {
+      archivedAt: now,
+      readAt: existing.readAt ?? now,
+    },
   });
   return toItem(updated);
 }
