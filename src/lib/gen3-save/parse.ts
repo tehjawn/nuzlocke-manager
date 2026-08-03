@@ -1355,7 +1355,6 @@ function readDaycareMons(
   mode: SpeciesIdMode,
   claimed: Set<number>,
 ): RawMon[] {
-  const preferred = daycareBaseCandidates(mode)[0]!;
   for (const base of daycareBaseCandidates(mode)) {
     if (base + DAYCARE_MON_COUNT * DAYCARE_MON_STRIDE > sb1.length) continue;
     const mons: RawMon[] = [];
@@ -1366,7 +1365,7 @@ function readDaycareMons(
       anySlot = true;
       if (!claimed.has(mon.pid)) mons.push(mon);
     }
-    if (anySlot || base === preferred) return mons;
+    if (anySlot) return mons;
   }
   return [];
 }
