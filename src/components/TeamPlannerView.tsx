@@ -948,46 +948,138 @@ function PrepPanels({
     prep: GuideGymPrep;
   }>;
 }) {
+  const draftAsSquad = useMemo(
+    () => draft.map((p) => ({ ...p, slot: "MAIN" as const })),
+    [draft],
+  );
+
+  const gymAnswered = useMemo(
+    () =>
+      gymPreps.filter(
+        (entry) => squadMatchesForGymPrep(draftAsSquad, entry.prep).length > 0,
+      ).length,
+    [gymPreps, draftAsSquad],
+  );
+
+  const leagueAnswered = useMemo(
+    () =>
+      ELITE_FOUR_PREP.filter(
+        (prep) => squadMatchesForGymPrep(draftAsSquad, prep).length > 0,
+      ).length,
+    [draftAsSquad],
+  );
+
+  const gymGaps = gymPreps.length - gymAnswered;
+  const leagueGaps = ELITE_FOUR_PREP.length - leagueAnswered;
+
   return (
-    <div className="space-y-3">
-      <Frame dense title="Gym leaders">
-        <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">          {gymPreps.map((entry, index) => (
+    <Frame dense title="Gym / League">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p
+            className={`text-lg font-semibold tracking-tight ${
+              gymGaps === 0 && leagueGaps === 0
+                ? "text-accent-deep"
+                : gymGaps + leagueGaps >= 6
+                  ? "text-danger"
+                  : "text-ink"
+            }`}
+          >
+            {gymGaps === 0 && leagueGaps === 0
+              ? "Covered"
+              : gymGaps === 0
+                ? "Gyms covered"
+                : "Prep checklist"}
+            <span className="ml-2 align-middle text-xs font-bold tabular-nums text-muted">
+              {gymAnswered}/{gymPreps.length} gyms · {leagueAnswered}/
+              {ELITE_FOUR_PREP.length} league
+            </span>
+          </p>
+          <p className="mt-0.5 text-[12px] leading-snug text-muted">
+            {draft.length === 0
+              ? "Place a planned Main to see draft answers."
+              : gymGaps + leagueGaps === 0
+                ? "Every specialty has a typing answer in this draft."
+                : `Expand a row for bring / careful types. ${
+                    gymGaps > 0
+                      ? `${gymGaps} gym${gymGaps === 1 ? "" : "s"} still open.`
+                      : `${leagueGaps} league slot${leagueGaps === 1 ? "" : "s"} still open.`
+                  }`}
+          </p>
+        </div>
+        <div
+          className="flex shrink-0 flex-wrap items-center justify-end gap-0.5"
+          aria-hidden
+        >
+          {gymPreps.map((entry) => {
+            const ok =
+              squadMatchesForGymPrep(draftAsSquad, entry.prep).length > 0;
+            return (
+              <span
+                key={entry.id}
+                className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-accent" : "bg-danger/70"}`}
+                title={entry.prep.leaderName}
+              />
+            );
+          })}
+          <span className="mx-0.5 h-1.5 w-px bg-frame" />
+          {ELITE_FOUR_PREP.map((prep) => {
+            const ok = squadMatchesForGymPrep(draftAsSquad, prep).length > 0;
+            return (
+              <span
+                key={prep.id}
+                className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-accent" : "bg-danger/70"}`}
+                title={prep.leaderName}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+          Gym leaders
+        </p>
+        <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">
+          {gymPreps.map((entry, index) => (
             <PrepCard
               key={entry.id}
               index={index + 1}
               prep={entry.prep}
               draft={draft}
               badge={gymBadgeFromTitle(entry.title)}
-              defaultOpen
               guideHref={toolsHref(slug, "guide", {
                 chapter: entry.chapterId,
               })}
             />
           ))}
         </ul>
-      </Frame>
+      </div>
 
-      <Frame
-        dense
-        collapsible
-        defaultOpen={false}
-        title="Elite Four + Champion"
-        actions={
+      <div className="mt-3">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+            Elite Four + Champion
+          </p>
           <Link
             href={toolsHref(slug, "guide", { chapter: "elite-four" })}
-            className="text-[11px] font-semibold text-[var(--on-chrome)] underline decoration-[var(--on-chrome)]/35 underline-offset-2"
+            className="text-[10px] font-semibold text-interactive underline decoration-interactive/35 underline-offset-2"
           >
             Guide
           </Link>
-        }
-      >
+        </div>
         <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">
-          {ELITE_FOUR_PREP.map((prep) => (
-            <PrepCard key={prep.id} prep={prep} draft={draft} />
+          {ELITE_FOUR_PREP.map((prep, index) => (
+            <PrepCard
+              key={prep.id}
+              index={index + 1}
+              prep={prep}
+              draft={draft}
+            />
           ))}
         </ul>
-      </Frame>
-    </div>
+      </div>
+    </Frame>
   );
 }
 
@@ -997,27 +1089,37 @@ function gymBadgeFromTitle(title: string): string | null {
   return badge || null;
 }
 
+/** Drop repeated Modern Emerald boilerplate from gym party notes. */
+function shortenPartyNotes(notes: string): string {
+  return notes
+    .replace(
+      /\s*Modern Emerald Normal keeps(?: gym parties| core parties); Hard\+ may buff them\.?/gi,
+      "",
+    )
+    .replace(/^Vanilla Emerald(?:\s*\([^)]*\))?:\s*/i, "")
+    .trim();
+}
+
 function PrepCard({
   prep,
   draft,
   index,
   badge,
   guideHref,
-  defaultOpen = false,
 }: {
   prep: GuideGymPrep;
   draft: PokemonEntry[];
   index?: number;
   badge?: string | null;
   guideHref?: string;
-  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(false);
   const matches = squadMatchesForGymPrep(
     draft.map((p) => ({ ...p, slot: "MAIN" as const })),
     prep,
   );
   const specialty = prep.specialtyTypes[0];
+  const notes = prep.partyNotes ? shortenPartyNotes(prep.partyNotes) : "";
 
   return (
     <li>
@@ -1026,33 +1128,61 @@ function PrepCard({
         onToggle={(event) => setOpen(event.currentTarget.open)}
         className="group open:bg-surface-2/40"
       >
-        <summary className="flex cursor-pointer list-none flex-col gap-1.5 px-2.5 py-2 sm:flex-row sm:items-center sm:gap-2 [&::-webkit-details-marker]:hidden">
-          <span className="flex min-w-0 items-center gap-2">
-            <span
-              aria-hidden
-              className="shrink-0 text-[10px] text-muted transition-transform group-open:rotate-90"
-            >
-              ▸
-            </span>
-            {index != null ? (
-              <span className="shrink-0 text-[11px] font-bold tabular-nums text-muted">
-                {index}.
-              </span>
-            ) : null}
-            <span className="min-w-0 truncate text-sm font-semibold text-ink">
-              {prep.leaderName}
-              {badge ? (
-                <span className="ml-1.5 font-medium text-muted">{badge}</span>
-              ) : null}
-            </span>
-            {specialty ? <TypeBadge type={specialty} size="sm" /> : null}
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 [&::-webkit-details-marker]:hidden">
+          <span
+            aria-hidden
+            className="shrink-0 text-[10px] text-muted transition-transform group-open:rotate-90"
+          >
+            ▸
           </span>
-          <span className="flex min-w-0 flex-wrap items-center gap-1 sm:ml-auto sm:justify-end">
+          {index != null ? (
+            <span className="shrink-0 text-[11px] font-bold tabular-nums text-muted">
+              {index}.
+            </span>
+          ) : null}
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+            {prep.leaderName}
+            {badge ? (
+              <span className="ml-1.5 font-medium text-muted">{badge}</span>
+            ) : null}
+          </span>
+          {specialty ? <TypeBadge type={specialty} size="sm" /> : null}
+          <span className="flex shrink-0 items-center gap-0.5">
             {matches.length > 0 ? (
-              matches.slice(0, 3).map(({ entry, matchedTypes }) => (
+              matches.slice(0, 4).map(({ entry, matchedTypes }) => (
                 <span
                   key={entry.id}
-                  className="inline-flex max-w-[10rem] items-center gap-1 rounded border border-accent/30 bg-accent/10 px-1 py-0.5"
+                  className="inline-flex"
+                  title={`${monLabel(entry)}${
+                    matchedTypes[0] ? ` · ${matchedTypes[0]}` : ""
+                  }`}
+                >
+                  <PokemonSpriteImage
+                    alt={monLabel(entry)}
+                    className="pixelated h-6 w-6 object-contain"
+                    height={24}
+                    loading="lazy"
+                    pokedexId={entry.pokedexId}
+                    shiny={entry.isShiny}
+                    species={entry.species}
+                    width={24}
+                  />
+                </span>
+              ))
+            ) : (
+              <span className="text-[10px] font-semibold text-danger/80">
+                —
+              </span>
+            )}
+          </span>
+        </summary>
+        <div className="space-y-2 border-t border-frame/40 px-2.5 py-2 pl-8">
+          {matches.length > 0 ? (
+            <ul className="flex flex-wrap gap-1">
+              {matches.slice(0, 4).map(({ entry, matchedTypes }) => (
+                <li
+                  key={entry.id}
+                  className="inline-flex items-center gap-1 rounded border border-accent/30 bg-accent/10 px-1 py-0.5"
                 >
                   <PokemonSpriteImage
                     alt={monLabel(entry)}
@@ -1064,30 +1194,28 @@ function PrepCard({
                     species={entry.species}
                     width={20}
                   />
-                  <span className="truncate text-[10px] font-semibold text-ink">
+                  <span className="text-[10px] font-semibold text-ink">
                     {monLabel(entry)}
                   </span>
                   {matchedTypes[0] ? (
                     <TypeBadge type={matchedTypes[0]} size="sm" variant="soft" />
                   ) : null}
-                </span>
-              ))
-            ) : (
-              <span className="text-[11px] text-muted">No answer</span>
-            )}
-          </span>
-        </summary>
-        <div className="space-y-2 border-t border-frame/40 px-2.5 py-2 pl-7">
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11px] text-danger">
+              No recommended typing in this draft.
+            </p>
+          )}
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             <TypeRow label="Bring" types={prep.recommendedTypes} />
             {prep.cautionTypes?.length ? (
               <TypeRow label="Careful" types={prep.cautionTypes} />
             ) : null}
           </div>
-          {prep.partyNotes ? (
-            <p className="text-[11px] leading-relaxed text-muted">
-              {prep.partyNotes}
-            </p>
+          {notes ? (
+            <p className="text-[11px] leading-relaxed text-muted">{notes}</p>
           ) : null}
           {guideHref ? (
             <Link
