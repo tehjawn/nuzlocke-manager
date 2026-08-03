@@ -440,6 +440,36 @@ export function bestOffenseVsDefender(
   return { mult: bestMult, attackType: bestAttack, viaMove: bestMove };
 }
 
+export type VsTrainerGridCell = {
+  draftId: string;
+  targetId: string;
+  mult: number;
+  attackType: ChartType | null;
+  viaMove: string | null;
+};
+
+/**
+ * Full draft × opponent Main offense grid (every cell, not just ≥2× tips).
+ * Rows follow opponentMain order; columns follow draft order.
+ */
+export function vsTrainerOffenseGrid(
+  draft: readonly PokemonEntry[],
+  opponentMain: readonly PokemonEntry[],
+): VsTrainerGridCell[][] {
+  return opponentMain.map((target) =>
+    draft.map((mon) => {
+      const hit = bestOffenseVsDefender(mon, target.types);
+      return {
+        draftId: mon.id,
+        targetId: target.id,
+        mult: hit.mult,
+        attackType: hit.attackType,
+        viaMove: hit.viaMove,
+      };
+    }),
+  );
+}
+
 export type VsTrainerTargetStatus = "answered" | "soft" | "blind";
 
 export type VsTrainerTargetAssessment = {

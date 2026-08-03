@@ -8,6 +8,7 @@ import {
   teamCoverageSummary,
   teamDefensiveProfile,
   vsTrainerMatchup,
+  vsTrainerOffenseGrid,
 } from "@/lib/team-coverage";
 
 function mon(
@@ -218,4 +219,24 @@ test("vsTrainerMatchup empty sides", () => {
   const matchup = vsTrainerMatchup([], []);
   assert.equal(matchup.targets.length, 0);
   assert.match(matchup.recommendation, /Place|Need/i);
+});
+
+test("vsTrainerOffenseGrid is opponent rows × draft columns", () => {
+  const draft = [
+    mon({ id: "d1", species: "Swampert", types: ["Water", "Ground"] }),
+    mon({ id: "d2", species: "Sceptile", types: ["Grass"] }),
+  ];
+  const opponent = [
+    mon({ id: "o1", species: "Camerupt", types: ["Fire", "Ground"] }),
+    mon({ id: "o2", species: "Sharpedo", types: ["Water", "Dark"] }),
+  ];
+  const grid = vsTrainerOffenseGrid(draft, opponent);
+  assert.equal(grid.length, 2);
+  assert.equal(grid[0]!.length, 2);
+  assert.equal(grid[0]![0]!.draftId, "d1");
+  assert.equal(grid[0]![0]!.targetId, "o1");
+  // Swampert Water into Camerupt Fire/Ground
+  assert.ok(grid[0]![0]!.mult >= 2);
+  // Sceptile Grass into Sharpedo Water/Dark
+  assert.ok(grid[1]![1]!.mult >= 2);
 });

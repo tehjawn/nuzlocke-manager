@@ -26,6 +26,7 @@ import {
   teamCoverageSummary,
   teamDefensiveProfile,
   vsTrainerMatchup,
+  vsTrainerOffenseGrid,
 } from "@/lib/team-coverage";
 import {
   parsePlannerMode,
@@ -1024,6 +1025,10 @@ function VsTrainerPanel({
     () => vsTrainerMatchup(draft, opponentMain),
     [draft, opponentMain],
   );
+  const grid = useMemo(
+    () => vsTrainerOffenseGrid(draft, opponentMain),
+    [draft, opponentMain],
+  );
 
   if (!opponent) {
     return (
@@ -1047,7 +1052,7 @@ function VsTrainerPanel({
     return (
       <Frame dense title={`vs ${displayName(opponent)}`}>
         <p className="text-sm text-muted">
-          Place Pokémon above to see a live matchup verdict.
+          Place Pokémon on the left to score this matchup.
         </p>
       </Frame>
     );
@@ -1056,6 +1061,7 @@ function VsTrainerPanel({
   const assessmentById = new Map(
     matchup.targets.map((t) => [t.targetId, t] as const),
   );
+  const draftById = new Map(draft.map((m) => [m.id, m] as const));
 
   const verdictTone =
     matchup.verdict === "favorable"
@@ -1064,12 +1070,19 @@ function VsTrainerPanel({
         ? "neutral"
         : "warn";
 
+  const callouts = matchup.bullets.filter(
+    (b) =>
+      b.tone === "warn" ||
+      /pressure|blind|No ≥2|Only neutral/i.test(b.text),
+  );
+
   return (
-    <div className="space-y-3">
-      <Frame dense title="Matchup verdict">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    <Frame dense title={`vs ${displayName(opponent)}`}>
+      {/* Compact verdict */}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
           <p
-            className={`text-base font-semibold tracking-tight ${
+            className={`text-lg font-semibold tracking-tight ${
               verdictTone === "good"
                 ? "text-accent-deep"
                 : verdictTone === "warn"
@@ -1078,163 +1091,202 @@ function VsTrainerPanel({
             }`}
           >
             {matchup.verdictLabel}
-            <span className="ml-2 text-sm font-bold tabular-nums text-muted">
-              {matchup.score}/100
+            <span className="ml-2 align-middle text-xs font-bold tabular-nums text-muted">
+              {matchup.score}
             </span>
           </p>
-          <p className="text-[11px] text-muted">
-            {matchup.answeredCount} answered · {matchup.softCount} soft ·{" "}
-            {matchup.blindCount} blind
+          <p className="mt-0.5 text-[12px] leading-snug text-muted">
+            {matchup.recommendation}
           </p>
         </div>
-        <p
-          className={`mt-2 text-sm leading-snug ${
-            verdictTone === "warn" ? "text-danger" : "text-ink"
-          }`}
+        <div
+          className="flex shrink-0 items-center gap-0.5"
+          title={`${matchup.answeredCount} answered · ${matchup.softCount} soft · ${matchup.blindCount} blind`}
+          aria-label={`${matchup.answeredCount} answered, ${matchup.softCount} soft, ${matchup.blindCount} blind`}
         >
-          {matchup.recommendation}
-        </p>
-        <ul className="mt-2.5 space-y-1.5 border-t border-frame/40 pt-2.5">
-          {matchup.bullets.map((bullet) => (
+          {matchup.targets.map((t) => (
+            <span
+              key={t.targetId}
+              className={`h-2 w-2 rounded-full ${
+                t.status === "answered"
+                  ? "bg-accent"
+                  : t.status === "soft"
+                    ? "bg-accent-2"
+                    : "bg-danger"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {callouts.length > 0 ? (
+        <ul className="mt-2 space-y-1">
+          {callouts.slice(0, 2).map((bullet) => (
             <li
               key={bullet.text}
-              className={`flex gap-2 text-sm leading-snug ${
-                bullet.tone === "good"
-                  ? "text-accent-deep"
-                  : bullet.tone === "warn"
-                    ? "text-danger"
-                    : "text-ink"
+              className={`text-[11px] leading-snug ${
+                bullet.tone === "warn" ? "text-danger" : "text-muted"
               }`}
             >
-              <span aria-hidden className="mt-0.5 shrink-0 text-muted">
-                {bullet.tone === "good"
-                  ? "✓"
-                  : bullet.tone === "warn"
-                    ? "!"
-                    : "·"}
-              </span>
-              <span>{bullet.text}</span>
+              {bullet.text}
             </li>
           ))}
         </ul>
-      </Frame>
+      ) : null}
 
-      <Frame dense title={`Their Main · ${displayName(opponent)}`}>
-        <p className="mb-2 text-[11px] text-muted">
-          Per mon: your ≥2× answers and how hard they pressure your draft.
-        </p>
-        <ul className="space-y-2">
-          {opponentMain.map((target) => {
-            const assessment = assessmentById.get(target.id);
-            const tips = assessment?.answerTips ?? [];
-            const status = assessment?.status ?? "soft";
-            const statusLabel =
-              status === "answered"
-                ? "Answered"
-                : status === "soft"
-                  ? "Soft"
-                  : "Blind";
-            return (
-              <li
-                key={target.id}
-                className="rounded-md border border-frame/60 bg-surface-2/50 p-2"
+      {/* Answer matrix: their rows × your columns */}
+      <div className="mt-3 overflow-x-auto rounded-md border border-frame/60">
+        <table className="w-full min-w-[18rem] border-collapse text-left">
+          <caption className="sr-only">
+            Matchup grid: rows are {displayName(opponent)}&apos;s Main, columns
+            are your planned team. Cells show your best type multiplier into
+            that Pokémon.
+          </caption>
+          <thead>
+            <tr className="border-b border-frame/50 bg-surface-2/60">
+              <th
+                scope="col"
+                className="sticky left-0 z-[1] bg-surface-2/95 px-1.5 py-1.5 text-[0.6rem] font-semibold uppercase tracking-wide text-muted"
               >
-                <div className="flex items-center gap-2">
+                Them
+              </th>
+              {draft.map((mon) => (
+                <th
+                  key={mon.id}
+                  scope="col"
+                  className="px-0.5 py-1.5 text-center"
+                  title={monLabel(mon)}
+                >
                   <PokemonSpriteImage
-                    alt={monLabel(target)}
-                    className="pixelated h-10 w-10 object-contain"
-                    height={40}
+                    alt={monLabel(mon)}
+                    className="pixelated mx-auto h-7 w-7 object-contain"
+                    height={28}
                     loading="lazy"
-                    pokedexId={target.pokedexId}
-                    shiny={target.isShiny}
-                    species={target.species}
-                    width={40}
+                    pokedexId={mon.pokedexId}
+                    shiny={mon.isShiny}
+                    species={mon.species}
+                    width={28}
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                      <p className="truncate text-xs font-semibold text-ink">
-                        {monLabel(target)}
-                      </p>
-                      <span
-                        className={`rounded px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                          status === "answered"
-                            ? "bg-accent/15 text-accent-deep"
-                            : status === "blind"
-                              ? "bg-danger/15 text-danger"
-                              : "bg-surface/80 text-muted"
-                        }`}
-                      >
-                        {statusLabel}
-                      </span>
-                    </div>
-                    <span className="mt-0.5 flex flex-wrap gap-0.5">
-                      {target.types.map((t) => (
-                        <TypeBadge
-                          key={`${target.id}-${t}`}
-                          type={t}
-                          size="sm"
-                        />
-                      ))}
-                    </span>
-                    {assessment && assessment.threatenedCount > 0 ? (
-                      <p className="mt-1 text-[10px] text-muted">
-                        Pressures {assessment.threatenedCount}/{draft.length}
-                        {assessment.threatAttackType
-                          ? ` · ${formatMatchupMult(assessment.threatMult)} ${assessment.threatAttackType}`
-                          : ""}
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-[10px] text-muted">
-                        Low pressure into your draft
-                      </p>
-                    )}
-                  </div>
-                  <span className="shrink-0 text-[10px] font-bold tabular-nums text-muted">
-                    Best {formatMatchupMult(assessment?.bestOffenseMult ?? 0)}
+                  <span className="mt-0.5 block max-w-[2.75rem] truncate text-[0.55rem] font-semibold leading-tight text-muted">
+                    {monLabel(mon)}
                   </span>
-                </div>
-                {tips.length > 0 ? (
-                  <ul className="mt-1.5 flex flex-wrap gap-1 border-t border-frame/40 pt-1.5">
-                    {tips.map((tip) => {
-                      const tipMon = draft.find((p) => p.id === tip.entryId);
-                      return (
-                        <li
-                          key={tip.entryId}
-                          className="inline-flex items-center gap-1 rounded border border-frame/40 bg-surface/70 px-1 py-0.5"
-                          title={tip.reason}
-                        >
-                          {tipMon ? (
-                            <PokemonSpriteImage
-                              alt={tip.displayName}
-                              className="pixelated h-5 w-5 object-contain"
-                              height={20}
-                              loading="lazy"
-                              pokedexId={tipMon.pokedexId}
-                              shiny={tipMon.isShiny}
-                              species={tipMon.species}
-                              width={20}
+                </th>
+              ))}
+              <th
+                scope="col"
+                className="px-1 py-1.5 text-center text-[0.6rem] font-semibold uppercase tracking-wide text-muted"
+                title="How many of your draft this mon hits for ≥2×"
+              >
+                Threat
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {opponentMain.map((target, rowIdx) => {
+              const assessment = assessmentById.get(target.id);
+              const status = assessment?.status ?? "soft";
+              const rowCells = grid[rowIdx] ?? [];
+              return (
+                <tr
+                  key={target.id}
+                  className={`border-b border-frame/40 last:border-b-0 ${
+                    status === "blind"
+                      ? "bg-danger/10"
+                      : status === "answered"
+                        ? "bg-accent/5"
+                        : "bg-transparent"
+                  }`}
+                >
+                  <th
+                    scope="row"
+                    className="sticky left-0 z-[1] bg-surface/95 px-1.5 py-1.5"
+                  >
+                    <div className="flex min-w-[5.5rem] max-w-[7.5rem] items-center gap-1.5">
+                      <PokemonSpriteImage
+                        alt={monLabel(target)}
+                        className="pixelated h-8 w-8 shrink-0 object-contain"
+                        height={32}
+                        loading="lazy"
+                        pokedexId={target.pokedexId}
+                        shiny={target.isShiny}
+                        species={target.species}
+                        width={32}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-semibold text-ink">
+                          {monLabel(target)}
+                        </p>
+                        <span className="mt-0.5 flex flex-wrap gap-0.5">
+                          {target.types.slice(0, 2).map((t) => (
+                            <TypeBadge
+                              key={`${target.id}-${t}`}
+                              type={t}
+                              size="sm"
                             />
-                          ) : null}
-                          <span className="text-[10px] font-semibold text-ink">
-                            {tip.displayName}
-                          </span>
-                          <span className="text-[10px] font-bold tabular-nums text-accent">
-                            {formatMatchupMult(tip.mult)}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="mt-1.5 border-t border-frame/40 pt-1.5 text-[11px] text-danger">
-                    No ≥2× answer from this draft.
-                  </p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </Frame>
-    </div>
+                          ))}
+                        </span>
+                      </div>
+                    </div>
+                  </th>
+                  {rowCells.map((cell) => {
+                    const answerMon = draftById.get(cell.draftId);
+                    const strong = cell.mult >= 2;
+                    const soft = cell.mult > 0 && cell.mult < 2;
+                    const title = answerMon
+                      ? `${monLabel(answerMon)} → ${monLabel(target)}: ${formatMatchupMult(cell.mult)}${
+                          cell.attackType
+                            ? ` ${cell.attackType}${cell.viaMove ? ` via ${cell.viaMove}` : " STAB"}`
+                            : ""
+                        }`
+                      : undefined;
+                    return (
+                      <td key={cell.draftId} className="px-0.5 py-1 text-center">
+                        <span
+                          title={title}
+                          className={`inline-flex h-8 min-w-[2rem] items-center justify-center rounded px-1 text-[11px] font-bold tabular-nums ${
+                            strong
+                              ? "bg-accent/20 text-accent-deep ring-1 ring-accent/35"
+                              : soft
+                                ? "bg-surface-2 text-muted"
+                                : "text-danger/70"
+                          }`}
+                        >
+                          {cell.mult > 0 ? formatMatchupMult(cell.mult) : "—"}
+                        </span>
+                      </td>
+                    );
+                  })}
+                  <td className="px-1 py-1 text-center">
+                    {assessment && assessment.threatenedCount > 0 ? (
+                      <span
+                        className={`inline-flex min-w-[1.75rem] items-center justify-center rounded px-1 py-0.5 text-[10px] font-bold tabular-nums ${
+                          assessment.threatenedCount >= 2
+                            ? "bg-danger/15 text-danger"
+                            : "bg-surface-2 text-muted"
+                        }`}
+                        title={
+                          assessment.threatAttackType
+                            ? `Hits ${assessment.threatenedCount}/${draft.length} of your draft for ≥2× (${formatMatchupMult(assessment.threatMult)} ${assessment.threatAttackType})`
+                            : `Hits ${assessment.threatenedCount}/${draft.length} of your draft for ≥2×`
+                        }
+                      >
+                        {assessment.threatenedCount}/{draft.length}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted/60">·</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="mt-2 text-[10px] leading-snug text-muted">
+        Columns are your planned team. Green cells are ≥2× answers; dashes are
+        gaps. Threat = how many of yours they hit for ≥2×.
+      </p>
+    </Frame>
   );
 }
