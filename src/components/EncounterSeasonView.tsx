@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { EncounterLedger } from "@/components/EncounterLedger";
+import { PersonalRoutesView } from "@/components/PersonalRoutesView";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
 import type {
@@ -11,22 +12,31 @@ import type {
   EncounterSpeciesHighlight,
 } from "@/lib/encounter-stats";
 import type { ModernEmeraldSpeciesRef } from "@/lib/modern-emerald-dex";
+import type { PersonalRouteStatus } from "@/lib/personal-routes";
 import { toolsHref } from "@/lib/tools-routes";
 
 type EncounterSeasonViewProps = {
-  slug: string;
   groups: EncounterRouteGroup[];
   highlights: EncounterSeasonHighlights;
   missing: ModernEmeraldSpeciesRef[];
+  myTrainerId?: string | null;
+  routeStatuses: PersonalRouteStatus[];
+  slug: string;
 };
 
+type EncounterView = "claims" | "missing" | "routes";
+
 export function EncounterSeasonView({
-  slug,
   groups,
   highlights,
   missing,
+  myTrainerId = null,
+  routeStatuses,
+  slug,
 }: EncounterSeasonViewProps) {
-  const [showMissing, setShowMissing] = useState(false);
+  const [view, setView] = useState<EncounterView>(() =>
+    myTrainerId ? "routes" : "claims",
+  );
   const hasCallouts =
     highlights.mostLogged.length > 0 ||
     highlights.rarestSeen.length > 0 ||
@@ -106,34 +116,35 @@ export function EncounterSeasonView({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
-          role="group"
-          aria-label="Encounter ledger view"
+          aria-label="Encounter views"
           className="inline-flex rounded-[var(--radius-sm)] border border-frame/50 bg-surface/40 p-0.5"
+          role="group"
         >
-          <button
-            type="button"
-            aria-pressed={!showMissing}
-            onClick={() => setShowMissing(false)}
-            className={`pressable rounded-[calc(var(--radius-sm)-2px)] border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-              !showMissing
-                ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
-                : "border-transparent text-muted hover:bg-surface"
-            }`}
-          >
-            Route claims
-          </button>
-          <button
-            type="button"
-            aria-pressed={showMissing}
-            onClick={() => setShowMissing(true)}
-            className={`pressable rounded-[calc(var(--radius-sm)-2px)] border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-              showMissing
-                ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
-                : "border-transparent text-muted hover:bg-surface"
-            }`}
-          >
-            Missing dex
-          </button>
+          {([
+            { id: "claims", label: "Route claims" },
+            {
+              id: "routes",
+              label: myTrainerId ? "My routes" : "Open routes",
+            },
+            { id: "missing", label: "Missing dex" },
+          ] satisfies ReadonlyArray<{ id: EncounterView; label: string }>).map(
+            (option) => (
+              <button
+                aria-pressed={view === option.id}
+                className={`pressable rounded-[calc(var(--radius-sm)-2px)] border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                  view === option.id
+                    ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
+                    : "border-transparent text-muted hover:bg-surface"
+                }`}
+                data-testid={`encounter-view-${option.id}`}
+                key={option.id}
+                onClick={() => setView(option.id)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ),
+          )}
         </div>
         <Link
           href={toolsHref(slug, "bounty")}
@@ -143,10 +154,18 @@ export function EncounterSeasonView({
         </Link>
       </div>
 
-      {showMissing ? (
+      {view === "missing" && (
         <MissingModernEmeraldGrid missing={missing} slug={slug} />
-      ) : (
-        <EncounterLedger slug={slug} groups={groups} />
+      )}
+      {view === "claims" && (
+        <EncounterLedger groups={groups} slug={slug} />
+      )}
+      {view === "routes" && (
+        <PersonalRoutesView
+          myTrainerId={myTrainerId}
+          routeStatuses={routeStatuses}
+          slug={slug}
+        />
       )}
     </div>
   );

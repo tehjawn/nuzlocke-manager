@@ -8,7 +8,7 @@ import {
   encounterSeasonHighlights,
   missingModernEmeraldSpecies,
 } from "@/lib/encounter-stats";
-
+import { buildPersonalRouteStatuses } from "@/lib/personal-routes";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -33,13 +33,19 @@ export default async function EncountersPage({ params }: PageProps) {
   const groups = buildEncounterLedger(challenge.trainers);
   const highlights = encounterSeasonHighlights(challenge.trainers);
   const missing = missingModernEmeraldSpecies(challenge.trainers);
+  const myTrainerId =
+    challenge.trainers.find((trainer) => trainer.userId === session?.user?.id)
+      ?.id ?? null;
+  const routeStatuses = buildPersonalRouteStatuses(challenge.trainers);
 
   return (
     <EncounterSeasonView
-      slug={challenge.slug}
       groups={groups}
       highlights={highlights}
       missing={missing}
+      myTrainerId={myTrainerId}
+      routeStatuses={routeStatuses}
+      slug={challenge.slug}
     />
   );
 }
