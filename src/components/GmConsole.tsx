@@ -970,7 +970,7 @@ export function GmConsole({
                     <li key={submission.id}>
                       <form
                         className="gm-console__editor"
-                        key={`${submission.id}-${submission.status}`}
+                        key={`${submission.id}-${submission.status}-${submission.updatedAt}`}
                         onSubmit={(event) => {
                           event.preventDefault();
                           const data = new FormData(event.currentTarget);
@@ -979,6 +979,7 @@ export function GmConsole({
                               flash(
                                 await updateFeedbackStatusAction({
                                   challengeId,
+                                  gmNote: String(data.get("gmNote") ?? ""),
                                   status: String(data.get("status")),
                                   submissionId: submission.id,
                                 }),
@@ -1016,6 +1017,21 @@ export function GmConsole({
                         <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">
                           {submission.message}
                         </p>
+                        <label className="gm-console__field">
+                          <span className="gm-console__label">
+                            Shared note (visible to the player)
+                          </span>
+                          <textarea
+                            className="gm-console__textarea"
+                            data-testid={`feedback-note-${submission.id}`}
+                            defaultValue={submission.gmNote ?? ""}
+                            disabled={pending}
+                            maxLength={2000}
+                            name="gmNote"
+                            placeholder="Thanks for reporting — fixed in https://github.com/…"
+                            rows={3}
+                          />
+                        </label>
                         <div className="flex flex-wrap items-end gap-2">
                           <label className="gm-console__field min-w-40 flex-1 sm:max-w-52">
                             <span className="gm-console__label">Status</span>
@@ -1039,7 +1055,7 @@ export function GmConsole({
                             disabled={pending}
                             type="submit"
                           >
-                            Update status
+                            Save
                           </button>
                         </div>
                       </form>

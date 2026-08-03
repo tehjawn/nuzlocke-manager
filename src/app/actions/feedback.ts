@@ -43,8 +43,8 @@ export async function updateFeedbackStatusAction(
     return {
       ok: true,
       message: result.changed
-        ? "Feedback status updated"
-        : "Status is already current",
+        ? "Feedback updated"
+        : "Nothing changed",
     };
   } catch (error) {
     return failAction(

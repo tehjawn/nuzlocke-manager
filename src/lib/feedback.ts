@@ -3,6 +3,7 @@ import "server-only";
 import { getPrisma } from "@/lib/db";
 import {
   feedbackCategoryLabel,
+  feedbackNoteActionKey,
   feedbackReviewActionKey,
   feedbackStatusActionKey,
   feedbackStatusLabel,
@@ -19,6 +20,7 @@ const MAX_FEEDBACK_PER_HOUR = 5;
 type FeedbackRow = {
   category: FeedbackSubmissionItem["category"];
   createdAt: Date;
+  gmNote: string | null;
   id: string;
   message: string;
   status: FeedbackSubmissionItem["status"];
@@ -34,6 +36,7 @@ function toFeedbackItem(row: FeedbackRow): FeedbackSubmissionItem {
   return {
     category: row.category,
     createdAt: row.createdAt.toISOString(),
+    gmNote: row.gmNote,
     id: row.id,
     message: row.message,
     requesterName: row.user.displayName ?? row.user.name ?? "Player",
@@ -46,6 +49,7 @@ function toFeedbackItem(row: FeedbackRow): FeedbackSubmissionItem {
 const feedbackSelect = {
   category: true,
   createdAt: true,
+  gmNote: true,
   id: true,
   message: true,
   status: true,
@@ -164,55 +168,96 @@ export async function createFeedbackSubmission(input: SubmitFeedbackInput) {
 export async function updateFeedbackStatus(input: UpdateFeedbackStatusInput) {
   await requireGm(input.challengeId);
   const prisma = getPrisma();
+  const gmNote = input.gmNote.trim() || null;
   const submission = await prisma.feedbackSubmission.findFirst({
     where: { challengeId: input.challengeId, id: input.submissionId },
     select: {
       challenge: { select: { slug: true } },
+      gmNote: true,
       status: true,
       subject: true,
       userId: true,
     },
   });
   if (!submission) throw new Error("Feedback submission not found");
-  if (submission.status === input.status) {
+
+  const statusChanged = submission.status !== input.status;
+  const noteChanged = (submission.gmNote ?? null) !== gmNote;
+  if (!statusChanged && !noteChanged) {
     return { changed: false, slug: submission.challenge.slug };
   }
 
-  await prisma.$transaction([
-    prisma.feedbackSubmission.update({
+  const slug = submission.challenge.slug;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.feedbackSubmission.update({
       where: { id: input.submissionId },
-      data: { status: input.status },
-    }),
-    prisma.notification.upsert({
-      where: {
-        userId_type_actionKey: {
+      data: {
+        ...(statusChanged ? { status: input.status } : {}),
+        ...(noteChanged ? { gmNote } : {}),
+      },
+    });
+
+    if (statusChanged) {
+      await tx.notification.upsert({
+        where: {
+          userId_type_actionKey: {
+            actionKey: feedbackStatusActionKey(
+              slug,
+              input.submissionId,
+              input.status,
+            ),
+            type: "FEEDBACK_STATUS",
+            userId: submission.userId,
+          },
+        },
+        create: {
           actionKey: feedbackStatusActionKey(
-            submission.challenge.slug,
+            slug,
             input.submissionId,
             input.status,
           ),
+          body: submission.subject,
+          title: `Feedback marked ${feedbackStatusLabel(input.status).toLowerCase()}`,
           type: "FEEDBACK_STATUS",
           userId: submission.userId,
         },
-      },
-      create: {
-        actionKey: feedbackStatusActionKey(
-          submission.challenge.slug,
-          input.submissionId,
-          input.status,
-        ),
-        body: submission.subject,
-        title: `Feedback marked ${feedbackStatusLabel(input.status).toLowerCase()}`,
-        type: "FEEDBACK_STATUS",
-        userId: submission.userId,
-      },
-      update: {
-        body: submission.subject,
-        createdAt: new Date(),
-        readAt: null,
-        title: `Feedback marked ${feedbackStatusLabel(input.status).toLowerCase()}`,
-      },
-    }),
-  ]);
-  return { changed: true, slug: submission.challenge.slug };
+        update: {
+          body: submission.subject,
+          createdAt: new Date(),
+          readAt: null,
+          title: `Feedback marked ${feedbackStatusLabel(input.status).toLowerCase()}`,
+        },
+      });
+      return;
+    }
+
+    if (noteChanged && gmNote) {
+      // Note-only updates notify when a non-empty shared reply is saved/edited.
+      await tx.notification.upsert({
+        where: {
+          userId_type_actionKey: {
+            actionKey: feedbackNoteActionKey(slug, input.submissionId),
+            type: "FEEDBACK_NOTE",
+            userId: submission.userId,
+          },
+        },
+        create: {
+          actionKey: feedbackNoteActionKey(slug, input.submissionId),
+          body: submission.subject,
+          title: "GM left a note on your feedback",
+          type: "FEEDBACK_NOTE",
+          userId: submission.userId,
+        },
+        update: {
+          body: submission.subject,
+          createdAt: new Date(),
+          readAt: null,
+          title: "GM left a note on your feedback",
+        },
+      });
+    }
+  });
+
+  return { changed: true, slug };
 }

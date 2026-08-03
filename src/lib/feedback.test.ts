@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  feedbackNoteActionKey,
   feedbackNotificationHref,
   feedbackReviewActionKey,
   feedbackStatusActionKey,
 } from "@/lib/feedback-types";
-import { submitFeedbackSchema } from "@/lib/feedback-validation";
+import {
+  submitFeedbackSchema,
+  updateFeedbackStatusSchema,
+} from "@/lib/feedback-validation";
 
 test("validates and trims structured feedback", () => {
   const result = submitFeedbackSchema.parse({
@@ -45,6 +49,35 @@ test("maps GM and player feedback notifications to safe destinations", () => {
     ),
     "/challenges/trash-pack-2026/feedback",
   );
+  assert.equal(
+    feedbackNotificationHref(feedbackNoteActionKey("trash-pack-2026", "one")),
+    "/challenges/trash-pack-2026/feedback",
+  );
   assert.equal(feedbackNotificationHref("feedback-review:../admin:one"), null);
   assert.equal(feedbackNotificationHref("welcome"), null);
+});
+
+test("accepts a shared GM note on status update", () => {
+  const result = updateFeedbackStatusSchema.parse({
+    challengeId: "challenge-1",
+    gmNote: "  Thanks — fixed in https://github.com/org/repo/pull/1  ",
+    status: "RESOLVED",
+    submissionId: "submission-1",
+  });
+
+  assert.equal(
+    result.gmNote,
+    "  Thanks — fixed in https://github.com/org/repo/pull/1  ",
+  );
+  assert.equal(result.status, "RESOLVED");
+});
+
+test("rejects oversized GM notes", () => {
+  const result = updateFeedbackStatusSchema.safeParse({
+    challengeId: "challenge-1",
+    gmNote: "x".repeat(2001),
+    status: "IN_REVIEW",
+    submissionId: "submission-1",
+  });
+  assert.equal(result.success, false);
 });

@@ -13,6 +13,7 @@ export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
 export type FeedbackSubmissionItem = {
   category: FeedbackCategory;
   createdAt: string;
+  gmNote: string | null;
   id: string;
   message: string;
   requesterName: string;
@@ -23,6 +24,7 @@ export type FeedbackSubmissionItem = {
 
 const FEEDBACK_REVIEW_ACTION_PREFIX = "feedback-review:";
 const FEEDBACK_STATUS_ACTION_PREFIX = "feedback-status:";
+const FEEDBACK_NOTE_ACTION_PREFIX = "feedback-note:";
 const CHALLENGE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export function feedbackCategoryLabel(category: FeedbackCategory): string {
@@ -79,16 +81,23 @@ export function feedbackStatusActionKey(
   return `${FEEDBACK_STATUS_ACTION_PREFIX}${slug}:${submissionId}:${status}`;
 }
 
+export function feedbackNoteActionKey(slug: string, submissionId: string) {
+  return `${FEEDBACK_NOTE_ACTION_PREFIX}${slug}:${submissionId}`;
+}
+
 export function feedbackNotificationHref(actionKey: string | null) {
   if (!actionKey) return null;
 
   const isReview = actionKey.startsWith(FEEDBACK_REVIEW_ACTION_PREFIX);
   const isStatus = actionKey.startsWith(FEEDBACK_STATUS_ACTION_PREFIX);
-  if (!isReview && !isStatus) return null;
+  const isNote = actionKey.startsWith(FEEDBACK_NOTE_ACTION_PREFIX);
+  if (!isReview && !isStatus && !isNote) return null;
 
   const prefix = isReview
     ? FEEDBACK_REVIEW_ACTION_PREFIX
-    : FEEDBACK_STATUS_ACTION_PREFIX;
+    : isStatus
+      ? FEEDBACK_STATUS_ACTION_PREFIX
+      : FEEDBACK_NOTE_ACTION_PREFIX;
   const slug = actionKey.slice(prefix.length).split(":", 1)[0];
   if (!CHALLENGE_SLUG_PATTERN.test(slug)) return null;
 
