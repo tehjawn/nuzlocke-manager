@@ -1,4 +1,6 @@
-import type { TrainerProfile } from "@/lib/challenge-types";
+import { findPokemonById } from "@/data/pokemon-index";
+import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import type { PokemonType } from "@/lib/pokemon-types";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 
 export type MemorialTrainerHighlight = {
@@ -132,4 +134,25 @@ export function memorialSeasonHighlights(
     mostDeathProne,
     richest,
   };
+}
+
+export type MemorialPokemonFilters = {
+  type: PokemonType | null;
+  generation: number | null;
+};
+
+/** True when the grave matches optional type and/or National Dex generation filters. */
+export function memorialPokemonMatchesFilters(
+  pokemon: Pick<PokemonEntry, "types" | "pokedexId">,
+  filters: MemorialPokemonFilters,
+): boolean {
+  if (filters.type && !pokemon.types.includes(filters.type)) return false;
+  if (filters.generation != null) {
+    const gen =
+      pokemon.pokedexId != null
+        ? (findPokemonById(pokemon.pokedexId)?.generation ?? null)
+        : null;
+    if (gen !== filters.generation) return false;
+  }
+  return true;
 }
