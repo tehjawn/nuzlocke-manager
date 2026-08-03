@@ -951,16 +951,13 @@ function PrepPanels({
   return (
     <div className="space-y-3">
       <Frame dense title="Gym leaders">
-        <p className="mb-2 text-[11px] text-muted">
-          Specialty + your draft answers. Expand a row for bring / careful types.
-        </p>
-        <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">
-          {gymPreps.map((entry) => (
+        <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">          {gymPreps.map((entry, index) => (
             <PrepCard
               key={entry.id}
+              index={index + 1}
               prep={entry.prep}
               draft={draft}
-              subtitle={entry.title}
+              badge={gymBadgeFromTitle(entry.title)}
               defaultOpen
               guideHref={toolsHref(slug, "guide", {
                 chapter: entry.chapterId,
@@ -994,16 +991,24 @@ function PrepPanels({
   );
 }
 
+function gymBadgeFromTitle(title: string): string | null {
+  const match = title.match(/\(([^)]+)\)/);
+  const badge = match?.[1]?.trim();
+  return badge || null;
+}
+
 function PrepCard({
   prep,
   draft,
-  subtitle,
+  index,
+  badge,
   guideHref,
   defaultOpen = false,
 }: {
   prep: GuideGymPrep;
   draft: PokemonEntry[];
-  subtitle?: string;
+  index?: number;
+  badge?: string | null;
   guideHref?: string;
   defaultOpen?: boolean;
 }) {
@@ -1020,7 +1025,8 @@ function PrepCard({
         open={open}
         onToggle={(event) => setOpen(event.currentTarget.open)}
         className="group open:bg-surface-2/40"
-      >        <summary className="flex cursor-pointer list-none flex-col gap-1.5 px-2.5 py-2 sm:flex-row sm:items-center sm:gap-2 [&::-webkit-details-marker]:hidden">
+      >
+        <summary className="flex cursor-pointer list-none flex-col gap-1.5 px-2.5 py-2 sm:flex-row sm:items-center sm:gap-2 [&::-webkit-details-marker]:hidden">
           <span className="flex min-w-0 items-center gap-2">
             <span
               aria-hidden
@@ -1028,12 +1034,15 @@ function PrepCard({
             >
               ▸
             </span>
+            {index != null ? (
+              <span className="shrink-0 text-[11px] font-bold tabular-nums text-muted">
+                {index}.
+              </span>
+            ) : null}
             <span className="min-w-0 truncate text-sm font-semibold text-ink">
               {prep.leaderName}
-              {subtitle ? (
-                <span className="ml-1 font-medium text-muted">
-                  · {subtitle.replace(/^Defeat\s+/i, "").split("—")[0]?.trim()}
-                </span>
+              {badge ? (
+                <span className="ml-1.5 font-medium text-muted">{badge}</span>
               ) : null}
             </span>
             {specialty ? <TypeBadge type={specialty} size="sm" /> : null}
