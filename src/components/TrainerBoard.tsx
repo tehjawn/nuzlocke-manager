@@ -33,7 +33,9 @@ import { ReviveControl } from "@/components/ReviveControl";
 import { SaveImportModal } from "@/components/SaveImportModal";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
 import { StatusLine } from "@/components/StatusLine";
+import { TeamExportModal } from "@/components/TeamExportModal";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
+import { pushSnackbar } from "@/components/Snackbar";
 import {
   isAvatarBackgroundKey,
   parseAvatarBackgroundKey,
@@ -47,6 +49,7 @@ import type {
   PokemonEntry,
   TrainerProfile,
 } from "@/lib/challenge-types";
+import { copyText } from "@/lib/copy-text";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
@@ -56,6 +59,7 @@ import {
   firstOpenMainPartyIndex,
 } from "@/lib/pokemon-board-dnd";
 import { isEmptySpread } from "@/lib/stats";
+import { trainerBoardPath } from "@/lib/team-export";
 
 type TrainerBoardProps = {
   leagueBoardHref: string;
@@ -64,6 +68,8 @@ type TrainerBoardProps = {
   /** When set, demo boards point signed-in players at their own board instead of login. */
   myBoardHref?: string | null;
   challengeSlug: string;
+  challengeName: string;
+  challengeGame: string;
   trainer: TrainerProfile;
   badges: BadgeDefinition[];
   canEdit: boolean;
@@ -206,6 +212,61 @@ function BoardHistoryIcon({ className = "h-3.5 w-3.5" }: { className?: string })
       />
       <path
         d="M5.5 8.5h5M5.5 11h3.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ExportTeamIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M8 9.5V2.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M5.5 4.5 8 2 10.5 4.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3 9.5v2a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 11.5v-2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CopyLinkIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M6.5 8.5a2.5 2.5 0 0 0 1.8.7h1.2a2.5 2.5 0 0 0 0-5H8.3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M9.5 7.5a2.5 2.5 0 0 0-1.8-.7H6.5a2.5 2.5 0 0 0 0 5h1.2"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
@@ -465,6 +526,8 @@ export function TrainerBoard({
   joinHref,
   myBoardHref = null,
   challengeSlug,
+  challengeName,
+  challengeGame,
   trainer,
   badges,
   canEdit,
@@ -554,6 +617,7 @@ export function TrainerBoard({
   );
   const [saveImportOpen, setSaveImportOpen] = useState(false);
   const [boardHistoryOpen, setBoardHistoryOpen] = useState(false);
+  const [teamExportOpen, setTeamExportOpen] = useState(false);
   const searchParams = useSearchParams();
   const jumpPokemonId = searchParams.get("pokemon");
   const [openedJumpPokemonId, setOpenedJumpPokemonId] = useState<string | null>(
@@ -730,6 +794,20 @@ export function TrainerBoard({
         playerSave.markError(result.error);
       }
     });
+  }
+
+  async function copyBoardLink() {
+    const path = trainerBoardPath(challengeSlug, trainer.id);
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${path}`
+        : path;
+    const ok = await copyText(url);
+    if (ok) {
+      pushSnackbar("Board link copied", "success", 2200);
+    } else {
+      pushSnackbar("Couldn’t copy board link", "error");
+    }
   }
 
   async function spendReviveToken() {
@@ -1006,6 +1084,27 @@ export function TrainerBoard({
               <span>Import save</span>
             </button>
           ) : null}
+          <button
+            type="button"
+            className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+            disabled={pending || wiping}
+            onClick={() => setTeamExportOpen(true)}
+          >
+            <ExportTeamIcon />
+            Export team
+          </button>
+          <button
+            type="button"
+            className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+            disabled={pending || wiping}
+            title="Copy shareable board link"
+            onClick={() => {
+              void copyBoardLink();
+            }}
+          >
+            <CopyLinkIcon />
+            Copy link
+          </button>
           {!isDemo && (isGm || showCompetitiveDetails) ? (
             <button
               type="button"
@@ -1439,82 +1538,98 @@ export function TrainerBoard({
             ))}
           </div>
 
-          {canEdit || (isGm && !isDemo) ? (
-            <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(10rem,1fr))]">
-              {canEdit && !isDemo && !reviveUsed ? (
-                <ShortcutActionTile
-                  label="Use Revive Token"
-                  icon={<ReviveShortcutIcon className="h-4 w-4" />}
-                  tone="accent"
-                  disabled={pending || wiping}
-                  onClick={() => {
-                    void spendReviveToken();
-                  }}
-                />
-              ) : null}
-              {isGm && !isDemo && reviveUsed ? (
-                <ShortcutActionTile
-                  label="Reset revive"
-                  icon={<ReviveShortcutIcon className="h-4 w-4" />}
-                  tone="danger"
-                  disabled={pending || wiping}
-                  title="Reset revive token"
-                  onClick={() => {
-                    void resetReviveToken();
-                  }}
-                />
-              ) : null}
-              {canEdit && !isDemo && reviveUsed && !isGm ? (
-                <ShortcutStatusTile
-                  label="Revive used"
-                  icon={<ReviveShortcutIcon className="h-4 w-4" />}
-                  tone="danger"
-                />
-              ) : null}
-              {canEdit ? (
-                <ShortcutActionTile
-                  label="Import save"
-                  icon={<ImportSaveIcon className="h-4 w-4" />}
-                  tone="import"
-                  disabled={pending || wiping}
-                  onClick={() => setSaveImportOpen(true)}
-                />
-              ) : null}
-              {!isDemo && (isGm || showCompetitiveDetails) ? (
-                <ShortcutActionTile
-                  label="Trainer history"
-                  icon={<BoardHistoryIcon className="h-4 w-4" />}
-                  tone="neutral"
-                  disabled={pending || wiping}
-                  title="Runs, badge archives, and board snapshots"
-                  onClick={() => setBoardHistoryOpen(true)}
-                />
-              ) : null}
-              {canEdit ? (
-                <ShortcutActionTile
-                  label="Record wipe"
-                  icon={<WipeIcon className="h-4 w-4" />}
-                  tone="danger"
-                  disabled={pending || wiping}
-                  onClick={() => {
-                    void recordWipe();
-                  }}
-                />
-              ) : null}
-              {isGm && !isDemo ? (
-                <ShortcutActionTile
-                  label="Reset board"
-                  icon={<ResetBoardIcon className="h-4 w-4" />}
-                  tone="danger"
-                  disabled={pending || wiping}
-                  title="GM hard reset — zeros wipe count"
-                  onClick={() => {
-                    void resetTrainerBoard();
-                  }}
-                />
-              ) : null}
-            </div>
-          ) : null}
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(10rem,1fr))]">
+            <ShortcutActionTile
+              label="Export team"
+              icon={<ExportTeamIcon className="h-4 w-4" />}
+              tone="neutral"
+              disabled={pending || wiping}
+              title="Copy living roster for LLM / notes"
+              onClick={() => setTeamExportOpen(true)}
+            />
+            <ShortcutActionTile
+              label="Copy board link"
+              icon={<CopyLinkIcon className="h-4 w-4" />}
+              tone="neutral"
+              disabled={pending || wiping}
+              title="Copy shareable trainer board URL"
+              onClick={() => {
+                void copyBoardLink();
+              }}
+            />
+            {canEdit && !isDemo && !reviveUsed ? (
+              <ShortcutActionTile
+                label="Use Revive Token"
+                icon={<ReviveShortcutIcon className="h-4 w-4" />}
+                tone="accent"
+                disabled={pending || wiping}
+                onClick={() => {
+                  void spendReviveToken();
+                }}
+              />
+            ) : null}
+            {isGm && !isDemo && reviveUsed ? (
+              <ShortcutActionTile
+                label="Reset revive"
+                icon={<ReviveShortcutIcon className="h-4 w-4" />}
+                tone="danger"
+                disabled={pending || wiping}
+                title="Reset revive token"
+                onClick={() => {
+                  void resetReviveToken();
+                }}
+              />
+            ) : null}
+            {canEdit && !isDemo && reviveUsed && !isGm ? (
+              <ShortcutStatusTile
+                label="Revive used"
+                icon={<ReviveShortcutIcon className="h-4 w-4" />}
+                tone="danger"
+              />
+            ) : null}
+            {canEdit ? (
+              <ShortcutActionTile
+                label="Import save"
+                icon={<ImportSaveIcon className="h-4 w-4" />}
+                tone="import"
+                disabled={pending || wiping}
+                onClick={() => setSaveImportOpen(true)}
+              />
+            ) : null}
+            {!isDemo && (isGm || showCompetitiveDetails) ? (
+              <ShortcutActionTile
+                label="Trainer history"
+                icon={<BoardHistoryIcon className="h-4 w-4" />}
+                tone="neutral"
+                disabled={pending || wiping}
+                title="Runs, badge archives, and board snapshots"
+                onClick={() => setBoardHistoryOpen(true)}
+              />
+            ) : null}
+            {canEdit ? (
+              <ShortcutActionTile
+                label="Record wipe"
+                icon={<WipeIcon className="h-4 w-4" />}
+                tone="danger"
+                disabled={pending || wiping}
+                onClick={() => {
+                  void recordWipe();
+                }}
+              />
+            ) : null}
+            {isGm && !isDemo ? (
+              <ShortcutActionTile
+                label="Reset board"
+                icon={<ResetBoardIcon className="h-4 w-4" />}
+                tone="danger"
+                disabled={pending || wiping}
+                title="GM hard reset — zeros wipe count"
+                onClick={() => {
+                  void resetTrainerBoard();
+                }}
+              />
+            ) : null}
+          </div>
         </div>
       </Frame>
 
@@ -1649,6 +1764,21 @@ export function TrainerBoard({
           }}
         />
       ) : null}
+
+      <TeamExportModal
+        open={teamExportOpen}
+        onClose={() => setTeamExportOpen(false)}
+        challengeSlug={challengeSlug}
+        challengeName={challengeName}
+        challengeGame={challengeGame}
+        trainer={{
+          ...boardTrainer,
+          earnedBadgeKeys,
+          reviveUsed,
+        }}
+        badges={badges}
+        showCompetitiveDetails={showCompetitiveDetails}
+      />
 
       {!isDemo && (isGm || showCompetitiveDetails) && boardHistoryOpen ? (
         <BoardHistoryModal
