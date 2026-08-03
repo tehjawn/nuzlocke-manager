@@ -105,14 +105,25 @@ export function LoggedInChrome({
   }
 
   async function dismissNotification(notification: NotificationItem) {
-    const previous = notifications;
     setNotifications((prev) =>
       withPinnedWelcome(prev.filter((n) => n.id !== notification.id)),
     );
     if (notification.id === "welcome") return;
     const result = await archiveNotificationAction(notification.id);
     if (!result.ok) {
-      setNotifications(previous);
+      // Re-insert only this row against latest state so overlapping dismissals
+      // that already succeeded are not resurrected by a stale snapshot.
+      setNotifications((prev) =>
+        prev.some((n) => n.id === notification.id)
+          ? prev
+          : withPinnedWelcome(
+              [...prev, notification].sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime(),
+              ),
+            ),
+      );
     }
   }
 

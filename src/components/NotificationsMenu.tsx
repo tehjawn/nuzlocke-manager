@@ -147,7 +147,7 @@ export function NotificationsMenu({
                       <button
                         type="button"
                         aria-label={`Dismiss ${notification.title}`}
-                        className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-frame/50 hover:text-ink"
+                        className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-frame/50 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                         onClick={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
