@@ -176,6 +176,25 @@ test("catch route soft match is case-insensitive", () => {
   assert.equal(stepMatchesCatchRoutes(step, ["Route 101"]), false);
 });
 
+test("catch route soft match treats Safari areas as the umbrella guide location", () => {
+  const safariStep = {
+    id: "test-safari",
+    chapterId: "fortree",
+    title: "Safari",
+    summary: "test",
+    locations: ["Safari Zone", "Route 120"],
+    priority: "optional" as const,
+    sortOrder: 0,
+  };
+  assert.equal(
+    stepMatchesCatchRoutes(safariStep, ["Safari Zone (South)"]),
+    true,
+  );
+  assert.equal(stepMatchesCatchRoutes(safariStep, ["Safari Zone"]), true);
+  assert.equal(stepMatchesCatchRoutes(safariStep, ["Route 120"]), true);
+  assert.equal(stepMatchesCatchRoutes(safariStep, ["Route 101"]), false);
+});
+
 test("guide document has unique step ids", () => {
   const ids = EMERALD_GUIDE.steps.map((s) => s.id);
   assert.equal(ids.length, new Set(ids).size);

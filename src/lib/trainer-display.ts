@@ -20,7 +20,16 @@ export function displayName(trainer: TrainerProfile): string {
 /** Living box size shown on TrainerCard (MAIN + RESERVE). */
 export function livingPokemonCount(trainer: {
   pokemon: Array<{ slot: PokemonEntry["slot"] }>;
+  slotCounts?: {
+    main: number;
+    reserve: number;
+    graveyard: number;
+    encountered: number;
+  };
 }): number {
+  if (trainer.slotCounts) {
+    return trainer.slotCounts.main + trainer.slotCounts.reserve;
+  }
   let count = 0;
   for (const p of trainer.pokemon) {
     if (p.slot === "MAIN" || p.slot === "RESERVE") count += 1;
@@ -57,6 +66,12 @@ type SortableTrainer = {
   updatedAt?: string | null;
   earnedBadgeKeys?: string[];
   pokemon?: Array<{ slot: PokemonEntry["slot"] }>;
+  slotCounts?: {
+    main: number;
+    reserve: number;
+    graveyard: number;
+    encountered: number;
+  };
 };
 
 function updatedAtMs(value: string | null | undefined): number {
@@ -89,8 +104,14 @@ function compareBadges(a: SortableTrainer, b: SortableTrainer): number {
 }
 
 function comparePokemon(a: SortableTrainer, b: SortableTrainer): number {
-  const aCount = livingPokemonCount({ pokemon: a.pokemon ?? [] });
-  const bCount = livingPokemonCount({ pokemon: b.pokemon ?? [] });
+  const aCount = livingPokemonCount({
+    pokemon: a.pokemon ?? [],
+    slotCounts: a.slotCounts,
+  });
+  const bCount = livingPokemonCount({
+    pokemon: b.pokemon ?? [],
+    slotCounts: b.slotCounts,
+  });
   if (aCount !== bCount) return bCount - aCount;
   return tieBreak(a, b);
 }

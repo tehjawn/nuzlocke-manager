@@ -31,6 +31,15 @@ export const pokemonFullSelect = {
   evs: true,
 } as const;
 
+/**
+ * Tools page: identity + moves for Pokédex tips / bounty / compare.
+ * Still omits nature / ability / heldItem / IVs / EVs (Flight weight).
+ */
+export const pokemonToolsSelect = {
+  ...pokemonSummarySelect,
+  moves: true,
+} as const;
+
 export const trainerUserSelect = {
   discordUsername: true,
   displayName: true,

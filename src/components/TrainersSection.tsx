@@ -19,7 +19,7 @@ const SORT_CHANGE_EVENT = "nuzlocke-trainers-sort";
 type TrainersView = "list" | "grid";
 
 type TrainersSectionProps = {
-  challenge: Challenge;
+  challenge: Pick<Challenge, "slug" | "badges">;
   trainers: TrainerProfile[];
   /** Highlight the signed-in player's card. */
   myTrainerId?: string | null;

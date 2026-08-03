@@ -158,7 +158,7 @@ export function MobileWorkspace({
               <Link
                 key={tab.href}
                 href={tab.href}
-                prefetch
+                prefetch={false}
                 aria-current={active ? "page" : undefined}
                 data-tour={
                   tab.label === "Trainers" ? "tab-trainers" : undefined

@@ -180,3 +180,18 @@ test("livingPokemonCount counts MAIN and RESERVE only", () => {
     2,
   );
 });
+
+test("livingPokemonCount prefers slotCounts when present", () => {
+  assert.equal(
+    livingPokemonCount({
+      pokemon: [{ slot: "MAIN" }],
+      slotCounts: {
+        main: 6,
+        reserve: 4,
+        graveyard: 2,
+        encountered: 10,
+      },
+    }),
+    10,
+  );
+});

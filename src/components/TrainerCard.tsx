@@ -31,11 +31,16 @@ export function TrainerCard({
   showCompetitiveDetails = false,
 }: TrainerCardProps) {
   const main = pokemonInSlot(trainer, "MAIN").slice(0, 6);
-  const caughtCount =
-    pokemonInSlot(trainer, "MAIN").length +
-    pokemonInSlot(trainer, "RESERVE").length;
-  const encounteredCount = pokemonInSlot(trainer, "ENCOUNTERED").length;
-  const ripCount = pokemonInSlot(trainer, "GRAVEYARD").length;
+  const caughtCount = trainer.slotCounts
+    ? trainer.slotCounts.main + trainer.slotCounts.reserve
+    : pokemonInSlot(trainer, "MAIN").length +
+      pokemonInSlot(trainer, "RESERVE").length;
+  const encounteredCount = trainer.slotCounts
+    ? trainer.slotCounts.encountered
+    : pokemonInSlot(trainer, "ENCOUNTERED").length;
+  const ripCount = trainer.slotCounts
+    ? trainer.slotCounts.graveyard
+    : pokemonInSlot(trainer, "GRAVEYARD").length;
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );

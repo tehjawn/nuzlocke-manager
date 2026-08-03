@@ -44,12 +44,12 @@ export function MemorialCauseEditor({
   const [, startTransition] = useTransition();
   const save = useSaveStatus();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const committedRef = useRef(causeOfDeath ?? "");
+  const [committed, setCommitted] = useState(causeOfDeath ?? "");
 
   if (!editing && causeOfDeath !== syncedCause) {
     setSyncedCause(causeOfDeath);
     setDraft(causeOfDeath ?? "");
-    committedRef.current = causeOfDeath ?? "";
+    setCommitted(causeOfDeath ?? "");
   }
 
   useEffect(() => {
@@ -58,14 +58,14 @@ export function MemorialCauseEditor({
 
   function commit() {
     const next = draft.trim();
-    const previous = committedRef.current.trim();
+    const previous = committed.trim();
     setEditing(false);
     if (next === previous) {
       setDraft(causeOfDeath ?? "");
       return;
     }
 
-    committedRef.current = next;
+    setCommitted(next);
     save.markSaving("Saving cause…");
     startTransition(async () => {
       const result = await updateGraveCauseAction({
@@ -77,7 +77,7 @@ export function MemorialCauseEditor({
         save.markSaved(result.message ?? "Cause updated");
         router.refresh();
       } else {
-        committedRef.current = previous;
+        setCommitted(previous);
         setDraft(previous);
         save.markError(result.error);
       }
@@ -118,7 +118,7 @@ export function MemorialCauseEditor({
           onBlur={commit}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
-              setDraft(committedRef.current);
+              setDraft(committed);
               setEditing(false);
             }
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {

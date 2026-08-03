@@ -6,6 +6,19 @@ export type DndSlot = (typeof DND_SLOTS)[number];
 
 export const MAIN_PARTY_SIZE = 6;
 
+/** First free MAIN partyIndex in `0..MAIN_PARTY_SIZE-1`, or null if the squad is full. */
+export function firstOpenMainPartyIndex(
+  pokemon: readonly Pick<PokemonEntry, "slot" | "partyIndex">[],
+): number | null {
+  const used = new Set(
+    pokemon.filter((p) => p.slot === "MAIN").map((p) => p.partyIndex),
+  );
+  for (let i = 0; i < MAIN_PARTY_SIZE; i++) {
+    if (!used.has(i)) return i;
+  }
+  return null;
+}
+
 export type BoardItems = Record<DndSlot, string[]>;
 
 export function isDndSlot(slot: string): slot is DndSlot {

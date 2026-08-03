@@ -9,6 +9,7 @@ import {
   type SaveMonCategory,
 } from "@/lib/gen3-save";
 import { formatPokedollars } from "@/lib/gen3-save/money";
+import { displayActionError } from "@/lib/action-error-display";
 import type { PokemonSlot } from "@/lib/challenge-types";
 import { resolveMoveNames } from "@/lib/move-names";
 
@@ -139,7 +140,7 @@ export function SaveImportModal({
       const buf = new Uint8Array(await file.arrayBuffer());
       const result = await parsePokemonSaveAsync(buf);
       if (!result.ok) {
-        setError(result.error);
+        setError(displayActionError(result.error));
         return;
       }
       setFormat(result.format);
@@ -161,7 +162,11 @@ export function SaveImportModal({
         encountered: categoryToDrafts(result.encountered, "ENCOUNTERED"),
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to read save file");
+      setError(
+        displayActionError(
+          e instanceof Error ? e.message : "Failed to read save file",
+        ),
+      );
     } finally {
       setParsing(false);
     }

@@ -11,7 +11,12 @@ import {
   readActivityHead,
   withReactionHead,
 } from "@/lib/activity-watermark";
+import { failAction } from "@/lib/action-error";
 import { getPrisma } from "@/lib/db";
+import {
+  MAIN_PARTY_SIZE,
+  firstOpenMainPartyIndex,
+} from "@/lib/pokemon-board-dnd";
 import {
   getAccessForChallenge,
   requireGm,
@@ -142,7 +147,9 @@ function revalidateChallenge(slug: string, trainerId?: string) {
   revalidatePath("/challenges");
 }
 
-export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
+export type ActionResult =
+  | { ok: true; message?: string }
+  | { ok: false; error: string; code?: string };
 
 type ActivityTypeName =
   | "STATUS_UPDATE"
@@ -367,7 +374,7 @@ export async function updateAccountAction(
     revalidatePath("/account");
     return { ok: true, message: "Account updated" };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Update failed" };
+    return failAction("update-failed", e, "Update failed");
   }
 }
 
@@ -428,7 +435,7 @@ export async function joinChallengeAction(input: {
       trainerId: provisioned.ok ? provisioned.trainerId : undefined,
     };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Join failed" };
+    return failAction("join-failed", e, "Join failed");
   }
 }
 
@@ -460,7 +467,7 @@ export async function enterChallengeAction(input: {
       trainerId: result.trainerId,
     };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Enter failed" };
+    return failAction("enter-failed", e, "Enter failed");
   }
 }
 
@@ -535,7 +542,7 @@ export async function claimTrainerAction(input: {
     revalidateChallenge(trainer.challenge.slug, trainer.id);
     return { ok: true, message: `Claimed ${trainer.handle}` };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Claim failed" };
+    return failAction("claim-failed", e, "Claim failed");
   }
 }
 
@@ -796,7 +803,7 @@ export async function updateTrainerBoardAction(input: {
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Board updated" };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Update failed" };
+    return failAction("update-failed", e, "Update failed");
   }
 }
 
@@ -937,7 +944,7 @@ export async function recordWipeAction(input: {
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: `Wipe #${wipeCount} recorded` };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Wipe failed" };
+    return failAction("wipe-failed", e, "Wipe failed");
   }
 }
 
@@ -1013,10 +1020,7 @@ export async function gmResetTrainerBoardAction(input: {
     revalidateChallenge(trainer.challenge.slug, trainer.id);
     return { ok: true, message: `${trainer.handle} board reset` };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Board reset failed",
-    };
+    return failAction("board-reset-failed", e, "Board reset failed");
   }
 }
 
@@ -1082,10 +1086,7 @@ export async function gmResetAllTrainerBoardsAction(input: {
       message: `Reset ${count} trainer board${count === 1 ? "" : "s"}`,
     };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Season board reset failed",
-    };
+    return failAction("season-board-reset-failed", e, "Season board reset failed");
   }
 }
 
@@ -1163,10 +1164,7 @@ export async function listTrainerBoardSnapshotsAction(input: {
 
     return { ok: true, snapshots };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Could not load board history",
-    };
+    return failAction("could-not-load-board-history", e, "Could not load board history");
   }
 }
 
@@ -1278,10 +1276,7 @@ export async function listTrainerHistoryAction(input: {
 
     return { ok: true, runs: historyRuns, canClearSnapshots: isGm };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Could not load trainer history",
-    };
+    return failAction("could-not-load-trainer-history", e, "Could not load trainer history");
   }
 }
 
@@ -1339,10 +1334,7 @@ export async function getTrainerBoardSnapshotAction(input: {
       },
     };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Could not load snapshot",
-    };
+    return failAction("could-not-load-snapshot", e, "Could not load snapshot");
   }
 }
 
@@ -1392,10 +1384,7 @@ export async function gmClearTrainerBoardHistoryAction(input: {
           : `Cleared ${deleted} snapshot${deleted === 1 ? "" : "s"}`,
     };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Could not clear board history",
-    };
+    return failAction("could-not-clear-board-history", e, "Could not clear board history");
   }
 }
 
@@ -1516,11 +1505,7 @@ export async function previewMemorialBackfillAction(input: {
       runsSkipped: plan.runsSkipped,
     };
   } catch (e) {
-    return {
-      ok: false,
-      error:
-        e instanceof Error ? e.message : "Could not preview memorial restore",
-    };
+    return failAction("could-not-preview-memorial-restore", e, "Could not preview memorial restore");
   }
 }
 
@@ -1554,13 +1539,7 @@ export async function gmApplyMemorialBackfillAction(input: {
       } from board history`,
     };
   } catch (e) {
-    return {
-      ok: false,
-      error:
-        e instanceof Error
-          ? e.message
-          : "Could not restore memorial from history",
-    };
+    return failAction("could-not-restore-memorial-from-history", e, "Could not restore memorial from history");
   }
 }
 
@@ -1624,13 +1603,7 @@ export async function previewSeasonMemorialBackfillAction(input: {
       trainers,
     };
   } catch (e) {
-    return {
-      ok: false,
-      error:
-        e instanceof Error
-          ? e.message
-          : "Could not preview memorial reconstruction",
-    };
+    return failAction("could-not-preview-memorial-reconstruction", e, "Could not preview memorial reconstruction");
   }
 }
 
@@ -1721,13 +1694,7 @@ export async function gmReconstructMemorialHistoryAction(input: {
       } across ${trainersUpdated} trainer${trainersUpdated === 1 ? "" : "s"}`,
     };
   } catch (e) {
-    return {
-      ok: false,
-      error:
-        e instanceof Error
-          ? e.message
-          : "Could not reconstruct memorial history",
-    };
+    return failAction("could-not-reconstruct-memorial-history", e, "Could not reconstruct memorial history");
   }
 }
 
@@ -1893,7 +1860,7 @@ export async function setBadgesProgressAction(
     revalidatePath(`/challenges/${trainer.challenge.slug}`);
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Badge update failed" };
+    return failAction("badge-update-failed", e, "Badge update failed");
   }
 }
 
@@ -1936,6 +1903,15 @@ export async function upsertPokemonAction(
       };
     }
 
+    if (data.slot === "MAIN") {
+      if (data.partyIndex < 0 || data.partyIndex >= MAIN_PARTY_SIZE) {
+        return {
+          ok: false,
+          error: "Main Squad partyIndex must be 0–5",
+        };
+      }
+    }
+
     const speciesMeta = findSpecies(data.species);
     const q = data.species.trim().toLowerCase();
     const indexHit =
@@ -1958,6 +1934,27 @@ export async function upsertPokemonAction(
     });
 
     const prisma = getPrisma();
+
+    // Creating into a full Main Squad (or an already-occupied index) is blocked.
+    if (data.slot === "MAIN" && !data.id) {
+      const main = await prisma.pokemonEntry.findMany({
+        where: { trainerId: trainer.id, slot: "MAIN" },
+        select: { slot: true, partyIndex: true },
+      });
+      if (firstOpenMainPartyIndex(main) == null) {
+        return {
+          ok: false,
+          error: "Main Squad is full",
+        };
+      }
+      if (main.some((p) => p.partyIndex === data.partyIndex)) {
+        return {
+          ok: false,
+          error: "That Main Squad slot is already filled",
+        };
+      }
+    }
+
     const enteringGraveyard = data.slot === "GRAVEYARD";
     const runAtDeath = currentRunNumber(trainer.wipeCount);
     const activeRun = await ensureActiveRunInTx(prisma, {
@@ -2065,10 +2062,7 @@ export async function upsertPokemonAction(
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Pokémon saved" };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Pokémon save failed",
-    };
+    return failAction("pokemon-save-failed", e, "Pokémon save failed");
   }
 }
 
@@ -2090,10 +2084,7 @@ export async function deletePokemonAction(input: {
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Pokémon removed" };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Delete failed",
-    };
+    return failAction("delete-failed", e, "Delete failed");
   }
 }
 
@@ -2131,10 +2122,7 @@ export async function updateGraveCauseAction(input: {
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Cause of death updated" };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Update failed",
-    };
+    return failAction("update-failed", e, "Update failed");
   }
 }
 
@@ -2315,10 +2303,7 @@ export async function relocatePokemonAction(
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Party updated" };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Party move failed",
-    };
+    return failAction("party-move-failed", e, "Party move failed");
   }
 }
 
@@ -2637,10 +2622,7 @@ export async function importFromSaveAction(
       message: `Imported ${txResult.importedCount} Pokémon from save`,
     };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Save import failed",
-    };
+    return failAction("save-import-failed", e, "Save import failed");
   }
 }
 
@@ -2707,7 +2689,7 @@ export async function gmUpdateRuleAction(input: {
     revalidateChallenge(challenge.slug);
     return { ok: true, message: "Rules saved" };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Rule update failed" };
+    return failAction("rule-update-failed", e, "Rule update failed");
   }
 }
 
@@ -2752,7 +2734,7 @@ export async function gmUpdateFaqAction(input: {
     revalidateChallenge(challenge.slug);
     return { ok: true, message: "FAQ saved" };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "FAQ update failed" };
+    return failAction("faq-update-failed", e, "FAQ update failed");
   }
 }
 
@@ -2801,7 +2783,7 @@ export async function gmSetTrainerLockAction(input: {
     revalidateChallenge(trainer.challenge.slug, trainer.id);
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Lock failed" };
+    return failAction("lock-failed", e, "Lock failed");
   }
 }
 
@@ -2823,7 +2805,7 @@ export async function gmUnclaimTrainerAction(input: {
     revalidateChallenge(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Trainer unclaimed" };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Unclaim failed" };
+    return failAction("unclaim-failed", e, "Unclaim failed");
   }
 }
 
@@ -2948,10 +2930,7 @@ export async function gmUpdateChallengeMetaAction(input: {
     revalidateChallenge(challenge.slug);
     return { ok: true, message: "Challenge settings saved" };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Settings update failed",
-    };
+    return failAction("settings-update-failed", e, "Settings update failed");
   }
 }
 
@@ -3012,10 +2991,7 @@ export async function gmExportChallengeAction(input: {
       mimeType: "application/json;charset=utf-8",
     };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Export failed",
-    };
+    return failAction("export-failed", e, "Export failed");
   }
 }
 
@@ -3093,10 +3069,7 @@ export async function gmInitTournamentAction(input: {
       message: `Bracket seeded with ${pairings.length} round-1 match(es)`,
     };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Tournament seed failed",
-    };
+    return failAction("tournament-seed-failed", e, "Tournament seed failed");
   }
 }
 
@@ -3143,10 +3116,7 @@ export async function gmSetMatchWinnerAction(input: {
       message: advanceMessage ?? "Winner recorded",
     };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Could not set winner",
-    };
+    return failAction("could-not-set-winner", e, "Could not set winner");
   }
 }
 
@@ -3293,10 +3263,7 @@ export async function toggleActivityReactionAction(input: {
     // No revalidate — client is optimistic; Pack feed polls for freshness.
     return { ok: true };
   } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Reaction failed",
-    };
+    return failAction("reaction-failed", e, "Reaction failed");
   }
 }
 

@@ -127,8 +127,10 @@ export function mapDbChallenge(
     description: row.description ?? "",
     status: row.status,
     visibility: row.visibility,
-    playerInviteCode: row.playerInviteCode,
-    gmInviteCode: row.gmInviteCode,
+    // Invite codes are secrets — never serialize into public Flight payloads.
+    // GM console loads them via a privileged select (same pattern as webhook URL).
+    playerInviteCode: null,
+    gmInviteCode: null,
     welcomeVideoUrl: row.welcomeVideoUrl,
     welcomeVideoPublishAt: row.welcomeVideoPublishAt?.toISOString() ?? null,
     romUrl: row.romUrl,

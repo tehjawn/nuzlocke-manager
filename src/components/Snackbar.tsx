@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 export type SnackbarTone = "success" | "error" | "info";
@@ -72,13 +72,14 @@ export function SnackbarHost() {
     getSnapshot,
     getServerSnapshot,
   );
-  const [mounted, setMounted] = useState(false);
+  // Client-only portal host (avoid setState-in-effect mount gate).
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || typeof document === "undefined" || toasts.length === 0) {
+  if (!mounted || toasts.length === 0) {
     return null;
   }
 

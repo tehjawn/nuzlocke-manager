@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { ToolsView } from "@/components/ToolsView";
-import { getChallenge } from "@/lib/challenges";
+import {
+  getChallengeMeta,
+  getChallengeToolsSummary,
+} from "@/lib/challenges";
 import { canViewCompetitiveDetails } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -47,7 +50,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const { tool, tab, a, b } = await searchParams;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   if (!challenge) return { title: "Tools" };
 
   const resolved = resolveTool(tool, tab, Boolean(a || b));
@@ -61,7 +64,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const { tool, tab, a, b, id, mode } = await searchParams;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeToolsSummary(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const access = challenge.id

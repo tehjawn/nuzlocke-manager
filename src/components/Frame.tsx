@@ -1,4 +1,11 @@
-import type { CSSProperties, ReactNode } from "react";
+"use client";
+
+import {
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type ToggleEvent,
+} from "react";
 import {
   cardBackgroundCustomUrl,
   cardBackgroundDataAttr,
@@ -45,6 +52,9 @@ export function Frame({
   cardBackgroundKey = null,
   "data-tour": dataTour,
 }: FrameProps) {
+  // React 19 DOM types no longer include defaultOpen on <details>; keep an
+  // uncontrolled-style initial open via local state + the open attribute.
+  const [open, setOpen] = useState(defaultOpen);
   const dataBg = cardBackgroundDataAttr(cardBackgroundKey);
   const customUrl = cardBackgroundCustomUrl(cardBackgroundKey);
   const style = customUrl
@@ -65,6 +75,10 @@ export function Frame({
     </div>
   ) : null;
 
+  function handleToggle(event: ToggleEvent<HTMLDetailsElement>) {
+    setOpen(event.currentTarget.open);
+  }
+
   if (collapsible && title) {
     return (
       <details
@@ -72,7 +86,8 @@ export function Frame({
         data-card-bg={dataBg}
         style={style}
         className={`${shellClass} open:[&_.frame-chevron]:rotate-90`}
-        defaultOpen={defaultOpen}
+        open={open}
+        onToggle={handleToggle}
       >
         <summary className="gba-frame-title relative z-[1] flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base [&::-webkit-details-marker]:hidden">
           <span className="flex min-w-0 items-center gap-2">
