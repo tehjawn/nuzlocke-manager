@@ -408,7 +408,7 @@ export const COVERAGE_OFFENSE_TIER_META: ReadonlyArray<{
 export function coverageOffenseTiers(
   coverage: OffensiveCoverage,
 ): CoverageOffenseTier {
-  const tiers: CoverageOffenseTiers = { S: [], A: [], B: [], F: [] };
+  const tiers: CoverageOffenseTier = { S: [], A: [], B: [], F: [] };
   for (const cell of coverage.cells) {
     if (cell.bestMult >= SE_THRESHOLD) tiers.S.push(cell.defendingType);
     else if (cell.bestMult >= 1) tiers.A.push(cell.defendingType);

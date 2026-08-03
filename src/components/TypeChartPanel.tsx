@@ -11,7 +11,7 @@ import {
   coverageOffenseTiers,
   offensiveCoverage,
   teamDefensiveProfile,
-  type CoverageOffenseTiersId,
+  type CoverageOffenseTierId,
   type OffensiveCoverageCell,
   type SharedDefensiveHole,
 } from "@/lib/team-coverage";
