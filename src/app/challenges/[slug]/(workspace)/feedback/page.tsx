@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { Frame } from "@/components/Frame";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { getPlayerFeedbackPage } from "@/lib/feedback";
 import {
   feedbackCategoryLabel,
@@ -77,6 +78,20 @@ export default async function FeedbackPage({ params }: PageProps) {
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">
                   {submission.message}
                 </p>
+                {submission.gmNote ? (
+                  <div
+                    className="mt-3 rounded-lg border border-accent/25 bg-accent/8 px-3 py-2.5"
+                    data-testid={`feedback-gm-note-${submission.id}`}
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-accent-deep">
+                      GM note
+                    </p>
+                    <MarkdownContent
+                      className="mt-1 text-sm leading-relaxed"
+                      content={submission.gmNote}
+                    />
+                  </div>
+                ) : null}
               </li>
             ))}
           </ol>

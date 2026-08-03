@@ -166,6 +166,8 @@ model FeedbackSubmission {
   subject     String
   message     String
   status      FeedbackStatus   @default(NEW)
+  /// GM reply visible to the requester (may include links).
+  gmNote      String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 

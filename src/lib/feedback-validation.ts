@@ -13,6 +13,8 @@ export const submitFeedbackSchema = z.object({
 
 export const updateFeedbackStatusSchema = z.object({
   challengeId: z.string().trim().min(1).max(64),
+  /** Empty / whitespace clears the shared GM note. */
+  gmNote: z.string().max(2_000),
   status: z.enum(FEEDBACK_STATUSES),
   submissionId: z.string().trim().min(1).max(64),
 });
