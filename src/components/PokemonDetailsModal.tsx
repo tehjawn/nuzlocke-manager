@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { EvolutionPath } from "@/components/EvolutionPath";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
@@ -29,6 +30,18 @@ import {
   isEmptySpread,
   natureEffectDescription,
 } from "@/lib/stats";
+
+const ModernEmeraldLearnset = dynamic(
+  () =>
+    import("@/components/ModernEmeraldLearnset").then(
+      (module) => module.ModernEmeraldLearnset,
+    ),
+  {
+    loading: () => (
+      <p className="text-[10px] text-muted">Loading Modern Emerald learnset…</p>
+    ),
+  },
+);
 
 type PokemonDetailsModalProps = {
   open: boolean;
@@ -411,6 +424,10 @@ export function PokemonDetailsModal({
                 </ul>
               </div>
             ) : null}
+
+            {pokemon.pokedexId != null && (
+              <ModernEmeraldLearnset pokedexId={pokemon.pokedexId} />
+            )}
 
             {pokemon.pokedexId != null ? (
               <EvolutionPath
