@@ -806,8 +806,46 @@ export async function updateTrainerBoardAction(input: {
   }
 }
 
-/** Restart the living run: memorializes Main/Reserve, clears Encountered +
- *  badges, closes the active TrainerRun and opens the next. */
+/**
+ * First-run /new-trainer: save nickname + real name + portrait, mark intro done.
+ * Does not change status / stage / card art (those stay on the board Customize flow).
+ */
+export async function completeTrainerIntroAction(input: {
+  trainerId: string;
+  handle: string;
+  realName?: string | null;
+  avatarSpriteKey: string;
+}): Promise<ActionResult> {
+  try {
+    const { trainer } = await requireTrainerEditAccess(input.trainerId);
+    if (trainer.introCompletedAt) {
+      revalidateBoardViews(trainer.challenge.slug, trainer.id);
+      return { ok: true, message: "Trainer already ready" };
+    }
+
+    const boardResult = await updateTrainerBoardAction({
+      trainerId: input.trainerId,
+      handle: input.handle,
+      realName: input.realName,
+      avatarSpriteKey: input.avatarSpriteKey,
+    });
+    if (!boardResult.ok) return boardResult;
+
+    const prisma = getPrisma();
+    await prisma.trainerProfile.update({
+      where: { id: trainer.id },
+      data: { introCompletedAt: new Date() },
+    });
+
+    revalidateBoardViews(trainer.challenge.slug, trainer.id);
+    return { ok: true, message: "Trainer ready" };
+  } catch (e) {
+    return failAction("intro-failed", e, "Couldn’t finish trainer setup");
+  }
+}
+
+/** Restart the living run: clears the live board (including R.I.P.), zeros money,
+ *  closes the active TrainerRun and opens the next. Snapshot saved first. */
 export async function recordWipeAction(input: {
   trainerId: string;
 }): Promise<ActionResult> {

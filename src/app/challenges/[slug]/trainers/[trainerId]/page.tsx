@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
+import { StartOnboardingTourOnMount } from "@/components/StartOnboardingTourOnMount";
 import { TrainerBoard } from "@/components/TrainerBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import {
@@ -10,6 +12,7 @@ import {
 } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
+import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { FORCE_FIRST_RUN_CHROME, isFirstRunChrome } from "@/lib/first-run";
 import {
   canEditTrainerBoard,
@@ -85,6 +88,22 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     gmLensOn,
     isSeasonReadOnly(challenge.status),
   );
+
+  // Own board without /new-trainer completion → finish intro first.
+  if (
+    canEdit &&
+    access?.ownsTrainer(trainer.userId) &&
+    isDatabaseConfigured()
+  ) {
+    const intro = await getPrisma().trainerProfile.findUnique({
+      where: { id: trainer.id },
+      select: { introCompletedAt: true },
+    });
+    if (intro && !intro.introCompletedAt) {
+      redirect(`/challenges/${slug}/new-trainer`);
+    }
+  }
+
   const boardTrainer = canViewCompetitive
     ? trainer
     : redactTrainerCompetitiveDetails(trainer);
@@ -141,6 +160,9 @@ export default async function TrainerBoardPage({ params }: PageProps) {
       >
         <DataSourceBanner source={challenge.source} />
         <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
+        <Suspense fallback={null}>
+          <StartOnboardingTourOnMount />
+        </Suspense>
 
         <TrainerBoard
           leagueBoardHref={`/challenges/${challenge.slug}`}

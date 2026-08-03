@@ -1,9 +1,13 @@
 /**
  * First-run / progressive onboarding helpers (issue #183).
  *
- * Phase 1: narrow season chrome for signed-in players who have not finished
+ * Phase 1+: narrow season chrome for signed-in players who have not finished
  * the welcome path and have not imported any party Pokémon yet. Existing
  * players (welcome read, or any party mon) and GMs keep full chrome.
+ *
+ * First-run still shows About / Rules / Trainers tabs; Encounters, Tools,
+ * Memorial, Tournament, and the pack feed stay hidden until welcome is done.
+ * Brand-new players hit /new-trainer before their board.
  */
 
 /**

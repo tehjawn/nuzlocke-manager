@@ -540,9 +540,7 @@ export function TrainerBoard({
   isGm,
   isDemo,
 }: TrainerBoardProps) {
-  const [editingPlayer, setEditingPlayer] = useState(
-    canEdit && trainer.pokemon.length === 0,
-  );
+  const [editingPlayer, setEditingPlayer] = useState(false);
 
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -1300,9 +1298,8 @@ export function TrainerBoard({
       (trainer.pokemon.length === 0 || FORCE_FIRST_RUN_CHROME) ? (
         <div className="flex flex-col gap-2 border border-accent/25 bg-accent/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm leading-relaxed text-ink">
-            {editingPlayer
-              ? "Save your portrait, stage, and card art, then continue to Get Started."
-              : "Next up: download the ROM, set up Afterplay, and import your first save."}
+            Next up: download the ROM, set up Afterplay, and import your first
+            save.
           </p>
           <Link
             href={`/challenges/${challengeSlug}/setup`}

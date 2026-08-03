@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   archiveNotificationAction,
@@ -52,12 +52,25 @@ export function LoggedInChrome({
   const [tourOpen, setTourOpen] = useState(() => {
     // Don't auto-launch the overlay tour on first login (#183) — the linear
     // customize → Get Started path is the primary funnel. Welcome inbox still
-    // restarts the tour on click.
+    // restarts the tour on click. /new-trainer sets the active flag + ?tour=1.
     if (readOnboardingActive()) {
       return true;
     }
     return false;
   });
+
+  // /new-trainer → board with ?tour=1 may mount after LoggedInChrome; listen.
+  useEffect(() => {
+    function onStart() {
+      writeOnboardingStep(0);
+      writeOnboardingActive(true);
+      setTourOpen(true);
+    }
+    window.addEventListener("nuzlocke-start-onboarding-tour", onStart);
+    return () => {
+      window.removeEventListener("nuzlocke-start-onboarding-tour", onStart);
+    };
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 

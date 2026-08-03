@@ -65,7 +65,7 @@ export function MobileWorkspace({
     setPanel(null);
   }
 
-  const tabs = firstRun ? [] : getSeasonTabs(slug, status);
+  const tabs = getSeasonTabs(slug, status, { firstRun });
   const select = (next: "info" | "feed") =>
     setPanel((cur) => (cur === next ? null : next));
 

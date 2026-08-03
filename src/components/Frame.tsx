@@ -24,7 +24,11 @@ type FrameProps = {
   collapsible?: boolean;
   /** Initial open state when collapsible (default true). */
   defaultOpen?: boolean;
-  /** Curated or custom TrainerCard background; omit / null = default fill. */
+  /** Controlled open state when collapsible (overrides internal state). */
+  open?: boolean;
+  /** Fires when the disclosure opens/closes. */
+  onOpenChange?: (open: boolean) => void;
+  /** Curated or custom TrainerCard background; omit / null = default frame fill. */
   cardBackgroundKey?: string | null;
   /** Spotlight target for the first-run onboarding tour. */
   "data-tour"?: string;
@@ -49,12 +53,16 @@ export function Frame({
   dense = false,
   collapsible = false,
   defaultOpen = true,
+  open: openControlled,
+  onOpenChange,
   cardBackgroundKey = null,
   "data-tour": dataTour,
 }: FrameProps) {
   // React 19 DOM types no longer include defaultOpen on <details>; keep an
   // uncontrolled-style initial open via local state + the open attribute.
-  const [open, setOpen] = useState(defaultOpen);
+  const [openUncontrolled, setOpenUncontrolled] = useState(defaultOpen);
+  const controlled = openControlled !== undefined;
+  const open = controlled ? openControlled : openUncontrolled;
   const dataBg = cardBackgroundDataAttr(cardBackgroundKey);
   const customUrl = cardBackgroundCustomUrl(cardBackgroundKey);
   const style = customUrl
@@ -76,7 +84,9 @@ export function Frame({
   ) : null;
 
   function handleToggle(event: ToggleEvent<HTMLDetailsElement>) {
-    setOpen(event.currentTarget.open);
+    const next = event.currentTarget.open;
+    if (!controlled) setOpenUncontrolled(next);
+    onOpenChange?.(next);
   }
 
   if (collapsible && title) {

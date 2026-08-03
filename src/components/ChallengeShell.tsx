@@ -33,8 +33,8 @@ type ChallengeShellProps = {
   myTrainerId?: string | null;
   signedIn?: boolean;
   /**
-   * First-run funnel (#183): hide SeasonTabs + pack feed so Get Started stays
-   * the focus. Existing players keep the default full chrome.
+   * First-run funnel (#183): show About / Rules / Trainers only, hide pack feed
+   * and deep tools so Get Started stays the focus.
    */
   firstRun?: boolean;
   children: ReactNode;
@@ -95,12 +95,12 @@ export function ChallengeShell({
       </dl>
       {firstRun && myTrainerId ? (
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Start here: customize{" "}
+          Start here: finish{" "}
           <Link
             href={`/challenges/${slug}/me`}
             className="font-semibold text-accent-deep underline-offset-2 hover:underline"
           >
-            your trainer
+            creating your trainer
           </Link>
           , then follow Get Started through ROM setup and save import.
         </p>
@@ -146,7 +146,7 @@ export function ChallengeShell({
           scrollClassName="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]"
         >
           {generalInfo}
-          {firstRun ? null : <SeasonTabs slug={slug} status={status} />}
+          <SeasonTabs slug={slug} status={status} firstRun={firstRun} />
           {firstRun ? null : packFeed}
         </ScrollFadeRail>
 
