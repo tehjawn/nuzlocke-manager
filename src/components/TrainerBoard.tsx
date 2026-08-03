@@ -1366,6 +1366,7 @@ export function TrainerBoard({
               badgesEarned={earnedBadgeKeys.length}
               badgesTotal={badges.length}
               wipes={wipeCount}
+              money={trainer.money}
               updatedAt={trainer.updatedAt}
             />
           </Frame>
