@@ -276,7 +276,7 @@ function ToolWorkspace({
     tool === "pokedex"
       ? `Look up species for ${challengeName} — stats, matchups, and counters from your Main + Reserve.`
       : tool === "chart"
-        ? `Pick a trainer to overlay Main Squad coverage on the modern 18-type chart.`
+        ? `Modern 18-type chart first — pick a trainer below it to score Main Squad coverage.`
         : tool === "guide"
           ? `What to do next in the story for ${challengeName}.`
           : tool === "bounty"
@@ -312,7 +312,7 @@ function ToolWorkspace({
       ) : null}
 
       {tool === "chart" ? (
-        <Frame dense>
+        <Frame>
           <TypeChartPanel
             slug={slug}
             trainers={trainers}
