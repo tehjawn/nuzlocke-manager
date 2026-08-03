@@ -51,6 +51,10 @@ import { pokemonInSlot } from "@/lib/trainer-display";
 import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
+import {
+  MAIN_PARTY_SIZE,
+  firstOpenMainPartyIndex,
+} from "@/lib/pokemon-board-dnd";
 import { isEmptySpread } from "@/lib/stats";
 
 type TrainerBoardProps = {
@@ -889,14 +893,27 @@ export function TrainerBoard({
     partyIndex?: number,
   ) {
     if (wiping) return;
-    if (partyIndex == null) {
+    if (slot === "MAIN") {
+      // Main Squad is fixed 0–5 — never open add when every slot is filled.
+      if (partyIndex == null) {
+        const open = firstOpenMainPartyIndex(boardPokemon);
+        if (open == null) return;
+        partyIndex = open;
+      } else if (
+        partyIndex < 0 ||
+        partyIndex >= MAIN_PARTY_SIZE ||
+        boardPokemon.some(
+          (p) => p.slot === "MAIN" && p.partyIndex === partyIndex,
+        )
+      ) {
+        return;
+      }
+    } else if (partyIndex == null) {
       const used = new Set(
         boardPokemon.filter((p) => p.slot === slot).map((p) => p.partyIndex),
       );
       partyIndex = 0;
-      // MAIN is fixed 0–5; other sections can grow with drag-and-drop densifying.
-      const limit = slot === "MAIN" ? 6 : 1000;
-      while (used.has(partyIndex) && partyIndex < limit) partyIndex += 1;
+      while (used.has(partyIndex) && partyIndex < 1000) partyIndex += 1;
     }
     setPokemonInspect({
       mode: "edit",
@@ -1241,14 +1258,16 @@ export function TrainerBoard({
                 return false;
               }}
               mainActions={
-                <button
-                  type="button"
-                  disabled={wiping}
-                  className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
-                  onClick={() => openAddPokemon("MAIN")}
-                >
-                  + Add
-                </button>
+                firstOpenMainPartyIndex(boardPokemon) != null ? (
+                  <button
+                    type="button"
+                    disabled={wiping}
+                    className="pressable rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold tracking-tight text-[var(--on-accent)] disabled:opacity-60"
+                    onClick={() => openAddPokemon("MAIN")}
+                  >
+                    + Add
+                  </button>
+                ) : null
               }
               reservesActions={
                 <button

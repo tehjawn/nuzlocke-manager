@@ -8,8 +8,11 @@ import type {
 } from "@/lib/challenge-types";
 import {
   fetchChallengeBoardRow,
+  fetchChallengeBoardSummaryRow,
   fetchChallengeMetaRow,
+  fetchChallengeShellRow,
   fetchChallengeSlotRow,
+  fetchChallengeToolsSummaryRow,
   fetchDefaultJumpBrief,
   fetchHomeCarouselRow,
   fetchSeasonIndexRows,
@@ -55,6 +58,9 @@ function seedAsChallenge(raw: (typeof CHALLENGES)[number]): Challenge {
     ...raw,
     source: "seed" as const,
     visibility: raw.visibility ?? "PUBLIC",
+    // Match mapDbChallenge — invite codes never ride public payloads.
+    playerInviteCode: null,
+    gmInviteCode: null,
     trainers: raw.trainers.map((t) => ({
       ...t,
       userId: null,
@@ -155,6 +161,127 @@ export async function getChallengeWithPokemonSlots(
       pokemon: t.pokemon.filter((p) => slotSet.has(p.slot)),
     })),
   };
+}
+
+/**
+ * Workspace layout chrome — MAIN summary + activities, no box payloads.
+ * Enough for Jump trainers, myTrainerId, and the activity rail.
+ */
+export async function getChallengeShell(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeShellRow(slug);
+      if (row) return mapDbChallenge(row, viewerUserId);
+    } catch {
+      return null;
+    }
+  }
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  if (!seed) return null;
+  const full = seedAsChallenge(seed);
+  return {
+    ...full,
+    trainers: full.trainers.map((t) => ({
+      ...t,
+      pokemon: t.pokemon.filter((p) => p.slot === "MAIN"),
+    })),
+  };
+}
+
+function emptySlotCounts() {
+  return { main: 0, reserve: 0, graveyard: 0, encountered: 0 };
+}
+
+function slotCountsFromPokemon(
+  pokemon: Array<{ slot: PokemonSlot }>,
+): NonNullable<TrainerProfile["slotCounts"]> {
+  const counts = emptySlotCounts();
+  for (const p of pokemon) {
+    if (p.slot === "MAIN") counts.main += 1;
+    else if (p.slot === "RESERVE") counts.reserve += 1;
+    else if (p.slot === "GRAVEYARD") counts.graveyard += 1;
+    else if (p.slot === "ENCOUNTERED") counts.encountered += 1;
+  }
+  return counts;
+}
+
+/**
+ * Trainers league board — MAIN party (full columns) + slot tallies for card
+ * footers. Drops ENCOUNTERED / RESERVE / GRAVEYARD payloads from the Flight tree.
+ */
+export async function getChallengeBoardSummary(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeBoardSummaryRow(slug);
+      if (!row) return null;
+      const mapped = mapDbChallenge(
+        { ...row, activities: [] },
+        viewerUserId,
+      );
+      const byTrainer = new Map<
+        string,
+        NonNullable<TrainerProfile["slotCounts"]>
+      >();
+      for (const entry of row.slotCounts) {
+        const cur = byTrainer.get(entry.trainerId) ?? emptySlotCounts();
+        const n = entry._count._all;
+        if (entry.slot === "MAIN") cur.main = n;
+        else if (entry.slot === "RESERVE") cur.reserve = n;
+        else if (entry.slot === "GRAVEYARD") cur.graveyard = n;
+        else if (entry.slot === "ENCOUNTERED") cur.encountered = n;
+        byTrainer.set(entry.trainerId, cur);
+      }
+      return {
+        ...mapped,
+        trainers: mapped.trainers.map((t) => ({
+          ...t,
+          slotCounts: byTrainer.get(t.id) ?? {
+            ...emptySlotCounts(),
+            main: t.pokemon.length,
+          },
+        })),
+      };
+    } catch {
+      return null;
+    }
+  }
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  if (!seed) return null;
+  const full = seedAsChallenge(seed);
+  return {
+    ...full,
+    trainers: full.trainers.map((t) => ({
+      ...t,
+      slotCounts: slotCountsFromPokemon(t.pokemon),
+      pokemon: t.pokemon.filter((p) => p.slot === "MAIN"),
+    })),
+  };
+}
+
+/**
+ * Tools — all slots with summary + moves (Pokédex tips); no IV/EV/heldItem.
+ */
+export async function getChallengeToolsSummary(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeToolsSummaryRow(slug);
+      if (row) {
+        return mapDbChallenge({ ...row, activities: [] }, viewerUserId);
+      }
+    } catch {
+      return null;
+    }
+  }
+  return getChallenge(slug, viewerUserId);
 }
 
 /** Season list for home / index — zero Pokémon. */

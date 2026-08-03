@@ -61,6 +61,13 @@ export const CATCH_ROUTES = [
   "Desert Underpass",
   "Abandoned Ship",
   "New Mauville",
+  "Safari Zone (South)",
+  "Safari Zone (Southwest)",
+  "Safari Zone (Northwest)",
+  "Safari Zone (North)",
+  "Safari Zone (Southeast)",
+  "Safari Zone (Northeast)",
+  /** Legacy / unspecified — pre-split imports & free-text; does not claim the six areas. */
   "Safari Zone",
   "Shoal Cave",
   "Seafloor Cavern",

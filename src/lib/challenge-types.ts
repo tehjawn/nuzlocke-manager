@@ -67,6 +67,16 @@ export type TrainerProfile = {
   discordDisplayName: string | null;
   earnedBadgeKeys: string[];
   pokemon: PokemonEntry[];
+  /**
+   * Optional slot tallies when `pokemon` is a slim slice (e.g. MAIN-only board
+   * summary). Prefer these over scanning `pokemon` for non-loaded slots.
+   */
+  slotCounts?: {
+    main: number;
+    reserve: number;
+    graveyard: number;
+    encountered: number;
+  };
   /** ISO timestamp of latest trainer or Pokémon change, when known. */
   updatedAt: string | null;
 };

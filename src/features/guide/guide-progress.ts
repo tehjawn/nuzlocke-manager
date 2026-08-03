@@ -193,6 +193,18 @@ export function stepMatchesCatchRoutes(
   catchRoutes: readonly string[],
 ): boolean {
   if (!step.locations?.length || !catchRoutes.length) return false;
-  const claimed = new Set(catchRoutes.map((r) => r.toLowerCase()));
-  return step.locations.some((loc) => claimed.has(loc.toLowerCase()));
+  const claimed = catchRoutes.map((r) => r.toLowerCase());
+  const claimedSet = new Set(claimed);
+  return step.locations.some((loc) => {
+    const key = loc.toLowerCase();
+    if (claimedSet.has(key)) return true;
+    // Modern Emerald Safari areas still count toward the umbrella guide step.
+    if (key === "safari zone") {
+      return claimed.some(
+        (route) =>
+          route === "safari zone" || route.startsWith("safari zone ("),
+      );
+    }
+    return false;
+  });
 }

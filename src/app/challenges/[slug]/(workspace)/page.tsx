@@ -4,7 +4,10 @@ import { auth } from "@/auth";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { TrainersSection } from "@/components/TrainersSection";
-import { getChallenge } from "@/lib/challenges";
+import {
+  getChallengeBoardSummary,
+  getChallengeMeta,
+} from "@/lib/challenges";
 import {
   canViewCompetitiveDetails,
 } from "@/lib/gm-lens";
@@ -22,7 +25,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   if (!challenge) return { title: "Challenge" };
   return { title: challenge.name };
 }
@@ -30,7 +33,7 @@ export async function generateMetadata({
 export default async function LeagueBoardPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeBoardSummary(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const access = challenge.id
@@ -63,7 +66,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
       </div>
 
       <TrainersSection
-        challenge={{ ...challenge, trainers }}
+        challenge={{ slug: challenge.slug, badges: challenge.badges }}
         trainers={trainers}
         myTrainerId={myTrainerId}
         competitiveTrainerIds={competitiveTrainerIds}

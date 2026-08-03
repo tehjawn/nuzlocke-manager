@@ -90,7 +90,7 @@ export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
             href={tab.href}
             role="tab"
             aria-selected={active}
-            prefetch
+            prefetch={false}
             data-tour={tab.label === "Trainers" ? "tab-trainers" : undefined}
             className={`flex items-center gap-3 rounded-[calc(var(--radius-sm)-2px)] border px-3 py-2.5 text-sm font-semibold transition-colors ${
               active

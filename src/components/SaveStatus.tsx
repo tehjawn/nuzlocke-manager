@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { pushSnackbar } from "@/components/Snackbar";
+import { displayActionError } from "@/lib/action-error";
 
 export type SaveStatusKind = "idle" | "saving" | "saved" | "error";
 
@@ -36,8 +37,9 @@ export function useSaveStatus() {
 
   function markError(message: string) {
     if (clearTimer.current) clearTimeout(clearTimer.current);
-    setStatus({ kind: "error", message });
-    pushSnackbar(message, "error");
+    const safe = displayActionError(message);
+    setStatus({ kind: "error", message: safe });
+    pushSnackbar(safe, "error");
   }
 
   function reset() {

@@ -7,7 +7,7 @@ import {
   challengeToJumpSeasonContext,
 } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeShell } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
 
 
@@ -27,7 +27,7 @@ export default async function SeasonWorkspaceLayout({
 }: LayoutProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeShell(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const access = challenge.id

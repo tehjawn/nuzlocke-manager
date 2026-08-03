@@ -49,6 +49,7 @@ function trainer(pokemon: PokemonEntry[]): TrainerProfile {
     updatedAt: null,
     userId: null,
     wipeCount: 0,
+    money: null,
   };
 }
 
@@ -117,12 +118,12 @@ test("reports the all-open and fully-claimed boundaries", () => {
 
 test("does not let an unspecified Safari claim expanded Safari areas", () => {
   const safariAreas = [
-    "Safari Zone South",
-    "Safari Zone Southwest",
-    "Safari Zone Northwest",
-    "Safari Zone North",
-    "Safari Zone Southeast",
-    "Safari Zone Northeast",
+    "Safari Zone (South)",
+    "Safari Zone (Southwest)",
+    "Safari Zone (Northwest)",
+    "Safari Zone (North)",
+    "Safari Zone (Southeast)",
+    "Safari Zone (Northeast)",
   ];
   const status = buildPersonalRouteStatus(
     trainer([mon({ catchRoute: "Safari Zone", id: "legacy", slot: "MAIN" })]),
@@ -132,4 +133,29 @@ test("does not let an unspecified Safari claim expanded Safari areas", () => {
   assert.deepEqual(status.openRoutes, safariAreas);
   assert.equal(status.claimedRoutes.length, 0);
   assert.equal(status.otherRoutes[0]?.route, "Safari Zone");
+});
+
+test("legacy Safari Zone claims only the umbrella catalog entry", () => {
+  const catalog = [
+    "Safari Zone (South)",
+    "Safari Zone (Southwest)",
+    "Safari Zone",
+  ];
+  const status = buildPersonalRouteStatus(
+    trainer([
+      mon({ catchRoute: "Safari Zone", id: "legacy", slot: "MAIN" }),
+      mon({
+        catchRoute: "Safari Zone (South)",
+        id: "south",
+        slot: "RESERVE",
+      }),
+    ]),
+    catalog,
+  );
+
+  assert.deepEqual(
+    status.claimedRoutes.map((g) => g.route),
+    ["Safari Zone (South)", "Safari Zone"],
+  );
+  assert.deepEqual(status.openRoutes, ["Safari Zone (Southwest)"]);
 });

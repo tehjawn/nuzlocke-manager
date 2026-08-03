@@ -19,11 +19,17 @@ type PageProps = {
 /** Console does not need live party rows or the activity feed — strip before Flight. */
 function toGmConsoleChallenge(
   challenge: Challenge,
-  discordWebhookUrl: string | null,
+  secrets: {
+    discordWebhookUrl: string | null;
+    playerInviteCode: string | null;
+    gmInviteCode: string | null;
+  },
 ): Challenge {
   return {
     ...challenge,
-    discordWebhookUrl,
+    discordWebhookUrl: secrets.discordWebhookUrl,
+    playerInviteCode: secrets.playerInviteCode,
+    gmInviteCode: secrets.gmInviteCode,
     activities: undefined,
     trainers: challenge.trainers.map((t) => ({
       ...t,
@@ -53,7 +59,11 @@ export default async function GmPage({ params }: PageProps) {
     getAccessForChallenge(challenge.id),
     getPrisma().challenge.findUnique({
       where: { id: challenge.id },
-      select: { discordWebhookUrl: true },
+      select: {
+        discordWebhookUrl: true,
+        playerInviteCode: true,
+        gmInviteCode: true,
+      },
     }),
   ]);
   if (!access?.isGm) {
@@ -75,10 +85,11 @@ export default async function GmPage({ params }: PageProps) {
         className={`relative mx-auto w-full flex-1 px-4 pb-20 pt-4 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
       >
         <GmConsole
-          challenge={toGmConsoleChallenge(
-            challenge,
-            secrets?.discordWebhookUrl ?? null,
-          )}
+          challenge={toGmConsoleChallenge(challenge, {
+            discordWebhookUrl: secrets?.discordWebhookUrl ?? null,
+            playerInviteCode: secrets?.playerInviteCode ?? null,
+            gmInviteCode: secrets?.gmInviteCode ?? null,
+          })}
         />
       </main>
     </div>
