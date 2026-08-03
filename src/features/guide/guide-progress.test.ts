@@ -79,7 +79,7 @@ test("next steps stay on prologue until Head toward Rustboro is checked", () => 
   assert.ok(!ids.includes("rustboro-petalburg-woods"));
 });
 
-test("next steps highlight Devon letter after Rustboro gym is checked", () => {
+test("next steps highlight Devon Goods chase after woods (before letter)", () => {
   const snap = resolveGuideProgress(EMERALD_GUIDE, {
     earnedBadgeKeys: ["gym-1"],
     checkedStepIds: [
@@ -94,12 +94,37 @@ test("next steps highlight Devon letter after Rustboro gym is checked", () => {
   assert.equal(snap.activeChapterId, "rustboro");
   const ids = snap.nextSteps.map((s) => s.id);
   assert.ok(
-    ids.includes("rustboro-devon-letter"),
-    `expected Devon letter in next steps, got ${ids.join(", ")}`,
+    ids.includes("rustboro-devon-goods"),
+    `expected Devon Goods chase in next steps, got ${ids.join(", ")}`,
+  );
+  assert.ok(
+    !ids.includes("rustboro-devon-letter"),
+    "letter should wait until Devon Goods are recovered",
   );
   assert.ok(
     !ids.includes("rustboro-get-cut"),
     "Cut is optional and should not appear in Next steps",
+  );
+});
+
+test("next steps highlight Devon letter after goods + Roxanne", () => {
+  const snap = resolveGuideProgress(EMERALD_GUIDE, {
+    earnedBadgeKeys: ["gym-1"],
+    checkedStepIds: [
+      "prologue-starter",
+      "prologue-start-nuzlocke",
+      "prologue-oldale-petalburg",
+      "prologue-route-104",
+      "rustboro-petalburg-woods",
+      "rustboro-devon-goods",
+      "rustboro-roxanne",
+    ],
+  });
+  assert.equal(snap.activeChapterId, "rustboro");
+  const ids = snap.nextSteps.map((s) => s.id);
+  assert.ok(
+    ids.includes("rustboro-devon-letter"),
+    `expected Devon letter in next steps, got ${ids.join(", ")}`,
   );
 });
 
@@ -166,7 +191,7 @@ test("Fallarbor chapter covers Meteor Falls and Go-Goggles before Lavaridge", ()
 
 test("Mossdeep Magma/Aqua arc splits hideouts, sub theft, and Space Center", () => {
   const order = [
-    "mossdeep-route-120",
+    "mossdeep-route-121",
     "mossdeep-mt-pyre",
     "mossdeep-magma-hideout",
     "mossdeep-submarine-theft",
@@ -190,6 +215,7 @@ test("Mossdeep Magma/Aqua arc splits hideouts, sub theft, and Space Center", () 
   }
 
   assert.equal(byId.has("mossdeep-hideout"), false);
+  assert.equal(byId.has("mossdeep-route-120"), false);
   assert.ok(byId.get("mossdeep-mt-pyre")!.keyItems?.includes("Magma Emblem"));
   assert.ok(
     byId.get("mossdeep-submarine-theft")!.locations?.includes("Slateport City"),
@@ -200,16 +226,47 @@ test("Mossdeep Magma/Aqua arc splits hideouts, sub theft, and Space Center", () 
   );
 });
 
+test("Fortree requires Devon Scope before Winona", () => {
+  const scope = EMERALD_GUIDE.steps.find((s) => s.id === "fortree-devon-scope");
+  const winona = EMERALD_GUIDE.steps.find((s) => s.id === "fortree-winona");
+  assert.ok(scope && winona);
+  assert.equal(scope!.chapterId, "fortree");
+  assert.ok(scope!.keyItems?.includes("Devon Scope"));
+  assert.ok(winona!.requiresSteps?.includes("fortree-devon-scope"));
+  assert.ok(scope!.sortOrder < winona!.sortOrder);
+});
+
+test("Slateport Dock comes before the Oceanic Museum", () => {
+  const dock = EMERALD_GUIDE.steps.find((s) => s.id === "mauville-slateport-dock");
+  const museum = EMERALD_GUIDE.steps.find(
+    (s) => s.id === "mauville-slateport-museum",
+  );
+  assert.ok(dock && museum);
+  assert.ok(museum!.requiresSteps?.includes("mauville-slateport-dock"));
+  assert.ok(dock!.sortOrder < museum!.sortOrder);
+});
+
 test("Sootopolis requires Sky Pillar before Juan (Emerald Rayquaza beat)", () => {
   const cave = EMERALD_GUIDE.steps.find((s) => s.id === "sootopolis-cave-of-origin");
   const sky = EMERALD_GUIDE.steps.find((s) => s.id === "sootopolis-sky-pillar");
+  const ret = EMERALD_GUIDE.steps.find((s) => s.id === "sootopolis-return");
   const waterfall = EMERALD_GUIDE.steps.find((s) => s.id === "sootopolis-waterfall");
   const juan = EMERALD_GUIDE.steps.find((s) => s.id === "sootopolis-juan");
-  assert.ok(cave && sky && waterfall && juan);
+  assert.ok(cave && sky && ret && waterfall && juan);
   assert.ok(sky!.requiresSteps?.includes("sootopolis-cave-of-origin"));
-  assert.ok(waterfall!.requiresSteps?.includes("sootopolis-sky-pillar"));
+  assert.ok(ret!.requiresSteps?.includes("sootopolis-sky-pillar"));
+  assert.ok(waterfall!.requiresSteps?.includes("sootopolis-return"));
   assert.ok(juan!.requiresSteps?.includes("sootopolis-waterfall"));
   assert.match(cave!.detail ?? "", /does \*\*not\*\* calm|does not/i);
+  assert.match(ret!.summary, /dive|route 126/i);
+});
+
+test("Elite Four chapter reaches Ever Grande before Victory Road", () => {
+  const ever = EMERALD_GUIDE.steps.find((s) => s.id === "e4-ever-grande");
+  const road = EMERALD_GUIDE.steps.find((s) => s.id === "e4-victory-road");
+  assert.ok(ever && road);
+  assert.ok(road!.requiresSteps?.includes("e4-ever-grande"));
+  assert.ok(ever!.hms?.includes("Waterfall"));
 });
 
 test("starter step reflects Modern Emerald random starter", () => {
