@@ -974,33 +974,6 @@ function PrepPanels({
                   }`}
           </p>
         </div>
-        <div
-          className="flex shrink-0 flex-wrap items-center justify-end gap-0.5"
-          aria-hidden
-        >
-          {gymPreps.map((entry) => {
-            const ok =
-              squadMatchesForGymPrep(draftAsSquad, entry.prep).length > 0;
-            return (
-              <span
-                key={entry.id}
-                className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-accent" : "bg-danger/70"}`}
-                title={entry.prep.leaderName}
-              />
-            );
-          })}
-          <span className="mx-0.5 h-1.5 w-px bg-frame" />
-          {ELITE_FOUR_PREP.map((prep) => {
-            const ok = squadMatchesForGymPrep(draftAsSquad, prep).length > 0;
-            return (
-              <span
-                key={prep.id}
-                className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-accent" : "bg-danger/70"}`}
-                title={prep.leaderName}
-              />
-            );
-          })}
-        </div>
       </div>
 
       <div className="mt-3">
@@ -1096,14 +1069,8 @@ function PrepCard({
         className="group open:bg-surface-2/40"
       >
         <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 [&::-webkit-details-marker]:hidden">
-          <span
-            aria-hidden
-            className="shrink-0 text-[10px] text-muted transition-transform group-open:rotate-90"
-          >
-            ▸
-          </span>
           {index != null ? (
-            <span className="shrink-0 text-[11px] font-bold tabular-nums text-muted">
+            <span className="shrink-0 w-4 text-[11px] font-bold tabular-nums text-muted group-open:text-ink">
               {index}.
             </span>
           ) : null}
@@ -1143,7 +1110,7 @@ function PrepCard({
             )}
           </span>
         </summary>
-        <div className="space-y-2 border-t border-frame/40 px-2.5 py-2 pl-8">
+        <div className="space-y-2 border-t border-frame/40 px-2.5 py-2 pl-7">
           {matches.length > 0 ? (
             <ul className="flex flex-wrap gap-1">
               {matches.slice(0, 4).map(({ entry, matchedTypes }) => (
