@@ -98,9 +98,8 @@ export async function requireGm(challengeId: string) {
 }
 
 /**
- * Whether the signed-in user is GM for a season slug. Used by SiteHeader / root
- * Jump so global pages (account, home, preferences) keep the same GM affordances
- * as challenge pages without each route re-deriving membership.
+ * Whether the signed-in user is GM for a season slug. Request-time (auth + DB)
+ * — only call from a Suspense-wrapped server component such as SiteHeaderSession.
  */
 export const isGmForChallengeSlug = cache(
   async (slug: string | null | undefined): Promise<boolean> => {
