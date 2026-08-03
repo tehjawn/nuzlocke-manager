@@ -143,8 +143,11 @@ export function TeamPlannerView({
   const draftIdSet = useMemo(() => new Set(compactIds(slots)), [slots]);
 
   useEffect(() => {
+    // Hydrate from localStorage (external store) when the viewer changes —
+    // not derivable from props alone, so this belongs in an effect.
     if (!viewerId) {
       skipPersistRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage hydrate
       setDraftIds([]);
       setActiveSlot(0);
       setDraftHydrated(true);
@@ -664,11 +667,9 @@ function CoveragePanels({
   offenseGrid: ReturnType<typeof coverageOffenseGrid>;
 }) {
   const gapCount = offenseGrid.filter((r) => r.status !== "covered").length;
-  const [showAllTypes, setShowAllTypes] = useState(gapCount === 0);
-
-  useEffect(() => {
-    if (gapCount === 0) setShowAllTypes(true);
-  }, [gapCount]);
+  // Prefer gaps-only when gaps exist; force all-types when the board is clean.
+  const [preferAllTypes, setPreferAllTypes] = useState(false);
+  const showAllTypes = gapCount === 0 || preferAllTypes;
 
   if (draft.length === 0) {
     return (
@@ -769,9 +770,9 @@ function CoveragePanels({
           <button
             type="button"
             className={`${CTA_SECONDARY_SM} !px-2 !py-0.5 !text-[10px]`}
-            onClick={() => setShowAllTypes((v) => !v)}
+            onClick={() => setPreferAllTypes((v) => !v)}
           >
-            {showAllTypes ? "Gaps only" : "Show all 18"}
+            {preferAllTypes ? "Gaps only" : "Show all 18"}
           </button>
         ) : null}
       </div>

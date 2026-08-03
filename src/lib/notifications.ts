@@ -95,7 +95,7 @@ export async function listNotificationsForUser(
   // Happy path is read-only. Backfill welcome only when the row is missing
   // (failed sign-in upsert) — not on every header render. Welcome is always
   // shown (not dismissable); clear a stale archive if one was set earlier.
-  let rows = await prisma.notification.findMany({
+  const rows = await prisma.notification.findMany({
     where: {
       userId,
       archivedAt: null,
@@ -136,10 +136,7 @@ export async function listNotificationsForUser(
     });
   }
 
-  const { archivedAt: _archivedAt, ...welcomeItem } = welcomeRow;
-  rows = [welcomeItem, ...rows];
-
-  return withPinnedWelcome(rows.map(toItem));
+  return withPinnedWelcome([toItem(welcomeRow), ...rows.map(toItem)]);
 }
 
 export async function countUnreadNotifications(userId: string): Promise<number> {
