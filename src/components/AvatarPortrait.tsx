@@ -74,7 +74,6 @@ export function AvatarPortrait({
             />
           ) : null}
           {/* Animated GIFs need a plain img so <picture> can swap the still. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={displaySrc}
             alt={alt}

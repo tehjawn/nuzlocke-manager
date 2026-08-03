@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Prisma } from "@/generated/prisma/client";
-import {
-  displayActionError,
-  toActionError,
-} from "@/lib/action-error";
+import { displayActionError } from "@/lib/action-error-display";
+import { toActionError } from "@/lib/action-error";
 
 test("keeps short intentional domain errors", () => {
   const mapped = toActionError(

@@ -53,6 +53,7 @@ export function StatusEmojiPicker({
   function close() {
     setOpen(false);
     setMoreOpen(false);
+    setPos(null);
   }
 
   function place() {
@@ -82,17 +83,18 @@ export function StatusEmojiPicker({
     );
   }
 
-  useLayoutEffect(() => {
-    if (!open) {
-      setPos(null);
-      return;
-    }
-    place();
-  }, [open, moreOpen]);
+  if (disabled && open) {
+    setOpen(false);
+    setMoreOpen(false);
+    setPos(null);
+  }
 
-  useEffect(() => {
-    if (disabled && open) close();
-  }, [disabled, open]);
+  useLayoutEffect(() => {
+    if (!open || disabled) return;
+    place();
+    // place() reads refs + moreOpen; open/moreOpen/disabled are the triggers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- place is stable enough via those deps
+  }, [open, moreOpen, disabled]);
 
   useEffect(() => {
     if (!open) return;
@@ -126,6 +128,7 @@ export function StatusEmojiPicker({
       window.removeEventListener("resize", onReposition);
       window.removeEventListener("scroll", onReposition, true);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- place/close close over latest moreOpen
   }, [open, moreOpen]);
 
   return (
@@ -141,8 +144,11 @@ export function StatusEmojiPicker({
           aria-controls={dialogId}
           className="pressable inline-flex h-11 min-w-11 items-center justify-center rounded-lg border border-frame bg-surface px-2 text-xl leading-none disabled:opacity-60"
           onClick={() => {
-            setOpen((v) => !v);
-            setMoreOpen(false);
+            if (open) close();
+            else {
+              setOpen(true);
+              setMoreOpen(false);
+            }
           }}
         >
           {value ?? "＋"}

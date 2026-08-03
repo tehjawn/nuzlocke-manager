@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { ZodError } from "zod";
+import { displayActionError } from "@/lib/action-error-display";
 
 export type ActionError = {
   /** Short string safe to show in UI */
@@ -8,15 +9,15 @@ export type ActionError = {
   code?: string;
 };
 
+/** Re-export for server callers that already import from this module. */
+export { displayActionError };
+
 const DOMAIN_MESSAGE_MAX = 120;
 
 const PRISMA_SCHEMA_HINT =
   "Something’s out of date with the database schema. Ask a GM/dev to run migrations, then retry.";
 
 const PRISMA_DEFAULT_HINT = "Database error — please retry.";
-
-const UI_OVERFLOW_HINT =
-  "Something went wrong saving — try again. If it keeps happening, contact a GM.";
 
 /** Prisma / stack dumps that must never reach the client as-is. */
 function looksLikeFrameworkDump(message: string): boolean {
@@ -102,20 +103,4 @@ export function failAction(
   return mapped.code
     ? { ok: false, error: mapped.error, code: mapped.code }
     : { ok: false, error: mapped.error };
-}
-
-/**
- * Client-side guardrail when an action forgot to sanitize.
- * Truncates framework dumps so modals never wallpaper with Prisma text.
- */
-export function displayActionError(error: string): string {
-  const trimmed = error.trim();
-  if (
-    trimmed.length > 200 ||
-    /Invalid `\w|Unknown argument|Available options are marked/i.test(trimmed)
-  ) {
-    console.error("[action-error:ui]", trimmed);
-    return UI_OVERFLOW_HINT;
-  }
-  return trimmed;
 }

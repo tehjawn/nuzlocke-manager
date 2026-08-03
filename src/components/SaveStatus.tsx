@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { pushSnackbar } from "@/components/Snackbar";
-import { displayActionError } from "@/lib/action-error";
+import { displayActionError } from "@/lib/action-error-display";
 
 export type SaveStatusKind = "idle" | "saving" | "saved" | "error";
 

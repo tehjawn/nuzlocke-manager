@@ -251,9 +251,9 @@ function holeFromTarget(target: Rect | null): {
     };
   }
 
-  let top = Math.max(0, target.top - PAD);
-  let left = Math.max(0, target.left - PAD);
-  let width = target.width + PAD * 2;
+  const top = Math.max(0, target.top - PAD);
+  const left = Math.max(0, target.left - PAD);
+  const width = target.width + PAD * 2;
   let height = target.height + PAD * 2;
 
   // Tall party grids: keep the cutout to the top of the target so empty slots

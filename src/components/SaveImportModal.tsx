@@ -9,7 +9,7 @@ import {
   type SaveMonCategory,
 } from "@/lib/gen3-save";
 import { formatPokedollars } from "@/lib/gen3-save/money";
-import { displayActionError } from "@/lib/action-error";
+import { displayActionError } from "@/lib/action-error-display";
 import type { PokemonSlot } from "@/lib/challenge-types";
 import { resolveMoveNames } from "@/lib/move-names";
 
