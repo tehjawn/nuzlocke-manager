@@ -7,6 +7,7 @@ import {
   recommendDraftCoverageTips,
   teamCoverageSummary,
   teamDefensiveProfile,
+  vsTrainerMatchup,
 } from "@/lib/team-coverage";
 
 function mon(
@@ -171,4 +172,50 @@ test("teamCoverageSummary empty draft", () => {
   );
   assert.equal(bullets.length, 1);
   assert.match(bullets[0]!.text, /Empty/i);
+});
+
+test("vsTrainerMatchup favors a typed answer squad", () => {
+  const draft = [
+    mon({ id: "d1", species: "Swampert", types: ["Water", "Ground"] }),
+    mon({ id: "d2", species: "Sceptile", types: ["Grass"] }),
+    mon({ id: "d3", species: "Gardevoir", types: ["Psychic"] }),
+  ];
+  const opponent = [
+    mon({ id: "o1", species: "Camerupt", types: ["Fire", "Ground"] }),
+    mon({ id: "o2", species: "Sharpedo", types: ["Water", "Dark"] }),
+    mon({ id: "o3", species: "Machamp", types: ["Fighting"] }),
+  ];
+  const matchup = vsTrainerMatchup(draft, opponent);
+  assert.ok(matchup.answeredCount >= 2);
+  assert.ok(matchup.score >= 48);
+  assert.ok(
+    matchup.verdict === "favorable" || matchup.verdict === "even",
+  );
+  assert.ok(matchup.recommendation.length > 10);
+  assert.ok(matchup.bullets.length >= 2);
+});
+
+test("vsTrainerMatchup flags a bad Fire-into-Water board", () => {
+  const draft = [
+    mon({ id: "d1", species: "Camerupt", types: ["Fire", "Ground"] }),
+    mon({ id: "d2", species: "Torkoal", types: ["Fire"] }),
+    mon({ id: "d3", species: "Magcargo", types: ["Fire", "Rock"] }),
+  ];
+  const opponent = [
+    mon({ id: "o1", species: "Swampert", types: ["Water", "Ground"] }),
+    mon({ id: "o2", species: "Milotic", types: ["Water"] }),
+    mon({ id: "o3", species: "Ludicolo", types: ["Water", "Grass"] }),
+  ];
+  const matchup = vsTrainerMatchup(draft, opponent);
+  assert.ok(matchup.blindCount + matchup.softCount >= 2);
+  assert.ok(
+    matchup.verdict === "risky" || matchup.verdict === "unfavorable",
+  );
+  assert.ok(matchup.bullets.some((b) => b.tone === "warn"));
+});
+
+test("vsTrainerMatchup empty sides", () => {
+  const matchup = vsTrainerMatchup([], []);
+  assert.equal(matchup.targets.length, 0);
+  assert.match(matchup.recommendation, /Place|Need/i);
 });

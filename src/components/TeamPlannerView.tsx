@@ -23,9 +23,9 @@ import type { PokemonType } from "@/lib/pokemon-types";
 import {
   formatMatchupMult,
   offensiveCoverage,
-  recommendDraftCoverageTips,
   teamCoverageSummary,
   teamDefensiveProfile,
+  vsTrainerMatchup,
 } from "@/lib/team-coverage";
 import {
   parsePlannerMode,
@@ -1020,6 +1020,11 @@ function VsTrainerPanel({
   opponent: TrainerProfile | null;
   opponentMain: PokemonEntry[];
 }) {
+  const matchup = useMemo(
+    () => vsTrainerMatchup(draft, opponentMain),
+    [draft, opponentMain],
+  );
+
   if (!opponent) {
     return (
       <Frame dense title="vs Trainer">
@@ -1042,96 +1047,194 @@ function VsTrainerPanel({
     return (
       <Frame dense title={`vs ${displayName(opponent)}`}>
         <p className="text-sm text-muted">
-          Place Pokémon above to see counter tips update live.
+          Place Pokémon above to see a live matchup verdict.
         </p>
       </Frame>
     );
   }
 
+  const assessmentById = new Map(
+    matchup.targets.map((t) => [t.targetId, t] as const),
+  );
+
+  const verdictTone =
+    matchup.verdict === "favorable"
+      ? "good"
+      : matchup.verdict === "even"
+        ? "neutral"
+        : "warn";
+
   return (
-    <Frame dense title={`vs ${displayName(opponent)}`}>
-      <p className="mb-2 text-[11px] text-muted">
-        Draft answers into their Main — moves when present, otherwise STAB.
-      </p>
-      <ul className="space-y-2">
-        {opponentMain.map((target) => {
-          const tips = recommendDraftCoverageTips(target.types, draft, {
-            limit: 3,
-            minMult: 2,
-          });
-          return (
+    <div className="space-y-3">
+      <Frame dense title="Matchup verdict">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <p
+            className={`text-base font-semibold tracking-tight ${
+              verdictTone === "good"
+                ? "text-accent-deep"
+                : verdictTone === "warn"
+                  ? "text-danger"
+                  : "text-ink"
+            }`}
+          >
+            {matchup.verdictLabel}
+            <span className="ml-2 text-sm font-bold tabular-nums text-muted">
+              {matchup.score}/100
+            </span>
+          </p>
+          <p className="text-[11px] text-muted">
+            {matchup.answeredCount} answered · {matchup.softCount} soft ·{" "}
+            {matchup.blindCount} blind
+          </p>
+        </div>
+        <p
+          className={`mt-2 text-sm leading-snug ${
+            verdictTone === "warn" ? "text-danger" : "text-ink"
+          }`}
+        >
+          {matchup.recommendation}
+        </p>
+        <ul className="mt-2.5 space-y-1.5 border-t border-frame/40 pt-2.5">
+          {matchup.bullets.map((bullet) => (
             <li
-              key={target.id}
-              className="rounded-md border border-frame/60 bg-surface-2/50 p-2"
+              key={bullet.text}
+              className={`flex gap-2 text-sm leading-snug ${
+                bullet.tone === "good"
+                  ? "text-accent-deep"
+                  : bullet.tone === "warn"
+                    ? "text-danger"
+                    : "text-ink"
+              }`}
             >
-              <div className="flex items-center gap-2">
-                <PokemonSpriteImage
-                  alt={monLabel(target)}
-                  className="pixelated h-10 w-10 object-contain"
-                  height={40}
-                  loading="lazy"
-                  pokedexId={target.pokedexId}
-                  shiny={target.isShiny}
-                  species={target.species}
-                  width={40}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-ink">
-                    {monLabel(target)}
-                  </p>
-                  <span className="mt-0.5 flex flex-wrap gap-0.5">
-                    {target.types.map((t) => (
-                      <TypeBadge
-                        key={`${target.id}-${t}`}
-                        type={t}
-                        size="sm"
-                      />
-                    ))}
+              <span aria-hidden className="mt-0.5 shrink-0 text-muted">
+                {bullet.tone === "good"
+                  ? "✓"
+                  : bullet.tone === "warn"
+                    ? "!"
+                    : "·"}
+              </span>
+              <span>{bullet.text}</span>
+            </li>
+          ))}
+        </ul>
+      </Frame>
+
+      <Frame dense title={`Their Main · ${displayName(opponent)}`}>
+        <p className="mb-2 text-[11px] text-muted">
+          Per mon: your ≥2× answers and how hard they pressure your draft.
+        </p>
+        <ul className="space-y-2">
+          {opponentMain.map((target) => {
+            const assessment = assessmentById.get(target.id);
+            const tips = assessment?.answerTips ?? [];
+            const status = assessment?.status ?? "soft";
+            const statusLabel =
+              status === "answered"
+                ? "Answered"
+                : status === "soft"
+                  ? "Soft"
+                  : "Blind";
+            return (
+              <li
+                key={target.id}
+                className="rounded-md border border-frame/60 bg-surface-2/50 p-2"
+              >
+                <div className="flex items-center gap-2">
+                  <PokemonSpriteImage
+                    alt={monLabel(target)}
+                    className="pixelated h-10 w-10 object-contain"
+                    height={40}
+                    loading="lazy"
+                    pokedexId={target.pokedexId}
+                    shiny={target.isShiny}
+                    species={target.species}
+                    width={40}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                      <p className="truncate text-xs font-semibold text-ink">
+                        {monLabel(target)}
+                      </p>
+                      <span
+                        className={`rounded px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          status === "answered"
+                            ? "bg-accent/15 text-accent-deep"
+                            : status === "blind"
+                              ? "bg-danger/15 text-danger"
+                              : "bg-surface/80 text-muted"
+                        }`}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <span className="mt-0.5 flex flex-wrap gap-0.5">
+                      {target.types.map((t) => (
+                        <TypeBadge
+                          key={`${target.id}-${t}`}
+                          type={t}
+                          size="sm"
+                        />
+                      ))}
+                    </span>
+                    {assessment && assessment.threatenedCount > 0 ? (
+                      <p className="mt-1 text-[10px] text-muted">
+                        Pressures {assessment.threatenedCount}/{draft.length}
+                        {assessment.threatAttackType
+                          ? ` · ${formatMatchupMult(assessment.threatMult)} ${assessment.threatAttackType}`
+                          : ""}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[10px] text-muted">
+                        Low pressure into your draft
+                      </p>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-[10px] font-bold tabular-nums text-muted">
+                    Best {formatMatchupMult(assessment?.bestOffenseMult ?? 0)}
                   </span>
                 </div>
-                {tips.length === 0 ? (
-                  <span className="shrink-0 text-[10px] text-muted">
-                    No ≥2×
-                  </span>
-                ) : null}
-              </div>
-              {tips.length > 0 ? (
-                <ul className="mt-1.5 flex flex-wrap gap-1 border-t border-frame/40 pt-1.5">
-                  {tips.map((tip) => {
-                    const tipMon = draft.find((p) => p.id === tip.entryId);
-                    return (
-                      <li
-                        key={tip.entryId}
-                        className="inline-flex items-center gap-1 rounded border border-frame/40 bg-surface/70 px-1 py-0.5"
-                        title={tip.reason}
-                      >
-                        {tipMon ? (
-                          <PokemonSpriteImage
-                            alt={tip.displayName}
-                            className="pixelated h-5 w-5 object-contain"
-                            height={20}
-                            loading="lazy"
-                            pokedexId={tipMon.pokedexId}
-                            shiny={tipMon.isShiny}
-                            species={tipMon.species}
-                            width={20}
-                          />
-                        ) : null}
-                        <span className="text-[10px] font-semibold text-ink">
-                          {tip.displayName}
-                        </span>
-                        <span className="text-[10px] font-bold tabular-nums text-accent">
-                          {formatMatchupMult(tip.mult)}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-    </Frame>
+                {tips.length > 0 ? (
+                  <ul className="mt-1.5 flex flex-wrap gap-1 border-t border-frame/40 pt-1.5">
+                    {tips.map((tip) => {
+                      const tipMon = draft.find((p) => p.id === tip.entryId);
+                      return (
+                        <li
+                          key={tip.entryId}
+                          className="inline-flex items-center gap-1 rounded border border-frame/40 bg-surface/70 px-1 py-0.5"
+                          title={tip.reason}
+                        >
+                          {tipMon ? (
+                            <PokemonSpriteImage
+                              alt={tip.displayName}
+                              className="pixelated h-5 w-5 object-contain"
+                              height={20}
+                              loading="lazy"
+                              pokedexId={tipMon.pokedexId}
+                              shiny={tipMon.isShiny}
+                              species={tipMon.species}
+                              width={20}
+                            />
+                          ) : null}
+                          <span className="text-[10px] font-semibold text-ink">
+                            {tip.displayName}
+                          </span>
+                          <span className="text-[10px] font-bold tabular-nums text-accent">
+                            {formatMatchupMult(tip.mult)}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mt-1.5 border-t border-frame/40 pt-1.5 text-[11px] text-danger">
+                    No ≥2× answer from this draft.
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </Frame>
+    </div>
   );
 }

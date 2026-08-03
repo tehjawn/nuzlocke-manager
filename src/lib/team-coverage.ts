@@ -392,3 +392,320 @@ export function recommendDraftCoverageTips(
   );
   return tips.slice(0, limit);
 }
+
+/** Best damaging hit (moves, else STAB) this mon can land on targetTypes. */
+export function bestOffenseVsDefender(
+  mon: PokemonEntry,
+  targetTypes: readonly ChipType[],
+): {
+  mult: number;
+  attackType: ChartType | null;
+  viaMove: string | null;
+} {
+  if (targetTypes.length === 0) {
+    return { mult: 0, attackType: null, viaMove: null };
+  }
+  let bestMult = 0;
+  let bestAttack: ChartType | null = null;
+  let bestMove: string | null = null;
+
+  for (const rawMove of mon.moves) {
+    const meta = lookupMoveMeta(rawMove);
+    if (!meta || meta.category === "Status") continue;
+    const attackType = asChartType(meta.type);
+    if (!attackType) continue;
+    const mult = attackMultiplierVs(attackType, targetTypes);
+    if (mult > bestMult || (mult === bestMult && bestMove == null)) {
+      bestMult = mult;
+      bestAttack = attackType;
+      bestMove = meta.name;
+    }
+  }
+
+  for (const t of resolveTypes(mon)) {
+    const attackType = asChartType(t);
+    if (!attackType) continue;
+    const mult = attackMultiplierVs(attackType, targetTypes);
+    if (mult > bestMult) {
+      bestMult = mult;
+      bestAttack = attackType;
+      bestMove = null;
+    } else if (mult === bestMult && bestAttack == null) {
+      bestMult = mult;
+      bestAttack = attackType;
+      bestMove = null;
+    }
+  }
+
+  return { mult: bestMult, attackType: bestAttack, viaMove: bestMove };
+}
+
+export type VsTrainerTargetStatus = "answered" | "soft" | "blind";
+
+export type VsTrainerTargetAssessment = {
+  targetId: string;
+  displayName: string;
+  status: VsTrainerTargetStatus;
+  bestOffenseMult: number;
+  answerTips: DraftCoverageTip[];
+  /** Best mult this opponent can land into any draft mon. */
+  threatMult: number;
+  threatAttackType: ChartType | null;
+  /** Draft mons this opponent hits for ≥2×. */
+  threatenedCount: number;
+};
+
+export type VsTrainerVerdict =
+  | "favorable"
+  | "even"
+  | "risky"
+  | "unfavorable";
+
+export type VsTrainerMatchup = {
+  targets: VsTrainerTargetAssessment[];
+  answeredCount: number;
+  softCount: number;
+  blindCount: number;
+  /** Opponents that hit ≥2 draft mons for ≥2×. */
+  pressureCount: number;
+  /** 0–100 type-edge score (offense answers minus threat pressure). */
+  score: number;
+  verdict: VsTrainerVerdict;
+  verdictLabel: string;
+  recommendation: string;
+  bullets: CoverageSummaryBullet[];
+};
+
+function monDisplayName(mon: PokemonEntry): string {
+  const nick = mon.nickname?.trim();
+  return nick || mon.species;
+}
+
+function targetStatus(bestOffenseMult: number): VsTrainerTargetStatus {
+  if (bestOffenseMult >= SE_THRESHOLD) return "answered";
+  if (bestOffenseMult > 0) return "soft";
+  return "blind";
+}
+
+/**
+ * High-level draft-vs-opponent Main assessment: answers, threats, verdict.
+ * Deterministic type math only (STAB + known damaging moves).
+ */
+export function vsTrainerMatchup(
+  draft: readonly PokemonEntry[],
+  opponentMain: readonly PokemonEntry[],
+): VsTrainerMatchup {
+  if (draft.length === 0 || opponentMain.length === 0) {
+    return {
+      targets: [],
+      answeredCount: 0,
+      softCount: 0,
+      blindCount: 0,
+      pressureCount: 0,
+      score: 0,
+      verdict: "even",
+      verdictLabel: "No matchup yet",
+      recommendation: "Place a planned Main and pick an opponent with Pokémon.",
+      bullets: [
+        {
+          text: "Need both sides filled to score the matchup.",
+          tone: "neutral",
+        },
+      ],
+    };
+  }
+
+  const targets: VsTrainerTargetAssessment[] = opponentMain.map((target) => {
+    const answerTips = recommendDraftCoverageTips(target.types, draft, {
+      limit: 3,
+      minMult: SE_THRESHOLD,
+    });
+    const bestFromDraft = draft.reduce(
+      (best, mon) => {
+        const hit = bestOffenseVsDefender(mon, target.types);
+        return hit.mult > best.mult ? hit : best;
+      },
+      { mult: 0, attackType: null as ChartType | null, viaMove: null as string | null },
+    );
+
+    let threatMult = 0;
+    let threatAttackType: ChartType | null = null;
+    let threatenedCount = 0;
+    for (const mon of draft) {
+      const hit = bestOffenseVsDefender(target, resolveTypes(mon));
+      if (hit.mult > threatMult) {
+        threatMult = hit.mult;
+        threatAttackType = hit.attackType;
+      }
+      if (hit.mult >= SE_THRESHOLD) threatenedCount += 1;
+    }
+
+    return {
+      targetId: target.id,
+      displayName: monDisplayName(target),
+      status: targetStatus(bestFromDraft.mult),
+      bestOffenseMult: bestFromDraft.mult,
+      answerTips,
+      threatMult,
+      threatAttackType,
+      threatenedCount,
+    };
+  });
+
+  const answeredCount = targets.filter((t) => t.status === "answered").length;
+  const softCount = targets.filter((t) => t.status === "soft").length;
+  const blindCount = targets.filter((t) => t.status === "blind").length;
+  const pressureCount = targets.filter((t) => t.threatenedCount >= 2).length;
+  const n = targets.length;
+
+  // Offense: full credit for ≥2× answers, partial for neutral/resisted hits.
+  let offensePts = 0;
+  for (const t of targets) {
+    if (t.status === "answered") offensePts += 1;
+    else if (t.bestOffenseMult >= 1) offensePts += 0.45;
+    else if (t.bestOffenseMult > 0) offensePts += 0.2;
+  }
+  const offenseRatio = offensePts / n;
+
+  // Defense pressure: shared threats and unanswered walls.
+  let pressure = 0;
+  for (const t of targets) {
+    if (t.threatenedCount >= 3) pressure += 0.22;
+    else if (t.threatenedCount === 2) pressure += 0.14;
+    else if (t.threatenedCount === 1 && t.status !== "answered") pressure += 0.08;
+    if (t.status === "blind") pressure += 0.12;
+    else if (t.status === "soft") pressure += 0.05;
+  }
+  pressure = Math.min(0.55, pressure / Math.max(1, n * 0.35));
+
+  const raw = Math.max(0, Math.min(1, offenseRatio - pressure));
+  const score = Math.round(raw * 100);
+
+  let verdict: VsTrainerVerdict;
+  if (score >= 72) verdict = "favorable";
+  else if (score >= 48) verdict = "even";
+  else if (score >= 28) verdict = "risky";
+  else verdict = "unfavorable";
+
+  const verdictLabel =
+    verdict === "favorable"
+      ? "Favorable"
+      : verdict === "even"
+        ? "Even"
+        : verdict === "risky"
+          ? "Risky"
+          : "Unfavorable";
+
+  const blinds = targets.filter((t) => t.status === "blind");
+  const softs = targets.filter((t) => t.status === "soft");
+  const answered = targets.filter((t) => t.status === "answered");
+  const topThreats = [...targets]
+    .filter((t) => t.threatenedCount >= 2 || (t.threatenedCount >= 1 && t.status === "blind"))
+    .sort(
+      (a, b) =>
+        b.threatenedCount - a.threatenedCount ||
+        b.threatMult - a.threatMult ||
+        a.displayName.localeCompare(b.displayName),
+    );
+
+  let recommendation: string;
+  if (verdict === "favorable") {
+    recommendation =
+      blinds.length > 0
+        ? `Type edge is yours — still watch ${blinds.map((t) => t.displayName).slice(0, 2).join(" / ")} with no ≥2× answer.`
+        : "Type edge is yours — lean on the answered matchups and keep the answered cores in."
+  } else if (verdict === "even") {
+    recommendation =
+      blinds.length > 0 || softs.length > 0
+        ? `Playable, but shore up ${[...blinds, ...softs]
+            .map((t) => t.displayName)
+            .slice(0, 3)
+            .join(", ")} before locking this six.`
+        : "Playable on types — small swaps won't change much; play the strong answers carefully.";
+  } else if (verdict === "risky") {
+    const focus = [...blinds, ...softs].slice(0, 3).map((t) => t.displayName);
+    recommendation =
+      focus.length > 0
+        ? `Thin type spread — prioritize answers for ${focus.join(", ")}, or expect rough trades.`
+        : "Thin type spread into this board — expect rough trades unless you outplay pivots.";
+  } else {
+    recommendation =
+      blinds.length > 0
+        ? `Poor type spread — rebuild around answers for ${blinds
+            .map((t) => t.displayName)
+            .slice(0, 3)
+            .join(", ")} or pick a different six.`
+        : "Poor type spread into this board — rebuild coverage before committing.";
+  }
+
+  const bullets: CoverageSummaryBullet[] = [
+    {
+      text: `You answer ${answeredCount}/${n} of their Main at ≥2×${
+        softCount > 0 ? ` · ${softCount} soft` : ""
+      }${blindCount > 0 ? ` · ${blindCount} blind` : ""}.`,
+      tone:
+        answeredCount === n
+          ? "good"
+          : blindCount >= Math.ceil(n / 2)
+            ? "warn"
+            : "neutral",
+    },
+  ];
+
+  if (answered.length > 0) {
+    bullets.push({
+      text: `Strong into ${answered
+        .slice(0, 4)
+        .map((t) => t.displayName)
+        .join(", ")}${answered.length > 4 ? "…" : ""}.`,
+      tone: "good",
+    });
+  }
+
+  if (blinds.length > 0) {
+    bullets.push({
+      text: `No ≥2× into ${blinds.map((t) => t.displayName).join(", ")}.`,
+      tone: "warn",
+    });
+  } else if (softs.length > 0) {
+    bullets.push({
+      text: `Only neutral/resisted into ${softs
+        .map((t) => t.displayName)
+        .join(", ")}.`,
+      tone: "neutral",
+    });
+  }
+
+  if (topThreats[0]) {
+    const threat = topThreats[0];
+    bullets.push({
+      text: `${threat.displayName} pressures ${threat.threatenedCount}/${draft.length} of your draft${
+        threat.threatAttackType
+          ? ` (${formatMatchupMult(threat.threatMult)} ${threat.threatAttackType})`
+          : ""
+      }.`,
+      tone:
+        threat.threatenedCount >= 3 || threat.status === "blind"
+          ? "warn"
+          : "neutral",
+    });
+  } else if (pressureCount === 0) {
+    bullets.push({
+      text: "No opponent hits 2+ of your draft for ≥2×.",
+      tone: "good",
+    });
+  }
+
+  return {
+    targets,
+    answeredCount,
+    softCount,
+    blindCount,
+    pressureCount,
+    score,
+    verdict,
+    verdictLabel,
+    recommendation,
+    bullets: bullets.slice(0, 5),
+  };
+}
