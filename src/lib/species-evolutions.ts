@@ -403,18 +403,7 @@ export function evolutionViewFor(
   if (!Number.isFinite(pokedexId) || pokedexId <= 0) return null;
   const options = evolutionsFrom(pokedexId, specimen);
   const ancestors = evolutionAncestors(pokedexId);
-  // Unknown species with neither parents nor children: hide the section.
-  if (options.length === 0 && ancestors.length === 0 && !BY_DEX[String(pokedexId)] && !PARENTS_BY_DEX.has(pokedexId)) {
-    // Still show for any species that appears as a parent or child somewhere,
-    // OR that exists in the catalog as a known final with no table entry…
-    // If the mon is completely absent from the evo graph, skip.
-    const mentioned =
-      Object.values(BY_DEX).some((edges) => edges.some((e) => e.into === pokedexId)) ||
-      Boolean(BY_DEX[String(pokedexId)]);
-    if (!mentioned) return null;
-  }
-  // Species in catalog that never appear in the evo table (legendaries, etc.)
-  // should not show an empty Evolution section.
+  // Hide for species that never appear in the Modern Emerald evo graph.
   if (options.length === 0 && ancestors.length === 0) return null;
 
   return {
