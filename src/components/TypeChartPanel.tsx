@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { contrastInkForHex } from "@/lib/pokemon-types";
@@ -134,14 +134,6 @@ export function TypeChartPanel({
 
   function togglePin(next: ChartHover) {
     setPinned((prev) => (sameTarget(prev, next) ? null : next));
-  }
-
-  function onHeaderKeyDown(next: ChartHover) {
-    return (e: KeyboardEvent<HTMLElement>) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      e.preventDefault();
-      togglePin(next);
-    };
   }
 
   function selectDefendingType(def: PokemonType) {
@@ -280,36 +272,39 @@ export function TypeChartPanel({
                       return (
                         <th
                           key={t}
-                          role="button"
-                          tabIndex={0}
-                          aria-pressed={sameTarget(pinned, target)}
+                          scope="col"
                           className={`p-px font-semibold transition-opacity duration-100 ${
                             scanning && !colActive ? "opacity-35" : ""
                           }`}
-                          title={
-                            isCovered && covered
-                              ? `${t} — Main Squad hits ≥2×${
-                                  covered.viaMove
-                                    ? ` (${covered.viaMove})`
-                                    : " (STAB)"
-                                }`
-                              : t
-                          }
-                          onMouseEnter={() => setHover(target)}
-                          onFocus={() => setHover(target)}
-                          onClick={() => {
-                            setFocusDef(t);
-                            togglePin(target);
-                          }}
-                          onKeyDown={onHeaderKeyDown(target)}
                         >
-                          <TypePip type={t} short fill emphasis={colActive} />
-                          {isCovered ? (
-                            <span
-                              aria-hidden
-                              className="mx-auto mt-0.5 block h-1.5 w-1.5 rounded-full bg-accent-deep"
-                            />
-                          ) : null}
+                          <button
+                            type="button"
+                            className="w-full rounded"
+                            aria-pressed={sameTarget(pinned, target)}
+                            title={
+                              isCovered && covered
+                                ? `${t} — this squad hits ≥2×${
+                                    covered.viaMove
+                                      ? ` (${covered.viaMove})`
+                                      : " (STAB)"
+                                  }`
+                                : t
+                            }
+                            onMouseEnter={() => setHover(target)}
+                            onFocus={() => setHover(target)}
+                            onClick={() => {
+                              setFocusDef(t);
+                              togglePin(target);
+                            }}
+                          >
+                            <TypePip type={t} short fill emphasis={colActive} />
+                            {isCovered ? (
+                              <span
+                                aria-hidden
+                                className="mx-auto mt-0.5 block h-1.5 w-1.5 rounded-full bg-accent-deep"
+                              />
+                            ) : null}
+                          </button>
                         </th>
                       );
                     })}
@@ -324,25 +319,26 @@ export function TypeChartPanel({
                     return (
                       <tr key={atk}>
                         <th
-                          role="button"
-                          tabIndex={0}
-                          aria-pressed={sameTarget(pinned, target)}
+                          scope="row"
                           className={`sticky left-0 z-[1] bg-surface p-px text-left font-semibold transition-opacity duration-100 ${
                             scanning && !rowActive ? "opacity-35" : ""
                           }`}
-                          title={
-                            hole
-                              ? `${atk} — shared weakness: hits ${hole.weakCount} of the squad for ${formatMatchupMult(hole.worstMult)}`
-                              : isImmune
-                                ? `${atk} — whole Main Squad is immune`
-                                : atk
-                          }
-                          onMouseEnter={() => setHover(target)}
-                          onFocus={() => setHover(target)}
-                          onClick={() => togglePin(target)}
-                          onKeyDown={onHeaderKeyDown(target)}
                         >
-                          <span className="flex w-full items-center gap-1">
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-1 rounded text-left"
+                            aria-pressed={sameTarget(pinned, target)}
+                            title={
+                              hole
+                                ? `${atk} — shared weakness: hits ${hole.weakCount} of the squad for ${formatMatchupMult(hole.worstMult)}`
+                                : isImmune
+                                  ? `${atk} — whole Main Squad is immune`
+                                  : atk
+                            }
+                            onMouseEnter={() => setHover(target)}
+                            onFocus={() => setHover(target)}
+                            onClick={() => togglePin(target)}
+                          >
                             <TypePip type={atk} fill emphasis={rowActive} />
                             {hole ? (
                               <span
@@ -355,7 +351,7 @@ export function TypeChartPanel({
                                 className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-2"
                               />
                             ) : null}
-                          </span>
+                          </button>
                         </th>
                         {TYPES.map((def) => {
                           const m = typeMultiplier(atk, def);
