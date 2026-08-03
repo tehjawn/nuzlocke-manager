@@ -135,7 +135,8 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "mossdeep",
       title: "Lilycove → Mossdeep",
-      summary: "Mt. Pyre, Team hideout, Tate & Liza.",
+      summary:
+        "Mt. Pyre → Magma Hideout → Slateport sub theft → Aqua Hideout → Mossdeep / Space Center / Dive.",
       requiresBadges: [
         "gym-1",
         "gym-2",
@@ -146,13 +147,18 @@ export const EMERALD_GUIDE: GuideDocument = {
       ],
       clearsWithBadge: "gym-7",
       locations: [
+        "Route 120",
         "Route 121",
         "Mt. Pyre",
+        "Jagged Pass",
+        "Magma Hideout",
+        "Slateport City",
         "Lilycove City",
         "Route 122",
         "Route 123",
         "Route 124",
         "Mossdeep City",
+        "Mossdeep Space Center",
         "Route 125",
         "Shoal Cave",
       ],
@@ -161,7 +167,7 @@ export const EMERALD_GUIDE: GuideDocument = {
     {
       id: "sootopolis",
       title: "Seafloor → Sootopolis",
-      summary: "Dive, Kyogre/Groudon, Wallace/Juan.",
+      summary: "Dive, Seafloor Cavern, Sky Pillar / Rayquaza, Juan.",
       requiresBadges: [
         "gym-1",
         "gym-2",
@@ -180,6 +186,8 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Seafloor Cavern",
         "Sootopolis City",
         "Cave of Origin",
+        "Route 131",
+        "Sky Pillar",
       ],
       sortOrder: 9,
     },
@@ -206,7 +214,6 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Route 132",
         "Route 133",
         "Route 134",
-        "Sky Pillar",
         "Ever Grande City",
         "Victory Road",
       ],
@@ -633,29 +640,86 @@ export const EMERALD_GUIDE: GuideDocument = {
       sortOrder: 30,
     },
 
-    // —— Mossdeep ——
+    // —— Mossdeep (Lilycove Magma/Aqua arc) ——
+    {
+      id: "mossdeep-route-120",
+      chapterId: "mossdeep",
+      title: "Clear Route 120 (Devon Scope)",
+      summary:
+        "Steven on Route 120 → Devon Scope → clear the invisible Kecleon blocking the east path.",
+      detail:
+        "From **Fortree**, head east onto **Route 120**. Meet **Steven** and receive the **Devon Scope**, then use it to reveal the invisible **Kecleon** blocking the bridge path toward **Route 121** / Mt. Pyre.\n\nWithout the Scope, you cannot continue the Magma/Aqua midgame.",
+      locations: ["Route 120", "Route 121"],
+      requiresBadges: [
+        "gym-1",
+        "gym-2",
+        "gym-3",
+        "gym-4",
+        "gym-5",
+        "gym-6",
+      ],
+      keyItems: ["Devon Scope"],
+      nuzlockeNote:
+        "Route 120 / 121 encounter locks matter before you commit to Mt. Pyre or Lilycove routing.",
+      priority: "critical",
+      sortOrder: 5,
+    },
     {
       id: "mossdeep-mt-pyre",
       chapterId: "mossdeep",
       title: "Climb Mt. Pyre",
-      summary: "Team Magma/Aqua steal the Red/Blue Orb — chase the plot to Lilycove.",
+      summary:
+        "Summit orb theft — both teams take Red/Blue Orbs; receive the Magma Emblem.",
       detail:
-        "From Fortree / Route 120–121, enter **Mt. Pyre**. Climb to the summit for the Team Magma/Aqua orb theft cutscene, then head to **Lilycove City** to continue the chase.",
-      locations: ["Route 121", "Mt. Pyre", "Lilycove City"],
+        "From **Route 121**, enter **Mt. Pyre** (surf **Route 122** if you use the pier approach). Climb to the **summit** for the Team Magma/Aqua confrontation.\n\nIn **Emerald**, both teams appear: they steal the **Red Orb** and **Blue Orb**. Talk to the old couple afterward for the **Magma Emblem** — that key item opens Magma’s hideout on **Jagged Pass**.\n\nDo **not** rush straight to the Lilycove Aqua Hideout yet; Magma Hideout and the Slateport submarine theft come first.",
+      locations: ["Route 121", "Route 122", "Mt. Pyre"],
+      requiresSteps: ["mossdeep-route-120"],
+      keyItems: ["Magma Emblem"],
       priority: "critical",
       sortOrder: 10,
     },
     {
-      id: "mossdeep-hideout",
+      id: "mossdeep-magma-hideout",
       chapterId: "mossdeep",
-      title: "Clear the Team Magma/Aqua hideout",
-      summary: "Lilycove harbor hideout — then Surf / sail toward Mossdeep.",
+      title: "Clear Magma Hideout (Jagged Pass)",
+      summary:
+        "Return to Jagged Pass — Magma Emblem opens the cave; Maxie awakens Groudon.",
       detail:
-        "In **Lilycove**, enter the Team Magma/Aqua hideout via the harbor / cove entrance (story-marked after Mt. Pyre). Clear the warp maze and bosses, then continue across **Route 124** toward **Mossdeep City**.",
-      locations: ["Lilycove City", "Route 124", "Mossdeep City"],
+        "Fly or travel back to **Lavaridge** / **Jagged Pass** (the path down Mt. Chimney). With the **Magma Emblem**, a secret entrance opens beside the large boulder.\n\nClear **Team Magma Hideout** (Strength puzzles, trainers, Maxie). Maxie uses an orb to awaken **Groudon**, which immediately flees. This is a long gauntlet — heal like a mini-gym.\n\n**Emerald-only layout:** Magma’s main hideout is here under the volcano, not the Lilycove cove (that’s Aqua).",
+      locations: ["Jagged Pass", "Magma Hideout", "Mt. Chimney", "Lavaridge Town"],
       requiresSteps: ["mossdeep-mt-pyre"],
+      keyItems: ["Magma Emblem"],
+      hms: ["Strength"],
+      nuzlockeNote:
+        "Long trainer stretch plus Maxie — bank a heal before the leader fight.",
       priority: "critical",
       sortOrder: 20,
+    },
+    {
+      id: "mossdeep-submarine-theft",
+      chapterId: "mossdeep",
+      title: "Witness the submarine theft",
+      summary:
+        "Slateport Harbor — Archie steals Capt. Stern’s Submarine Explorer 1.",
+      detail:
+        "After Magma Hideout, go to **Slateport City**’s **Harbor** (Capt. Stern / submarine dock — **not** Lilycove).\n\nWatch **Team Aqua** steal the **Submarine Explorer 1**. That cutscene is the gate into the Lilycove Aqua Hideout chase. Players who skip Slateport often soft-stall looking for the wrong event in Lilycove.",
+      locations: ["Slateport City"],
+      requiresSteps: ["mossdeep-magma-hideout"],
+      priority: "critical",
+      sortOrder: 30,
+    },
+    {
+      id: "mossdeep-aqua-hideout",
+      chapterId: "mossdeep",
+      title: "Clear Team Aqua Hideout",
+      summary:
+        "Lilycove northeast shore warp maze — chase Archie; the sub launches for Seafloor Cavern.",
+      detail:
+        "In **Lilycove**, enter **Team Aqua Hideout** via the **northeast shore / cove** (past the Wailmer blockers once the plot has advanced).\n\nClear the **warp-tile maze** and admins. Archie escapes aboard the stolen submarine toward **Seafloor Cavern**. Optional: the Master Ball room is easy to miss in the warp puzzle.\n\nAfterward, Surf **Route 124** toward **Mossdeep City**.",
+      locations: ["Lilycove City", "Route 124", "Mossdeep City"],
+      requiresSteps: ["mossdeep-submarine-theft"],
+      priority: "critical",
+      sortOrder: 40,
     },
     {
       id: "mossdeep-tate-liza",
@@ -665,6 +729,7 @@ export const EMERALD_GUIDE: GuideDocument = {
       detail:
         "**Tate & Liza** is a **Double Battle** Psychic gym. Dark, Ghost, and Bug pressure them; Fighting / Poison often struggle.\n\nBring two mons that can fight at once. The **Mind Badge** unlocks **Dive** outdoors.",
       locations: ["Mossdeep City"],
+      requiresSteps: ["mossdeep-aqua-hideout"],
       gymPrep: {
         leaderName: "Tate & Liza",
         specialtyTypes: ["Psychic"],
@@ -674,7 +739,20 @@ export const EMERALD_GUIDE: GuideDocument = {
           "Vanilla Emerald (Doubles): Claydol, Xatu, Lunatone, Solrock. Wide coverage — prioritize speed control. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
       },
       priority: "critical",
-      sortOrder: 30,
+      sortOrder: 50,
+    },
+    {
+      id: "mossdeep-space-center",
+      chapterId: "mossdeep",
+      title: "Stop Magma at the Space Center",
+      summary:
+        "Mossdeep Space Center raid — double battle with Steven vs Maxie.",
+      detail:
+        "After (or around) the gym, Team Magma attacks the **Mossdeep Space Center**. Clear the raid and fight the **double battle** alongside **Steven** against Maxie and an admin.\n\nThis Magma beat is required before Steven hands over Dive — don’t skip it if HM08 isn’t offered yet.",
+      locations: ["Mossdeep City", "Mossdeep Space Center"],
+      requiresSteps: ["mossdeep-tate-liza"],
+      priority: "critical",
+      sortOrder: 60,
     },
     {
       id: "mossdeep-get-dive",
@@ -682,12 +760,12 @@ export const EMERALD_GUIDE: GuideDocument = {
       title: "Get Dive",
       summary: "HM08 Dive from Steven’s house in Mossdeep — required for Seafloor Cavern.",
       detail:
-        "Visit **Steven’s house** in **Mossdeep** after the gym / space center events to receive **HM08 Dive**. You need the **Mind Badge** to Dive in the overworld. Dark water patches on the routes around Mossdeep lead to **Seafloor Cavern**.\n\nIf Dive isn’t offered yet, finish the **Space Center** Magma/Aqua raid in Mossdeep first.",
+        "Visit **Steven’s house** in **Mossdeep** after the **Space Center** raid to receive **HM08 Dive**. You need the **Mind Badge** to Dive in the overworld. Dark water patches on the routes around Mossdeep lead to **Seafloor Cavern**.",
       locations: ["Mossdeep City"],
       hms: ["Dive"],
-      requiresSteps: ["mossdeep-tate-liza"],
+      requiresSteps: ["mossdeep-space-center"],
       priority: "critical",
-      sortOrder: 40,
+      sortOrder: 70,
     },
 
     // —— Sootopolis ——
@@ -700,29 +778,59 @@ export const EMERALD_GUIDE: GuideDocument = {
         "Surf to the dark water on **Route 128**, **Dive**, and enter **Seafloor Cavern**. Traverse the Strength / current puzzles to the legendary awakening fight with Team Magma/Aqua.",
       locations: ["Route 128", "Seafloor Cavern"],
       hms: ["Dive"],
+      requiresSteps: ["mossdeep-get-dive"],
       priority: "critical",
       sortOrder: 10,
     },
     {
       id: "sootopolis-cave-of-origin",
       chapterId: "sootopolis",
-      title: "Calm Sootopolis (Cave of Origin)",
-      summary: "Meet Wallace/Juan and stop Kyogre/Groudon in Cave of Origin.",
+      title: "Enter the Cave of Origin",
+      summary:
+        "Sootopolis crisis briefing — Cave of Origin does not end the fight in Emerald.",
       detail:
-        "After Seafloor Cavern, you’re brought to **Sootopolis**. Talk to **Wallace** / the gym gatekeepers, then enter the **Cave of Origin** to stop the legendary crisis. Gym access opens once the city is calm.",
+        "After Seafloor Cavern, you’re brought to **Sootopolis**. Talk to **Wallace** / the gym gatekeepers, then enter the **Cave of Origin**.\n\nIn **Emerald / Modern Emerald**, watching Kyogre and Groudon clash here does **not** calm the city — you still need **Sky Pillar** and **Rayquaza** next. (Ruby/Sapphire resolve differently; don’t follow those guides.)",
       locations: ["Sootopolis City", "Cave of Origin"],
       requiresSteps: ["sootopolis-seafloor"],
       priority: "critical",
       sortOrder: 20,
     },
     {
+      id: "sootopolis-sky-pillar",
+      chapterId: "sootopolis",
+      title: "Awaken Rayquaza at Sky Pillar",
+      summary:
+        "Route 131 Sky Pillar — Rayquaza stops the Sootopolis clash (Emerald-required).",
+      detail:
+        "Leave Sootopolis and Surf to **Route 131** (near **Pacifidlog**). Enter **Sky Pillar**, climb the collapsing-floor tower, and awaken **Rayquaza**.\n\nRayquaza flies to Sootopolis and stops Kyogre/Groudon. Only then does the city calm and the gym path open.",
+      locations: ["Route 131", "Sky Pillar", "Pacifidlog Town", "Sootopolis City"],
+      requiresSteps: ["sootopolis-cave-of-origin"],
+      priority: "critical",
+      sortOrder: 30,
+    },
+    {
+      id: "sootopolis-waterfall",
+      chapterId: "sootopolis",
+      title: "Get Waterfall",
+      summary:
+        "HM07 Waterfall from Wallace after Rayquaza — needed for Victory Road climbs.",
+      detail:
+        "Back in calm **Sootopolis**, talk to **Wallace** for **HM07 Waterfall**. You need the **Rain Badge** later to use it outdoors, but pick it up now before (or right around) challenging Juan.\n\nIn Modern Emerald, field Waterfall works from the bag once the badge is earned.",
+      locations: ["Sootopolis City"],
+      hms: ["Waterfall"],
+      requiresSteps: ["sootopolis-sky-pillar"],
+      priority: "critical",
+      sortOrder: 40,
+    },
+    {
       id: "sootopolis-juan",
       chapterId: "sootopolis",
       title: "Defeat Juan (Rain Badge)",
-      summary: "Sootopolis Gym — Water. Rain Badge unlocks Waterfall.",
+      summary: "Sootopolis Gym — Water. Rain Badge unlocks Waterfall outdoors.",
       detail:
-        "**Juan** is the Water specialist (Emerald / Modern Emerald). Electric and Grass are the clean answers; Fire / Rock / Ground often hate rain teams.\n\nIce-themed gym puzzle — slide carefully. The **Rain Badge** unlocks **Waterfall** outdoors.",
+        "**Juan** is the Water specialist (Emerald / Modern Emerald). Electric and Grass are the clean answers; Fire / Rock / Ground often hate rain teams.\n\nIce-themed gym puzzle — slide carefully. The **Rain Badge** unlocks **Waterfall** in the overworld.",
       locations: ["Sootopolis City"],
+      requiresSteps: ["sootopolis-waterfall"],
       gymPrep: {
         leaderName: "Juan",
         specialtyTypes: ["Water"],
@@ -732,20 +840,7 @@ export const EMERALD_GUIDE: GuideDocument = {
           "Vanilla Emerald: Luvdisc, Whiscash, Sealeo, Crawdaunt, Kingdra. Whiscash is Water/Ground (Electric immune); Crawdaunt is Water/Dark. Modern Emerald Normal keeps gym parties; Hard+ may buff them.",
       },
       priority: "critical",
-      sortOrder: 30,
-    },
-    {
-      id: "sootopolis-waterfall",
-      chapterId: "sootopolis",
-      title: "Get Waterfall",
-      summary: "HM07 Waterfall — needed for Victory Road’s water climbs.",
-      detail:
-        "After the Rain Badge, obtain **HM07 Waterfall** from the story gift in the Sootopolis / Wallace chain before tackling **Victory Road**.",
-      locations: ["Sootopolis City", "Ever Grande City", "Victory Road"],
-      hms: ["Waterfall"],
-      requiresSteps: ["sootopolis-juan"],
-      priority: "critical",
-      sortOrder: 40,
+      sortOrder: 50,
     },
 
     // —— Elite Four ——

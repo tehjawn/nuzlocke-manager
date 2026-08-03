@@ -164,6 +164,54 @@ test("Fallarbor chapter covers Meteor Falls and Go-Goggles before Lavaridge", ()
   );
 });
 
+test("Mossdeep Magma/Aqua arc splits hideouts, sub theft, and Space Center", () => {
+  const order = [
+    "mossdeep-route-120",
+    "mossdeep-mt-pyre",
+    "mossdeep-magma-hideout",
+    "mossdeep-submarine-theft",
+    "mossdeep-aqua-hideout",
+    "mossdeep-tate-liza",
+    "mossdeep-space-center",
+    "mossdeep-get-dive",
+  ];
+  const byId = new Map(EMERALD_GUIDE.steps.map((s) => [s.id, s]));
+  for (let i = 0; i < order.length; i++) {
+    const step = byId.get(order[i]!);
+    assert.ok(step, `missing step ${order[i]}`);
+    assert.equal(step!.chapterId, "mossdeep");
+    assert.equal(step!.priority, "critical");
+    if (i > 0) {
+      assert.ok(
+        step!.requiresSteps?.includes(order[i - 1]!),
+        `${order[i]} should require ${order[i - 1]}`,
+      );
+    }
+  }
+
+  assert.equal(byId.has("mossdeep-hideout"), false);
+  assert.ok(byId.get("mossdeep-mt-pyre")!.keyItems?.includes("Magma Emblem"));
+  assert.ok(
+    byId.get("mossdeep-submarine-theft")!.locations?.includes("Slateport City"),
+  );
+  assert.match(
+    byId.get("mossdeep-submarine-theft")!.summary,
+    /slateport/i,
+  );
+});
+
+test("Sootopolis requires Sky Pillar before Juan (Emerald Rayquaza beat)", () => {
+  const cave = EMERALD_GUIDE.steps.find((s) => s.id === "sootopolis-cave-of-origin");
+  const sky = EMERALD_GUIDE.steps.find((s) => s.id === "sootopolis-sky-pillar");
+  const waterfall = EMERALD_GUIDE.steps.find((s) => s.id === "sootopolis-waterfall");
+  const juan = EMERALD_GUIDE.steps.find((s) => s.id === "sootopolis-juan");
+  assert.ok(cave && sky && waterfall && juan);
+  assert.ok(sky!.requiresSteps?.includes("sootopolis-cave-of-origin"));
+  assert.ok(waterfall!.requiresSteps?.includes("sootopolis-sky-pillar"));
+  assert.ok(juan!.requiresSteps?.includes("sootopolis-waterfall"));
+  assert.match(cave!.detail ?? "", /does \*\*not\*\* calm|does not/i);
+});
+
 test("starter step reflects Modern Emerald random starter", () => {
   const starter = EMERALD_GUIDE.steps.find((s) => s.id === "prologue-starter");
   assert.ok(starter);
