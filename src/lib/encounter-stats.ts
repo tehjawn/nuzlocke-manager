@@ -236,7 +236,7 @@ export function encounterSeasonHighlights(
   return {
     totalLogged,
     uniqueSpecies: allRanked.length,
-    routesClaimed: ledger.length,
+    routesClaimed: ledger.filter((group) => group.kind === "route").length,
     meDexLogged: meLogged,
     meDexTotal: meTotal,
     mostLogged: toSpeciesList(rankingPool, "most", ENCOUNTER_STATS_TOP_N),
