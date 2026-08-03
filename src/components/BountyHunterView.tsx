@@ -78,6 +78,8 @@ export function BountyHunterView({
 
   function selectMode(next: BountyMode) {
     setMode(next);
+    // Rarity is tracker-only — clear it before the option disappears.
+    if (next !== "tracker" && sort === "rarity") setSort("dex");
     // Keep the shareable ?mode= URL without a tools-route RSC refetch.
     const url = new URL(window.location.href);
     url.searchParams.set("tool", "bounty");
@@ -96,25 +98,33 @@ export function BountyHunterView({
     [board, viewerId],
   );
 
+  const queryRows = useMemo(
+    () =>
+      q
+        ? scopedBoard.filter(
+            ({ entry }) =>
+              entry.species.toLowerCase().includes(q) ||
+              String(entry.pokedexId).includes(q),
+          )
+        : scopedBoard,
+    [scopedBoard, q],
+  );
+
   const statusCounts = useMemo(() => {
     const counts: Record<SpeciesOwnershipStatus, number> = {
       owned: 0,
       encountered: 0,
       untouched: 0,
     };
-    for (const row of scopedBoard) counts[row.status] += 1;
+    for (const row of queryRows) counts[row.status] += 1;
     return counts;
-  }, [scopedBoard]);
+  }, [queryRows]);
 
   const visibleBoard = useMemo(() => {
-    const filtered = scopedBoard.filter(({ entry, status }) => {
-      if (statusFilter !== "all" && status !== statusFilter) return false;
-      if (!q) return true;
-      return (
-        entry.species.toLowerCase().includes(q) ||
-        String(entry.pokedexId).includes(q)
-      );
-    });
+    const filtered =
+      statusFilter === "all"
+        ? queryRows
+        : queryRows.filter(({ status }) => status === statusFilter);
     return [...filtered].sort((a, b) => {
       if (sort === "alpha") return a.entry.species.localeCompare(b.entry.species);
       if (sort === "rarity" && a.entry.totalSeen !== b.entry.totalSeen) {
@@ -122,7 +132,7 @@ export function BountyHunterView({
       }
       return a.entry.pokedexId - b.entry.pokedexId;
     });
-  }, [scopedBoard, statusFilter, q, sort]);
+  }, [queryRows, statusFilter, sort]);
 
   const scopedExclusives = useMemo(() => {
     const byTrainer = viewerId
@@ -217,7 +227,7 @@ export function BountyHunterView({
             {STATUS_FILTERS.map((entry) => {
               const active = statusFilter === entry.id;
               const count =
-                entry.id === "all" ? scopedBoard.length : statusCounts[entry.id];
+                entry.id === "all" ? queryRows.length : statusCounts[entry.id];
               return (
                 <button
                   key={entry.id}
@@ -272,7 +282,7 @@ function StatusLegend() {
               aria-hidden
             />
             <span>{item.label}</span>
-            <span className="font-medium text-current/70">· {item.hint}</span>
+            <span className="font-medium opacity-70">· {item.hint}</span>
           </span>
         </li>
       ))}
