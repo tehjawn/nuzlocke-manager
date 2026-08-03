@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Frame } from "@/components/Frame";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
@@ -14,7 +15,7 @@ import {
   clearPlannerDraft,
   PLANNER_DRAFT_MAX,
   plannerDraftStorageKey,
-  readPlannerDraft,
+  readPlannerDraftState,
   setPlannerDraftIds,
 } from "@/features/planner/planner-drafts";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
@@ -93,8 +94,11 @@ export function TeamPlannerView({
   myTrainerId = null,
   initialMode = "coverage",
 }: TeamPlannerViewProps) {
-  const [mode, setMode] = useState<PlannerMode>(
-    parsePlannerMode(initialMode),
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const mode = parsePlannerMode(
+    searchParams.get("mode") ?? initialMode,
   );
   const [viewerId, setViewerId] = useState(() => {
     if (myTrainerId) return myTrainerId;
@@ -147,7 +151,7 @@ export function TeamPlannerView({
       return;
     }
     const key = plannerDraftStorageKey(slug, viewerId);
-    const stored = readPlannerDraft(key);
+    const { found, draft: stored } = readPlannerDraftState(key);
     const trainer = trainers.find((t) => t.id === viewerId);
     if (!trainer) {
       skipPersistRef.current = true;
@@ -157,9 +161,12 @@ export function TeamPlannerView({
       return;
     }
     const valid = new Set(livingBox(trainer).map((p) => p.id));
-    const fromStorage = stored.entryIds.filter((id) => valid.has(id));
-    const next =
-      fromStorage.length > 0 ? fromStorage : defaultDraftIds(trainer);
+    // entryIds already capped in normalize(); filter to living pool.
+    const fromStorage = stored.entryIds
+      .filter((id) => valid.has(id))
+      .slice(0, PLANNER_DRAFT_MAX);
+    // Missing key → seed from Main. Found empty → intentional Clear.
+    const next = found ? fromStorage : defaultDraftIds(trainer);
     skipPersistRef.current = true;
     setDraftIds(next);
     setActiveSlot(firstEmptySlot(toSlots(next)));
@@ -202,11 +209,10 @@ export function TeamPlannerView({
   );
 
   function selectMode(next: PlannerMode) {
-    setMode(next);
-    const url = new URL(window.location.href);
-    url.searchParams.set("tool", "planner");
-    url.searchParams.set("mode", next);
-    window.history.replaceState(window.history.state, "", url.href);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tool", "planner");
+    params.set("mode", next);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
   function commitSlots(nextSlots: string[], preferAdvanceFrom?: number) {

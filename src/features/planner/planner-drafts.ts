@@ -10,12 +10,18 @@ export type PlannerDraft = {
   entryIds: string[];
 };
 
+export type PlannerDraftState = {
+  /** True when a value was persisted (including an intentional empty clear). */
+  found: boolean;
+  draft: PlannerDraft;
+};
+
 export const EMPTY_PLANNER_DRAFT: PlannerDraft = {
   entryIds: [],
 };
 
 const MAX_DRAFT = 6;
-const cacheByKey = new Map<string, PlannerDraft>();
+const cacheByKey = new Map<string, PlannerDraftState>();
 
 export function plannerDraftStorageKey(
   challengeSlug: string,
@@ -32,18 +38,31 @@ function normalize(raw: Partial<PlannerDraft> | null | undefined): PlannerDraft 
   return { entryIds: [...new Set(ids)].slice(0, MAX_DRAFT) };
 }
 
-function loadFromStorage(key: string): PlannerDraft {
+function loadFromStorage(key: string): PlannerDraftState {
   try {
     const stored = localStorage.getItem(key);
-    if (!stored) return EMPTY_PLANNER_DRAFT;
-    return normalize(JSON.parse(stored) as Partial<PlannerDraft>);
+    if (stored == null) {
+      return { found: false, draft: EMPTY_PLANNER_DRAFT };
+    }
+    return { found: true, draft: normalize(JSON.parse(stored) as Partial<PlannerDraft>) };
   } catch {
-    return EMPTY_PLANNER_DRAFT;
+    return { found: false, draft: EMPTY_PLANNER_DRAFT };
   }
 }
 
+/** Draft contents only (empty when missing). Prefer `readPlannerDraftState` when clearing matters. */
 export function readPlannerDraft(key: string): PlannerDraft {
-  if (typeof window === "undefined") return EMPTY_PLANNER_DRAFT;
+  return readPlannerDraftState(key).draft;
+}
+
+/**
+ * Distinguishes “never saved” from an intentional empty draft after Clear.
+ * Caps entry ids to PLANNER_DRAFT_MAX on load.
+ */
+export function readPlannerDraftState(key: string): PlannerDraftState {
+  if (typeof window === "undefined") {
+    return { found: false, draft: EMPTY_PLANNER_DRAFT };
+  }
   const cached = cacheByKey.get(key);
   if (cached) return cached;
   const loaded = loadFromStorage(key);
@@ -59,13 +78,11 @@ function notify(key: string) {
 
 export function writePlannerDraft(key: string, next: PlannerDraft): PlannerDraft {
   const stable = normalize(next);
-  cacheByKey.set(key, stable);
+  const state: PlannerDraftState = { found: true, draft: stable };
+  cacheByKey.set(key, state);
   try {
-    if (stable.entryIds.length === 0) {
-      localStorage.removeItem(key);
-    } else {
-      localStorage.setItem(key, JSON.stringify(stable));
-    }
+    // Persist empty drafts too so Clear survives reload (vs missing key → default Main).
+    localStorage.setItem(key, JSON.stringify(stable));
   } catch {
     // private mode / blocked storage
   }
