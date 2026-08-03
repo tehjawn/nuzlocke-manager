@@ -348,10 +348,10 @@ function SpeciesGrid({
 
 function statusCardClass(status: SpeciesOwnershipStatus): string {
   if (status === "owned") {
-    return "border-accent/30 bg-accent/[0.06] hover:border-accent/50 hover:bg-accent/10";
+    return "border-accent/35 bg-accent/10 hover:border-accent/55 hover:bg-accent/15";
   }
   if (status === "encountered") {
-    return "border-amber-700/25 bg-amber-700/[0.06] hover:border-amber-700/40 hover:bg-amber-700/10 dark:border-amber-400/25 dark:bg-amber-400/[0.06] dark:hover:border-amber-400/40 dark:hover:bg-amber-400/10";
+    return "border-amber-700/35 bg-amber-700/10 hover:border-amber-700/50 hover:bg-amber-700/15 dark:border-amber-400/35 dark:bg-amber-400/10 dark:hover:border-amber-400/50 dark:hover:bg-amber-400/15";
   }
   return "border-frame/30 bg-surface/50 hover:border-interactive/40 hover:bg-interactive-soft/40";
 }
