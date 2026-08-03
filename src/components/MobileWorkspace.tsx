@@ -17,6 +17,11 @@ type MobileWorkspaceProps = {
   generalInfo: ReactNode;
   /** Shown when the "Feed" tab is selected. */
   packFeed: ReactNode;
+  /**
+   * First-run funnel (#183): hide section tabs + Feed so Info → Get Started
+   * stays the primary path on phones.
+   */
+  firstRun?: boolean;
   /** The routed page content, shown when a section tab is selected. */
   children: ReactNode;
   className?: string;
@@ -39,6 +44,7 @@ export function MobileWorkspace({
   status = "ACTIVE",
   generalInfo,
   packFeed,
+  firstRun = false,
   children,
   className = "",
 }: MobileWorkspaceProps) {
@@ -54,8 +60,12 @@ export function MobileWorkspace({
     setSeenPath(pathname);
     if (panel !== null) setPanel(null);
   }
+  // First-run hides Feed — drop a stale Feed selection if chrome flips mid-session.
+  if (firstRun && panel === "feed") {
+    setPanel(null);
+  }
 
-  const tabs = getSeasonTabs(slug, status);
+  const tabs = firstRun ? [] : getSeasonTabs(slug, status);
   const select = (next: "info" | "feed") =>
     setPanel((cur) => (cur === next ? null : next));
 
@@ -134,23 +144,27 @@ export function MobileWorkspace({
             </span>
             Info
           </button>
-          <button
-            type="button"
-            aria-pressed={panel === "feed"}
-            onClick={() => select("feed")}
-            data-tour="tab-feed"
-            className={`${itemBase} ${panel === "feed" ? itemActive : itemIdle}`}
-          >
-            <span
-              className={`shrink-0 ${panel === "feed" ? "text-interactive" : "text-ink/70"}`}
-              aria-hidden
+          {firstRun ? null : (
+            <button
+              type="button"
+              aria-pressed={panel === "feed"}
+              onClick={() => select("feed")}
+              data-tour="tab-feed"
+              className={`${itemBase} ${panel === "feed" ? itemActive : itemIdle}`}
             >
-              <FeedIcon />
-            </span>
-            Feed
-          </button>
+              <span
+                className={`shrink-0 ${panel === "feed" ? "text-interactive" : "text-ink/70"}`}
+                aria-hidden
+              >
+                <FeedIcon />
+              </span>
+              Feed
+            </button>
+          )}
 
-          <span aria-hidden className="my-1 w-px shrink-0 bg-frame/60" />
+          {tabs.length > 0 ? (
+            <span aria-hidden className="my-1 w-px shrink-0 bg-frame/60" />
+          ) : null}
 
           {tabs.map((tab) => {
             const active = panel === null && isSeasonTabActive(tab, pathname);
@@ -192,7 +206,9 @@ export function MobileWorkspace({
 
       {/* Info/Feed panels replace the page content on mobile. */}
       {panel === "info" ? <div className="lg:hidden">{generalInfo}</div> : null}
-      {panel === "feed" ? <div className="lg:hidden">{packFeed}</div> : null}
+      {panel === "feed" && !firstRun ? (
+        <div className="lg:hidden">{packFeed}</div>
+      ) : null}
 
       {/* Page content: hidden on mobile while a panel is open; always on desktop. */}
       <div className={panel !== null ? "hidden lg:block" : undefined}>

@@ -8,6 +8,8 @@ import {
 } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallengeShell } from "@/lib/challenges";
+import { isFirstRunChrome } from "@/lib/first-run";
+import { getWelcomeReadAt } from "@/lib/notifications";
 import { getAccessForChallenge } from "@/lib/permissions";
 
 
@@ -44,10 +46,11 @@ export default async function SeasonWorkspaceLayout({
     redirect(`/challenges/${slug}/join`);
   }
 
-  const myTrainerId = session?.user?.id
-    ? challenge.trainers.find((trainer) => trainer.userId === session.user.id)
-        ?.id ?? null
+  const myTrainer = session?.user?.id
+    ? challenge.trainers.find((trainer) => trainer.userId === session.user.id) ??
+      null
     : null;
+  const myTrainerId = myTrainer?.id ?? null;
 
   if (
     session?.user?.id &&
@@ -58,6 +61,15 @@ export default async function SeasonWorkspaceLayout({
   }
 
   const showGm = Boolean(access?.isGm);
+  const welcomeReadAt = session?.user?.id
+    ? await getWelcomeReadAt(session.user.id)
+    : null;
+  const firstRun = isFirstRunChrome({
+    signedIn: Boolean(session?.user),
+    welcomeCompleted: welcomeReadAt != null,
+    hasProgress: (myTrainer?.pokemon.length ?? 0) > 0,
+    isGm: showGm,
+  });
 
   return (
     <>
@@ -65,6 +77,7 @@ export default async function SeasonWorkspaceLayout({
         season={challengeToJumpSeasonContext(challenge, {
           showGm,
           myTrainerId,
+          firstRun,
         })}
       />
       <ChallengeShell
@@ -79,6 +92,7 @@ export default async function SeasonWorkspaceLayout({
         showGm={showGm}
         myTrainerId={myTrainerId}
         signedIn={Boolean(session?.user)}
+        firstRun={firstRun}
       >
         {children}
       </ChallengeShell>

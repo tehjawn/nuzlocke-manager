@@ -53,7 +53,7 @@ import { copyText } from "@/lib/copy-text";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
-import { CTA_PRIMARY_SM } from "@/lib/cta";
+import { CTA_PRIMARY, CTA_PRIMARY_SM } from "@/lib/cta";
 import {
   MAIN_PARTY_SIZE,
   firstOpenMainPartyIndex,
@@ -1293,6 +1293,22 @@ export function TrainerBoard({
           </div>
         ) : null}
       </div>
+
+      {canEdit && trainer.pokemon.length === 0 ? (
+        <div className="flex flex-col gap-2 border border-accent/25 bg-accent/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm leading-relaxed text-ink">
+            {editingPlayer
+              ? "Save your portrait, stage, and card art, then continue to Get Started."
+              : "Next up: download the ROM, set up Afterplay, and import your first save."}
+          </p>
+          <Link
+            href={`/challenges/${challengeSlug}/setup`}
+            className={`${CTA_PRIMARY} w-full justify-center sm:w-auto`}
+          >
+            Continue to Get Started →
+          </Link>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:items-start">
         <div className="space-y-6">

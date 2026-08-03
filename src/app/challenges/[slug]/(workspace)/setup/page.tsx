@@ -7,6 +7,7 @@ import { SaveExportGuide } from "@/components/SaveExportGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { getChallenge } from "@/lib/challenges";
 import { CTA_PRIMARY } from "@/lib/cta";
+import { CompleteFirstRunLink } from "@/components/CompleteFirstRunLink";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import {
@@ -338,12 +339,12 @@ export default async function SetupPage({ params }: PageProps) {
                 </span>
               </li>
             </ul>
-            <Link
+            <CompleteFirstRunLink
               href={`/challenges/${challenge.slug}`}
               className={`${CTA_PRIMARY} mt-4`}
             >
               Open league board →
-            </Link>
+            </CompleteFirstRunLink>
           </Frame>
         </li>
       </ol>

@@ -8,7 +8,7 @@ export const WELCOME_NOTIFICATION = {
   type: NOTIFICATION_TYPE_WELCOME,
   actionKey: NOTIFICATION_ACTION_WELCOME,
   title: "Welcome to Trash Pack 2026!",
-  body: "Take the app tour — your trainer board, the Season 2026 trainers list, then Get Started.",
+  body: "Customize your trainer, then open Get Started to download the ROM and sync your save. Tap here anytime for a guided tour.",
 } as const;
 
 export type NotificationItem = {

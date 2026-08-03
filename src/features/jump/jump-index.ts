@@ -93,6 +93,33 @@ function seasonSectionTabs(slug: string, status: string) {
 
 export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
   const base = `/challenges/${ctx.slug}`;
+
+  // First-run funnel: only Setup + My Trainer (+ GM if somehow firstRun+GM —
+  // GMs are excluded from firstRun by the layout predicate).
+  if (ctx.firstRun) {
+    const navigate: JumpResult[] = [
+      {
+        id: `nav-setup-${ctx.slug}`,
+        title: "Setup",
+        subtitle: `${ctx.name} · Get started`,
+        href: `${base}/setup`,
+        category: "navigate",
+        tags: ["setup", "onboarding", "get started"],
+      },
+    ];
+    if (ctx.myTrainerId) {
+      navigate.push({
+        id: `nav-me-${ctx.slug}`,
+        title: "My Trainer",
+        subtitle: "Jump to your board",
+        href: `${base}/me`,
+        category: "navigate",
+        tags: ["me", "my board", "my trainer", "self"],
+      });
+    }
+    return navigate;
+  }
+
   const tabs = seasonSectionTabs(ctx.slug, ctx.status);
 
   const navigate: JumpResult[] = [

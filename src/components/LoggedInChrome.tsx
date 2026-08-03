@@ -32,10 +32,6 @@ type LoggedInChromeProps = {
   feedbackHref?: string | null;
 };
 
-function hasUnreadWelcome(items: NotificationItem[]) {
-  return items.some((n) => !n.readAt && isWelcomeNotification(n));
-}
-
 function findWelcome(items: NotificationItem[]) {
   return items.find(isWelcomeNotification);
 }
@@ -54,11 +50,10 @@ export function LoggedInChrome({
     withPinnedWelcome(initialNotifications),
   );
   const [tourOpen, setTourOpen] = useState(() => {
-    const pinned = withPinnedWelcome(initialNotifications);
-    const unread = hasUnreadWelcome(pinned);
-    const active = readOnboardingActive();
-    if (unread || active) {
-      writeOnboardingActive(true);
+    // Don't auto-launch the overlay tour on first login (#183) — the linear
+    // customize → Get Started path is the primary funnel. Welcome inbox still
+    // restarts the tour on click.
+    if (readOnboardingActive()) {
       return true;
     }
     return false;

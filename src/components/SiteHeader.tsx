@@ -22,6 +22,11 @@ type SiteHeaderProps = {
   challengeName?: string | null;
   showGm?: boolean;
   myTrainerId?: string | null;
+  /**
+   * First-run funnel (#183): hide dense season pills so customize → Get Started
+   * stays the focus. Does not affect mobile icon-only brand lockup.
+   */
+  firstRun?: boolean;
 };
 
 export async function SiteHeader({
@@ -30,6 +35,7 @@ export async function SiteHeader({
   challengeName = null,
   showGm = false,
   myTrainerId = null,
+  firstRun = false,
 }: SiteHeaderProps) {
   // Global pages omit season props — fall back to the live default. Only fetch
   // that default when both are absent so we never pair slug/year from different
@@ -76,34 +82,39 @@ export async function SiteHeader({
       <header
         className={`relative z-40 mx-auto flex w-full items-center justify-between gap-4 px-4 py-4 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
       >
-        <div className="min-w-0">
-          <Link
-            href="/"
-            className="site-brand flex min-w-0 items-center gap-2.5 text-base font-bold tracking-tight sm:text-lg"
-          >
+        {/*
+          Two-column brand lockup (sm+): icon | wordmark + season line.
+          Season aligns with the wordmark, not the logo. Mobile stays icon-only.
+        */}
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Link href="/" className="site-brand shrink-0" aria-label="Home">
             <Image
               src="/nuzlocke-mark.png"
               alt="Nuzlocke Manager"
               width={36}
               height={36}
-              className="size-8 shrink-0 rounded-md sm:size-9"
+              className="size-8 rounded-md sm:size-9"
               priority
             />
-            {/* Wordmark is redundant next to the logo on phones — hide it there. */}
-            <span className="hidden min-w-0 truncate sm:inline">
-              Nuzlocke Manager
-            </span>
           </Link>
-          {seasonYear != null && seasonSlug ? (
-            <p className="hidden truncate text-sm text-muted sm:block">
-              <Link
-                href={`/challenges/${seasonSlug}`}
-                className="hover:text-ink"
-              >
-                Season {seasonYear} League
-              </Link>
-            </p>
-          ) : null}
+          <div className="hidden min-w-0 sm:block">
+            <Link
+              href="/"
+              className="site-brand block truncate text-base font-bold tracking-tight sm:text-lg"
+            >
+              Nuzlocke Manager
+            </Link>
+            {seasonYear != null && seasonSlug ? (
+              <p className="truncate text-sm text-muted">
+                <Link
+                  href={`/challenges/${seasonSlug}`}
+                  className="hover:text-ink"
+                >
+                  Season {seasonYear} League
+                </Link>
+              </p>
+            ) : null}
+          </div>
         </div>
         <nav className="relative flex shrink-0 items-center gap-2 text-sm">
           <JumpTrigger />
@@ -118,7 +129,7 @@ export async function SiteHeader({
               Seasons
             </Link>
             */}
-            {seasonSlug ? (
+            {seasonSlug && !firstRun ? (
               <>
                 <Link
                   href={`/challenges/${seasonSlug}/rules`}
@@ -161,6 +172,7 @@ export async function SiteHeader({
               challengeSlug={challengeSlug}
               showGm={showGm}
               myTrainerId={myTrainerId}
+              firstRun={firstRun}
             />
           </Suspense>
         </nav>

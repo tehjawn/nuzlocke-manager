@@ -32,6 +32,11 @@ type ChallengeShellProps = {
   showGm?: boolean;
   myTrainerId?: string | null;
   signedIn?: boolean;
+  /**
+   * First-run funnel (#183): hide SeasonTabs + pack feed so Get Started stays
+   * the focus. Existing players keep the default full chrome.
+   */
+  firstRun?: boolean;
   children: ReactNode;
 };
 
@@ -47,6 +52,7 @@ export function ChallengeShell({
   showGm = false,
   myTrainerId = null,
   signedIn = false,
+  firstRun = false,
   children,
 }: ChallengeShellProps) {
   // Shared between the mobile Info/Feed tabs and the desktop sticky rail.
@@ -87,6 +93,18 @@ export function ChallengeShell({
           <dd className="leading-relaxed text-muted">{description}</dd>
         </div>
       </dl>
+      {firstRun && myTrainerId ? (
+        <p className="mt-3 text-sm leading-relaxed text-muted">
+          Start here: customize{" "}
+          <Link
+            href={`/challenges/${slug}/me`}
+            className="font-semibold text-accent-deep underline-offset-2 hover:underline"
+          >
+            your trainer
+          </Link>
+          , then follow Get Started through ROM setup and save import.
+        </p>
+      ) : null}
       <GetStartedSeasonCta slug={slug} />
       {!signedIn ? (
         <Link
@@ -117,6 +135,7 @@ export function ChallengeShell({
         challengeName={name}
         showGm={showGm}
         myTrainerId={myTrainerId}
+        firstRun={firstRun}
       />
       <div
         className={`mx-auto flex w-full flex-1 flex-col gap-6 px-4 pb-16 pt-2 sm:px-6 lg:flex-row lg:items-start ${SITE_SHELL_MAX_CLASS}`}
@@ -127,8 +146,8 @@ export function ChallengeShell({
           scrollClassName="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]"
         >
           {generalInfo}
-          <SeasonTabs slug={slug} status={status} />
-          {packFeed}
+          {firstRun ? null : <SeasonTabs slug={slug} status={status} />}
+          {firstRun ? null : packFeed}
         </ScrollFadeRail>
 
         {/*
@@ -141,6 +160,7 @@ export function ChallengeShell({
           status={status}
           generalInfo={generalInfo}
           packFeed={packFeed}
+          firstRun={firstRun}
           className="min-w-0 flex-1"
         >
           {children}

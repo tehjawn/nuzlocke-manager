@@ -14,6 +14,8 @@ type MobileNavDrawerProps = {
   challengeSlug?: string;
   showGm?: boolean;
   myTrainerId?: string | null;
+  /** First-run funnel (#183): hide Rules / Game Guide. */
+  firstRun?: boolean;
   /** Applied to the trigger button (e.g. `sm:hidden`). */
   className?: string;
   /** Account actions (server-rendered): My Profile + Sign Out, or Discord login. */
@@ -32,6 +34,7 @@ export function MobileNavDrawer({
   challengeSlug,
   showGm = false,
   myTrainerId = null,
+  firstRun = false,
   className = "",
   children,
 }: MobileNavDrawerProps) {
@@ -51,7 +54,7 @@ export function MobileNavDrawer({
   // TEMP: Seasons index hidden while only one season exists
   // { href: "/challenges", label: "Seasons", icon: <SeasonsIcon /> },
   const links: NavLink[] = [];
-  if (challengeSlug) {
+  if (challengeSlug && !firstRun) {
     links.push(
       {
         href: `/challenges/${challengeSlug}/rules`,

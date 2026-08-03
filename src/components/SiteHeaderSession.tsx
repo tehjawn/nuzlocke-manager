@@ -21,6 +21,7 @@ type SiteHeaderSessionProps = {
   challengeSlug?: string;
   showGm?: boolean;
   myTrainerId?: string | null;
+  firstRun?: boolean;
 };
 
 /**
@@ -35,6 +36,7 @@ export async function SiteHeaderSession({
   challengeSlug,
   showGm = false,
   myTrainerId = null,
+  firstRun = false,
 }: SiteHeaderSessionProps) {
   const menuShowGm = showGm || (await isGmForChallengeSlug(seasonSlug));
   const feedbackHref = seasonSlug
@@ -73,6 +75,7 @@ export async function SiteHeaderSession({
         challengeSlug={seasonSlug ?? undefined}
         showGm={menuShowGm}
         myTrainerId={myTrainerId}
+        firstRun={firstRun}
       >
         <MobileMenuAuth feedbackHref={feedbackHref} />
       </MobileNavDrawer>

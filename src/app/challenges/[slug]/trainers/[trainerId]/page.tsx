@@ -10,11 +10,13 @@ import {
 } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
+import { isFirstRunChrome } from "@/lib/first-run";
 import {
   canEditTrainerBoard,
   canViewCompetitiveDetails,
 } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
+import { getWelcomeReadAt } from "@/lib/notifications";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -102,12 +104,25 @@ export default async function TrainerBoardPage({ params }: PageProps) {
   // Board-level GM tools (e.g. revive reset) follow the same GM-view gate.
   const boardGm = showGm && (access?.ownsTrainer(trainer.userId) || gmLensOn);
 
+  const welcomeReadAt = access?.userId
+    ? await getWelcomeReadAt(access.userId)
+    : null;
+  const firstRun = isFirstRunChrome({
+    signedIn: Boolean(access?.userId),
+    welcomeCompleted: welcomeReadAt != null,
+    // On your own board, party size is the progress signal. On someone else's,
+    // leave hasProgress false so unread-welcome players keep a narrow header.
+    hasProgress: canEdit ? trainer.pokemon.length > 0 : false,
+    isGm: showGm,
+  });
+
   return (
     <div className="flex flex-1 flex-col">
       <SeasonJumpRegistrar
         season={challengeToJumpSeasonContext(challenge, {
           showGm,
           myTrainerId,
+          firstRun,
         })}
       />
       <SiteHeader
@@ -116,6 +131,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         challengeName={challenge.name}
         showGm={showGm}
         myTrainerId={myTrainerId}
+        firstRun={firstRun}
       />
       <main
         className={`mx-auto w-full flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
