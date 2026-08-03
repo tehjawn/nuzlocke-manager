@@ -7,11 +7,14 @@ import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import {
   exclusiveOwnedSpecies,
-  missingModernEmeraldSpecies,
-  personalMissingModernEmerald,
+  groupExclusivesByLine,
+  personalSpeciesStatus,
+  speciesOwnershipBoard,
+  type ExclusiveLineGroup,
   type ExclusiveSpecies,
+  type SpeciesOwnershipEntry,
+  type SpeciesOwnershipStatus,
 } from "@/lib/encounter-stats";
-import type { ModernEmeraldSpeciesRef } from "@/lib/modern-emerald-dex";
 import {
   parseBountyMode,
   toolsHref,
@@ -25,44 +28,58 @@ type BountyHunterViewProps = {
   initialMode?: BountyMode | null;
 };
 
+type StatusFilter = "all" | SpeciesOwnershipStatus;
+type SortMode = "dex" | "rarity" | "alpha";
+type BoardRow = { entry: SpeciesOwnershipEntry; status: SpeciesOwnershipStatus };
+
 const MODES: ReadonlyArray<{ id: BountyMode; label: string }> = [
-  { id: "open", label: "Open bounties" },
-  { id: "gaps", label: "My gaps" },
+  { id: "tracker", label: "Species tracker" },
   { id: "exclusives", label: "Exclusives" },
 ];
 
+const STATUS_FILTERS: ReadonlyArray<{ id: StatusFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "owned", label: "Owned" },
+  { id: "encountered", label: "Encountered" },
+  { id: "untouched", label: "Untouched" },
+];
+
+/** Color key for the tracker grid — same tones as the species cards. */
+const STATUS_LEGEND: ReadonlyArray<{
+  id: SpeciesOwnershipStatus;
+  label: string;
+  hint: string;
+}> = [
+  { id: "owned", label: "Owned", hint: "Currently held" },
+  { id: "encountered", label: "Encountered", hint: "Seen or lost" },
+  { id: "untouched", label: "Untouched", hint: "Open bounty" },
+];
+
+/**
+ * Species-status tracker (owned vs. encountered vs. untouched, any trainer
+ * or one) plus pack exclusives grouped by evolution line. "Open bounties"
+ * and "My gaps" from the old 3-mode UI are now the tracker filtered by
+ * status + trainer instead of separate tabs.
+ */
 export function BountyHunterView({
   slug,
   trainers,
   myTrainerId = null,
-  initialMode = "open",
+  initialMode = "tracker",
 }: BountyHunterViewProps) {
-  const [mode, setMode] = useState<BountyMode>(
-    parseBountyMode(initialMode),
-  );
-  const [viewerId, setViewerId] = useState(
-    () => myTrainerId ?? trainers[0]?.id ?? "",
-  );
+  const [mode, setMode] = useState<BountyMode>(parseBountyMode(initialMode));
+  const [viewerId, setViewerId] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sort, setSort] = useState<SortMode>("dex");
   const [query, setQuery] = useState("");
 
-  const openBounties = useMemo(
-    () => missingModernEmeraldSpecies(trainers),
-    [trainers],
-  );
-  const gaps = useMemo(
-    () =>
-      viewerId
-        ? personalMissingModernEmerald(trainers, viewerId)
-        : openBounties,
-    [trainers, viewerId, openBounties],
-  );
-  const exclusives = useMemo(
-    () => exclusiveOwnedSpecies(trainers),
-    [trainers],
-  );
+  const board = useMemo(() => speciesOwnershipBoard(trainers), [trainers]);
+  const exclusives = useMemo(() => exclusiveOwnedSpecies(trainers), [trainers]);
 
   function selectMode(next: BountyMode) {
     setMode(next);
+    // Rarity is tracker-only — clear it before the option disappears.
+    if (next !== "tracker" && sort === "rarity") setSort("dex");
     // Keep the shareable ?mode= URL without a tools-route RSC refetch.
     const url = new URL(window.location.href);
     url.searchParams.set("tool", "bounty");
@@ -71,24 +88,76 @@ export function BountyHunterView({
   }
 
   const q = query.trim().toLowerCase();
-  const filteredOpen = filterSpecies(openBounties, q);
-  const filteredGaps = filterSpecies(gaps, q);
-  const filteredExclusives = exclusives.filter((entry) => {
-    if (!q) return true;
-    return (
-      entry.species.toLowerCase().includes(q) ||
-      entry.trainerHandle.toLowerCase().includes(q) ||
-      String(entry.pokedexId).includes(q)
+
+  const scopedBoard = useMemo<BoardRow[]>(
+    () =>
+      board.map((entry) => ({
+        entry,
+        status: viewerId ? personalSpeciesStatus(entry, viewerId) : entry.status,
+      })),
+    [board, viewerId],
+  );
+
+  const queryRows = useMemo(
+    () =>
+      q
+        ? scopedBoard.filter(
+            ({ entry }) =>
+              entry.species.toLowerCase().includes(q) ||
+              String(entry.pokedexId).includes(q),
+          )
+        : scopedBoard,
+    [scopedBoard, q],
+  );
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<SpeciesOwnershipStatus, number> = {
+      owned: 0,
+      encountered: 0,
+      untouched: 0,
+    };
+    for (const row of queryRows) counts[row.status] += 1;
+    return counts;
+  }, [queryRows]);
+
+  const visibleBoard = useMemo(() => {
+    const filtered =
+      statusFilter === "all"
+        ? queryRows
+        : queryRows.filter(({ status }) => status === statusFilter);
+    return [...filtered].sort((a, b) => {
+      if (sort === "alpha") return a.entry.species.localeCompare(b.entry.species);
+      if (sort === "rarity" && a.entry.totalSeen !== b.entry.totalSeen) {
+        return a.entry.totalSeen - b.entry.totalSeen;
+      }
+      return a.entry.pokedexId - b.entry.pokedexId;
+    });
+  }, [queryRows, statusFilter, sort]);
+
+  const scopedExclusives = useMemo(() => {
+    const byTrainer = viewerId
+      ? exclusives.filter((entry) => entry.trainerId === viewerId)
+      : exclusives;
+    if (!q) return byTrainer;
+    return byTrainer.filter(
+      (entry) =>
+        entry.species.toLowerCase().includes(q) ||
+        entry.trainerHandle.toLowerCase().includes(q) ||
+        String(entry.pokedexId).includes(q),
     );
-  });
+  }, [exclusives, viewerId, q]);
+
+  const exclusiveGroups = useMemo(() => {
+    const groups = groupExclusivesByLine(scopedExclusives);
+    if (sort === "alpha") {
+      return [...groups].sort((a, b) => a.rootSpecies.localeCompare(b.rootSpecies));
+    }
+    return groups;
+  }, [scopedExclusives, sort]);
 
   return (
     <div className="space-y-4">
-      <div
-        role="group"
-        aria-label="Bounty Hunter modes"
-        className="flex flex-wrap gap-1.5"
-      >
+      <div role="group" aria-label="Bounty Hunter modes" className="flex flex-wrap gap-1.5">
         {MODES.map((entry) => {
           const active = mode === entry.id;
           return (
@@ -120,125 +189,299 @@ export function BountyHunterView({
             className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
           />
         </label>
-        {mode === "gaps" ? (
-          <label className="min-w-[10rem] space-y-1 text-xs font-semibold text-muted">
-            Trainer
-            <select
-              value={viewerId}
-              onChange={(event) => setViewerId(event.target.value)}
-              className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
-            >
-              {trainers.map((trainer) => (
-                <option key={trainer.id} value={trainer.id}>
-                  {trainer.handle}
-                  {trainer.id === myTrainerId ? " (you)" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
+        <label className="min-w-[10rem] space-y-1 text-xs font-semibold text-muted">
+          Trainer
+          <select
+            value={viewerId}
+            onChange={(event) => setViewerId(event.target.value)}
+            className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+          >
+            <option value="">All trainers</option>
+            {trainers.map((trainer) => (
+              <option key={trainer.id} value={trainer.id}>
+                {trainer.handle}
+                {trainer.id === myTrainerId ? " (you)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="min-w-[9rem] space-y-1 text-xs font-semibold text-muted">
+          Sort
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value as SortMode)}
+            className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+          >
+            <option value="dex">Dex order</option>
+            {mode === "tracker" ? <option value="rarity">Rarity</option> : null}
+            <option value="alpha">A–Z</option>
+          </select>
+        </label>
       </div>
 
-      {mode === "open" ? (
-        <SpeciesGrid
-          slug={slug}
-          title={`Open bounties · ${filteredOpen.length} left in Modern Emerald`}
-          empty="Nothing left — the pack has touched every ME species."
-          entries={filteredOpen}
-          mutedSprites
-        />
-      ) : null}
+      {mode === "tracker" ? (
+        <>
+          <StatusLegend />
 
-      {mode === "gaps" ? (
-        <SpeciesGrid
-          slug={slug}
-          title={`My gaps · ${filteredGaps.length} still missing from this board`}
-          empty="This board already has every Modern Emerald species logged. Show-off."
-          entries={filteredGaps}
-        />
-      ) : null}
+          <div role="group" aria-label="Status filter" className="flex flex-wrap gap-1.5">
+            {STATUS_FILTERS.map((entry) => {
+              const active = statusFilter === entry.id;
+              const count =
+                entry.id === "all" ? queryRows.length : statusCounts[entry.id];
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setStatusFilter(entry.id)}
+                  className={`pressable rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                    active
+                      ? statusChipActiveClass(entry.id)
+                      : "border-frame/50 bg-surface text-muted hover:bg-surface/80"
+                  }`}
+                >
+                  {entry.label} · {count}
+                </button>
+              );
+            })}
+          </div>
 
-      {mode === "exclusives" ? (
-        <ExclusivesList
+          <SpeciesGrid
+            slug={slug}
+            rows={visibleBoard}
+            viewerScoped={Boolean(viewerId)}
+            emptyMessage={
+              q || statusFilter !== "all"
+                ? "Nothing matches these filters."
+                : "No Modern Emerald species data yet."
+            }
+          />
+        </>
+      ) : (
+        <ExclusiveLineGroups
           slug={slug}
-          entries={filteredExclusives}
+          groups={exclusiveGroups}
           total={exclusives.length}
+          viewerScoped={Boolean(viewerId)}
         />
-      ) : null}
+      )}
     </div>
   );
 }
 
-function filterSpecies(
-  entries: ModernEmeraldSpeciesRef[],
-  q: string,
-): ModernEmeraldSpeciesRef[] {
-  if (!q) return entries;
-  return entries.filter(
-    (entry) =>
-      entry.species.toLowerCase().includes(q) ||
-      String(entry.pokedexId).includes(q),
+function StatusLegend() {
+  return (
+    <ul className="flex flex-wrap gap-2" aria-label="Species status legend">
+      {STATUS_LEGEND.map((item) => (
+        <li key={item.id}>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold ${statusLegendClass(item.id)}`}
+          >
+            <span
+              className={`h-2.5 w-2.5 shrink-0 rounded-sm ${statusSwatchClass(item.id)}`}
+              aria-hidden
+            />
+            <span>{item.label}</span>
+            <span className="font-medium opacity-70">· {item.hint}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
+}
+
+function statusLegendClass(status: SpeciesOwnershipStatus): string {
+  if (status === "owned") {
+    return "border-accent/35 bg-accent/10 text-accent-deep";
+  }
+  if (status === "encountered") {
+    return "border-amber-700/35 bg-amber-700/10 text-amber-900 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100";
+  }
+  return "border-frame/40 bg-surface/60 text-muted";
+}
+
+function statusSwatchClass(status: SpeciesOwnershipStatus): string {
+  if (status === "owned") return "bg-accent";
+  if (status === "encountered") {
+    return "bg-amber-700 dark:bg-amber-400";
+  }
+  return "bg-ink/25";
+}
+
+function statusChipActiveClass(status: StatusFilter): string {
+  if (status === "owned") {
+    return "border-accent/40 bg-accent/15 text-accent-deep shadow-sm";
+  }
+  if (status === "encountered") {
+    return "border-amber-700/35 bg-amber-700/10 text-amber-900 shadow-sm dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100";
+  }
+  if (status === "untouched") {
+    return "border-frame bg-ink/10 text-muted shadow-sm";
+  }
+  return "border-interactive/40 bg-interactive-soft text-ink shadow-sm";
+}
+
+function formatHolders(
+  holders: ReadonlyArray<{ trainerHandle: string }>,
+  limit = 2,
+): string {
+  if (holders.length === 0) return "";
+  const names = holders.map((h) => h.trainerHandle);
+  if (names.length <= limit) return names.join(", ");
+  const shown = names.slice(0, limit).join(", ");
+  return `${shown} +${names.length - limit} more`;
+}
+
+function statusSubtitle(row: BoardRow, viewerScoped: boolean): string {
+  if (viewerScoped) {
+    if (row.status === "owned") return "You own this";
+    if (row.status === "encountered") return "You've seen this";
+    return "Not yet";
+  }
+  if (row.status === "owned") return `Owned · ${formatHolders(row.entry.owners)}`;
+  if (row.status === "encountered") {
+    return `Encountered · ${formatHolders(row.entry.encounteredBy)}`;
+  }
+  return "Open bounty";
 }
 
 function SpeciesGrid({
   slug,
-  title,
-  empty,
-  entries,
-  mutedSprites = false,
+  rows,
+  viewerScoped,
+  emptyMessage,
 }: {
   slug: string;
-  title: string;
-  empty: string;
-  entries: ModernEmeraldSpeciesRef[];
-  /** Soften sprites for never-seen open bounties (restored on hover). */
-  mutedSprites?: boolean;
+  rows: BoardRow[];
+  viewerScoped: boolean;
+  emptyMessage: string;
 }) {
+  if (rows.length === 0) {
+    return (
+      <p className="rounded-md border border-frame/40 bg-surface/60 px-4 py-5 text-sm text-muted">
+        {emptyMessage}
+      </p>
+    );
+  }
+
+  return (
+    <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+      {rows.map((row) => (
+        <li key={row.entry.pokedexId}>
+          <PokemonHoverPreview
+            className="h-full"
+            speciesPreview={{
+              species: row.entry.species,
+              pokedexId: row.entry.pokedexId,
+              subtitle: statusSubtitle(row, viewerScoped),
+            }}
+          >
+            <Link
+              href={toolsHref(slug, "pokedex", { id: row.entry.pokedexId })}
+              title={row.entry.species}
+              aria-label={`${row.entry.species} (#${String(row.entry.pokedexId).padStart(3, "0")})`}
+              className={`pressable group flex h-full flex-col items-center gap-1 rounded-md border px-1.5 py-2 ${statusCardClass(row.status)}`}
+            >
+              <PokemonSpriteImage
+                alt=""
+                className={`pixelated h-12 w-12 object-contain transition-[filter,opacity] duration-150 sm:h-14 sm:w-14 ${
+                  row.status === "untouched"
+                    ? "opacity-55 grayscale-[35%] group-hover:opacity-100 group-hover:grayscale-0"
+                    : ""
+                }`}
+                height={56}
+                pokedexId={row.entry.pokedexId}
+                species={row.entry.species}
+                width={56}
+              />
+              <span className="max-w-full truncate text-[10px] font-semibold text-ink">
+                {row.entry.species}
+              </span>
+              <span className="text-[9px] font-semibold tabular-nums text-muted">
+                #{String(row.entry.pokedexId).padStart(3, "0")}
+              </span>
+            </Link>
+          </PokemonHoverPreview>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function statusCardClass(status: SpeciesOwnershipStatus): string {
+  if (status === "owned") {
+    return "border-accent/35 bg-accent/10 hover:border-accent/55 hover:bg-accent/15";
+  }
+  if (status === "encountered") {
+    return "border-amber-700/35 bg-amber-700/10 hover:border-amber-700/50 hover:bg-amber-700/15 dark:border-amber-400/35 dark:bg-amber-400/10 dark:hover:border-amber-400/50 dark:hover:bg-amber-400/15";
+  }
+  return "border-frame/30 bg-surface/50 hover:border-interactive/40 hover:bg-interactive-soft/40";
+}
+
+function ExclusiveLineGroups({
+  slug,
+  groups,
+  total,
+  viewerScoped,
+}: {
+  slug: string;
+  groups: ExclusiveLineGroup[];
+  total: number;
+  viewerScoped: boolean;
+}) {
+  const shownCount = groups.reduce((sum, g) => sum + g.entries.length, 0);
+
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted">{title}</p>
-      {entries.length === 0 ? (
+      <p className="text-xs text-muted">
+        Exclusives · {shownCount}
+        {shownCount !== total ? ` of ${total}` : ""} pack monopolies across{" "}
+        {groups.length} line{groups.length === 1 ? "" : "s"}
+      </p>
+      {groups.length === 0 ? (
         <p className="rounded-md border border-frame/40 bg-surface/60 px-4 py-5 text-sm text-muted">
-          {empty}
+          {viewerScoped
+            ? "This trainer has no exclusives right now."
+            : "No exclusives right now — every living species is shared or untouched."}
         </p>
       ) : (
-        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
-          {entries.map((entry) => (
-            <li key={entry.pokedexId}>
-              <PokemonHoverPreview
-                className="h-full"
-                speciesPreview={{
-                  species: entry.species,
-                  pokedexId: entry.pokedexId,
-                }}
-              >
-                <Link
-                  href={toolsHref(slug, "pokedex", { id: entry.pokedexId })}
-                  title={entry.species}
-                  aria-label={`${entry.species} (#${String(entry.pokedexId).padStart(3, "0")})`}
-                  className="pressable group flex h-full flex-col items-center gap-1 rounded-md border border-frame/30 bg-surface/50 px-1.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/40"
-                >
-                  <PokemonSpriteImage
-                    alt=""
-                    className={`pixelated h-12 w-12 object-contain transition-[filter,opacity] duration-150 sm:h-14 sm:w-14 ${
-                      mutedSprites
-                        ? "opacity-55 grayscale-[35%] group-hover:opacity-100 group-hover:grayscale-0"
-                        : ""
-                    }`}
-                    height={56}
-                    pokedexId={entry.pokedexId}
-                    species={entry.species}
-                    width={56}
-                  />
-                  <span className="max-w-full truncate text-[10px] font-semibold text-ink">
-                    {entry.species}
+        <ul className="space-y-2.5">
+          {groups.map((group) => (
+            <li
+              key={group.rootPokedexId}
+              className="overflow-hidden rounded-lg border border-frame/40 bg-surface/50"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-frame/30 bg-surface-2/60 px-3 py-2">
+                <p className="text-sm font-semibold text-ink">
+                  {group.rootSpecies} line
+                  {group.entries.length > 1 ? (
+                    <span className="ml-1.5 font-normal text-muted">
+                      · {group.entries.length} stage
+                      {group.entries.length === 1 ? "" : "s"}
+                    </span>
+                  ) : null}
+                </p>
+                {group.singleTrainer ? (
+                  <span className="rounded-full border border-accent/35 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-deep">
+                    {group.entries[0]!.trainerHandle} owns the whole line
                   </span>
-                  <span className="text-[9px] font-semibold tabular-nums text-muted">
-                    #{String(entry.pokedexId).padStart(3, "0")}
+                ) : (
+                  <span className="rounded-full border border-frame/50 bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
+                    Split across trainers
                   </span>
-                </Link>
-              </PokemonHoverPreview>
+                )}
+              </div>
+              <ul className="grid grid-cols-3 gap-2 p-2.5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+                {group.entries.map((entry) => (
+                  <li key={`${entry.pokedexId}-${entry.trainerId}`}>
+                    <ExclusiveCard
+                      slug={slug}
+                      entry={entry}
+                      showHandle={!group.singleTrainer}
+                    />
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ul>
@@ -247,63 +490,46 @@ function SpeciesGrid({
   );
 }
 
-function ExclusivesList({
+function ExclusiveCard({
   slug,
-  entries,
-  total,
+  entry,
+  showHandle,
 }: {
   slug: string;
-  entries: ExclusiveSpecies[];
-  total: number;
+  entry: ExclusiveSpecies;
+  showHandle: boolean;
 }) {
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted">
-        Exclusives · {entries.length}
-        {entries.length !== total ? ` of ${total}` : ""} pack monopolies
-      </p>
-      {entries.length === 0 ? (
-        <p className="rounded-md border border-frame/40 bg-surface/60 px-4 py-5 text-sm text-muted">
-          No exclusives right now — every living species is shared or untouched.
-        </p>
-      ) : (
-        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
-          {entries.map((entry) => (
-            <li key={`${entry.pokedexId}-${entry.trainerId}`}>
-              <PokemonHoverPreview
-                className="h-full"
-                speciesPreview={{
-                  species: entry.species,
-                  pokedexId: entry.pokedexId,
-                }}
-              >
-                <Link
-                  href={`/challenges/${slug}/trainers/${entry.trainerId}`}
-                  title={`${entry.species} · only ${entry.trainerHandle}`}
-                  aria-label={`${entry.species}, only ${entry.trainerHandle}`}
-                  className="pressable flex h-full flex-col items-center gap-1 rounded-md border border-frame/30 bg-surface/50 px-1.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/40"
-                >
-                  <PokemonSpriteImage
-                    alt=""
-                    className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
-                    height={56}
-                    pokedexId={entry.pokedexId}
-                    species={entry.species}
-                    width={56}
-                  />
-                  <span className="max-w-full truncate text-[10px] font-semibold leading-tight text-ink">
-                    {entry.species}
-                  </span>
-                  <span className="max-w-full truncate text-[9px] leading-tight text-muted">
-                    #{String(entry.pokedexId).padStart(3, "0")} ·{" "}
-                    {entry.trainerHandle}
-                  </span>
-                </Link>
-              </PokemonHoverPreview>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <PokemonHoverPreview
+      className="h-full"
+      speciesPreview={{
+        species: entry.species,
+        pokedexId: entry.pokedexId,
+        subtitle: `Only ${entry.trainerHandle}`,
+      }}
+    >
+      <Link
+        href={`/challenges/${slug}/trainers/${entry.trainerId}`}
+        title={`${entry.species} · only ${entry.trainerHandle}`}
+        aria-label={`${entry.species}, only ${entry.trainerHandle}`}
+        className="pressable flex h-full flex-col items-center gap-1 rounded-md border border-frame/30 bg-surface/50 px-1.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/40"
+      >
+        <PokemonSpriteImage
+          alt=""
+          className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+          height={56}
+          pokedexId={entry.pokedexId}
+          species={entry.species}
+          width={56}
+        />
+        <span className="max-w-full truncate text-[10px] font-semibold leading-tight text-ink">
+          {entry.species}
+        </span>
+        <span className="max-w-full truncate text-[9px] leading-tight text-muted">
+          #{String(entry.pokedexId).padStart(3, "0")}
+          {showHandle ? ` · ${entry.trainerHandle}` : ""}
+        </span>
+      </Link>
+    </PokemonHoverPreview>
   );
 }

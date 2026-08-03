@@ -7,6 +7,7 @@ import {
   modernEmeraldSpeciesRef,
   type ModernEmeraldSpeciesRef,
 } from "@/lib/modern-emerald-dex";
+import { evolutionAncestors } from "@/lib/species-evolutions";
 
 /** Noise species excluded from popularity / rarity callout rankings. */
 const RANKING_EXCLUDED_NAMES = new Set(["zigzagoon"]);
@@ -262,22 +263,6 @@ export function missingModernEmeraldSpecies(
     .map(modernEmeraldSpeciesRef);
 }
 
-/**
- * ME species missing from a single trainer's board (any slot).
- * Used by Bounty Hunter "My gaps".
- */
-export function personalMissingModernEmerald(
-  trainers: TrainerProfile[],
-  trainerId: string,
-): ModernEmeraldSpeciesRef[] {
-  const trainer = trainers.find((t) => t.id === trainerId);
-  if (!trainer) return [];
-  const mine = trainerTouchedPokedexIds(trainer);
-  return modernEmeraldNationalIds()
-    .filter((id) => !mine.has(id))
-    .map(modernEmeraldSpeciesRef);
-}
-
 const OWNED_SLOTS = new Set<PokemonEntry["slot"]>(["MAIN", "RESERVE"]);
 
 /**
@@ -338,4 +323,166 @@ export function exclusiveOwnedSpecies(
     if (a.pokedexId !== b.pokedexId) return a.pokedexId - b.pokedexId;
     return a.species.localeCompare(b.species);
   });
+}
+
+export type SpeciesOwnershipStatus = "owned" | "encountered" | "untouched";
+
+export type SpeciesOwnershipHolder = {
+  trainerId: string;
+  trainerHandle: string;
+  /** GRAVEYARD counts as "encountered" — caught once, not currently held. */
+  slot: "MAIN" | "RESERVE" | "ENCOUNTERED" | "GRAVEYARD";
+};
+
+export type SpeciesOwnershipEntry = ModernEmeraldSpeciesRef & {
+  /** Pack-wide tier: "owned" if anyone currently holds it, else "encountered"
+   * if anyone's only seen/lost it, else "untouched". */
+  status: SpeciesOwnershipStatus;
+  /** Every trainer currently holding it live in Main/Reserve. */
+  owners: SpeciesOwnershipHolder[];
+  /**
+   * Every trainer who's touched it without currently holding it (an
+   * `ENCOUNTERED` stub or a grave). Populated even when `owners` is also
+   * non-empty, so a per-trainer lens (`personalSpeciesStatus`) can still
+   * find someone who merely saw a species others own.
+   */
+  encounteredBy: SpeciesOwnershipHolder[];
+  /** Raw board appearances across every trainer/slot — used for rarity sort. */
+  totalSeen: number;
+};
+
+/**
+ * Every Modern Emerald species tagged with its season-wide ownership tier:
+ * Owned (kept live in Main/Reserve) beats Encountered (an `ENCOUNTERED` stub
+ * or a grave — someone touched it, nobody currently holds it) beats
+ * Untouched. Powers Bounty Hunter's species tracker (owned vs. encountered
+ * vs. open bounty in one view instead of three disconnected lists).
+ */
+export function speciesOwnershipBoard(
+  trainers: TrainerProfile[],
+): SpeciesOwnershipEntry[] {
+  const owners = new Map<number, SpeciesOwnershipHolder[]>();
+  const encounteredBy = new Map<number, SpeciesOwnershipHolder[]>();
+  const totalSeen = new Map<number, number>();
+
+  for (const trainer of trainers) {
+    const ownedHere = new Set<number>();
+    const encounteredHere = new Set<number>();
+
+    for (const mon of trainer.pokemon) {
+      const dex = resolvePokedexId(mon);
+      if (dex == null || dex <= 0) continue;
+      totalSeen.set(dex, (totalSeen.get(dex) ?? 0) + 1);
+
+      if (OWNED_SLOTS.has(mon.slot)) {
+        if (ownedHere.has(dex)) continue;
+        ownedHere.add(dex);
+        const list = owners.get(dex) ?? [];
+        list.push({
+          trainerId: trainer.id,
+          trainerHandle: trainer.handle,
+          slot: mon.slot === "MAIN" ? "MAIN" : "RESERVE",
+        });
+        owners.set(dex, list);
+      } else if (mon.slot === "ENCOUNTERED" || mon.slot === "GRAVEYARD") {
+        if (encounteredHere.has(dex)) continue;
+        encounteredHere.add(dex);
+        const list = encounteredBy.get(dex) ?? [];
+        list.push({
+          trainerId: trainer.id,
+          trainerHandle: trainer.handle,
+          slot: mon.slot,
+        });
+        encounteredBy.set(dex, list);
+      }
+    }
+  }
+
+  return modernEmeraldNationalIds().map((pokedexId) => {
+    const ref = modernEmeraldSpeciesRef(pokedexId);
+    const ownerList = owners.get(pokedexId) ?? [];
+    const seenList = encounteredBy.get(pokedexId) ?? [];
+    const status: SpeciesOwnershipStatus =
+      ownerList.length > 0
+        ? "owned"
+        : seenList.length > 0
+          ? "encountered"
+          : "untouched";
+    return {
+      ...ref,
+      status,
+      owners: ownerList,
+      encounteredBy: seenList,
+      totalSeen: totalSeen.get(pokedexId) ?? 0,
+    };
+  });
+}
+
+/**
+ * Re-tier a season-wide board entry relative to one trainer — owned by them,
+ * merely encountered by them, or not on their board at all. Lets "my gaps"
+ * be a filter (trainer + status) over `speciesOwnershipBoard` instead of a
+ * second data path.
+ */
+export function personalSpeciesStatus(
+  entry: SpeciesOwnershipEntry,
+  trainerId: string,
+): SpeciesOwnershipStatus {
+  if (entry.owners.some((holder) => holder.trainerId === trainerId)) {
+    return "owned";
+  }
+  if (entry.encounteredBy.some((holder) => holder.trainerId === trainerId)) {
+    return "encountered";
+  }
+  return "untouched";
+}
+
+export type ExclusiveLineGroup = {
+  rootPokedexId: number;
+  rootSpecies: string;
+  /** True when every exclusive stage in this line belongs to one trainer. */
+  singleTrainer: boolean;
+  /** Stages in dex order — usually just one trainer's whole family. */
+  entries: ExclusiveSpecies[];
+};
+
+/** Lowest-dex ancestor for a species, or itself when it's already a base form. */
+function lineRoot(pokedexId: number): { pokedexId: number; species: string } {
+  const ancestors = evolutionAncestors(pokedexId);
+  return ancestors.length > 0
+    ? { pokedexId: ancestors[0]!.pokedexId, species: ancestors[0]!.name }
+    : { pokedexId, species: modernEmeraldSpeciesRef(pokedexId).species };
+}
+
+/**
+ * Group `exclusiveOwnedSpecies` results by evolution line so a monopoly on
+ * a whole family (e.g. every Treecko-line stage) reads as one callout
+ * instead of N disconnected single-species rows.
+ */
+export function groupExclusivesByLine(
+  exclusives: ExclusiveSpecies[],
+): ExclusiveLineGroup[] {
+  const groups = new Map<number, ExclusiveLineGroup>();
+
+  for (const entry of exclusives) {
+    const root = lineRoot(entry.pokedexId);
+    const group = groups.get(root.pokedexId) ?? {
+      rootPokedexId: root.pokedexId,
+      rootSpecies: root.species,
+      singleTrainer: true,
+      entries: [],
+    };
+    group.entries.push(entry);
+    groups.set(root.pokedexId, group);
+  }
+
+  for (const group of groups.values()) {
+    group.entries.sort((a, b) => a.pokedexId - b.pokedexId);
+    group.singleTrainer =
+      new Set(group.entries.map((entry) => entry.trainerId)).size === 1;
+  }
+
+  return [...groups.values()].sort(
+    (a, b) => a.rootPokedexId - b.rootPokedexId,
+  );
 }

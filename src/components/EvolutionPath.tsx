@@ -16,6 +16,10 @@ type EvolutionPathProps = {
   heldItem?: string | null;
   moves?: string[] | null;
   shiny?: boolean;
+  /** Caption under the highlighted stage. Defaults to "You" (specimen modal). */
+  currentLabel?: string;
+  /** When set, non-current stages navigate (e.g. Pokédex browse). */
+  onSelectSpecies?: (pokedexId: number) => void;
 };
 
 function ConditionChip({ chip }: { chip: EvolutionConditionChip }) {
@@ -68,32 +72,51 @@ function StageSprite({
   shiny = false,
   current = false,
   size = 40,
+  onSelect,
 }: {
   pokedexId: number;
   species: string;
   shiny?: boolean;
   current?: boolean;
   size?: number;
+  onSelect?: (pokedexId: number) => void;
 }) {
+  const inner = (
+    <PokemonSpriteImage
+      alt=""
+      className="pixelated object-contain"
+      height={size}
+      pokedexId={pokedexId}
+      shiny={shiny}
+      species={species}
+      width={size}
+    />
+  );
+  const shellClass = `flex shrink-0 items-center justify-center rounded-lg border ${
+    current
+      ? "border-accent-2/60 bg-info"
+      : "border-frame/40 bg-surface-2"
+  }`;
+  const shellStyle = { width: size + 8, height: size + 8 };
+
+  if (onSelect && !current) {
+    return (
+      <button
+        type="button"
+        className={`pressable ${shellClass} hover:border-interactive/50`}
+        style={shellStyle}
+        title={`Open ${species}`}
+        aria-label={`Open ${species} in Pokédex`}
+        onClick={() => onSelect(pokedexId)}
+      >
+        {inner}
+      </button>
+    );
+  }
+
   return (
-    <div
-      className={`flex shrink-0 items-center justify-center rounded-lg border ${
-        current
-          ? "border-accent-2/60 bg-info"
-          : "border-frame/40 bg-surface-2"
-      }`}
-      style={{ width: size + 8, height: size + 8 }}
-      title={species}
-    >
-      <PokemonSpriteImage
-        alt=""
-        className="pixelated object-contain"
-        height={size}
-        pokedexId={pokedexId}
-        shiny={shiny}
-        species={species}
-        width={size}
-      />
+    <div className={shellClass} style={shellStyle} title={species}>
+      {inner}
     </div>
   );
 }
@@ -102,10 +125,14 @@ function LinearChain({
   view,
   species,
   shiny,
+  currentLabel,
+  onSelectSpecies,
 }: {
   view: EvolutionView;
   species: string;
   shiny: boolean;
+  currentLabel: string;
+  onSelectSpecies?: (pokedexId: number) => void;
 }) {
   const steps = view.forward;
   return (
@@ -116,6 +143,7 @@ function LinearChain({
             pokedexId={a.pokedexId}
             species={a.name}
             size={32}
+            onSelect={onSelectSpecies}
           />
           <span className="text-muted" aria-hidden>
             →
@@ -131,7 +159,7 @@ function LinearChain({
           size={40}
         />
         <span className="text-[9px] font-semibold tracking-tight text-accent-2">
-          You
+          {currentLabel}
         </span>
       </div>
       {steps.map((step) => (
@@ -158,6 +186,7 @@ function LinearChain({
               pokedexId={step.into}
               species={step.intoName}
               size={40}
+              onSelect={onSelectSpecies}
             />
             <span className="max-w-[4.5rem] truncate text-center text-[10px] font-semibold">
               {step.intoName}
@@ -173,10 +202,14 @@ function BranchOptions({
   view,
   species,
   shiny,
+  currentLabel,
+  onSelectSpecies,
 }: {
   view: EvolutionView;
   species: string;
   shiny: boolean;
+  currentLabel: string;
+  onSelectSpecies?: (pokedexId: number) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -190,6 +223,7 @@ function BranchOptions({
               pokedexId={a.pokedexId}
               species={a.name}
               size={28}
+              onSelect={onSelectSpecies}
             />
             <span className="text-muted" aria-hidden>
               →
@@ -205,7 +239,7 @@ function BranchOptions({
             size={36}
           />
           <span className="text-[9px] font-semibold tracking-tight text-accent-2">
-            You
+            {currentLabel}
           </span>
         </div>
         <span className="text-[10px] font-semibold text-muted">→ choose</span>
@@ -220,6 +254,7 @@ function BranchOptions({
               pokedexId={option.into}
               species={option.intoName}
               size={36}
+              onSelect={onSelectSpecies}
             />
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
@@ -253,10 +288,14 @@ function FinalForm({
   view,
   species,
   shiny,
+  currentLabel,
+  onSelectSpecies,
 }: {
   view: EvolutionView;
   species: string;
   shiny: boolean;
+  currentLabel: string;
+  onSelectSpecies?: (pokedexId: number) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -266,6 +305,7 @@ function FinalForm({
             pokedexId={a.pokedexId}
             species={a.name}
             size={32}
+            onSelect={onSelectSpecies}
           />
           <span className="text-muted" aria-hidden>
             →
@@ -281,7 +321,7 @@ function FinalForm({
           size={40}
         />
         <span className="text-[9px] font-semibold tracking-tight text-accent-2">
-          Final
+          {currentLabel}
         </span>
       </div>
     </div>
@@ -299,12 +339,15 @@ export function EvolutionPath({
   heldItem,
   moves,
   shiny = false,
+  currentLabel = "You",
+  onSelectSpecies,
 }: EvolutionPathProps) {
   const view = evolutionViewFor(pokedexId, { level, heldItem, moves });
   if (!view) return null;
 
   const branched = view.options.length > 1;
   const linear = view.options.length === 1;
+  const resolvedCurrentLabel = view.isFinal ? "Final" : currentLabel;
 
   return (
     <div>
@@ -315,11 +358,29 @@ export function EvolutionPath({
         <p className="text-[10px] text-muted">Modern Emerald</p>
       </div>
       {view.isFinal ? (
-        <FinalForm view={view} species={species} shiny={shiny} />
+        <FinalForm
+          view={view}
+          species={species}
+          shiny={shiny}
+          currentLabel={resolvedCurrentLabel}
+          onSelectSpecies={onSelectSpecies}
+        />
       ) : branched ? (
-        <BranchOptions view={view} species={species} shiny={shiny} />
+        <BranchOptions
+          view={view}
+          species={species}
+          shiny={shiny}
+          currentLabel={resolvedCurrentLabel}
+          onSelectSpecies={onSelectSpecies}
+        />
       ) : linear ? (
-        <LinearChain view={view} species={species} shiny={shiny} />
+        <LinearChain
+          view={view}
+          species={species}
+          shiny={shiny}
+          currentLabel={resolvedCurrentLabel}
+          onSelectSpecies={onSelectSpecies}
+        />
       ) : null}
       {!branched && view.options[0]?.note ? (
         <p className="mt-1.5 text-[10px] leading-snug text-muted">

@@ -280,7 +280,7 @@ function ToolWorkspace({
         : tool === "guide"
           ? `What to do next in the story for ${challengeName}.`
           : tool === "bounty"
-            ? `Open bounties, personal gaps, and pack exclusives for ${challengeName}.`
+            ? `Who owns, who's seen, and who's cornered a whole line in ${challengeName}.`
             : tool === "planner"
               ? `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${challengeName}.`
               : `Side-by-side squads and badges for ${challengeName}.`;
