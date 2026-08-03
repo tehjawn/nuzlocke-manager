@@ -220,6 +220,101 @@ export function teamDefensiveProfile(
   return { perMon, sharedHoles, teamImmunities };
 }
 
+export type CoverageSummaryTone = "good" | "warn" | "neutral";
+
+export type CoverageSummaryBullet = {
+  text: string;
+  tone: CoverageSummaryTone;
+};
+
+/**
+ * Short deterministic TLDR bullets from coverage + defense math.
+ * No LLM — safe to call on every draft change.
+ */
+export function teamCoverageSummary(
+  draft: readonly PokemonEntry[],
+  coverage: OffensiveCoverage,
+  defense: TeamDefensiveProfile,
+): CoverageSummaryBullet[] {
+  if (draft.length === 0) {
+    return [
+      {
+        text: "Empty team — place Pokémon to score coverage.",
+        tone: "neutral",
+      },
+    ];
+  }
+
+  const bullets: CoverageSummaryBullet[] = [];
+  const covered = coverage.cells.filter((c) => c.bestMult >= SE_THRESHOLD).length;
+  const total = coverage.cells.length;
+  const gapNames = coverage.gaps.map((g) => g.defendingType);
+
+  if (coverage.gaps.length === 0) {
+    bullets.push({
+      text: `Offensive coverage looks solid — ≥2× into all ${total} types.`,
+      tone: "good",
+    });
+  } else {
+    bullets.push({
+      text: `${covered}/${total} types covered at ≥2×. Soft into ${gapNames.slice(0, 4).join(", ")}${gapNames.length > 4 ? "…" : ""}.`,
+      tone: coverage.gaps.length >= 4 ? "warn" : "neutral",
+    });
+  }
+
+  const typeCounts = new Map<string, number>();
+  for (const mon of draft) {
+    for (const t of resolveTypes(mon)) {
+      typeCounts.set(t, (typeCounts.get(t) ?? 0) + 1);
+    }
+  }
+  const lean = [...typeCounts.entries()]
+    .filter(([, n]) => n >= 2)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 3);
+  if (lean.length > 0) {
+    bullets.push({
+      text: `Typing leans ${lean.map(([t, n]) => `${t} (×${n})`).join(", ")}.`,
+      tone: "neutral",
+    });
+  } else {
+    bullets.push({
+      text: "Typing is diverse — no repeated type across the six.",
+      tone: "good",
+    });
+  }
+
+  const topHole = defense.sharedHoles[0];
+  if (topHole) {
+    bullets.push({
+      text: `Biggest shared hole: ${topHole.attackType} ${formatMatchupMult(topHole.worstMult)} hits ${topHole.weakCount}/${draft.length}.`,
+      tone: topHole.weakCount >= 3 || topHole.worstMult >= 4 ? "warn" : "neutral",
+    });
+  } else {
+    bullets.push({
+      text: "No shared ≥2× defensive holes across the draft.",
+      tone: "good",
+    });
+  }
+
+  if (defense.teamImmunities.length > 0) {
+    bullets.push({
+      text: `Whole-team immunities: ${defense.teamImmunities.join(", ")}.`,
+      tone: "good",
+    });
+  }
+
+  const softGaps = coverage.gaps.filter((g) => g.bestMult === 0);
+  if (softGaps.length > 0) {
+    bullets.push({
+      text: `Blind spots (0×): ${softGaps.map((g) => g.defendingType).join(", ")}.`,
+      tone: "warn",
+    });
+  }
+
+  return bullets.slice(0, 5);
+}
+
 export { formatMatchupMult };
 
 export type DraftCoverageTip = {

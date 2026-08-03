@@ -18,12 +18,13 @@ import {
   setPlannerDraftIds,
 } from "@/features/planner/planner-drafts";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
-import { CTA_SECONDARY_SM } from "@/lib/cta";
+import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 import type { PokemonType } from "@/lib/pokemon-types";
 import {
   formatMatchupMult,
   offensiveCoverage,
   recommendDraftCoverageTips,
+  teamCoverageSummary,
   teamDefensiveProfile,
 } from "@/lib/team-coverage";
 import {
@@ -74,7 +75,6 @@ function firstEmptySlot(ids: readonly string[]): number {
   return 0;
 }
 
-/** Normalize to a fixed-length slot array (empty string = vacant). */
 function toSlots(ids: readonly string[]): string[] {
   const next = ids.filter(Boolean).slice(0, PLANNER_DRAFT_MAX);
   while (next.length < PLANNER_DRAFT_MAX) next.push("");
@@ -114,8 +114,10 @@ export function TeamPlannerView({
   });
   const [draftIds, setDraftIds] = useState<string[]>([]);
   const [activeSlot, setActiveSlot] = useState(0);
+  const [boxOpen, setBoxOpen] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const skipPersistRef = useRef(false);
+  const boxPanelRef = useRef<HTMLDivElement>(null);
 
   const viewer = trainers.find((t) => t.id === viewerId) ?? null;
   const opponent = trainers.find((t) => t.id === opponentId) ?? null;
@@ -136,7 +138,6 @@ export function TeamPlannerView({
   );
   const draftIdSet = useMemo(() => new Set(compactIds(slots)), [slots]);
 
-  // Hydrate / reset draft when trainer changes.
   useEffect(() => {
     if (!viewerId) {
       skipPersistRef.current = true;
@@ -165,7 +166,6 @@ export function TeamPlannerView({
     setDraftHydrated(true);
   }, [slug, viewerId, trainers]);
 
-  // Persist draft after user edits (skip the hydrate write).
   useEffect(() => {
     if (!draftHydrated || !viewerId) return;
     if (skipPersistRef.current) {
@@ -175,8 +175,22 @@ export function TeamPlannerView({
     setPlannerDraftIds(plannerDraftStorageKey(slug, viewerId), draftIds);
   }, [draftIds, draftHydrated, slug, viewerId]);
 
+  // Close box drawer on Escape.
+  useEffect(() => {
+    if (!boxOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setBoxOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [boxOpen]);
+
   const coverage = useMemo(() => offensiveCoverage(draft), [draft]);
   const defense = useMemo(() => teamDefensiveProfile(draft), [draft]);
+  const summary = useMemo(
+    () => teamCoverageSummary(draft, coverage, defense),
+    [draft, coverage, defense],
+  );
 
   const gymPreps = useMemo(
     () =>
@@ -220,25 +234,25 @@ export function TeamPlannerView({
         setActiveSlot(anyEmpty);
         return;
       }
-      // Team full — step to the next slot for continued swaps.
       setActiveSlot((from + 1) % PLANNER_DRAFT_MAX);
       return;
     }
     setActiveSlot(firstEmptySlot(normalized));
   }
 
-  /** Click a planned-team slot: select it, or clear if already active + filled. */
   function onSlotClick(index: number) {
     if (activeSlot === index && slots[index]) {
+      // Second click on active filled slot clears it.
       const next = [...slots];
       next[index] = "";
       commitSlots(next);
       return;
     }
     setActiveSlot(index);
+    setBoxOpen(true);
+    queueMicrotask(() => boxPanelRef.current?.focus());
   }
 
-  /** Place a living-box mon into the active slot (moves if already on the team). */
   function placeFromBox(entryId: string) {
     const next = [...slots];
     const existing = next.indexOf(entryId);
@@ -281,42 +295,23 @@ export function TeamPlannerView({
   }
 
   const filledCount = draft.length;
+  const activeEntry = slots[activeSlot]
+    ? poolById.get(slots[activeSlot]!)
+    : undefined;
+  const activeLabel = activeEntry
+    ? monLabel(activeEntry)
+    : `slot ${activeSlot + 1}`;
 
   return (
-    <div className="space-y-3">
-      {/* —— Options bar —— */}
-      <div className="flex flex-col gap-2.5 rounded-lg border border-frame/70 bg-surface-2/50 p-2.5 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
-        <div
-          role="group"
-          aria-label="Team Planner modes"
-          className="flex flex-wrap gap-1"
-        >
-          {MODES.map((entry) => {
-            const active = mode === entry.id;
-            return (
-              <button
-                key={entry.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => selectMode(entry.id)}
-                className={`pressable rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                  active
-                    ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
-                    : "border-transparent bg-surface text-muted hover:bg-surface/80"
-                }`}
-              >
-                {entry.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <label className="min-w-[9rem] flex-1 space-y-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted sm:max-w-[14rem]">
+    <div className="space-y-4">
+      {/* Quiet chrome: trainer + actions */}
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="min-w-[10rem] space-y-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted">
           Plan for
           <select
             value={viewerId}
             onChange={(e) => setViewerId(e.target.value)}
-            className="w-full rounded-md border border-frame bg-surface px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-ink"
+            className="w-full min-w-[12rem] rounded-md border border-frame bg-surface px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-ink"
           >
             {trainers.map((t) => (
               <option key={t.id} value={t.id}>
@@ -326,14 +321,13 @@ export function TeamPlannerView({
             ))}
           </select>
         </label>
-
         {mode === "vs" ? (
-          <label className="min-w-[9rem] flex-1 space-y-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted sm:max-w-[14rem]">
+          <label className="min-w-[10rem] space-y-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted">
             Opponent
             <select
               value={opponentId}
               onChange={(e) => setOpponentId(e.target.value)}
-              className="w-full rounded-md border border-frame bg-surface px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-ink"
+              className="w-full min-w-[12rem] rounded-md border border-frame bg-surface px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-ink"
             >
               {trainers.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -343,8 +337,7 @@ export function TeamPlannerView({
             </select>
           </label>
         ) : null}
-
-        <div className="flex flex-wrap gap-1.5 sm:ml-auto sm:pb-0.5">
+        <div className="ml-auto flex flex-wrap gap-1.5 pb-0.5">
           <button
             type="button"
             className={CTA_SECONDARY_SM}
@@ -362,36 +355,73 @@ export function TeamPlannerView({
         </div>
       </div>
 
-      {/* —— Workspace: squad rail + analysis —— */}
-      <div className="grid gap-3 lg:grid-cols-[minmax(15rem,20rem)_minmax(0,1fr)] lg:items-start">
-        <aside className="space-y-2 lg:sticky lg:top-3 lg:self-start">
-          <Frame
-            dense
-            title={frameCountTitle("Planned team", filledCount)}
-            actions={
-              <span className="text-[10px] font-medium tabular-nums text-[var(--on-chrome)]/70">
-                / {PLANNER_DRAFT_MAX}
-              </span>
-            }
+      {/* Always-visible party strip */}
+      <section aria-label="Planned team">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold tracking-tight text-ink">
+            Planned team{" "}
+            <span className="font-medium tabular-nums text-muted">
+              ({filledCount}/{PLANNER_DRAFT_MAX})
+            </span>
+          </h3>
+          <button
+            type="button"
+            className={CTA_PRIMARY_SM}
+            aria-expanded={boxOpen}
+            aria-controls="planner-living-box"
+            onClick={() => {
+              setBoxOpen((open) => !open);
+              if (!boxOpen) {
+                queueMicrotask(() => boxPanelRef.current?.focus());
+              }
+            }}
           >
-            <p className="mb-2 text-[11px] leading-snug text-muted">
-              Select a slot, then tap a box mon to place or swap. Tap the active
-              filled slot again to clear. Sandbox only — board unchanged.
-            </p>
-            <PlannedTeamSlots
-              slots={slots}
-              poolById={poolById}
-              activeSlot={activeSlot}
-              onSlotClick={onSlotClick}
-            />
-          </Frame>
+            {boxOpen ? "Hide box" : "Add from box"}
+          </button>
+        </div>
+        <PartyStripSlots
+          slots={slots}
+          poolById={poolById}
+          activeSlot={activeSlot}
+          onSlotClick={onSlotClick}
+        />
+        <p className="mt-1.5 text-[11px] text-muted" aria-live="polite">
+          {boxOpen
+            ? `Placing into ${activeLabel} — pick a box mon, or tap the slot again to clear.`
+            : "Tap a slot to open the box and place or swap."}
+        </p>
+      </section>
 
-          <Frame
-            dense
-            collapsible
-            defaultOpen
-            title={frameCountTitle("Living box", pool.length)}
+      {/* Living box + analysis: side-by-side when box is open so swaps stay live */}
+      <div
+        className={
+          boxOpen
+            ? "grid gap-3 lg:grid-cols-[minmax(14rem,18rem)_minmax(0,1fr)] lg:items-start"
+            : undefined
+        }
+      >
+        {boxOpen ? (
+          <div
+            id="planner-living-box"
+            ref={boxPanelRef}
+            tabIndex={-1}
+            className="rounded-lg border border-interactive/35 bg-surface-2/80 p-3 outline-none ring-1 ring-interactive/20 lg:sticky lg:top-3"
           >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-ink">
+                Living box{" "}
+                <span className="font-medium tabular-nums text-muted">
+                  ({pool.length})
+                </span>
+              </p>
+              <button
+                type="button"
+                className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2"
+                onClick={() => setBoxOpen(false)}
+              >
+                Done
+              </button>
+            </div>
             {pool.length === 0 ? (
               <p className="text-xs text-muted">
                 No Main or Reserve Pokémon on this board yet.
@@ -403,34 +433,71 @@ export function TeamPlannerView({
                 onPlace={placeFromBox}
               />
             )}
-          </Frame>
-        </aside>
+          </div>
+        ) : null}
 
-        <section className="min-w-0 space-y-3" aria-live="polite">
-          {mode === "coverage" ? (
-            <CoveragePanels
-              coverage={coverage}
-              defense={defense}
-              draft={draft}
-            />
-          ) : null}
-          {mode === "prep" ? (
-            <PrepPanels slug={slug} draft={draft} gymPreps={gymPreps} />
-          ) : null}
-          {mode === "vs" ? (
-            <VsTrainerPanel
-              draft={draft}
-              opponent={opponent}
-              opponentMain={opponentMain}
-            />
-          ) : null}
-        </section>
+        <div className="min-w-0 space-y-3">
+          {/* Mode tabs */}
+          <div
+            role="tablist"
+            aria-label="Planner analysis"
+            className="flex gap-1 border-b border-frame/70"
+          >
+            {MODES.map((entry) => {
+              const active = mode === entry.id;
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  id={`planner-tab-${entry.id}`}
+                  onClick={() => selectMode(entry.id)}
+                  className={`pressable -mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${
+                    active
+                      ? "border-interactive text-ink"
+                      : "border-transparent text-muted hover:text-ink"
+                  }`}
+                >
+                  {entry.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Analysis stage */}
+          <section
+            role="tabpanel"
+            aria-labelledby={`planner-tab-${mode}`}
+            className="min-w-0 space-y-3"
+            aria-live="polite"
+          >
+            {mode === "coverage" ? (
+              <CoveragePanels
+                coverage={coverage}
+                defense={defense}
+                draft={draft}
+                summary={summary}
+              />
+            ) : null}
+            {mode === "prep" ? (
+              <PrepPanels slug={slug} draft={draft} gymPreps={gymPreps} />
+            ) : null}
+            {mode === "vs" ? (
+              <VsTrainerPanel
+                draft={draft}
+                opponent={opponent}
+                opponentMain={opponentMain}
+              />
+            ) : null}
+          </section>
+        </div>
       </div>
     </div>
   );
 }
 
-function PlannedTeamSlots({
+function PartyStripSlots({
   slots,
   poolById,
   activeSlot,
@@ -442,7 +509,7 @@ function PlannedTeamSlots({
   onSlotClick: (index: number) => void;
 }) {
   return (
-    <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-2">
+    <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
       {slots.map((id, index) => {
         const entry = id ? poolById.get(id) : undefined;
         const active = activeSlot === index;
@@ -462,13 +529,13 @@ function PlannedTeamSlots({
                   </span>
                   <PokemonSpriteImage
                     alt={label}
-                    className="pixelated h-11 w-11 object-contain"
-                    height={44}
+                    className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+                    height={56}
                     loading="lazy"
                     pokedexId={entry.pokedexId}
                     shiny={entry.isShiny}
                     species={entry.species}
-                    width={44}
+                    width={56}
                   />
                   <span className="max-w-full truncate text-center text-[10px] font-semibold leading-tight text-ink">
                     {label}
@@ -531,7 +598,7 @@ function SlotButton({
       }
       aria-pressed={active}
       onClick={onClick}
-      className={`pressable relative flex w-full flex-col items-center gap-0.5 rounded-md border px-1 py-1.5 transition-colors ${
+      className={`pressable relative flex w-full flex-col items-center gap-0.5 rounded-md border px-1 py-2 transition-colors ${
         active
           ? "border-interactive bg-interactive-soft/50 ring-1 ring-interactive/40"
           : filled
@@ -554,7 +621,7 @@ function LivingBoxGrid({
   onPlace: (id: string) => void;
 }) {
   return (
-    <ul className="grid max-h-[min(28rem,55vh)] grid-cols-4 gap-1 overflow-y-auto pr-0.5 sm:grid-cols-3">
+    <ul className="grid max-h-[min(16rem,40vh)] grid-cols-4 gap-1.5 overflow-y-auto pr-0.5 sm:grid-cols-6 md:grid-cols-8">
       {pokemon.map((entry) => {
         const onTeam = draftIds.has(entry.id);
         const label = monLabel(entry);
@@ -570,7 +637,7 @@ function LivingBoxGrid({
                     : `Place ${label} into selected slot`
                 }
                 onClick={() => onPlace(entry.id)}
-                className={`pressable flex w-full flex-col items-center gap-0.5 rounded-md border px-0.5 py-1 transition-colors ${
+                className={`pressable flex w-full flex-col items-center gap-0.5 rounded-md border px-0.5 py-1.5 transition-colors ${
                   onTeam
                     ? "border-interactive/45 bg-interactive-soft/35"
                     : "border-frame/45 bg-surface/80 hover:border-interactive/35"
@@ -578,13 +645,13 @@ function LivingBoxGrid({
               >
                 <PokemonSpriteImage
                   alt={label}
-                  className="pixelated h-9 w-9 object-contain"
-                  height={36}
+                  className="pixelated h-10 w-10 object-contain"
+                  height={40}
                   loading="lazy"
                   pokedexId={entry.pokedexId}
                   shiny={entry.isShiny}
                   species={entry.species}
-                  width={36}
+                  width={40}
                 />
                 <span className="max-w-full truncate text-center text-[9px] font-semibold leading-tight text-ink">
                   {label}
@@ -602,17 +669,18 @@ function CoveragePanels({
   coverage,
   defense,
   draft,
+  summary,
 }: {
   coverage: ReturnType<typeof offensiveCoverage>;
   defense: ReturnType<typeof teamDefensiveProfile>;
   draft: PokemonEntry[];
+  summary: ReturnType<typeof teamCoverageSummary>;
 }) {
   if (draft.length === 0) {
     return (
       <Frame dense title="Coverage">
         <p className="text-sm text-muted">
-          Place Pokémon on the left to see offensive coverage and defensive
-          holes update live.
+          Tap a team slot and add from the box to see a live coverage TLDR.
         </p>
       </Frame>
     );
@@ -620,11 +688,101 @@ function CoveragePanels({
 
   return (
     <div className="space-y-3">
-      <Frame dense title="Offensive coverage">
+      <Frame dense title="At a glance">
+        <ul className="space-y-1.5">
+          {summary.map((bullet) => (
+            <li
+              key={bullet.text}
+              className={`flex gap-2 text-sm leading-snug ${
+                bullet.tone === "good"
+                  ? "text-accent-deep"
+                  : bullet.tone === "warn"
+                    ? "text-danger"
+                    : "text-ink"
+              }`}
+            >
+              <span aria-hidden className="mt-0.5 shrink-0 text-muted">
+                {bullet.tone === "good"
+                  ? "✓"
+                  : bullet.tone === "warn"
+                    ? "!"
+                    : "·"}
+              </span>
+              <span>{bullet.text}</span>
+            </li>
+          ))}
+        </ul>
+      </Frame>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Frame dense title={frameCountTitle("Gaps", coverage.gaps.length)}>
+          {coverage.gaps.length === 0 ? (
+            <p className="text-xs text-muted">Full ≥2× coverage.</p>
+          ) : (
+            <ul className="flex flex-wrap gap-1">
+              {coverage.gaps.map((gap) => (
+                <li
+                  key={gap.defendingType}
+                  className="inline-flex items-center gap-1 rounded-md border border-danger/30 bg-danger/10 px-1.5 py-1"
+                >
+                  <TypeBadge
+                    type={gap.defendingType as PokemonType}
+                    size="sm"
+                  />
+                  <span className="text-[10px] font-bold tabular-nums text-muted">
+                    {formatMatchupMult(gap.bestMult)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Frame>
+
+        <Frame dense title="Shared holes">
+          {defense.sharedHoles.length === 0 ? (
+            <p className="text-xs text-muted">No shared ≥2× weaknesses.</p>
+          ) : (
+            <ul className="flex flex-wrap gap-1">
+              {defense.sharedHoles.map((hole) => (
+                <li
+                  key={hole.attackType}
+                  className="inline-flex items-center gap-1 rounded-md border border-frame/40 bg-surface-2 px-1.5 py-1"
+                >
+                  <TypeBadge
+                    type={hole.attackType as PokemonType}
+                    size="sm"
+                  />
+                  <span className="text-[10px] font-bold tabular-nums text-muted">
+                    {formatMatchupMult(hole.worstMult)} · {hole.weakCount}/
+                    {draft.length}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {defense.teamImmunities.length > 0 ? (
+            <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-frame/40 pt-2">
+              <span className="text-[10px] font-semibold text-muted">
+                Immune
+              </span>
+              {defense.teamImmunities.map((t) => (
+                <TypeBadge
+                  key={t}
+                  type={t as PokemonType}
+                  size="sm"
+                  variant="soft"
+                />
+              ))}
+            </div>
+          ) : null}
+        </Frame>
+      </div>
+
+      <Frame dense collapsible defaultOpen={false} title="Full offensive grid">
         <p className="mb-2 text-[11px] text-muted">
-          Best hit into each defending type. Accent = ≥2×; danger = gap.
+          Best hit into each defending type. Accent = ≥2×.
         </p>
-        <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4 xl:grid-cols-6">
+        <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4 md:grid-cols-6">
           {coverage.cells.map((cell) => {
             const good = cell.bestMult >= 2;
             const via = draft.find((p) => p.id === cell.viaEntryId);
@@ -660,73 +818,6 @@ function CoveragePanels({
           })}
         </ul>
       </Frame>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Frame
-          dense
-          title={frameCountTitle("Gaps", coverage.gaps.length)}
-        >
-          {coverage.gaps.length === 0 ? (
-            <p className="text-xs text-muted">Full ≥2× coverage.</p>
-          ) : (
-            <ul className="flex flex-wrap gap-1">
-              {coverage.gaps.map((gap) => (
-                <li
-                  key={gap.defendingType}
-                  className="inline-flex items-center gap-1 rounded-md border border-danger/30 bg-danger/10 px-1 py-0.5"
-                >
-                  <TypeBadge
-                    type={gap.defendingType as PokemonType}
-                    size="sm"
-                  />
-                  <span className="text-[10px] font-bold tabular-nums text-muted">
-                    {formatMatchupMult(gap.bestMult)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Frame>
-
-        <Frame dense title="Shared holes">
-          {defense.sharedHoles.length === 0 ? (
-            <p className="text-xs text-muted">No shared ≥2× weaknesses.</p>
-          ) : (
-            <ul className="flex flex-wrap gap-1">
-              {defense.sharedHoles.map((hole) => (
-                <li
-                  key={hole.attackType}
-                  className="inline-flex items-center gap-1 rounded-md border border-frame/40 bg-surface-2 px-1 py-0.5"
-                >
-                  <TypeBadge
-                    type={hole.attackType as PokemonType}
-                    size="sm"
-                  />
-                  <span className="text-[10px] font-bold tabular-nums text-muted">
-                    {formatMatchupMult(hole.worstMult)} · {hole.weakCount}/
-                    {draft.length}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {defense.teamImmunities.length > 0 ? (
-            <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-frame/40 pt-2">
-              <span className="text-[10px] font-semibold text-muted">
-                Immune
-              </span>
-              {defense.teamImmunities.map((t) => (
-                <TypeBadge
-                  key={t}
-                  type={t as PokemonType}
-                  size="sm"
-                  variant="soft"
-                />
-              ))}
-            </div>
-          ) : null}
-        </Frame>
-      </div>
     </div>
   );
 }
@@ -761,7 +852,7 @@ function PrepPanels({
       >
         <ul className="space-y-2">
           {ELITE_FOUR_PREP.map((prep) => (
-            <PrepCard key={prep.id} prep={prep} draft={draft} compact />
+            <PrepCard key={prep.id} prep={prep} draft={draft} />
           ))}
         </ul>
       </Frame>
@@ -773,7 +864,6 @@ function PrepPanels({
               key={entry.id}
               prep={entry.prep}
               draft={draft}
-              compact
               subtitle={entry.title}
               guideHref={toolsHref(slug, "guide", {
                 chapter: entry.chapterId,
@@ -791,13 +881,11 @@ function PrepCard({
   draft,
   subtitle,
   guideHref,
-  compact = false,
 }: {
   prep: GuideGymPrep;
   draft: PokemonEntry[];
   subtitle?: string;
   guideHref?: string;
-  compact?: boolean;
 }) {
   const matches = squadMatchesForGymPrep(
     draft.map((p) => ({ ...p, slot: "MAIN" as const })),
@@ -805,11 +893,7 @@ function PrepCard({
   );
 
   return (
-    <li
-      className={`rounded-md border border-frame/60 bg-surface-2/50 ${
-        compact ? "p-2" : "p-3"
-      }`}
-    >
+    <li className="rounded-md border border-frame/60 bg-surface-2/50 p-2">
       <div className="flex flex-wrap items-baseline justify-between gap-1.5">
         <p className="text-xs font-semibold tracking-tight text-ink">
           {prep.leaderName}
@@ -925,7 +1009,7 @@ function VsTrainerPanel({
     return (
       <Frame dense title={`vs ${displayName(opponent)}`}>
         <p className="text-sm text-muted">
-          Place Pokémon on the left to see counter tips update live.
+          Place Pokémon above to see counter tips update live.
         </p>
       </Frame>
     );

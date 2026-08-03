@@ -5,6 +5,7 @@ import {
   bestOffenseVsType,
   offensiveCoverage,
   recommendDraftCoverageTips,
+  teamCoverageSummary,
   teamDefensiveProfile,
 } from "@/lib/team-coverage";
 
@@ -146,4 +147,28 @@ test("recommendDraftCoverageTips falls back to STAB", () => {
   assert.equal(tips[0]!.attackType, "Fairy");
   assert.equal(tips[0]!.mult, 2);
   assert.equal(tips[0]!.viaMove, null);
+});
+
+test("teamCoverageSummary highlights gaps and shared holes", () => {
+  const draft = [
+    mon({ id: "a", species: "Swampert", types: ["Water", "Ground"] }),
+    mon({ id: "b", species: "Ludicolo", types: ["Water", "Grass"] }),
+    mon({ id: "c", species: "Milotic", types: ["Water"] }),
+  ];
+  const coverage = offensiveCoverage(draft);
+  const defense = teamDefensiveProfile(draft);
+  const bullets = teamCoverageSummary(draft, coverage, defense);
+  assert.ok(bullets.length >= 2);
+  assert.ok(bullets.some((b) => /Water/i.test(b.text)));
+  assert.ok(bullets.some((b) => /hole|coverage|Soft|solid/i.test(b.text)));
+});
+
+test("teamCoverageSummary empty draft", () => {
+  const bullets = teamCoverageSummary(
+    [],
+    offensiveCoverage([]),
+    teamDefensiveProfile([]),
+  );
+  assert.equal(bullets.length, 1);
+  assert.match(bullets[0]!.text, /Empty/i);
 });
