@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { pushSnackbar } from "@/components/Snackbar";
 import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
@@ -60,41 +60,34 @@ export function TeamExportModal({
   const textareaId = useId();
   const formatTabId = useId();
   const [format, setFormat] = useState<TeamExportFormat>("llm");
-  const [text, setText] = useState("");
   const [copied, setCopied] = useState<"team" | "link" | null>(null);
+  const [seenOpen, setSeenOpen] = useState(open);
 
-  useEffect(() => {
-    if (!open) {
-      setCopied(null);
+  // Reset format/feedback when the modal opens (render-time adjust, not an effect).
+  if (open !== seenOpen) {
+    setSeenOpen(open);
+    if (open) {
       setFormat("llm");
-      return;
+      setCopied(null);
     }
-    const boardPath = trainerBoardPath(challengeSlug, trainer.id);
-    setText(
-      formatTrainerTeam(trainer, {
+  }
+
+  const boardPath = trainerBoardPath(challengeSlug, trainer.id);
+  const boardUrl = absoluteUrl(boardPath);
+  const text = open
+    ? formatTrainerTeam(trainer, {
         format,
         challengeName,
         challengeGame,
         challengeSlug,
-        boardUrl: absoluteUrl(boardPath),
+        boardUrl,
         typeChartUrl: absoluteUrl(toolsChartPath(challengeSlug)),
         guideUrl: absoluteUrl(toolsGuidePath(challengeSlug)),
         showCompetitiveDetails,
         badges,
-      }),
-    );
-  }, [
-    open,
-    format,
-    challengeSlug,
-    challengeName,
-    challengeGame,
-    trainer,
-    badges,
-    showCompetitiveDetails,
-  ]);
+      })
+    : "";
 
-  const boardUrl = absoluteUrl(trainerBoardPath(challengeSlug, trainer.id));
   const activeHint =
     FORMAT_OPTIONS.find((o) => o.id === format)?.hint ?? FORMAT_OPTIONS[0].hint;
 
@@ -179,7 +172,10 @@ export function TeamExportModal({
                     ? "border-interactive bg-interactive-soft text-ink"
                     : "border-frame bg-surface text-muted hover:border-frame hover:text-ink"
                 }`}
-                onClick={() => setFormat(option.id)}
+                onClick={() => {
+                  setFormat(option.id);
+                  setCopied(null);
+                }}
               >
                 {option.label}
               </button>
