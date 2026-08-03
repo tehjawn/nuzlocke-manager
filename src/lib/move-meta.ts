@@ -1,27 +1,33 @@
 import moveMetaData from "@/data/move-meta.json";
-import { TYPE_COLORS, type PokemonType as IndexedType } from "@/lib/pokemon-types";
+import { TYPE_COLORS } from "@/lib/pokemon-types";
 import { resolveMoveName } from "@/lib/move-names";
 import { TYPES, type PokemonType } from "@/lib/type-chart";
 
 export type MoveCategory = "Physical" | "Special" | "Status";
 
 export type MoveMeta = {
-  name: string;
-  type: PokemonType;
   category: MoveCategory;
+  description: string;
+  name: string;
   power: number;
+  type: PokemonType;
 };
 
 type RawMoveMeta = {
-  name: string;
-  type: string;
   category: string;
+  description: string;
+  name: string;
   power: number;
+  type: string;
 };
 
-const byKey = (moveMetaData as { byKey: Record<string, RawMoveMeta> }).byKey;
+const byKey: Record<string, RawMoveMeta> = moveMetaData.byKey;
 
 const TYPE_SET = new Set<string>(TYPES);
+
+function isPokemonType(type: string): type is PokemonType {
+  return TYPE_SET.has(type);
+}
 
 /** Normalize move labels so "U Turn" / "U-turn" / "u-turn" share a key. */
 export function normalizeMoveKey(name: string): string {
@@ -38,7 +44,7 @@ export function lookupMoveMeta(move: string): MoveMeta | null {
   if (!key) return null;
   const raw = byKey[key];
   if (!raw) return null;
-  if (!TYPE_SET.has(raw.type)) return null;
+  if (!isPokemonType(raw.type)) return null;
   if (
     raw.category !== "Physical" &&
     raw.category !== "Special" &&
@@ -47,22 +53,22 @@ export function lookupMoveMeta(move: string): MoveMeta | null {
     return null;
   }
   return {
-    name: resolved || raw.name,
-    type: raw.type as PokemonType,
     category: raw.category,
+    description: raw.description,
+    name: resolved || raw.name,
     power: raw.power,
+    type: raw.type,
   };
 }
 
-/**
- * Beginner tip for a move chip — type, category, and power when relevant.
- * No effect text (that needs a richer catalog later).
- */
+/** Beginner tip for a move chip with battle metadata and effect text. */
 export function formatMoveMetaTip(meta: MoveMeta): string {
-  if (meta.category === "Status" || meta.power <= 0) {
-    return `${meta.type} · ${meta.category}`;
-  }
-  return `${meta.type} · ${meta.category} · ${meta.power} power`;
+  const details =
+    meta.category === "Status" || meta.power <= 0
+      ? `${meta.type} · ${meta.category}`
+      : `${meta.type} · ${meta.category} · ${meta.power} power`;
+
+  return meta.description ? `${details} — ${meta.description}` : details;
 }
 
 /**
@@ -75,7 +81,7 @@ export function moveTypeWashStyle(
 ): { backgroundImage: string; borderColor: string } | undefined {
   const meta = lookupMoveMeta(move);
   if (!meta) return undefined;
-  const color = TYPE_COLORS[meta.type as IndexedType];
+  const color = TYPE_COLORS[meta.type];
   if (!color) return undefined;
   const typeWash = `color-mix(in srgb, ${color} 16%, var(--info))`;
   return {
