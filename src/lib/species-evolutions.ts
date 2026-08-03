@@ -51,6 +51,11 @@ export type EvolutionView = {
   ancestors: Array<{ pokedexId: number; name: string }>;
   /** Outgoing evolution options from this species. */
   options: EvolutionOption[];
+  /**
+   * Remaining linear path when this species has exactly one next stage
+   * (includes further single-path stages, e.g. Rhyhorn → Rhydon → Rhyperior).
+   */
+  forward: EvolutionOption[];
   /** True when this species has no outgoing evolutions in Modern Emerald. */
   isFinal: boolean;
 };
@@ -371,6 +376,33 @@ export function evolutionsFrom(
 }
 
 /**
+ * Walk the remaining linear path forward (stop at a branch or final form).
+ * Specimen readiness applies only to the immediate next hop.
+ */
+export function evolutionLinearForward(
+  pokedexId: number,
+  specimen?: SpecimenContext | null,
+  limit = 4,
+): EvolutionOption[] {
+  const path: EvolutionOption[] = [];
+  const seen = new Set<number>([pokedexId]);
+  let current = pokedexId;
+
+  while (path.length < limit) {
+    const edges = BY_DEX[String(current)] ?? [];
+    if (edges.length !== 1) break;
+    const edge = edges[0]!;
+    // Only the first hop can be "ready" relative to the open specimen.
+    path.push(toOption(edge, path.length === 0 ? specimen : null));
+    if (seen.has(edge.into)) break;
+    seen.add(edge.into);
+    current = edge.into;
+  }
+
+  return path;
+}
+
+/**
  * Walk one parent chain backward (prefer the lowest dex parent when several
  * exist — keeps breadcrumb stable for rare multi-parent cases).
  */
@@ -411,6 +443,10 @@ export function evolutionViewFor(
     speciesName: speciesName(pokedexId),
     ancestors,
     options,
+    forward:
+      options.length === 1
+        ? evolutionLinearForward(pokedexId, specimen)
+        : options,
     isFinal: options.length === 0,
   };
 }

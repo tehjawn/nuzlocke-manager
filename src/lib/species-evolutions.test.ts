@@ -171,3 +171,21 @@ test("branched mid-line (Gloom) shows both stone options", () => {
   assert.ok(view?.options.some((o) => o.intoName === "Vileplume"));
   assert.ok(view?.options.some((o) => o.intoName === "Bellossom"));
 });
+
+test("linear forward walks Rhyhorn → Rhydon → Rhyperior", () => {
+  const view = evolutionViewFor(111);
+  assert.deepEqual(
+    view?.forward.map((s) => s.intoName),
+    ["Rhydon", "Rhyperior"],
+  );
+  assert.equal(view?.forward[0]?.summary, "Lv 42");
+  assert.equal(view?.forward[1]?.summary, "Trade · Hard Stone");
+});
+
+test("Oddish linear forward stops before Gloom's stone branch", () => {
+  const view = evolutionViewFor(43);
+  assert.deepEqual(
+    view?.forward.map((s) => s.intoName),
+    ["Gloom"],
+  );
+});

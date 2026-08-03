@@ -107,7 +107,7 @@ function LinearChain({
   species: string;
   shiny: boolean;
 }) {
-  const next = view.options[0]!;
+  const steps = view.forward;
   return (
     <div className="flex flex-wrap items-center gap-2">
       {view.ancestors.map((a) => (
@@ -134,33 +134,37 @@ function LinearChain({
           You
         </span>
       </div>
-      <span className="text-muted" aria-hidden>
-        →
-      </span>
-      <div className="flex min-w-0 flex-col gap-1">
-        <div className="flex flex-wrap gap-1">
-          {next.chips.map((chip) => (
-            <ConditionChip
-              key={`${next.into}-${chip.kind}-${chip.label}`}
-              chip={chip}
+      {steps.map((step) => (
+        <div key={`${step.method}-${step.into}`} className="contents">
+          <span className="text-muted" aria-hidden>
+            →
+          </span>
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex flex-wrap gap-1">
+              {step.chips.map((chip) => (
+                <ConditionChip
+                  key={`${step.into}-${chip.kind}-${chip.label}`}
+                  chip={chip}
+                />
+              ))}
+            </div>
+            <ReadinessBadge option={step} />
+          </div>
+          <span className="text-muted" aria-hidden>
+            →
+          </span>
+          <div className="flex flex-col items-center gap-0.5">
+            <StageSprite
+              pokedexId={step.into}
+              species={step.intoName}
+              size={40}
             />
-          ))}
+            <span className="max-w-[4.5rem] truncate text-center text-[10px] font-semibold">
+              {step.intoName}
+            </span>
+          </div>
         </div>
-        <ReadinessBadge option={next} />
-      </div>
-      <span className="text-muted" aria-hidden>
-        →
-      </span>
-      <div className="flex flex-col items-center gap-0.5">
-        <StageSprite
-          pokedexId={next.into}
-          species={next.intoName}
-          size={40}
-        />
-        <span className="max-w-[4.5rem] truncate text-center text-[10px] font-semibold">
-          {next.intoName}
-        </span>
-      </div>
+      ))}
     </div>
   );
 }
