@@ -18,7 +18,7 @@ import {
   setPlannerDraftIds,
 } from "@/features/planner/planner-drafts";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
-import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
+import { CTA_SECONDARY_SM } from "@/lib/cta";
 import type { PokemonType } from "@/lib/pokemon-types";
 import {
   coverageOffenseGrid,
@@ -116,10 +116,8 @@ export function TeamPlannerView({
   });
   const [draftIds, setDraftIds] = useState<string[]>([]);
   const [activeSlot, setActiveSlot] = useState(0);
-  const [boxOpen, setBoxOpen] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const skipPersistRef = useRef(false);
-  const boxPanelRef = useRef<HTMLDivElement>(null);
 
   const viewer = trainers.find((t) => t.id === viewerId) ?? null;
   const opponent = trainers.find((t) => t.id === opponentId) ?? null;
@@ -176,16 +174,6 @@ export function TeamPlannerView({
     }
     setPlannerDraftIds(plannerDraftStorageKey(slug, viewerId), draftIds);
   }, [draftIds, draftHydrated, slug, viewerId]);
-
-  // Close box drawer on Escape.
-  useEffect(() => {
-    if (!boxOpen) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setBoxOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [boxOpen]);
 
   const coverage = useMemo(() => offensiveCoverage(draft), [draft]);
   const defense = useMemo(() => teamDefensiveProfile(draft), [draft]);
@@ -252,8 +240,6 @@ export function TeamPlannerView({
       return;
     }
     setActiveSlot(index);
-    setBoxOpen(true);
-    queueMicrotask(() => boxPanelRef.current?.focus());
   }
 
   function placeFromBox(entryId: string) {
@@ -369,20 +355,6 @@ export function TeamPlannerView({
                   ({filledCount}/{PLANNER_DRAFT_MAX})
                 </span>
               </h3>
-              <button
-                type="button"
-                className={`${CTA_PRIMARY_SM} lg:hidden`}
-                aria-expanded={boxOpen}
-                aria-controls="planner-living-box"
-                onClick={() => {
-                  setBoxOpen((open) => !open);
-                  if (!boxOpen) {
-                    queueMicrotask(() => boxPanelRef.current?.focus());
-                  }
-                }}
-              >
-                {boxOpen ? "Hide Boxed Pokémon" : "Show Boxed Pokémon"}
-              </button>
             </div>
             <PartyStripSlots
               slots={slots}
@@ -397,14 +369,9 @@ export function TeamPlannerView({
             </p>
           </section>
 
-          {/* Always visible on desktop; toggled on mobile */}
           <div
             id="planner-living-box"
-            ref={boxPanelRef}
-            tabIndex={-1}
-            className={`rounded-lg border border-frame/70 bg-surface-2/60 p-3 outline-none ${
-              boxOpen ? "block" : "hidden lg:block"
-            }`}
+            className="rounded-lg border border-frame/70 bg-surface-2/60 p-3"
           >
             <p className="mb-2.5 text-xs font-semibold text-ink">
               Boxed Pokémon{" "}
