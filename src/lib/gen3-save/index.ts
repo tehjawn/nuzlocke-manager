@@ -5,6 +5,7 @@ export {
   type ParsedSaveTrainer,
   type ParsedSaveBadges,
   type ParsedSaveRevive,
+  type ParsedSaveMoney,
   type ParseSaveResult,
   type SaveMonCategory,
 } from "./parse";

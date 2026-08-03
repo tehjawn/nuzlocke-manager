@@ -42,6 +42,7 @@ function trainer(
     reviveUsed: false,
     wipeCount: 0,
     activeRunNumber: 1,
+    money: null,
     mainSquadLocked: false,
     userId: null,
     discordUsername: null,
@@ -168,4 +169,37 @@ test("memorialSeasonHighlights omits party wipes when nobody has wiped", () => {
   ]);
 
   assert.equal(highlights.mostPartyWipes, null);
+});
+
+test("memorialSeasonHighlights picks richest trainer by imported money", () => {
+  const highlights = memorialSeasonHighlights([
+    trainer({
+      id: "t1",
+      handle: "Broke",
+      sortOrder: 0,
+      money: 1200,
+      pokemon: [],
+    }),
+    trainer({
+      id: "t2",
+      handle: "Loaded",
+      sortOrder: 1,
+      money: 482_500,
+      pokemon: [],
+    }),
+    trainer({
+      id: "t3",
+      handle: "Unknown",
+      sortOrder: 2,
+      money: null,
+      pokemon: [],
+    }),
+  ]);
+
+  assert.deepEqual(highlights.richest, {
+    trainerIds: ["t2"],
+    labels: ["Loaded"],
+    count: 482_500,
+    tied: false,
+  });
 });

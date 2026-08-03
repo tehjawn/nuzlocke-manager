@@ -8,6 +8,7 @@ import {
   type ParsedSavePokemon,
   type SaveMonCategory,
 } from "@/lib/gen3-save";
+import { formatPokedollars } from "@/lib/gen3-save/money";
 import type { PokemonSlot } from "@/lib/challenge-types";
 import { resolveMoveNames } from "@/lib/move-names";
 
@@ -37,6 +38,8 @@ export type SaveImportPayload = {
   applyBadges: boolean;
   reviveUsed: boolean | null;
   applyRevive: boolean;
+  money: number | null;
+  applyMoney: boolean;
 };
 
 type SaveImportModalProps = {
@@ -101,6 +104,9 @@ export function SaveImportModal({
   const [reviveUsed, setReviveUsed] = useState<boolean | null>(null);
   const [applyRevive, setApplyRevive] = useState(false);
   const [reviveReliable, setReviveReliable] = useState(false);
+  const [money, setMoney] = useState<number | null>(null);
+  const [applyMoney, setApplyMoney] = useState(false);
+  const [moneyReliable, setMoneyReliable] = useState(false);
   const [parsing, setParsing] = useState(false);
 
   if (!open) return null;
@@ -118,6 +124,9 @@ export function SaveImportModal({
     setReviveUsed(null);
     setApplyRevive(false);
     setReviveReliable(false);
+    setMoney(null);
+    setApplyMoney(false);
+    setMoneyReliable(false);
     setParsing(false);
   }
 
@@ -142,6 +151,9 @@ export function SaveImportModal({
       setReviveUsed(result.revive.reliable ? result.revive.used : null);
       setReviveReliable(result.revive.reliable);
       setApplyRevive(result.revive.reliable);
+      setMoney(result.money.reliable ? result.money.amount : null);
+      setMoneyReliable(result.money.reliable);
+      setApplyMoney(result.money.reliable);
       setSections({
         party: categoryToDrafts(result.party, "MAIN"),
         box: categoryToDrafts(result.box, "RESERVE"),
@@ -203,7 +215,8 @@ export function SaveImportModal({
               (!included.length &&
                 !applyTrainerName &&
                 !applyBadges &&
-                !applyRevive) ||
+                !applyRevive &&
+                !applyMoney) ||
               pending ||
               parsing ||
               !sections
@@ -220,6 +233,10 @@ export function SaveImportModal({
                 applyRevive: Boolean(
                   applyRevive && reviveReliable && reviveUsed != null,
                 ),
+                money,
+                applyMoney: Boolean(
+                  applyMoney && moneyReliable && money != null,
+                ),
               })
             }
           >
@@ -235,7 +252,8 @@ export function SaveImportModal({
           Upload a Modern Emerald save. Prefer Afterplay’s in-game export (
           <code className="text-ink">.sav</code> /{" "}
           <code className="text-ink">.srm</code>) — that’s the most stable
-          source for badges, revive, and Pokédex encounters. Emulator states (
+          source for badges, revive, money, Day Care, and Pokédex encounters.
+          Emulator states (
           <code className="text-ink">.state</code>,{" "}
           <code className="text-ink">.ss0</code>–
           <code className="text-ink">.ss9</code>,{" "}
@@ -243,13 +261,15 @@ export function SaveImportModal({
           <code className="text-ink">.s9</code>,{" "}
           <code className="text-ink">.sr0</code>–
           <code className="text-ink">.sr9</code>
-          ) still work for party/box/R.I.P. and usually encounters, but badges
-          and revive may be unavailable. Party, box, R.I.P., and Encountered
-          are detected separately — uncheck anything you want to skip. Nature,
-          ability, moves, IVs, and EVs are imported when readable. Encountered
-          is the wild buffer plus Pokédex “seen” species, and replaces your
-          current Encountered list on import. Fainted → R.I.P. is added to the
-          season memorial (duplicates skipped); existing graves are kept.
+          ) still work for party/box/R.I.P. and usually encounters, but badges,
+          revive, and money may be unavailable. Party, box (including Day
+          Care), R.I.P., and Encountered are detected separately — uncheck
+          anything you want to skip. Box Pokémon levels are derived from
+          experience. Nature, ability, moves, IVs, and EVs are imported when
+          readable. Encountered is the wild buffer plus Pokédex “seen”
+          species, and replaces your current Encountered list on import.
+          Fainted → R.I.P. is added to the season memorial (duplicates
+          skipped); existing graves are kept.
         </p>
 
         <label className="block">
@@ -329,6 +349,20 @@ export function SaveImportModal({
                       ? " (used)"
                       : " (available)"
                     : " (unavailable)"}
+                </span>
+              </label>
+              <label className="flex flex-wrap items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={applyMoney && moneyReliable}
+                  disabled={!moneyReliable || money == null}
+                  onChange={(e) => setApplyMoney(e.target.checked)}
+                />
+                <span>
+                  Sync money
+                  {moneyReliable && money != null
+                    ? ` (${formatPokedollars(money)})`
+                    : " (unavailable — try a .sav/.srm export)"}
                 </span>
               </label>
             </div>

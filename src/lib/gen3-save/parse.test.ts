@@ -133,6 +133,45 @@ test("party survives nicknames with Gen 3 spaces and punctuation", async () => {
   assert.ok(result.encountered.length >= 50);
 });
 
+test("box / PC Pokémon derive level from experience (issue 135)", async () => {
+  const buf = new Uint8Array(readFileSync(FIXTURE_PUNCT_NICK));
+  const result = await parsePokemonSaveAsync(buf);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.ok(result.box.length >= 5, `expected PC mons, got ${result.box.length}`);
+  const missing = result.box.filter((p) => p.level == null);
+  assert.equal(
+    missing.length,
+    0,
+    `box mons missing derived level: ${missing.map((p) => p.species).join(", ")}`,
+  );
+  // Spot-check a known reserve from this fixture.
+  const ledian = result.box.find((p) => p.species === "Ledian");
+  assert.ok(ledian);
+  assert.equal(ledian.level, 21);
+  // Party still prefers the trailer byte (not re-derived).
+  assert.equal(result.party[0]?.level, 32);
+});
+
+test("decrypts Pokédollars from Afterplay .state (issue 146)", async () => {
+  const buf = new Uint8Array(readFileSync(FIXTURE_PUNCT_NICK));
+  const result = await parsePokemonSaveAsync(buf);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.equal(result.money.reliable, true);
+  assert.equal(result.money.amount, 52070);
+
+  const early = await parsePokemonSaveAsync(
+    new Uint8Array(readFileSync(FIXTURE_114)),
+  );
+  assert.equal(early.ok, true);
+  if (!early.ok) return;
+  assert.equal(early.money.reliable, true);
+  assert.equal(early.money.amount, 18196);
+});
+
 test("party survives nicknames with ♂♀ and Western accents", async () => {
   const raw = new Uint8Array(readFileSync(FIXTURE_PUNCT_NICK));
   const { header } = inflateRzipEwram(raw);

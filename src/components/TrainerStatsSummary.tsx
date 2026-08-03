@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { formatPokedollars } from "@/lib/gen3-save/money";
 
 type TrainerStatsSummaryProps = {
   caught: number;
@@ -6,6 +7,7 @@ type TrainerStatsSummaryProps = {
   badgesEarned: number;
   badgesTotal: number;
   wipes: number;
+  money: number | null;
   updatedAt: string | null;
 };
 
@@ -81,6 +83,19 @@ function WipesIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
+function MoneyIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path
+        d="M12 7.5v9M9.75 9.25c.5-.7 1.3-1 2.25-1 1.4 0 2.5.7 2.5 1.9s-1.1 1.85-2.5 1.85h-1c-1.4 0-2.5.7-2.5 1.9 0 1.2 1.15 1.9 2.55 1.9.95 0 1.75-.3 2.25-1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function UpdatedIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
@@ -97,6 +112,7 @@ export function TrainerStatsSummary({
   badgesEarned,
   badgesTotal,
   wipes,
+  money,
   updatedAt,
 }: TrainerStatsSummaryProps) {
   const badgesComplete = badgesTotal > 0 && badgesEarned === badgesTotal;
@@ -118,7 +134,7 @@ export function TrainerStatsSummary({
       icon: <RipIcon />,
     },
     {
-      label: badgesComplete ? "All Badges Earned!" : "Badges",
+      label: badgesComplete ? "All badges" : "Badges",
       value: `${badgesEarned}/${badgesTotal}`,
       icon: <BadgesIcon />,
       complete: badgesComplete,
@@ -129,6 +145,11 @@ export function TrainerStatsSummary({
       icon: <WipesIcon />,
     },
     {
+      label: "Money",
+      value: money != null ? formatPokedollars(money) : "—",
+      icon: <MoneyIcon />,
+    },
+    {
       label: "Updated",
       value: formatUpdatedDay(updatedAt),
       icon: <UpdatedIcon />,
@@ -136,35 +157,31 @@ export function TrainerStatsSummary({
   ];
 
   return (
-    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
+    <dl className="gba-inset divide-y divide-frame/35 overflow-hidden bg-surface-2/70">
       {rows.map((row) => (
         <div
           key={row.label}
-          className={`gba-inset flex items-center gap-2.5 px-3 py-2 ${
-            row.complete
-              ? "trainer-stat--badges-complete"
-              : "bg-surface-2/70"
+          className={`flex items-center justify-between gap-3 px-3 py-2 ${
+            row.complete ? "trainer-stat--badges-complete" : ""
           }`}
         >
-          <span
-            className={`shrink-0 ${
-              row.complete ? "text-accent-2" : "text-muted/80"
+          <dt
+            className={`flex min-w-0 items-center gap-2 text-sm font-semibold tracking-tight ${
+              row.complete ? "text-accent-2" : "text-muted"
             }`}
           >
-            {row.icon}
-          </span>
-          <div className="min-w-0">
-            <dt
-              className={`text-[10px] font-semibold tracking-tight ${
-                row.complete ? "text-accent-2" : "text-muted"
+            <span
+              className={`shrink-0 ${
+                row.complete ? "text-accent-2" : "text-muted/80"
               }`}
             >
-              {row.label}
-            </dt>
-            <dd className="text-lg font-bold leading-tight tracking-tight">
-              {row.value}
-            </dd>
-          </div>
+              {row.icon}
+            </span>
+            {row.label}
+          </dt>
+          <dd className="shrink-0 text-base font-bold tabular-nums tracking-tight">
+            {row.value}
+          </dd>
         </div>
       ))}
     </dl>

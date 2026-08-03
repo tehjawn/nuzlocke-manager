@@ -43,6 +43,7 @@ function trainer(
     | "discordDisplayName"
     | "wipeCount"
     | "activeRunNumber"
+    | "money"
     | "avatarBackgroundKey"
     | "cardBackgroundKey"
   > & {
@@ -53,6 +54,7 @@ function trainer(
     discordDisplayName?: string | null;
     wipeCount?: number;
     activeRunNumber?: number;
+    money?: number | null;
     avatarBackgroundKey?: string | null;
     cardBackgroundKey?: string | null;
   },
@@ -62,6 +64,7 @@ function trainer(
     ...partial,
     wipeCount,
     activeRunNumber: partial.activeRunNumber ?? wipeCount + 1,
+    money: partial.money ?? null,
     avatarBackgroundKey: partial.avatarBackgroundKey ?? null,
     cardBackgroundKey: partial.cardBackgroundKey ?? null,
     userId: partial.userId ?? null,

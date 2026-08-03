@@ -22,13 +22,40 @@ type BadgeCaseProps = {
   earnedColumns?: 2 | 3;
   /** Smaller badge icons + tighter gaps (grid card left rail). */
   dense?: boolean;
-  /** Full layout: two columns from sm up, or a single column for sidebar. */
-  layout?: "grid" | "column";
+  /**
+   * Full layout: two-column detail cards, single column, or sidebar tray
+   * (badge sprites + short labels — no leader portraits).
+   */
+  layout?: "grid" | "column" | "tray";
   /** When set, badges become toggle buttons (edit mode). */
   onToggle?: (badgeKey: string, nextEarned: boolean) => void;
   pending?: boolean;
   className?: string;
 };
+
+/** Short tray caption: Stone / Sidney / Champ. */
+function trayCaption(
+  badge: BadgeDefinition,
+  meta: ReturnType<typeof getEmeraldBadgeMeta>,
+): string {
+  const name = meta?.badgeName ?? badge.label;
+  if (name.endsWith(" Badge")) return name.slice(0, -" Badge".length);
+  if (name.startsWith("Elite Four — ")) return name.slice("Elite Four — ".length);
+  if (name === "Champion") return "Champ";
+  return meta?.previewLabel ?? badge.label;
+}
+
+function badgeTooltip(
+  badge: BadgeDefinition,
+  meta: ReturnType<typeof getEmeraldBadgeMeta>,
+  earned: boolean,
+): string {
+  const title = meta?.badgeName ?? badge.label;
+  const leader = badge.leaderName ?? meta?.previewLabel;
+  const city = meta?.city;
+  const detail = [leader, city].filter(Boolean).join(" · ");
+  return `${title}${detail ? ` — ${detail}` : ""}${earned ? " · Earned" : ""}`;
+}
 
 function CompleteBanner({ dense = false }: { dense?: boolean }) {
   return (
@@ -251,9 +278,7 @@ export function BadgeCase({
             const on = earned.has(badge.key);
             const meta = getEmeraldBadgeMeta(badge.key);
             const label = meta?.previewLabel ?? badge.label;
-            const title = `${meta?.badgeName ?? badge.label}${
-              badge.leaderName ? ` — ${badge.leaderName}` : ""
-            }`;
+            const title = badgeTooltip(badge, meta, on);
             const body = (
               <>
                 {meta ? (
@@ -266,7 +291,7 @@ export function BadgeCase({
                     className={`badge-case__icon h-7 w-7 object-contain ${
                       on
                         ? "badge-case__icon--earned"
-                        : "pixelated blur-[1px] grayscale opacity-50"
+                        : "grayscale opacity-40"
                     }`}
                   />
                 ) : null}
@@ -307,12 +332,100 @@ export function BadgeCase({
     );
   }
 
+  // Sidebar / sticky rail: badge-first tray (sprites + short captions).
+  if (layout === "tray") {
+    const iconPx = 36;
+    return (
+      <div
+        className={`badge-case badge-case--tray space-y-2.5 ${completeClass} ${className}`}
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <p
+            className={`text-sm font-semibold tabular-nums tracking-tight ${
+              complete ? "text-accent-2" : "text-muted"
+            }`}
+          >
+            {complete
+              ? "All badges earned"
+              : `${earnedCount}/${badges.length} earned`}
+          </p>
+        </div>
+        {complete ? <CompleteBanner dense /> : null}
+        <ul className="grid grid-cols-4 gap-1.5" aria-label={ariaProgress}>
+          {badges.map((badge) => {
+            const on = earned.has(badge.key);
+            const meta = getEmeraldBadgeMeta(badge.key);
+            const caption = trayCaption(badge, meta);
+            const title = badgeTooltip(badge, meta, on);
+            const body = (
+              <>
+                {meta ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={meta.badgeSprite}
+                    alt=""
+                    width={iconPx}
+                    height={iconPx}
+                    className={`badge-case__icon object-contain ${
+                      on
+                        ? "badge-case__icon--earned"
+                        : "grayscale opacity-35"
+                    }`}
+                    style={{ width: iconPx, height: iconPx }}
+                  />
+                ) : (
+                  <span
+                    className={`inline-block rounded border border-frame/60 ${
+                      on ? "bg-accent-2/40" : "bg-surface-2/80"
+                    }`}
+                    style={{ width: iconPx, height: iconPx }}
+                  />
+                )}
+                <span
+                  className={`mt-1 max-w-full truncate text-center text-xs font-semibold tracking-tight ${
+                    on ? "text-ink" : "text-muted"
+                  }`}
+                >
+                  {caption}
+                </span>
+                <span className="sr-only">{title}</span>
+              </>
+            );
+            const cellClass = `badge-case__cell flex w-full flex-col items-center justify-center rounded-lg border border-frame px-1 py-2 transition ${
+              on
+                ? "bg-accent-2/25 ring-1 ring-accent-2/45"
+                : "bg-surface-2/80"
+            } ${interactive ? "hover:border-interactive/50 hover:bg-interactive-soft/30" : ""}`;
+            return (
+              <li key={badge.key} title={title}>
+                {interactive ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    aria-pressed={on}
+                    aria-label={title}
+                    className={`${cellClass} disabled:opacity-60`}
+                    onClick={() => onToggle?.(badge.key, !on)}
+                  >
+                    {body}
+                  </button>
+                ) : (
+                  <div className={cellClass}>{body}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
+
   return (
     <div className={`badge-case space-y-2 ${completeClass} ${className}`}>
       {complete ? <CompleteBanner dense={dense} /> : null}
       <ul
-        className={`grid grid-cols-1 ${dense ? "gap-1.5" : "gap-2"} ${
-          layout === "grid" ? "sm:grid-cols-2" : ""
+        className={`grid ${dense ? "gap-1.5" : "gap-2"} ${
+          layout === "grid" ? "grid-cols-2" : "grid-cols-1"
         }`}
         aria-label={ariaProgress}
       >

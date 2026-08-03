@@ -27,7 +27,9 @@ import {
 import { gen3MoveName } from "@/lib/move-names";
 import type { StatSpread } from "@/lib/stats";
 import { EMPTY_EVS, EMPTY_IVS } from "@/lib/stats";
+import { levelFromExperienceForSpecies } from "./experience";
 import { looksLikeFlashSave, parseFlashSave } from "./flash";
+import { decryptGen3Money } from "./money";
 import { decodeGen3Name, isValidGen3TrainerName } from "./text";
 import {
   BOX_MON_SIZE,
@@ -36,19 +38,24 @@ import {
   CREST_FLAGS_AFTER_PARTY,
   CREST_NUZLOCKE_FLAGS_AFTER_PARTY,
   CREST_SEEN1_AFTER_PARTY,
+  DAYCARE_MON_COUNT,
+  DAYCARE_MON_STRIDE,
   FLAG_BADGE01,
   FLAGS_AFTER_PARTY as MODERN_FLAGS_AFTER_PARTY,
   MODERN_DEX_FLAG_BYTES,
   MODERN_NUM_SPECIES,
   MODERN_REVIVES_TOTAL,
   MODERN_ROM_DEX_TO_NATIONAL,
+  MODERN_SB1_DAYCARE,
   MODERN_SPECIES_TO_NATIONAL,
   NUZLOCKE_FLAGS_AFTER_PARTY as MODERN_NUZLOCKE_FLAGS_AFTER_PARTY,
   PARTY_MON_SIZE,
   PARTY_SLOTS,
   REVIVES_USED_MASK,
+  SB1_DAYCARE,
   SB1_FLAGS,
   CREST_SB1_FLAGS,
+  SB1_MONEY,
   SB1_NUZLOCKE_ENCOUNTER_FLAGS,
   SB1_NUZLOCKE_FLAGS_LEN,
   SB1_PARTY,
@@ -56,6 +63,10 @@ import {
   SB1_REVIVES_USED,
   SB1_REVIVES_USED_BYTE,
   SB1_SEEN1,
+  CREST_SB2_ENCRYPTION_KEY,
+  SB2_ENCRYPTION_KEY,
+  SECTOR_SIGNATURE,
+  SECTOR_SIZE,
   SEEN1_AFTER_PARTY as MODERN_SEEN1_AFTER_PARTY,
   STORAGE_BOX_CAPACITY,
   STORAGE_BOX_COUNT,
@@ -105,6 +116,12 @@ export type ParsedSaveRevive = {
   reliable: boolean;
 };
 
+/** Decrypted Pokédollars from SaveBlock1.money ⊕ SaveBlock2.encryptionKey. */
+export type ParsedSaveMoney = {
+  amount: number;
+  reliable: boolean;
+};
+
 export type ParseSaveResult =
   | {
       ok: true;
@@ -113,12 +130,15 @@ export type ParseSaveResult =
       trainer: ParsedSaveTrainer | null;
       badges: ParsedSaveBadges;
       revive: ParsedSaveRevive;
+      money: ParsedSaveMoney;
       party: ParsedSavePokemon[];
       box: ParsedSavePokemon[];
       rip: ParsedSavePokemon[];
       encountered: ParsedSavePokemon[];
     }
   | { ok: false; error: string };
+
+const EMPTY_MONEY: ParsedSaveMoney = { amount: 0, reliable: false };
 
 const GBA_STATE_SIZE = 0x61000;
 const EWRAM_OFFSET = 0x21000;
@@ -467,6 +487,8 @@ type RawMon = {
   nuzlockeRibbon: boolean;
   /** Modern Emerald growth.box_hp (0 on party; PC uses 0 for fainted). */
   boxHp: number | null;
+  /** Growth experience (u32) — used to derive level for box / daycare forms. */
+  experience: number;
   offset: number;
   crypto: "xor32" | "lcg";
 };
@@ -528,6 +550,7 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
 
   const itemId = growthView.getUint16(2, true);
   const heldItem = gen3ItemName(itemId);
+  const experience = growthView.getUint32(4, true);
 
   const moves: string[] = [];
   for (let i = 0; i < 4; i++) {
@@ -604,6 +627,7 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
     evs,
     nuzlockeRibbon,
     boxHp: maxHp > 0 ? null : boxHp, // only meaningful for BoxPokemon
+    experience,
     offset,
     crypto,
   };
@@ -630,12 +654,17 @@ function toParsed(
       ? mon.nickname
       : null;
 
+  // Prefer party trailer level; box / daycare forms derive from experience.
+  const level =
+    mon.level ??
+    levelFromExperienceForSpecies(mon.experience, pokedexId);
+
   return {
     pid: mon.pid,
     nickname: nick,
     species,
     pokedexId,
-    level: mon.level,
+    level,
     isShiny: mon.isShiny,
     nature: mon.nature,
     ability: abilityForSpecies(pokedexId, mon.abilitySlot),
@@ -1292,7 +1321,187 @@ function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedS
   };
 }
 
-function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult {
+function daycareBaseCandidates(mode: SpeciesIdMode): number[] {
+  return mode === "modern"
+    ? [MODERN_SB1_DAYCARE, SB1_DAYCARE, MODERN_SB1_DAYCARE + 4]
+    : [SB1_DAYCARE, MODERN_SB1_DAYCARE];
+}
+
+/**
+ * Pull up to 2 Day Care BoxPokemon into the box/Reserves path.
+ * Prefers the mode-native SB1 offset; falls back when a shifted layout holds mons.
+ */
+function readDaycareMons(
+  sb1: Uint8Array,
+  mode: SpeciesIdMode,
+  claimed: Set<number>,
+): RawMon[] {
+  const preferred = daycareBaseCandidates(mode)[0]!;
+  for (const base of daycareBaseCandidates(mode)) {
+    if (base + DAYCARE_MON_COUNT * DAYCARE_MON_STRIDE > sb1.length) continue;
+    const mons: RawMon[] = [];
+    let anySlot = false;
+    for (let i = 0; i < DAYCARE_MON_COUNT; i++) {
+      const mon = tryParseMon(sb1, base + i * DAYCARE_MON_STRIDE);
+      if (!mon) continue;
+      anySlot = true;
+      if (!claimed.has(mon.pid)) mons.push(mon);
+    }
+    if (anySlot || base === preferred) return mons;
+  }
+  return [];
+}
+
+/** Prefer Modern Emerald key@0xBC; fall back to vanilla/Crest@0xAC. */
+function encryptionKeyOffsets(mode: SpeciesIdMode): number[] {
+  return mode === "modern"
+    ? [SB2_ENCRYPTION_KEY, CREST_SB2_ENCRYPTION_KEY]
+    : [CREST_SB2_ENCRYPTION_KEY, SB2_ENCRYPTION_KEY];
+}
+
+function readMoney(
+  sb1: Uint8Array,
+  sb2: Uint8Array,
+  mode: SpeciesIdMode = "modern",
+): ParsedSaveMoney {
+  if (sb1.length < SB1_MONEY + 4) return EMPTY_MONEY;
+  const enc = new DataView(
+    sb1.buffer,
+    sb1.byteOffset + SB1_MONEY,
+    4,
+  ).getUint32(0, true);
+  for (const keyOff of encryptionKeyOffsets(mode)) {
+    if (sb2.length < keyOff + 4) continue;
+    const key = new DataView(
+      sb2.buffer,
+      sb2.byteOffset + keyOff,
+      4,
+    ).getUint32(0, true);
+    const amount = decryptGen3Money(enc, key);
+    if (amount != null) return { amount, reliable: true };
+  }
+  return EMPTY_MONEY;
+}
+
+/**
+ * Locate SaveBlock2 candidates for money decryption. ASLR .state dumps contain
+ * multiple trainer-name ghosts — callers must try each key against SB1.money.
+ */
+function findSaveBlock2Offsets(
+  bytes: Uint8Array,
+  trainerName?: string | null,
+  mode: SpeciesIdMode = "modern",
+): number[] {
+  const keyOffs = encryptionKeyOffsets(mode);
+  const span = Math.max(...keyOffs) + 4;
+  const named: number[] = [];
+  const fallback: number[] = [];
+  for (let i = 0; i + span <= bytes.length; i++) {
+    // Cheap structural rejects before allocating a name subarray.
+    const genderByte = bytes[i + 8] ?? 0xff;
+    if (genderByte > 1) continue;
+    let hasEos = false;
+    for (let j = 0; j < 8; j++) {
+      if (bytes[i + j] === 0xff) {
+        hasEos = true;
+        break;
+      }
+    }
+    if (!hasEos) continue;
+    const name = decodeGen3Name(bytes.subarray(i, i + 8));
+    if (!name || !isValidGen3TrainerName(name)) continue;
+    if (trainerName && name !== trainerName) continue;
+    let key = 0;
+    for (const keyOff of keyOffs) {
+      key = new DataView(
+        bytes.buffer,
+        bytes.byteOffset + i + keyOff,
+        4,
+      ).getUint32(0, true);
+      if (key !== 0) break;
+    }
+    if (key === 0) continue;
+    if (trainerName && name === trainerName) named.push(i);
+    else if (!trainerName) fallback.push(i);
+  }
+  return trainerName ? named : fallback;
+}
+
+function readMoneyFromEwram(
+  bytes: Uint8Array,
+  sb1Base: number,
+  trainerName?: string | null,
+  mode: SpeciesIdMode = "modern",
+): ParsedSaveMoney {
+  if (sb1Base + SB1_MONEY + 4 > bytes.length) return EMPTY_MONEY;
+  const enc = new DataView(
+    bytes.buffer,
+    bytes.byteOffset + sb1Base + SB1_MONEY,
+    4,
+  ).getUint32(0, true);
+  const sb2Bases = findSaveBlock2Offsets(bytes, trainerName, mode);
+  // A wrong SB2 key almost always decrypts outside 0…MAX_MONEY; the matching
+  // live/flash pair is typically unique for a given SB1.money word.
+  for (const sb2Base of sb2Bases) {
+    for (const keyOff of encryptionKeyOffsets(mode)) {
+      if (sb2Base + keyOff + 4 > bytes.length) continue;
+      const key = new DataView(
+        bytes.buffer,
+        bytes.byteOffset + sb2Base + keyOff,
+        4,
+      ).getUint32(0, true);
+      if (key === 0) continue;
+      const amount = decryptGen3Money(enc, key);
+      if (amount != null) return { amount, reliable: true };
+    }
+  }
+  return EMPTY_MONEY;
+}
+
+/**
+ * mGBA/Afterplay .state dumps often embed a copy of the 128 KiB flash image as
+ * save sectors (footer signature 0x08012025). When ASLR prevents anchoring live
+ * SaveBlock1, money can still be recovered from that embedded flash.
+ */
+function extractEmbeddedFlash(mem: Uint8Array): Uint8Array | null {
+  const view = new DataView(mem.buffer, mem.byteOffset, mem.byteLength);
+  const byId = new Map<number, { base: number; counter: number }>();
+  for (let i = 0; i + 4 <= mem.length; i += 4) {
+    if (view.getUint32(i, true) !== SECTOR_SIGNATURE) continue;
+    const base = i - 0xff8;
+    if (base < 0 || base + SECTOR_SIZE > mem.length) continue;
+    const id = view.getUint16(base + 0xff4, true);
+    if (id > 27) continue;
+    const counter = view.getUint32(base + 0xffc, true);
+    const prev = byId.get(id);
+    if (!prev || counter >= prev.counter) byId.set(id, { base, counter });
+  }
+  // Need SaveBlock2 + SaveBlock1 start at minimum.
+  if (!byId.has(0) || !byId.has(1)) return null;
+  const flash = new Uint8Array(0x20000);
+  for (const [id, sec] of byId) {
+    flash.set(mem.subarray(sec.base, sec.base + SECTOR_SIZE), id * SECTOR_SIZE);
+  }
+  return flash;
+}
+
+function readMoneyFromEmbeddedFlash(
+  bytes: Uint8Array,
+  mode: SpeciesIdMode,
+): ParsedSaveMoney {
+  const flash = extractEmbeddedFlash(bytes);
+  if (!flash) return EMPTY_MONEY;
+  const blocks = parseFlashSave(flash);
+  if (!blocks) return EMPTY_MONEY;
+  return readMoney(blocks.saveBlock1, blocks.saveBlock2, mode);
+}
+
+function classifyEwram(
+  bytes: Uint8Array,
+  formatLabel: string,
+  /** Full dump for embedded-flash money when `bytes` is an EWRAM window. */
+  flashSource?: Uint8Array,
+): ParseSaveResult {
   const warnings: string[] = [];
   // First pass: locate any party so we can detect Modern vs Crest species IDs.
   // Rank both weightings in one scan — Modern re-ranks without a second pass.
@@ -1310,6 +1519,7 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
         trainer: null,
         badges: { earnedKeys: [], reliable: false },
         revive: EMPTY_REVIVE,
+        money: EMPTY_MONEY,
         party: [],
         box: [],
         rip: [],
@@ -1402,17 +1612,19 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
   box.sort((a, b) => a.offset - b.offset);
   rip.sort((a, b) => a.offset - b.offset);
 
+  const maxDex =
+    speciesMode === "modern" ? MODERN_NUM_SPECIES : CREST_DEX_MAX_SPECIES;
+  // Include box mons in ownedMust — Modern dex owned covers PC living mons.
+  // Bitfield indices are ROM NATIONAL_DEX for modern, real ND for crest.
+  // `boxParsed` is rebuilt after Day Care merge below; other collections are
+  // unaffected by that merge.
   const partyParsed = party.map((m) => toParsed(m, "party", speciesMode));
-  const boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
+  let boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
   const ripParsed = rip.map((m) => toParsed(m, "rip", speciesMode));
   let encounteredParsed = encounteredRaw.map((m) =>
     toParsed(m, "encountered", speciesMode),
   );
 
-  const maxDex =
-    speciesMode === "modern" ? MODERN_NUM_SPECIES : CREST_DEX_MAX_SPECIES;
-  // Include box mons in ownedMust — Modern dex owned covers PC living mons.
-  // Bitfield indices are ROM NATIONAL_DEX for modern, real ND for crest.
   const ownedMust = dexBitIdsForMode(
     [...partyParsed, ...boxParsed, ...ripParsed].map((m) => m.pokedexId),
     speciesMode,
@@ -1423,8 +1635,11 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
     speciesMode === "modern"
       ? readReviveToken(bytes, partyBase, speciesMode)
       : EMPTY_REVIVE;
+  let money = EMPTY_MONEY;
   let dex: { seen: number[]; source: "table" | "bitfield" | "seen1" } | null =
     null;
+
+  const trainer = findTrainerNearParty(bytes, party);
 
   if (speciesMode === "modern") {
     const meta = locateModernSaveMeta(bytes, ownedMust);
@@ -1432,6 +1647,40 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
       if (meta.sb1 >= 0) {
         badges = readBadgesAbsolute(bytes, meta.sb1 + SB1_FLAGS);
         revive = readReviveAbsolute(bytes, meta.sb1);
+        money = readMoneyFromEwram(
+          bytes,
+          meta.sb1,
+          trainer?.name ?? null,
+          speciesMode,
+        );
+        // Generic EWRAM BOX_SIZE scan can land on Day Care slots before the
+        // explicit reader runs — strip those hits so ownership + warning stay
+        // on the Day Care path.
+        const daycareSlotOffsets = new Set<number>();
+        for (const base of daycareBaseCandidates(speciesMode)) {
+          for (let i = 0; i < DAYCARE_MON_COUNT; i++) {
+            daycareSlotOffsets.add(
+              meta.sb1 + base + i * DAYCARE_MON_STRIDE,
+            );
+          }
+        }
+        for (let i = box.length - 1; i >= 0; i--) {
+          if (daycareSlotOffsets.has(box[i]!.offset)) box.splice(i, 1);
+        }
+        const claimedPids = new Set(
+          [...party, ...box, ...rip].map((m) => m.pid),
+        );
+        const sb1View = bytes.subarray(meta.sb1);
+        const daycare = readDaycareMons(sb1View, speciesMode, claimedPids);
+        for (const mon of daycare) {
+          box.push(mon);
+        }
+        if (daycare.length > 0) {
+          boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
+          warnings.push(
+            `Day Care: imported ${daycare.length} Pokémon into Reserves.`,
+          );
+        }
         warnings.push("Anchored SaveBlock1 via Pokédex seen1 (ASLR-safe).");
       }
       // Encounter stubs = seen but not owned (failed catches / dex-only).
@@ -1446,7 +1695,17 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
     }
   }
 
-  const trainer = findTrainerNearParty(bytes, party);
+  if (!money.reliable) {
+    const fromFlash = readMoneyFromEmbeddedFlash(
+      flashSource ?? bytes,
+      speciesMode,
+    );
+    if (fromFlash.reliable) {
+      money = fromFlash;
+      warnings.push("Money read from embedded flash sectors in save state.");
+    }
+  }
+
   if (!badges.reliable) {
     warnings.push("Could not reliably read gym badge flags from this save.");
   } else if (badges.earnedKeys.length === 0) {
@@ -1525,6 +1784,7 @@ function classifyEwram(bytes: Uint8Array, formatLabel: string): ParseSaveResult 
     trainer,
     badges,
     revive,
+    money,
     party: partyParsed,
     box: boxParsed,
     rip: ripParsed,
@@ -1628,6 +1888,17 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
     }
   }
 
+  const daycare = readDaycareMons(sb1, speciesMode, claimed);
+  for (const mon of daycare) {
+    claimed.add(mon.pid);
+    box.push(mon);
+  }
+  if (daycare.length > 0) {
+    warnings.push(
+      `Day Care: imported ${daycare.length} Pokémon into Reserves.`,
+    );
+  }
+
   const trainer = readTrainerFromSaveBlock2(sb2) ?? findTrainerNearParty(sb1, partyLiving);
   const flagsOff = speciesMode === "modern" ? SB1_FLAGS : CREST_SB1_FLAGS;
   const badges = readBadgesAbsolute(sb1, flagsOff);
@@ -1639,6 +1910,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
   if (speciesMode === "modern" && !revive.reliable) {
     warnings.push("Could not read revive token from SaveBlock1.");
   }
+  const money = readMoney(sb1, sb2, speciesMode);
 
   const partyParsed = partyLiving.map((m) => toParsed(m, "party", speciesMode));
   const boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
@@ -1694,6 +1966,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
     trainer,
     badges,
     revive,
+    money,
     party: partyParsed,
     box: boxParsed,
     rip: ripParsed,
@@ -1707,8 +1980,9 @@ function parseUncompressedState(
 ): ParseSaveResult {
   const mem = extractRastateMem(state) ?? state;
   const ewram = extractMgbaEwram(mem);
-  if (ewram) return classifyEwram(ewram, formatLabel);
-  return classifyEwram(mem, formatLabel);
+  // Party/dex scan the EWRAM window; flash sectors often live outside it in
+  // the full mGBA dump — pass `mem` so money fallback uses the detected mode.
+  return classifyEwram(ewram ?? mem, formatLabel, mem);
 }
 
 /** Parse uncompressed dumps / flash saves (no RZIP). */
@@ -1742,7 +2016,7 @@ export function parsePokemonSave(buf: Uint8Array): ParseSaveResult {
 
   if (buf.length >= GBA_STATE_SIZE) {
     const ewram = extractMgbaEwram(buf);
-    if (ewram) return classifyEwram(ewram, "mGBA memory dump");
+    if (ewram) return classifyEwram(ewram, "mGBA memory dump", buf);
   }
 
   if (buf.length === 0x20000 || buf.length === 0x10000 || buf.length === 0x20010) {

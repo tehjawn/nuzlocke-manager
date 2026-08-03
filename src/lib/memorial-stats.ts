@@ -21,6 +21,8 @@ export type MemorialSeasonHighlights = {
   heaviestMemorial: MemorialTrainerHighlight | null;
   mostPartyWipes: MemorialTrainerHighlight | null;
   mostDeathProne: MemorialSpeciesHighlight | null;
+  /** Highest last-imported Pokédollars (issue 146). */
+  richest: MemorialTrainerHighlight | null;
 };
 
 function trainerHighlight(
@@ -110,11 +112,24 @@ export function memorialSeasonHighlights(
     };
   }
 
+  let richest: MemorialTrainerHighlight | null = null;
+  const moneyLeaders = trainers.filter(
+    (trainer) => trainer.money != null && trainer.money >= 0,
+  );
+  if (moneyLeaders.length > 0) {
+    const max = Math.max(...moneyLeaders.map((trainer) => trainer.money ?? 0));
+    const leaders = moneyLeaders
+      .filter((trainer) => (trainer.money ?? 0) === max)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    richest = trainerHighlight(leaders, max);
+  }
+
   return {
     totalGraves,
     trainersWithLosses: rows.length,
     heaviestMemorial,
     mostPartyWipes,
     mostDeathProne,
+    richest,
   };
 }
