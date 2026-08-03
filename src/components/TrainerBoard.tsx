@@ -1392,8 +1392,7 @@ export function TrainerBoard({
                   earnedKeys={earnedBadgeKeys}
                   wipeCount={wipeCount}
                   disabled={wiping}
-                  dense
-                  layout="grid"
+                  layout="tray"
                   onEarnedKeysChange={setEarnedBadgeKeys}
                 />
               </div>
@@ -1401,8 +1400,7 @@ export function TrainerBoard({
               <BadgeCase
                 badges={badges}
                 earnedKeys={earnedBadgeKeys}
-                dense
-                layout="grid"
+                layout="tray"
               />
             )}
           </Frame>

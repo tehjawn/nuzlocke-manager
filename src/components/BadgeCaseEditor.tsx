@@ -15,7 +15,7 @@ type BadgeCaseEditorProps = {
   wipeCount?: number;
   compact?: boolean;
   dense?: boolean;
-  layout?: "grid" | "column";
+  layout?: "grid" | "column" | "tray";
   disabled?: boolean;
   onEarnedKeysChange?: (keys: string[]) => void;
 };
