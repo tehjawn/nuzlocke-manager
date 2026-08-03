@@ -1741,6 +1741,7 @@ export function TrainerBoard({
                 applyRevive: payload.applyRevive,
                 money: payload.money,
                 applyMoney: payload.applyMoney,
+                safariZoneAreas: payload.safariZoneAreas,
                 // Living + Encountered mirror this save. Memorial is season-wide:
                 // imported R.I.P. appends (deduped); prior graves are kept.
                 replaceSlots: ["MAIN", "RESERVE", "ENCOUNTERED"],

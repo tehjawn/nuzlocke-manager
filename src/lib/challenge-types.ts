@@ -52,6 +52,10 @@ export type TrainerProfile = {
   statusText: string | null;
   statusEmoji: string | null;
   reviveUsed: boolean;
+  /** Modern Emerald Safari areas claimed in the imported Nuzlocke flagset. */
+  safariZoneAreas?: string[];
+  /** False means legacy Safari catches cannot be resolved by area yet. */
+  safariZoneAreasReliable?: boolean;
   /** Times this trainer restarted their run this season (= closed run count). */
   wipeCount: number;
   /** 1-based living attempt; equals wipeCount + 1 when in sync. */

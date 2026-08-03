@@ -235,12 +235,6 @@ const MODERN_EMERALD_MAPSEC: Record<number, string> = {
   0xd2: "Altering Cave",
   0xd3: "Navel Rock",
   0xd4: "Trainer Hill",
-  0xd8: "Safari Zone (South)",
-  0xd9: "Safari Zone (Southwest)",
-  0xda: "Safari Zone (Northwest)",
-  0xdb: "Safari Zone (North)",
-  0xdc: "Safari Zone (Southeast)",
-  0xdd: "Safari Zone (Northeast)",
   ...METLOC_SPECIAL,
 };
 

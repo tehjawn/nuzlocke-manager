@@ -1,4 +1,5 @@
 import { CATCH_ROUTES } from "@/data/catch-routes";
+import { MODERN_SAFARI_ZONE_AREAS } from "@/data/safari-zone";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 
 export type PersonalRouteClaim = {
@@ -11,6 +12,7 @@ export type PersonalRouteClaim = {
 export type PersonalRouteGroup = {
   claims: PersonalRouteClaim[];
   route: string;
+  source?: "encounter-flag" | "pokemon";
 };
 
 export type PersonalRouteStatus = {
@@ -18,6 +20,7 @@ export type PersonalRouteStatus = {
   claimedRoutes: PersonalRouteGroup[];
   openRoutes: string[];
   otherRoutes: PersonalRouteGroup[];
+  unresolvedRoutes: string[];
   trainerHandle: string;
   trainerId: string;
 };
@@ -42,6 +45,7 @@ export function buildPersonalRouteStatus(
     const group = groups.get(key) ?? {
       claims: [],
       route: catalogRoute ?? loggedRoute,
+      source: "pokemon" as const,
     };
     group.claims.push({
       nickname: pokemon.nickname,
@@ -52,6 +56,35 @@ export function buildPersonalRouteStatus(
     groups.set(key, group);
   }
 
+  const safariAreaKeys = new Set(
+    MODERN_SAFARI_ZONE_AREAS.map(({ route }) => normalizeRoute(route)),
+  );
+  if (trainer.safariZoneAreasReliable) {
+    for (const loggedRoute of trainer.safariZoneAreas ?? []) {
+      const key = normalizeRoute(loggedRoute);
+      const catalogRoute = catalogByKey.get(key);
+      if (!catalogRoute || !safariAreaKeys.has(key)) continue;
+      if (!claimedByKey.has(key)) {
+        claimedByKey.set(key, {
+          claims: [],
+          route: catalogRoute,
+          source: "encounter-flag",
+        });
+      }
+    }
+  }
+
+  const hasLegacySafariClaim = trainer.pokemon.some(
+    (pokemon) => normalizeRoute(pokemon.catchRoute ?? "") === "safari zone",
+  );
+  const unresolvedRoutes =
+    !trainer.safariZoneAreasReliable && hasLegacySafariClaim
+      ? catalog.filter((route) => {
+          const key = normalizeRoute(route);
+          return safariAreaKeys.has(key) && !claimedByKey.has(key);
+        })
+      : [];
+
   const claimedRoutes = catalog.flatMap((route) => {
     const group = claimedByKey.get(normalizeRoute(route));
     return group ? [group] : [];
@@ -61,11 +94,14 @@ export function buildPersonalRouteStatus(
     catalogSize: catalog.length,
     claimedRoutes,
     openRoutes: catalog.filter(
-      (route) => !claimedByKey.has(normalizeRoute(route)),
+      (route) =>
+        !claimedByKey.has(normalizeRoute(route)) &&
+        !unresolvedRoutes.includes(route),
     ),
     otherRoutes: [...otherByKey.values()].sort((a, b) =>
       a.route.localeCompare(b.route),
     ),
+    unresolvedRoutes,
     trainerHandle: trainer.handle,
     trainerId: trainer.id,
   };

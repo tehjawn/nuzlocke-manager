@@ -41,6 +41,7 @@ export type SaveImportPayload = {
   applyRevive: boolean;
   money: number | null;
   applyMoney: boolean;
+  safariZoneAreas: string[] | null;
 };
 
 type SaveImportModalProps = {
@@ -108,6 +109,7 @@ export function SaveImportModal({
   const [money, setMoney] = useState<number | null>(null);
   const [applyMoney, setApplyMoney] = useState(false);
   const [moneyReliable, setMoneyReliable] = useState(false);
+  const [safariZoneAreas, setSafariZoneAreas] = useState<string[] | null>(null);
   const [parsing, setParsing] = useState(false);
 
   if (!open) return null;
@@ -128,6 +130,7 @@ export function SaveImportModal({
     setMoney(null);
     setApplyMoney(false);
     setMoneyReliable(false);
+    setSafariZoneAreas(null);
     setParsing(false);
   }
 
@@ -155,6 +158,9 @@ export function SaveImportModal({
       setMoney(result.money.reliable ? result.money.amount : null);
       setMoneyReliable(result.money.reliable);
       setApplyMoney(result.money.reliable);
+      setSafariZoneAreas(
+        result.safariZoneAreas.reliable ? result.safariZoneAreas.areas : null,
+      );
       setSections({
         party: categoryToDrafts(result.party, "MAIN"),
         box: categoryToDrafts(result.box, "RESERVE"),
@@ -242,6 +248,7 @@ export function SaveImportModal({
                 applyMoney: Boolean(
                   applyMoney && moneyReliable && money != null,
                 ),
+                safariZoneAreas,
               })
             }
           >
