@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import { contrastInkForHex } from "@/lib/pokemon-types";
 import {
   formatMatchupMult,
+  COVERAGE_OFFENSE_TIER_META,
+  coverageOffenseTiers,
   offensiveCoverage,
   teamCoverageSummary,
   teamDefensiveProfile,
+  type CoverageOffenseTierId,
   type OffensiveCoverageCell,
   type SharedDefensiveHole,
 } from "@/lib/team-coverage";
@@ -42,6 +45,13 @@ function sameTarget(a: ChartHover | null, b: ChartHover): boolean {
   return a != null && a.atk === b.atk && a.def === b.def;
 }
 
+function matchupPlain(m: 0 | 0.5 | 1 | 2): string {
+  if (m === 2) return "Super effective";
+  if (m === 0.5) return "Not very effective";
+  if (m === 0) return "No effect";
+  return "Neutral";
+}
+
 type TypeChartPanelProps = {
   slug: string;
   trainers: TrainerProfile[];
@@ -49,10 +59,9 @@ type TypeChartPanelProps = {
 };
 
 /**
- * Inline type-chart table for the Tools tab. Reference chart by default;
- * picking a trainer overlays their live Main Squad's coverage (reusing
- * Team Planner's team-coverage.ts — no separate coverage math here) and
- * pins highlighting via tap/keyboard, not just desktop hover.
+ * Chart-first type tool: one toolbar (squad picker + matchup readout +
+ * legend), a slim squad status line when overlaying, then the grid.
+ * Coverage math reuses Team Planner's team-coverage.ts.
  */
 export function TypeChartPanel({
   slug,
@@ -97,6 +106,11 @@ export function TypeChartPanel({
     return map;
   }, [coverage]);
 
+  const offenseTiers = useMemo(
+    () => (coverage ? coverageOffenseTiers(coverage) : null),
+    [coverage],
+  );
+
   const sharedHoleByType = useMemo(() => {
     const map = new Map<PokemonType, SharedDefensiveHole>();
     if (!defense) return map;
@@ -122,32 +136,30 @@ export function TypeChartPanel({
   }
 
   const hasSquadOverlay = viewer != null && mainSquad.length > 0;
+  // Lead with coverage + shared hole — the two decisions the chart answers.
+  const statusLine = summary.filter(
+    (b) =>
+      b.text.includes("covered") ||
+      b.text.includes("coverage looks solid") ||
+      b.text.includes("shared hole") ||
+      b.text.includes("No shared"),
+  );
+
+  const cellMatchup =
+    active?.atk && active?.def
+      ? typeMultiplier(active.atk, active.def)
+      : null;
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <ul className="flex flex-wrap gap-2" aria-label="Type chart legend">
-          {LEGEND.map((item) => (
-            <li key={item.label}>
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold tabular-nums ${cellTone(item.multiplier)}`}
-              >
-                <span className="inline-flex min-w-4 justify-center" aria-hidden>
-                  {item.swatch}
-                </span>
-                <span className="font-medium text-current/85">{item.label}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         {trainers.length > 0 ? (
-          <label className="ml-auto min-w-[11rem] space-y-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted">
-            Show coverage for
+          <label className="flex shrink-0 items-center gap-2 text-sm text-muted">
+            <span className="font-medium text-ink">Squad</span>
             <select
               value={viewerId}
               onChange={(e) => setViewerId(e.target.value)}
-              className="w-full min-w-[12rem] rounded-md border border-frame bg-surface px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-ink"
+              className="min-w-[10.5rem] rounded-md border border-frame bg-surface px-2.5 py-1.5 text-sm text-ink"
             >
               <option value="">Reference only</option>
               {trainers.map((t) => (
@@ -159,86 +171,126 @@ export function TypeChartPanel({
             </select>
           </label>
         ) : null}
+
+        <MatchupReadout active={active} mult={cellMatchup} pinned={pinned != null} />
+
+        <ul
+          className="flex flex-wrap gap-1.5 sm:ml-auto"
+          aria-label="Type chart legend"
+        >
+          {LEGEND.map((item) => (
+            <li key={item.label}>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold tabular-nums ${cellTone(item.multiplier)}`}
+              >
+                <span className="inline-flex min-w-4 justify-center" aria-hidden>
+                  {item.swatch}
+                </span>
+                {item.label}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {viewer && mainSquad.length === 0 ? (
-        <p className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2 text-xs text-muted">
-          {displayName(viewer)} has no Main Squad yet — showing the plain
-          reference chart.
+        <p className="text-sm text-muted">
+          {displayName(viewer)} has no Main Squad yet — showing the reference
+          chart.
         </p>
       ) : null}
 
       {hasSquadOverlay ? (
-        <div className="space-y-2 rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-ink">
-              {displayName(viewer)}&apos;s Main Squad vs. the chart
-            </p>
-            <Link
-              href={toolsHref(slug, "planner")}
-              className="text-[11px] font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-            >
-              Plan this squad →
-            </Link>
-          </div>
-          <ul className="space-y-0.5">
-            {summary.map((bullet) => (
-              <li
-                key={bullet.text}
-                className={`text-[11px] leading-snug ${
-                  bullet.tone === "warn"
-                    ? "text-danger"
-                    : bullet.tone === "good"
-                      ? "text-accent-deep"
-                      : "text-muted"
-                }`}
-              >
-                {bullet.text}
-              </li>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-frame/40 pt-3 text-sm">
+          <p className="min-w-0 flex-1 leading-snug text-ink">
+            <span className="font-semibold">
+              {displayName(viewer)}
+              {viewer.id === myTrainerId ? " (you)" : ""}
+            </span>
+            <span className="text-muted"> · </span>
+            {statusLine.map((bullet, i) => (
+              <span key={bullet.text}>
+                {i > 0 ? (
+                  <span className="text-muted"> · </span>
+                ) : null}
+                <span
+                  className={
+                    bullet.tone === "warn"
+                      ? "text-danger"
+                      : bullet.tone === "good"
+                        ? "text-accent-deep"
+                        : "text-muted"
+                  }
+                >
+                  {bullet.text}
+                </span>
+              </span>
             ))}
-          </ul>
-          <ul
-            className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted"
-            aria-label="Squad overlay legend"
+          </p>
+          <span
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted"
+            aria-label="Squad overlay marks"
           >
-            <li className="flex items-center gap-1">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent-deep" />
-              You hit this ≥2×
-            </li>
-            <li className="flex items-center gap-1">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 rounded-full bg-accent-deep"
+              />
+              Hits ≥2×
+            </span>
+            <span className="inline-flex items-center gap-1.5">
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-danger" />
-              Shared weakness
-            </li>
-            <li className="flex items-center gap-1">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent-2" />
-              Whole squad immune
-            </li>
-          </ul>
+              Shared weak
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 rounded-full bg-accent-2"
+              />
+              Immune
+            </span>
+          </span>
+          <Link
+            href={toolsHref(slug, "planner")}
+            className="shrink-0 font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
+          >
+            Plan this squad →
+          </Link>
         </div>
       ) : null}
 
-      <p className="text-[11px] text-muted/80 sm:hidden" aria-hidden>
+      <p className="text-xs text-muted/80 sm:hidden" aria-hidden>
         Swipe the grid sideways to see every type →
       </p>
       <div className="overflow-x-auto [scrollbar-gutter:stable]">
-        <div className="inline-flex min-w-full flex-col gap-1">
-          <p className="pl-10 text-center text-[11px] font-semibold tracking-wide text-muted">
+        {/*
+          Fill the Frame on desktop; keep a readable floor width on narrow
+          viewports so the grid scrolls instead of crushing labels.
+        */}
+        <div className="flex w-full min-w-[36rem] flex-col gap-1.5 sm:min-w-0">
+          <p className="pl-[calc(1.5rem+5.75rem)] text-center text-xs font-semibold tracking-wide text-muted">
             Defender
           </p>
-          <div className="flex items-stretch gap-1">
+          <div className="flex w-full items-stretch gap-1.5">
             <p
-              className="flex w-6 shrink-0 items-center justify-center text-[11px] font-semibold tracking-wide text-muted"
+              className="flex w-5 shrink-0 items-center justify-center text-xs font-semibold tracking-wide text-muted sm:w-6"
               style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
             >
               Attacker
             </p>
             <table
-              className="border-collapse text-[11px] leading-none sm:text-xs"
+              className="w-full table-fixed border-collapse text-xs leading-none"
               onMouseLeave={() => setHover(null)}
             >
+              <colgroup>
+                <col className="w-[5.75rem]" />
+                {TYPES.map((t) => (
+                  <col key={t} />
+                ))}
+              </colgroup>
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-[1] bg-surface p-0.5" />
+                  <th className="sticky left-0 z-[1] bg-surface p-px" />
                   {TYPES.map((t) => {
                     const colActive = active?.def === t;
                     const covered = coverageByType.get(t);
@@ -250,12 +302,12 @@ export function TypeChartPanel({
                         role="button"
                         tabIndex={0}
                         aria-pressed={sameTarget(pinned, target)}
-                        className={`p-0.5 font-semibold transition-opacity duration-100 ${
+                        className={`p-px font-semibold transition-opacity duration-100 ${
                           scanning && !colActive ? "opacity-35" : ""
                         }`}
                         title={
                           isCovered && covered
-                            ? `${t} — your Main Squad already hits ≥2× here${
+                            ? `${t} — Main Squad hits ≥2× here${
                                 covered.viaMove
                                   ? ` (${covered.viaMove})`
                                   : " (STAB)"
@@ -267,11 +319,11 @@ export function TypeChartPanel({
                         onClick={() => togglePin(target)}
                         onKeyDown={onHeaderKeyDown(target)}
                       >
-                        <TypePip type={t} short emphasis={colActive} />
+                        <TypePip type={t} short fill emphasis={colActive} />
                         {isCovered ? (
                           <span
                             aria-hidden
-                            className="mx-auto mt-0.5 block h-1 w-1 rounded-full bg-accent-deep"
+                            className="mx-auto mt-0.5 block h-1.5 w-1.5 rounded-full bg-accent-deep"
                           />
                         ) : null}
                       </th>
@@ -291,14 +343,14 @@ export function TypeChartPanel({
                         role="button"
                         tabIndex={0}
                         aria-pressed={sameTarget(pinned, target)}
-                        className={`sticky left-0 z-[1] bg-surface p-0.5 text-left font-semibold transition-opacity duration-100 ${
+                        className={`sticky left-0 z-[1] bg-surface p-px text-left font-semibold transition-opacity duration-100 ${
                           scanning && !rowActive ? "opacity-35" : ""
                         }`}
                         title={
                           hole
-                            ? `${atk} — a shared weakness: hits ${hole.weakCount} of your squad for ${formatMatchupMult(hole.worstMult)}`
+                            ? `${atk} — shared weakness: hits ${hole.weakCount} of the squad for ${formatMatchupMult(hole.worstMult)}`
                             : isImmune
-                              ? `${atk} — your whole Main Squad is immune`
+                              ? `${atk} — whole Main Squad is immune`
                               : atk
                         }
                         onMouseEnter={() => setHover(target)}
@@ -306,8 +358,8 @@ export function TypeChartPanel({
                         onClick={() => togglePin(target)}
                         onKeyDown={onHeaderKeyDown(target)}
                       >
-                        <span className="flex items-center gap-1">
-                          <TypePip type={atk} emphasis={rowActive} />
+                        <span className="flex w-full items-center gap-1">
+                          <TypePip type={atk} fill emphasis={rowActive} />
                           {hole ? (
                             <span
                               aria-hidden
@@ -333,7 +385,7 @@ export function TypeChartPanel({
                         return (
                           <td
                             key={def}
-                            className={`min-w-7 cursor-pointer p-0.5 text-center font-bold tabular-nums transition-[opacity,box-shadow] duration-100 ${cellTone(m)} ${
+                            className={`h-7 cursor-pointer p-px text-center align-middle text-xs font-bold tabular-nums transition-[opacity,box-shadow] duration-100 sm:h-8 ${cellTone(m)} ${
                               dimmed ? "opacity-30" : ""
                             } ${
                               cross
@@ -358,6 +410,178 @@ export function TypeChartPanel({
           </div>
         </div>
       </div>
+
+      <CoverageTier
+        tiers={offenseTiers}
+        coverageByType={coverageByType}
+        activeDef={active?.def ?? null}
+        hasViewer={viewer != null}
+        onSelectDef={(def) => togglePin({ atk: null, def })}
+      />
+    </div>
+  );
+}
+
+function CoverageTier({
+  tiers,
+  coverageByType,
+  activeDef,
+  hasViewer,
+  onSelectDef,
+}: {
+  tiers: ReturnType<typeof coverageOffenseTiers> | null;
+  coverageByType: Map<PokemonType, OffensiveCoverageCell>;
+  activeDef: PokemonType | null;
+  hasViewer: boolean;
+  onSelectDef: (def: PokemonType) => void;
+}) {
+  const tierTone: Record<CoverageOffenseTierId, string> = {
+    S: "border-accent/35 bg-accent/10 text-accent-deep",
+    A: "border-frame/50 bg-surface-2 text-muted",
+    B: "border-danger/30 bg-danger/10 text-danger",
+    F: "border-ink/25 bg-ink/10 text-muted",
+  };
+
+  return (
+    <section className="space-y-2 border-t border-frame/40 pt-3" aria-label="Coverage tier list">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold text-ink">Coverage tiers</h3>
+        <p className="text-xs text-muted">
+          Defending types ranked by your Main Squad&apos;s best hit
+        </p>
+      </div>
+
+      {!hasViewer ? (
+        <p className="text-sm text-muted">
+          Pick a squad above to tier how hard you hit each type.
+        </p>
+      ) : !tiers ? (
+        <p className="text-sm text-muted">
+          No Main Squad yet — nothing to tier.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {COVERAGE_OFFENSE_TIER_META.map((meta) => {
+            const types = tiers[meta.id];
+            return (
+              <li
+                key={meta.id}
+                className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:items-center"
+              >
+                <span
+                  className={`inline-flex min-w-[3.25rem] items-baseline justify-center gap-1 rounded-md border px-2 py-1 text-xs font-bold tabular-nums sm:min-w-0 sm:justify-start ${tierTone[meta.id]}`}
+                  title={meta.hint}
+                >
+                  <span className="text-sm leading-none">{meta.id}</span>
+                  <span className="hidden font-semibold sm:inline">
+                    {meta.label}
+                  </span>
+                </span>
+                {types.length === 0 ? (
+                  <p className="py-1 text-sm text-muted/70">—</p>
+                ) : (
+                  <ul className="flex flex-wrap gap-1">
+                    {types.map((t) => {
+                      const cell = coverageByType.get(t);
+                      const selected = activeDef === t;
+                      return (
+                        <li key={t}>
+                          <button
+                            type="button"
+                            className={`rounded transition-[box-shadow,transform] duration-100 ${
+                              selected
+                                ? "scale-105 shadow-[0_0_0_2px_color-mix(in_srgb,var(--ink)_45%,transparent)]"
+                                : "hover:scale-105"
+                            }`}
+                            title={
+                              cell
+                                ? `${t}: best ${formatMatchupMult(cell.bestMult)}${
+                                    cell.viaMove
+                                      ? ` via ${cell.viaMove}`
+                                      : cell.attackType
+                                        ? ` (${cell.attackType} STAB)`
+                                        : ""
+                                  }`
+                                : t
+                            }
+                            aria-pressed={selected}
+                            onClick={() => onSelectDef(t)}
+                          >
+                            <TypePip type={t} />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function MatchupReadout({
+  active,
+  mult,
+  pinned,
+}: {
+  active: ChartHover | null;
+  mult: 0 | 0.5 | 1 | 2 | null;
+  pinned: boolean;
+}) {
+  let body: ReactNode;
+  if (active?.atk && active?.def && mult != null) {
+    body = (
+      <>
+        <TypePip type={active.atk} />
+        <span className="text-muted" aria-hidden>
+          →
+        </span>
+        <TypePip type={active.def} />
+        <span
+          className={`rounded-md px-2 py-0.5 text-sm font-bold tabular-nums ${cellTone(mult)}`}
+        >
+          {formatMultiplier(mult) || "1×"}
+        </span>
+        <span className="font-medium text-ink">{matchupPlain(mult)}</span>
+        {pinned ? (
+          <span className="text-xs text-muted">Pinned · tap again to clear</span>
+        ) : null}
+      </>
+    );
+  } else if (active?.atk) {
+    body = (
+      <>
+        <TypePip type={active.atk} />
+        <span className="font-medium text-ink">attacking row</span>
+        <span className="text-muted">— hover a cell for the full matchup</span>
+      </>
+    );
+  } else if (active?.def) {
+    body = (
+      <>
+        <span className="font-medium text-ink">vs</span>
+        <TypePip type={active.def} />
+        <span className="text-muted">— hover a cell for the full matchup</span>
+      </>
+    );
+  } else {
+    body = (
+      <span className="text-muted">
+        Hover or tap a cell to read the matchup
+      </span>
+    );
+  }
+
+  return (
+    <div
+      className="flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-2 text-sm"
+      aria-live="polite"
+    >
+      {body}
     </div>
   );
 }
@@ -377,16 +601,21 @@ function isDimmed(
 function TypePip({
   type,
   short = false,
+  fill: stretch = false,
   emphasis = false,
 }: {
   type: PokemonType;
   short?: boolean;
+  /** Stretch to the table cell so headers share the widened columns. */
+  fill?: boolean;
   emphasis?: boolean;
 }) {
   const fill = TYPE_COLORS[type];
   return (
     <span
-      className={`inline-flex min-w-7 items-center justify-center rounded px-1 py-0.5 font-bold transition-[box-shadow,transform] duration-100 ${
+      className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-xs font-bold transition-[box-shadow,transform] duration-100 ${
+        stretch ? "w-full min-w-0" : "min-w-7"
+      } ${
         emphasis
           ? "scale-105 shadow-[0_0_0_2px_color-mix(in_srgb,var(--ink)_45%,transparent)]"
           : ""
