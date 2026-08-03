@@ -3,9 +3,18 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import type { Challenge, TrainerProfile } from "@/lib/challenge-types";
 import { TrainerCard } from "@/components/TrainerCard";
+import {
+  isTrainerSortMode,
+  sortTrainersForViewer,
+  TRAINER_SORT_LABELS,
+  TRAINER_SORT_MODES,
+  type TrainerSortMode,
+} from "@/lib/trainer-display";
 
 const VIEW_STORAGE_KEY = "nuzlocke-trainers-view";
 const VIEW_CHANGE_EVENT = "nuzlocke-trainers-view";
+const SORT_STORAGE_KEY = "nuzlocke-trainers-sort";
+const SORT_CHANGE_EVENT = "nuzlocke-trainers-sort";
 
 type TrainersView = "list" | "grid";
 
@@ -50,6 +59,38 @@ function writeView(next: TrainersView) {
   window.dispatchEvent(new Event(VIEW_CHANGE_EVENT));
 }
 
+function readSort(): TrainerSortMode {
+  try {
+    const stored = localStorage.getItem(SORT_STORAGE_KEY);
+    if (stored && isTrainerSortMode(stored)) return stored;
+  } catch {
+    // ignore
+  }
+  return "recent";
+}
+
+function subscribeSort(onStoreChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === SORT_STORAGE_KEY || event.key === null) onStoreChange();
+  };
+  const onCustom = () => onStoreChange();
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(SORT_CHANGE_EVENT, onCustom);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(SORT_CHANGE_EVENT, onCustom);
+  };
+}
+
+function writeSort(next: TrainerSortMode) {
+  try {
+    localStorage.setItem(SORT_STORAGE_KEY, next);
+  } catch {
+    // ignore
+  }
+  window.dispatchEvent(new Event(SORT_CHANGE_EVENT));
+}
+
 export function TrainersSection({
   challenge,
   trainers,
@@ -61,7 +102,13 @@ export function TrainersSection({
     readView,
     () => "list",
   );
+  const sortMode = useSyncExternalStore<TrainerSortMode>(
+    subscribeSort,
+    readSort,
+    () => "recent",
+  );
   const competitiveIds = new Set(competitiveTrainerIds);
+  const ordered = sortTrainersForViewer(trainers, myTrainerId, sortMode);
 
   return (
     <section className="space-y-4">
@@ -75,23 +122,43 @@ export function TrainersSection({
             joined this league!
           </p>
         </div>
-        <div
-          role="group"
-          aria-label="Trainer layout"
-          className="gba-inset inline-flex gap-1 bg-surface-2/80 p-1"
-        >
-          <ViewToggle
-            active={view === "list"}
-            label="List"
-            onClick={() => writeView("list")}
-            icon={<ListIcon />}
-          />
-          <ViewToggle
-            active={view === "grid"}
-            label="Grid"
-            onClick={() => writeView("grid")}
-            icon={<GridIcon />}
-          />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-muted">
+            <span className="sr-only sm:not-sr-only">Sort</span>
+            <select
+              aria-label="Sort trainers"
+              className="gba-inset max-w-[11.5rem] border-0 bg-surface-2/80 px-2.5 py-1.5 text-xs font-semibold text-ink sm:text-sm"
+              value={sortMode}
+              onChange={(event) => {
+                const next = event.target.value;
+                if (isTrainerSortMode(next)) writeSort(next);
+              }}
+            >
+              {TRAINER_SORT_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {TRAINER_SORT_LABELS[mode]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div
+            role="group"
+            aria-label="Trainer layout"
+            className="gba-inset inline-flex gap-1 bg-surface-2/80 p-1"
+          >
+            <ViewToggle
+              active={view === "list"}
+              label="List"
+              onClick={() => writeView("list")}
+              icon={<ListIcon />}
+            />
+            <ViewToggle
+              active={view === "grid"}
+              label="Grid"
+              onClick={() => writeView("grid")}
+              icon={<GridIcon />}
+            />
+          </div>
         </div>
       </div>
 
@@ -102,7 +169,7 @@ export function TrainersSection({
             : "grid gap-4"
         }
       >
-        {trainers.map((trainer) => (
+        {ordered.map((trainer) => (
           <TrainerCard
             key={trainer.id}
             challenge={challenge}

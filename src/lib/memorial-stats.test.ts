@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
-import { memorialSeasonHighlights } from "@/lib/memorial-stats";
+import {
+  memorialPokemonMatchesFilters,
+  memorialSeasonHighlights,
+} from "@/lib/memorial-stats";
 
 function mon(
   partial: Pick<PokemonEntry, "id" | "slot" | "partyIndex" | "species"> &
@@ -202,4 +205,35 @@ test("memorialSeasonHighlights picks richest trainer by imported money", () => {
     count: 482_500,
     tied: false,
   });
+});
+
+test("memorialPokemonMatchesFilters matches type and generation", () => {
+  const mudkip = { types: ["Water"] as const, pokedexId: 258 }; // Gen 3
+  assert.equal(
+    memorialPokemonMatchesFilters(mudkip, { type: null, generation: null }),
+    true,
+  );
+  assert.equal(
+    memorialPokemonMatchesFilters(mudkip, { type: "Water", generation: null }),
+    true,
+  );
+  assert.equal(
+    memorialPokemonMatchesFilters(mudkip, { type: "Fire", generation: null }),
+    false,
+  );
+  assert.equal(
+    memorialPokemonMatchesFilters(mudkip, { type: null, generation: 3 }),
+    true,
+  );
+  assert.equal(
+    memorialPokemonMatchesFilters(mudkip, { type: "Water", generation: 1 }),
+    false,
+  );
+  assert.equal(
+    memorialPokemonMatchesFilters(
+      { types: ["Normal"], pokedexId: null },
+      { type: null, generation: 3 },
+    ),
+    false,
+  );
 });
