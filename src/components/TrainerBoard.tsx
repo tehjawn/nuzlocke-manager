@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import { Fragment, useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
   gmResetTrainerBoardAction,
@@ -59,6 +59,10 @@ import {
   firstOpenMainPartyIndex,
 } from "@/lib/pokemon-board-dnd";
 import { isEmptySpread } from "@/lib/stats";
+import {
+  TRAINER_BOARD_ACTION_ORDER,
+  type TrainerBoardActionKey,
+} from "@/lib/trainer-board-actions";
 import { trainerBoardPath } from "@/lib/team-export";
 
 type TrainerBoardProps = {
@@ -1045,6 +1049,207 @@ export function TrainerBoard({
   const showMobileSaveBar =
     canEdit &&
     (editingPlayer || mobileSaveStatus.kind !== "idle");
+  const boardActionSlots: Record<
+    TrainerBoardActionKey,
+    { shortcut: ReactNode; toolbar: ReactNode }
+  > = {
+    copy: {
+      shortcut: (
+        <ShortcutActionTile
+          disabled={pending || wiping}
+          icon={<CopyLinkIcon className="h-4 w-4" />}
+          label="Copy board link"
+          onClick={() => {
+            void copyBoardLink();
+          }}
+          title="Copy shareable trainer board URL"
+          tone="neutral"
+        />
+      ),
+      toolbar: (
+        <button
+          className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+          disabled={pending || wiping}
+          onClick={() => {
+            void copyBoardLink();
+          }}
+          title="Copy shareable board link"
+          type="button"
+        >
+          <CopyLinkIcon />
+          Copy link
+        </button>
+      ),
+    },
+    export: {
+      shortcut: (
+        <ShortcutActionTile
+          disabled={pending || wiping}
+          icon={<ExportTeamIcon className="h-4 w-4" />}
+          label="Export team"
+          onClick={() => setTeamExportOpen(true)}
+          title="Copy living roster for LLM / notes"
+          tone="neutral"
+        />
+      ),
+      toolbar: (
+        <button
+          className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+          disabled={pending || wiping}
+          onClick={() => setTeamExportOpen(true)}
+          type="button"
+        >
+          <ExportTeamIcon />
+          Export team
+        </button>
+      ),
+    },
+    history: {
+      shortcut: !isDemo && (isGm || showCompetitiveDetails) && (
+        <ShortcutActionTile
+          disabled={pending || wiping}
+          icon={<BoardHistoryIcon className="h-4 w-4" />}
+          label="Trainer history"
+          onClick={() => setBoardHistoryOpen(true)}
+          title="Runs, badge archives, and board snapshots"
+          tone="neutral"
+        />
+      ),
+      toolbar: !isDemo && (isGm || showCompetitiveDetails) && (
+        <button
+          className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+          disabled={pending || wiping}
+          onClick={() => setBoardHistoryOpen(true)}
+          type="button"
+        >
+          <BoardHistoryIcon />
+          Trainer history
+        </button>
+      ),
+    },
+    import: {
+      shortcut: canEdit && (
+        <ShortcutActionTile
+          disabled={pending || wiping}
+          icon={<ImportSaveIcon className="h-4 w-4" />}
+          label="Import save"
+          onClick={() => setSaveImportOpen(true)}
+          tone="import"
+        />
+      ),
+      toolbar: canEdit && (
+        <button
+          className="pressable cta-import-save inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+          data-tour="import-save"
+          disabled={pending || wiping}
+          onClick={() => setSaveImportOpen(true)}
+          type="button"
+        >
+          <ImportSaveIcon />
+          <span>Import save</span>
+        </button>
+      ),
+    },
+    reset: {
+      shortcut: isGm && !isDemo && (
+        <ShortcutActionTile
+          disabled={pending || wiping}
+          icon={<ResetBoardIcon className="h-4 w-4" />}
+          label="Reset board"
+          onClick={() => {
+            void resetTrainerBoard();
+          }}
+          title="GM hard reset — zeros wipe count"
+          tone="danger"
+        />
+      ),
+      toolbar: isGm && !isDemo && (
+        <button
+          className={wipeButtonClass}
+          disabled={pending || wiping}
+          onClick={() => {
+            void resetTrainerBoard();
+          }}
+          type="button"
+        >
+          <ResetBoardIcon />
+          Reset board
+        </button>
+      ),
+    },
+    revive: {
+      shortcut:
+        canEdit && !isDemo && !reviveUsed ? (
+          <ShortcutActionTile
+            disabled={pending || wiping}
+            icon={<ReviveShortcutIcon className="h-4 w-4" />}
+            label="Use Revive Token"
+            onClick={() => {
+              void spendReviveToken();
+            }}
+            tone="accent"
+          />
+        ) : isGm && !isDemo && reviveUsed ? (
+          <ShortcutActionTile
+            disabled={pending || wiping}
+            icon={<ReviveShortcutIcon className="h-4 w-4" />}
+            label="Reset revive"
+            onClick={() => {
+              void resetReviveToken();
+            }}
+            title="Reset revive token"
+            tone="danger"
+          />
+        ) : canEdit && !isDemo && reviveUsed && !isGm ? (
+          <ShortcutStatusTile
+            icon={<ReviveShortcutIcon className="h-4 w-4" />}
+            label="Revive used"
+            tone="danger"
+          />
+        ) : null,
+      toolbar: !isDemo && (
+        <ReviveControl
+          canReset={isGm}
+          canUse={canEdit}
+          disabled={pending}
+          onReset={resetReviveToken}
+          onUse={spendReviveToken}
+          status={
+            canEdit || isGm ? (
+              <SaveStatus status={reviveSave.status} />
+            ) : null
+          }
+          used={reviveUsed}
+        />
+      ),
+    },
+    wipe: {
+      shortcut: canEdit && (
+        <ShortcutActionTile
+          disabled={pending || wiping}
+          icon={<WipeIcon className="h-4 w-4" />}
+          label="Record wipe"
+          onClick={() => {
+            void recordWipe();
+          }}
+          tone="danger"
+        />
+      ),
+      toolbar: canEdit && (
+        <button
+          className={wipeButtonClass}
+          disabled={pending || wiping}
+          onClick={() => {
+            void recordWipe();
+          }}
+          type="button"
+        >
+          <WipeIcon />
+          Record wipe
+        </button>
+      ),
+    },
+  };
 
   return (
     <div className={`space-y-4 ${showMobileSaveBar ? "pb-20 sm:pb-0" : ""}`}>
@@ -1057,91 +1262,11 @@ export function TrainerBoard({
           {leagueBoardLabel}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          {!isDemo ? (
-            <ReviveControl
-              used={reviveUsed}
-              canUse={canEdit}
-              canReset={isGm}
-              disabled={pending}
-              onUse={spendReviveToken}
-              onReset={resetReviveToken}
-              status={
-                canEdit || isGm ? (
-                  <SaveStatus status={reviveSave.status} />
-                ) : null
-              }
-            />
-          ) : null}
-          {canEdit ? (
-            <button
-              type="button"
-              data-tour="import-save"
-              className="pressable cta-import-save inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
-              disabled={pending || wiping}
-              onClick={() => setSaveImportOpen(true)}
-            >
-              <ImportSaveIcon />
-              <span>Import save</span>
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
-            disabled={pending || wiping}
-            onClick={() => setTeamExportOpen(true)}
-          >
-            <ExportTeamIcon />
-            Export team
-          </button>
-          <button
-            type="button"
-            className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
-            disabled={pending || wiping}
-            title="Copy shareable board link"
-            onClick={() => {
-              void copyBoardLink();
-            }}
-          >
-            <CopyLinkIcon />
-            Copy link
-          </button>
-          {!isDemo && (isGm || showCompetitiveDetails) ? (
-            <button
-              type="button"
-              disabled={pending || wiping}
-              className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
-              onClick={() => setBoardHistoryOpen(true)}
-            >
-              <BoardHistoryIcon />
-              Trainer history
-            </button>
-          ) : null}
-          {canEdit ? (
-            <button
-              type="button"
-              disabled={pending || wiping}
-              className={wipeButtonClass}
-              onClick={() => {
-                void recordWipe();
-              }}
-            >
-              <WipeIcon />
-              Record wipe
-            </button>
-          ) : null}
-          {isGm && !isDemo ? (
-            <button
-              type="button"
-              disabled={pending || wiping}
-              className={wipeButtonClass}
-              onClick={() => {
-                void resetTrainerBoard();
-              }}
-            >
-              <ResetBoardIcon />
-              Reset board
-            </button>
-          ) : null}
+          {TRAINER_BOARD_ACTION_ORDER.map((action) => (
+            <Fragment key={action}>
+              {boardActionSlots[action].toolbar}
+            </Fragment>
+          ))}
         </div>
       </div>
 
@@ -1539,96 +1664,11 @@ export function TrainerBoard({
           </div>
 
           <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(10rem,1fr))]">
-            <ShortcutActionTile
-              label="Export team"
-              icon={<ExportTeamIcon className="h-4 w-4" />}
-              tone="neutral"
-              disabled={pending || wiping}
-              title="Copy living roster for LLM / notes"
-              onClick={() => setTeamExportOpen(true)}
-            />
-            <ShortcutActionTile
-              label="Copy board link"
-              icon={<CopyLinkIcon className="h-4 w-4" />}
-              tone="neutral"
-              disabled={pending || wiping}
-              title="Copy shareable trainer board URL"
-              onClick={() => {
-                void copyBoardLink();
-              }}
-            />
-            {canEdit && !isDemo && !reviveUsed ? (
-              <ShortcutActionTile
-                label="Use Revive Token"
-                icon={<ReviveShortcutIcon className="h-4 w-4" />}
-                tone="accent"
-                disabled={pending || wiping}
-                onClick={() => {
-                  void spendReviveToken();
-                }}
-              />
-            ) : null}
-            {isGm && !isDemo && reviveUsed ? (
-              <ShortcutActionTile
-                label="Reset revive"
-                icon={<ReviveShortcutIcon className="h-4 w-4" />}
-                tone="danger"
-                disabled={pending || wiping}
-                title="Reset revive token"
-                onClick={() => {
-                  void resetReviveToken();
-                }}
-              />
-            ) : null}
-            {canEdit && !isDemo && reviveUsed && !isGm ? (
-              <ShortcutStatusTile
-                label="Revive used"
-                icon={<ReviveShortcutIcon className="h-4 w-4" />}
-                tone="danger"
-              />
-            ) : null}
-            {canEdit ? (
-              <ShortcutActionTile
-                label="Import save"
-                icon={<ImportSaveIcon className="h-4 w-4" />}
-                tone="import"
-                disabled={pending || wiping}
-                onClick={() => setSaveImportOpen(true)}
-              />
-            ) : null}
-            {!isDemo && (isGm || showCompetitiveDetails) ? (
-              <ShortcutActionTile
-                label="Trainer history"
-                icon={<BoardHistoryIcon className="h-4 w-4" />}
-                tone="neutral"
-                disabled={pending || wiping}
-                title="Runs, badge archives, and board snapshots"
-                onClick={() => setBoardHistoryOpen(true)}
-              />
-            ) : null}
-            {canEdit ? (
-              <ShortcutActionTile
-                label="Record wipe"
-                icon={<WipeIcon className="h-4 w-4" />}
-                tone="danger"
-                disabled={pending || wiping}
-                onClick={() => {
-                  void recordWipe();
-                }}
-              />
-            ) : null}
-            {isGm && !isDemo ? (
-              <ShortcutActionTile
-                label="Reset board"
-                icon={<ResetBoardIcon className="h-4 w-4" />}
-                tone="danger"
-                disabled={pending || wiping}
-                title="GM hard reset — zeros wipe count"
-                onClick={() => {
-                  void resetTrainerBoard();
-                }}
-              />
-            ) : null}
+            {TRAINER_BOARD_ACTION_ORDER.map((action) => (
+              <Fragment key={action}>
+                {boardActionSlots[action].shortcut}
+              </Fragment>
+            ))}
           </div>
         </div>
       </Frame>
