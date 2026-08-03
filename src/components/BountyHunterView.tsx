@@ -44,6 +44,17 @@ const STATUS_FILTERS: ReadonlyArray<{ id: StatusFilter; label: string }> = [
   { id: "untouched", label: "Untouched" },
 ];
 
+/** Color key for the tracker grid — same tones as the species cards. */
+const STATUS_LEGEND: ReadonlyArray<{
+  id: SpeciesOwnershipStatus;
+  label: string;
+  hint: string;
+}> = [
+  { id: "owned", label: "Owned", hint: "Currently held" },
+  { id: "encountered", label: "Encountered", hint: "Seen or lost" },
+  { id: "untouched", label: "Untouched", hint: "Open bounty" },
+];
+
 /**
  * Species-status tracker (owned vs. encountered vs. untouched, any trainer
  * or one) plus pack exclusives grouped by evolution line. "Open bounties"
@@ -200,6 +211,8 @@ export function BountyHunterView({
 
       {mode === "tracker" ? (
         <>
+          <StatusLegend />
+
           <div role="group" aria-label="Status filter" className="flex flex-wrap gap-1.5">
             {STATUS_FILTERS.map((entry) => {
               const active = statusFilter === entry.id;
@@ -244,6 +257,45 @@ export function BountyHunterView({
       )}
     </div>
   );
+}
+
+function StatusLegend() {
+  return (
+    <ul className="flex flex-wrap gap-2" aria-label="Species status legend">
+      {STATUS_LEGEND.map((item) => (
+        <li key={item.id}>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold ${statusLegendClass(item.id)}`}
+          >
+            <span
+              className={`h-2.5 w-2.5 shrink-0 rounded-sm ${statusSwatchClass(item.id)}`}
+              aria-hidden
+            />
+            <span>{item.label}</span>
+            <span className="font-medium text-current/70">· {item.hint}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function statusLegendClass(status: SpeciesOwnershipStatus): string {
+  if (status === "owned") {
+    return "border-accent/35 bg-accent/10 text-accent-deep";
+  }
+  if (status === "encountered") {
+    return "border-amber-700/35 bg-amber-700/10 text-amber-900 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100";
+  }
+  return "border-frame/40 bg-surface/60 text-muted";
+}
+
+function statusSwatchClass(status: SpeciesOwnershipStatus): string {
+  if (status === "owned") return "bg-accent";
+  if (status === "encountered") {
+    return "bg-amber-700 dark:bg-amber-400";
+  }
+  return "bg-ink/25";
 }
 
 function statusChipActiveClass(status: StatusFilter): string {
