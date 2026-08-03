@@ -338,6 +338,24 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
         "encounters",
       ],
     },
+    {
+      id: `planner-${ctx.slug}`,
+      title: "Team Planner",
+      subtitle: `${ctx.name} · Coverage & League prep`,
+      href: toolsHref(ctx.slug, "planner"),
+      category: "navigate" as const,
+      tags: [
+        "team",
+        "planner",
+        "coverage",
+        "elite four",
+        "champion",
+        "type",
+        "pvp",
+        "gym",
+        "tools",
+      ],
+    },
   ];
 }
 

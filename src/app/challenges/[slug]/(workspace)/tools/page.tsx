@@ -13,6 +13,7 @@ import { getAccessForChallenge } from "@/lib/permissions";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 import {
   parseBountyMode,
+  parsePlannerMode,
   parseToolsId,
   toolsTitle,
   type ToolsId,
@@ -87,7 +88,10 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const dexIdRaw = id != null ? Number(id) : NaN;
   const initialDexId =
     Number.isFinite(dexIdRaw) && dexIdRaw > 0 ? dexIdRaw : null;
-  const initialBountyMode = parseBountyMode(mode);
+  const initialBountyMode =
+    initialTool === "bounty" ? parseBountyMode(mode) : null;
+  const initialPlannerMode =
+    initialTool === "planner" ? parsePlannerMode(mode) : null;
 
   return (
     <Suspense
@@ -105,6 +109,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         initialCompareB={b}
         initialDexId={initialDexId}
         initialBountyMode={initialBountyMode}
+        initialPlannerMode={initialPlannerMode}
       />
     </Suspense>
   );

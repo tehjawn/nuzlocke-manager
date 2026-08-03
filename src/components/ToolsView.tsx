@@ -8,6 +8,7 @@ import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
 import { GuideIcon } from "@/components/nav-icons";
 import { PokedexPanel } from "@/components/PokedexPanel";
+import { TeamPlannerView } from "@/components/TeamPlannerView";
 import { TrainerCompare } from "@/components/TrainerCompare";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
 import type {
@@ -20,6 +21,7 @@ import {
   toolsHref,
   toolsHubHref,
   type BountyMode,
+  type PlannerMode,
   type ToolsId,
 } from "@/lib/tools-routes";
 
@@ -37,6 +39,7 @@ type ToolsViewProps = {
   initialCompareB?: string | null;
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
+  initialPlannerMode?: PlannerMode | null;
 };
 
 export function ToolsView({
@@ -51,6 +54,7 @@ export function ToolsView({
   initialCompareB = null,
   initialDexId = null,
   initialBountyMode = null,
+  initialPlannerMode = null,
 }: ToolsViewProps) {
   const searchParams = useSearchParams();
   const tool =
@@ -76,6 +80,7 @@ export function ToolsView({
       initialCompareB={initialCompareB}
       initialDexId={initialDexId}
       initialBountyMode={initialBountyMode}
+      initialPlannerMode={initialPlannerMode}
     />
   );
 }
@@ -145,6 +150,8 @@ function toolIcon(id: ToolsId): ReactNode {
       return <GuideIcon className="h-5 w-5" />;
     case "bounty":
       return <BountyToolIcon />;
+    case "planner":
+      return <PlannerToolIcon />;
   }
 }
 
@@ -218,6 +225,23 @@ function BountyToolIcon() {
   );
 }
 
+function PlannerToolIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <path d="M8 9.5h8M8 12.5h5M8 15.5h6" strokeLinecap="round" />
+      <circle cx="16.5" cy="15.5" r="1.25" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 function ToolWorkspace({
   slug,
   challengeName,
@@ -230,6 +254,7 @@ function ToolWorkspace({
   initialCompareB,
   initialDexId,
   initialBountyMode,
+  initialPlannerMode,
 }: {
   slug: string;
   challengeName: string;
@@ -242,6 +267,7 @@ function ToolWorkspace({
   initialCompareB?: string | null;
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
+  initialPlannerMode?: PlannerMode | null;
 }) {
   const meta = TOOLS_CATALOG.find((t) => t.id === tool)!;
   const hubHref = toolsHubHref(slug);
@@ -255,7 +281,9 @@ function ToolWorkspace({
           ? `What to do next in the story for ${challengeName}.`
           : tool === "bounty"
             ? `Open bounties, personal gaps, and pack exclusives for ${challengeName}.`
-            : `Side-by-side squads and badges for ${challengeName}.`;
+            : tool === "planner"
+              ? `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${challengeName}.`
+              : `Side-by-side squads and badges for ${challengeName}.`;
 
   return (
     <div className="space-y-6">
@@ -313,6 +341,15 @@ function ToolWorkspace({
           trainers={trainers}
           myTrainerId={myTrainerId}
           initialMode={initialBountyMode}
+        />
+      ) : null}
+
+      {tool === "planner" ? (
+        <TeamPlannerView
+          slug={slug}
+          trainers={trainers}
+          myTrainerId={myTrainerId}
+          initialMode={initialPlannerMode}
         />
       ) : null}
     </div>
