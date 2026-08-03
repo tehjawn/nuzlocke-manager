@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Frame, frameCountTitle } from "@/components/Frame";
+import { Frame } from "@/components/Frame";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TypeBadge } from "@/components/TypeBadge";
@@ -21,9 +21,10 @@ import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 import type { PokemonType } from "@/lib/pokemon-types";
 import {
+  coverageOffenseGrid,
+  coverageVerdict,
   formatMatchupMult,
   offensiveCoverage,
-  teamCoverageSummary,
   teamDefensiveProfile,
   vsTrainerMatchup,
   vsTrainerOffenseGrid,
@@ -188,10 +189,11 @@ export function TeamPlannerView({
 
   const coverage = useMemo(() => offensiveCoverage(draft), [draft]);
   const defense = useMemo(() => teamDefensiveProfile(draft), [draft]);
-  const summary = useMemo(
-    () => teamCoverageSummary(draft, coverage, defense),
+  const verdict = useMemo(
+    () => coverageVerdict(draft, coverage, defense),
     [draft, coverage, defense],
   );
+  const offenseGrid = useMemo(() => coverageOffenseGrid(draft), [draft]);
 
   const gymPreps = useMemo(
     () =>
@@ -461,10 +463,9 @@ export function TeamPlannerView({
           >
             {mode === "coverage" ? (
               <CoveragePanels
-                coverage={coverage}
-                defense={defense}
                 draft={draft}
-                summary={summary}
+                verdict={verdict}
+                offenseGrid={offenseGrid}
               />
             ) : null}
             {mode === "prep" ? (
@@ -681,159 +682,255 @@ function LivingBoxGrid({
 }
 
 function CoveragePanels({
-  coverage,
-  defense,
   draft,
-  summary,
+  verdict,
+  offenseGrid,
 }: {
-  coverage: ReturnType<typeof offensiveCoverage>;
-  defense: ReturnType<typeof teamDefensiveProfile>;
   draft: PokemonEntry[];
-  summary: ReturnType<typeof teamCoverageSummary>;
+  verdict: ReturnType<typeof coverageVerdict>;
+  offenseGrid: ReturnType<typeof coverageOffenseGrid>;
 }) {
+  const gapCount = offenseGrid.filter((r) => r.status !== "covered").length;
+  const [showAllTypes, setShowAllTypes] = useState(gapCount === 0);
+
+  useEffect(() => {
+    if (gapCount === 0) setShowAllTypes(true);
+  }, [gapCount]);
+
   if (draft.length === 0) {
     return (
       <Frame dense title="Coverage">
         <p className="text-sm text-muted">
-          Tap a team slot and show boxed Pokémon to see a live coverage TLDR.
+          Place Pokémon on the left to score type coverage.
         </p>
       </Frame>
     );
   }
 
+  const draftById = new Map(draft.map((m) => [m.id, m] as const));
+  const visibleRows = showAllTypes
+    ? offenseGrid
+    : offenseGrid.filter((r) => r.status !== "covered");
+
+  const sortedRows = [...visibleRows].sort((a, b) => {
+    const rank = (s: typeof a.status) =>
+      s === "blind" ? 0 : s === "soft" ? 1 : 2;
+    return (
+      rank(a.status) - rank(b.status) ||
+      a.bestMult - b.bestMult ||
+      a.defendingType.localeCompare(b.defendingType)
+    );
+  });
+
+  const verdictTone = verdict.tone;
+
   return (
-    <div className="space-y-3">
-      <Frame dense title="At a glance">
-        <ul className="space-y-1.5">
-          {summary.map((bullet) => (
+    <Frame dense title="Coverage">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p
+            className={`text-lg font-semibold tracking-tight ${
+              verdictTone === "good"
+                ? "text-accent-deep"
+                : verdictTone === "warn"
+                  ? "text-danger"
+                  : "text-ink"
+            }`}
+          >
+            {verdict.label}
+            <span className="ml-2 align-middle text-xs font-bold tabular-nums text-muted">
+              {verdict.coveredCount}/{verdict.total}
+            </span>
+          </p>
+          <p className="mt-0.5 text-[12px] leading-snug text-muted">
+            {verdict.line}
+          </p>
+        </div>
+        <div
+          className="flex max-w-[11rem] shrink-0 flex-wrap items-center justify-end gap-0.5"
+          title={`${verdict.coveredCount} covered · ${verdict.softCount} soft · ${verdict.blindCount} blind`}
+          aria-label={`${verdict.coveredCount} covered, ${verdict.softCount} soft, ${verdict.blindCount} blind`}
+        >
+          {offenseGrid.map((row) => (
+            <span
+              key={row.defendingType}
+              className={`h-1.5 w-1.5 rounded-full ${
+                row.status === "covered"
+                  ? "bg-accent"
+                  : row.status === "soft"
+                    ? "bg-accent-2"
+                    : "bg-danger"
+              }`}
+              title={`${row.defendingType}: ${formatMatchupMult(row.bestMult)}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {verdict.callouts.length > 0 ? (
+        <ul className="mt-2 space-y-1">
+          {verdict.callouts.map((bullet) => (
             <li
               key={bullet.text}
-              className={`flex gap-2 text-sm leading-snug ${
-                bullet.tone === "good"
-                  ? "text-accent-deep"
-                  : bullet.tone === "warn"
-                    ? "text-danger"
-                    : "text-ink"
+              className={`text-[11px] leading-snug ${
+                bullet.tone === "warn"
+                  ? "text-danger"
+                  : bullet.tone === "good"
+                    ? "text-accent-deep"
+                    : "text-muted"
               }`}
             >
-              <span aria-hidden className="mt-0.5 shrink-0 text-muted">
-                {bullet.tone === "good"
-                  ? "✓"
-                  : bullet.tone === "warn"
-                    ? "!"
-                    : "·"}
-              </span>
-              <span>{bullet.text}</span>
+              {bullet.text}
             </li>
           ))}
         </ul>
-      </Frame>
+      ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Frame dense title={frameCountTitle("Gaps", coverage.gaps.length)}>
-          {coverage.gaps.length === 0 ? (
-            <p className="text-xs text-muted">Full ≥2× coverage.</p>
-          ) : (
-            <ul className="flex flex-wrap gap-1">
-              {coverage.gaps.map((gap) => (
-                <li
-                  key={gap.defendingType}
-                  className="inline-flex items-center gap-1 rounded-md border border-danger/30 bg-danger/10 px-1.5 py-1"
-                >
-                  <TypeBadge
-                    type={gap.defendingType as PokemonType}
-                    size="sm"
-                  />
-                  <span className="text-[10px] font-bold tabular-nums text-muted">
-                    {formatMatchupMult(gap.bestMult)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Frame>
-
-        <Frame dense title="Shared holes">
-          {defense.sharedHoles.length === 0 ? (
-            <p className="text-xs text-muted">No shared ≥2× weaknesses.</p>
-          ) : (
-            <ul className="flex flex-wrap gap-1">
-              {defense.sharedHoles.map((hole) => (
-                <li
-                  key={hole.attackType}
-                  className="inline-flex items-center gap-1 rounded-md border border-frame/40 bg-surface-2 px-1.5 py-1"
-                >
-                  <TypeBadge
-                    type={hole.attackType as PokemonType}
-                    size="sm"
-                  />
-                  <span className="text-[10px] font-bold tabular-nums text-muted">
-                    {formatMatchupMult(hole.worstMult)} · {hole.weakCount}/
-                    {draft.length}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {defense.teamImmunities.length > 0 ? (
-            <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-frame/40 pt-2">
-              <span className="text-[10px] font-semibold text-muted">
-                Immune
-              </span>
-              {defense.teamImmunities.map((t) => (
-                <TypeBadge
-                  key={t}
-                  type={t as PokemonType}
-                  size="sm"
-                  variant="soft"
-                />
-              ))}
-            </div>
-          ) : null}
-        </Frame>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+          {showAllTypes
+            ? "All types"
+            : `Gaps · ${gapCount}`}
+        </p>
+        {gapCount > 0 ? (
+          <button
+            type="button"
+            className={`${CTA_SECONDARY_SM} !px-2 !py-0.5 !text-[10px]`}
+            onClick={() => setShowAllTypes((v) => !v)}
+          >
+            {showAllTypes ? "Gaps only" : "Show all 18"}
+          </button>
+        ) : null}
       </div>
 
-      <Frame dense collapsible defaultOpen={false} title="Full offensive grid">
-        <p className="mb-2 text-[11px] text-muted">
-          Best hit into each defending type. Accent = ≥2×.
-        </p>
-        <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4 md:grid-cols-6">
-          {coverage.cells.map((cell) => {
-            const good = cell.bestMult >= 2;
-            const via = draft.find((p) => p.id === cell.viaEntryId);
-            return (
-              <li
-                key={cell.defendingType}
-                className={`rounded-md border px-1.5 py-1 ${
-                  good
-                    ? "border-accent/35 bg-accent/10"
-                    : "border-frame/50 bg-surface-2/60"
-                }`}
-                title={
-                  via
-                    ? `${monLabel(via)}${cell.viaMove ? ` · ${cell.viaMove}` : " · STAB"}`
-                    : "No hit"
-                }
+      <div className="mt-1.5 overflow-x-auto rounded-md border border-frame/60">
+        <table className="w-full min-w-[18rem] border-collapse text-left">
+          <caption className="sr-only">
+            Coverage grid: rows are defending types, columns are your planned
+            team. Cells show each Pokémon&apos;s best multiplier into that type.
+          </caption>
+          <thead>
+            <tr className="border-b border-frame/50 bg-surface-2/60">
+              <th
+                scope="col"
+                className="sticky left-0 z-[1] bg-surface-2/95 px-1.5 py-1.5 text-[0.6rem] font-semibold uppercase tracking-wide text-muted"
               >
-                <div className="flex items-center justify-between gap-0.5">
-                  <TypeBadge
-                    type={cell.defendingType as PokemonType}
-                    size="sm"
+                Type
+              </th>
+              {draft.map((mon) => (
+                <th
+                  key={mon.id}
+                  scope="col"
+                  className="px-0.5 py-1.5 text-center"
+                  title={monLabel(mon)}
+                >
+                  <PokemonSpriteImage
+                    alt={monLabel(mon)}
+                    className="pixelated mx-auto h-7 w-7 object-contain"
+                    height={28}
+                    loading="lazy"
+                    pokedexId={mon.pokedexId}
+                    shiny={mon.isShiny}
+                    species={mon.species}
+                    width={28}
                   />
-                  <span
-                    className={`text-[10px] font-bold tabular-nums ${
-                      good ? "text-ink" : "text-danger"
-                    }`}
-                  >
-                    {formatMatchupMult(cell.bestMult)}
+                  <span className="mt-0.5 block max-w-[2.75rem] truncate text-[0.55rem] font-semibold leading-tight text-muted">
+                    {monLabel(mon)}
                   </span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </Frame>
-    </div>
+                </th>
+              ))}
+              <th
+                scope="col"
+                className="px-1 py-1.5 text-center text-[0.6rem] font-semibold uppercase tracking-wide text-muted"
+                title="How many of your draft take ≥2× from this type"
+              >
+                Weak
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedRows.map((row) => (
+              <tr
+                key={row.defendingType}
+                className={`border-b border-frame/40 last:border-b-0 ${
+                  row.status === "blind"
+                    ? "bg-danger/10"
+                    : row.status === "soft"
+                      ? "bg-accent-2/10"
+                      : "bg-accent/5"
+                }`}
+              >
+                <th
+                  scope="row"
+                  className="sticky left-0 z-[1] bg-surface/95 px-1.5 py-1.5"
+                >
+                  <div className="flex min-w-[4.5rem] items-center gap-1.5">
+                    <TypeBadge
+                      type={row.defendingType as PokemonType}
+                      size="sm"
+                    />
+                    <span className="text-[10px] font-bold tabular-nums text-muted">
+                      {formatMatchupMult(row.bestMult)}
+                    </span>
+                  </div>
+                </th>
+                {row.cells.map((cell) => {
+                  const answerMon = draftById.get(cell.draftId);
+                  const strong = cell.mult >= 2;
+                  const soft = cell.mult > 0 && cell.mult < 2;
+                  const title = answerMon
+                    ? `${monLabel(answerMon)} → ${row.defendingType}: ${formatMatchupMult(cell.mult)}${
+                        cell.attackType
+                          ? ` ${cell.attackType}${cell.viaMove ? ` via ${cell.viaMove}` : " STAB"}`
+                          : ""
+                      }`
+                    : undefined;
+                  return (
+                    <td key={cell.draftId} className="px-0.5 py-1 text-center">
+                      <span
+                        title={title}
+                        className={`inline-flex h-8 min-w-[2rem] items-center justify-center rounded px-1 text-[11px] font-bold tabular-nums ${
+                          strong
+                            ? "bg-accent/20 text-accent-deep ring-1 ring-accent/35"
+                            : soft
+                              ? "bg-surface-2 text-muted"
+                              : "text-danger/70"
+                        }`}
+                      >
+                        {cell.mult > 0 ? formatMatchupMult(cell.mult) : "—"}
+                      </span>
+                    </td>
+                  );
+                })}
+                <td className="px-1 py-1 text-center">
+                  {row.threatenedCount > 0 ? (
+                    <span
+                      className={`inline-flex min-w-[1.75rem] items-center justify-center rounded px-1 py-0.5 text-[10px] font-bold tabular-nums ${
+                        row.threatenedCount >= 3
+                          ? "bg-danger/15 text-danger"
+                          : row.threatenedCount >= 2
+                            ? "bg-accent-2/20 text-ink"
+                            : "bg-surface-2 text-muted"
+                      }`}
+                      title={`${row.threatenedCount}/${draft.length} of your draft take ≥2× from ${row.defendingType}`}
+                    >
+                      {row.threatenedCount}/{draft.length}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-muted/60">·</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="mt-2 text-[10px] leading-snug text-muted">
+        Columns are your planned team. Green cells are ≥2× into that type; dashes
+        are gaps. Weak = how many of yours take ≥2× from that attack type.
+      </p>
+    </Frame>
   );
 }
 

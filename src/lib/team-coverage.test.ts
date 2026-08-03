@@ -3,6 +3,8 @@ import test from "node:test";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import {
   bestOffenseVsType,
+  coverageOffenseGrid,
+  coverageVerdict,
   offensiveCoverage,
   recommendDraftCoverageTips,
   teamCoverageSummary,
@@ -239,4 +241,47 @@ test("vsTrainerOffenseGrid is opponent rows × draft columns", () => {
   assert.ok(grid[0]![0]!.mult >= 2);
   // Sceptile Grass into Sharpedo Water/Dark
   assert.ok(grid[1]![1]!.mult >= 2);
+});
+
+test("coverageOffenseGrid is type rows × draft columns", () => {
+  const draft = [
+    mon({ id: "d1", species: "Swampert", types: ["Water", "Ground"] }),
+    mon({ id: "d2", species: "Sceptile", types: ["Grass"] }),
+  ];
+  const rows = coverageOffenseGrid(draft);
+  assert.equal(rows.length, 18);
+  assert.equal(rows[0]!.cells.length, 2);
+  const fire = rows.find((r) => r.defendingType === "Fire");
+  assert.ok(fire);
+  assert.equal(fire!.status, "covered");
+  assert.ok(fire!.cells.some((c) => c.draftId === "d1" && c.mult >= 2));
+});
+
+test("coverageVerdict labels solid and leaky boards", () => {
+  const solidDraft = [
+    mon({ id: "a", species: "Swampert", types: ["Water", "Ground"] }),
+    mon({ id: "b", species: "Sceptile", types: ["Grass"] }),
+    mon({ id: "c", species: "Gardevoir", types: ["Psychic"] }),
+    mon({ id: "d", species: "Aerodactyl", types: ["Rock", "Flying"] }),
+    mon({ id: "e", species: "Manectric", types: ["Electric"] }),
+    mon({ id: "f", species: "Breloom", types: ["Grass", "Fighting"] }),
+  ];
+  const solidCoverage = offensiveCoverage(solidDraft);
+  const solidDefense = teamDefensiveProfile(solidDraft);
+  const solid = coverageVerdict(solidDraft, solidCoverage, solidDefense);
+  assert.ok(solid.coveredCount >= 14);
+  assert.ok(solid.line.length > 0);
+
+  const leakyDraft = [
+    mon({ id: "n1", species: "Rattata", types: ["Normal"] }),
+    mon({ id: "n2", species: "Meowth", types: ["Normal"] }),
+  ];
+  const leaky = coverageVerdict(
+    leakyDraft,
+    offensiveCoverage(leakyDraft),
+    teamDefensiveProfile(leakyDraft),
+  );
+  assert.equal(leaky.label, "Leaky");
+  assert.equal(leaky.tone, "warn");
+  assert.ok(leaky.coveredCount < 10);
 });

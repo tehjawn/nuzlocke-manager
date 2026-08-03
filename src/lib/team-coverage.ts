@@ -315,6 +315,168 @@ export function teamCoverageSummary(
   return bullets.slice(0, 5);
 }
 
+export type CoverageTypeStatus = "covered" | "soft" | "blind";
+
+export type CoverageGridCell = {
+  draftId: string;
+  defendingType: ChartType;
+  mult: number;
+  attackType: ChartType | null;
+  viaMove: string | null;
+};
+
+export type CoverageGridRow = {
+  defendingType: ChartType;
+  bestMult: number;
+  status: CoverageTypeStatus;
+  cells: CoverageGridCell[];
+  /** How many draft mons take ≥2× from this type as an attack. */
+  threatenedCount: number;
+};
+
+/** Full draft × defending-type offense grid (every cell, not just team-best). */
+export function coverageOffenseGrid(
+  draft: readonly PokemonEntry[],
+): CoverageGridRow[] {
+  return TYPES.map((defendingType) => {
+    const cells: CoverageGridCell[] = draft.map((mon) => {
+      const hit = bestOffenseVsType(mon, defendingType);
+      return {
+        draftId: mon.id,
+        defendingType,
+        mult: hit.mult,
+        attackType: hit.attackType,
+        viaMove: hit.viaMove,
+      };
+    });
+    const bestMult = cells.reduce((best, c) => Math.max(best, c.mult), 0);
+    const status: CoverageTypeStatus =
+      bestMult >= SE_THRESHOLD
+        ? "covered"
+        : bestMult > 0
+          ? "soft"
+          : "blind";
+
+    let threatenedCount = 0;
+    for (const mon of draft) {
+      const types = resolveTypes(mon);
+      if (types.length === 0) continue;
+      if (attackMultiplierVs(defendingType, types) >= SE_THRESHOLD) {
+        threatenedCount += 1;
+      }
+    }
+
+    return {
+      defendingType,
+      bestMult,
+      status,
+      cells,
+      threatenedCount,
+    };
+  });
+}
+
+export type CoverageVerdictLabel = "Solid" | "Soft" | "Thin" | "Leaky";
+
+export type CoverageVerdict = {
+  label: CoverageVerdictLabel;
+  tone: CoverageSummaryTone;
+  coveredCount: number;
+  softCount: number;
+  blindCount: number;
+  total: number;
+  line: string;
+  callouts: CoverageSummaryBullet[];
+};
+
+/**
+ * Compact Coverage strip copy — verdict + one line + warn-only callouts.
+ */
+export function coverageVerdict(
+  draft: readonly PokemonEntry[],
+  coverage: OffensiveCoverage,
+  defense: TeamDefensiveProfile,
+): CoverageVerdict {
+  const total = coverage.cells.length;
+  if (draft.length === 0) {
+    return {
+      label: "Soft",
+      tone: "neutral",
+      coveredCount: 0,
+      softCount: 0,
+      blindCount: total,
+      total,
+      line: "Place Pokémon to score type coverage.",
+      callouts: [],
+    };
+  }
+
+  const coveredCount = coverage.cells.filter(
+    (c) => c.bestMult >= SE_THRESHOLD,
+  ).length;
+  const softCount = coverage.gaps.filter((g) => g.bestMult > 0).length;
+  const blindCount = coverage.gaps.filter((g) => g.bestMult === 0).length;
+  const gapNames = coverage.gaps.map((g) => g.defendingType);
+
+  let label: CoverageVerdictLabel;
+  let tone: CoverageSummaryTone;
+  if (coverage.gaps.length === 0) {
+    label = "Solid";
+    tone = "good";
+  } else if (coverage.gaps.length <= 2 && blindCount === 0) {
+    label = "Soft";
+    tone = "neutral";
+  } else if (coverage.gaps.length <= 5) {
+    label = "Thin";
+    tone = coverage.gaps.length >= 4 || blindCount > 0 ? "warn" : "neutral";
+  } else {
+    label = "Leaky";
+    tone = "warn";
+  }
+
+  const line =
+    coverage.gaps.length === 0
+      ? `≥2× into all ${total} types.`
+      : `Soft into ${gapNames.slice(0, 5).join(", ")}${gapNames.length > 5 ? "…" : ""}.`;
+
+  const callouts: CoverageSummaryBullet[] = [];
+  if (blindCount > 0) {
+    callouts.push({
+      text: `Blind (0×): ${coverage.gaps
+        .filter((g) => g.bestMult === 0)
+        .map((g) => g.defendingType)
+        .join(", ")}.`,
+      tone: "warn",
+    });
+  }
+  const bigHoles = defense.sharedHoles.filter(
+    (h) => h.weakCount >= 3 || h.worstMult >= 4,
+  );
+  for (const hole of bigHoles.slice(0, 2)) {
+    callouts.push({
+      text: `${hole.attackType} pressures ${hole.weakCount}/${draft.length} (${formatMatchupMult(hole.worstMult)}).`,
+      tone: "warn",
+    });
+  }
+  if (defense.teamImmunities.length > 0 && callouts.length < 3) {
+    callouts.push({
+      text: `Team immunities: ${defense.teamImmunities.join(", ")}.`,
+      tone: "good",
+    });
+  }
+
+  return {
+    label,
+    tone,
+    coveredCount,
+    softCount,
+    blindCount,
+    total,
+    line,
+    callouts: callouts.slice(0, 3),
+  };
+}
+
 export { formatMatchupMult };
 
 export type DraftCoverageTip = {
