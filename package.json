@@ -24,7 +24,8 @@
     "data:move-meta": "node scripts/generate-move-meta.mjs",
     "data:held-items": "node scripts/generate-held-item-descriptions.mjs",
     "data:base-stats": "node scripts/generate-base-stats.mjs",
-    "data:types": "node scripts/generate-pokemon-types.mjs"
+    "data:types": "node scripts/generate-pokemon-types.mjs",
+    "data:evolutions": "node scripts/generate-species-evolutions.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

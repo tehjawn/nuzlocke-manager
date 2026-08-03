@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { EvolutionPath } from "@/components/EvolutionPath";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
@@ -409,6 +410,17 @@ export function PokemonDetailsModal({
                   ))}
                 </ul>
               </div>
+            ) : null}
+
+            {pokemon.pokedexId != null ? (
+              <EvolutionPath
+                pokedexId={pokemon.pokedexId}
+                species={pokemon.species}
+                level={pokemon.level}
+                heldItem={pokemon.heldItem}
+                moves={showCompetitiveDetails ? pokemon.moves : null}
+                shiny={pokemon.isShiny}
+              />
             ) : null}
           </div>
         </div>

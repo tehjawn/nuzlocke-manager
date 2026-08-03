@@ -1,0 +1,327 @@
+"use client";
+
+import { HeldItemLabel } from "@/components/HeldItemLabel";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import {
+  evolutionViewFor,
+  type EvolutionConditionChip,
+  type EvolutionOption,
+  type EvolutionView,
+} from "@/lib/species-evolutions";
+
+type EvolutionPathProps = {
+  pokedexId: number;
+  species: string;
+  level?: number | null;
+  heldItem?: string | null;
+  moves?: string[] | null;
+  shiny?: boolean;
+};
+
+function ConditionChip({ chip }: { chip: EvolutionConditionChip }) {
+  if (chip.kind === "hold" && chip.label.startsWith("Hold ")) {
+    const name = chip.label.slice(5);
+    return (
+      <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-frame/40 bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+        <span className="text-muted">Hold</span>
+        <HeldItemLabel name={name} embedded iconSize={12} />
+      </span>
+    );
+  }
+
+  if (chip.kind === "item" || chip.kind === "hold") {
+    return (
+      <span className="inline-flex max-w-full items-center rounded-md border border-frame/40 bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+        <HeldItemLabel name={chip.label} embedded iconSize={12} />
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center rounded-md border border-frame/40 bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+      {chip.label}
+    </span>
+  );
+}
+
+function ReadinessBadge({ option }: { option: EvolutionOption }) {
+  const { status, detail } = option.readiness;
+  if (!detail) return null;
+  const tone =
+    status === "ready"
+      ? "text-accent-deep"
+      : status === "close"
+        ? "text-accent-2"
+        : status === "blocked"
+          ? "text-muted"
+          : "text-muted";
+  return (
+    <span className={`text-[10px] font-semibold tracking-tight ${tone}`}>
+      {detail}
+    </span>
+  );
+}
+
+function StageSprite({
+  pokedexId,
+  species,
+  shiny = false,
+  current = false,
+  size = 40,
+}: {
+  pokedexId: number;
+  species: string;
+  shiny?: boolean;
+  current?: boolean;
+  size?: number;
+}) {
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center rounded-lg border ${
+        current
+          ? "border-accent-2/60 bg-info"
+          : "border-frame/40 bg-surface-2"
+      }`}
+      style={{ width: size + 8, height: size + 8 }}
+      title={species}
+    >
+      <PokemonSpriteImage
+        alt=""
+        className="pixelated object-contain"
+        height={size}
+        pokedexId={pokedexId}
+        shiny={shiny}
+        species={species}
+        width={size}
+      />
+    </div>
+  );
+}
+
+function LinearChain({
+  view,
+  species,
+  shiny,
+}: {
+  view: EvolutionView;
+  species: string;
+  shiny: boolean;
+}) {
+  const next = view.options[0]!;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {view.ancestors.map((a) => (
+        <div key={a.pokedexId} className="flex items-center gap-2 opacity-60">
+          <StageSprite
+            pokedexId={a.pokedexId}
+            species={a.name}
+            size={32}
+          />
+          <span className="text-muted" aria-hidden>
+            →
+          </span>
+        </div>
+      ))}
+      <div className="flex flex-col items-center gap-0.5">
+        <StageSprite
+          pokedexId={view.pokedexId}
+          species={species}
+          shiny={shiny}
+          current
+          size={40}
+        />
+        <span className="text-[9px] font-semibold tracking-tight text-accent-2">
+          You
+        </span>
+      </div>
+      <span className="text-muted" aria-hidden>
+        →
+      </span>
+      <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex flex-wrap gap-1">
+          {next.chips.map((chip) => (
+            <ConditionChip
+              key={`${next.into}-${chip.kind}-${chip.label}`}
+              chip={chip}
+            />
+          ))}
+        </div>
+        <ReadinessBadge option={next} />
+      </div>
+      <span className="text-muted" aria-hidden>
+        →
+      </span>
+      <div className="flex flex-col items-center gap-0.5">
+        <StageSprite
+          pokedexId={next.into}
+          species={next.intoName}
+          size={40}
+        />
+        <span className="max-w-[4.5rem] truncate text-center text-[10px] font-semibold">
+          {next.intoName}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function BranchOptions({
+  view,
+  species,
+  shiny,
+}: {
+  view: EvolutionView;
+  species: string;
+  shiny: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {view.ancestors.map((a) => (
+          <div
+            key={a.pokedexId}
+            className="flex items-center gap-2 opacity-60"
+          >
+            <StageSprite
+              pokedexId={a.pokedexId}
+              species={a.name}
+              size={28}
+            />
+            <span className="text-muted" aria-hidden>
+              →
+            </span>
+          </div>
+        ))}
+        <div className="flex flex-col items-center gap-0.5">
+          <StageSprite
+            pokedexId={view.pokedexId}
+            species={species}
+            shiny={shiny}
+            current
+            size={36}
+          />
+          <span className="text-[9px] font-semibold tracking-tight text-accent-2">
+            You
+          </span>
+        </div>
+        <span className="text-[10px] font-semibold text-muted">→ choose</span>
+      </div>
+      <ul className="grid gap-1.5 sm:grid-cols-2">
+        {view.options.map((option) => (
+          <li
+            key={`${option.method}-${option.into}`}
+            className="flex min-w-0 items-start gap-2 rounded-lg border border-frame/40 bg-surface-2 px-2 py-1.5"
+          >
+            <StageSprite
+              pokedexId={option.into}
+              species={option.intoName}
+              size={36}
+            />
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                <p className="truncate text-sm font-semibold leading-tight">
+                  {option.intoName}
+                </p>
+                <ReadinessBadge option={option} />
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {option.chips.map((chip) => (
+                  <ConditionChip
+                    key={`${option.into}-${chip.kind}-${chip.label}`}
+                    chip={chip}
+                  />
+                ))}
+              </div>
+              {option.note ? (
+                <p className="text-[10px] leading-snug text-muted">
+                  {option.note}
+                </p>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function FinalForm({
+  view,
+  species,
+  shiny,
+}: {
+  view: EvolutionView;
+  species: string;
+  shiny: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {view.ancestors.map((a) => (
+        <div key={a.pokedexId} className="flex items-center gap-2 opacity-60">
+          <StageSprite
+            pokedexId={a.pokedexId}
+            species={a.name}
+            size={32}
+          />
+          <span className="text-muted" aria-hidden>
+            →
+          </span>
+        </div>
+      ))}
+      <div className="flex flex-col items-center gap-0.5">
+        <StageSprite
+          pokedexId={view.pokedexId}
+          species={species}
+          shiny={shiny}
+          current
+          size={40}
+        />
+        <span className="text-[9px] font-semibold tracking-tight text-accent-2">
+          Final
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Modern Emerald evolution path for the open specimen.
+ * Linear lines use a compact chain; branched lines show peer option rows.
+ */
+export function EvolutionPath({
+  pokedexId,
+  species,
+  level,
+  heldItem,
+  moves,
+  shiny = false,
+}: EvolutionPathProps) {
+  const view = evolutionViewFor(pokedexId, { level, heldItem, moves });
+  if (!view) return null;
+
+  const branched = view.options.length > 1;
+  const linear = view.options.length === 1;
+
+  return (
+    <div>
+      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs font-semibold tracking-tight text-muted">
+          Evolution
+        </p>
+        <p className="text-[10px] text-muted">Modern Emerald</p>
+      </div>
+      {view.isFinal ? (
+        <FinalForm view={view} species={species} shiny={shiny} />
+      ) : branched ? (
+        <BranchOptions view={view} species={species} shiny={shiny} />
+      ) : linear ? (
+        <LinearChain view={view} species={species} shiny={shiny} />
+      ) : null}
+      {!branched && view.options[0]?.note ? (
+        <p className="mt-1.5 text-[10px] leading-snug text-muted">
+          {view.options[0].note}
+        </p>
+      ) : null}
+    </div>
+  );
+}
