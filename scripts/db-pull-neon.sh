@@ -16,11 +16,12 @@ cd "$ROOT"
 
 # Keys present in the process environment before loading dotenv files.
 # File values must not override these (so `NEON_DATABASE_URL=… npm run db:pull-neon` wins).
-declare -A PRESET_ENV=()
-while IFS= read -r line; do
-  [[ "$line" == *=* ]] || continue
-  PRESET_ENV["${line%%=*}"]=1
-done < <(env)
+# Newline-delimited for macOS /bin/bash 3.2 (no associative arrays).
+PRESET_ENV_KEYS="$(env | sed 's/=.*//' | sort -u)"
+
+is_preset_env() {
+  printf '%s\n' "$PRESET_ENV_KEYS" | grep -qx -- "$1"
+}
 
 load_env_file() {
   local file="$1"
@@ -41,7 +42,7 @@ load_env_file() {
     if [[ "$val" == \"*\" ]]; then val="${val:1:${#val}-2}"; fi
     if [[ "$val" == \'*\' ]]; then val="${val:1:${#val}-2}"; fi
     # Preserve process-supplied env; later dotenv files may still fill unset keys.
-    if [[ -n "${PRESET_ENV[$key]:-}" ]]; then
+    if is_preset_env "$key"; then
       continue
     fi
     export "$key=$val"
