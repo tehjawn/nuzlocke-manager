@@ -355,134 +355,129 @@ export function TeamPlannerView({
         </div>
       </div>
 
-      {/* Always-visible party strip */}
-      <section aria-label="Planned team">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold tracking-tight text-ink">
-            Planned team{" "}
-            <span className="font-medium tabular-nums text-muted">
-              ({filledCount}/{PLANNER_DRAFT_MAX})
-            </span>
-          </h3>
-          <button
-            type="button"
-            className={CTA_PRIMARY_SM}
-            aria-expanded={boxOpen}
-            aria-controls="planner-living-box"
-            onClick={() => {
-              setBoxOpen((open) => !open);
-              if (!boxOpen) {
-                queueMicrotask(() => boxPanelRef.current?.focus());
-              }
-            }}
-          >
-            {boxOpen ? "Hide Boxed Pokémon" : "Show Boxed Pokémon"}
-          </button>
-        </div>
-        <PartyStripSlots
-          slots={slots}
-          poolById={poolById}
-          activeSlot={activeSlot}
-          onSlotClick={onSlotClick}
-        />
-        <p className="mt-1.5 text-[11px] text-muted" aria-live="polite">
-          {boxOpen
-            ? `Placing into ${activeLabel} — pick a boxed mon, or tap the slot again to clear.`
-            : "Tap a slot to show boxed Pokémon and place or swap."}
-        </p>
-      </section>
+      {/* Desktop: team+box left | analysis right. Mobile: stacked. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)] lg:items-start">
+        <aside className="space-y-3 lg:sticky lg:top-3 lg:self-start">
+          <section aria-label="Planned team">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold tracking-tight text-ink">
+                Planned team{" "}
+                <span className="font-medium tabular-nums text-muted">
+                  ({filledCount}/{PLANNER_DRAFT_MAX})
+                </span>
+              </h3>
+              <button
+                type="button"
+                className={`${CTA_PRIMARY_SM} lg:hidden`}
+                aria-expanded={boxOpen}
+                aria-controls="planner-living-box"
+                onClick={() => {
+                  setBoxOpen((open) => !open);
+                  if (!boxOpen) {
+                    queueMicrotask(() => boxPanelRef.current?.focus());
+                  }
+                }}
+              >
+                {boxOpen ? "Hide Boxed Pokémon" : "Show Boxed Pokémon"}
+              </button>
+            </div>
+            <PartyStripSlots
+              slots={slots}
+              poolById={poolById}
+              activeSlot={activeSlot}
+              onSlotClick={onSlotClick}
+              rail
+            />
+            <p className="mt-1.5 text-[11px] text-muted" aria-live="polite">
+              Placing into {activeLabel} — pick a boxed mon, or tap the slot
+              again to clear.
+            </p>
+          </section>
 
-      {/* Full-width boxed panel — readable sprites, analysis stays below and updates live */}
-      {boxOpen ? (
-        <div
-          id="planner-living-box"
-          ref={boxPanelRef}
-          tabIndex={-1}
-          className="rounded-lg border border-interactive/35 bg-surface-2/80 p-3 outline-none ring-1 ring-interactive/20"
-        >
-          <div className="mb-2.5 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-ink">
+          {/* Always visible on desktop; toggled on mobile */}
+          <div
+            id="planner-living-box"
+            ref={boxPanelRef}
+            tabIndex={-1}
+            className={`rounded-lg border border-frame/70 bg-surface-2/60 p-3 outline-none ${
+              boxOpen ? "block" : "hidden lg:block"
+            }`}
+          >
+            <p className="mb-2.5 text-xs font-semibold text-ink">
               Boxed Pokémon{" "}
               <span className="font-medium tabular-nums text-muted">
                 ({pool.length})
               </span>
             </p>
-            <button
-              type="button"
-              className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2"
-              onClick={() => setBoxOpen(false)}
-            >
-              Hide
-            </button>
+            {pool.length === 0 ? (
+              <p className="text-xs text-muted">
+                No Main or Reserve Pokémon on this board yet.
+              </p>
+            ) : (
+              <LivingBoxGrid
+                pokemon={pool}
+                draftIds={draftIdSet}
+                onPlace={placeFromBox}
+                rail
+              />
+            )}
           </div>
-          {pool.length === 0 ? (
-            <p className="text-xs text-muted">
-              No Main or Reserve Pokémon on this board yet.
-            </p>
-          ) : (
-            <LivingBoxGrid
-              pokemon={pool}
-              draftIds={draftIdSet}
-              onPlace={placeFromBox}
-            />
-          )}
-        </div>
-      ) : null}
+        </aside>
 
-      {/* Mode tabs + analysis (full width) */}
-      <div className="min-w-0 space-y-3">
-        <div
-          role="tablist"
-          aria-label="Planner analysis"
-          className="flex gap-1 border-b border-frame/70"
-        >
-          {MODES.map((entry) => {
-            const active = mode === entry.id;
-            return (
-              <button
-                key={entry.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                id={`planner-tab-${entry.id}`}
-                onClick={() => selectMode(entry.id)}
-                className={`pressable -mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${
-                  active
-                    ? "border-interactive text-ink"
-                    : "border-transparent text-muted hover:text-ink"
-                }`}
-              >
-                {entry.label}
-              </button>
-            );
-          })}
-        </div>
+        <div className="min-w-0 space-y-3">
+          <div
+            role="tablist"
+            aria-label="Planner analysis"
+            className="flex gap-1 border-b border-frame/70"
+          >
+            {MODES.map((entry) => {
+              const active = mode === entry.id;
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  id={`planner-tab-${entry.id}`}
+                  onClick={() => selectMode(entry.id)}
+                  className={`pressable -mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${
+                    active
+                      ? "border-interactive text-ink"
+                      : "border-transparent text-muted hover:text-ink"
+                  }`}
+                >
+                  {entry.label}
+                </button>
+              );
+            })}
+          </div>
 
-        <section
-          role="tabpanel"
-          aria-labelledby={`planner-tab-${mode}`}
-          className="min-w-0 space-y-3"
-          aria-live="polite"
-        >
-          {mode === "coverage" ? (
-            <CoveragePanels
-              coverage={coverage}
-              defense={defense}
-              draft={draft}
-              summary={summary}
-            />
-          ) : null}
-          {mode === "prep" ? (
-            <PrepPanels slug={slug} draft={draft} gymPreps={gymPreps} />
-          ) : null}
-          {mode === "vs" ? (
-            <VsTrainerPanel
-              draft={draft}
-              opponent={opponent}
-              opponentMain={opponentMain}
-            />
-          ) : null}
-        </section>
+          <section
+            role="tabpanel"
+            aria-labelledby={`planner-tab-${mode}`}
+            className="min-w-0 space-y-3"
+            aria-live="polite"
+          >
+            {mode === "coverage" ? (
+              <CoveragePanels
+                coverage={coverage}
+                defense={defense}
+                draft={draft}
+                summary={summary}
+              />
+            ) : null}
+            {mode === "prep" ? (
+              <PrepPanels slug={slug} draft={draft} gymPreps={gymPreps} />
+            ) : null}
+            {mode === "vs" ? (
+              <VsTrainerPanel
+                draft={draft}
+                opponent={opponent}
+                opponentMain={opponentMain}
+              />
+            ) : null}
+          </section>
+        </div>
       </div>
     </div>
   );
@@ -493,14 +488,23 @@ function PartyStripSlots({
   poolById,
   activeSlot,
   onSlotClick,
+  rail = false,
 }: {
   slots: string[];
   poolById: Map<string, PokemonEntry>;
   activeSlot: number;
   onSlotClick: (index: number) => void;
+  /** Narrow left-column layout: 2×3 instead of a long 6-wide strip. */
+  rail?: boolean;
 }) {
   return (
-    <ul className="grid grid-cols-3 items-stretch gap-1.5 sm:grid-cols-6">
+    <ul
+      className={`grid items-stretch gap-1.5 ${
+        rail
+          ? "grid-cols-3 sm:grid-cols-3 lg:grid-cols-2"
+          : "grid-cols-3 sm:grid-cols-6"
+      }`}
+    >
       {slots.map((id, index) => {
         const entry = id ? poolById.get(id) : undefined;
         const active = activeSlot === index;
@@ -552,7 +556,6 @@ function PartyStripSlots({
                 <span className="absolute left-1 top-1 text-[9px] font-bold tabular-nums text-muted">
                   {index + 1}
                 </span>
-                {/* Match filled slot geometry so empty cells share height */}
                 <span
                   aria-hidden
                   className="block h-12 w-12 sm:h-14 sm:w-14"
@@ -612,13 +615,22 @@ function LivingBoxGrid({
   pokemon,
   draftIds,
   onPlace,
+  rail = false,
 }: {
   pokemon: PokemonEntry[];
   draftIds: Set<string>;
   onPlace: (id: string) => void;
+  /** Left-rail density: fewer columns, taller scroll. */
+  rail?: boolean;
 }) {
   return (
-    <ul className="grid max-h-[min(20rem,45vh)] grid-cols-3 gap-2 overflow-y-auto pr-0.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+    <ul
+      className={`grid gap-2 overflow-y-auto pr-0.5 ${
+        rail
+          ? "max-h-[min(28rem,calc(100vh-22rem))] grid-cols-2 sm:grid-cols-3 lg:grid-cols-2"
+          : "max-h-[min(20rem,45vh)] grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
+      }`}
+    >
       {pokemon.map((entry) => {
         const onTeam = draftIds.has(entry.id);
         const label = monLabel(entry);
