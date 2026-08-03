@@ -52,6 +52,16 @@ function toItem(row: {
   };
 }
 
+const notificationListSelect = {
+  id: true,
+  type: true,
+  title: true,
+  body: true,
+  actionKey: true,
+  readAt: true,
+  createdAt: true,
+} as const;
+
 /** First-login welcome for Trash Pack 2026 — idempotent per user. */
 export async function ensureWelcomeNotification(userId: string) {
   const prisma = getPrisma();
@@ -83,51 +93,53 @@ export async function listNotificationsForUser(
 ): Promise<NotificationItem[]> {
   const prisma = getPrisma();
   // Happy path is read-only. Backfill welcome only when the row is missing
-  // (failed sign-in upsert) — not on every header render.
+  // (failed sign-in upsert) — not on every header render. Archived welcome
+  // stays hidden and is not re-created.
   let rows = await prisma.notification.findMany({
-    where: { userId },
+    where: { userId, archivedAt: null },
     orderBy: { createdAt: "desc" },
     take: limit,
-    select: {
-      id: true,
-      type: true,
-      title: true,
-      body: true,
-      actionKey: true,
-      readAt: true,
-      createdAt: true,
-    },
+    select: notificationListSelect,
   });
-  rows = await prependPersistedWelcome(
-    rows,
-    () =>
-      prisma.notification.findUnique({
-        where: {
-          userId_type_actionKey: {
-            userId,
-            type: NOTIFICATION_TYPE_WELCOME,
-            actionKey: NOTIFICATION_ACTION_WELCOME,
-          },
+
+  if (!rows.some(isWelcomeNotification)) {
+    const welcome = await prisma.notification.findUnique({
+      where: {
+        userId_type_actionKey: {
+          userId,
+          type: NOTIFICATION_TYPE_WELCOME,
+          actionKey: NOTIFICATION_ACTION_WELCOME,
         },
-        select: {
-          id: true,
-          type: true,
-          title: true,
-          body: true,
-          actionKey: true,
-          readAt: true,
-          createdAt: true,
+      },
+      select: { ...notificationListSelect, archivedAt: true },
+    });
+    if (!welcome) {
+      const created = await ensureWelcomeNotification(userId);
+      rows = [
+        {
+          id: created.id,
+          type: created.type,
+          title: created.title,
+          body: created.body,
+          actionKey: created.actionKey,
+          readAt: created.readAt,
+          createdAt: created.createdAt,
         },
-      }),
-    () => ensureWelcomeNotification(userId),
-  );
+        ...rows,
+      ];
+    } else if (welcome.archivedAt == null) {
+      const { archivedAt: _archivedAt, ...item } = welcome;
+      rows = [item, ...rows];
+    }
+  }
+
   return withPinnedWelcome(rows.map(toItem));
 }
 
 export async function countUnreadNotifications(userId: string): Promise<number> {
   const prisma = getPrisma();
   return prisma.notification.count({
-    where: { userId, readAt: null },
+    where: { userId, readAt: null, archivedAt: null },
   });
 }
 
@@ -137,7 +149,7 @@ export async function markNotificationRead(
 ): Promise<NotificationItem | null> {
   const prisma = getPrisma();
   const existing = await prisma.notification.findFirst({
-    where: { id: notificationId, userId },
+    where: { id: notificationId, userId, archivedAt: null },
   });
   if (!existing) return null;
   if (existing.readAt) {
@@ -146,6 +158,30 @@ export async function markNotificationRead(
   const updated = await prisma.notification.update({
     where: { id: notificationId },
     data: { readAt: new Date() },
+  });
+  return toItem(updated);
+}
+
+/** Soft-dismiss from the inbox. Also marks read so badges stay clear. */
+export async function archiveNotification(
+  userId: string,
+  notificationId: string,
+): Promise<NotificationItem | null> {
+  const prisma = getPrisma();
+  const existing = await prisma.notification.findFirst({
+    where: { id: notificationId, userId },
+  });
+  if (!existing) return null;
+  if (existing.archivedAt) {
+    return toItem(existing);
+  }
+  const now = new Date();
+  const updated = await prisma.notification.update({
+    where: { id: notificationId },
+    data: {
+      archivedAt: now,
+      readAt: existing.readAt ?? now,
+    },
   });
   return toItem(updated);
 }

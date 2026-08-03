@@ -10,6 +10,7 @@ import { JumpHost } from "@/features/jump/JumpHost";
 import { briefToJumpSeasonContext } from "@/features/jump/jump-season";
 import { PokemonSpritePreferenceProvider } from "@/features/preferences/PokemonSpritePreferenceProvider";
 import { getDefaultJumpChallenge } from "@/lib/challenges";
+import { isGmForChallengeSlug } from "@/lib/permissions";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -74,8 +75,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const defaultChallenge = await getDefaultJumpChallenge();
+  const showGm = await isGmForChallengeSlug(defaultChallenge?.slug);
   const defaultSeason = defaultChallenge
-    ? briefToJumpSeasonContext(defaultChallenge)
+    ? briefToJumpSeasonContext(defaultChallenge, { showGm })
     : null;
 
   return (

@@ -10,12 +10,14 @@ type NotificationsMenuProps = {
   notifications: NotificationItem[];
   unreadCount: number;
   onSelect: (notification: NotificationItem) => void;
+  onDismiss: (notification: NotificationItem) => void;
 };
 
 export function NotificationsMenu({
   notifications,
   unreadCount,
   onSelect,
+  onDismiss,
 }: NotificationsMenuProps) {
   const [open, setOpen] = useState(false);
   const coarse = useCoarsePointer();
@@ -96,11 +98,11 @@ export function NotificationsMenu({
                     notification.actionKey,
                   );
                   return (
-                    <li key={notification.id}>
+                    <li key={notification.id} className="relative">
                       <button
                         type="button"
                         role="menuitem"
-                        className={`flex w-full flex-col gap-0.5 px-3 py-2.5 text-left hover:bg-accent/15 ${
+                        className={`flex w-full flex-col gap-0.5 py-2.5 pr-10 pl-3 text-left hover:bg-accent/15 ${
                           unread ? "bg-accent/8" : ""
                         }`}
                         onClick={() => {
@@ -115,7 +117,10 @@ export function NotificationsMenu({
                               className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-sm bg-accent"
                             />
                           ) : (
-                            <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0" />
+                            <span
+                              aria-hidden
+                              className="mt-1.5 h-1.5 w-1.5 shrink-0"
+                            />
                           )}
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-medium">
@@ -131,13 +136,25 @@ export function NotificationsMenu({
                                 Start tour →
                               </span>
                             ) : null}
-                            {feedbackHref && (
+                            {feedbackHref ? (
                               <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
                                 Open feedback →
                               </span>
-                            )}
+                            ) : null}
                           </span>
                         </span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Dismiss ${notification.title}`}
+                        className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-frame/50 hover:text-ink"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onDismiss(notification);
+                        }}
+                      >
+                        <DismissIcon />
                       </button>
                     </li>
                   );
@@ -166,6 +183,22 @@ function BellIcon() {
         strokeLinejoin="round"
       />
       <path d="M8.2 14.8a1.8 1.8 0 003.6 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DismissIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M5 5l10 10M15 5L5 15" />
     </svg>
   );
 }

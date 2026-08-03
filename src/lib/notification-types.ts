@@ -3,7 +3,7 @@
 export const NOTIFICATION_TYPE_WELCOME = "WELCOME";
 export const NOTIFICATION_ACTION_WELCOME = "welcome";
 
-/** Hard-coded welcome inbox row — always pinned first for every player. */
+/** Hard-coded welcome inbox row — pinned first when present and not archived. */
 export const WELCOME_NOTIFICATION = {
   type: NOTIFICATION_TYPE_WELCOME,
   actionKey: NOTIFICATION_ACTION_WELCOME,
@@ -33,19 +33,21 @@ export function isWelcomeNotification(notification: {
   );
 }
 
-/** Pin the hard-coded welcome row first; merge read state from a DB row when present. */
+/**
+ * Pin a welcome row first when one is already in the list.
+ * Does not invent a sentinel — archived / missing welcome stays gone.
+ */
 export function withPinnedWelcome(
   notifications: NotificationItem[],
 ): NotificationItem[] {
   const existing = notifications.find(isWelcomeNotification);
+  if (!existing) return notifications;
   const welcome: NotificationItem = {
-    id: existing?.id ?? "welcome",
+    ...existing,
     type: WELCOME_NOTIFICATION.type,
     actionKey: WELCOME_NOTIFICATION.actionKey,
     title: WELCOME_NOTIFICATION.title,
     body: WELCOME_NOTIFICATION.body,
-    readAt: existing?.readAt ?? null,
-    createdAt: existing?.createdAt ?? new Date(0).toISOString(),
   };
   const rest = notifications.filter((n) => !isWelcomeNotification(n));
   return [welcome, ...rest];

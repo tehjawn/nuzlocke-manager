@@ -11,6 +11,7 @@ import { GuideIcon, MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
 import { JumpTrigger } from "@/features/jump";
 import { getChallenge, getDefaultJumpChallenge } from "@/lib/challenges";
 import { readGmLensOn } from "@/lib/gm-lens.server";
+import { isGmForChallengeSlug } from "@/lib/permissions";
 import { toolsHref } from "@/lib/tools-routes";
 
 /** Shared shell width for the site header, footer, and page content. */
@@ -59,11 +60,16 @@ export async function SiteHeader({
     seasonName = challenge?.name ?? null;
   }
 
+  // Menu GM link uses the resolved season everywhere (including account/home).
+  // Floating GM tools stay gated to pages that passed an explicit challenge slug.
+  const menuShowGm = showGm || (await isGmForChallengeSlug(seasonSlug));
   const gmViewOn =
     showGm && challengeSlug ? await readGmLensOn(challengeSlug) : false;
   const feedbackHref = seasonSlug
     ? `/challenges/${seasonSlug}/feedback`
     : null;
+  const gmHref =
+    menuShowGm && seasonSlug ? `/challenges/${seasonSlug}/gm` : null;
 
   return (
     <>
@@ -143,16 +149,12 @@ export async function SiteHeader({
           <AuthButtons
             feedbackHref={feedbackHref}
             hideMyTrainer={Boolean(myTrainerId)}
-            gmHref={
-              showGm && challengeSlug
-                ? `/challenges/${challengeSlug}/gm`
-                : null
-            }
+            gmHref={gmHref}
           />
           <MobileNavDrawer
             className="sm:hidden"
             challengeSlug={seasonSlug ?? undefined}
-            showGm={showGm}
+            showGm={menuShowGm}
             myTrainerId={myTrainerId}
           >
             <MobileMenuAuth feedbackHref={feedbackHref} />

@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { markNotificationReadAction } from "@/app/actions/notifications";
+import {
+  archiveNotificationAction,
+  markNotificationReadAction,
+} from "@/app/actions/notifications";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { UserMenu } from "@/components/UserMenu";
@@ -51,7 +54,8 @@ export function LoggedInChrome({
     withPinnedWelcome(initialNotifications),
   );
   const [tourOpen, setTourOpen] = useState(() => {
-    const unread = hasUnreadWelcome(withPinnedWelcome(initialNotifications));
+    const pinned = withPinnedWelcome(initialNotifications);
+    const unread = hasUnreadWelcome(pinned);
     const active = readOnboardingActive();
     if (unread || active) {
       writeOnboardingActive(true);
@@ -100,6 +104,18 @@ export function LoggedInChrome({
     }
   }
 
+  async function dismissNotification(notification: NotificationItem) {
+    const previous = notifications;
+    setNotifications((prev) =>
+      withPinnedWelcome(prev.filter((n) => n.id !== notification.id)),
+    );
+    if (notification.id === "welcome") return;
+    const result = await archiveNotificationAction(notification.id);
+    if (!result.ok) {
+      setNotifications(previous);
+    }
+  }
+
   async function dismissTour() {
     writeOnboardingActive(false);
     const welcome = findWelcome(notifications);
@@ -135,6 +151,7 @@ export function LoggedInChrome({
         <NotificationsMenu
           notifications={notifications}
           unreadCount={unreadCount}
+          onDismiss={dismissNotification}
           onSelect={onSelectNotification}
         />
         {/* On mobile the account actions live in the nav drawer instead. */}

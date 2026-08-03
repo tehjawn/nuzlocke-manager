@@ -107,19 +107,22 @@ model User {
 model Notification {
   id        String    @id @default(cuid())
   userId    String
-  /// WELCOME | SYSTEM | …
+  /// WELCOME | SYSTEM | FEEDBACK | FEEDBACK_STATUS | …
   type      String
   title     String
   body      String?
   /// Client action key (e.g. "welcome") for opening modals / deep links
   actionKey String?
   readAt    DateTime?
-  createdAt DateTime  @default(now())
+  /// Soft-dismiss — hidden from the inbox but kept for audit / unique keys
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
+  @@index([userId, archivedAt])
   @@unique([userId, type, actionKey])
 }
 
