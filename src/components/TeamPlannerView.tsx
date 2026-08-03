@@ -852,29 +852,10 @@ function PrepPanels({
 }) {
   return (
     <div className="space-y-3">
-      <Frame
-        dense
-        title="Elite Four + Champion"
-        actions={
-          <Link
-            href={toolsHref(slug, "guide", { chapter: "elite-four" })}
-            className="text-[11px] font-semibold text-[var(--on-chrome)] underline decoration-[var(--on-chrome)]/35 underline-offset-2"
-          >
-            Guide
-          </Link>
-        }
-      >
+      <Frame dense title="Gym leaders">
         <p className="mb-2 text-[11px] text-muted">
           Specialty + your draft answers. Expand a row for bring / careful types.
         </p>
-        <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">
-          {ELITE_FOUR_PREP.map((prep) => (
-            <PrepCard key={prep.id} prep={prep} draft={draft} />
-          ))}
-        </ul>
-      </Frame>
-
-      <Frame dense collapsible defaultOpen={false} title="Gym leaders">
         <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">
           {gymPreps.map((entry) => (
             <PrepCard
@@ -886,6 +867,27 @@ function PrepPanels({
                 chapter: entry.chapterId,
               })}
             />
+          ))}
+        </ul>
+      </Frame>
+
+      <Frame
+        dense
+        collapsible
+        defaultOpen={false}
+        title="Elite Four + Champion"
+        actions={
+          <Link
+            href={toolsHref(slug, "guide", { chapter: "elite-four" })}
+            className="text-[11px] font-semibold text-[var(--on-chrome)] underline decoration-[var(--on-chrome)]/35 underline-offset-2"
+          >
+            Guide
+          </Link>
+        }
+      >
+        <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">
+          {ELITE_FOUR_PREP.map((prep) => (
+            <PrepCard key={prep.id} prep={prep} draft={draft} />
           ))}
         </ul>
       </Frame>
