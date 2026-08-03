@@ -18,7 +18,7 @@ function item(
   };
 }
 
-test("pins an existing welcome row first without inventing one", () => {
+test("pins an existing welcome row first", () => {
   const welcome = item({
     id: "w1",
     type: "WELCOME",
@@ -32,8 +32,11 @@ test("pins an existing welcome row first without inventing one", () => {
   assert.equal(pinned[1]?.id, "n1");
 });
 
-test("leaves the list alone when welcome is absent (archived / dismissed)", () => {
+test("invents a pinned welcome when the list has none", () => {
   const other = item({ id: "n1", type: "FEEDBACK", title: "New bug" });
-  assert.deepEqual(withPinnedWelcome([other]), [other]);
-  assert.deepEqual(withPinnedWelcome([]), []);
+  const pinned = withPinnedWelcome([other]);
+  assert.equal(pinned[0]?.id, "welcome");
+  assert.equal(pinned[0]?.type, "WELCOME");
+  assert.equal(pinned[1]?.id, "n1");
+  assert.equal(withPinnedWelcome([])[0]?.id, "welcome");
 });

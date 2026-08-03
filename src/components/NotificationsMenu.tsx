@@ -44,6 +44,20 @@ export function NotificationsMenu({
     };
   }, [open]);
 
+  function onMenuMouseLeave() {
+    if (coarse) return;
+    // Dismiss removes the row under the cursor; that can fire a spurious
+    // mouseleave even though the pointer is still over the menu. Defer and
+    // keep open when :hover still matches.
+    requestAnimationFrame(() => {
+      if (rootRef.current?.matches(":hover")) {
+        setOpen(true);
+        return;
+      }
+      setOpen(false);
+    });
+  }
+
   return (
     <div
       ref={rootRef}
@@ -51,7 +65,7 @@ export function NotificationsMenu({
       // Hover-open is a desktop affordance only. On touch the emulated
       // mouseenter would fight the click toggle, so tap drives it there.
       onMouseEnter={coarse ? undefined : () => setOpen(true)}
-      onMouseLeave={coarse ? undefined : () => setOpen(false)}
+      onMouseLeave={coarse ? undefined : onMenuMouseLeave}
     >
       <button
         type="button"
@@ -97,14 +111,15 @@ export function NotificationsMenu({
                   const feedbackHref = feedbackNotificationHref(
                     notification.actionKey,
                   );
+                  const pinnedWelcome = isWelcomeNotification(notification);
                   return (
                     <li key={notification.id} className="relative">
                       <button
                         type="button"
                         role="menuitem"
-                        className={`flex w-full flex-col gap-0.5 py-2.5 pr-10 pl-3 text-left hover:bg-accent/15 ${
-                          unread ? "bg-accent/8" : ""
-                        }`}
+                        className={`flex w-full flex-col gap-0.5 py-2.5 pl-3 text-left hover:bg-accent/15 ${
+                          pinnedWelcome ? "pr-3" : "pr-10"
+                        } ${unread ? "bg-accent/8" : ""}`}
                         onClick={() => {
                           onSelect(notification);
                           setOpen(false);
@@ -131,7 +146,7 @@ export function NotificationsMenu({
                                 {notification.body}
                               </span>
                             ) : null}
-                            {isWelcomeNotification(notification) ? (
+                            {pinnedWelcome ? (
                               <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
                                 Start tour →
                               </span>
@@ -144,18 +159,22 @@ export function NotificationsMenu({
                           </span>
                         </span>
                       </button>
-                      <button
-                        type="button"
-                        aria-label={`Dismiss ${notification.title}`}
-                        className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-frame/50 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          onDismiss(notification);
-                        }}
-                      >
-                        <DismissIcon />
-                      </button>
+                      {!pinnedWelcome ? (
+                        <button
+                          type="button"
+                          aria-label={`Dismiss ${notification.title}`}
+                          className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-frame/50 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            // Keep the drawer open so several can be cleared in a row.
+                            setOpen(true);
+                            onDismiss(notification);
+                          }}
+                        >
+                          <DismissIcon />
+                        </button>
+                      ) : null}
                     </li>
                   );
                 })}

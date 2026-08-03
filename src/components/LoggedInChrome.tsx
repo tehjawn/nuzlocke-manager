@@ -105,10 +105,10 @@ export function LoggedInChrome({
   }
 
   async function dismissNotification(notification: NotificationItem) {
+    if (isWelcomeNotification(notification)) return;
     setNotifications((prev) =>
       withPinnedWelcome(prev.filter((n) => n.id !== notification.id)),
     );
-    if (notification.id === "welcome") return;
     const result = await archiveNotificationAction(notification.id);
     if (!result.ok) {
       // Re-insert only this row against latest state so overlapping dismissals
