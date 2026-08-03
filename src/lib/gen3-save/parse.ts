@@ -145,14 +145,23 @@ const EWRAM_OFFSET = 0x21000;
 const EWRAM_SIZE = 0x40000;
 const MON_SIZE = PARTY_MON_SIZE;
 const BOX_SIZE = BOX_MON_SIZE;
-/** Cap dex-only stubs so late-game national dex cannot blow past import limits. */
-const DEX_SEEN_STUB_CAP = 200;
+/**
+ * Cap dex-only stubs. Modern Emerald's ROM dex is ~462 species — a filled
+ * national dex must be able to import without silent truncation.
+ */
+const DEX_SEEN_STUB_CAP = MODERN_NUM_SPECIES;
 /**
  * Max seen−owned delta when validating Pokédex bitfield pairs in EWRAM.
- * Mid-run Nuzlockes routinely exceed ~40 seen-not-owned (failed catches);
- * keep this aligned with the stub import cap so states aren't rejected early.
+ * Late-game Nuzlockes can see most of the dex while owning far fewer
+ * (e.g. 75 owned / 255 seen). Rank by owned tightness instead of a low cap.
  */
-const DEX_SEEN_OWNED_DELTA_MAX = DEX_SEEN_STUB_CAP;
+const DEX_SEEN_OWNED_DELTA_MAX = MODERN_NUM_SPECIES;
+/**
+ * Owned bitfield may include released / evolved / traded forms beyond the
+ * party∪box∪rip set we recovered from the dump. Elite-4 saves need ~+25;
+ * keep headroom without accepting near-full-dex false positives.
+ */
+const DEX_OWNED_SLACK_MAX = 80;
 
 function flagsAfterParty(mode: SpeciesIdMode): number {
   return mode === "modern" ? MODERN_FLAGS_AFTER_PARTY : CREST_FLAGS_AFTER_PARTY;
@@ -1047,7 +1056,12 @@ function locateDexSeenBitfieldInRange(
 
     const ownedPc = dexPopcount(bytes, base + dexFlagBytes, dexFlagBytes);
     const seenPc = dexPopcount(bytes, base, dexFlagBytes);
-    if (ownedPc < ownedMust.length || ownedPc > ownedMust.length + 15) continue;
+    if (
+      ownedPc < ownedMust.length ||
+      ownedPc > ownedMust.length + DEX_OWNED_SLACK_MAX
+    ) {
+      continue;
+    }
     if (seenPc < seenMust.length) continue;
     if (
       seenPc >
@@ -1135,7 +1149,12 @@ function locateModernSaveMeta(
     }
     if (!ok) continue;
     const owned = listDexBits(bytes, ownedBase, MODERN_NUM_SPECIES);
-    if (owned.length < ownedMust.length || owned.length > ownedMust.length + 12) {
+    // Late-game Nuzlockes own far more than party∪box∪rip (released /
+    // evolved / traded forms still set owned). Slack must cover that gap.
+    if (
+      owned.length < ownedMust.length ||
+      owned.length > ownedMust.length + DEX_OWNED_SLACK_MAX
+    ) {
       continue;
     }
     const seenBase = ownedBase + n;
@@ -1496,6 +1515,37 @@ function readMoneyFromEmbeddedFlash(
   return readMoney(blocks.saveBlock1, blocks.saveBlock2, mode);
 }
 
+/**
+ * When live EWRAM Pokédex pairing fails (late-game ASLR / slack), fall back to
+ * the embedded flash SaveBlock1 seen1 copy — same sectors money already uses.
+ */
+function readModernDexFromEmbeddedFlash(
+  bytes: Uint8Array,
+  ownedMust: number[],
+): {
+  seen: number[];
+  badges: ParsedSaveBadges;
+  revive: ParsedSaveRevive;
+} | null {
+  const flash = extractEmbeddedFlash(bytes);
+  if (!flash) return null;
+  const blocks = parseFlashSave(flash);
+  if (!blocks) return null;
+  const sb1 = blocks.saveBlock1;
+  if (SB1_SEEN1 + MODERN_DEX_FLAG_BYTES > sb1.length) return null;
+  if (
+    ownedMust.length > 0 &&
+    !ownedMust.every((id) => dexBitSet(sb1, SB1_SEEN1, id))
+  ) {
+    return null;
+  }
+  return {
+    seen: listDexBits(sb1, SB1_SEEN1, MODERN_NUM_SPECIES),
+    badges: readBadgesAbsolute(sb1, SB1_FLAGS),
+    revive: readReviveAbsolute(sb1),
+  };
+}
+
 function classifyEwram(
   bytes: Uint8Array,
   formatLabel: string,
@@ -1692,6 +1742,25 @@ function classifyEwram(
       warnings.push(
         `Pokédex: ${meta.seen.length} seen, ${meta.owned.length} owned.`,
       );
+    } else {
+      // Late-game .state: EWRAM pair heuristic may still miss; flash seen1 is
+      // stable for Encountered stubs + badges when sectors are embedded.
+      const fromFlash = readModernDexFromEmbeddedFlash(
+        flashSource ?? bytes,
+        ownedMust,
+      );
+      if (fromFlash) {
+        dex = { seen: fromFlash.seen, source: "seen1" };
+        if (!badges.reliable && fromFlash.badges.reliable) {
+          badges = fromFlash.badges;
+        }
+        if (!revive.reliable && fromFlash.revive.reliable) {
+          revive = fromFlash.revive;
+        }
+        warnings.push(
+          `Pokédex: ${fromFlash.seen.length} seen (embedded flash seen1).`,
+        );
+      }
     }
   }
 

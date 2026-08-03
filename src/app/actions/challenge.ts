@@ -2325,8 +2325,9 @@ const SaveImportMonSchema = z.object({
 
 const ImportFromSaveSchema = z.object({
   trainerId: z.string().min(1),
-  // Party + box + R.I.P. + wild buffer + Pokédex-seen stubs (capped in parser).
-  pokemon: z.array(SaveImportMonSchema).max(512),
+  // Party + box + R.I.P. + wild buffer + Pokédex-seen stubs (capped in parser
+  // at Modern Emerald dex size — allow headroom for a full late-game board).
+  pokemon: z.array(SaveImportMonSchema).max(1024),
   trainerName: z.string().min(1).max(32).optional().nullable(),
   applyTrainerName: z.boolean().default(false),
   badgeKeys: z.array(z.string().min(1).max(32)).max(16).default([]),
