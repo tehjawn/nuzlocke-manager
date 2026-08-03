@@ -392,106 +392,97 @@ export function TeamPlannerView({
         </p>
       </section>
 
-      {/* Living box + analysis: side-by-side when box is open so swaps stay live */}
-      <div
-        className={
-          boxOpen
-            ? "grid gap-3 lg:grid-cols-[minmax(14rem,18rem)_minmax(0,1fr)] lg:items-start"
-            : undefined
-        }
-      >
-        {boxOpen ? (
-          <div
-            id="planner-living-box"
-            ref={boxPanelRef}
-            tabIndex={-1}
-            className="rounded-lg border border-interactive/35 bg-surface-2/80 p-3 outline-none ring-1 ring-interactive/20 lg:sticky lg:top-3"
-          >
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-ink">
-                Boxed Pokémon{" "}
-                <span className="font-medium tabular-nums text-muted">
-                  ({pool.length})
-                </span>
-              </p>
-              <button
-                type="button"
-                className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2"
-                onClick={() => setBoxOpen(false)}
-              >
-                Hide
-              </button>
-            </div>
-            {pool.length === 0 ? (
-              <p className="text-xs text-muted">
-                No Main or Reserve Pokémon on this board yet.
-              </p>
-            ) : (
-              <LivingBoxGrid
-                pokemon={pool}
-                draftIds={draftIdSet}
-                onPlace={placeFromBox}
-              />
-            )}
+      {/* Full-width boxed panel — readable sprites, analysis stays below and updates live */}
+      {boxOpen ? (
+        <div
+          id="planner-living-box"
+          ref={boxPanelRef}
+          tabIndex={-1}
+          className="rounded-lg border border-interactive/35 bg-surface-2/80 p-3 outline-none ring-1 ring-interactive/20"
+        >
+          <div className="mb-2.5 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-ink">
+              Boxed Pokémon{" "}
+              <span className="font-medium tabular-nums text-muted">
+                ({pool.length})
+              </span>
+            </p>
+            <button
+              type="button"
+              className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2"
+              onClick={() => setBoxOpen(false)}
+            >
+              Hide
+            </button>
           </div>
-        ) : null}
-
-        <div className="min-w-0 space-y-3">
-          {/* Mode tabs */}
-          <div
-            role="tablist"
-            aria-label="Planner analysis"
-            className="flex gap-1 border-b border-frame/70"
-          >
-            {MODES.map((entry) => {
-              const active = mode === entry.id;
-              return (
-                <button
-                  key={entry.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  id={`planner-tab-${entry.id}`}
-                  onClick={() => selectMode(entry.id)}
-                  className={`pressable -mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${
-                    active
-                      ? "border-interactive text-ink"
-                      : "border-transparent text-muted hover:text-ink"
-                  }`}
-                >
-                  {entry.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Analysis stage */}
-          <section
-            role="tabpanel"
-            aria-labelledby={`planner-tab-${mode}`}
-            className="min-w-0 space-y-3"
-            aria-live="polite"
-          >
-            {mode === "coverage" ? (
-              <CoveragePanels
-                coverage={coverage}
-                defense={defense}
-                draft={draft}
-                summary={summary}
-              />
-            ) : null}
-            {mode === "prep" ? (
-              <PrepPanels slug={slug} draft={draft} gymPreps={gymPreps} />
-            ) : null}
-            {mode === "vs" ? (
-              <VsTrainerPanel
-                draft={draft}
-                opponent={opponent}
-                opponentMain={opponentMain}
-              />
-            ) : null}
-          </section>
+          {pool.length === 0 ? (
+            <p className="text-xs text-muted">
+              No Main or Reserve Pokémon on this board yet.
+            </p>
+          ) : (
+            <LivingBoxGrid
+              pokemon={pool}
+              draftIds={draftIdSet}
+              onPlace={placeFromBox}
+            />
+          )}
         </div>
+      ) : null}
+
+      {/* Mode tabs + analysis (full width) */}
+      <div className="min-w-0 space-y-3">
+        <div
+          role="tablist"
+          aria-label="Planner analysis"
+          className="flex gap-1 border-b border-frame/70"
+        >
+          {MODES.map((entry) => {
+            const active = mode === entry.id;
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                id={`planner-tab-${entry.id}`}
+                onClick={() => selectMode(entry.id)}
+                className={`pressable -mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${
+                  active
+                    ? "border-interactive text-ink"
+                    : "border-transparent text-muted hover:text-ink"
+                }`}
+              >
+                {entry.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <section
+          role="tabpanel"
+          aria-labelledby={`planner-tab-${mode}`}
+          className="min-w-0 space-y-3"
+          aria-live="polite"
+        >
+          {mode === "coverage" ? (
+            <CoveragePanels
+              coverage={coverage}
+              defense={defense}
+              draft={draft}
+              summary={summary}
+            />
+          ) : null}
+          {mode === "prep" ? (
+            <PrepPanels slug={slug} draft={draft} gymPreps={gymPreps} />
+          ) : null}
+          {mode === "vs" ? (
+            <VsTrainerPanel
+              draft={draft}
+              opponent={opponent}
+              opponentMain={opponentMain}
+            />
+          ) : null}
+        </section>
       </div>
     </div>
   );
@@ -509,15 +500,15 @@ function PartyStripSlots({
   onSlotClick: (index: number) => void;
 }) {
   return (
-    <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+    <ul className="grid grid-cols-3 items-stretch gap-1.5 sm:grid-cols-6">
       {slots.map((id, index) => {
         const entry = id ? poolById.get(id) : undefined;
         const active = activeSlot === index;
         const label = entry ? monLabel(entry) : `Empty slot ${index + 1}`;
         return (
-          <li key={`slot-${index}`}>
+          <li key={`slot-${index}`} className="min-h-0">
             {entry ? (
-              <PokemonHoverPreview pokemon={entry}>
+              <PokemonHoverPreview pokemon={entry} className="h-full">
                 <SlotButton
                   active={active}
                   filled
@@ -540,7 +531,7 @@ function PartyStripSlots({
                   <span className="max-w-full truncate text-center text-[10px] font-semibold leading-tight text-ink">
                     {label}
                   </span>
-                  <span className="flex flex-wrap justify-center gap-0.5">
+                  <span className="flex min-h-[1.125rem] flex-wrap justify-center gap-0.5">
                     {entry.types.map((t) => (
                       <TypeBadge
                         key={`${entry.id}-${t}`}
@@ -558,10 +549,16 @@ function PartyStripSlots({
                 label={label}
                 onClick={() => onSlotClick(index)}
               >
-                <span className="text-[9px] font-bold tabular-nums text-muted">
+                <span className="absolute left-1 top-1 text-[9px] font-bold tabular-nums text-muted">
                   {index + 1}
                 </span>
+                {/* Match filled slot geometry so empty cells share height */}
+                <span
+                  aria-hidden
+                  className="block h-12 w-12 sm:h-14 sm:w-14"
+                />
                 <span className="text-[10px] font-medium text-muted">Empty</span>
+                <span aria-hidden className="min-h-[1.125rem]" />
               </SlotButton>
             )}
           </li>
@@ -598,7 +595,7 @@ function SlotButton({
       }
       aria-pressed={active}
       onClick={onClick}
-      className={`pressable relative flex w-full flex-col items-center gap-0.5 rounded-md border px-1 py-2 transition-colors ${
+      className={`pressable relative flex h-full min-h-[6.75rem] w-full flex-col items-center justify-center gap-0.5 rounded-md border px-1 py-2 transition-colors sm:min-h-[7.25rem] ${
         active
           ? "border-interactive bg-interactive-soft/50 ring-1 ring-interactive/40"
           : filled
@@ -621,7 +618,7 @@ function LivingBoxGrid({
   onPlace: (id: string) => void;
 }) {
   return (
-    <ul className="grid max-h-[min(16rem,40vh)] grid-cols-4 gap-1.5 overflow-y-auto pr-0.5 sm:grid-cols-6 md:grid-cols-8">
+    <ul className="grid max-h-[min(20rem,45vh)] grid-cols-3 gap-2 overflow-y-auto pr-0.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
       {pokemon.map((entry) => {
         const onTeam = draftIds.has(entry.id);
         const label = monLabel(entry);
@@ -637,7 +634,7 @@ function LivingBoxGrid({
                     : `Place ${label} into selected slot`
                 }
                 onClick={() => onPlace(entry.id)}
-                className={`pressable flex w-full flex-col items-center gap-0.5 rounded-md border px-0.5 py-1.5 transition-colors ${
+                className={`pressable flex w-full flex-col items-center gap-1 rounded-md border px-1.5 py-2 transition-colors ${
                   onTeam
                     ? "border-interactive/45 bg-interactive-soft/35"
                     : "border-frame/45 bg-surface/80 hover:border-interactive/35"
@@ -645,16 +642,21 @@ function LivingBoxGrid({
               >
                 <PokemonSpriteImage
                   alt={label}
-                  className="pixelated h-10 w-10 object-contain"
-                  height={40}
+                  className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+                  height={56}
                   loading="lazy"
                   pokedexId={entry.pokedexId}
                   shiny={entry.isShiny}
                   species={entry.species}
-                  width={40}
+                  width={56}
                 />
-                <span className="max-w-full truncate text-center text-[9px] font-semibold leading-tight text-ink">
+                <span className="max-w-full truncate text-center text-[11px] font-semibold leading-tight text-ink">
                   {label}
+                </span>
+                <span className="flex flex-wrap justify-center gap-0.5">
+                  {entry.types.slice(0, 2).map((t) => (
+                    <TypeBadge key={`${entry.id}-${t}`} type={t} size="sm" />
+                  ))}
                 </span>
               </button>
             </PokemonHoverPreview>
@@ -850,15 +852,18 @@ function PrepPanels({
           </Link>
         }
       >
-        <ul className="space-y-2">
+        <p className="mb-2 text-[11px] text-muted">
+          Specialty + your draft answers. Expand a row for bring / careful types.
+        </p>
+        <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">
           {ELITE_FOUR_PREP.map((prep) => (
             <PrepCard key={prep.id} prep={prep} draft={draft} />
           ))}
         </ul>
       </Frame>
 
-      <Frame dense collapsible defaultOpen title="Gym leaders">
-        <ul className="space-y-2">
+      <Frame dense collapsible defaultOpen={false} title="Gym leaders">
+        <ul className="divide-y divide-frame/50 overflow-hidden rounded-md border border-frame/60">
           {gymPreps.map((entry) => (
             <PrepCard
               key={entry.id}
@@ -891,70 +896,81 @@ function PrepCard({
     draft.map((p) => ({ ...p, slot: "MAIN" as const })),
     prep,
   );
+  const specialty = prep.specialtyTypes[0];
 
   return (
-    <li className="rounded-md border border-frame/60 bg-surface-2/50 p-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-1.5">
-        <p className="text-xs font-semibold tracking-tight text-ink">
-          {prep.leaderName}
-          {subtitle ? (
-            <span className="ml-1 font-medium text-muted">
-              · {subtitle.replace(/^Defeat\s+/i, "")}
-            </span>
-          ) : null}
-        </p>
-        {guideHref ? (
-          <Link
-            href={guideHref}
-            className="text-[10px] font-semibold text-interactive underline decoration-interactive/35 underline-offset-2"
-          >
-            Guide
-          </Link>
-        ) : null}
-      </div>
-      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-        <TypeRow label="Vs" types={prep.specialtyTypes} />
-        <TypeRow label="Bring" types={prep.recommendedTypes} />
-        {prep.cautionTypes?.length ? (
-          <TypeRow label="Careful" types={prep.cautionTypes} />
-        ) : null}
-      </div>
-      {matches.length > 0 ? (
-        <ul className="mt-1.5 flex flex-wrap gap-1 border-t border-frame/40 pt-1.5">
-          {matches.map(({ entry, matchedTypes }) => (
-            <li
-              key={entry.id}
-              className="inline-flex items-center gap-1 rounded border border-frame/40 bg-surface/70 px-1 py-0.5"
+    <li>
+      <details className="group open:bg-surface-2/40">
+        <summary className="flex cursor-pointer list-none flex-col gap-1.5 px-2.5 py-2 sm:flex-row sm:items-center sm:gap-2 [&::-webkit-details-marker]:hidden">
+          <span className="flex min-w-0 items-center gap-2">
+            <span
+              aria-hidden
+              className="shrink-0 text-[10px] text-muted transition-transform group-open:rotate-90"
             >
-              <PokemonSpriteImage
-                alt={monLabel(entry)}
-                className="pixelated h-6 w-6 object-contain"
-                height={24}
-                loading="lazy"
-                pokedexId={entry.pokedexId}
-                shiny={entry.isShiny}
-                species={entry.species}
-                width={24}
-              />
-              <span className="text-[10px] font-semibold text-ink">
-                {monLabel(entry)}
-              </span>
-              {matchedTypes.map((t) => (
-                <TypeBadge
-                  key={`${entry.id}-${t}`}
-                  type={t}
-                  size="sm"
-                  variant="soft"
-                />
-              ))}
-            </li>
-          ))}
-        </ul>
-      ) : draft.length > 0 ? (
-        <p className="mt-1.5 text-[10px] text-muted">
-          No draft overlap with {prep.recommendedTypes.join(" / ")}.
-        </p>
-      ) : null}
+              ▸
+            </span>
+            <span className="min-w-0 truncate text-sm font-semibold text-ink">
+              {prep.leaderName}
+              {subtitle ? (
+                <span className="ml-1 font-medium text-muted">
+                  · {subtitle.replace(/^Defeat\s+/i, "").split("—")[0]?.trim()}
+                </span>
+              ) : null}
+            </span>
+            {specialty ? <TypeBadge type={specialty} size="sm" /> : null}
+          </span>
+          <span className="flex min-w-0 flex-wrap items-center gap-1 sm:ml-auto sm:justify-end">
+            {matches.length > 0 ? (
+              matches.slice(0, 3).map(({ entry, matchedTypes }) => (
+                <span
+                  key={entry.id}
+                  className="inline-flex max-w-[10rem] items-center gap-1 rounded border border-accent/30 bg-accent/10 px-1 py-0.5"
+                >
+                  <PokemonSpriteImage
+                    alt={monLabel(entry)}
+                    className="pixelated h-5 w-5 object-contain"
+                    height={20}
+                    loading="lazy"
+                    pokedexId={entry.pokedexId}
+                    shiny={entry.isShiny}
+                    species={entry.species}
+                    width={20}
+                  />
+                  <span className="truncate text-[10px] font-semibold text-ink">
+                    {monLabel(entry)}
+                  </span>
+                  {matchedTypes[0] ? (
+                    <TypeBadge type={matchedTypes[0]} size="sm" variant="soft" />
+                  ) : null}
+                </span>
+              ))
+            ) : (
+              <span className="text-[11px] text-muted">No answer</span>
+            )}
+          </span>
+        </summary>
+        <div className="space-y-2 border-t border-frame/40 px-2.5 py-2 pl-7">
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            <TypeRow label="Bring" types={prep.recommendedTypes} />
+            {prep.cautionTypes?.length ? (
+              <TypeRow label="Careful" types={prep.cautionTypes} />
+            ) : null}
+          </div>
+          {prep.partyNotes ? (
+            <p className="text-[11px] leading-relaxed text-muted">
+              {prep.partyNotes}
+            </p>
+          ) : null}
+          {guideHref ? (
+            <Link
+              href={guideHref}
+              className="inline-block text-[11px] font-semibold text-interactive underline decoration-interactive/35 underline-offset-2"
+            >
+              Open Guide
+            </Link>
+          ) : null}
+        </div>
+      </details>
     </li>
   );
 }
