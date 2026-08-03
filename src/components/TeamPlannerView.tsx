@@ -376,7 +376,7 @@ export function TeamPlannerView({
               }
             }}
           >
-            {boxOpen ? "Hide box" : "Add from box"}
+            {boxOpen ? "Hide Boxed Pokémon" : "Show Boxed Pokémon"}
           </button>
         </div>
         <PartyStripSlots
@@ -387,8 +387,8 @@ export function TeamPlannerView({
         />
         <p className="mt-1.5 text-[11px] text-muted" aria-live="polite">
           {boxOpen
-            ? `Placing into ${activeLabel} — pick a box mon, or tap the slot again to clear.`
-            : "Tap a slot to open the box and place or swap."}
+            ? `Placing into ${activeLabel} — pick a boxed mon, or tap the slot again to clear.`
+            : "Tap a slot to show boxed Pokémon and place or swap."}
         </p>
       </section>
 
@@ -409,7 +409,7 @@ export function TeamPlannerView({
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-ink">
-                Living box{" "}
+                Boxed Pokémon{" "}
                 <span className="font-medium tabular-nums text-muted">
                   ({pool.length})
                 </span>
@@ -419,7 +419,7 @@ export function TeamPlannerView({
                 className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2"
                 onClick={() => setBoxOpen(false)}
               >
-                Done
+                Hide
               </button>
             </div>
             {pool.length === 0 ? (
@@ -680,7 +680,7 @@ function CoveragePanels({
     return (
       <Frame dense title="Coverage">
         <p className="text-sm text-muted">
-          Tap a team slot and add from the box to see a live coverage TLDR.
+          Tap a team slot and show boxed Pokémon to see a live coverage TLDR.
         </p>
       </Frame>
     );
