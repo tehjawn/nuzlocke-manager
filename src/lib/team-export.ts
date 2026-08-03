@@ -7,7 +7,15 @@ import type {
 import { formatMoveMetaTip, lookupMoveMeta } from "@/lib/move-meta";
 import { recommendPlaystyle } from "@/lib/playstyle";
 import { evolutionViewFor } from "@/lib/species-evolutions";
-import { formatSpreadShort } from "@/lib/stats";
+import {
+  STAT_KEYS,
+  STAT_LABELS,
+  formatSpreadShort,
+  isEmptySpread,
+  type StatSpread,
+} from "@/lib/stats";
+
+export type TeamExportFormat = "llm" | "showdown";
 
 export type TeamExportOpts = {
   challengeName: string;
@@ -217,4 +225,93 @@ export function formatTrainerTeamExport(
     "",
     `Board: ${opts.boardUrl}`,
   ].join("\n");
+}
+
+/** Showdown set title: `Nick (Species) @ Item` / `Species @ Item` / bare species. */
+function showdownTitleLine(p: PokemonEntry): string {
+  const species = p.species.trim() || "Unknown";
+  const nick = p.nickname?.trim();
+  const item = p.heldItem?.trim();
+  const hasNick = Boolean(nick && nick.toLowerCase() !== species.toLowerCase());
+  const name = hasNick ? `${nick} (${species})` : species;
+  return item ? `${name} @ ${item}` : name;
+}
+
+/** Showdown EV/IV line: non-zero EVs, non-31 IVs only (Showdown defaults). */
+function formatShowdownSpreadLine(
+  kind: "EVs" | "IVs",
+  spread: StatSpread | null | undefined,
+): string | null {
+  if (!spread || isEmptySpread(spread)) return null;
+  const parts: string[] = [];
+  for (const key of STAT_KEYS) {
+    const value = spread[key];
+    if (kind === "EVs") {
+      if (value <= 0) continue;
+    } else if (value >= 31) {
+      continue;
+    }
+    parts.push(`${value} ${STAT_LABELS[key]}`);
+  }
+  if (parts.length === 0) return null;
+  return `${kind}: ${parts.join(" / ")}`;
+}
+
+function formatShowdownSet(
+  p: PokemonEntry,
+  showCompetitive: boolean,
+): string {
+  const lines: string[] = [showdownTitleLine(p)];
+
+  if (showCompetitive && p.ability?.trim()) {
+    lines.push(`Ability: ${p.ability.trim()}`);
+  }
+  if (p.level != null && Number.isFinite(p.level)) {
+    lines.push(`Level: ${p.level}`);
+  }
+  if (p.isShiny) {
+    lines.push("Shiny: Yes");
+  }
+
+  if (showCompetitive) {
+    const evs = formatShowdownSpreadLine("EVs", p.evs);
+    if (evs) lines.push(evs);
+    if (p.nature?.trim()) {
+      lines.push(`${p.nature.trim()} Nature`);
+    }
+    const ivs = formatShowdownSpreadLine("IVs", p.ivs);
+    if (ivs) lines.push(ivs);
+    for (const move of p.moves.map((m) => m.trim()).filter(Boolean)) {
+      lines.push(`- ${move}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Format living MAIN squad as Pokémon Showdown / PokePaste text (no comments).
+ * Same privacy gate as the LLM export. Reserves are omitted for a clean import.
+ */
+export function formatTrainerTeamShowdown(
+  trainer: TrainerProfile,
+  opts: Pick<TeamExportOpts, "showCompetitiveDetails"> = {},
+): string {
+  const showCompetitive = opts.showCompetitiveDetails !== false;
+  const main = livingInSlot(trainer.pokemon, "MAIN");
+  if (main.length === 0) {
+    return "";
+  }
+  return main.map((p) => formatShowdownSet(p, showCompetitive)).join("\n\n");
+}
+
+/** Dispatch to LLM or Showdown/PokePaste formatter. */
+export function formatTrainerTeam(
+  trainer: TrainerProfile,
+  opts: TeamExportOpts & { format?: TeamExportFormat },
+): string {
+  if (opts.format === "showdown") {
+    return formatTrainerTeamShowdown(trainer, opts);
+  }
+  return formatTrainerTeamExport(trainer, opts);
 }

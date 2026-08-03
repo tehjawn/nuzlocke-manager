@@ -7,10 +7,11 @@ import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 import { copyText } from "@/lib/copy-text";
 import type { BadgeDefinition, TrainerProfile } from "@/lib/challenge-types";
 import {
-  formatTrainerTeamExport,
+  formatTrainerTeam,
   toolsChartPath,
   toolsGuidePath,
   trainerBoardPath,
+  type TeamExportFormat,
 } from "@/lib/team-export";
 
 type TeamExportModalProps = {
@@ -29,6 +30,23 @@ function absoluteUrl(path: string): string {
   return `${window.location.origin}${path}`;
 }
 
+const FORMAT_OPTIONS: Array<{
+  id: TeamExportFormat;
+  label: string;
+  hint: string;
+}> = [
+  {
+    id: "llm",
+    label: "LLM advice",
+    hint: "Framed paste for Modern Emerald Nuzlocke team advice.",
+  },
+  {
+    id: "showdown",
+    label: "Showdown / PokePaste",
+    hint: "Main Squad only — paste into Showdown or pokepaste.ovh.",
+  },
+];
+
 export function TeamExportModal({
   open,
   onClose,
@@ -40,17 +58,21 @@ export function TeamExportModal({
   showCompetitiveDetails,
 }: TeamExportModalProps) {
   const textareaId = useId();
+  const formatTabId = useId();
+  const [format, setFormat] = useState<TeamExportFormat>("llm");
   const [text, setText] = useState("");
   const [copied, setCopied] = useState<"team" | "link" | null>(null);
 
   useEffect(() => {
     if (!open) {
       setCopied(null);
+      setFormat("llm");
       return;
     }
     const boardPath = trainerBoardPath(challengeSlug, trainer.id);
     setText(
-      formatTrainerTeamExport(trainer, {
+      formatTrainerTeam(trainer, {
+        format,
         challengeName,
         challengeGame,
         challengeSlug,
@@ -63,6 +85,7 @@ export function TeamExportModal({
     );
   }, [
     open,
+    format,
     challengeSlug,
     challengeName,
     challengeGame,
@@ -72,12 +95,18 @@ export function TeamExportModal({
   ]);
 
   const boardUrl = absoluteUrl(trainerBoardPath(challengeSlug, trainer.id));
+  const activeHint =
+    FORMAT_OPTIONS.find((o) => o.id === format)?.hint ?? FORMAT_OPTIONS[0].hint;
 
   async function handleCopyTeam() {
     const ok = await copyText(text);
     if (ok) {
       setCopied("team");
-      pushSnackbar("Team copied", "success", 2200);
+      pushSnackbar(
+        format === "showdown" ? "Showdown paste copied" : "Team copied",
+        "success",
+        2200,
+      );
       window.setTimeout(() => setCopied((c) => (c === "team" ? null : c)), 2000);
     } else {
       pushSnackbar("Couldn’t copy — select the text instead", "error");
@@ -101,7 +130,7 @@ export function TeamExportModal({
       onClose={onClose}
       size="md"
       title="Export team"
-      subtitle="Paste into an LLM for Modern Emerald Nuzlocke team advice."
+      subtitle={activeHint}
       footer={
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button
@@ -131,8 +160,36 @@ export function TeamExportModal({
       }
     >
       <div className="space-y-3">
+        <div
+          role="tablist"
+          aria-label="Export format"
+          className="flex flex-wrap gap-2"
+        >
+          {FORMAT_OPTIONS.map((option) => {
+            const selected = format === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="tab"
+                id={`${formatTabId}-${option.id}`}
+                aria-selected={selected}
+                className={`pressable border px-3 py-1.5 text-xs font-semibold tracking-tight ${
+                  selected
+                    ? "border-interactive bg-interactive-soft text-ink"
+                    : "border-frame bg-surface text-muted hover:border-frame hover:text-ink"
+                }`}
+                onClick={() => setFormat(option.id)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
         <p className="text-sm text-muted">
-          Living Main + Reserve only
+          {format === "showdown"
+            ? "Main Squad only (no reserves)"
+            : "Living Main + Reserve"}
           {showCompetitiveDetails
             ? " — includes nature, moves, and spreads you can see on this board."
             : " — competitive details hidden (same as the public board view)."}

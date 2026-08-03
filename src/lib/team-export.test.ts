@@ -8,6 +8,7 @@ import type {
 import { redactCompetitivePokemonDetails } from "@/lib/pokemon-privacy";
 import {
   formatTrainerTeamExport,
+  formatTrainerTeamShowdown,
   trainerBoardPath,
 } from "@/lib/team-export";
 
@@ -220,4 +221,104 @@ test("formatTrainerTeamExport orders by partyIndex and handles empty squads", ()
   const third = text.indexOf("3. Third");
   assert.ok(first >= 0 && second > first && third > second);
   assert.match(text, /## Reserves\n\(none\)/);
+});
+
+test("formatTrainerTeamShowdown emits Showdown / PokePaste sets", () => {
+  const profile = trainer([
+    mon({
+      slot: "MAIN",
+      partyIndex: 0,
+      nickname: "Sparky",
+      species: "Pikachu",
+      pokedexId: 25,
+      level: 28,
+      isShiny: true,
+      nature: "Timid",
+      ability: "Static",
+      heldItem: "Light Ball",
+      moves: ["Thunderbolt", "Quick Attack"],
+      ivs: { hp: 31, atk: 0, def: 31, spa: 31, spd: 31, spe: 31 },
+      evs: { hp: 0, atk: 0, def: 0, spa: 252, spd: 4, spe: 252 },
+    }),
+    mon({
+      slot: "RESERVE",
+      partyIndex: 0,
+      species: "Geodude",
+      pokedexId: 74,
+      level: 18,
+      types: ["Rock", "Ground"],
+    }),
+    mon({
+      slot: "GRAVEYARD",
+      partyIndex: 0,
+      species: "Zigzagoon",
+      types: ["Normal"],
+    }),
+  ]);
+
+  const text = formatTrainerTeamShowdown(profile, {
+    showCompetitiveDetails: true,
+  });
+
+  assert.doesNotMatch(text, /\/\//);
+  assert.match(text, /Sparky \(Pikachu\) @ Light Ball/);
+  assert.match(text, /Ability: Static/);
+  assert.match(text, /Level: 28/);
+  assert.match(text, /Shiny: Yes/);
+  assert.match(text, /EVs: 252 SpA \/ 4 SpD \/ 252 Spe/);
+  assert.match(text, /Timid Nature/);
+  assert.match(text, /IVs: 0 Atk/);
+  assert.match(text, /- Thunderbolt/);
+  assert.match(text, /- Quick Attack/);
+  assert.doesNotMatch(text, /Geodude/);
+  assert.doesNotMatch(text, /Zigzagoon/);
+});
+
+test("formatTrainerTeamShowdown redacts competitive fields for spectators", () => {
+  const full = trainer([
+    mon({
+      slot: "MAIN",
+      partyIndex: 0,
+      nickname: "Sparky",
+      species: "Pikachu",
+      level: 28,
+      nature: "Timid",
+      ability: "Static",
+      heldItem: "Light Ball",
+      moves: ["Thunderbolt"],
+      ivs: { hp: 31, atk: 0, def: 31, spa: 31, spd: 31, spe: 31 },
+      evs: { hp: 0, atk: 0, def: 0, spa: 252, spd: 4, spe: 252 },
+    }),
+  ]);
+  const redacted = {
+    ...full,
+    pokemon: full.pokemon.map(redactCompetitivePokemonDetails),
+  };
+
+  const text = formatTrainerTeamShowdown(redacted, {
+    showCompetitiveDetails: false,
+  });
+
+  assert.match(text, /Sparky \(Pikachu\) @ Light Ball/);
+  assert.match(text, /Level: 28/);
+  assert.doesNotMatch(text, /Ability:/);
+  assert.doesNotMatch(text, /Nature/);
+  assert.doesNotMatch(text, /EVs:/);
+  assert.doesNotMatch(text, /IVs:/);
+  assert.doesNotMatch(text, /Thunderbolt/);
+});
+
+test("formatTrainerTeamShowdown empty main squad is blank", () => {
+  const text = formatTrainerTeamShowdown(
+    trainer([
+      mon({
+        slot: "RESERVE",
+        partyIndex: 0,
+        species: "Geodude",
+        types: ["Rock", "Ground"],
+      }),
+    ]),
+    { showCompetitiveDetails: true },
+  );
+  assert.equal(text, "");
 });
