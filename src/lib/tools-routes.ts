@@ -20,7 +20,8 @@ export const TOOLS_CATALOG: ReadonlyArray<{
   {
     id: "chart",
     title: "Type Chart",
-    blurb: "Modern 18-type attack × defense multipliers with hover scanning.",
+    blurb:
+      "Modern 18-type attack × defense multipliers — overlay a trainer's Main Squad coverage.",
   },
   {
     id: "compare",

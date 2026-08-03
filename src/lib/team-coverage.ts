@@ -376,6 +376,48 @@ export function coverageOffenseGrid(
   });
 }
 
+export type CoverageOffenseTierId = "S" | "A" | "B" | "F";
+
+export type CoverageOffenseTier = {
+  /** ≥2× — squad answers this defending type. */
+  S: ChartType[];
+  /** 1× — only neutral pressure. */
+  A: ChartType[];
+  /** ½× — resisted; soft gap. */
+  B: ChartType[];
+  /** 0× — blind spot. */
+  F: ChartType[];
+};
+
+export const COVERAGE_OFFENSE_TIER_META: ReadonlyArray<{
+  id: CoverageOffenseTierId;
+  label: string;
+  hint: string;
+}> = [
+  { id: "S", label: "Super", hint: "Best hit ≥2×" },
+  { id: "A", label: "Neutral", hint: "Best hit 1×" },
+  { id: "B", label: "Resist", hint: "Best hit ½×" },
+  { id: "F", label: "Blind", hint: "Best hit 0×" },
+];
+
+/**
+ * Bucket defending types by the squad's best offensive multiplier.
+ * Same thresholds as the planner coverage grid, split so 1× and ½×
+ * read as separate tiers (A vs B) for a classic tier-list scan.
+ */
+export function coverageOffenseTiers(
+  coverage: OffensiveCoverage,
+): CoverageOffenseTier {
+  const tiers: CoverageOffenseTiers = { S: [], A: [], B: [], F: [] };
+  for (const cell of coverage.cells) {
+    if (cell.bestMult >= SE_THRESHOLD) tiers.S.push(cell.defendingType);
+    else if (cell.bestMult >= 1) tiers.A.push(cell.defendingType);
+    else if (cell.bestMult > 0) tiers.B.push(cell.defendingType);
+    else tiers.F.push(cell.defendingType);
+  }
+  return tiers;
+}
+
 export type CoverageVerdictLabel = "Solid" | "Soft" | "Thin" | "Leaky";
 
 export type CoverageVerdict = {

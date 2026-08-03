@@ -4,6 +4,7 @@ import type { PokemonEntry } from "@/lib/challenge-types";
 import {
   bestOffenseVsType,
   coverageOffenseGrid,
+  coverageOffenseTiers,
   coverageVerdict,
   offensiveCoverage,
   recommendDraftCoverageTips,
@@ -175,6 +176,21 @@ test("teamCoverageSummary empty draft", () => {
   );
   assert.equal(bullets.length, 1);
   assert.match(bullets[0]!.text, /Empty/i);
+});
+
+test("coverageOffenseTiers buckets by best mult", () => {
+  const draft = [
+    mon({ id: "a", species: "Swampert", types: ["Water", "Ground"] }),
+    mon({ id: "b", species: "Gardevoir", types: ["Psychic", "Fairy"] }),
+  ];
+  const tiers = coverageOffenseTiers(offensiveCoverage(draft));
+  assert.ok(tiers.S.includes("Fire")); // Water STAB
+  assert.ok(tiers.S.includes("Dragon")); // Fairy STAB
+  assert.ok(tiers.S.includes("Fighting")); // Fairy/Psychic
+  const total =
+    tiers.S.length + tiers.A.length + tiers.B.length + tiers.F.length;
+  assert.equal(total, 18);
+  assert.ok(!tiers.S.some((t) => tiers.F.includes(t)));
 });
 
 test("vsTrainerMatchup favors a typed answer squad", () => {

@@ -276,7 +276,7 @@ function ToolWorkspace({
     tool === "pokedex"
       ? `Look up species for ${challengeName} — stats, matchups, and counters from your Main + Reserve.`
       : tool === "chart"
-        ? `Attack × defense multipliers for ${challengeName}.`
+        ? `Modern 18-type chart first — pick a trainer below it to score Main Squad coverage.`
         : tool === "guide"
           ? `What to do next in the story for ${challengeName}.`
           : tool === "bounty"
@@ -297,7 +297,7 @@ function ToolWorkspace({
         </Link>
         <div>
           <h2 className="text-2xl font-bold tracking-tight">{meta.title}</h2>
-          <p className="mt-2 text-muted">{blurb}</p>
+          <p className="mt-2 text-base text-muted">{blurb}</p>
         </div>
       </header>
 
@@ -313,7 +313,11 @@ function ToolWorkspace({
 
       {tool === "chart" ? (
         <Frame>
-          <TypeChartPanel />
+          <TypeChartPanel
+            slug={slug}
+            trainers={trainers}
+            myTrainerId={myTrainerId}
+          />
         </Frame>
       ) : null}
 
