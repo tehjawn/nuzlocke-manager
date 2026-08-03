@@ -11,6 +11,11 @@ const FIXTURE_114 = path.join(
   "fixtures/gen3-save/issue-114-encounters.state",
 );
 
+const FIXTURE_117 = path.join(
+  process.cwd(),
+  "fixtures/gen3-save/issue-117-elite4.state",
+);
+
 const FIXTURE_PUNCT_NICK = path.join(
   process.cwd(),
   "fixtures/gen3-save/issue-party-punct-nick.state",
@@ -106,6 +111,48 @@ test("Afterplay .state imports Pokédex seen-not-owned encounters (issue 114)", 
   // Caught mons must not also appear as encounter stubs.
   for (const name of ["Bagon", "Combusken", "Scyther", "Voltorb"]) {
     assert.ok(!encountered.has(name), `caught mon leaked into encounters: ${name}`);
+  }
+});
+
+test("Elite 4 Afterplay .state imports Pokédex encounters (issue 117)", async () => {
+  const buf = new Uint8Array(readFileSync(FIXTURE_117));
+  const result = await parsePokemonSaveAsync(buf);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.match(result.format, /RZIP|state/i);
+  assert.equal(result.trainer?.name, "Chedda");
+  assert.deepEqual(
+    result.party.map((p) => p.species),
+    [
+      "Annihilape",
+      "Swalot",
+      "Luvdisc",
+      "Electivire",
+      "Tangrowth",
+      "Salamence",
+    ],
+  );
+  assert.ok(result.box.length >= 20, `expected PC mons, got ${result.box.length}`);
+  assert.ok(result.rip.length >= 10, `expected R.I.P., got ${result.rip.length}`);
+
+  // Late-game: owned slack / seen−owned delta used to reject the real pair
+  // (75 owned / 255 seen → 0 Encountered stubs).
+  assert.ok(
+    result.encountered.length >= 150,
+    `expected many late-game encounter stubs, got ${result.encountered.length}`,
+  );
+  assert.ok(
+    result.warnings.some((w) => /Pokédex:.*255 seen.*75 owned/i.test(w)),
+    `expected EWRAM dex pair warning, got: ${result.warnings.join(" | ")}`,
+  );
+
+  const encountered = new Set(result.encountered.map((p) => p.species));
+  for (const name of result.party.map((p) => p.species)) {
+    assert.ok(
+      !encountered.has(name),
+      `caught party mon leaked into encounters: ${name}`,
+    );
   }
 });
 

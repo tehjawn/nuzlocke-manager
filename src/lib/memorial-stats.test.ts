@@ -208,7 +208,7 @@ test("memorialSeasonHighlights picks richest trainer by imported money", () => {
 });
 
 test("memorialPokemonMatchesFilters matches type and generation", () => {
-  const mudkip = { types: ["Water"] as const, pokedexId: 258 }; // Gen 3
+  const mudkip = { types: ["Water" as const], pokedexId: 258 }; // Gen 3
   assert.equal(
     memorialPokemonMatchesFilters(mudkip, { type: null, generation: null }),
     true,
@@ -231,7 +231,7 @@ test("memorialPokemonMatchesFilters matches type and generation", () => {
   );
   assert.equal(
     memorialPokemonMatchesFilters(
-      { types: ["Normal"], pokedexId: null },
+      { types: ["Normal" as const], pokedexId: null },
       { type: null, generation: 3 },
     ),
     false,
