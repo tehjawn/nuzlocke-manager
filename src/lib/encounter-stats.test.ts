@@ -5,8 +5,10 @@ import {
   encounterSeasonHighlights,
   encounterSpeciesRarity,
   exclusiveOwnedSpecies,
+  groupExclusivesByLine,
   missingModernEmeraldSpecies,
-  personalMissingModernEmerald,
+  personalSpeciesStatus,
+  speciesOwnershipBoard,
 } from "@/lib/encounter-stats";
 import {
   modernEmeraldDexTotal,
@@ -363,8 +365,8 @@ test("exclusiveOwnedSpecies requires Main/Reserve monopoly", () => {
   });
 });
 
-test("personalMissingModernEmerald is relative to one trainer board", () => {
-  const trainers = [
+test("speciesOwnershipBoard tiers owned > encountered > untouched", () => {
+  const board = speciesOwnershipBoard([
     trainer({
       id: "t1",
       handle: "Ash",
@@ -377,6 +379,68 @@ test("personalMissingModernEmerald is relative to one trainer board", () => {
           species: "Treecko",
           pokedexId: 252,
         }),
+        mon({
+          id: "a2",
+          slot: "ENCOUNTERED",
+          partyIndex: 0,
+          species: "Torchic",
+          pokedexId: 255,
+        }),
+        mon({
+          id: "a3",
+          slot: "GRAVEYARD",
+          partyIndex: 0,
+          species: "Mudkip",
+          pokedexId: 258,
+        }),
+      ],
+    }),
+  ]);
+
+  const byDex = new Map(board.map((entry) => [entry.pokedexId, entry]));
+
+  const treecko = byDex.get(252)!;
+  assert.equal(treecko.status, "owned");
+  assert.deepEqual(treecko.owners, [
+    { trainerId: "t1", trainerHandle: "Ash", slot: "MAIN" },
+  ]);
+
+  const torchic = byDex.get(255)!;
+  assert.equal(torchic.status, "encountered");
+  assert.deepEqual(torchic.encounteredBy, [
+    { trainerId: "t1", trainerHandle: "Ash", slot: "ENCOUNTERED" },
+  ]);
+
+  // A grave counts as "encountered" (caught once, not currently held) —
+  // not "untouched" and not "owned".
+  const mudkip = byDex.get(258)!;
+  assert.equal(mudkip.status, "encountered");
+  assert.deepEqual(mudkip.encounteredBy, [
+    { trainerId: "t1", trainerHandle: "Ash", slot: "GRAVEYARD" },
+  ]);
+
+  const bulbasaur = byDex.get(1)!;
+  assert.equal(bulbasaur.status, "untouched");
+  assert.equal(bulbasaur.owners.length, 0);
+  assert.equal(bulbasaur.encounteredBy.length, 0);
+
+  assert.equal(board.length, modernEmeraldDexTotal());
+});
+
+test("personalSpeciesStatus re-tiers a board entry relative to one trainer", () => {
+  const board = speciesOwnershipBoard([
+    trainer({
+      id: "t1",
+      handle: "Ash",
+      sortOrder: 0,
+      pokemon: [
+        mon({
+          id: "a1",
+          slot: "MAIN",
+          partyIndex: 0,
+          species: "Heracross",
+          pokedexId: 214,
+        }),
       ],
     }),
     trainer({
@@ -386,20 +450,66 @@ test("personalMissingModernEmerald is relative to one trainer board", () => {
       pokemon: [
         mon({
           id: "b1",
-          slot: "MAIN",
+          slot: "ENCOUNTERED",
           partyIndex: 0,
-          species: "Torchic",
-          pokedexId: 255,
+          species: "Heracross",
+          pokedexId: 214,
         }),
       ],
     }),
-  ];
+  ]);
 
-  const ashGaps = personalMissingModernEmerald(trainers, "t1");
-  assert.ok(ashGaps.some((entry) => entry.pokedexId === 255));
-  assert.ok(!ashGaps.some((entry) => entry.pokedexId === 252));
-  assert.equal(ashGaps.length, modernEmeraldDexTotal() - 1);
-  assert.deepEqual(personalMissingModernEmerald(trainers, "missing"), []);
+  const heracross = board.find((entry) => entry.pokedexId === 214)!;
+  assert.equal(heracross.status, "owned"); // pack-wide: Ash owns it
+  assert.equal(personalSpeciesStatus(heracross, "t1"), "owned");
+  assert.equal(personalSpeciesStatus(heracross, "t2"), "encountered");
+  assert.equal(personalSpeciesStatus(heracross, "t3"), "untouched");
+});
+
+test("groupExclusivesByLine groups stages under their line's base form", () => {
+  const exclusives = exclusiveOwnedSpecies([
+    trainer({
+      id: "t1",
+      handle: "Ash",
+      sortOrder: 0,
+      pokemon: [
+        mon({
+          id: "a1",
+          slot: "MAIN",
+          partyIndex: 0,
+          species: "Treecko",
+          pokedexId: 252,
+        }),
+        mon({
+          id: "a2",
+          slot: "RESERVE",
+          partyIndex: 0,
+          species: "Grovyle",
+          pokedexId: 253,
+        }),
+        mon({
+          id: "a3",
+          slot: "MAIN",
+          partyIndex: 1,
+          species: "Heracross",
+          pokedexId: 214,
+        }),
+      ],
+    }),
+  ]);
+
+  const groups = groupExclusivesByLine(exclusives);
+  const treeckoLine = groups.find((g) => g.rootPokedexId === 252)!;
+  assert.equal(treeckoLine.rootSpecies, "Treecko");
+  assert.equal(treeckoLine.entries.length, 2);
+  assert.equal(treeckoLine.singleTrainer, true);
+  assert.deepEqual(
+    treeckoLine.entries.map((e) => e.pokedexId),
+    [252, 253],
+  );
+
+  const heracrossLine = groups.find((g) => g.rootPokedexId === 214)!;
+  assert.equal(heracrossLine.entries.length, 1);
 });
 
 test("encounterSeasonHighlights merges species with and without pokedexId", () => {

@@ -37,7 +37,7 @@ export const TOOLS_CATALOG: ReadonlyArray<{
     id: "bounty",
     title: "Bounty Hunter",
     blurb:
-      "What’s still free game in Modern Emerald — open bounties, your gaps, and pack exclusives.",
+      "Every Modern Emerald species — who's owned it, who's just seen it, who's cornered a line.",
   },
   {
     id: "planner",
@@ -97,13 +97,15 @@ export function toolsTitle(tool: ToolsId | null): string {
   return TOOLS_CATALOG.find((t) => t.id === tool)?.title ?? "Tools";
 }
 
-export type BountyMode = "open" | "gaps" | "exclusives";
+export type BountyMode = "tracker" | "exclusives";
 
 export function parseBountyMode(
   raw: string | null | undefined,
 ): BountyMode {
-  if (raw === "gaps" || raw === "exclusives") return raw;
-  return "open";
+  // "open"/"gaps" are pre-tracker-merge URLs — both land on the tracker,
+  // which now covers both via the trainer + status filters.
+  if (raw === "exclusives") return raw;
+  return "tracker";
 }
 
 export type PlannerMode = "coverage" | "prep" | "vs";
