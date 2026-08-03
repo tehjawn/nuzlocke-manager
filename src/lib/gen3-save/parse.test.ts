@@ -3,6 +3,19 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { inflateSync, deflateSync } from "node:zlib";
+import { experienceForLevel } from "@/lib/gen3-save/experience";
+import { sectorChecksum } from "@/lib/gen3-save/flash";
+import {
+  BOX_MON_SIZE,
+  PARTY_MON_SIZE,
+  SB1_DAYCARE,
+  SB1_PARTY,
+  SB1_PARTY_COUNT,
+  SECTOR_DATA_SIZE,
+  SECTOR_SIGNATURE,
+  SECTOR_SIZE,
+  STORAGE_BOXES,
+} from "@/lib/gen3-save/layout";
 import { parsePokemonSaveAsync } from "@/lib/gen3-save/parse";
 import { encodeGen3NameForTest } from "@/lib/gen3-save/text";
 
@@ -76,6 +89,111 @@ function replaceAll(
     hits += 1;
   }
   return hits;
+}
+
+function makeTestMon({
+  experience,
+  nickname,
+  partyLevel,
+  pid,
+  speciesId,
+}: {
+  experience: number;
+  nickname: string;
+  partyLevel?: number;
+  pid: number;
+  speciesId: number;
+}): Uint8Array {
+  assert.equal(pid % 24, 0, "test payload assumes G-A-E-M substruct order");
+  const mon = new Uint8Array(
+    partyLevel == null ? BOX_MON_SIZE : PARTY_MON_SIZE,
+  );
+  const view = new DataView(mon.buffer);
+  const oid = 0x12345678;
+  view.setUint32(0, pid, true);
+  view.setUint32(4, oid, true);
+  mon.set(encodeGen3NameForTest(nickname, 10), 8);
+  mon[18] = 2;
+  mon.set(encodeGen3NameForTest("OT", 7), 20);
+
+  const payload = new Uint8Array(48);
+  const payloadView = new DataView(payload.buffer);
+  payloadView.setUint16(0, speciesId, true);
+  payloadView.setUint32(4, experience, true);
+  let checksum = 0;
+  for (let i = 0; i < payload.length; i += 2) {
+    checksum = (checksum + payloadView.getUint16(i, true)) & 0xffff;
+  }
+  view.setUint16(28, checksum, true);
+
+  const key = (pid ^ oid) >>> 0;
+  for (let i = 0; i < payload.length; i += 4) {
+    payloadView.setUint32(
+      i,
+      (payloadView.getUint32(i, true) ^ key) >>> 0,
+      true,
+    );
+  }
+  mon.set(payload, 32);
+
+  if (partyLevel != null) {
+    mon[84] = partyLevel;
+    view.setUint16(86, 30, true);
+    view.setUint16(88, 30, true);
+  }
+  return mon;
+}
+
+function makeDaycareFlashSave(pcDuplicate = false): Uint8Array {
+  const sb2 = new Uint8Array(SECTOR_DATA_SIZE);
+  sb2.set(encodeGen3NameForTest("TEST", 8), 0);
+  const sb1 = new Uint8Array(SECTOR_DATA_SIZE * 4);
+  const party = makeTestMon({
+    experience: experienceForLevel(12, "medium-slow"),
+    nickname: "Charmander",
+    partyLevel: 12,
+    pid: 24,
+    speciesId: 4,
+  });
+  const daycare = makeTestMon({
+    experience: experienceForLevel(20, "medium-slow"),
+    nickname: "Bulbasaur",
+    pid: 48,
+    speciesId: 1,
+  });
+  sb1[SB1_PARTY_COUNT] = 1;
+  sb1.set(party, SB1_PARTY);
+  sb1.set(daycare, SB1_DAYCARE);
+
+  const storage = new Uint8Array(SECTOR_DATA_SIZE * 9);
+  if (pcDuplicate) storage.set(daycare, STORAGE_BOXES);
+
+  const flash = new Uint8Array(0x20000);
+  for (let id = 0; id < 14; id++) {
+    const data =
+      id === 0
+        ? sb2
+        : id <= 4
+          ? sb1.subarray((id - 1) * SECTOR_DATA_SIZE, id * SECTOR_DATA_SIZE)
+          : storage.subarray((id - 5) * SECTOR_DATA_SIZE, (id - 4) * SECTOR_DATA_SIZE);
+    const base = id * SECTOR_SIZE;
+    flash.set(data, base);
+    const sector = flash.subarray(base, base + SECTOR_SIZE);
+    const sectorView = new DataView(
+      sector.buffer,
+      sector.byteOffset,
+      sector.byteLength,
+    );
+    sectorView.setUint16(0xff4, id, true);
+    sectorView.setUint16(
+      0xff6,
+      sectorChecksum(sector, SECTOR_DATA_SIZE),
+      true,
+    );
+    sectorView.setUint32(0xff8, SECTOR_SIGNATURE, true);
+    sectorView.setUint32(0xffc, 1, true);
+  }
+  return flash;
 }
 
 test("Afterplay .state imports Pokédex seen-not-owned encounters (issue 114)", async () => {
@@ -199,6 +317,27 @@ test("box / PC Pokémon derive level from experience (issue 135)", async () => {
   assert.equal(ledian.level, 21);
   // Party still prefers the trailer byte (not re-derived).
   assert.equal(result.party[0]?.level, 32);
+});
+
+test("flash Day Care falls back to vanilla offset and dedupes PC PIDs", async () => {
+  const result = await parsePokemonSaveAsync(makeDaycareFlashSave());
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.equal(result.party[0]?.level, 12);
+  assert.deepEqual(
+    result.box.map((mon) => [mon.pid, mon.species, mon.level]),
+    [[48, "Bulbasaur", 20]],
+  );
+  assert.ok(result.warnings.some((warning) => warning.startsWith("Day Care:")));
+
+  const withPcCopy = await parsePokemonSaveAsync(makeDaycareFlashSave(true));
+  assert.equal(withPcCopy.ok, true);
+  if (!withPcCopy.ok) return;
+  assert.equal(
+    withPcCopy.box.filter((mon) => mon.pid === 48).length,
+    1,
+  );
 });
 
 test("decrypts Pokédollars from Afterplay .state (issue 146)", async () => {
