@@ -8,7 +8,7 @@ import {
 } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallengeShell } from "@/lib/challenges";
-import { isFirstRunChrome } from "@/lib/first-run";
+import { FORCE_FIRST_RUN_CHROME, isFirstRunChrome } from "@/lib/first-run";
 import { getWelcomeReadAt } from "@/lib/notifications";
 import { getAccessForChallenge } from "@/lib/permissions";
 
@@ -60,7 +60,10 @@ export default async function SeasonWorkspaceLayout({
     redirect(`/challenges/${slug}/me`);
   }
 
-  const showGm = Boolean(access?.isGm);
+  // TEMP: FORCE_FIRST_RUN_CHROME also hides GM chrome so the preview matches
+  // a real new-player session.
+  const showGm =
+    Boolean(access?.isGm) && !FORCE_FIRST_RUN_CHROME;
   const welcomeReadAt = session?.user?.id
     ? await getWelcomeReadAt(session.user.id)
     : null;
@@ -68,7 +71,7 @@ export default async function SeasonWorkspaceLayout({
     signedIn: Boolean(session?.user),
     welcomeCompleted: welcomeReadAt != null,
     hasProgress: (myTrainer?.pokemon.length ?? 0) > 0,
-    isGm: showGm,
+    isGm: Boolean(access?.isGm),
   });
 
   return (

@@ -6,6 +6,12 @@
  * players (welcome read, or any party mon) and GMs keep full chrome.
  */
 
+/**
+ * Local preview only — leave `false` in committed code. When `true`, signed-in
+ * sessions get first-run chrome even with welcome read / party / GM.
+ */
+export const FORCE_FIRST_RUN_CHROME = false;
+
 export type FirstRunInput = {
   signedIn: boolean;
   /** Welcome notification has been marked read (tour skipped or setup done). */
@@ -21,6 +27,8 @@ export type FirstRunInput = {
  * pack feed, and dense header/Jump destinations).
  */
 export function isFirstRunChrome(input: FirstRunInput): boolean {
+  // Preview mode: any signed-in session looks like day-one.
+  if (FORCE_FIRST_RUN_CHROME && input.signedIn) return true;
   if (input.isGm) return false;
   // Spectators keep full chrome so browsing the league stays usable.
   if (!input.signedIn) return false;

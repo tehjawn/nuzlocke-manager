@@ -38,7 +38,8 @@ export async function SiteHeaderSession({
   myTrainerId = null,
   firstRun = false,
 }: SiteHeaderSessionProps) {
-  const menuShowGm = showGm || (await isGmForChallengeSlug(seasonSlug));
+  const menuShowGm =
+    !firstRun && (showGm || (await isGmForChallengeSlug(seasonSlug)));
   const feedbackHref = seasonSlug
     ? `/challenges/${seasonSlug}/feedback`
     : null;

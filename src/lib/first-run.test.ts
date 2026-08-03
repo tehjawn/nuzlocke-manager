@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isFirstRunChrome } from "@/lib/first-run";
+import { FORCE_FIRST_RUN_CHROME, isFirstRunChrome } from "@/lib/first-run";
 
 describe("isFirstRunChrome", () => {
+  it("keeps FORCE_FIRST_RUN_CHROME off in committed code", () => {
+    assert.equal(FORCE_FIRST_RUN_CHROME, false);
+  });
+
   it("is true for signed-in players with unread welcome and no progress", () => {
     assert.equal(
       isFirstRunChrome({

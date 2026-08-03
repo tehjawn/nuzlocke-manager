@@ -10,7 +10,7 @@ import {
 } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
-import { isFirstRunChrome } from "@/lib/first-run";
+import { FORCE_FIRST_RUN_CHROME, isFirstRunChrome } from "@/lib/first-run";
 import {
   canEditTrainerBoard,
   canViewCompetitiveDetails,
@@ -100,9 +100,12 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     ? `/challenges/${challenge.slug}/me`
     : null;
 
-  const showGm = Boolean(access?.isGm);
+  const showGm = Boolean(access?.isGm) && !FORCE_FIRST_RUN_CHROME;
   // Board-level GM tools (e.g. revive reset) follow the same GM-view gate.
-  const boardGm = showGm && (access?.ownsTrainer(trainer.userId) || gmLensOn);
+  const boardGm =
+    Boolean(access?.isGm) &&
+    !FORCE_FIRST_RUN_CHROME &&
+    (access?.ownsTrainer(trainer.userId) || gmLensOn);
 
   const welcomeReadAt = access?.userId
     ? await getWelcomeReadAt(access.userId)
@@ -113,7 +116,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     // On your own board, party size is the progress signal. On someone else's,
     // leave hasProgress false so unread-welcome players keep a narrow header.
     hasProgress: canEdit ? trainer.pokemon.length > 0 : false,
-    isGm: showGm,
+    isGm: Boolean(access?.isGm),
   });
 
   return (

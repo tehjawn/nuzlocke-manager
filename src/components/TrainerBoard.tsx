@@ -54,6 +54,7 @@ import { pokemonInSlot } from "@/lib/trainer-display";
 import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
 import { CTA_PRIMARY, CTA_PRIMARY_SM } from "@/lib/cta";
+import { FORCE_FIRST_RUN_CHROME } from "@/lib/first-run";
 import {
   MAIN_PARTY_SIZE,
   firstOpenMainPartyIndex,
@@ -1294,7 +1295,8 @@ export function TrainerBoard({
         ) : null}
       </div>
 
-      {canEdit && trainer.pokemon.length === 0 ? (
+      {canEdit &&
+      (trainer.pokemon.length === 0 || FORCE_FIRST_RUN_CHROME) ? (
         <div className="flex flex-col gap-2 border border-accent/25 bg-accent/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm leading-relaxed text-ink">
             {editingPlayer
