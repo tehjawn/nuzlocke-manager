@@ -7,9 +7,10 @@
  * Trash Pack / nzl_modern saves.
  *
  * Sources:
- * - pret/pokeemerald include/constants/region_map_sections.h
- * - chethtrayen/nzl_modern include/constants/region_map_sections.h
+ * - pret/pokeemerald include/constants/region_map_sections.h (vanilla table)
+ * - resetes12/pokeemerald "Modern Emerald" (modern table, generated)
  */
+import { MAPSEC_LABELS } from "@/data/catch-routes.generated";
 
 export type Gen3MapsecMode = "modern" | "vanilla";
 
@@ -124,119 +125,19 @@ const VANILLA_EMERALD_MAPSEC: Record<number, string> = {
 };
 
 /**
- * Modern Emerald (nzl_modern) MAPSEC table.
- * Differs from vanilla from Granite Cave onward (one fewer early underwater id).
+ * Modern Emerald MAPSEC table — generated, see `npm run data:catch-routes`.
+ *
+ * Differs from vanilla from Granite Cave onward (one fewer early underwater id),
+ * and the hack repurposed dead FRLG slots for new areas (0x9D Route 132 North,
+ * 0x9E Route 110 East, 0xD5/0xD6 the Regidrago/Regieleki chambers). The old
+ * hand-written table stopped at 0xD4, so those imported with no location at all.
+ *
+ * Note this is deliberately wider than the catch-route catalog: it exists to
+ * name a met location, not to decide whether the location is claimable. It also
+ * carries the METLOC_* sentinels itself, including the honest name for 0xFD
+ * (a daycare egg, not the starter).
  */
-const MODERN_EMERALD_MAPSEC: Record<number, string> = {
-  0x00: "Littleroot Town",
-  0x01: "Oldale Town",
-  0x02: "Dewford Town",
-  0x03: "Lavaridge Town",
-  0x04: "Fallarbor Town",
-  0x05: "Verdanturf Town",
-  0x06: "Pacifidlog Town",
-  0x07: "Petalburg City",
-  0x08: "Slateport City",
-  0x09: "Mauville City",
-  0x0a: "Rustboro City",
-  0x0b: "Fortree City",
-  0x0c: "Lilycove City",
-  0x0d: "Mossdeep City",
-  0x0e: "Sootopolis City",
-  0x0f: "Ever Grande City",
-  0x10: "Route 101",
-  0x11: "Route 102",
-  0x12: "Route 103",
-  0x13: "Route 104",
-  0x14: "Route 105",
-  0x15: "Route 106",
-  0x16: "Route 107",
-  0x17: "Route 108",
-  0x18: "Route 109",
-  0x19: "Route 110",
-  0x1a: "Route 111",
-  0x1b: "Route 112",
-  0x1c: "Route 113",
-  0x1d: "Route 114",
-  0x1e: "Route 115",
-  0x1f: "Route 116",
-  0x20: "Route 117",
-  0x21: "Route 118",
-  0x22: "Route 119",
-  0x23: "Route 120",
-  0x24: "Route 121",
-  0x25: "Route 122",
-  0x26: "Route 123",
-  0x27: "Route 124",
-  0x28: "Route 125",
-  0x29: "Route 126",
-  0x2a: "Route 127",
-  0x2b: "Route 128",
-  0x2c: "Route 129",
-  0x2d: "Route 130",
-  0x2e: "Route 131",
-  0x2f: "Route 132",
-  0x30: "Route 133",
-  0x31: "Route 134",
-  0x32: "Underwater",
-  0x33: "Underwater",
-  0x34: "Underwater",
-  0x35: "Underwater",
-  0x36: "Underwater",
-  0x37: "Granite Cave",
-  0x38: "Mt. Chimney",
-  0x39: "Safari Zone",
-  0x3a: "Battle Frontier",
-  0x3b: "Petalburg Woods",
-  0x3c: "Rusturf Tunnel",
-  0x3d: "Abandoned Ship",
-  0x3e: "New Mauville",
-  0x3f: "Meteor Falls",
-  0x40: "Meteor Falls",
-  0x41: "Mt. Pyre",
-  0x42: "Aqua Hideout",
-  0x43: "Shoal Cave",
-  0x44: "Seafloor Cavern",
-  0x45: "Underwater",
-  0x46: "Victory Road",
-  0x47: "Mirage Island",
-  0x48: "Cave of Origin",
-  0x49: "Southern Island",
-  0x4a: "Fiery Path",
-  0x4b: "Fiery Path",
-  0x4c: "Jagged Pass",
-  0x4d: "Jagged Pass",
-  0x4e: "Sealed Chamber",
-  0x4f: "Underwater",
-  0x50: "Scorched Slab",
-  0x51: "Island Cave",
-  0x52: "Desert Ruins",
-  0x53: "Ancient Tomb",
-  0x54: "Inside of Truck",
-  0x55: "Sky Pillar",
-  0x56: "Secret Base",
-  0x57: "Special area",
-  // Kanto / Sevii leftovers present in the modern header (rare for Hoenn runs)
-  0x58: "Pallet Town",
-  0x59: "Viridian City",
-  0xc5: "Aqua Hideout",
-  0xc6: "Magma Hideout",
-  0xc7: "Mirage Tower",
-  0xc8: "Birth Island",
-  0xc9: "Faraway Island",
-  0xca: "Artisan Cave",
-  0xcb: "Marine Cave",
-  0xcc: "Underwater",
-  0xcd: "Terra Cave",
-  0xce: "Underwater",
-  0xcf: "Underwater",
-  0xd0: "Underwater",
-  0xd1: "Desert Underpass",
-  0xd2: "Altering Cave",
-  0xd3: "Navel Rock",
-  0xd4: "Trainer Hill",
-  ...METLOC_SPECIAL,
-};
+const MODERN_EMERALD_MAPSEC: Record<number, string> = MAPSEC_LABELS;
 
 export function gen3MetLocationName(
   mapsec: number,

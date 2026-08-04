@@ -25,7 +25,8 @@
     "data:held-items": "node scripts/generate-held-item-descriptions.mjs",
     "data:base-stats": "node scripts/generate-base-stats.mjs",
     "data:types": "node scripts/generate-pokemon-types.mjs",
-    "data:evolutions": "node scripts/generate-species-evolutions.mjs"
+    "data:evolutions": "node scripts/generate-species-evolutions.mjs",
+    "data:catch-routes": "node scripts/generate-catch-routes.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
