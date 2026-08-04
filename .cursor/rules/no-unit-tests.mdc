@@ -1,0 +1,13 @@
+---
+description: Do not create or restore automated unit tests in this repo
+alwaysApply: true
+---
+
+# No automated unit tests
+
+This project deliberately has **no** unit/integration test suite (see issue #210).
+
+- Never create `*.test.ts`, `*.test.tsx`, `*.spec.ts`, or `*.spec.tsx` files.
+- Never add npm `test` scripts or Vitest/Jest/Testing Library dependencies.
+- Never propose tests as part of a feature or bugfix unless the user explicitly asks to override this policy.
+- Manual QA and `fixtures/` runtime data are the intended verification paths.
