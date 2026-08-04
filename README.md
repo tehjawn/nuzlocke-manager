@@ -142,8 +142,11 @@ gets a preview only when it has the GitHub label **`deploy preview`**:
    (`gh secret set VERCEL_TOKEN`).
 3. On a PR, add the `deploy preview` label. GitHub Actions builds and deploys a
    preview and comments the URL. Later pushes to that PR redeploy while the
-   label remains. Remove the label to stop further preview deploys (existing
-   preview URLs are not deleted automatically).
+   label remains.
+4. Cleanup is automatic when you **remove the label**, **merge**, or **close**
+   the PR: the label is cleared (on close/merge) and matching non-production
+   Vercel preview deployments are deleted. Production deployments are never
+   touched.
 
 Fork PRs are skipped (Actions cannot use this secret on fork `pull_request`
 events). Production deploys from the production branch are unchanged.
