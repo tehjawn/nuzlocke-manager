@@ -28,6 +28,11 @@ function isStoryPriority(priority: GuideStepPriority): boolean {
   return priority !== "optional";
 }
 
+/** Post-game chapters live in a separate UI section and never drive “next steps”. */
+export function isPostGameChapter(chapter: GuideChapter): boolean {
+  return chapter.section === "post-game";
+}
+
 function sortedChapters(doc: GuideDocument): GuideChapter[] {
   return [...doc.chapters].sort((a, b) => a.sortOrder - b.sortOrder);
 }
@@ -51,6 +56,9 @@ function chapterStoryDone(
  * Badges are only a shortcut — a player who already has the badges can jump
  * ahead without back-filling checkoffs, but missing badges never block a
  * player who is working through the list.
+ *
+ * Post-game chapters are always reachable for browsing — they sit in a
+ * separate UI section and never drive story “next steps”.
  */
 export function chapterReachable(
   doc: GuideDocument,
@@ -58,7 +66,9 @@ export function chapterReachable(
   earnedBadgeKeys: ReadonlySet<string> | readonly string[],
   checkedStepIds: GuideProgressInput["checkedStepIds"] = [],
 ): boolean {
-  const chapters = sortedChapters(doc);
+  if (isPostGameChapter(chapter)) return true;
+
+  const chapters = sortedChapters(doc).filter((c) => !isPostGameChapter(c));
   const index = chapters.findIndex((c) => c.id === chapter.id);
   if (index <= 0) return true;
 
@@ -73,20 +83,26 @@ export function chapterReachable(
   return chapterStoryDone(doc, previous.id, completedIds);
 }
 
-/** Cleared once every story step is checked off. */
+/** Cleared once every story step is checked off (all steps for post-game). */
 export function chapterCleared(
   doc: GuideDocument,
   chapter: GuideChapter,
   checkedStepIds: GuideProgressInput["checkedStepIds"] = [],
 ): boolean {
+  const completedIds = asCheckedSet(checkedStepIds);
+  if (isPostGameChapter(chapter)) {
+    const steps = doc.steps.filter((s) => s.chapterId === chapter.id);
+    if (steps.length === 0) return false;
+    return steps.every((s) => completedIds.has(s.id));
+  }
   const steps = chapterStorySteps(doc, chapter.id);
   if (steps.length === 0) return false;
-  return chapterStoryDone(doc, chapter.id, asCheckedSet(checkedStepIds));
+  return chapterStoryDone(doc, chapter.id, completedIds);
 }
 
 /**
- * First chapter (in story order) that still has incomplete story steps.
- * Never stops early on badge gates — checkoffs alone always move forward.
+ * First story chapter that still has incomplete story steps.
+ * Post-game chapters never become the active story chapter.
  */
 export function resolveActiveChapterId(
   doc: GuideDocument,
@@ -94,13 +110,15 @@ export function resolveActiveChapterId(
   checkedStepIds: GuideProgressInput["checkedStepIds"] = [],
 ): string {
   const completedIds = asCheckedSet(checkedStepIds);
-  const chapters = sortedChapters(doc);
+  const storyChapters = sortedChapters(doc).filter(
+    (c) => !isPostGameChapter(c),
+  );
 
-  for (const chapter of chapters) {
+  for (const chapter of storyChapters) {
     if (!chapterStoryDone(doc, chapter.id, completedIds)) return chapter.id;
   }
 
-  return chapters.at(-1)?.id ?? "";
+  return storyChapters.at(-1)?.id ?? "";
 }
 
 /** Steps unlock from their own prerequisites only — badges never gate them. */
