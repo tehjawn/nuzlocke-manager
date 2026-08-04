@@ -210,4 +210,22 @@ labelled, so it cannot remove an active preview. Neon branches also carry a
 
 Run it on demand from the Actions tab if a slot or branch appears stuck.
 
+#### Neon Free budget
+
+Verified 2026-08-04: **10 branches per project** (including `production`), **0.5 GB
+storage**, and **100 CU-hours/month** shared across every compute in the project.
+
+The deploy workflow checks the branch count before creating one and fails with
+the list of currently held preview branches rather than falling back to the
+production database. Override the cap with the `NEON_BRANCH_LIMIT` repository
+variable if the plan changes.
+
+Two knock-on effects worth knowing:
+
+- Each preview branch runs its own compute, autosuspending after 5 minutes idle.
+  Compute hours are shared, so many long-lived previews eat the monthly budget
+  even when the branch count is fine.
+- Branches are copy-on-write, so they cost almost nothing at creation, but
+  migrations and smoke-test writes accrue against the 0.5 GB limit.
+
 When migrating Neon projects, update Production + Preview (and Development if used) together so preview deploys do not keep hitting the old database.
