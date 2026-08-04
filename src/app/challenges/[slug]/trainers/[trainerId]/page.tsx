@@ -129,12 +129,31 @@ export default async function TrainerBoardPage({ params }: PageProps) {
   const welcomeReadAt = access?.userId
     ? await getWelcomeReadAt(access.userId)
     : null;
+
+  // First-run chrome follows the signed-in player's own progress — not whether
+  // they can edit this particular board (other trainers / read-only seasons).
+  let hasProgress = false;
+  if (access?.userId && challenge.id && isDatabaseConfigured()) {
+    if (trainer.userId === access.userId) {
+      hasProgress = trainer.pokemon.some((p) => p.slot === "MAIN");
+    } else {
+      const mine = await getPrisma().pokemonEntry.count({
+        where: {
+          slot: "MAIN",
+          trainer: {
+            challengeId: challenge.id,
+            userId: access.userId,
+          },
+        },
+      });
+      hasProgress = mine > 0;
+    }
+  }
+
   const firstRun = isFirstRunChrome({
     signedIn: Boolean(access?.userId),
     welcomeCompleted: welcomeReadAt != null,
-    // On your own board, party size is the progress signal. On someone else's,
-    // leave hasProgress false so unread-welcome players keep a narrow header.
-    hasProgress: canEdit ? trainer.pokemon.length > 0 : false,
+    hasProgress,
     isGm: Boolean(access?.isGm),
   });
 

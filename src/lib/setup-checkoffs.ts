@@ -128,7 +128,14 @@ export function subscribeSetupCheckoffs(
     onStoreChange();
   };
   const onStorage = (event: StorageEvent) => {
-    if (event.key === key) onStoreChange();
+    if (event.key === null) {
+      cacheByKey.clear();
+      onStoreChange();
+      return;
+    }
+    if (event.key !== key) return;
+    cacheByKey.delete(key);
+    onStoreChange();
   };
   window.addEventListener(SETUP_CHECKOFFS_CHANGE_EVENT, onCustom);
   window.addEventListener("storage", onStorage);

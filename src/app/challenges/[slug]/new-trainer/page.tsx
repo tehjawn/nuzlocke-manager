@@ -7,7 +7,6 @@ import { getChallenge, getChallengeAccessFields } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
 import {
   ensureTrainerForChallenge,
-  revalidateProvisionedChallenge,
 } from "@/lib/provision";
 
 type PageProps = {
@@ -56,8 +55,6 @@ export default async function NewTrainerPage({ params }: PageProps) {
         : `/challenges/${slug}`,
     );
   }
-
-  revalidateProvisionedChallenge(result.slug);
 
   const prisma = getPrisma();
   const trainer = await prisma.trainerProfile.findUnique({

@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  useEffect,
+  useRef,
   useState,
   type CSSProperties,
   type ReactNode,
@@ -63,6 +65,7 @@ export function Frame({
   const [openUncontrolled, setOpenUncontrolled] = useState(defaultOpen);
   const controlled = openControlled !== undefined;
   const open = controlled ? openControlled : openUncontrolled;
+  const detailsRef = useRef<HTMLDetailsElement | null>(null);
   const dataBg = cardBackgroundDataAttr(cardBackgroundKey);
   const customUrl = cardBackgroundCustomUrl(cardBackgroundKey);
   const style = customUrl
@@ -70,6 +73,15 @@ export function Frame({
         ["--card-bg-custom" as string]: cssTextureUrl(customUrl),
       } as CSSProperties)
     : undefined;
+
+  // Native <details> toggles itself on click. When controlled and the parent
+  // recomputes the same `open` value (e.g. closing an auto-expanded section),
+  // React skips the attribute update — force the DOM back in sync.
+  useEffect(() => {
+    if (!controlled) return;
+    const node = detailsRef.current;
+    if (node && node.open !== open) node.open = open;
+  }, [controlled, open]);
 
   const shellClass = `gba-frame overflow-hidden ${
     tone === "rip" ? "bg-rip" : ""
@@ -92,6 +104,7 @@ export function Frame({
   if (collapsible && title) {
     return (
       <details
+        ref={detailsRef}
         data-tour={dataTour}
         data-card-bg={dataBg}
         style={style}

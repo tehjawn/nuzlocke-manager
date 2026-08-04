@@ -88,7 +88,11 @@ export function GetStartedView({
   const sectionRefs = useRef<Partial<Record<SetupSectionId, HTMLElement | null>>>(
     {},
   );
-  const [expanded, setExpanded] = useState<SetupSectionId | null>(null);
+  // `null` = follow autoExpand; `"closed"` = user collapsed everything
+  // (so closing the auto-expanded section doesn't no-op back to open).
+  const [expanded, setExpanded] = useState<SetupSectionId | "closed" | null>(
+    null,
+  );
 
   const markDone = useCallback(
     (id: SetupSectionId) => {
@@ -115,7 +119,7 @@ export function GetStartedView({
   }, [hasImportedSave, checkoffs, storageKey]);
 
   const autoExpand = nextSetupSection(checkoffs) ?? "import";
-  const openId = expanded ?? autoExpand;
+  const openId = expanded === "closed" ? null : (expanded ?? autoExpand);
 
   const welcomeDone = isSetupSectionChecked(checkoffs, "welcome");
   const romDone = isSetupSectionChecked(checkoffs, "rom");
@@ -129,7 +133,7 @@ export function GetStartedView({
       open: openId === id,
       onOpenChange: (open: boolean) => {
         if (open) setExpanded(id);
-        else if (openId === id) setExpanded(null);
+        else if (openId === id) setExpanded("closed");
       },
     };
   }

@@ -4,8 +4,10 @@ import {
   EMPTY_SETUP_CHECKOFFS,
   isSetupSectionChecked,
   nextSetupSection,
+  readSetupCheckoffs,
   setSetupSectionChecked,
   setupCheckoffsStorageKey,
+  subscribeSetupCheckoffs,
   writeSetupCheckoffs,
 } from "@/lib/setup-checkoffs";
 
@@ -45,4 +47,85 @@ test("setSetupSectionChecked toggles membership", () => {
   assert.equal(isSetupSectionChecked(checked, "rom"), true);
   const unchecked = setSetupSectionChecked(key, "rom", false);
   assert.equal(isSetupSectionChecked(unchecked, "rom"), false);
+});
+
+test("cross-tab storage events invalidate the in-memory cache", () => {
+  const memory = new Map<string, string>();
+  const target = new EventTarget();
+  class MockStorageEvent extends Event {
+    key: string | null;
+    newValue: string | null;
+    constructor(
+      type: string,
+      init?: { key?: string | null; newValue?: string | null },
+    ) {
+      super(type);
+      this.key = init?.key ?? null;
+      this.newValue = init?.newValue ?? null;
+    }
+  }
+  const localStorageMock = {
+    getItem(k: string) {
+      return memory.get(k) ?? null;
+    },
+    setItem(k: string, v: string) {
+      memory.set(k, v);
+    },
+    removeItem(k: string) {
+      memory.delete(k);
+    },
+  };
+  const g = globalThis as typeof globalThis & {
+    window?: EventTarget & {
+      localStorage: typeof localStorageMock;
+      dispatchEvent: (event: Event) => boolean;
+    };
+    localStorage?: typeof localStorageMock;
+    StorageEvent?: typeof MockStorageEvent;
+  };
+  const prev = {
+    window: g.window,
+    localStorage: g.localStorage,
+    StorageEvent: g.StorageEvent,
+  };
+  g.window = Object.assign(target, { localStorage: localStorageMock });
+  g.localStorage = localStorageMock;
+  g.StorageEvent = MockStorageEvent;
+
+  try {
+    const key = setupCheckoffsStorageKey("test-season", "cross-tab");
+    writeSetupCheckoffs(key, { checkedSectionIds: ["welcome"] });
+    assert.deepEqual(
+      readSetupCheckoffs(key).checkedSectionIds,
+      ["welcome"],
+    );
+
+    let notified = 0;
+    const unsubscribe = subscribeSetupCheckoffs(key, () => {
+      notified += 1;
+    });
+
+    // Other tab wrote localStorage without going through our write helper.
+    memory.set(
+      key,
+      JSON.stringify({ checkedSectionIds: ["welcome", "rom"] }),
+    );
+    g.window!.dispatchEvent(
+      new MockStorageEvent("storage", {
+        key,
+        newValue: JSON.stringify({ checkedSectionIds: ["welcome", "rom"] }),
+      }),
+    );
+
+    assert.equal(notified, 1);
+    assert.deepEqual(readSetupCheckoffs(key).checkedSectionIds, [
+      "welcome",
+      "rom",
+    ]);
+    unsubscribe();
+  } finally {
+    g.window = prev.window;
+    g.localStorage = prev.localStorage;
+    g.StorageEvent = prev.StorageEvent;
+  }
 });
