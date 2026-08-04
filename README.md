@@ -145,8 +145,32 @@ gets a preview only when it has the GitHub label **`deploy preview`**:
    label remains.
 4. Cleanup is automatic when you **remove the label**, **merge**, or **close**
    the PR: the label is cleared (on close/merge) and matching non-production
-   Vercel preview deployments are deleted. Production deployments are never
-   touched.
+   Vercel preview deployments are deleted, along with the PR's Neon branch and
+   its alias slot. Production deployments are never touched.
+
+Each labelled preview gets its **own Neon branch** (`preview/pr-<n>`, copy-on-write
+from production) and runs migrations against that branch only, so preview testing
+never reads or writes production data.
+
+#### Signing in on a preview
+
+Deployment URLs contain a per-deployment hash, and Discord requires redirect URIs
+to match exactly, so previews are aliased onto a fixed pool of hostnames:
+
+```text
+nuzlocke-preview-1.vercel.app
+nuzlocke-preview-2.vercel.app
+nuzlocke-preview-3.vercel.app
+```
+
+Each is registered in the Discord OAuth app as
+`https://<host>/api/auth/callback/discord`. **Use the slot URL from the PR
+comment, not the raw deployment URL** — sign-in only works on the former.
+
+The pool size caps how many previews can be logged into at once; the workflow
+fails with a clear error naming the occupying PRs when all slots are held. To add
+a fourth, register another redirect URI in Discord and extend the
+`PREVIEW_SLOT_HOSTS` default in `scripts/vercel-preview-slot.sh`.
 
 Fork PRs are skipped (Actions cannot use this secret on fork `pull_request`
 events). Production deploys from the production branch are unchanged.
