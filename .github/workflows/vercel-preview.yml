@@ -192,7 +192,7 @@ jobs:
           # Preview is already the default; --prod is what selects production,
           # so omitting the flag still satisfies "never deploy to production".
           url="$(
-            vercel deploy --prebuilt --force --token="$VERCEL_TOKEN" \
+            vercel deploy --prebuilt --force --archive=tgz --token="$VERCEL_TOKEN" \
               --env "DATABASE_URL=${CHILD_POOLED}" \
               --env "DATABASE_URL_UNPOOLED=${CHILD_DIRECT}" \
               --meta "githubPrId=${PR_NUMBER}" \
