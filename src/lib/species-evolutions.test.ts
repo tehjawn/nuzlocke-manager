@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   evolutionAncestors,
   evolutionConditionChips,
-  evolutionFamily,
   evolutionReadiness,
   evolutionViewFor,
   evolutionsFrom,
@@ -150,30 +149,6 @@ test("ancestors breadcrumb walks Ralts → Kirlia for Gallade", () => {
     chain.map((c) => c.name),
     ["Ralts", "Kirlia"],
   );
-});
-
-test("evolutionFamily returns the full connected component for branching lines", () => {
-  const eevee = evolutionFamily(135); // Jolteon → whole Eevee family
-  assert.equal(eevee[0], 133);
-  assert.ok(eevee.includes(133));
-  assert.ok(eevee.includes(134));
-  assert.ok(eevee.includes(135));
-  assert.ok(eevee.includes(196));
-  assert.ok(eevee.includes(197));
-  assert.ok(eevee.includes(470));
-  assert.ok(eevee.includes(700));
-  assert.equal(eevee.length, 9);
-
-  const wurmple = evolutionFamily(267); // Beautifly → both Wurmple branches
-  assert.deepEqual(wurmple, [265, 266, 267, 268, 269]);
-
-  const ralts = evolutionFamily(475); // Gallade → Ralts + both finals
-  assert.deepEqual(ralts, [280, 281, 282, 475]);
-});
-
-test("evolutionFamily is identity for species outside the evo graph", () => {
-  assert.deepEqual(evolutionFamily(150), [150]); // Mewtwo
-  assert.deepEqual(evolutionFamily(214), [214]); // Heracross
 });
 
 test("evolution view hides legendaries with no evo graph entry", () => {

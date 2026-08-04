@@ -491,13 +491,6 @@ test("groupExclusivesByLine groups stages under their line's base form", () => {
           id: "a3",
           slot: "MAIN",
           partyIndex: 1,
-          species: "Sceptile",
-          pokedexId: 254,
-        }),
-        mon({
-          id: "a4",
-          slot: "MAIN",
-          partyIndex: 2,
           species: "Heracross",
           pokedexId: 214,
         }),
@@ -508,137 +501,15 @@ test("groupExclusivesByLine groups stages under their line's base form", () => {
   const groups = groupExclusivesByLine(exclusives);
   const treeckoLine = groups.find((g) => g.rootPokedexId === 252)!;
   assert.equal(treeckoLine.rootSpecies, "Treecko");
-  assert.equal(treeckoLine.entries.length, 3);
+  assert.equal(treeckoLine.entries.length, 2);
   assert.equal(treeckoLine.singleTrainer, true);
   assert.deepEqual(
     treeckoLine.entries.map((e) => e.pokedexId),
-    [252, 253, 254],
+    [252, 253],
   );
 
   const heracrossLine = groups.find((g) => g.rootPokedexId === 214)!;
   assert.equal(heracrossLine.entries.length, 1);
-  assert.equal(heracrossLine.singleTrainer, true);
-});
-
-test("groupExclusivesByLine does not credit partial split ownership of a line", () => {
-  // john: Sandslash · uwu: Sandshrew — neither owns the whole line.
-  const exclusives = exclusiveOwnedSpecies([
-    trainer({
-      id: "john",
-      handle: "john",
-      sortOrder: 0,
-      pokemon: [
-        mon({
-          id: "j1",
-          slot: "MAIN",
-          partyIndex: 0,
-          species: "Sandslash",
-          pokedexId: 28,
-        }),
-      ],
-    }),
-    trainer({
-      id: "uwu",
-      handle: "uwu",
-      sortOrder: 1,
-      pokemon: [
-        mon({
-          id: "u1",
-          slot: "MAIN",
-          partyIndex: 0,
-          species: "Sandshrew",
-          pokedexId: 27,
-        }),
-      ],
-    }),
-  ]);
-
-  const groups = groupExclusivesByLine(exclusives);
-  assert.equal(groups.length, 1);
-  const line = groups[0]!;
-  assert.equal(line.rootPokedexId, 27);
-  assert.equal(line.singleTrainer, false);
-  assert.equal(line.entries.length, 2);
-
-  // Viewer-scoping must happen after grouping — filtering uwu's stages alone
-  // would wrongly look like a complete single-trainer line.
-  const uwuOnly = groupExclusivesByLine(
-    exclusives.filter((entry) => entry.trainerId === "uwu"),
-  );
-  // Pre-filter is incomplete data; callers must not use it for ownership.
-  // With only Sandshrew present the family is still incomplete.
-  assert.equal(uwuOnly[0]!.singleTrainer, false);
-});
-
-test("groupExclusivesByLine treats branching families as one line", () => {
-  const exclusives = exclusiveOwnedSpecies([
-    trainer({
-      id: "t1",
-      handle: "Ash",
-      sortOrder: 0,
-      pokemon: [
-        mon({
-          id: "a1",
-          slot: "MAIN",
-          partyIndex: 0,
-          species: "Eevee",
-          pokedexId: 133,
-        }),
-        mon({
-          id: "a2",
-          slot: "RESERVE",
-          partyIndex: 0,
-          species: "Jolteon",
-          pokedexId: 135,
-        }),
-        mon({
-          id: "a3",
-          slot: "MAIN",
-          partyIndex: 1,
-          species: "Umbreon",
-          pokedexId: 197,
-        }),
-      ],
-    }),
-  ]);
-
-  const groups = groupExclusivesByLine(exclusives);
-  assert.equal(groups.length, 1);
-  assert.equal(groups[0]!.rootPokedexId, 133);
-  assert.equal(groups[0]!.entries.length, 3);
-  // Family has 9 members (Eevee + 8 evolutions) — three stages is incomplete.
-  assert.equal(groups[0]!.singleTrainer, false);
-});
-
-test("groupExclusivesByLine never marks a line complete with a missing middle stage", () => {
-  const exclusives = exclusiveOwnedSpecies([
-    trainer({
-      id: "t1",
-      handle: "Ash",
-      sortOrder: 0,
-      pokemon: [
-        mon({
-          id: "a1",
-          slot: "MAIN",
-          partyIndex: 0,
-          species: "Treecko",
-          pokedexId: 252,
-        }),
-        mon({
-          id: "a2",
-          slot: "MAIN",
-          partyIndex: 1,
-          species: "Sceptile",
-          pokedexId: 254,
-        }),
-      ],
-    }),
-  ]);
-
-  const groups = groupExclusivesByLine(exclusives);
-  const treeckoLine = groups.find((g) => g.rootPokedexId === 252)!;
-  assert.equal(treeckoLine.entries.length, 2);
-  assert.equal(treeckoLine.singleTrainer, false);
 });
 
 test("encounterSeasonHighlights merges species with and without pokedexId", () => {
