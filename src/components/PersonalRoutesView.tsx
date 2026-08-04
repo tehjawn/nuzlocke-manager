@@ -40,6 +40,8 @@ export function PersonalRoutesView({
   const openRoutes = filterRoutes(status.openRoutes, normalizedQuery);
   const claimedRoutes = filterGroups(status.claimedRoutes, normalizedQuery);
   const otherRoutes = filterGroups(status.otherRoutes, normalizedQuery);
+  const offRouteClaims = filterGroups(status.offRouteClaims, normalizedQuery);
+  const legacyClaims = filterGroups(status.legacyClaims, normalizedQuery);
   const unresolvedRoutes = filterRoutes(status.unresolvedRoutes, normalizedQuery);
 
   return (
@@ -83,7 +85,7 @@ export function PersonalRoutesView({
             {status.openRoutes.length} open
           </span>
           {" · "}
-          {status.claimedRoutes.length} claimed of {status.catalogSize} catalog
+          {status.claimedRoutes.length} claimed of {status.catalogSize} catchable
           locations
           {status.unresolvedRoutes.length > 0 && (
             <>
@@ -102,6 +104,7 @@ export function PersonalRoutesView({
               : "No open routes — every catalog location is claimed."
           }
           routes={openRoutes}
+          sharedLabels={status.sharedSlotLabels}
           title={`Open · ${openRoutes.length}`}
         />
 
@@ -133,6 +136,39 @@ export function PersonalRoutesView({
         </div>
       )}
 
+      {status.legacyClaims.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted">
+            These catches did use an encounter — Modern Emerald just stamps them
+            with an umbrella location, so we can&apos;t tell which area they came
+            from. Import a current save to pin them down.
+          </p>
+          <ClaimedRoutes
+            empty={`No unresolved areas match “${query.trim()}”.`}
+            groups={legacyClaims}
+            slug={slug}
+            title={`Unresolved area · ${legacyClaims.length}`}
+            trainerId={status.trainerId}
+          />
+        </div>
+      )}
+
+      {status.offRouteClaims.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted">
+            Gifts, fossils, statics and legendaries aren&apos;t route encounters,
+            so they don&apos;t use up one of your catchable locations.
+          </p>
+          <ClaimedRoutes
+            empty={`No gift or static catches match “${query.trim()}”.`}
+            groups={offRouteClaims}
+            slug={slug}
+            title={`Gifts & statics · ${offRouteClaims.length}`}
+            trainerId={status.trainerId}
+          />
+        </div>
+      )}
+
       {status.otherRoutes.length > 0 && (
         <ClaimedRoutes
           empty={`No other logged locations match “${query.trim()}”.`}
@@ -149,10 +185,12 @@ export function PersonalRoutesView({
 function RouteChecklist({
   empty,
   routes,
+  sharedLabels,
   title,
 }: {
   empty: string;
   routes: string[];
+  sharedLabels?: Record<string, string[]>;
   title: string;
 }) {
   return (
@@ -162,18 +200,31 @@ function RouteChecklist({
       </h4>
       {routes.length > 0 ? (
         <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
-          {routes.map((route) => (
-            <li
-              className="flex items-center gap-2 rounded-md border border-frame/35 bg-surface/55 px-2.5 py-2 text-xs font-semibold text-ink"
-              key={route}
-            >
-              <span
-                aria-hidden
-                className="h-2.5 w-2.5 shrink-0 rounded-full border border-interactive/70 bg-interactive-soft"
-              />
-              <span className="min-w-0 truncate">{route}</span>
-            </li>
-          ))}
+          {routes.map((route) => {
+            const shared = sharedLabels?.[route];
+            return (
+              <li
+                className="flex items-center gap-2 rounded-md border border-frame/35 bg-surface/55 px-2.5 py-2 text-xs font-semibold text-ink"
+                key={route}
+                title={
+                  shared
+                    ? `Shares one encounter with ${shared.join(", ")} — catching in any of them spends this slot.`
+                    : undefined
+                }
+              >
+                <span
+                  aria-hidden
+                  className="h-2.5 w-2.5 shrink-0 rounded-full border border-interactive/70 bg-interactive-soft"
+                />
+                <span className="min-w-0 truncate">{route}</span>
+                {shared && (
+                  <span className="shrink-0 text-[10px] font-normal text-muted">
+                    +{shared.length}
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <EmptyRoutes message={empty} />
