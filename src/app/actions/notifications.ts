@@ -37,12 +37,16 @@ export async function completeFirstRunAction(): Promise<NotificationActionResult
     return { ok: false, error: "Sign in required." };
   }
 
-  const notification = await markWelcomeNotificationRead(userId);
-  if (!notification) {
-    return { ok: false, error: "Welcome notification not found." };
+  try {
+    const notification = await markWelcomeNotificationRead(userId);
+    if (!notification) {
+      return { ok: false, error: "Welcome notification not found." };
+    }
+    return { ok: true, notification };
+  } catch (error) {
+    console.error("[completeFirstRunAction]", error);
+    return { ok: false, error: "Couldn’t finish Get Started — try again." };
   }
-
-  return { ok: true, notification };
 }
 
 export async function archiveNotificationAction(

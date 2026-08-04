@@ -157,6 +157,14 @@ export default async function TrainerBoardPage({ params }: PageProps) {
     isGm: Boolean(access?.isGm),
   });
 
+  let encourageImportSave = false;
+  if (canEdit && isDatabaseConfigured()) {
+    const imported = await getPrisma().trainerBoardSnapshot.count({
+      where: { trainerId: trainer.id, trigger: "IMPORT" },
+    });
+    encourageImportSave = imported === 0;
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <SeasonJumpRegistrar
@@ -197,6 +205,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           showCompetitiveDetails={canViewCompetitive}
           isGm={Boolean(boardGm)}
           isDemo={isDemo}
+          encourageImportSave={encourageImportSave}
         />
       </main>
     </div>

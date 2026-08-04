@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   writeOnboardingActive,
   writeOnboardingStep,
+  ONBOARDING_START_EVENT,
 } from "@/lib/onboarding";
 
 /**
@@ -21,7 +22,7 @@ export function StartOnboardingTourOnMount() {
     writeOnboardingStep(0);
     writeOnboardingActive(true);
     // Soft-notify LoggedInChrome if it’s already mounted without the active flag.
-    window.dispatchEvent(new CustomEvent("nuzlocke-start-onboarding-tour"));
+    window.dispatchEvent(new CustomEvent(ONBOARDING_START_EVENT));
     const url = new URL(window.location.href);
     url.searchParams.delete("tour");
     router.replace(`${url.pathname}${url.search}${url.hash}`);

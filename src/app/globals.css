@@ -1260,6 +1260,11 @@ button:disabled,
   animation: cta-import-rgb-glow 9s ease-in-out infinite;
 }
 
+/* First import — keep the RGB pulse always on so the CTA reads louder. */
+.cta-import-save.is-first-import {
+  animation: cta-import-rgb-glow-persistent 4.5s ease-in-out infinite;
+}
+
 .cta-import-save > * {
   position: relative;
   z-index: 1;
@@ -1316,6 +1321,30 @@ button:disabled,
   }
 }
 
+@keyframes cta-import-rgb-glow-persistent {
+  0%,
+  100% {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 12px 2px color-mix(in srgb, #ef6b6b 40%, transparent);
+  }
+  25% {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 16px 3px color-mix(in srgb, #6bcf8a 38%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 16px 3px color-mix(in srgb, #5eb4e8 40%, transparent);
+  }
+  75% {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 14px 2px color-mix(in srgb, #c48ad4 34%, transparent);
+  }
+}
+
 @keyframes cta-import-shine {
   from {
     transform: translateX(-140%);
@@ -1335,6 +1364,12 @@ button:disabled,
 
   .cta-import-save {
     animation: none;
+  }
+
+  .cta-import-save.is-first-import {
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 0 12px 2px color-mix(in srgb, #5eb4e8 36%, transparent);
   }
 
   .cta-import-save:hover::after {
@@ -3769,7 +3804,6 @@ button:disabled,
 
 .badge-case--tray.badge-case--complete {
   border-radius: var(--radius-sm);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 18%, transparent);
 }
 
 .badge-case__banner {

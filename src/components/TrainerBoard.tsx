@@ -53,8 +53,7 @@ import { copyText } from "@/lib/copy-text";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
-import { CTA_PRIMARY, CTA_PRIMARY_SM } from "@/lib/cta";
-import { FORCE_FIRST_RUN_CHROME } from "@/lib/first-run";
+import { CTA_PRIMARY_SM } from "@/lib/cta";
 import {
   MAIN_PARTY_SIZE,
   firstOpenMainPartyIndex,
@@ -85,6 +84,8 @@ type TrainerBoardProps = {
   showCompetitiveDetails?: boolean;
   isGm: boolean;
   isDemo: boolean;
+  /** Soft CTA glow on Import save until the first successful import. */
+  encourageImportSave?: boolean;
 };
 
 function PencilIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
@@ -380,6 +381,7 @@ const shortcutLinkClass = `${shortcutTileBase} border-dashed border-frame/55 bg-
 
 function shortcutActionToneClass(
   tone: "accent" | "danger" | "import" | "neutral" = "neutral",
+  options?: { firstImport?: boolean },
 ) {
   switch (tone) {
     case "accent":
@@ -387,7 +389,9 @@ function shortcutActionToneClass(
     case "danger":
       return "border-danger/35 bg-danger/15 text-danger hover:brightness-105";
     case "import":
-      return "cta-import-save border-frame bg-surface text-ink shadow-sm";
+      return `cta-import-save border-frame bg-surface text-ink shadow-sm${
+        options?.firstImport ? " is-first-import" : ""
+      }`;
     default:
       return "border-frame bg-surface text-ink shadow-sm hover:bg-surface-2";
   }
@@ -419,6 +423,7 @@ function ShortcutActionTile({
   disabled,
   title,
   tone = "neutral",
+  firstImport = false,
 }: {
   label: string;
   icon: ReactNode;
@@ -426,6 +431,7 @@ function ShortcutActionTile({
   disabled?: boolean;
   title?: string;
   tone?: "accent" | "danger" | "import" | "neutral";
+  firstImport?: boolean;
 }) {
   return (
     <button
@@ -433,7 +439,7 @@ function ShortcutActionTile({
       disabled={disabled}
       title={title}
       onClick={onClick}
-      className={`${shortcutActionButtonBase} ${shortcutActionToneClass(tone)}`}
+      className={`${shortcutActionButtonBase} ${shortcutActionToneClass(tone, { firstImport })}`}
     >
       <span className="shrink-0" aria-hidden>
         {icon}
@@ -539,6 +545,7 @@ export function TrainerBoard({
   showCompetitiveDetails = canEdit,
   isGm,
   isDemo,
+  encourageImportSave = false,
 }: TrainerBoardProps) {
   const [editingPlayer, setEditingPlayer] = useState(false);
 
@@ -550,9 +557,10 @@ export function TrainerBoard({
   const wipeSave = useSaveStatus();
   const resetSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
+  const [importSaveGlow, setImportSaveGlow] = useState(encourageImportSave);
 
   // Include slot/partyIndex — wipe/reset clear or rewrite the board.
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.money ?? ""}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}`;
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.money ?? ""}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}|${encourageImportSave ? 1 : 0}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
   /** Optimistic board after wipe/reset until RSC refresh lands. */
@@ -630,6 +638,7 @@ export function TrainerBoard({
 
   if (serverStamp !== seenStamp) {
     setSeenStamp(serverStamp);
+    setImportSaveGlow(encourageImportSave);
 
     // Keep wipe/reset optimism until the RSC payload reflects the operation.
     // Both clear the live board (including R.I.P.). Wipe also bumps wipeCount
@@ -1135,11 +1144,14 @@ export function TrainerBoard({
           label="Import save"
           onClick={() => setSaveImportOpen(true)}
           tone="import"
+          firstImport={importSaveGlow}
         />
       ),
       toolbar: canEdit && (
         <button
-          className="pressable cta-import-save inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+          className={`pressable cta-import-save inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60${
+            importSaveGlow ? " is-first-import" : ""
+          }`}
           data-tour="import-save"
           disabled={pending || wiping}
           onClick={() => setSaveImportOpen(true)}
@@ -1293,22 +1305,6 @@ export function TrainerBoard({
           </div>
         ) : null}
       </div>
-
-      {canEdit &&
-      (trainer.pokemon.length === 0 || FORCE_FIRST_RUN_CHROME) ? (
-        <div className="flex flex-col gap-2 border border-accent/25 bg-accent/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm leading-relaxed text-ink">
-            Next up: download the ROM, set up Afterplay, and import your first
-            save.
-          </p>
-          <Link
-            href={`/challenges/${challengeSlug}/setup`}
-            className={`${CTA_PRIMARY} w-full justify-center sm:w-auto`}
-          >
-            Continue to Get Started →
-          </Link>
-        </div>
-      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:items-start">
         <div className="space-y-6">
@@ -1803,6 +1799,7 @@ export function TrainerBoard({
               });
               if (result.ok) {
                 partySave.markSaved(result.message ?? "Save imported");
+                setImportSaveGlow(false);
                 setSaveImportOpen(false);
                 // Mirror server gate: non-GMs may only spend a revive via import.
                 if (

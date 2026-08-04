@@ -8,6 +8,10 @@
  * First-run still shows About / Rules / Trainers tabs; Encounters, Tools,
  * Memorial, Tournament, and the pack feed stay hidden until welcome is done.
  * Brand-new players hit /new-trainer before their board.
+ *
+ * Season CTAs (home Open League, join) use `playerSeasonEntryPath` so create
+ * → tour → league stay one funnel instead of dumping mid-intro players on the
+ * public board.
  */
 
 /**
@@ -39,4 +43,47 @@ export function isFirstRunChrome(input: FirstRunInput): boolean {
   if (input.welcomeCompleted) return false;
   if (input.hasProgress) return false;
   return true;
+}
+
+export type SeasonEntryInput = {
+  signedIn: boolean;
+  isGm?: boolean;
+  /**
+   * `false` — trainer exists, /new-trainer unfinished.
+   * `true` — create moment done.
+   * `null` — no trainer yet (provision via /me).
+   */
+  introCompleted: boolean | null;
+  welcomeCompleted: boolean;
+  hasProgress: boolean;
+};
+
+/**
+ * Canonical “enter this season” destination for CTAs (home Open League, join,
+ * post-login). Keeps create → tour → league as one funnel:
+ *
+ * 1. Unfinished /new-trainer → `/new-trainer`
+ * 2. Still in first-run (tour / welcome unread, no MAIN) → `/me` (board)
+ * 3. Settled players + GMs + spectators → league board
+ */
+export function playerSeasonEntryPath(
+  slug: string,
+  input: SeasonEntryInput,
+): string {
+  const base = `/challenges/${slug}`;
+  if (!input.signedIn) return base;
+  if (input.isGm) return base;
+  if (input.introCompleted === false) return `${base}/new-trainer`;
+  if (input.introCompleted === null) return `${base}/me`;
+  if (
+    isFirstRunChrome({
+      signedIn: true,
+      welcomeCompleted: input.welcomeCompleted,
+      hasProgress: input.hasProgress,
+      isGm: false,
+    })
+  ) {
+    return `${base}/me`;
+  }
+  return base;
 }

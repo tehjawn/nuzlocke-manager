@@ -10,8 +10,10 @@ import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { UserMenu } from "@/components/UserMenu";
 import {
+  ONBOARDING_END_EVENT,
+  ONBOARDING_START_EVENT,
   ONBOARDING_STEPS,
-  readOnboardingActive,
+  shouldOpenOnboardingTour,
   writeOnboardingActive,
   writeOnboardingStep,
 } from "@/lib/onboarding";
@@ -49,28 +51,37 @@ export function LoggedInChrome({
   const [notifications, setNotifications] = useState(() =>
     withPinnedWelcome(initialNotifications),
   );
-  const [tourOpen, setTourOpen] = useState(() => {
-    // Don't auto-launch the overlay tour on first login (#183) — the linear
-    // customize → Get Started path is the primary funnel. Welcome inbox still
-    // restarts the tour on click. /new-trainer sets the active flag + ?tour=1.
-    if (readOnboardingActive()) {
-      return true;
-    }
-    return false;
-  });
+  const [tourOpen, setTourOpen] = useState(() =>
+    shouldOpenOnboardingTour(pathname),
+  );
 
   // /new-trainer → board with ?tour=1 may mount after LoggedInChrome; listen.
+  // CompleteFirstRunLink / Skip also end the tour across layout remounts.
   useEffect(() => {
     function onStart() {
       writeOnboardingStep(0);
       writeOnboardingActive(true);
       setTourOpen(true);
     }
-    window.addEventListener("nuzlocke-start-onboarding-tour", onStart);
+    function onEnd() {
+      setTourOpen(false);
+    }
+    window.addEventListener(ONBOARDING_START_EVENT, onStart);
+    window.addEventListener(ONBOARDING_END_EVENT, onEnd);
     return () => {
-      window.removeEventListener("nuzlocke-start-onboarding-tour", onStart);
+      window.removeEventListener(ONBOARDING_START_EVENT, onStart);
+      window.removeEventListener(ONBOARDING_END_EVENT, onEnd);
     };
   }, []);
+
+  // Resume the overlay when the user returns to a route that matches the
+  // saved step (after a pause from navigating away).
+  useEffect(() => {
+    if (tourOpen) return;
+    if (shouldOpenOnboardingTour(pathname)) {
+      setTourOpen(true);
+    }
+  }, [pathname, tourOpen]);
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 

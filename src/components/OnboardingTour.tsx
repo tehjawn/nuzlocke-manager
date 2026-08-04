@@ -19,6 +19,7 @@ import {
   readOnboardingStep,
   readOnboardingTransition,
   requestOnboardingMobilePanel,
+  writeOnboardingActive,
   writeOnboardingStep,
   writeOnboardingTransition,
   type OnboardingStep,
@@ -313,6 +314,7 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
   const finish = useCallback(() => {
     clearOnboardingStep();
     writeOnboardingTransition(false);
+    writeOnboardingActive(false);
     setBridging(false);
     setReady(false);
     readyRef.current = false;
@@ -372,8 +374,18 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
     }
 
     if (!active.match(pathname)) {
-      beginBridge();
-      router.push(active.href);
+      // Only force-navigate when Next/Back started a bridge. Manual nav away
+      // (My Trainer, Open league board, …) must not yank the user back.
+      if (readOnboardingTransition()) {
+        beginBridge();
+        router.push(active.href);
+        return;
+      }
+      setReady(false);
+      readyRef.current = false;
+      setTarget(null);
+      setMoving(false);
+      setBridging(false);
       return;
     }
 
