@@ -240,3 +240,24 @@ export function shouldOpenOnboardingTour(pathname: string): boolean {
   const step = ONBOARDING_STEPS[readOnboardingStep()];
   return step ? step.match(pathname) : false;
 }
+
+/** Season trainers board (`/challenges/{slug}`), not nested season tabs. */
+export function isOnboardingSeasonBoardPath(pathname: string): boolean {
+  return seasonMatch(pathname);
+}
+
+export type OnboardingMismatchAction = "bridge" | "complete" | "pause";
+
+/**
+ * What to do when the tour is open but the current path does not match the
+ * active step. Next/Back bridges keep navigating; landing on the league board
+ * outside a bridge finishes the tour (unlocks chrome); anything else pauses.
+ */
+export function onboardingMismatchAction(
+  pathname: string,
+  bridging: boolean,
+): OnboardingMismatchAction {
+  if (bridging) return "bridge";
+  if (isOnboardingSeasonBoardPath(pathname)) return "complete";
+  return "pause";
+}

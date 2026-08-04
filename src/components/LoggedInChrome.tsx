@@ -13,9 +13,11 @@ import {
   ONBOARDING_END_EVENT,
   ONBOARDING_START_EVENT,
   ONBOARDING_STEPS,
+  clearOnboardingTourState,
   shouldOpenOnboardingTour,
   writeOnboardingActive,
   writeOnboardingStep,
+  writeOnboardingTransition,
 } from "@/lib/onboarding";
 import { feedbackNotificationHref } from "@/lib/feedback-types";
 import {
@@ -51,9 +53,16 @@ export function LoggedInChrome({
   const [notifications, setNotifications] = useState(() =>
     withPinnedWelcome(initialNotifications),
   );
-  const [tourOpen, setTourOpen] = useState(() =>
-    shouldOpenOnboardingTour(pathname),
-  );
+  // Bumped when sessionStorage tour flags change without a pathname change
+  // (start/end events, Skip). Included in the open expression so React re-reads
+  // storage; pathname changes re-derive on their own.
+  const [tourTick, setTourTick] = useState(0);
+  const tourOpen =
+    tourTick >= 0 && shouldOpenOnboardingTour(pathname);
+
+  function bumpTourTick() {
+    setTourTick((n) => n + 1);
+  }
 
   // /new-trainer → board with ?tour=1 may mount after LoggedInChrome; listen.
   // CompleteFirstRunLink / Skip also end the tour across layout remounts.
@@ -61,10 +70,10 @@ export function LoggedInChrome({
     function onStart() {
       writeOnboardingStep(0);
       writeOnboardingActive(true);
-      setTourOpen(true);
+      bumpTourTick();
     }
     function onEnd() {
-      setTourOpen(false);
+      bumpTourTick();
     }
     window.addEventListener(ONBOARDING_START_EVENT, onStart);
     window.addEventListener(ONBOARDING_END_EVENT, onEnd);
@@ -73,15 +82,6 @@ export function LoggedInChrome({
       window.removeEventListener(ONBOARDING_END_EVENT, onEnd);
     };
   }, []);
-
-  // Resume the overlay when the user returns to a route that matches the
-  // saved step (after a pause from navigating away).
-  useEffect(() => {
-    if (tourOpen) return;
-    if (shouldOpenOnboardingTour(pathname)) {
-      setTourOpen(true);
-    }
-  }, [pathname, tourOpen]);
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
@@ -147,22 +147,25 @@ export function LoggedInChrome({
   }
 
   async function dismissTour() {
-    writeOnboardingActive(false);
+    clearOnboardingTourState();
+    bumpTourTick();
     const welcome = findWelcome(notifications);
     if (welcome) {
       await markRead(welcome);
     }
-    setTourOpen(false);
   }
 
   function startTour() {
     writeOnboardingStep(0);
     writeOnboardingActive(true);
-    setTourOpen(true);
     // Avoid a useless /me bounce if we're already on a trainer board.
     if (!ONBOARDING_STEPS[0].match(pathname)) {
+      writeOnboardingTransition(true);
+      bumpTourTick();
       router.push(ONBOARDING_STEPS[0].href);
+      return;
     }
+    bumpTourTick();
   }
 
   async function onSelectNotification(notification: NotificationItem) {

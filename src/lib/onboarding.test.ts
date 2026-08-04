@@ -4,6 +4,7 @@ import {
   ONBOARDING_ACTIVE_KEY,
   ONBOARDING_STORAGE_KEY,
   ONBOARDING_TRANSITION_KEY,
+  onboardingMismatchAction,
   shouldOpenOnboardingTour,
   writeOnboardingActive,
   writeOnboardingStep,
@@ -86,4 +87,42 @@ test("shouldOpenOnboardingTour opens during a bridge even off-route", () => {
       true,
     );
   });
+});
+
+test("shouldOpenOnboardingTour resumes when returning to the saved step route", () => {
+  withSessionStorage(() => {
+    writeOnboardingActive(true);
+    writeOnboardingStep(3); // season-trainers
+    assert.equal(
+      shouldOpenOnboardingTour("/challenges/2026-trash-pack/setup"),
+      false,
+    );
+    assert.equal(
+      shouldOpenOnboardingTour("/challenges/2026-trash-pack"),
+      true,
+    );
+  });
+});
+
+test("onboardingMismatchAction bridges, completes on league board, else pauses", () => {
+  assert.equal(
+    onboardingMismatchAction("/challenges/2026-trash-pack/trainers/t1", true),
+    "bridge",
+  );
+  assert.equal(
+    onboardingMismatchAction("/challenges/2026-trash-pack", false),
+    "complete",
+  );
+  assert.equal(
+    onboardingMismatchAction("/challenges/2026-trash-pack/", false),
+    "complete",
+  );
+  assert.equal(
+    onboardingMismatchAction("/challenges/2026-trash-pack/trainers/t1", false),
+    "pause",
+  );
+  assert.equal(
+    onboardingMismatchAction("/challenges/2026-trash-pack/setup", false),
+    "pause",
+  );
 });

@@ -22,12 +22,7 @@ export async function resolvePlayerSeasonEntryPath(
   }
 
   if (!isDatabaseConfigured()) {
-    return playerSeasonEntryPath(slug, {
-      signedIn: true,
-      introCompleted: null,
-      welcomeCompleted: false,
-      hasProgress: false,
-    });
+    return `/challenges/${slug}`;
   }
 
   const challenge = await getChallengeAccessFields(slug);

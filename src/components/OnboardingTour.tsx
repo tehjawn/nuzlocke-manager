@@ -16,6 +16,7 @@ import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 import {
   ONBOARDING_STEPS,
   clearOnboardingStep,
+  onboardingMismatchAction,
   readOnboardingStep,
   readOnboardingTransition,
   requestOnboardingMobilePanel,
@@ -374,11 +375,19 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
     }
 
     if (!active.match(pathname)) {
-      // Only force-navigate when Next/Back started a bridge. Manual nav away
-      // (My Trainer, Open league board, …) must not yank the user back.
-      if (readOnboardingTransition()) {
+      // Next/Back bridges keep navigating. Manual league-board landings finish
+      // the tour (unlock chrome). Other destinations pause without yanking.
+      const action = onboardingMismatchAction(
+        pathname,
+        readOnboardingTransition(),
+      );
+      if (action === "bridge") {
         beginBridge();
         router.push(active.href);
+        return;
+      }
+      if (action === "complete") {
+        finish();
         return;
       }
       setReady(false);
