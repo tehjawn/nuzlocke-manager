@@ -3,13 +3,17 @@ name: Vercel Preview Cleanup
 # On PR close/merge, or when the deploy preview label is removed:
 # 1) drop the deploy preview label (close/merge)
 # 2) delete matching non-production Vercel preview deployments
+# 3) delete the PR's Neon preview branch, if the Neon integration is configured
 
 on:
   pull_request:
     types: [closed, unlabeled]
 
+# Shared with .github/workflows/vercel-preview.yml on purpose. Cleanup and deploy
+# must serialize: without a shared group, unlabeling does not cancel an in-flight
+# deploy, and the deploy can recreate the Neon branch cleanup just deleted.
 concurrency:
-  group: vercel-preview-cleanup-pr-${{ github.event.pull_request.number }}
+  group: vercel-preview-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
@@ -37,6 +41,10 @@ jobs:
             scripts/vercel-preview-cleanup.sh
           sparse-checkout-cone-mode: false
 
+      # Removing the label emits an `unlabeled` event, which would re-enter this
+      # workflow. That is safe only because events raised with GITHUB_TOKEN do not
+      # start new workflow runs. If this ever switches to a PAT or app token, this
+      # step self-triggers — add an explicit actor guard first.
       - name: Remove deploy preview label
         if: github.event.action == 'closed'
         uses: actions/github-script@v7
@@ -103,3 +111,56 @@ jobs:
             "${{ github.event.pull_request.number }}" \
             "${{ github.event.pull_request.head.ref }}" \
             "${SHAS[@]}"
+
+      # --- Neon preview branch teardown ---------------------------------------
+      # The branch name is derived only from the PR number, so it can never
+      # resolve to `main` or any branch this automation did not create.
+
+      - name: Check Neon configuration
+        id: neon_cfg
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -n "$NEON_API_KEY" ] && [ -n "$NEON_PROJECT_ID" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Neon integration not configured; skipping Neon branch cleanup."
+          fi
+
+      # Teardown must be idempotent: unlabel deletes the branch, and a later close
+      # runs this job again. A missing branch is success, not an error.
+      - name: Look up Neon branch
+        id: neon_branch
+        if: steps.neon_cfg.outputs.configured == 'true'
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BRANCH: preview/pr-${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          found="$(
+            curl -sS --fail-with-body \
+              -H "Authorization: Bearer $NEON_API_KEY" \
+              "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+            | jq -r --arg b "$BRANCH" \
+                '.branches[] | select(.name == $b and .default != true) | .id' \
+            | head -n1
+          )"
+          if [ -n "$found" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Found Neon branch $BRANCH ($found)."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No Neon branch $BRANCH; nothing to delete."
+          fi
+
+      - name: Delete Neon branch
+        if: steps.neon_branch.outputs.exists == 'true'
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: preview/pr-${{ github.event.pull_request.number }}
+          api_key: ${{ secrets.NEON_API_KEY }}
