@@ -12,7 +12,7 @@ Phases 0–4 shipped. Next: Phase 5 — season ops polish (archive UX, invite wa
 - Species + shiny + forme sprite picker
 - Import from Afterplay / Gen 3 saves (party, box, R.I.P., encounters + optional name/badges)
 - GM console (settings, rules, FAQ, Main Squad lock, export, Discord webhooks)
-- Memorial, tournament stub, encounter ledger, trainer compare, type chart, share links
+- Memorial, tournament stub, encounter ledger, team planner, type chart, share links
 - Activity feed on the league board + notifications / welcome modal
 - Postgres-backed data with seed fallback for read-only demo
 
@@ -129,5 +129,26 @@ Upstash is optional. Leave `KV_*` unset locally and on Vercel until you want the
    do not mutate the database.
 4. Run `db:seed` once against the production DB (or restore from an existing Neon project)
 5. After changing DB env vars, **redeploy** so running instances pick them up
+
+### Preview deployments (label-gated)
+
+Automatic Git preview builds are skipped (`vercel.json` → `ignoreCommand`). A PR
+gets a preview only when it has the GitHub label **`deploy preview`**:
+
+1. Create a **full account** [Vercel token](https://vercel.com/account/tokens)
+   (not a scoped/custom `vcp_…` project token — those break `vercel pull` /
+   `vercel deploy` with “Could not retrieve Project Settings”).
+2. Add it as the repository Actions secret `VERCEL_TOKEN`
+   (`gh secret set VERCEL_TOKEN`).
+3. On a PR, add the `deploy preview` label. GitHub Actions builds and deploys a
+   preview and comments the URL. Later pushes to that PR redeploy while the
+   label remains.
+4. Cleanup is automatic when you **remove the label**, **merge**, or **close**
+   the PR: the label is cleared (on close/merge) and matching non-production
+   Vercel preview deployments are deleted. Production deployments are never
+   touched.
+
+Fork PRs are skipped (Actions cannot use this secret on fork `pull_request`
+events). Production deploys from the production branch are unchanged.
 
 When migrating Neon projects, update Production + Preview (and Development if used) together so preview deploys do not keep hitting the old database.

@@ -237,6 +237,60 @@ async function captureSnapshot(
   return label;
 }
 
+/** One payload row → PokemonEntry, or null when the row is unusable. */
+function parseSnapshotPokemonRow(
+  row: unknown,
+  fallbackIndex: number,
+): PokemonEntry | null {
+  if (!row || typeof row !== "object") return null;
+  const p = row as Record<string, unknown>;
+  if (typeof p.species !== "string" || typeof p.slot !== "string") return null;
+  const slot = p.slot as PokemonSlot;
+  if (
+    slot !== "MAIN" &&
+    slot !== "RESERVE" &&
+    slot !== "GRAVEYARD" &&
+    slot !== "ENCOUNTERED"
+  ) {
+    return null;
+  }
+  return {
+    id: typeof p.id === "string" ? p.id : `snap-${fallbackIndex}`,
+    slot,
+    partyIndex: typeof p.partyIndex === "number" ? p.partyIndex : 0,
+    nickname: typeof p.nickname === "string" ? p.nickname : null,
+    species: p.species,
+    pokedexId: typeof p.pokedexId === "number" ? p.pokedexId : null,
+    isShiny: Boolean(p.isShiny),
+    types: resolvePokemonTypes({
+      types: Array.isArray(p.types)
+        ? p.types.filter((t): t is string => typeof t === "string")
+        : [],
+      pokedexId: typeof p.pokedexId === "number" ? p.pokedexId : null,
+      species: p.species,
+    }),
+    nature: typeof p.nature === "string" ? p.nature : null,
+    level: typeof p.level === "number" ? p.level : null,
+    ability: typeof p.ability === "string" ? p.ability : null,
+    catchRoute: typeof p.catchRoute === "string" ? p.catchRoute : null,
+    heldItem: typeof p.heldItem === "string" ? p.heldItem : null,
+    moves: Array.isArray(p.moves)
+      ? p.moves.filter((m): m is string => typeof m === "string")
+      : [],
+    ivs: (() => {
+      if (p.ivs == null) return null;
+      const parsed = IvsSchema.safeParse(p.ivs);
+      return clampIvs(
+        parsed.success ? parsed.data : (parseStatSpread(p.ivs) ?? undefined),
+      );
+    })(),
+    evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
+    causeOfDeath: typeof p.causeOfDeath === "string" ? p.causeOfDeath : null,
+    diedOnRun: typeof p.diedOnRun === "number" ? p.diedOnRun : null,
+    runId: typeof p.runId === "string" ? p.runId : null,
+  };
+}
+
 export function parseSnapshotPayload(
   raw: unknown,
 ): TrainerBoardSnapshotPayload | null {
@@ -246,54 +300,8 @@ export function parseSnapshotPayload(
 
   const pokemon: PokemonEntry[] = [];
   for (const row of obj.pokemon) {
-    if (!row || typeof row !== "object") continue;
-    const p = row as Record<string, unknown>;
-    if (typeof p.species !== "string" || typeof p.slot !== "string") continue;
-    const slot = p.slot as PokemonSlot;
-    if (
-      slot !== "MAIN" &&
-      slot !== "RESERVE" &&
-      slot !== "GRAVEYARD" &&
-      slot !== "ENCOUNTERED"
-    ) {
-      continue;
-    }
-    pokemon.push({
-      id: typeof p.id === "string" ? p.id : `snap-${pokemon.length}`,
-      slot,
-      partyIndex: typeof p.partyIndex === "number" ? p.partyIndex : 0,
-      nickname: typeof p.nickname === "string" ? p.nickname : null,
-      species: p.species,
-      pokedexId: typeof p.pokedexId === "number" ? p.pokedexId : null,
-      isShiny: Boolean(p.isShiny),
-      types: resolvePokemonTypes({
-        types: Array.isArray(p.types)
-          ? p.types.filter((t): t is string => typeof t === "string")
-          : [],
-        pokedexId: typeof p.pokedexId === "number" ? p.pokedexId : null,
-        species: p.species,
-      }),
-      nature: typeof p.nature === "string" ? p.nature : null,
-      level: typeof p.level === "number" ? p.level : null,
-      ability: typeof p.ability === "string" ? p.ability : null,
-      catchRoute: typeof p.catchRoute === "string" ? p.catchRoute : null,
-      heldItem: typeof p.heldItem === "string" ? p.heldItem : null,
-      moves: Array.isArray(p.moves)
-        ? p.moves.filter((m): m is string => typeof m === "string")
-        : [],
-      ivs: (() => {
-        if (p.ivs == null) return null;
-        const parsed = IvsSchema.safeParse(p.ivs);
-        return clampIvs(
-          parsed.success ? parsed.data : (parseStatSpread(p.ivs) ?? undefined),
-        );
-      })(),
-      evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
-      causeOfDeath:
-        typeof p.causeOfDeath === "string" ? p.causeOfDeath : null,
-      diedOnRun: typeof p.diedOnRun === "number" ? p.diedOnRun : null,
-      runId: typeof p.runId === "string" ? p.runId : null,
-    });
+    const parsed = parseSnapshotPokemonRow(row, pokemon.length);
+    if (parsed) pokemon.push(parsed);
   }
 
   return {
@@ -304,6 +312,54 @@ export function parseSnapshotPayload(
       ? obj.earnedBadgeKeys.filter((k): k is string => typeof k === "string")
       : [],
     pokemon,
+  };
+}
+
+function isGraveyardRow(row: unknown): row is { slot: "GRAVEYARD" } {
+  return (
+    typeof row === "object" &&
+    row !== null &&
+    "slot" in row &&
+    row.slot === "GRAVEYARD"
+  );
+}
+
+/**
+ * Graveyard-only projection of a snapshot payload, for Memorial / trainer
+ * history reads.
+ *
+ * Two reasons this is not `parseSnapshotPayload(...).pokemon.filter(...)`:
+ * a season memorial parses every retained snapshot, so skipping the
+ * MAIN / RESERVE / ENCOUNTERED rows it would throw away matters; and Memorial
+ * is visible to spectators, who must not gain a competitive-detail channel
+ * (`canViewCompetitiveDetails`) through archived boards.
+ */
+export function parseSnapshotGraves(
+  raw: unknown,
+): { wipeCount: number; graves: PokemonEntry[] } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  if (!Array.isArray(obj.pokemon)) return null;
+
+  const graves: PokemonEntry[] = [];
+  for (const row of obj.pokemon) {
+    if (!isGraveyardRow(row)) continue;
+    const parsed = parseSnapshotPokemonRow(row, graves.length);
+    if (!parsed) continue;
+    graves.push({
+      ...parsed,
+      nature: null,
+      ability: null,
+      heldItem: null,
+      moves: [],
+      ivs: null,
+      evs: null,
+    });
+  }
+
+  return {
+    wipeCount: typeof obj.wipeCount === "number" ? obj.wipeCount : 0,
+    graves,
   };
 }
 

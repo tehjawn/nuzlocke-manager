@@ -63,9 +63,13 @@ import {
   importedGravesToAppend,
 } from "@/lib/import-memorial";
 import {
+  crossRunGraves,
   memorialBackfillCandidates,
   type MemorialBackfillCandidate,
+  type MemorialBackfillSnapshot,
 } from "@/lib/memorial-backfill";
+import { pokemonSummarySelect } from "@/lib/challenge-queries";
+import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import {
   canUseCustomTextureUrl,
   customTextureKey,
@@ -1166,6 +1170,62 @@ export async function listTrainerBoardSnapshotsAction(input: {
   }
 }
 
+/** `pokemonSummarySelect` row → PokemonEntry; competitive columns stay empty. */
+function mapPokemonSummaryRow(row: {
+  id: string;
+  slot: PokemonSlot;
+  partyIndex: number;
+  nickname: string | null;
+  species: string;
+  pokedexId: number | null;
+  isShiny: boolean;
+  types: string[];
+  level: number | null;
+  catchRoute: string | null;
+  causeOfDeath: string | null;
+  diedOnRun: number | null;
+  runId: string | null;
+}): PokemonEntry {
+  return {
+    id: row.id,
+    slot: row.slot,
+    partyIndex: row.partyIndex,
+    nickname: row.nickname,
+    species: row.species,
+    pokedexId: row.pokedexId,
+    isShiny: row.isShiny,
+    types: resolvePokemonTypes({
+      types: row.types,
+      pokedexId: row.pokedexId,
+      species: row.species,
+    }),
+    nature: null,
+    level: row.level,
+    ability: null,
+    catchRoute: row.catchRoute,
+    heldItem: null,
+    moves: [],
+    ivs: null,
+    evs: null,
+    causeOfDeath: row.causeOfDeath,
+    diedOnRun: row.diedOnRun,
+    runId: row.runId,
+  };
+}
+
+/** Compact grave row for the history accordion (no competitive columns). */
+export type TrainerHistoryGrave = {
+  key: string;
+  label: string;
+  species: string;
+  pokedexId: number | null;
+  isShiny: boolean;
+  level: number | null;
+  causeOfDeath: string | null;
+  /** "snapshot" = recovered from board history; the live board no longer has it. */
+  source: "live" | "snapshot";
+};
+
 export type TrainerHistoryRunSummary = {
   id: string;
   runNumber: number;
@@ -1176,6 +1236,8 @@ export type TrainerHistoryRunSummary = {
   reviveUsed: boolean;
   earnedBadgeKeys: string[];
   snapshots: TrainerBoardSnapshotSummary[];
+  /** Graves of this attempt: live rows for the active run, else from snapshots. */
+  graves: TrainerHistoryGrave[];
 };
 
 export type ListTrainerHistoryResult =
@@ -1190,7 +1252,7 @@ export async function listTrainerHistoryAction(input: {
     const { trainer, isGm } = await requireTrainerHistoryAccess(input.trainerId);
     const prisma = getPrisma();
 
-    const [runs, snapRows] = await Promise.all([
+    const [runs, snapRows, profile] = await Promise.all([
       prisma.trainerRun.findMany({
         where: { trainerId: trainer.id },
         orderBy: { runNumber: "desc" },
@@ -1218,10 +1280,22 @@ export async function listTrainerHistoryAction(input: {
           runId: true,
         },
       }),
+      prisma.trainerProfile.findUnique({
+        where: { id: trainer.id },
+        select: {
+          wipeCount: true,
+          pokemon: {
+            where: { slot: "GRAVEYARD" },
+            select: pokemonSummarySelect,
+            orderBy: { partyIndex: "asc" },
+          },
+        },
+      }),
     ]);
 
     const snapsByRun = new Map<string, TrainerBoardSnapshotSummary[]>();
     const orphanSnaps: TrainerBoardSnapshotSummary[] = [];
+    const graveSnapshots: MemorialBackfillSnapshot[] = [];
     for (const row of snapRows) {
       const payload = parseSnapshotPayload(row.payload);
       if (!payload) continue;
@@ -1234,6 +1308,14 @@ export async function listTrainerHistoryAction(input: {
         summary: buildSnapshotSummaryLine(payload),
         runId: row.runId,
       };
+      graveSnapshots.push({
+        id: summary.id,
+        trigger: summary.trigger,
+        createdAt: summary.createdAt,
+        runId: row.runId,
+        wipeCount: payload.wipeCount,
+        pokemon: payload.pokemon.filter((p) => p.slot === "GRAVEYARD"),
+      });
       if (row.runId) {
         const list = snapsByRun.get(row.runId) ?? [];
         list.push(summary);
@@ -1241,6 +1323,34 @@ export async function listTrainerHistoryAction(input: {
       } else {
         orphanSnaps.push(summary);
       }
+    }
+
+    // Graves of closed runs live only in board history — merge them in so each
+    // run row can show its own R.I.P. without opening a snapshot.
+    const gravesByRunNumber = new Map<number, TrainerHistoryGrave[]>();
+    const merged = crossRunGraves({
+      runs: runs.map((run) => ({
+        id: run.id,
+        runNumber: run.runNumber,
+        status: run.status,
+      })),
+      snapshots: graveSnapshots,
+      liveGraves: (profile?.pokemon ?? []).map(mapPokemonSummaryRow),
+      activeRunNumber: currentRunNumber(profile?.wipeCount ?? 0),
+    });
+    for (const grave of merged.graves) {
+      const list = gravesByRunNumber.get(grave.runNumber) ?? [];
+      list.push({
+        key: grave.key,
+        label: grave.pokemon.nickname?.trim() || grave.pokemon.species,
+        species: grave.pokemon.species,
+        pokedexId: grave.pokemon.pokedexId,
+        isShiny: grave.pokemon.isShiny,
+        level: grave.pokemon.level,
+        causeOfDeath: grave.pokemon.causeOfDeath,
+        source: grave.source,
+      });
+      gravesByRunNumber.set(grave.runNumber, list);
     }
 
     const historyRuns: TrainerHistoryRunSummary[] = runs.map((run) => ({
@@ -1253,6 +1363,7 @@ export async function listTrainerHistoryAction(input: {
       reviveUsed: run.reviveUsed,
       earnedBadgeKeys: run.earnedBadgeKeys,
       snapshots: snapsByRun.get(run.id) ?? [],
+      graves: gravesByRunNumber.get(run.runNumber) ?? [],
     }));
 
     // Legacy snapshots without runId: attach to matching closed run by wipeCount,

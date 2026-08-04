@@ -1,7 +1,6 @@
 export type ToolsId =
   | "pokedex"
   | "chart"
-  | "compare"
   | "guide"
   | "bounty"
   | "planner";
@@ -22,11 +21,6 @@ export const TOOLS_CATALOG: ReadonlyArray<{
     title: "Type Chart",
     blurb:
       "Modern 18-type attack × defense multipliers — overlay a trainer's Main Squad coverage.",
-  },
-  {
-    id: "compare",
-    title: "Compare",
-    blurb: "Side-by-side trainer squads and badge cases for any two boards.",
   },
   {
     id: "guide",
@@ -57,8 +51,6 @@ export function toolsHref(
   tool: ToolsId,
   query?: {
     id?: string | number | null;
-    a?: string | null;
-    b?: string | null;
     chapter?: string | null;
     mode?: string | null;
   },
@@ -67,8 +59,6 @@ export function toolsHref(
   if (query?.id != null && query.id !== "") {
     params.set("id", String(query.id));
   }
-  if (query?.a) params.set("a", query.a);
-  if (query?.b) params.set("b", query.b);
   if (query?.chapter) params.set("chapter", query.chapter);
   if (query?.mode) params.set("mode", query.mode);
   return `/challenges/${slug}/tools?${params.toString()}`;
@@ -83,7 +73,6 @@ export function parseToolsId(
   if (
     raw === "pokedex" ||
     raw === "chart" ||
-    raw === "compare" ||
     raw === "guide" ||
     raw === "bounty" ||
     raw === "planner"
@@ -96,6 +85,26 @@ export function parseToolsId(
 export function toolsTitle(tool: ToolsId | null): string {
   if (!tool) return "Tools";
   return TOOLS_CATALOG.find((t) => t.id === tool)?.title ?? "Tools";
+}
+
+/**
+ * Compare was folded into Team Planner's vs Trainer mode. Its old links —
+ * `?tool=compare` and the bare `?a=&b=` pairs the tool used to share — should
+ * land on the Planner instead of the hub.
+ */
+export function isLegacyCompareUrl(query: {
+  a?: string | null;
+  b?: string | null;
+  tab?: string | null;
+  tool?: string | null;
+}): boolean {
+  if (parseToolsId(query.tool, query.tab)) return false;
+  return (query.tool ?? query.tab) === "compare" || Boolean(query.a || query.b);
+}
+
+/** Planner's pairwise mode — `a`/`b` are dropped rather than ported onto it. */
+export function legacyCompareHref(slug: string): string {
+  return toolsHref(slug, "planner", { mode: "vs" });
 }
 
 export type BountyMode = "tracker" | "exclusives";
