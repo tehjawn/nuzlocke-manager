@@ -1826,9 +1826,12 @@ export function TrainerBoard({
         challengeName={challengeName}
         challengeGame={challengeGame}
         trainer={{
-          ...boardTrainer,
+          id: boardTrainer.id,
+          handle: boardTrainer.handle,
+          runNumber: boardTrainer.activeRunNumber,
+          wipeCount: boardTrainer.wipeCount,
           earnedBadgeKeys,
-          reviveUsed,
+          pokemon: boardTrainer.pokemon,
         }}
         badges={badges}
         showCompetitiveDetails={showCompetitiveDetails}
@@ -1840,6 +1843,9 @@ export function TrainerBoard({
           onClose={() => setBoardHistoryOpen(false)}
           trainerId={trainer.id}
           trainerHandle={trainer.handle}
+          challengeSlug={challengeSlug}
+          challengeName={challengeName}
+          challengeGame={challengeGame}
           badges={badges}
           showCompetitiveDetails={showCompetitiveDetails}
           canClearSnapshots={isGm}

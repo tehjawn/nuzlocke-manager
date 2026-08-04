@@ -5,13 +5,15 @@ import { Modal } from "@/components/Modal";
 import { pushSnackbar } from "@/components/Snackbar";
 import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 import { copyText } from "@/lib/copy-text";
-import type { BadgeDefinition, TrainerProfile } from "@/lib/challenge-types";
+import type { BadgeDefinition } from "@/lib/challenge-types";
 import {
   formatTrainerTeam,
   toolsChartPath,
   toolsGuidePath,
   trainerBoardPath,
   type TeamExportFormat,
+  type TeamExportSnapshotMeta,
+  type TeamExportTrainer,
 } from "@/lib/team-export";
 
 type TeamExportModalProps = {
@@ -20,9 +22,11 @@ type TeamExportModalProps = {
   challengeSlug: string;
   challengeName: string;
   challengeGame: string;
-  trainer: TrainerProfile;
+  trainer: TeamExportTrainer;
   badges: BadgeDefinition[];
   showCompetitiveDetails: boolean;
+  /** Set when the roster came from Trainer history instead of the live board. */
+  snapshot?: TeamExportSnapshotMeta | null;
 };
 
 function absoluteUrl(path: string): string {
@@ -56,6 +60,7 @@ export function TeamExportModal({
   trainer,
   badges,
   showCompetitiveDetails,
+  snapshot = null,
 }: TeamExportModalProps) {
   const textareaId = useId();
   const formatTabId = useId();
@@ -85,6 +90,7 @@ export function TeamExportModal({
         guideUrl: absoluteUrl(toolsGuidePath(challengeSlug)),
         showCompetitiveDetails,
         badges,
+        snapshot,
       })
     : "";
 
@@ -122,7 +128,7 @@ export function TeamExportModal({
       open={open}
       onClose={onClose}
       size="md"
-      title="Export team"
+      title={snapshot ? "Export past team" : "Export team"}
       subtitle={activeHint}
       footer={
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -132,6 +138,11 @@ export function TeamExportModal({
             onClick={() => {
               void handleCopyLink();
             }}
+            title={
+              snapshot
+                ? "Copies the trainer's live board URL (snapshots have no link)"
+                : "Copy shareable trainer board URL"
+            }
           >
             {copied === "link" ? "Link copied!" : "Copy board link"}
           </button>
@@ -153,6 +164,13 @@ export function TeamExportModal({
       }
     >
       <div className="space-y-3">
+        {snapshot ? (
+          <p className="border border-frame/50 bg-surface-2/40 px-3 py-2 text-xs text-muted">
+            Past board · <span className="text-ink">{snapshot.label}</span> ·
+            captured {snapshot.capturedAt}. Run {trainer.runNumber} as it stood
+            then — not the live board.
+          </p>
+        ) : null}
         <div
           role="tablist"
           aria-label="Export format"
