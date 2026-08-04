@@ -170,7 +170,10 @@ jobs:
           echo "Rewrote DATABASE_URL / DATABASE_URL_UNPOOLED to the child branch."
 
           # NEXT_PUBLIC_* is inlined into the client bundle at build time, so the
-          # slot URL has to be in place here rather than passed at deploy time.
+          # slot URL has to be in place here as well as at deploy time. Both are
+          # needed: this covers the bundle, and --env covers the runtime — where
+          # the project's Preview AUTH_URL otherwise points at production and
+          # takes precedence over trustHost, sending sign-in to the prod domain.
           sed -i '/^NEXT_PUBLIC_APP_URL=/d; /^AUTH_URL=/d' "$f"
           printf 'NEXT_PUBLIC_APP_URL="%s"\n' "$SLOT_URL" >> "$f"
           printf 'AUTH_URL="%s"\n' "$SLOT_URL" >> "$f"
@@ -184,6 +187,7 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          SLOT_URL: ${{ steps.slot.outputs.url }}
         run: |
           set -euo pipefail
           # Do not pass --target=preview. It makes Vercel evaluate the Ignored
@@ -195,6 +199,8 @@ jobs:
             vercel deploy --prebuilt --force --archive=tgz --token="$VERCEL_TOKEN" \
               --env "DATABASE_URL=${CHILD_POOLED}" \
               --env "DATABASE_URL_UNPOOLED=${CHILD_DIRECT}" \
+              --env "AUTH_URL=${SLOT_URL}" \
+              --env "NEXT_PUBLIC_APP_URL=${SLOT_URL}" \
               --meta "githubPrId=${PR_NUMBER}" \
               --meta "githubCommitRef=${HEAD_REF}" \
               --meta "deployPreviewLabel=1" \
