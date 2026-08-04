@@ -10,6 +10,7 @@ import { triggerFx } from "@/features/fx";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
 import {
   clearGuideCheckoffs,
+  EMPTY_GUIDE_CHECKOFFS,
   guideCheckoffsStorageKey,
   readGuideCheckoffs,
   setGuideStepChecked,
@@ -21,6 +22,7 @@ import {
   squadMatchesForGymPrep,
 } from "@/features/guide/guide-gym-prep";
 import {
+  isPostGameChapter,
   resolveGuideProgress,
   stepMatchesCatchRoutes,
 } from "@/features/guide/guide-progress";
@@ -39,6 +41,10 @@ const GUIDE_COMPLETE_COPY = {
   dateLine: "Tentative tournament date — October 24th, 2026.",
   signoff: "See you there!",
 } as const;
+
+const CHAMPIONSHIP_BADGE_KEY = "championship";
+/** Guide step that marks Wallace / Championship in the story checklist. */
+const E4_LEAGUE_STEP_ID = "e4-league";
 
 type GameGuidePanelProps = {
   slug: string;
@@ -92,12 +98,26 @@ function GuideMeter({
   label,
   counts,
   size = "md",
+  mode = "story",
 }: {
   label: string;
   counts: StepCounts;
   size?: "sm" | "md";
+  /** Post-game meters are optional-only bonus checklists. */
+  mode?: "story" | "post-game";
 }) {
   const trackH = size === "sm" ? "h-1.5" : "h-2.5";
+  const percent =
+    mode === "post-game"
+      ? counts.optionalTotal === 0
+        ? 0
+        : Math.round((counts.optionalDone / counts.optionalTotal) * 100)
+      : counts.percent;
+  const ariaLabel =
+    mode === "post-game"
+      ? `${label}: ${percent}% of post-game steps done`
+      : `${label}: ${percent}% of story steps done`;
+
   return (
     <div className="min-w-0">
       <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
@@ -109,19 +129,30 @@ function GuideMeter({
           {label}
         </span>
         <span className="text-xs text-muted">
-          <span className="tabular-nums font-semibold text-ink">
-            {counts.storyDone}/{counts.storyTotal}
-          </span>{" "}
-          story
-          {counts.optionalTotal > 0 ? (
+          {mode === "post-game" ? (
             <>
-              {" · "}
-              <span className="tabular-nums">
+              <span className="tabular-nums font-semibold text-ink">
                 {counts.optionalDone}/{counts.optionalTotal}
               </span>{" "}
               optional
             </>
-          ) : null}
+          ) : (
+            <>
+              <span className="tabular-nums font-semibold text-ink">
+                {counts.storyDone}/{counts.storyTotal}
+              </span>{" "}
+              story
+              {counts.optionalTotal > 0 ? (
+                <>
+                  {" · "}
+                  <span className="tabular-nums">
+                    {counts.optionalDone}/{counts.optionalTotal}
+                  </span>{" "}
+                  optional
+                </>
+              ) : null}
+            </>
+          )}
         </span>
       </div>
       <div
@@ -129,12 +160,12 @@ function GuideMeter({
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={counts.percent}
-        aria-label={`${label}: ${counts.percent}% of story steps done`}
+        aria-valuenow={percent}
+        aria-label={ariaLabel}
       >
         <div
           className={`${trackH} rounded-full bg-interactive transition-[width] duration-500 ease-out motion-reduce:transition-none`}
-          style={{ width: `${counts.percent}%` }}
+          style={{ width: `${percent}%` }}
         />
       </div>
     </div>
@@ -410,22 +441,42 @@ function chapterStatusLabel({
   cleared,
   isActive,
   reachable,
+  postGame,
 }: {
   cleared: boolean;
   isActive: boolean;
   reachable: boolean;
+  postGame: boolean;
 }): string {
   if (cleared) return "Done";
+  if (postGame) return reachable ? "Open" : "Locked";
   if (isActive) return "Current";
   if (!reachable) return "Locked";
   return "Upcoming";
 }
 
 function storyGuideComplete(snapshot: GuideProgressSnapshot): boolean {
-  return snapshot.chapters.every((chapter) =>
-    chapter.steps
-      .filter((step) => step.priority !== "optional")
-      .every((step) => step.completed),
+  return snapshot.chapters
+    .filter((chapter) => !isPostGameChapter(chapter.chapter))
+    .every((chapter) =>
+      chapter.steps
+        .filter((step) => step.priority !== "optional")
+        .every((step) => step.completed),
+    );
+}
+
+function trainerHasChampionship(trainer: TrainerProfile | null): boolean {
+  return Boolean(trainer?.earnedBadgeKeys.includes(CHAMPIONSHIP_BADGE_KEY));
+}
+
+/** Board badge or the in-guide E4 checkoff — so the section can reveal without a refresh. */
+function postGameUnlocked(
+  trainer: TrainerProfile | null,
+  checkedStepIds: readonly string[],
+): boolean {
+  return (
+    trainerHasChampionship(trainer) ||
+    checkedStepIds.includes(E4_LEAGUE_STEP_ID)
   );
 }
 
@@ -459,18 +510,31 @@ function ChapterAccordion({
   trainer: TrainerProfile | null;
 }) {
   const counts = countSteps(steps);
-  const status = chapterStatusLabel({ cleared, isActive, reachable });
+  const postGame = isPostGameChapter(chapter);
+  const status = chapterStatusLabel({
+    cleared,
+    isActive,
+    reachable,
+    postGame,
+  });
   const lockHint =
-    !reachable && unlockHint ? `Finish ${unlockHint} first` : null;
+    !reachable && unlockHint
+      ? postGame
+        ? unlockHint
+        : `Finish ${unlockHint} first`
+      : null;
   const panelId = `guide-chapter-panel-${chapter.id}`;
   const headerId = `guide-chapter-header-${chapter.id}`;
+  const headerCount = postGame
+    ? `${counts.optionalDone}/${counts.optionalTotal}`
+    : `${counts.storyDone}/${counts.storyTotal}`;
 
   return (
     <section
       className={`gba-frame overflow-hidden transition-[opacity,filter] duration-500 ${
         cleared
           ? "guide-chapter--cleared opacity-[0.78]"
-          : isActive
+          : isActive && !postGame
             ? "ring-1 ring-interactive/35"
             : ""
       }`}
@@ -494,12 +558,21 @@ function ChapterAccordion({
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span
-                aria-hidden
-                className="shrink-0 rounded-md border border-[var(--on-chrome)]/25 bg-black/10 px-1.5 py-px text-[0.65rem] font-bold tabular-nums text-[var(--on-chrome)]/85 dark:bg-white/10"
-              >
-                Ch. {guideChapterNumber(chapter)}
-              </span>
+              {postGame ? (
+                <span
+                  aria-hidden
+                  className="shrink-0 rounded-md border border-amber-700/30 bg-amber-700/10 px-1.5 py-px text-[0.65rem] font-bold tracking-tight text-amber-900 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100"
+                >
+                  Post-game
+                </span>
+              ) : (
+                <span
+                  aria-hidden
+                  className="shrink-0 rounded-md border border-[var(--on-chrome)]/25 bg-black/10 px-1.5 py-px text-[0.65rem] font-bold tabular-nums text-[var(--on-chrome)]/85 dark:bg-white/10"
+                >
+                  Ch. {guideChapterNumber(chapter)}
+                </span>
+              )}
               <span className="truncate text-sm font-semibold sm:text-base">
                 {chapter.title}
               </span>
@@ -507,7 +580,7 @@ function ChapterAccordion({
                 className={`rounded-full border px-1.5 py-px text-[0.65rem] font-semibold tracking-tight ${
                   cleared
                     ? "border-emerald-700/35 bg-emerald-700/15 text-emerald-800 dark:border-emerald-400/35 dark:bg-emerald-400/15 dark:text-emerald-200"
-                    : isActive
+                    : isActive && !postGame
                       ? "border-interactive/45 bg-interactive-soft/70 text-interactive"
                       : "border-frame/70 text-[var(--on-chrome)]/70"
                 }`}
@@ -517,7 +590,7 @@ function ChapterAccordion({
             </span>
           </span>
           <span className="shrink-0 text-xs tabular-nums text-[var(--on-chrome)]/75">
-            {counts.storyDone}/{counts.storyTotal}
+            {headerCount}
           </span>
         </button>
       </h3>
@@ -530,7 +603,12 @@ function ChapterAccordion({
           className="relative z-[1] space-y-3 p-4 sm:p-5"
         >
           <p className="text-sm text-muted">{chapter.summary}</p>
-          <GuideMeter label="Chapter progress" counts={counts} size="sm" />
+          <GuideMeter
+            label="Chapter progress"
+            counts={counts}
+            size="sm"
+            mode={postGame ? "post-game" : "story"}
+          />
           {lockHint ? <p className="text-xs text-muted">{lockHint}</p> : null}
           <ul className="space-y-2">
             {steps.map((step, index) => (
@@ -575,7 +653,8 @@ export function GameGuidePanel({
   const checkoffs = useSyncExternalStore(
     (onStoreChange) => subscribeGuideCheckoffs(storageKey, onStoreChange),
     () => readGuideCheckoffs(storageKey),
-    () => readGuideCheckoffs(storageKey),
+    // Must match SSR (no localStorage) — never read the client store here.
+    () => EMPTY_GUIDE_CHECKOFFS,
   );
 
   const catchRoutes = useMemo(
@@ -594,19 +673,50 @@ export function GameGuidePanel({
   );
 
   const overallCounts = useMemo(
-    () => countSteps(progress.chapters.flatMap((c) => c.steps)),
+    () =>
+      countSteps(
+        progress.chapters
+          .filter((c) => !isPostGameChapter(c.chapter))
+          .flatMap((c) => c.steps),
+      ),
     [progress.chapters],
   );
 
+  const postGameChapters = useMemo(
+    () => progress.chapters.filter((c) => isPostGameChapter(c.chapter)),
+    [progress.chapters],
+  );
+
+  const storyChapters = useMemo(
+    () => progress.chapters.filter((c) => !isPostGameChapter(c.chapter)),
+    [progress.chapters],
+  );
+
+  const postGameCounts = useMemo(
+    () => countSteps(postGameChapters.flatMap((c) => c.steps)),
+    [postGameChapters],
+  );
+
+  const postGameRevealed = postGameUnlocked(
+    selectedTrainer,
+    checkoffs.checkedStepIds,
+  );
+  const showPostGame = postGameRevealed && postGameChapters.length > 0;
+
   const guideComplete = storyGuideComplete(progress);
 
-  const defaultOpenChapterId =
-    chapterParam &&
-    progress.chapters.some((c) => c.chapter.id === chapterParam)
-      ? chapterParam
-      : guideComplete
-        ? null
-        : progress.activeChapterId;
+  const chapterFromParam = chapterParam
+    ? progress.chapters.find((c) => c.chapter.id === chapterParam)
+    : undefined;
+  const canOpenParamChapter =
+    chapterFromParam != null &&
+    !(isPostGameChapter(chapterFromParam.chapter) && !postGameRevealed);
+
+  const defaultOpenChapterId = canOpenParamChapter
+    ? chapterFromParam.chapter.id
+    : guideComplete
+      ? (showPostGame ? (postGameChapters[0]?.chapter.id ?? null) : null)
+      : progress.activeChapterId;
 
   const [openChapterId, setOpenChapterId] = useState<string | null>(
     defaultOpenChapterId,
@@ -639,7 +749,7 @@ export function GameGuidePanel({
       checkedStepIds: nextCheckoffs.checkedStepIds,
     });
 
-    if (storyGuideComplete(after)) {
+    if (!storyGuideComplete(before) && storyGuideComplete(after)) {
       triggerFx("guide_complete");
       return;
     }
@@ -647,6 +757,7 @@ export function GameGuidePanel({
     const clearedChapter = after.chapters.find(
       (chapter) =>
         chapter.cleared &&
+        !isPostGameChapter(chapter.chapter) &&
         !before.chapters.find((c) => c.chapter.id === chapter.chapter.id)
           ?.cleared,
     );
@@ -713,7 +824,8 @@ export function GameGuidePanel({
         <p className="mt-2.5 text-xs leading-relaxed text-muted">
           Check off steps as you complete them — progress is saved on this
           device for the selected trainer. Optional pickups like Cut don’t
-          affect the bar.
+          affect the story bar. Post-game steps (after Championship) use their
+          own checklist below.
         </p>
       </Frame>
 
@@ -760,7 +872,7 @@ export function GameGuidePanel({
       <div className="space-y-3">
         <h3 className="text-sm font-semibold tracking-tight">Chapters</h3>
         <div className="space-y-3">
-          {progress.chapters.map(
+          {storyChapters.map(
             ({ chapter, steps, reachable, cleared, isActive }, index) => (
               <ChapterAccordion
                 key={chapter.id}
@@ -768,8 +880,8 @@ export function GameGuidePanel({
                 steps={steps}
                 reachable={reachable}
                 unlockHint={
-                  progress.chapters[index - 1]
-                    ? guideChapterLabel(progress.chapters[index - 1]!.chapter)
+                  storyChapters[index - 1]
+                    ? guideChapterLabel(storyChapters[index - 1]!.chapter)
                     : null
                 }
                 cleared={cleared}
@@ -786,6 +898,58 @@ export function GameGuidePanel({
           )}
         </div>
       </div>
+
+      {showPostGame ? (
+        <div className="space-y-4">
+          <div
+            role="separator"
+            aria-hidden
+            className="border-t border-frame/80 pt-1"
+          />
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold tracking-tight">
+                Post-game
+              </h3>
+              <p className="text-xs leading-relaxed text-muted">
+                Bonus Modern Emerald epilogue after the Championship — separate
+                from the story checklist. Species names are vanilla slot labels;
+                your randomizer may put something else there. Skip freely;
+                tournament readiness doesn’t depend on these.
+              </p>
+            </div>
+            <Frame title="Post-game progress">
+              <GuideMeter
+                label="Optional epilogue"
+                counts={postGameCounts}
+                mode="post-game"
+              />
+            </Frame>
+            <div className="space-y-3">
+              {postGameChapters.map(
+                ({ chapter, steps, reachable, cleared }) => (
+                  <ChapterAccordion
+                    key={chapter.id}
+                    chapter={chapter}
+                    steps={steps}
+                    reachable={reachable}
+                    unlockHint="Beat the Elite Four & Champion first"
+                    cleared={cleared}
+                    isActive={false}
+                    open={openChapterId === chapter.id}
+                    onToggle={() => toggleChapter(chapter.id)}
+                    catchRoutes={catchRoutes}
+                    expandedStepId={expandedStepId}
+                    onToggleExpand={toggleExpanded}
+                    onToggleStep={toggleStep}
+                    trainer={selectedTrainer}
+                  />
+                ),
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

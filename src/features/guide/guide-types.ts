@@ -43,6 +43,9 @@ export type GuideStep = {
   sortOrder: number;
 };
 
+/** Story spine vs bonus post-champion content (separate progress / UI section). */
+export type GuideChapterSection = "story" | "post-game";
+
 export type GuideChapter = {
   id: string;
   title: string;
@@ -54,6 +57,12 @@ export type GuideChapter = {
   requiresBadges: string[];
   /** Earning this badge marks the chapter as past (soft chapter nav only). */
   clearsWithBadge?: string;
+  /**
+   * `post-game` chapters are excluded from story progress / active-chapter
+   * resolution and render in a separate guide section.
+   * Defaults to `"story"` when omitted.
+   */
+  section?: GuideChapterSection;
   /** Places associated with this chapter (soft “near route” hints). */
   locations: string[];
   sortOrder: number;

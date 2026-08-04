@@ -9,6 +9,10 @@ import type { GuideDocument } from "@/features/guide/guide-types";
  *
  * Gym party notes use vanilla Emerald teams (Modern Emerald Normal keeps them;
  * Hard+ may differ).
+ *
+ * Post-game (`section: "post-game"`) keeps Emerald map/story locations but
+ * treats legendary/static names as slot labels under the randomizer, with
+ * Nuzlocke claim / rematch notes on each step.
  */
 export const EMERALD_GUIDE: GuideDocument = {
   id: "modern-emerald",
@@ -226,6 +230,28 @@ export const EMERALD_GUIDE: GuideDocument = {
       requiresBadges: [],
       locations: [],
       sortOrder: 11,
+    },
+    {
+      id: "post-game",
+      title: "Post-game",
+      summary:
+        "Optional Modern Emerald epilogue — static legendaries (species may be randomized), rematches, Frontier, and event islands. Skip for the tournament.",
+      requiresBadges: ["championship"],
+      section: "post-game",
+      locations: [
+        "Desert Ruins",
+        "Island Cave",
+        "Ancient Tomb",
+        "Sealed Chamber",
+        "Battle Frontier",
+        "Mirage Island",
+        "Southern Island",
+        "Faraway Island",
+        "Birth Island",
+        "Navel Rock",
+        "Meteor Falls",
+      ],
+      sortOrder: 12,
     },
   ],
   steps: [
@@ -999,6 +1025,149 @@ export const EMERALD_GUIDE: GuideDocument = {
       sortOrder: 10,
       nuzlockeNote:
         "One trainer slot per player this season — lock in the run you want to keep.",
+    },
+
+    // —— Post-game (optional; championship-gated section in the UI) ——
+    // Map / story beats match Emerald; wild + many static slots follow the
+    // Modern Emerald randomizer. Species names below are vanilla labels for
+    // the slot — claim whatever actually appears. Nuzlocke: each area/static
+    // is still one encounter under season rules; rematches are not catches.
+    {
+      id: "postgame-national-dex",
+      chapterId: "post-game",
+      title: "Unlock the National Dex",
+      summary:
+        "Birch upgrades the Pokédex after Wallace — gates Match Call and most post-game legendaries.",
+      detail:
+        "After beating **Wallace**, talk to **Professor Birch** (Littleroot / Route 101) so your Pokédex expands to the **National Dex**.\n\nIn **Modern Emerald** this still gates **Pokénav Match Call** rematches (including Gym Leaders) and is the usual unlock before Regi doors, roamers, and event-island ferries behave as expected.\n\nThis is ROM progression chrome — it does **not** reshuffle your randomizer seed or grant free encounters.",
+      locations: ["Littleroot Town", "Route 101"],
+      requiresBadges: ["championship"],
+      priority: "optional",
+      sortOrder: 10,
+      nuzlockeNote:
+        "National Dex doesn’t create new route claims by itself — keep logging encounters the same way.",
+    },
+    {
+      id: "postgame-regi-trio",
+      chapterId: "post-game",
+      title: "Open the Regi chambers",
+      summary:
+        "Sealed Chamber Braille + Relicanth & Wailord in party, then three ruins statics (vanilla: Regirock / Regice / Registeel).",
+      detail:
+        "Locations and the Braille puzzle match **Emerald / Modern Emerald** map data:\n\n1. Dive to the **Sealed Chamber** (underwater near Pacifidlog / Route 134) and solve the **Braille** inscription.\n2. Have **Relicanth** and **Wailord** in your party when you open the doors — the game checks those **species IDs**, even if your wild tables are randomized. If your seed never rolled them as wilds, you’ll need gift / static / trade paths (or skip the trio).\n3. Visit each ruins site for the legendary **static slot**:\n   - **Desert Ruins** (Route 111) → vanilla **Regirock**\n   - **Island Cave** (near Dewford) → vanilla **Regice**\n   - **Ancient Tomb** (Route 120) → vanilla **Registeel**\n\n**Randomizer:** if static/legendary slots are in your challenge settings, the mon that appears may **not** be the Regi named above — claim whatever stands in that chamber. If statics are left vanilla, you’ll see the classic trio.",
+      locations: [
+        "Sealed Chamber",
+        "Desert Ruins",
+        "Island Cave",
+        "Ancient Tomb",
+        "Route 111",
+        "Route 120",
+      ],
+      requiresBadges: ["championship"],
+      requiresSteps: ["postgame-national-dex"],
+      priority: "optional",
+      sortOrder: 20,
+      nuzlockeNote:
+        "Three separate area/static claims if your season treats legendaries as encounters. Dupes clause still applies to whatever species you roll.",
+    },
+    {
+      id: "postgame-roamers",
+      chapterId: "post-game",
+      title: "Hunt roamers & leftover weather legendaries",
+      summary:
+        "Post-League Eon roamer (vanilla Latios/Latias); Kyogre/Groudon only if you skipped Seafloor Cavern.",
+      detail:
+        "**Eon roamer** — after the League, one of **Latios / Latias** (vanilla labeling) begins roaming Hoenn. Modern Emerald may assign either; the randomizer may also replace that slot with a different species. Track via Pokédex / sightings. Roamers flee constantly — save before the fight.\n\n**Kyogre / Groudon** — only if you did **not** take the **Seafloor Cavern** static during the story Magma/Aqua beat. Don’t re-run Route 128 awakening if you already cleared that mid-story chapter. Species in those slots follow the same static/legendary randomizer rules as the rest of your seed.\n\n**Rayquaza** is the **Sky Pillar** story encounter — skip it here if you already claimed that area.",
+      locations: ["Seafloor Cavern", "Sky Pillar"],
+      requiresBadges: ["championship"],
+      requiresSteps: ["postgame-national-dex"],
+      priority: "optional",
+      sortOrder: 30,
+      nuzlockeNote:
+        "Roamers are high wipe risk on a deathless run — optional for tournament lock-in. One claim per static/roamer slot under season rules.",
+    },
+    {
+      id: "postgame-event-islands",
+      chapterId: "post-game",
+      title: "Visit event islands (if tickets unlock)",
+      summary:
+        "Southern / Faraway / Birth / Navel — Modern Emerald MAPSECs; tickets + randomizer decide what’s actually there.",
+      detail:
+        "**Modern Emerald** ships the classic Emerald event-island MAPSECs. Ferries usually need the matching ticket for your build (ask hosts if a ticket isn’t obtainable):\n\n- **Southern Island** — Eon Ticket; vanilla slot is the other Eon (**Latias** / **Latios**).\n- **Faraway Island** — Old Sea Map; vanilla **Mew**.\n- **Birth Island** — Mystery Ticket; vanilla **Deoxys**.\n- **Navel Rock** — Mystic Ticket; vanilla **Lugia** / **Ho-Oh**.\n\n**Randomizer:** treat names as **slot labels**. If legendary/static randomization is on, claim the species that actually loads. If a ferry never appears, skip — don’t softlock your Nuzlocke chasing unreachable tickets.",
+      locations: [
+        "Southern Island",
+        "Faraway Island",
+        "Birth Island",
+        "Navel Rock",
+      ],
+      requiresBadges: ["championship"],
+      requiresSteps: ["postgame-national-dex"],
+      priority: "optional",
+      sortOrder: 40,
+      nuzlockeNote:
+        "Each island is its own encounter area if your rules count statics. Confirm ticket / legendary bans with season hosts before burning attempts.",
+    },
+    {
+      id: "postgame-match-call",
+      chapterId: "post-game",
+      title: "Rematch trainers via Match Call",
+      summary:
+        "Pokénav Match Call — Gym Leaders and prior trainers with stronger (often randomized) teams.",
+      detail:
+        "With the **National Dex**, previously beaten trainers (including **Gym Leaders**) periodically **Match Call** you for rematches.\n\nThis is Emerald’s rematch system (not a VS Seeker) — ideal post-champion XP and tournament practice **without** spending wild encounter slots.\n\n**Modern Emerald / randomizer:** rematch parties follow your challenge difficulty and trainer-randomizer settings (Normal often keeps familiar cores; **Hard+** and full trainer rando can be much meaner). Don’t assume vanilla Gym rematch sets.\n\nAnswer calls from the **Pokénav**, then travel to the trainer.",
+      locations: [],
+      requiresBadges: ["championship"],
+      requiresSteps: ["postgame-national-dex"],
+      priority: "optional",
+      sortOrder: 50,
+      nuzlockeNote:
+        "Rematches are not wild encounters — still honor death / set rules. Great grind path when you’re encounter-locked.",
+    },
+    {
+      id: "postgame-steven-rematch",
+      chapterId: "post-game",
+      title: "Rematch Steven in Meteor Falls",
+      summary:
+        "Post-National Dex Steven fight — secret boss; expect buffs / rando parties on Hard+.",
+      detail:
+        "After the National Dex, return to **Meteor Falls** and find **Steven** for a tough rematch.\n\nVanilla Emerald gives a Steel-heavy squad; **Modern Emerald** may change levels, species, or both depending on difficulty and whether trainer Pokémon are randomized. Scout the first send-out before committing your ace.\n\nHeal first, pack coverage, and don’t wander in mid-grind — optional content, not a story gate.",
+      locations: ["Meteor Falls"],
+      requiresBadges: ["championship"],
+      requiresSteps: ["postgame-national-dex"],
+      priority: "optional",
+      sortOrder: 60,
+      nuzlockeNote:
+        "Boss rematch only — no catch. A wipe here still counts under death rules.",
+    },
+    {
+      id: "postgame-battle-frontier",
+      chapterId: "post-game",
+      title: "Challenge the Battle Frontier",
+      summary:
+        "Ferry from Slateport / Lilycove — seven facilities, Frontier Brains, BP items for your randomized box.",
+      detail:
+        "After the League, take the ferry to the **Battle Frontier** (real MAPSEC / catch-route in this ROM).\n\nFacilities (vanilla Brain names — teams may differ under Modern Emerald / Hard+):\n1. **Battle Tower** → **Anabel**\n2. **Battle Dome** → **Tucker**\n3. **Battle Factory** → **Noland**\n4. **Battle Palace** → **Spenser**\n5. **Battle Arena** → **Greta**\n6. **Battle Pike** → **Lucy**\n7. **Battle Pyramid** → **Brandon**\n\nWin streaks unlock each **Frontier Brain**. Spend **Battle Points (BP)** on held items and tutors — often more valuable for a **randomized Nuzlocke box** than clearing every facility.\n\n**Scott**’s story invitations also point here. Facility rulesets (open level, rentals, etc.) vary — read the in-game brief before risking boxed mons.",
+      locations: ["Battle Frontier", "Slateport City", "Lilycove City"],
+      requiresBadges: ["championship"],
+      priority: "optional",
+      sortOrder: 70,
+      nuzlockeNote:
+        "Ask season hosts whether Frontier wipes / rental facilities count toward your Nuzlocke. BP shopping is usually the safe value play.",
+    },
+    {
+      id: "postgame-mirage-island",
+      chapterId: "post-game",
+      title: "Check Mirage Island",
+      summary:
+        "Daily RNG island off Pacifidlog — one more randomized wild area if it appears.",
+      detail:
+        "**Mirage Island** (Route 130 / Pacifidlog) appears on a daily RNG check tied to your trainer ID. When it’s up, it is a normal **wild encounter area** under Nuzlocke rules.\n\nVanilla Emerald’s headline species here is **Wynaut**; **Modern Emerald’s randomizer** will usually put something else in that grass/water table — claim your first encounter like any other route.\n\nPure completionist bait — skip if you’re locking a tournament team.\n\nStill hunting **Feebas**? That’s the Route 119 under-tiles grind, not Mirage Island.",
+      locations: ["Mirage Island", "Route 130", "Pacifidlog Town"],
+      requiresBadges: ["championship"],
+      priority: "optional",
+      sortOrder: 80,
+      nuzlockeNote:
+        "First encounter on the island locks the area — Repels / intentional faint rules still apply.",
     },
   ],
 };
