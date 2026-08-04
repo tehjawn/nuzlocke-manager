@@ -8,7 +8,11 @@
 
 import { cacheLife, cacheTag } from "next/cache";
 import { CHALLENGES } from "@/data/trash-pack-2026";
-import type { PokemonSlot } from "@/lib/challenge-types";
+import {
+  parseSnapshotGraves,
+  type BoardSnapshotTrigger,
+} from "@/lib/board-snapshot";
+import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import {
   activityPreviewInclude,
   challengeMetaInclude,
@@ -223,6 +227,85 @@ export async function fetchHomeCarouselRow(slug: string) {
       },
     },
   });
+}
+
+export type SeasonMemorialRunRow = {
+  id: string;
+  trainerId: string;
+  runNumber: number;
+  status: "ACTIVE" | "CLOSED";
+};
+
+export type SeasonMemorialSnapshotRow = {
+  id: string;
+  trainerId: string;
+  trigger: BoardSnapshotTrigger;
+  createdAt: string;
+  runId: string | null;
+  wipeCount: number;
+  graves: PokemonEntry[];
+};
+
+/** Snapshots parsed per cache miss — the newest N across the whole season. */
+const SEASON_MEMORIAL_SNAPSHOT_LIMIT = 400;
+
+/**
+ * Season memorial: run ledger + graveyard-only snapshot projections, for the
+ * cross-run R.I.P. merge. Payloads are parsed here so the cache holds the small
+ * projection rather than every archived board.
+ */
+export async function fetchSeasonMemorialGraveRows(slug: string): Promise<{
+  runs: SeasonMemorialRunRow[];
+  snapshots: SeasonMemorialSnapshotRow[];
+} | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  const prisma = getPrisma();
+  const challenge = await prisma.challenge.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!challenge) return null;
+
+  const [runs, snapRows] = await Promise.all([
+    prisma.trainerRun.findMany({
+      where: { trainer: { challengeId: challenge.id } },
+      orderBy: { runNumber: "asc" },
+      select: { id: true, trainerId: true, runNumber: true, status: true },
+    }),
+    prisma.trainerBoardSnapshot.findMany({
+      where: { challengeId: challenge.id },
+      orderBy: { createdAt: "desc" },
+      take: SEASON_MEMORIAL_SNAPSHOT_LIMIT,
+      select: {
+        id: true,
+        trainerId: true,
+        trigger: true,
+        createdAt: true,
+        runId: true,
+        payload: true,
+      },
+    }),
+  ]);
+
+  const snapshots: SeasonMemorialSnapshotRow[] = [];
+  for (const row of snapRows) {
+    const parsed = parseSnapshotGraves(row.payload);
+    if (!parsed) continue;
+    snapshots.push({
+      id: row.id,
+      trainerId: row.trainerId,
+      trigger: row.trigger as BoardSnapshotTrigger,
+      createdAt: row.createdAt.toISOString(),
+      runId: row.runId,
+      wipeCount: parsed.wipeCount,
+      graves: parsed.graves,
+    });
+  }
+
+  return { runs, snapshots };
 }
 
 export async function fetchDefaultJumpBrief() {
