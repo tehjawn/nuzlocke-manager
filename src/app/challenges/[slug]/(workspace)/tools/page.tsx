@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ToolsView } from "@/components/ToolsView";
 import {
@@ -12,11 +12,12 @@ import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
 import {
+  isLegacyCompareUrl,
+  legacyCompareHref,
   parseBountyMode,
   parsePlannerMode,
   parseToolsId,
   toolsTitle,
-  type ToolsId,
 } from "@/lib/tools-routes";
 
 
@@ -33,18 +34,6 @@ type PageProps = {
   }>;
 };
 
-function resolveTool(
-  tool: string | undefined,
-  tab: string | undefined,
-  hasCompareIds: boolean,
-): ToolsId | null {
-  const parsed = parseToolsId(tool, tab);
-  if (parsed) return parsed;
-  // Legacy /compare redirects land with ?a=&b= and no tool.
-  if (hasCompareIds) return "compare";
-  return null;
-}
-
 export async function generateMetadata({
   params,
   searchParams,
@@ -54,7 +43,10 @@ export async function generateMetadata({
   const challenge = await getChallengeMeta(slug);
   if (!challenge) return { title: "Tools" };
 
-  const resolved = resolveTool(tool, tab, Boolean(a || b));
+  // Metadata resolves before the page's redirect, so match the destination.
+  const resolved = isLegacyCompareUrl({ a, b, tab, tool })
+    ? "planner"
+    : parseToolsId(tool, tab);
   if (!resolved) return { title: `Tools · ${challenge.name}` };
   return {
     title: `${toolsTitle(resolved)} · Tools · ${challenge.name}`,
@@ -64,6 +56,9 @@ export async function generateMetadata({
 export default async function ToolsPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const { tool, tab, a, b, id, mode } = await searchParams;
+  if (isLegacyCompareUrl({ a, b, tab, tool })) {
+    redirect(legacyCompareHref(slug));
+  }
   const session = await auth();
   const challenge = await getChallengeToolsSummary(slug, session?.user?.id);
   if (!challenge) notFound();
@@ -84,7 +79,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const myTrainerId =
     challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
 
-  const initialTool = resolveTool(tool, tab, Boolean(a || b));
+  const initialTool = parseToolsId(tool, tab);
   const dexIdRaw = id != null ? Number(id) : NaN;
   const initialDexId =
     Number.isFinite(dexIdRaw) && dexIdRaw > 0 ? dexIdRaw : null;
@@ -101,12 +96,9 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         slug={challenge.slug}
         challengeName={challenge.name}
         trainers={trainers}
-        badges={challenge.badges}
         myTrainerId={myTrainerId}
         signedIn={Boolean(session?.user)}
         initialTool={initialTool}
-        initialCompareA={a}
-        initialCompareB={b}
         initialDexId={initialDexId}
         initialBountyMode={initialBountyMode}
         initialPlannerMode={initialPlannerMode}
