@@ -8,10 +8,11 @@
 # two schemas diverge, and nothing notices until a new environment is built.
 #
 # Checks, in order:
-#   1. existing migrations are not edited, deleted, or renamed
+#   1. existing migrations are not touched
 #   2. added directory names are parseable as <timestamp>_<name>
-#   3. added migrations sort strictly after every migration on the base
-#   4. no two migrations share a timestamp
+#   3. added timestamps are real instants, not far-future typos
+#   4. added migrations sort strictly after every migration on the base
+#   5. no two migrations share a timestamp
 #
 # Usage:
 #   scripts/check-migration-order.sh [base-ref]     # default origin/main
@@ -64,6 +65,12 @@ added_count="$(wc -l <"$work/added" | tr -d ' ')"
 echo "Base (${BASE_REF} @ $(git rev-parse --short "$MERGE_BASE")): ${base_count} migration(s)"
 echo "Added on this branch: ${added_count}"
 [ "$added_count" -eq 0 ] || sed 's/^/  /' "$work/added"
+# Not a failure. Several migrations in one PR are ordered relative to each other
+# and still checked against the base individually, so they are safe — the
+# convention is about keeping review and rollback small, not correctness.
+if [ "$added_count" -gt 1 ]; then
+  echo "${GITHUB_ACTIONS:+::notice::}This branch adds ${added_count} migrations. One per PR is the convention; check this is deliberate."
+fi
 echo
 
 # --- 1. Migrations already on the base must not be touched. Prisma records a
@@ -72,20 +79,21 @@ echo
 # divergence as (3). `migrate deploy` refuses to run at all once it notices.
 #
 # This runs even when nothing was added: editing in place adds no directory.
-while IFS=$'\t' read -r status dir; do
+#
+# Every changed path counts, whatever git calls the change. Filtering on status
+# letters missed type changes (swapping migration.sql for a symlink reports T,
+# not M) and files added inside a directory that already exists. --no-renames
+# keeps a rename from being reported only against its new path, which would hide
+# that the old, already-applied directory went away.
+while read -r dir; do
   [ -n "$dir" ] || continue
   grep -qx "$dir" "$work/base" || continue
-  case "$status" in
-    M) what="edited" ;;
-    D) what="deleted" ;;
-    *) what="renamed" ;;
-  esac
-  fail "Migration '${dir}' already exists on ${BASE_REF} but was ${what} on this branch.
+  fail "Migration '${dir}' already exists on ${BASE_REF}, but this branch changes what is inside it.
   Prisma stores a checksum for each applied migration and will refuse to deploy
   once one no longer matches. Fix: restore it and add a new migration instead."
 done < <(
-  git diff --name-status "$MERGE_BASE" HEAD -- "$MIGRATIONS_DIR/" |
-    awk -F'\t' '$1 ~ /^[MDR]/ { split($2, p, "/"); if (length(p) > 3) print substr($1, 1, 1) "\t" p[3] }' |
+  git diff --no-renames --name-only "$MERGE_BASE" HEAD -- "$MIGRATIONS_DIR/" |
+    awk -F/ 'NF > 3 { print $3 }' |
     sort -u
 )
 
@@ -103,7 +111,36 @@ while read -r name; do
 done <"$work/added"
 [ "$failed" -eq 0 ] || exit 1
 
-# --- 3. Every added migration must sort after everything already on the base.
+# --- 3. The timestamp must be a real instant, and not far in the future. These
+# are written by hand here, so a slipped digit is plausible — and a migration
+# dated 2027 does not fail, it silently forces every later migration past 2027.
+while read -r problem; do
+  [ -n "$problem" ] || continue
+  fail "Migration timestamp ${problem}.
+  Fix: rename the directory with the time you actually created it, or let
+  'npx prisma migrate dev' generate the name."
+done < <(
+  cut -c1-14 "$work/added" | sort -u | python3 -c '
+import datetime, sys
+
+limit = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=2)
+for line in sys.stdin:
+    ts = line.strip()
+    if not ts:
+        continue
+    try:
+        when = datetime.datetime.strptime(ts, "%Y%m%d%H%M%S").replace(
+            tzinfo=datetime.timezone.utc
+        )
+    except ValueError:
+        print(f"{ts} is not a real date and time")
+        continue
+    if when > limit:
+        print(f"{ts} is dated {when:%Y-%m-%d %H:%M} UTC, which is more than two days from now")
+'
+)
+
+# --- 4. Every added migration must sort after everything already on the base.
 newest_base="$(tail -n 1 "$work/base")"
 if [ -n "$newest_base" ]; then
   newest_base_ts="${newest_base:0:14}"
@@ -118,7 +155,7 @@ if [ -n "$newest_base" ]; then
   done <"$work/added"
 fi
 
-# --- 4. No two migrations may share a timestamp. With hand-rounded timestamps
+# --- 5. No two migrations may share a timestamp. With hand-rounded timestamps
 # (…180000) two authors picking the same hour is entirely plausible, and then
 # apply order is decided by the arbitrary name suffix. Only collisions that
 # involve a migration added here are this branch's problem.

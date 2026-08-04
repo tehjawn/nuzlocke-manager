@@ -76,13 +76,16 @@ Set `PRISMA_QUERY_LOG=1` to log query counts while tuning egress.
 parallel can diverge without anything failing at merge time. Two conventions keep
 that from happening:
 
-- **One migration per PR**, generated with `npm run db:migrate` (`prisma migrate dev`)
-  so the directory carries a real second-precision timestamp. Hand-picked round
+- **Generate migrations with `npm run db:migrate`** (`prisma migrate dev`) so the
+  directory carries a real second-precision timestamp. Hand-picked round
   timestamps (`…180000`) are how two branches end up claiming the same slot.
+- **Prefer one migration per PR** — smaller to review and to roll back. Several
+  are safe and CI only mentions it; the ordering rules apply to each one.
 - **Re-timestamp after rebasing** if someone else's migration landed first. Rename
   the directory only — the SQL does not change.
 
-CI enforces both on every PR (`.github/workflows/migration-checks.yml`). Run them
+CI checks these on every PR (`.github/workflows/migration-checks.yml`), and
+rejects any change to a migration that already exists on `main`. Run them
 yourself before pushing:
 
 ```bash

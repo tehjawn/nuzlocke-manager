@@ -77,6 +77,32 @@ if [ ! -s "$work/added" ]; then
   exit 0
 fi
 
+# The baseline below is plain CREATE TABLE, and the migrations after it assume
+# they are the only thing that has touched this database. Against a database
+# that already has content, the run either dies with a confusing "already
+# exists" or — worse, if a _prisma_migrations table is already there — reports a
+# result that says nothing about whether these migrations actually work.
+# In CI the service container is always fresh; this is for local runs.
+echo "==> Checking the scratch database is empty"
+set +e
+npx --no-install prisma migrate diff \
+  --from-config-datasource \
+  --to-empty \
+  --exit-code >/dev/null 2>&1
+empty=$?
+set -e
+if [ "$empty" -eq 2 ]; then
+  echo "${GITHUB_ACTIONS:+::error::}The database at '${host}' is not empty." >&2
+  echo "  This check must start from nothing, or its result means nothing." >&2
+  echo "  Point DATABASE_URL at a throwaway database, or drop and recreate this one:" >&2
+  echo "    docker run --rm -d -p 55432:5432 -e POSTGRES_PASSWORD=ci -e POSTGRES_USER=ci -e POSTGRES_DB=migcheck postgres:18" >&2
+  echo "    DATABASE_URL=postgresql://ci:ci@127.0.0.1:55432/migcheck $0 ${BASE_REF}" >&2
+  exit 2
+elif [ "$empty" -ne 0 ]; then
+  echo "error: could not inspect the database at '${host}'. Is it reachable?" >&2
+  exit 2
+fi
+
 echo "==> Building the schema as of ${BASE_REF} ($(git rev-parse --short "$MERGE_BASE"))"
 git show "${MERGE_BASE}:prisma/schema.prisma" >"$work/base.prisma"
 npx --no-install prisma migrate diff \
