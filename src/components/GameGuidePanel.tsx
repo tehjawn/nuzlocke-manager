@@ -42,10 +42,6 @@ const GUIDE_COMPLETE_COPY = {
   signoff: "See you there!",
 } as const;
 
-const CHAMPIONSHIP_BADGE_KEY = "championship";
-/** Guide step that marks Wallace / Championship in the story checklist. */
-const E4_LEAGUE_STEP_ID = "e4-league";
-
 type GameGuidePanelProps = {
   slug: string;
   trainers: TrainerProfile[];
@@ -465,21 +461,6 @@ function storyGuideComplete(snapshot: GuideProgressSnapshot): boolean {
     );
 }
 
-function trainerHasChampionship(trainer: TrainerProfile | null): boolean {
-  return Boolean(trainer?.earnedBadgeKeys.includes(CHAMPIONSHIP_BADGE_KEY));
-}
-
-/** Board badge or the in-guide E4 checkoff — so the section can reveal without a refresh. */
-function postGameUnlocked(
-  trainer: TrainerProfile | null,
-  checkedStepIds: readonly string[],
-): boolean {
-  return (
-    trainerHasChampionship(trainer) ||
-    checkedStepIds.includes(E4_LEAGUE_STEP_ID)
-  );
-}
-
 function ChapterAccordion({
   chapter,
   steps,
@@ -697,22 +678,15 @@ export function GameGuidePanel({
     [postGameChapters],
   );
 
-  const postGameRevealed = postGameUnlocked(
-    selectedTrainer,
-    checkoffs.checkedStepIds,
-  );
-  const showPostGame = postGameRevealed && postGameChapters.length > 0;
+  const showPostGame = postGameChapters.length > 0;
 
   const guideComplete = storyGuideComplete(progress);
 
   const chapterFromParam = chapterParam
     ? progress.chapters.find((c) => c.chapter.id === chapterParam)
     : undefined;
-  const canOpenParamChapter =
-    chapterFromParam != null &&
-    !(isPostGameChapter(chapterFromParam.chapter) && !postGameRevealed);
 
-  const defaultOpenChapterId = canOpenParamChapter
+  const defaultOpenChapterId = chapterFromParam
     ? chapterFromParam.chapter.id
     : guideComplete
       ? (showPostGame ? (postGameChapters[0]?.chapter.id ?? null) : null)
@@ -824,8 +798,7 @@ export function GameGuidePanel({
         <p className="mt-2.5 text-xs leading-relaxed text-muted">
           Check off steps as you complete them — progress is saved on this
           device for the selected trainer. Optional pickups like Cut don’t
-          affect the story bar. Post-game steps (after Championship) use their
-          own checklist below.
+          affect the story bar. Post-game steps use their own checklist below.
         </p>
       </Frame>
 
@@ -912,9 +885,10 @@ export function GameGuidePanel({
                 Post-game
               </h3>
               <p className="text-xs leading-relaxed text-muted">
-                Bonus Modern Emerald epilogue after the Championship — separate
-                from the story checklist. Species names are vanilla slot labels;
-                your randomizer may put something else there. Skip freely;
+                Bonus Modern Emerald epilogue — separate from the story
+                checklist above. Most of this unlocks after the League;
+                browse anytime. Species names are vanilla slot labels; your
+                randomizer may put something else there. Skip freely;
                 tournament readiness doesn’t depend on these.
               </p>
             </div>
@@ -933,7 +907,7 @@ export function GameGuidePanel({
                     chapter={chapter}
                     steps={steps}
                     reachable={reachable}
-                    unlockHint="Beat the Elite Four & Champion first"
+                    unlockHint={null}
                     cleared={cleared}
                     isActive={false}
                     open={openChapterId === chapter.id}

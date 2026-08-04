@@ -320,7 +320,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
           "guide",
           "chapter",
           ...(postGame
-            ? ["post-game", "optional", "championship"]
+            ? ["post-game", "optional"]
             : [`ch ${chapter.sortOrder + 1}`]),
           ...chapter.requiresBadges,
         ],

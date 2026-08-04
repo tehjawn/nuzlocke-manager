@@ -57,8 +57,8 @@ function chapterStoryDone(
  * ahead without back-filling checkoffs, but missing badges never block a
  * player who is working through the list.
  *
- * Post-game chapters only open via their own `requiresBadges` (typically
- * championship) — they are not unlocked by clearing the prior story chapter.
+ * Post-game chapters are always reachable for browsing — they sit in a
+ * separate UI section and never drive story “next steps”.
  */
 export function chapterReachable(
   doc: GuideDocument,
@@ -66,21 +66,16 @@ export function chapterReachable(
   earnedBadgeKeys: ReadonlySet<string> | readonly string[],
   checkedStepIds: GuideProgressInput["checkedStepIds"] = [],
 ): boolean {
-  const earned =
-    earnedBadgeKeys instanceof Set
-      ? earnedBadgeKeys
-      : new Set(earnedBadgeKeys);
-
-  if (isPostGameChapter(chapter)) {
-    if (hasAllBadges(earned, chapter.requiresBadges)) return true;
-    // Soft unlock from the in-guide E4 checkoff when the board badge lags.
-    return asCheckedSet(checkedStepIds).has("e4-league");
-  }
+  if (isPostGameChapter(chapter)) return true;
 
   const chapters = sortedChapters(doc).filter((c) => !isPostGameChapter(c));
   const index = chapters.findIndex((c) => c.id === chapter.id);
   if (index <= 0) return true;
 
+  const earned =
+    earnedBadgeKeys instanceof Set
+      ? earnedBadgeKeys
+      : new Set(earnedBadgeKeys);
   if (hasAllBadges(earned, chapter.requiresBadges)) return true;
 
   const completedIds = asCheckedSet(checkedStepIds);
