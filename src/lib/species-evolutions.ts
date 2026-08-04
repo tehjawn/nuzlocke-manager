@@ -427,6 +427,33 @@ export function evolutionAncestors(
   return chain;
 }
 
+/**
+ * Full connected evolution family for a species (forward `into` edges and
+ * their inverses). Branching lines (Eevee, Wurmple, Ralts→Gallade) are one
+ * family. Species absent from the Modern Emerald evo graph return themselves.
+ */
+export function evolutionFamily(pokedexId: number): number[] {
+  if (!Number.isFinite(pokedexId) || pokedexId <= 0) return [];
+
+  const family = new Set<number>();
+  const queue = [pokedexId];
+
+  while (queue.length > 0) {
+    const current = queue.pop()!;
+    if (family.has(current)) continue;
+    family.add(current);
+
+    for (const edge of BY_DEX[String(current)] ?? []) {
+      if (!family.has(edge.into)) queue.push(edge.into);
+    }
+    for (const parent of PARENTS_BY_DEX.get(current) ?? []) {
+      if (!family.has(parent)) queue.push(parent);
+    }
+  }
+
+  return [...family].sort((a, b) => a - b);
+}
+
 /** Full view model for the details-modal Evolution section. */
 export function evolutionViewFor(
   pokedexId: number,

@@ -134,26 +134,34 @@ export function BountyHunterView({
     });
   }, [queryRows, statusFilter, sort]);
 
-  const scopedExclusives = useMemo(() => {
-    const byTrainer = viewerId
-      ? exclusives.filter((entry) => entry.trainerId === viewerId)
-      : exclusives;
-    if (!q) return byTrainer;
-    return byTrainer.filter(
-      (entry) =>
-        entry.species.toLowerCase().includes(q) ||
-        entry.trainerHandle.toLowerCase().includes(q) ||
-        String(entry.pokedexId).includes(q),
-    );
-  }, [exclusives, viewerId, q]);
-
   const exclusiveGroups = useMemo(() => {
-    const groups = groupExclusivesByLine(scopedExclusives);
+    // Group the full pack first so line-completeness sees every trainer's
+    // stages; only then filter groups for the selected viewer / search.
+    let groups = groupExclusivesByLine(exclusives);
+    if (viewerId) {
+      groups = groups.filter((group) =>
+        group.entries.some((entry) => entry.trainerId === viewerId),
+      );
+    }
+    if (q) {
+      groups = groups.filter(
+        (group) =>
+          group.rootSpecies.toLowerCase().includes(q) ||
+          group.entries.some(
+            (entry) =>
+              entry.species.toLowerCase().includes(q) ||
+              entry.trainerHandle.toLowerCase().includes(q) ||
+              String(entry.pokedexId).includes(q),
+          ),
+      );
+    }
     if (sort === "alpha") {
-      return [...groups].sort((a, b) => a.rootSpecies.localeCompare(b.rootSpecies));
+      return [...groups].sort((a, b) =>
+        a.rootSpecies.localeCompare(b.rootSpecies),
+      );
     }
     return groups;
-  }, [scopedExclusives, sort]);
+  }, [exclusives, viewerId, q, sort]);
 
   return (
     <div className="space-y-4">
@@ -446,44 +454,52 @@ function ExclusiveLineGroups({
         </p>
       ) : (
         <ul className="space-y-2.5">
-          {groups.map((group) => (
-            <li
-              key={group.rootPokedexId}
-              className="overflow-hidden rounded-lg border border-frame/40 bg-surface/50"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-frame/30 bg-surface-2/60 px-3 py-2">
-                <p className="text-sm font-semibold text-ink">
-                  {group.rootSpecies} line
-                  {group.entries.length > 1 ? (
-                    <span className="ml-1.5 font-normal text-muted">
-                      · {group.entries.length} stage
-                      {group.entries.length === 1 ? "" : "s"}
+          {groups.map((group) => {
+            const multiTrainer =
+              new Set(group.entries.map((e) => e.trainerId)).size > 1;
+            return (
+              <li
+                key={group.rootPokedexId}
+                className="overflow-hidden rounded-lg border border-frame/40 bg-surface/50"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-frame/30 bg-surface-2/60 px-3 py-2">
+                  <p className="text-sm font-semibold text-ink">
+                    {group.rootSpecies} line
+                    {group.entries.length > 1 ? (
+                      <span className="ml-1.5 font-normal text-muted">
+                        · {group.entries.length} stage
+                        {group.entries.length === 1 ? "" : "s"}
+                      </span>
+                    ) : null}
+                  </p>
+                  {group.singleTrainer ? (
+                    <span className="rounded-full border border-accent/35 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-deep">
+                      {group.entries[0]!.trainerHandle} owns the whole line
                     </span>
-                  ) : null}
-                </p>
-                {group.singleTrainer ? (
-                  <span className="rounded-full border border-accent/35 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-deep">
-                    {group.entries[0]!.trainerHandle} owns the whole line
-                  </span>
-                ) : (
-                  <span className="rounded-full border border-frame/50 bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
-                    Split across trainers
-                  </span>
-                )}
-              </div>
-              <ul className="grid grid-cols-3 gap-2 p-2.5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
-                {group.entries.map((entry) => (
-                  <li key={`${entry.pokedexId}-${entry.trainerId}`}>
-                    <ExclusiveCard
-                      slug={slug}
-                      entry={entry}
-                      showHandle={!group.singleTrainer}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
+                  ) : multiTrainer ? (
+                    <span className="rounded-full border border-frame/50 bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
+                      Split across trainers
+                    </span>
+                  ) : (
+                    <span className="rounded-full border border-frame/50 bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
+                      Partial line
+                    </span>
+                  )}
+                </div>
+                <ul className="grid grid-cols-3 gap-2 p-2.5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+                  {group.entries.map((entry) => (
+                    <li key={`${entry.pokedexId}-${entry.trainerId}`}>
+                      <ExclusiveCard
+                        slug={slug}
+                        entry={entry}
+                        showHandle={multiTrainer}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
