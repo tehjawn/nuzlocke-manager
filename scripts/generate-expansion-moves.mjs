@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Build move-name lookup from pokeemerald-expansion constants (Emerald Crest).
+ * Modern Emerald uses a different ID table — see generate-modern-moves.mjs.
  * Usage: node scripts/generate-expansion-moves.mjs
  */
 import { writeFileSync } from "node:fs";

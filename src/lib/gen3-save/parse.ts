@@ -502,7 +502,8 @@ type RawMon = {
   heldItem: string | null;
   /** Raw MAPSEC byte; resolved to a name once species mode is known. */
   metLocation: number;
-  moves: string[];
+  /** Raw move IDs; resolved to names once species mode is known. */
+  moveIds: number[];
   ivs: StatSpread;
   evs: StatSpread;
   nuzlockeRibbon: boolean;
@@ -573,11 +574,10 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
   const heldItem = gen3ItemName(itemId);
   const experience = growthView.getUint32(4, true);
 
-  const moves: string[] = [];
+  const moveIds: number[] = [];
   for (let i = 0; i < 4; i++) {
     const moveId = attacksView.getUint16(i * 2, true);
-    const name = gen3MoveName(moveId);
-    if (name) moves.push(name);
+    if (moveId > 0) moveIds.push(moveId);
   }
 
   const evs: StatSpread = {
@@ -643,7 +643,7 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
     abilitySlot,
     heldItem,
     metLocation,
-    moves,
+    moveIds,
     ivs,
     evs,
     nuzlockeRibbon,
@@ -694,7 +694,9 @@ function toParsed(
       mon.metLocation,
       mode === "modern" ? "modern" : "vanilla",
     ),
-    moves: mon.moves,
+    moves: mon.moveIds
+      .map((id) => gen3MoveName(id, mode === "modern" ? "modern" : "crest"))
+      .filter((name): name is string => Boolean(name)),
     ivs: mon.ivs ?? { ...EMPTY_IVS },
     evs: mon.evs ?? { ...EMPTY_EVS },
     category,
