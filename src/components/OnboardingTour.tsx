@@ -297,6 +297,8 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
   }, [ready]);
 
   // Adjust local tour state when `open` flips (preferred over a sync effect).
+  // Persistent storage writes stay in effects / handlers — not here — so a
+  // discarded render cannot clear a live bridge flag.
   if (open !== openSeen) {
     setOpenSeen(open);
     if (open) {
@@ -306,10 +308,14 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
       setReady(false);
       setTarget(null);
       setMoving(false);
-      writeOnboardingTransition(false);
       setBridging(false);
     }
   }
+
+  // Clear the bridge flag only after `open` commits closed.
+  useEffect(() => {
+    if (!open) writeOnboardingTransition(false);
+  }, [open]);
 
   const step = ONBOARDING_STEPS[stepIndex] ?? ONBOARDING_STEPS[0];
   const isFirst = stepIndex <= 0;
