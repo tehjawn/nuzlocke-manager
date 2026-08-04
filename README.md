@@ -175,4 +175,57 @@ a fourth, register another redirect URI in Discord and extend the
 Fork PRs are skipped (Actions cannot use this secret on fork `pull_request`
 events). Production deploys from the production branch are unchanged.
 
+#### Secrets and variables
+
+| Name | Kind | Source |
+|---|---|---|
+| `VERCEL_TOKEN` | secret | Manual — a **full account** token |
+| `NEON_API_KEY` | secret | Provisioned by the Neon GitHub integration |
+| `NEON_PROJECT_ID` | variable | Provisioned by the Neon GitHub integration |
+
+#### Safety invariants
+
+Preview automation must never touch production. These are enforced in code, not
+by convention:
+
+- Preview jobs only ever set env vars **per deployment** (`vercel deploy --env`);
+  they never run `vercel env add/rm`, so Production env vars cannot be rewritten.
+- The deploy never passes `--prod`. It also must not pass `--target`, which makes
+  Vercel evaluate the Ignored Build Step and cancel the deployment.
+- The Neon branch name is derived solely from the PR number, so cleanup cannot
+  resolve to `main`. Creation additionally asserts the branch is not the default
+  branch and has a parent.
+- Anything unexpected **aborts**: a missing Neon config, an empty connection
+  string, or a branch that looks like production fails the job rather than
+  falling back to the shared Preview env, which still points at production.
+- Teardown is idempotent — unlabel then close runs it twice by design.
+
+#### Sweeping leftovers
+
+`preview-sweep.yml` runs nightly as a backstop for previews that escaped
+teardown (a cancelled cleanup run, a transient API failure). It only considers
+branches matching `preview/pr-<n>` whose PR is closed, missing, or no longer
+labelled, so it cannot remove an active preview. Neon branches also carry a
+7-day `expires_at` as a second backstop.
+
+Run it on demand from the Actions tab if a slot or branch appears stuck.
+
+#### Neon Free budget
+
+Verified 2026-08-04: **10 branches per project** (including `production`), **0.5 GB
+storage**, and **100 CU-hours/month** shared across every compute in the project.
+
+The deploy workflow checks the branch count before creating one and fails with
+the list of currently held preview branches rather than falling back to the
+production database. Override the cap with the `NEON_BRANCH_LIMIT` repository
+variable if the plan changes.
+
+Two knock-on effects worth knowing:
+
+- Each preview branch runs its own compute, autosuspending after 5 minutes idle.
+  Compute hours are shared, so many long-lived previews eat the monthly budget
+  even when the branch count is fine.
+- Branches are copy-on-write, so they cost almost nothing at creation, but
+  migrations and smoke-test writes accrue against the 0.5 GB limit.
+
 When migrating Neon projects, update Production + Preview (and Development if used) together so preview deploys do not keep hitting the old database.

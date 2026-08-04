@@ -91,6 +91,12 @@ for line in open(deps_path):
     sha = meta.get("githubCommitSha") or ""
     labeled = str(meta.get("deployPreviewLabel") or "") in ("1", "true", "yes")
 
+    # A deployment that names a different PR belongs to that PR, whatever its
+    # SHA. Stacked branches share commits, so the SHA fallbacks below would
+    # otherwise delete a parent PR's preview when the child PR is closed.
+    if pr_id and pr_id != str(pr):
+        continue
+
     match = False
     if pr_id == str(pr):
         match = True

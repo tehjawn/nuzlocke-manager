@@ -72,6 +72,44 @@ jobs:
       - name: Branch expiry backstop
         run: echo "EXPIRES_AT=$(date -u -d '+7 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
 
+      # Neon Free allows 10 branches per project, including the default one.
+      # Without this, hitting the cap surfaces as a raw API error from the
+      # create action with no indication of what to free up.
+      - name: Check the Neon branch budget
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BRANCH: preview/pr-${{ github.event.pull_request.number }}
+          BRANCH_LIMIT: ${{ vars.NEON_BRANCH_LIMIT || '10' }}
+        run: |
+          set -euo pipefail
+          resp="$(
+            curl -sS --fail-with-body \
+              -H "Authorization: Bearer $NEON_API_KEY" \
+              "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches?limit=100"
+          )"
+
+          # Reusing an existing branch consumes no new budget.
+          if [ -n "$(jq -r --arg b "$BRANCH" '.branches[]? | select(.name == $b) | .id' <<<"$resp")" ]; then
+            echo "Branch $BRANCH already exists; no new branch needed."
+            exit 0
+          fi
+
+          total="$(jq -r '(.branches // []) | length' <<<"$resp")"
+          if [ "$total" -lt "$BRANCH_LIMIT" ]; then
+            echo "Neon branches: ${total}/${BRANCH_LIMIT}. Room for $BRANCH."
+            exit 0
+          fi
+
+          {
+            echo "::error::Neon branch limit reached (${total}/${BRANCH_LIMIT}); refusing to deploy a preview rather than fall back to the production database."
+            echo "Preview branches currently held:"
+            jq -r '.branches[]? | select(.name | startswith("preview/pr-")) | "  \(.name)"' <<<"$resp"
+            echo "Unlabel or close one of those PRs to free a branch, then re-run this workflow."
+            echo "The nightly Preview Sweep also reclaims branches whose PR is closed or unlabelled."
+          } >&2
+          exit 1
+
       # Reuses the branch when it already exists (`created` reports which), so
       # this is safe to re-run on every push to a labelled PR.
       - name: Create or reuse Neon branch

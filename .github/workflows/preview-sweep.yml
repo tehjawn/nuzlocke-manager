@@ -1,0 +1,138 @@
+name: Preview Sweep
+
+# Nightly backstop for previews that escaped teardown — a cancelled cleanup run,
+# a transient API failure, a branch created by a run that then failed.
+#
+# Teardown on unlabel/close is still the primary mechanism. This only catches
+# what that missed, and only for PRs that are closed or no longer labelled, so
+# it can never remove an active preview.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: preview-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: team_e42hUAqZYBofXWplQu3PWQDQ
+      VERCEL_PROJECT_ID: prj_oSFMhOd1eYpRT63wcLWwZToPSImh
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+    steps:
+      - name: Checkout scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/vercel-preview-slot.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Check configuration
+        id: cfg
+        run: |
+          set -euo pipefail
+          if [ -z "${NEON_API_KEY:-}" ] || [ -z "${NEON_PROJECT_ID:-}" ]; then
+            echo "::notice::Neon integration not configured; nothing to sweep."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Only PRs that are closed, or open without the label, are eligible. An
+      # open labelled PR keeps its branch no matter how old it is.
+      - name: Find orphaned preview branches
+        id: find
+        if: steps.cfg.outputs.configured == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const res = await fetch(
+              `https://console.neon.tech/api/v2/projects/${process.env.NEON_PROJECT_ID}/branches?limit=100`,
+              { headers: { Authorization: `Bearer ${process.env.NEON_API_KEY}` } }
+            );
+            if (!res.ok) {
+              core.setFailed(`Failed to list Neon branches (HTTP ${res.status})`);
+              return;
+            }
+            const { branches = [] } = await res.json();
+
+            const orphans = [];
+            for (const branch of branches) {
+              const match = /^preview\/pr-(\d+)$/.exec(branch.name || '');
+              // Name pattern and the non-default check are the only things
+              // standing between this job and the production branch.
+              if (!match || branch.default === true || !branch.parent_id) continue;
+
+              const number = Number(match[1]);
+              let pr;
+              try {
+                ({ data: pr } = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: number,
+                }));
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                // No such PR — the branch cannot belong to anything live.
+                orphans.push({ id: branch.id, name: branch.name, number, reason: 'no such PR' });
+                continue;
+              }
+
+              const labelled = (pr.labels || []).some((l) => l.name === 'deploy preview');
+              if (pr.state === 'closed') {
+                orphans.push({ id: branch.id, name: branch.name, number, reason: 'PR closed' });
+              } else if (!labelled) {
+                orphans.push({ id: branch.id, name: branch.name, number, reason: 'label removed' });
+              }
+            }
+
+            for (const o of orphans) {
+              core.info(`Orphaned: ${o.name} (${o.reason})`);
+            }
+            core.info(`${orphans.length} orphaned preview branch(es).`);
+            fs.writeFileSync('orphans.json', JSON.stringify(orphans));
+            core.setOutput('count', String(orphans.length));
+
+      - name: Delete orphaned branches and release their slots
+        if: steps.cfg.outputs.configured == 'true' && steps.find.outputs.count != '0'
+        run: |
+          set -euo pipefail
+          chmod +x scripts/vercel-preview-slot.sh
+          failed=0
+          # Delete by branch id, which the listing already gave us — the Neon
+          # endpoint takes an id, not a name.
+          while IFS=$'\t' read -r number branch_id name; do
+            [ -n "$branch_id" ] || continue
+            echo "--- PR #${number} (${name})"
+
+            # Slot release first: it resolves ownership from the deployment,
+            # and is best-effort so a failure cannot block the branch delete.
+            scripts/vercel-preview-slot.sh release "$number" || {
+              echo "::warning::Could not release the alias slot for PR #${number}."
+            }
+
+            code="$(curl -sS -o /tmp/del.json -w '%{http_code}' -X DELETE \
+              -H "Authorization: Bearer $NEON_API_KEY" \
+              "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${branch_id}")"
+            if [ "$code" = "200" ] || [ "$code" = "404" ]; then
+              echo "  deleted ${name} (HTTP ${code})"
+            else
+              echo "::warning::Failed to delete ${name} (HTTP ${code}): $(head -c 200 /tmp/del.json)"
+              failed=1
+            fi
+          done < <(python3 -c "import json; [print('\t'.join([str(o['number']), o['id'], o['name']])) for o in json.load(open('orphans.json'))]")
+
+          if [ "$failed" -ne 0 ]; then
+            echo "::warning::Some branches could not be swept; they will be retried tomorrow or expire on their own."
+          fi
