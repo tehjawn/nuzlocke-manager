@@ -70,6 +70,31 @@ If `migrate deploy` fails on a brand-new local volume (no baseline), use `npm ru
 
 Set `PRISMA_QUERY_LOG=1` to log query counts while tuning egress.
 
+### Writing migrations
+
+`prisma/migrations` is one linear history, and two people authoring against it in
+parallel can diverge without anything failing at merge time. Two conventions keep
+that from happening:
+
+- **One migration per PR**, generated with `npm run db:migrate` (`prisma migrate dev`)
+  so the directory carries a real second-precision timestamp. Hand-picked round
+  timestamps (`…180000`) are how two branches end up claiming the same slot.
+- **Re-timestamp after rebasing** if someone else's migration landed first. Rename
+  the directory only — the SQL does not change.
+
+CI enforces both on every PR (`.github/workflows/migration-checks.yml`). Run them
+yourself before pushing:
+
+```bash
+scripts/check-migration-order.sh                 # ordering, duplicates, edits to applied migrations
+DATABASE_URL="postgresql://nuzlocke:nuzlocke@localhost:5432/scratch" \
+  scripts/check-migration-replay.sh              # applies your migrations to a scratch DB
+```
+
+The replay check wants a database it can clobber — point it at a scratch one, not
+your dev database. It builds the schema as of `main`, applies only the migrations
+your branch adds, then asserts the result matches `prisma/schema.prisma`.
+
 ### Sync local from Neon
 
 When you want production-shaped data locally (destructive to the local DB):
