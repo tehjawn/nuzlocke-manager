@@ -51,12 +51,112 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+
+      # --- Per-PR Neon branch -------------------------------------------------
+      # Previews must never resolve to the production database. If any step here
+      # fails we abort rather than fall through to the shared Preview env vars,
+      # which still point at production.
+
+      - name: Require Neon configuration
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
+            echo "::error::Missing NEON_API_KEY secret or NEON_PROJECT_ID variable. Install the Neon GitHub integration; previews must not fall back to the production database."
+            exit 1
+          fi
+
+      - name: Branch expiry backstop
+        run: echo "EXPIRES_AT=$(date -u -d '+7 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+
+      # Reuses the branch when it already exists (`created` reports which), so
+      # this is safe to re-run on every push to a labelled PR.
+      - name: Create or reuse Neon branch
+        id: neon
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: preview/pr-${{ github.event.pull_request.number }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          expires_at: ${{ env.EXPIRES_AT }}
+
+      - name: Mask and verify the branch is not production
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BRANCH_ID: ${{ steps.neon.outputs.branch_id }}
+          CHILD_DIRECT: ${{ steps.neon.outputs.db_url }}
+          CHILD_POOLED: ${{ steps.neon.outputs.db_url_pooled }}
+          EXPECTED_NAME: preview/pr-${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          for v in "$CHILD_DIRECT" "$CHILD_POOLED"; do
+            [ -n "$v" ] && echo "::add-mask::$v"
+          done
+
+          if [ -z "$CHILD_DIRECT" ] || [ -z "$CHILD_POOLED" ]; then
+            echo "::error::Neon returned an empty connection string. Check the action's output names against the pinned version."
+            exit 1
+          fi
+
+          branch="$(
+            curl -sS --fail-with-body \
+              -H "Authorization: Bearer $NEON_API_KEY" \
+              "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID"
+          )"
+          name="$(printf '%s' "$branch" | jq -r '.branch.name')"
+          is_default="$(printf '%s' "$branch" | jq -r '.branch.default')"
+          parent="$(printf '%s' "$branch" | jq -r '.branch.parent_id // empty')"
+
+          if [ "$name" != "$EXPECTED_NAME" ]; then
+            echo "::error::Branch name '$name' does not match expected '$EXPECTED_NAME'."
+            exit 1
+          fi
+          if [ "$is_default" = "true" ] || [ -z "$parent" ]; then
+            echo "::error::Refusing to use branch '$name' — it is the default branch or has no parent."
+            exit 1
+          fi
+
+          echo "Using Neon branch $name ($BRANCH_ID), created=${{ steps.neon.outputs.created }}."
+          {
+            echo "CHILD_DIRECT=$CHILD_DIRECT"
+            echo "CHILD_POOLED=$CHILD_POOLED"
+          } >> "$GITHUB_ENV"
+
+      # Runs before the build: `next build` prerenders pages that query the
+      # database, so the schema has to be current first.
+      - name: Migrate the child branch
+        env:
+          DATABASE_URL_UNPOOLED: ${{ env.CHILD_DIRECT }}
+        run: |
+          npm ci
+          npm run db:migrate:deploy
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
       - name: Pull Vercel project settings
         run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      # `vercel pull` writes the shared Preview env — which points at production —
+      # into .vercel/.env.preview.local, and `vercel build` reads that file in
+      # preference to the process environment. It has to be rewritten here, not
+      # just exported. Verified: the build fails without a reachable database.
+      - name: Point the build at the child branch
+        run: |
+          set -euo pipefail
+          f=.vercel/.env.preview.local
+          if [ ! -f "$f" ]; then
+            echo "::error::$f not found; vercel pull did not produce a preview env file."
+            exit 1
+          fi
+          sed -i '/^DATABASE_URL=/d; /^DATABASE_URL_UNPOOLED=/d' "$f"
+          printf 'DATABASE_URL="%s"\n' "$CHILD_POOLED" >> "$f"
+          printf 'DATABASE_URL_UNPOOLED="%s"\n' "$CHILD_DIRECT" >> "$f"
+          echo "Rewrote DATABASE_URL / DATABASE_URL_UNPOOLED to the child branch."
 
       - name: Build preview
         run: vercel build --token="$VERCEL_TOKEN"
@@ -68,11 +168,19 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
+          # Do not pass --target=preview. It makes Vercel evaluate the Ignored
+          # Build Step (vercel.json ignoreCommand), which exits 0 for anything
+          # that is not VERCEL_ENV=production and cancels the deployment.
+          # Preview is already the default; --prod is what selects production,
+          # so omitting the flag still satisfies "never deploy to production".
           url="$(
             vercel deploy --prebuilt --token="$VERCEL_TOKEN" \
+              --env "DATABASE_URL=${CHILD_POOLED}" \
+              --env "DATABASE_URL_UNPOOLED=${CHILD_DIRECT}" \
               --meta "githubPrId=${PR_NUMBER}" \
               --meta "githubCommitRef=${HEAD_REF}" \
               --meta "deployPreviewLabel=1" \
+              --meta "neonBranch=preview/pr-${PR_NUMBER}" \
               | tee /dev/stderr | tail -n1
           )"
           if [ -z "$url" ] || [[ "$url" != https://* ]]; then
@@ -97,6 +205,9 @@ jobs:
               marker,
               `**Vercel Preview** for \`${context.payload.pull_request.head.sha.slice(0, 7)}\`:`,
               url,
+              '',
+              `Database: Neon branch \`${process.env.NEON_BRANCH}\` — isolated from production.`,
+              'Removing the `deploy preview` label, merging, or closing deletes it.',
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
@@ -127,3 +238,4 @@ jobs:
             }
         env:
           PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+          NEON_BRANCH: preview/pr-${{ github.event.pull_request.number }}
