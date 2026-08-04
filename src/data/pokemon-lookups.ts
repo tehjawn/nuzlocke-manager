@@ -47,9 +47,11 @@ export { CATCH_ROUTES, searchCatchRoutes, HELD_ITEMS, searchHeldItems };
 export { heldItemDescription, heldItemSpriteUrl } from "@/data/pokemon-index";
 export {
   GEN3_MOVES,
+  GEN3_MOVES_MODERN,
   gen3MoveName,
   resolveMoveName,
   resolveMoveNames,
+  type Gen3MoveMode,
 } from "@/lib/move-names";
 export {
   gen3MetLocationName,

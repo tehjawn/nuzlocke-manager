@@ -19,15 +19,21 @@ import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import type {
   BadgeDefinition,
   PokemonEntry,
+  TrainerProfile,
 } from "@/lib/challenge-types";
 import type { TrainerBoardSnapshotPayload } from "@/lib/board-snapshot";
 import { snapshotTriggerLabel } from "@/lib/board-snapshot";
+import { TeamExportModal } from "@/components/TeamExportModal";
+import { CTA_SECONDARY_SM } from "@/lib/cta";
 
 type TrainerHistoryModalProps = {
   open: boolean;
   onClose: () => void;
   trainerId: string;
   trainerHandle: string;
+  challengeSlug: string;
+  challengeName: string;
+  challengeGame: string;
   badges: BadgeDefinition[];
   showCompetitiveDetails?: boolean;
   /** GM-only clear control; owners can still browse. */
@@ -73,6 +79,9 @@ function TrainerHistoryBody({
   onClose,
   trainerId,
   trainerHandle,
+  challengeSlug,
+  challengeName,
+  challengeGame,
   badges,
   showCompetitiveDetails = true,
   canClearSnapshots = false,
@@ -96,10 +105,12 @@ function TrainerHistoryBody({
     createdAt: string;
     summary: string;
     payload: TrainerBoardSnapshotPayload;
+    runNumber: number;
   } | null>(null);
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );
+  const [teamExportOpen, setTeamExportOpen] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   useEffect(() => {
@@ -145,10 +156,11 @@ function TrainerHistoryBody({
     });
   }
 
-  function openSnapshot(id: string) {
+  function openSnapshot(id: string, runNumber: number) {
     setSelectedId(id);
     setError(null);
     setDetailsPokemon(null);
+    setTeamExportOpen(false);
     startTransition(async () => {
       const result = await getTrainerBoardSnapshotAction({ snapshotId: id });
       if (!result.ok) {
@@ -163,6 +175,7 @@ function TrainerHistoryBody({
         createdAt: result.snapshot.createdAt,
         summary: result.snapshot.summary,
         payload: result.snapshot.payload,
+        runNumber,
       });
     });
   }
@@ -171,6 +184,7 @@ function TrainerHistoryBody({
     setDetail(null);
     setSelectedId(null);
     setDetailsPokemon(null);
+    setTeamExportOpen(false);
   }
 
   async function clearHistory() {
@@ -296,6 +310,30 @@ function TrainerHistoryBody({
   const encountered = detail
     ? slotPokemon(detail.payload.pokemon, "ENCOUNTERED")
     : [];
+  const exportTrainer: TrainerProfile | null = detail
+    ? {
+        id: trainerId,
+        handle: trainerHandle,
+        realName: null,
+        avatarSpriteKey: "",
+        avatarBackgroundKey: null,
+        cardBackgroundKey: null,
+        statusText: null,
+        statusEmoji: null,
+        reviveUsed: detail.payload.reviveUsed,
+        wipeCount: detail.payload.wipeCount,
+        activeRunNumber: detail.runNumber,
+        money: null,
+        mainSquadLocked: detail.payload.mainSquadLocked,
+        sortOrder: 0,
+        userId: null,
+        discordUsername: null,
+        discordDisplayName: null,
+        earnedBadgeKeys: detail.payload.earnedBadgeKeys,
+        pokemon: detail.payload.pokemon,
+        updatedAt: null,
+      }
+    : null;
   const canClearHistory =
     allowClear &&
     !listLoading &&
@@ -321,13 +359,22 @@ function TrainerHistoryBody({
         onClose={onClose}
         headerActions={
           viewingDetail ? (
-            <button
-              type="button"
-              className="pressable border-interactive/35 bg-interactive-soft px-2.5 py-1 text-xs font-semibold text-ink"
-              onClick={backToList}
-            >
-              ← All runs
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                className={CTA_SECONDARY_SM}
+                onClick={() => setTeamExportOpen(true)}
+              >
+                Export team
+              </button>
+              <button
+                type="button"
+                className="pressable border-interactive/35 bg-interactive-soft px-2.5 py-1 text-xs font-semibold text-ink"
+                onClick={backToList}
+              >
+                ← All runs
+              </button>
+            </div>
           ) : canRestore || canClearHistory ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
               {canRestore ? (
@@ -519,7 +566,9 @@ function TrainerHistoryBody({
                                       type="button"
                                       disabled={pending || clearing}
                                       className="pressable flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-surface-2/70 disabled:opacity-60"
-                                      onClick={() => openSnapshot(snap.id)}
+                                      onClick={() =>
+                                        openSnapshot(snap.id, run.runNumber)
+                                      }
                                     >
                                       <span className="flex flex-wrap items-baseline justify-between gap-2">
                                         <span className="text-sm font-semibold text-ink">
@@ -561,6 +610,19 @@ function TrainerHistoryBody({
         />
       ) : null}
 
+      {exportTrainer ? (
+        <TeamExportModal
+          open={teamExportOpen}
+          onClose={() => setTeamExportOpen(false)}
+          challengeSlug={challengeSlug}
+          challengeName={challengeName}
+          challengeGame={challengeGame}
+          trainer={exportTrainer}
+          badges={badges}
+          showCompetitiveDetails={showCompetitiveDetails}
+        />
+      ) : null}
+
       {confirmDialog}
     </>
   );
@@ -576,6 +638,9 @@ export function TrainerHistoryModal({
   onClose,
   trainerId,
   trainerHandle,
+  challengeSlug,
+  challengeName,
+  challengeGame,
   badges,
   showCompetitiveDetails = true,
   canClearSnapshots = false,
@@ -590,6 +655,9 @@ export function TrainerHistoryModal({
       onClose={onClose}
       trainerId={trainerId}
       trainerHandle={trainerHandle}
+      challengeSlug={challengeSlug}
+      challengeName={challengeName}
+      challengeGame={challengeGame}
       badges={badges}
       showCompetitiveDetails={showCompetitiveDetails}
       canClearSnapshots={canClearSnapshots}

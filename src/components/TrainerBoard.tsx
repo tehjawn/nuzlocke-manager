@@ -1840,6 +1840,9 @@ export function TrainerBoard({
           onClose={() => setBoardHistoryOpen(false)}
           trainerId={trainer.id}
           trainerHandle={trainer.handle}
+          challengeSlug={challengeSlug}
+          challengeName={challengeName}
+          challengeGame={challengeGame}
           badges={badges}
           showCompetitiveDetails={showCompetitiveDetails}
           canClearSnapshots={isGm}

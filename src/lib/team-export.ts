@@ -15,6 +15,25 @@ import {
   type StatSpread,
 } from "@/lib/stats";
 
+/**
+ * Count living Pokémon in the export scope that have no held item set.
+ * Showdown exports MAIN only; LLM advice includes MAIN + RESERVE.
+ */
+export function countMissingHeldItems(
+  pokemon: PokemonEntry[],
+  format: TeamExportFormat,
+): number {
+  const slots: Array<"MAIN" | "RESERVE"> =
+    format === "showdown" ? ["MAIN"] : ["MAIN", "RESERVE"];
+  let missing = 0;
+  for (const slot of slots) {
+    for (const mon of livingInSlot(pokemon, slot)) {
+      if (!mon.heldItem?.trim()) missing += 1;
+    }
+  }
+  return missing;
+}
+
 export type TeamExportFormat = "llm" | "showdown";
 
 export type TeamExportOpts = {

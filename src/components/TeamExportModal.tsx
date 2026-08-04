@@ -7,6 +7,7 @@ import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 import { copyText } from "@/lib/copy-text";
 import type { BadgeDefinition, TrainerProfile } from "@/lib/challenge-types";
 import {
+  countMissingHeldItems,
   formatTrainerTeam,
   toolsChartPath,
   toolsGuidePath,
@@ -61,6 +62,7 @@ export function TeamExportModal({
   const formatTabId = useId();
   const [format, setFormat] = useState<TeamExportFormat>("llm");
   const [copied, setCopied] = useState<"team" | "link" | null>(null);
+  const [heldItemWarned, setHeldItemWarned] = useState(false);
   const [seenOpen, setSeenOpen] = useState(open);
 
   // Reset format/feedback when the modal opens (render-time adjust, not an effect).
@@ -69,6 +71,7 @@ export function TeamExportModal({
     if (open) {
       setFormat("llm");
       setCopied(null);
+      setHeldItemWarned(false);
     }
   }
 
@@ -88,10 +91,20 @@ export function TeamExportModal({
       })
     : "";
 
+  const missingHeldItems = open
+    ? countMissingHeldItems(trainer.pokemon, format)
+    : 0;
+  const needsHeldItemConfirm = missingHeldItems > 0 && !heldItemWarned;
+
   const activeHint =
     FORMAT_OPTIONS.find((o) => o.id === format)?.hint ?? FORMAT_OPTIONS[0].hint;
 
   async function handleCopyTeam() {
+    if (needsHeldItemConfirm) {
+      setHeldItemWarned(true);
+      return;
+    }
+
     const ok = await copyText(text);
     if (ok) {
       setCopied("team");
@@ -116,6 +129,12 @@ export function TeamExportModal({
       pushSnackbar("Couldn’t copy link", "error");
     }
   }
+
+  const copyLabel = (() => {
+    if (copied === "team") return "Copied!";
+    if (heldItemWarned && missingHeldItems > 0) return "Export anyway";
+    return "Copy";
+  })();
 
   return (
     <Modal
@@ -146,7 +165,7 @@ export function TeamExportModal({
                 void handleCopyTeam();
               }}
             >
-              {copied === "team" ? "Copied!" : "Copy"}
+              {copyLabel}
             </button>
           </div>
         </div>
@@ -175,6 +194,7 @@ export function TeamExportModal({
                 onClick={() => {
                   setFormat(option.id);
                   setCopied(null);
+                  setHeldItemWarned(false);
                 }}
               >
                 {option.label}
@@ -190,6 +210,16 @@ export function TeamExportModal({
             ? " — includes nature, moves, and spreads you can see on this board."
             : " — competitive details hidden (same as the public board view)."}
         </p>
+        {heldItemWarned && missingHeldItems > 0 ? (
+          <p
+            className="border border-frame/50 bg-surface-2/50 px-3 py-2 text-sm text-ink"
+            role="status"
+          >
+            {missingHeldItems === 1
+              ? "1 Pokémon has no held item set — copy again to export anyway."
+              : `${missingHeldItems} Pokémon have no held item set — copy again to export anyway.`}
+          </p>
+        ) : null}
         <label htmlFor={textareaId} className="sr-only">
           Team export text
         </label>
