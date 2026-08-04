@@ -4,7 +4,10 @@ import { auth } from "@/auth";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { MemorialBoard } from "@/components/MemorialBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
-import { getChallengeWithPokemonSlots } from "@/lib/challenges";
+import {
+  getChallengeWithPokemonSlots,
+  getSeasonMemorialGraves,
+} from "@/lib/challenges";
 import { canEditTrainerBoard } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -34,9 +37,10 @@ export default async function MemorialPage({ params }: PageProps) {
   );
   if (!challenge) notFound();
 
-  const access = challenge.id
-    ? await getAccessForChallenge(challenge.id)
-    : null;
+  const [access, gravesByTrainerId] = await Promise.all([
+    challenge.id ? getAccessForChallenge(challenge.id) : null,
+    getSeasonMemorialGraves(challenge.slug, challenge.trainers),
+  ]);
   const gmLensOn = access?.isGm
     ? await readGmLensOn(challenge.slug)
     : false;
@@ -61,6 +65,7 @@ export default async function MemorialPage({ params }: PageProps) {
       <MemorialBoard
         challenge={challenge}
         editableTrainerIds={editableTrainerIds}
+        gravesByTrainerId={gravesByTrainerId}
       />
     </>
   );

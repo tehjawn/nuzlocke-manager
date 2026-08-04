@@ -16,7 +16,16 @@ import {
   fetchDefaultJumpBrief,
   fetchHomeCarouselRow,
   fetchSeasonIndexRows,
+  fetchSeasonMemorialGraveRows,
 } from "@/lib/challenge-cache";
+import {
+  crossRunGraves,
+  type CrossRunGravesResult,
+  type MemorialBackfillRun,
+  type MemorialBackfillSnapshot,
+} from "@/lib/memorial-backfill";
+import { currentRunNumber } from "@/lib/wipe-memorial";
+import { pokemonInSlot } from "@/lib/trainer-display";
 import {
   activityPreviewInclude,
   challengeMetaInclude,
@@ -161,6 +170,71 @@ export async function getChallengeWithPokemonSlots(
       pokemon: t.pokemon.filter((p) => slotSet.has(p.slot)),
     })),
   };
+}
+
+/**
+ * Season memorial: every trainer's graves across every run.
+ *
+ * Live `GRAVEYARD` rows only ever cover the active run (a wipe empties the
+ * board), so graves from closed runs are recovered read-only from the board
+ * snapshot captured just before each wipe. Falls back to live-only when the
+ * season has no snapshots (seed data, or history cleared).
+ */
+export async function getSeasonMemorialGraves(
+  slug: string,
+  trainers: TrainerProfile[],
+): Promise<Record<string, CrossRunGravesResult>> {
+  let rows: Awaited<ReturnType<typeof fetchSeasonMemorialGraveRows>> = null;
+  if (isDatabaseConfigured()) {
+    try {
+      rows = await fetchSeasonMemorialGraveRows(slug);
+    } catch {
+      rows = null;
+    }
+  }
+
+  const runsByTrainer = new Map<string, MemorialBackfillRun[]>();
+  for (const run of rows?.runs ?? []) {
+    const bucket = runsByTrainer.get(run.trainerId);
+    const entry = {
+      id: run.id,
+      runNumber: run.runNumber,
+      status: run.status,
+    };
+    if (bucket) bucket.push(entry);
+    else runsByTrainer.set(run.trainerId, [entry]);
+  }
+
+  const snapshotsByTrainer = new Map<string, MemorialBackfillSnapshot[]>();
+  for (const snap of rows?.snapshots ?? []) {
+    const entry = {
+      id: snap.id,
+      trigger: snap.trigger,
+      createdAt: snap.createdAt,
+      runId: snap.runId,
+      wipeCount: snap.wipeCount,
+      pokemon: snap.graves,
+    };
+    const bucket = snapshotsByTrainer.get(snap.trainerId);
+    if (bucket) bucket.push(entry);
+    else snapshotsByTrainer.set(snap.trainerId, [entry]);
+  }
+
+  const byTrainerId: Record<string, CrossRunGravesResult> = {};
+  for (const trainer of trainers) {
+    const activeRunNumber = currentRunNumber(trainer.wipeCount ?? 0);
+    const runs = runsByTrainer.get(trainer.id) ?? [
+      // No run ledger (seed / pre-migration): treat the board as run 1..N.
+      { id: `${trainer.id}-active`, runNumber: activeRunNumber, status: "ACTIVE" as const },
+    ];
+    byTrainerId[trainer.id] = crossRunGraves({
+      runs,
+      snapshots: snapshotsByTrainer.get(trainer.id) ?? [],
+      liveGraves: pokemonInSlot(trainer, "GRAVEYARD"),
+      activeRunNumber,
+    });
+  }
+  return byTrainerId;
 }
 
 /**
