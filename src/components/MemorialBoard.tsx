@@ -9,6 +9,10 @@ import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { typeBadgeSoftStyle } from "@/components/TypeBadge";
 import { POKEMON_GENERATIONS } from "@/data/pokemon-index";
 import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import type {
+  CrossRunGravesResult,
+  MemorialGrave,
+} from "@/lib/memorial-backfill";
 import {
   memorialPokemonMatchesFilters,
   memorialSeasonHighlights,
@@ -18,12 +22,14 @@ import {
   TYPE_COLORS,
   type PokemonType,
 } from "@/lib/pokemon-types";
-import { displayName, pokemonInSlot } from "@/lib/trainer-display";
+import { displayName } from "@/lib/trainer-display";
 
 type MemorialBoardProps = {
   challenge: Challenge;
   /** Trainer IDs the viewer may edit causes for (owner / GM with lens). */
   editableTrainerIds?: string[];
+  /** Cross-run graves per trainer: live rows + graves recovered from history. */
+  gravesByTrainerId: Record<string, CrossRunGravesResult>;
 };
 
 function formatTiedLabels(labels: string[]): string {
@@ -32,9 +38,25 @@ function formatTiedLabels(labels: string[]): string {
   return `${labels[0]}, ${labels[1]} +${labels.length - 2}`;
 }
 
+/** Newest attempt first — matches the trainer history accordion. */
+function groupByRun(
+  graves: MemorialGrave[],
+): Array<{ runNumber: number; graves: MemorialGrave[] }> {
+  const byRun = new Map<number, MemorialGrave[]>();
+  for (const grave of graves) {
+    const bucket = byRun.get(grave.runNumber);
+    if (bucket) bucket.push(grave);
+    else byRun.set(grave.runNumber, [grave]);
+  }
+  return [...byRun.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([runNumber, runGraves]) => ({ runNumber, graves: runGraves }));
+}
+
 export function MemorialBoard({
   challenge,
   editableTrainerIds = [],
+  gravesByTrainerId,
 }: MemorialBoardProps) {
   const editable = new Set(editableTrainerIds);
   const [typeFilter, setTypeFilter] = useState<PokemonType | null>(null);
@@ -43,11 +65,17 @@ export function MemorialBoard({
   const filters = { type: typeFilter, generation: generationFilter };
   const filtering = typeFilter != null || generationFilter != null;
 
-  const byTrainer = challenge.trainers
-    .map((trainer) => ({
-      trainer,
-      graves: pokemonInSlot(trainer, "GRAVEYARD").filter((pokemon) =>
-        memorialPokemonMatchesFilters(pokemon, filters),
+  const allByTrainer = challenge.trainers.map((trainer) => ({
+    trainer,
+    all: gravesByTrainerId[trainer.id]?.graves ?? [],
+    recovered: gravesByTrainerId[trainer.id]?.recoveredCount ?? 0,
+  }));
+
+  const byTrainer = allByTrainer
+    .map((row) => ({
+      ...row,
+      graves: row.all.filter((grave) =>
+        memorialPokemonMatchesFilters(grave.pokemon, filters),
       ),
     }))
     .filter((row) => row.graves.length > 0);
@@ -56,8 +84,20 @@ export function MemorialBoard({
     (sum, row) => sum + row.graves.length,
     0,
   );
+  const recoveredCount = allByTrainer.reduce(
+    (sum, row) => sum + row.recovered,
+    0,
+  );
 
-  const highlights = memorialSeasonHighlights(challenge.trainers);
+  const highlights = memorialSeasonHighlights(
+    challenge.trainers,
+    Object.fromEntries(
+      allByTrainer.map((row) => [
+        row.trainer.id,
+        row.all.map((grave) => grave.pokemon),
+      ]),
+    ),
+  );
   const trainersById = new Map(
     challenge.trainers.map((trainer) => [trainer.id, trainer]),
   );
@@ -103,6 +143,9 @@ export function MemorialBoard({
             ? `${filteredGraveCount} shown · ${highlights.totalGraves} memorialized`
             : `${highlights.totalGraves} memorialized`}{" "}
           · {highlights.trainersWithLosses} trainers with losses
+          {recoveredCount > 0
+            ? ` · ${recoveredCount} recovered from board history`
+            : ""}
         </p>
       </header>
 
@@ -330,8 +373,10 @@ export function MemorialBoard({
         </Frame>
       ) : (
         <div className="space-y-4">
-          {byTrainer.map(({ trainer, graves }) => {
+          {byTrainer.map(({ trainer, graves, all }) => {
             const wipes = trainer.wipeCount ?? 0;
+            const activeRunNumber = wipes + 1;
+            const runGroups = groupByRun(graves);
             return (
               <Frame
                 key={trainer.id}
@@ -341,7 +386,9 @@ export function MemorialBoard({
                 actions={
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] font-semibold tabular-nums text-white/80">
-                      {graves.length} RIP
+                      {filtering
+                        ? `${graves.length} of ${all.length} RIP`
+                        : `${graves.length} RIP`}
                       {wipes > 0
                         ? ` · ${wipes} wipe${wipes === 1 ? "" : "s"}`
                         : ""}
@@ -355,16 +402,30 @@ export function MemorialBoard({
                   </div>
                 }
               >
-                <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {graves.map((pokemon) => (
-                    <MemorialGraveItem
-                      key={pokemon.id}
-                      trainerId={trainer.id}
-                      pokemon={pokemon}
-                      canEdit={editable.has(trainer.id)}
-                    />
+                <div className="space-y-3">
+                  {runGroups.map(({ runNumber, graves: runGraves }) => (
+                    <div key={runNumber} className="space-y-1.5">
+                      {runGroups.length > 1 || runNumber > 1 ? (
+                        <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
+                          Run {runNumber}
+                          {runNumber === activeRunNumber ? " · Current" : ""}
+                        </p>
+                      ) : null}
+                      <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {runGraves.map((grave) => (
+                          <MemorialGraveItem
+                            key={grave.key}
+                            trainerId={trainer.id}
+                            grave={grave}
+                            canEdit={
+                              grave.source === "live" && editable.has(trainer.id)
+                            }
+                          />
+                        ))}
+                      </ul>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </Frame>
             );
           })}
@@ -376,16 +437,25 @@ export function MemorialBoard({
 
 function MemorialGraveItem({
   trainerId,
-  pokemon,
+  grave,
   canEdit,
 }: {
   trainerId: string;
-  pokemon: PokemonEntry;
+  grave: MemorialGrave;
   canEdit: boolean;
 }) {
+  const pokemon: PokemonEntry = grave.pokemon;
   const label = pokemon.nickname || pokemon.species;
+  const fromHistory = grave.source === "snapshot";
   return (
-    <li className="flex gap-3 rounded-md border border-frame/35 bg-surface/65 p-2.5">
+    <li
+      className="flex gap-3 rounded-md border border-frame/35 bg-surface/65 p-2.5"
+      title={
+        fromHistory
+          ? "Recovered from board history — this run was cleared by a wipe"
+          : undefined
+      }
+    >
       <div className="relative h-16 w-16 shrink-0">
         <PokemonSpriteImage
           alt=""
@@ -409,11 +479,11 @@ function MemorialGraveItem({
         <p className="truncate text-[11px] leading-tight text-muted">
           {pokemon.species}
           {pokemon.level != null ? ` · Lv.${pokemon.level}` : ""}
-          {pokemon.diedOnRun != null ? ` · Run ${pokemon.diedOnRun}` : ""}
+          {fromHistory ? " · from history" : ""}
         </p>
         <MemorialCauseEditor
           trainerId={trainerId}
-          pokemonId={pokemon.id}
+          pokemonId={grave.pokemonId ?? ""}
           causeOfDeath={pokemon.causeOfDeath}
           canEdit={canEdit}
         />

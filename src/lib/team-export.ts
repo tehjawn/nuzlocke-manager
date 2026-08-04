@@ -1,9 +1,5 @@
 import { heldItemDescription } from "@/data/pokemon-index";
-import type {
-  BadgeDefinition,
-  PokemonEntry,
-  TrainerProfile,
-} from "@/lib/challenge-types";
+import type { BadgeDefinition, PokemonEntry } from "@/lib/challenge-types";
 import { formatMoveMetaTip, lookupMoveMeta } from "@/lib/move-meta";
 import { recommendPlaystyle } from "@/lib/playstyle";
 import { evolutionViewFor } from "@/lib/species-evolutions";
@@ -15,26 +11,29 @@ import {
   type StatSpread,
 } from "@/lib/stats";
 
-/**
- * Count living Pokémon in the export scope that have no held item set.
- * Showdown exports MAIN only; LLM advice includes MAIN + RESERVE.
- */
-export function countMissingHeldItems(
-  pokemon: PokemonEntry[],
-  format: TeamExportFormat,
-): number {
-  const slots: Array<"MAIN" | "RESERVE"> =
-    format === "showdown" ? ["MAIN"] : ["MAIN", "RESERVE"];
-  let missing = 0;
-  for (const slot of slots) {
-    for (const mon of livingInSlot(pokemon, slot)) {
-      if (!mon.heldItem?.trim()) missing += 1;
-    }
-  }
-  return missing;
-}
-
 export type TeamExportFormat = "llm" | "showdown";
+
+/**
+ * Everything the formatters need from a roster — deliberately narrower than
+ * `TrainerProfile` so a historical board snapshot can be exported too.
+ */
+export type TeamExportTrainer = {
+  id: string;
+  handle: string;
+  /** Run this roster belongs to: the live run, or the snapshot's run. */
+  runNumber: number;
+  wipeCount: number;
+  earnedBadgeKeys: string[];
+  pokemon: PokemonEntry[];
+};
+
+/** Provenance for a past board export (Trainer history → snapshot). */
+export type TeamExportSnapshotMeta = {
+  /** Snapshot label or trigger, e.g. "Wipe #2" / "Pre-import". */
+  label: string;
+  /** Already-localised capture time — the lib never formats dates. */
+  capturedAt: string;
+};
 
 export type TeamExportOpts = {
   challengeName: string;
@@ -52,6 +51,11 @@ export type TeamExportOpts = {
    */
   showCompetitiveDetails?: boolean;
   badges: BadgeDefinition[];
+  /**
+   * Set when exporting a board snapshot instead of the live board, so the
+   * paste says so up front rather than reading as the current roster.
+   */
+  snapshot?: TeamExportSnapshotMeta | null;
 };
 
 function livingInSlot(
@@ -204,7 +208,7 @@ export function toolsGuidePath(slug: string): string {
  * Respects `showCompetitiveDetails` — never invent a second privacy path.
  */
 export function formatTrainerTeamExport(
-  trainer: TrainerProfile,
+  trainer: TeamExportTrainer,
   opts: TeamExportOpts,
 ): string {
   const showCompetitive = opts.showCompetitiveDetails !== false;
@@ -221,9 +225,16 @@ export function formatTrainerTeamExport(
   const wipeNote =
     trainer.wipeCount > 0 ? ` · Wipes: ${trainer.wipeCount}` : "";
 
-  const header = [
+  const headerLines = [
     `# ${opts.challengeGame} Nuzlocke — ${opts.challengeName}`,
-    `Trainer: ${trainer.handle} · Run ${trainer.activeRunNumber}${wipeNote} · Badges: ${badgesLine}`,
+    `Trainer: ${trainer.handle} · Run ${trainer.runNumber}${wipeNote} · Badges: ${badgesLine}`,
+  ];
+  if (opts.snapshot) {
+    headerLines.push(
+      `Past board: ${opts.snapshot.label} · captured ${opts.snapshot.capturedAt} — a historical snapshot, not the live roster.`,
+    );
+  }
+  headerLines.push(
     `Board: ${opts.boardUrl}`,
     "",
     `You are advising a Nuzlocke player on Pokémon ${opts.challengeGame} (modern 18-type chart).`,
@@ -233,7 +244,8 @@ export function formatTrainerTeamExport(
     "In-app references (do not invent data — open these if needed):",
     `- Type chart: ${opts.typeChartUrl}`,
     `- Guide: ${opts.guideUrl}`,
-  ].join("\n");
+  );
+  const header = headerLines.join("\n");
 
   return [
     header,
@@ -313,7 +325,7 @@ function formatShowdownSet(
  * Same privacy gate as the LLM export. Reserves are omitted for a clean import.
  */
 export function formatTrainerTeamShowdown(
-  trainer: TrainerProfile,
+  trainer: TeamExportTrainer,
   opts: Pick<TeamExportOpts, "showCompetitiveDetails"> = {},
 ): string {
   const showCompetitive = opts.showCompetitiveDetails !== false;
@@ -326,7 +338,7 @@ export function formatTrainerTeamShowdown(
 
 /** Dispatch to LLM or Showdown/PokePaste formatter. */
 export function formatTrainerTeam(
-  trainer: TrainerProfile,
+  trainer: TeamExportTrainer,
   opts: TeamExportOpts & { format?: TeamExportFormat },
 ): string {
   if (opts.format === "showdown") {

@@ -8,29 +8,31 @@ import {
   listTrainerHistoryAction,
   previewMemorialBackfillAction,
   type MemorialBackfillPreviewItem,
+  type TrainerHistoryGrave,
   type TrainerHistoryRunSummary,
 } from "@/app/actions/challenge";
 import { BadgeCase } from "@/components/BadgeCase";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
-import { Frame } from "@/components/Frame";
+import { Frame, frameCountTitle } from "@/components/Frame";
 import { Modal } from "@/components/Modal";
 import { PartyStrip } from "@/components/PartyStrip";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
+import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { TeamExportModal } from "@/components/TeamExportModal";
+import { TombstoneIcon } from "@/components/TombstoneIcon";
 import type {
   BadgeDefinition,
   PokemonEntry,
-  TrainerProfile,
 } from "@/lib/challenge-types";
 import type { TrainerBoardSnapshotPayload } from "@/lib/board-snapshot";
 import { snapshotTriggerLabel } from "@/lib/board-snapshot";
-import { TeamExportModal } from "@/components/TeamExportModal";
-import { CTA_SECONDARY_SM } from "@/lib/cta";
 
 type TrainerHistoryModalProps = {
   open: boolean;
   onClose: () => void;
   trainerId: string;
   trainerHandle: string;
+  /** Challenge context for the past-board team export. */
   challengeSlug: string;
   challengeName: string;
   challengeGame: string;
@@ -62,6 +64,60 @@ function formatWhen(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+/** Per-run memorial: live rows for the active run, snapshot-derived for closed. */
+function RunGraves({ graves }: { graves: TrainerHistoryGrave[] }) {
+  return (
+    <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+      {graves.map((grave) => (
+        <li
+          key={grave.key}
+          className="flex gap-2 rounded-md border border-frame/35 bg-surface/65 p-2"
+          title={
+            grave.source === "snapshot"
+              ? "Recovered from board history — this run was cleared by a wipe"
+              : undefined
+          }
+        >
+          <div className="relative h-10 w-10 shrink-0">
+            <PokemonSpriteImage
+              alt=""
+              className="pixelated h-full w-full object-contain opacity-90"
+              height={40}
+              pokedexId={grave.pokedexId}
+              shiny={grave.isShiny}
+              species={grave.species}
+              width={40}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-display truncate text-[11px] font-bold leading-tight">
+              {grave.label}
+              {grave.isShiny ? (
+                <span className="ml-0.5 text-accent-2" title="Shiny">
+                  ✦
+                </span>
+              ) : null}
+            </p>
+            <p className="truncate text-[10px] leading-tight text-muted">
+              {grave.species}
+              {grave.level != null ? ` · Lv.${grave.level}` : ""}
+            </p>
+            {grave.causeOfDeath ? (
+              <p
+                className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-ink/90"
+                title={grave.causeOfDeath}
+              >
+                <TombstoneIcon className="mr-1 inline-block h-2.5 w-2.5 shrink-0 align-[-1px]" />
+                {grave.causeOfDeath}
+              </p>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function runHeadline(run: TrainerHistoryRunSummary): string {
@@ -104,13 +160,14 @@ function TrainerHistoryBody({
     triggerLabel: string;
     createdAt: string;
     summary: string;
-    payload: TrainerBoardSnapshotPayload;
+    /** Run the snapshot sits under in the accordion. */
     runNumber: number;
+    payload: TrainerBoardSnapshotPayload;
   } | null>(null);
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );
-  const [teamExportOpen, setTeamExportOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   useEffect(() => {
@@ -160,7 +217,7 @@ function TrainerHistoryBody({
     setSelectedId(id);
     setError(null);
     setDetailsPokemon(null);
-    setTeamExportOpen(false);
+    setExportOpen(false);
     startTransition(async () => {
       const result = await getTrainerBoardSnapshotAction({ snapshotId: id });
       if (!result.ok) {
@@ -174,8 +231,8 @@ function TrainerHistoryBody({
         triggerLabel: result.snapshot.triggerLabel,
         createdAt: result.snapshot.createdAt,
         summary: result.snapshot.summary,
-        payload: result.snapshot.payload,
         runNumber,
+        payload: result.snapshot.payload,
       });
     });
   }
@@ -184,7 +241,7 @@ function TrainerHistoryBody({
     setDetail(null);
     setSelectedId(null);
     setDetailsPokemon(null);
-    setTeamExportOpen(false);
+    setExportOpen(false);
   }
 
   async function clearHistory() {
@@ -194,7 +251,9 @@ function TrainerHistoryBody({
         <>
           Permanently deletes every board snapshot for {trainerHandle} (the
           list below may only show the most recent ones). Run ledger (revive /
-          badge archives) stays. This cannot be undone.
+          badge archives) stays, but graves from closed runs are read back from
+          these snapshots — clearing them removes those partners from the
+          Memorial for good. This cannot be undone.
         </>
       ),
       confirmLabel: "Clear snapshots",
@@ -212,12 +271,18 @@ function TrainerHistoryBody({
           setError(result.error);
           return;
         }
+        // Snapshot-derived graves are gone with the snapshots they came from.
         setRuns((prev) =>
-          prev.map((run) => ({ ...run, snapshots: [] })),
+          prev.map((run) => ({
+            ...run,
+            snapshots: [],
+            graves: run.graves.filter((grave) => grave.source === "live"),
+          })),
         );
         setDetail(null);
         setSelectedId(null);
         setDetailsPokemon(null);
+        setExportOpen(false);
         setStatusMessage(result.message ?? "Snapshots cleared");
       } finally {
         setClearing(false);
@@ -260,8 +325,10 @@ function TrainerHistoryBody({
           <>
             Adds {preview.candidates.length} missing R.I.P. entr
             {preview.candidates.length === 1 ? "y" : "ies"} for{" "}
-            {trainerHandle} from the last snapshot of each run. Existing graves
-            stay; duplicates (same species + nickname) are skipped.
+            {trainerHandle} to the live board, from the current run&rsquo;s
+            latest snapshot. Closed runs are not touched — their graves already
+            show in the Memorial, read from history. Existing graves stay;
+            duplicates (same species + nickname) are skipped.
             {preview.runsRestored.length > 0 ? (
               <>
                 {" "}
@@ -293,6 +360,13 @@ function TrainerHistoryBody({
         return;
       }
       setStatusMessage(result.message ?? "Memorial restored");
+      // The run rows now show per-run R.I.P., and router.refresh() only
+      // re-renders server components — pull the accordion's data again. A
+      // failure here must not read as a failed restore; the write is done.
+      const refreshed = await listTrainerHistoryAction({ trainerId }).catch(
+        () => null,
+      );
+      if (refreshed?.ok) setRuns(refreshed.runs);
       onMemorialRestored?.();
     } finally {
       setRestoring(false);
@@ -310,30 +384,8 @@ function TrainerHistoryBody({
   const encountered = detail
     ? slotPokemon(detail.payload.pokemon, "ENCOUNTERED")
     : [];
-  const exportTrainer: TrainerProfile | null = detail
-    ? {
-        id: trainerId,
-        handle: trainerHandle,
-        realName: null,
-        avatarSpriteKey: "",
-        avatarBackgroundKey: null,
-        cardBackgroundKey: null,
-        statusText: null,
-        statusEmoji: null,
-        reviveUsed: detail.payload.reviveUsed,
-        wipeCount: detail.payload.wipeCount,
-        activeRunNumber: detail.runNumber,
-        money: null,
-        mainSquadLocked: detail.payload.mainSquadLocked,
-        sortOrder: 0,
-        userId: null,
-        discordUsername: null,
-        discordDisplayName: null,
-        earnedBadgeKeys: detail.payload.earnedBadgeKeys,
-        pokemon: detail.payload.pokemon,
-        updatedAt: null,
-      }
-    : null;
+  /** Nothing to paste when a snapshot captured an already-empty roster. */
+  const canExportDetail = main.length > 0 || reserves.length > 0;
   const canClearHistory =
     allowClear &&
     !listLoading &&
@@ -362,18 +414,21 @@ function TrainerHistoryBody({
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
-                className={CTA_SECONDARY_SM}
-                onClick={() => setTeamExportOpen(true)}
-              >
-                Export team
-              </button>
-              <button
-                type="button"
                 className="pressable border-interactive/35 bg-interactive-soft px-2.5 py-1 text-xs font-semibold text-ink"
                 onClick={backToList}
               >
                 ← All runs
               </button>
+              {canExportDetail ? (
+                <button
+                  type="button"
+                  className="pressable border-frame bg-surface px-2.5 py-1 text-xs font-semibold text-ink"
+                  onClick={() => setExportOpen(true)}
+                  title="Copy this past roster for LLM / notes"
+                >
+                  Export team
+                </button>
+              ) : null}
             </div>
           ) : canRestore || canClearHistory ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -489,9 +544,10 @@ function TrainerHistoryBody({
             <p className="text-sm text-muted">
               Each run keeps its revive + badge archive. Board snapshots sit
               inside the run they were taken from (before wipe, import, or GM
-              reset).
+              reset). A wipe clears the live board, so graves from closed runs
+              are read back from that run&rsquo;s snapshot.
               {canRestoreMemorial
-                ? " GMs can restore missing memorial entries from those snapshots."
+                ? " GMs can restore missing R.I.P. for the current run from those snapshots."
                 : null}
             </p>
             {listLoading ? (
@@ -530,6 +586,8 @@ function TrainerHistoryBody({
                             {" · "}
                             {run.snapshots.length} snapshot
                             {run.snapshots.length === 1 ? "" : "s"}
+                            {" · "}
+                            {run.graves.length} R.I.P.
                           </span>
                         </span>
                         <span className="shrink-0 text-xs font-bold text-muted">
@@ -539,6 +597,19 @@ function TrainerHistoryBody({
 
                       {expanded ? (
                         <div className="space-y-3 border-t border-frame/30 px-3 py-3">
+                          {run.graves.length > 0 ? (
+                            <Frame
+                              title={frameCountTitle(
+                                "R.I.P.",
+                                run.graves.length,
+                              )}
+                              tone="rip"
+                              dense
+                            >
+                              <RunGraves graves={run.graves} />
+                            </Frame>
+                          ) : null}
+
                           {run.status === "CLOSED" &&
                           run.earnedBadgeKeys.length > 0 ? (
                             <Frame title="Badges at close" dense>
@@ -610,16 +681,27 @@ function TrainerHistoryBody({
         />
       ) : null}
 
-      {exportTrainer ? (
+      {detail && exportOpen ? (
         <TeamExportModal
-          open={teamExportOpen}
-          onClose={() => setTeamExportOpen(false)}
+          open
+          onClose={() => setExportOpen(false)}
           challengeSlug={challengeSlug}
           challengeName={challengeName}
           challengeGame={challengeGame}
-          trainer={exportTrainer}
+          trainer={{
+            id: trainerId,
+            handle: trainerHandle,
+            runNumber: detail.runNumber,
+            wipeCount: detail.payload.wipeCount,
+            earnedBadgeKeys: detail.payload.earnedBadgeKeys,
+            pokemon: detail.payload.pokemon,
+          }}
           badges={badges}
           showCompetitiveDetails={showCompetitiveDetails}
+          snapshot={{
+            label: detail.label ?? detail.triggerLabel,
+            capturedAt: formatWhen(detail.createdAt),
+          }}
         />
       ) : null}
 

@@ -1,7 +1,7 @@
 import { findPokemonById } from "@/data/pokemon-index";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import type { PokemonType } from "@/lib/pokemon-types";
-import { displayName, pokemonInSlot } from "@/lib/trainer-display";
+import { displayName } from "@/lib/trainer-display";
 
 export type MemorialTrainerHighlight = {
   trainerIds: string[];
@@ -40,16 +40,20 @@ function trainerHighlight(
 }
 
 /**
- * Season-wide memorial callouts from live GRAVEYARD rows + wipe counts.
+ * Season-wide memorial callouts from cross-run graves + wipe counts.
  * Ties keep every leader (callouts can truncate in UI).
+ *
+ * Graves are passed in rather than read off `trainer.pokemon`: a wipe clears
+ * the live board, so past-run graves only exist in board history.
  */
 export function memorialSeasonHighlights(
   trainers: TrainerProfile[],
+  gravesByTrainerId: Record<string, PokemonEntry[]>,
 ): MemorialSeasonHighlights {
   const rows = trainers
     .map((trainer) => ({
       trainer,
-      graves: pokemonInSlot(trainer, "GRAVEYARD"),
+      graves: gravesByTrainerId[trainer.id] ?? [],
     }))
     .filter((row) => row.graves.length > 0);
 

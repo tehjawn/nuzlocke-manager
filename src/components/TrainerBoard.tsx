@@ -1826,12 +1826,16 @@ export function TrainerBoard({
         challengeName={challengeName}
         challengeGame={challengeGame}
         trainer={{
-          ...boardTrainer,
+          id: boardTrainer.id,
+          handle: boardTrainer.handle,
+          runNumber: boardTrainer.activeRunNumber,
+          wipeCount: boardTrainer.wipeCount,
           earnedBadgeKeys,
-          reviveUsed,
+          pokemon: boardTrainer.pokemon,
         }}
         badges={badges}
         showCompetitiveDetails={showCompetitiveDetails}
+        canEdit={canEdit}
       />
 
       {!isDemo && (isGm || showCompetitiveDetails) && boardHistoryOpen ? (

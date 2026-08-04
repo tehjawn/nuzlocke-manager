@@ -1,18 +1,23 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { pushSnackbar } from "@/components/Snackbar";
+import {
+  findMissingHeldItems,
+  type MissingHeldItemMon,
+} from "@/lib/board-warnings";
 import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 import { copyText } from "@/lib/copy-text";
-import type { BadgeDefinition, TrainerProfile } from "@/lib/challenge-types";
+import type { BadgeDefinition } from "@/lib/challenge-types";
 import {
-  countMissingHeldItems,
   formatTrainerTeam,
   toolsChartPath,
   toolsGuidePath,
   trainerBoardPath,
   type TeamExportFormat,
+  type TeamExportSnapshotMeta,
+  type TeamExportTrainer,
 } from "@/lib/team-export";
 
 type TeamExportModalProps = {
@@ -21,9 +26,13 @@ type TeamExportModalProps = {
   challengeSlug: string;
   challengeName: string;
   challengeGame: string;
-  trainer: TrainerProfile;
+  trainer: TeamExportTrainer;
   badges: BadgeDefinition[];
   showCompetitiveDetails: boolean;
+  /** Set when the roster came from Trainer history instead of the live board. */
+  snapshot?: TeamExportSnapshotMeta | null;
+  /** Only nudge about missing held items when the viewer can go fix them. */
+  canEdit?: boolean;
 };
 
 function absoluteUrl(path: string): string {
@@ -48,6 +57,15 @@ const FORMAT_OPTIONS: Array<{
   },
 ];
 
+/** Name at most this many item-less mons inline; the rest collapse to "+N more". */
+const MAX_NAMED_MISSING = 4;
+
+function missingItemNames(mons: MissingHeldItemMon[]): string {
+  const named = mons.slice(0, MAX_NAMED_MISSING).map((m) => m.label);
+  const rest = mons.length - named.length;
+  return rest > 0 ? `${named.join(", ")} +${rest} more` : named.join(", ");
+}
+
 export function TeamExportModal({
   open,
   onClose,
@@ -57,22 +75,44 @@ export function TeamExportModal({
   trainer,
   badges,
   showCompetitiveDetails,
+  snapshot = null,
+  canEdit = false,
 }: TeamExportModalProps) {
   const textareaId = useId();
   const formatTabId = useId();
+  const missingItemsId = useId();
   const [format, setFormat] = useState<TeamExportFormat>("llm");
   const [copied, setCopied] = useState<"team" | "link" | null>(null);
-  const [heldItemWarned, setHeldItemWarned] = useState(false);
+  const [confirmArmed, setConfirmArmed] = useState(false);
   const [seenOpen, setSeenOpen] = useState(open);
 
   // Reset format/feedback when the modal opens (render-time adjust, not an effect).
   if (open !== seenOpen) {
     setSeenOpen(open);
+    setConfirmArmed(false);
     if (open) {
       setFormat("llm");
       setCopied(null);
-      setHeldItemWarned(false);
     }
+  }
+
+  // Arming/disarming swaps the focused button out of the DOM, and the browser
+  // drops focus to <body> — outside Modal's panel, which is where Escape-to-close
+  // and the Tab trap live. Hand focus to whichever button replaced it.
+  const focusOnMount = useCallback((node: HTMLButtonElement | null) => {
+    node?.focus();
+  }, []);
+  const restoreCopyFocus = useRef(false);
+  const copyButtonRef = useCallback((node: HTMLButtonElement | null) => {
+    if (!node || !restoreCopyFocus.current) return;
+    restoreCopyFocus.current = false;
+    node.focus();
+  }, []);
+
+  /** Disarm from inside the strip, moving focus back to the Copy button. */
+  function disarmConfirm() {
+    restoreCopyFocus.current = true;
+    setConfirmArmed(false);
   }
 
   const boardPath = trainerBoardPath(challengeSlug, trainer.id);
@@ -88,23 +128,25 @@ export function TeamExportModal({
         guideUrl: absoluteUrl(toolsGuidePath(challengeSlug)),
         showCompetitiveDetails,
         badges,
+        snapshot,
       })
     : "";
-
-  const missingHeldItems = open
-    ? countMissingHeldItems(trainer.pokemon, format)
-    : 0;
-  const needsHeldItemConfirm = missingHeldItems > 0 && !heldItemWarned;
 
   const activeHint =
     FORMAT_OPTIONS.find((o) => o.id === format)?.hint ?? FORMAT_OPTIONS[0].hint;
 
-  async function handleCopyTeam() {
-    if (needsHeldItemConfirm) {
-      setHeldItemWarned(true);
-      return;
-    }
+  // Both formats carry the Main Squad, so the nudge is the same either way —
+  // but a past snapshot is as unfixable as someone else's board, so neither
+  // is worth interrupting.
+  const canFixHeldItems = canEdit && !snapshot;
+  const missingItems =
+    open && canFixHeldItems ? findMissingHeldItems(trainer.pokemon) : [];
+  // Keep the two footer branches exact complements — if the board refreshes
+  // mid-confirm and empties `missingItems`, the Copy button must come back.
+  const showConfirm = confirmArmed && missingItems.length > 0;
 
+  async function copyTeamText() {
+    disarmConfirm();
     const ok = await copyText(text);
     if (ok) {
       setCopied("team");
@@ -119,6 +161,15 @@ export function TeamExportModal({
     }
   }
 
+  /** First click arms the held-item nudge; the confirm CTA does the copy. */
+  function handleCopyTeam() {
+    if (missingItems.length > 0 && !confirmArmed) {
+      setConfirmArmed(true);
+      return;
+    }
+    void copyTeamText();
+  }
+
   async function handleCopyLink() {
     const ok = await copyText(boardUrl);
     if (ok) {
@@ -130,48 +181,107 @@ export function TeamExportModal({
     }
   }
 
-  const copyLabel = (() => {
-    if (copied === "team") return "Copied!";
-    if (heldItemWarned && missingHeldItems > 0) return "Export anyway";
-    return "Copy";
-  })();
-
   return (
     <Modal
       open={open}
       onClose={onClose}
       size="md"
-      title="Export team"
+      title={snapshot ? "Export past team" : "Export team"}
       subtitle={activeHint}
       footer={
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <button
-            type="button"
-            className={CTA_SECONDARY_SM}
-            onClick={() => {
-              void handleCopyLink();
-            }}
-          >
-            {copied === "link" ? "Link copied!" : "Copy board link"}
-          </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className={CTA_SECONDARY_SM} onClick={onClose}>
-              Close
-            </button>
-            <button
-              type="button"
-              className={CTA_PRIMARY_SM}
-              onClick={() => {
-                void handleCopyTeam();
+        <div className="space-y-2">
+          {showConfirm && (
+            <div
+              className="space-y-1.5 rounded-lg border border-accent-2/40 bg-accent-2/10 px-3 py-2 text-sm"
+              onKeyDown={(e) => {
+                // Back out of the nudge without closing the whole modal.
+                if (e.key !== "Escape") return;
+                e.stopPropagation();
+                disarmConfirm();
               }}
             >
-              {copyLabel}
+              <p id={missingItemsId} role="status">
+                <span className="font-semibold text-accent-ink">
+                  {missingItems.length === 1
+                    ? "1 Main Squad Pokémon has no held item:"
+                    : `${missingItems.length} Main Squad Pokémon have no held item:`}
+                </span>{" "}
+                <span className="text-muted">
+                  {missingItemNames(missingItems)}.
+                </span>
+              </p>
+              <p className="text-[11px] text-muted">
+                Soft warning only — export anyway, or close and set their items
+                first.
+              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <button
+                  type="button"
+                  ref={focusOnMount}
+                  aria-describedby={missingItemsId}
+                  className={CTA_PRIMARY_SM}
+                  onClick={() => {
+                    void copyTeamText();
+                  }}
+                >
+                  Export anyway
+                </button>
+                <button
+                  type="button"
+                  className={CTA_SECONDARY_SM}
+                  onClick={disarmConfirm}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              className={CTA_SECONDARY_SM}
+              onClick={() => {
+                void handleCopyLink();
+              }}
+              title={
+                snapshot
+                  ? "Copies the trainer's live board URL (snapshots have no link)"
+                  : "Copy shareable trainer board URL"
+              }
+            >
+              {copied === "link" ? "Link copied!" : "Copy board link"}
             </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className={CTA_SECONDARY_SM}
+                onClick={onClose}
+              >
+                Close
+              </button>
+              {!showConfirm && (
+                <button
+                  type="button"
+                  ref={copyButtonRef}
+                  className={CTA_PRIMARY_SM}
+                  onClick={handleCopyTeam}
+                >
+                  {copied === "team" ? "Copied!" : "Copy"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       }
     >
       <div className="space-y-3">
+        {snapshot ? (
+          <p className="border border-frame/50 bg-surface-2/40 px-3 py-2 text-xs text-muted">
+            Past board · <span className="text-ink">{snapshot.label}</span> ·
+            captured {snapshot.capturedAt}. Run {trainer.runNumber} as it stood
+            then — not the live board.
+          </p>
+        ) : null}
         <div
           role="tablist"
           aria-label="Export format"
@@ -194,7 +304,8 @@ export function TeamExportModal({
                 onClick={() => {
                   setFormat(option.id);
                   setCopied(null);
-                  setHeldItemWarned(false);
+                  // Not disarmConfirm() — focus belongs to the tab just clicked.
+                  setConfirmArmed(false);
                 }}
               >
                 {option.label}
@@ -210,16 +321,6 @@ export function TeamExportModal({
             ? " — includes nature, moves, and spreads you can see on this board."
             : " — competitive details hidden (same as the public board view)."}
         </p>
-        {heldItemWarned && missingHeldItems > 0 ? (
-          <p
-            className="border border-frame/50 bg-surface-2/50 px-3 py-2 text-sm text-ink"
-            role="status"
-          >
-            {missingHeldItems === 1
-              ? "1 Pokémon has no held item set — copy again to export anyway."
-              : `${missingHeldItems} Pokémon have no held item set — copy again to export anyway.`}
-          </p>
-        ) : null}
         <label htmlFor={textareaId} className="sr-only">
           Team export text
         </label>
