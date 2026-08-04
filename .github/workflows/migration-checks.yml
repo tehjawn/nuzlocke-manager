@@ -1,0 +1,105 @@
+name: Migration Checks
+
+# prisma/migrations is a single linear history, and two people authoring against
+# it in parallel can diverge in ways nothing notices until much later: a
+# migration that sorts before one already on main (so a fresh database applies a
+# different order than production did), two migrations altering the same object,
+# or SQL that no longer matches prisma/schema.prisma once both land.
+#
+# Runs on every PR rather than filtering on paths, so it can be made a required
+# check without leaving PRs that touch no migrations waiting on a run that never
+# starts. Both jobs exit early and cheaply when there is nothing to check.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-checks-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # Cheap, git-only, no database. Catches ordering collisions and edits to
+  # migrations that are already applied somewhere.
+  order:
+    name: Ordering
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
+
+      - name: Check migration ordering
+        run: scripts/check-migration-order.sh "origin/${{ github.event.pull_request.base.ref }}"
+
+  # Applies this PR's new migrations to a throwaway Postgres and checks the
+  # result. A service container rather than a Neon branch: Neon Free allows 10
+  # branches for the whole project, and previews already compete for those.
+  replay:
+    name: Replay
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Matches Neon and docker-compose.yml, so DDL behaves the same here.
+        image: postgres:18
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: migcheck
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d migcheck"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
+
+      # Before npm ci, which is the expensive part of this job.
+      - name: Does this PR add migrations?
+        id: detect
+        run: |
+          set -euo pipefail
+          base="$(git merge-base "origin/${{ github.event.pull_request.base.ref }}" HEAD)"
+          list() {
+            git ls-tree -r --name-only "$1" -- prisma/migrations/ |
+              awk -F/ 'NF > 3 { print $3 }' | sort -u
+          }
+          added="$(comm -13 <(list "$base") <(list HEAD) | wc -l | tr -d ' ')"
+          echo "added=${added}" >> "$GITHUB_OUTPUT"
+          if [ "$added" -eq 0 ]; then
+            echo "No migrations added; skipping the replay."
+          else
+            echo "${added} migration(s) added; replaying."
+          fi
+
+      - name: Setup Node
+        if: steps.detect.outputs.added != '0'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # CI resolves from package-lock.json; pnpm-lock.yaml is gitignored.
+      - name: Install dependencies
+        if: steps.detect.outputs.added != '0'
+        run: npm ci
+
+      - name: Replay migrations against a scratch database
+        if: steps.detect.outputs.added != '0'
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/migcheck
+        run: scripts/check-migration-replay.sh "origin/${{ github.event.pull_request.base.ref }}"
