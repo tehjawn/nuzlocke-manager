@@ -278,7 +278,7 @@ Shipped:
 
 - Light route encounter ledger
 - Duplicate / held-item warnings (soft UI, not rule enforcement)
-- Side-by-side trainer compare
+- Side-by-side trainer compare (retired — Team Planner's vs Trainer mode covers it)
 - Type chart quick-ref (Tools tab)
 - Optional public share links
 - Alternate formes in the species picker
@@ -342,8 +342,8 @@ Keep the stack boring so the **UI personality** can carry the product.
 /challenges/[slug]                → League board (hub) + activity feed   ✅
 /challenges/[slug]/rules          → Rules / FAQ (tabbed)                 ✅
 /challenges/[slug]/faq            → Redirect → /rules?tab=faq            ✅
-/challenges/[slug]/tools          → Tools hub → Pokédex / chart / compare ✅
-/challenges/[slug]/compare        → Redirect → /tools?tool=compare        ✅
+/challenges/[slug]/tools          → Tools hub → Pokédex, chart, planner… ✅
+/challenges/[slug]/compare        → Redirect → Team Planner (vs mode)    ✅
 /challenges/[slug]/me             → Provision + jump to own board        ✅
 /challenges/[slug]/join           → Invite / GM code                     ✅
 /challenges/[slug]/trainers/[id]  → Trainer board                        ✅

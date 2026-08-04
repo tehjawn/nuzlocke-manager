@@ -75,7 +75,7 @@ function boardLeagueInclude() {
   };
 }
 
-/** Tools / bounty / compare: all slots + moves, no IV/EV/heldItem. */
+/** Tools / bounty / planner: all slots + moves, no IV/EV/heldItem. */
 function boardPokemonToolsInclude() {
   return {
     ...challengeMetaInclude,

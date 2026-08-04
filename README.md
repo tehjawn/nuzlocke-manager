@@ -12,7 +12,7 @@ Phases 0–4 shipped. Next: Phase 5 — season ops polish (archive UX, invite wa
 - Species + shiny + forme sprite picker
 - Import from Afterplay / Gen 3 saves (party, box, R.I.P., encounters + optional name/badges)
 - GM console (settings, rules, FAQ, Main Squad lock, export, Discord webhooks)
-- Memorial, tournament stub, encounter ledger, trainer compare, type chart, share links
+- Memorial, tournament stub, encounter ledger, team planner, type chart, share links
 - Activity feed on the league board + notifications / welcome modal
 - Postgres-backed data with seed fallback for read-only demo
 

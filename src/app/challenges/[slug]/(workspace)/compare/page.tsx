@@ -1,18 +1,13 @@
 import { redirect } from "next/navigation";
-import { toolsHref } from "@/lib/tools-routes";
+import { legacyCompareHref } from "@/lib/tools-routes";
 
 
 type PageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ a?: string; b?: string }>;
 };
 
-/** Compare lives under Tools — keep old links working. */
-export default async function CompareRedirectPage({
-  params,
-  searchParams,
-}: PageProps) {
+/** Compare retired into Team Planner's vs Trainer mode — keep old links working. */
+export default async function CompareRedirectPage({ params }: PageProps) {
   const { slug } = await params;
-  const { a, b } = await searchParams;
-  redirect(toolsHref(slug, "compare", { a, b }));
+  redirect(legacyCompareHref(slug));
 }

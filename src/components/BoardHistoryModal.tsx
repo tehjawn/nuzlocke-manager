@@ -18,6 +18,7 @@ import { Modal } from "@/components/Modal";
 import { PartyStrip } from "@/components/PartyStrip";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { TeamExportModal } from "@/components/TeamExportModal";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import type {
   BadgeDefinition,
@@ -31,6 +32,10 @@ type TrainerHistoryModalProps = {
   onClose: () => void;
   trainerId: string;
   trainerHandle: string;
+  /** Challenge context for the past-board team export. */
+  challengeSlug: string;
+  challengeName: string;
+  challengeGame: string;
   badges: BadgeDefinition[];
   showCompetitiveDetails?: boolean;
   /** GM-only clear control; owners can still browse. */
@@ -130,6 +135,9 @@ function TrainerHistoryBody({
   onClose,
   trainerId,
   trainerHandle,
+  challengeSlug,
+  challengeName,
+  challengeGame,
   badges,
   showCompetitiveDetails = true,
   canClearSnapshots = false,
@@ -152,11 +160,14 @@ function TrainerHistoryBody({
     triggerLabel: string;
     createdAt: string;
     summary: string;
+    /** Run the snapshot sits under in the accordion. */
+    runNumber: number;
     payload: TrainerBoardSnapshotPayload;
   } | null>(null);
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
   );
+  const [exportOpen, setExportOpen] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   useEffect(() => {
@@ -202,10 +213,11 @@ function TrainerHistoryBody({
     });
   }
 
-  function openSnapshot(id: string) {
+  function openSnapshot(id: string, runNumber: number) {
     setSelectedId(id);
     setError(null);
     setDetailsPokemon(null);
+    setExportOpen(false);
     startTransition(async () => {
       const result = await getTrainerBoardSnapshotAction({ snapshotId: id });
       if (!result.ok) {
@@ -219,6 +231,7 @@ function TrainerHistoryBody({
         triggerLabel: result.snapshot.triggerLabel,
         createdAt: result.snapshot.createdAt,
         summary: result.snapshot.summary,
+        runNumber,
         payload: result.snapshot.payload,
       });
     });
@@ -228,6 +241,7 @@ function TrainerHistoryBody({
     setDetail(null);
     setSelectedId(null);
     setDetailsPokemon(null);
+    setExportOpen(false);
   }
 
   async function clearHistory() {
@@ -268,6 +282,7 @@ function TrainerHistoryBody({
         setDetail(null);
         setSelectedId(null);
         setDetailsPokemon(null);
+        setExportOpen(false);
         setStatusMessage(result.message ?? "Snapshots cleared");
       } finally {
         setClearing(false);
@@ -369,6 +384,8 @@ function TrainerHistoryBody({
   const encountered = detail
     ? slotPokemon(detail.payload.pokemon, "ENCOUNTERED")
     : [];
+  /** Nothing to paste when a snapshot captured an already-empty roster. */
+  const canExportDetail = main.length > 0 || reserves.length > 0;
   const canClearHistory =
     allowClear &&
     !listLoading &&
@@ -394,13 +411,25 @@ function TrainerHistoryBody({
         onClose={onClose}
         headerActions={
           viewingDetail ? (
-            <button
-              type="button"
-              className="pressable border-interactive/35 bg-interactive-soft px-2.5 py-1 text-xs font-semibold text-ink"
-              onClick={backToList}
-            >
-              ← All runs
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                className="pressable border-interactive/35 bg-interactive-soft px-2.5 py-1 text-xs font-semibold text-ink"
+                onClick={backToList}
+              >
+                ← All runs
+              </button>
+              {canExportDetail ? (
+                <button
+                  type="button"
+                  className="pressable border-frame bg-surface px-2.5 py-1 text-xs font-semibold text-ink"
+                  onClick={() => setExportOpen(true)}
+                  title="Copy this past roster for LLM / notes"
+                >
+                  Export team
+                </button>
+              ) : null}
+            </div>
           ) : canRestore || canClearHistory ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
               {canRestore ? (
@@ -608,7 +637,9 @@ function TrainerHistoryBody({
                                       type="button"
                                       disabled={pending || clearing}
                                       className="pressable flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-surface-2/70 disabled:opacity-60"
-                                      onClick={() => openSnapshot(snap.id)}
+                                      onClick={() =>
+                                        openSnapshot(snap.id, run.runNumber)
+                                      }
                                     >
                                       <span className="flex flex-wrap items-baseline justify-between gap-2">
                                         <span className="text-sm font-semibold text-ink">
@@ -650,6 +681,30 @@ function TrainerHistoryBody({
         />
       ) : null}
 
+      {detail && exportOpen ? (
+        <TeamExportModal
+          open
+          onClose={() => setExportOpen(false)}
+          challengeSlug={challengeSlug}
+          challengeName={challengeName}
+          challengeGame={challengeGame}
+          trainer={{
+            id: trainerId,
+            handle: trainerHandle,
+            runNumber: detail.runNumber,
+            wipeCount: detail.payload.wipeCount,
+            earnedBadgeKeys: detail.payload.earnedBadgeKeys,
+            pokemon: detail.payload.pokemon,
+          }}
+          badges={badges}
+          showCompetitiveDetails={showCompetitiveDetails}
+          snapshot={{
+            label: detail.label ?? detail.triggerLabel,
+            capturedAt: formatWhen(detail.createdAt),
+          }}
+        />
+      ) : null}
+
       {confirmDialog}
     </>
   );
@@ -665,6 +720,9 @@ export function TrainerHistoryModal({
   onClose,
   trainerId,
   trainerHandle,
+  challengeSlug,
+  challengeName,
+  challengeGame,
   badges,
   showCompetitiveDetails = true,
   canClearSnapshots = false,
@@ -679,6 +737,9 @@ export function TrainerHistoryModal({
       onClose={onClose}
       trainerId={trainerId}
       trainerHandle={trainerHandle}
+      challengeSlug={challengeSlug}
+      challengeName={challengeName}
+      challengeGame={challengeGame}
       badges={badges}
       showCompetitiveDetails={showCompetitiveDetails}
       canClearSnapshots={canClearSnapshots}
