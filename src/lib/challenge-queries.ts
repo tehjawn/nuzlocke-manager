@@ -32,7 +32,7 @@ export const pokemonFullSelect = {
 } as const;
 
 /**
- * Tools page: identity + moves for Pokédex tips / bounty / compare.
+ * Tools page: identity + moves for Pokédex tips / bounty / planner.
  * Still omits nature / ability / heldItem / IVs / EVs (Flight weight).
  */
 export const pokemonToolsSelect = {

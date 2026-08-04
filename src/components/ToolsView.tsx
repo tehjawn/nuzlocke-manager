@@ -9,12 +9,8 @@ import { GameGuidePanel } from "@/components/GameGuidePanel";
 import { GuideIcon } from "@/components/nav-icons";
 import { PokedexPanel } from "@/components/PokedexPanel";
 import { TeamPlannerView } from "@/components/TeamPlannerView";
-import { TrainerCompare } from "@/components/TrainerCompare";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
-import type {
-  BadgeDefinition,
-  TrainerProfile,
-} from "@/lib/challenge-types";
+import type { TrainerProfile } from "@/lib/challenge-types";
 import {
   parseToolsId,
   TOOLS_CATALOG,
@@ -29,14 +25,11 @@ type ToolsViewProps = {
   slug: string;
   challengeName: string;
   trainers: TrainerProfile[];
-  badges: BadgeDefinition[];
   /** Signed-in trainer id for this season (Type Tips / ownership). */
   myTrainerId?: string | null;
   signedIn?: boolean;
   /** When null, show the Tools directory hub. */
   initialTool?: ToolsId | null;
-  initialCompareA?: string | null;
-  initialCompareB?: string | null;
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
@@ -46,12 +39,9 @@ export function ToolsView({
   slug,
   challengeName,
   trainers,
-  badges,
   myTrainerId = null,
   signedIn = false,
   initialTool = null,
-  initialCompareA = null,
-  initialCompareB = null,
   initialDexId = null,
   initialBountyMode = null,
   initialPlannerMode = null,
@@ -73,11 +63,8 @@ export function ToolsView({
       challengeName={challengeName}
       tool={tool}
       trainers={trainers}
-      badges={badges}
       myTrainerId={myTrainerId}
       signedIn={signedIn}
-      initialCompareA={initialCompareA}
-      initialCompareB={initialCompareB}
       initialDexId={initialDexId}
       initialBountyMode={initialBountyMode}
       initialPlannerMode={initialPlannerMode}
@@ -144,8 +131,6 @@ function toolIcon(id: ToolsId): ReactNode {
       return <PokedexToolIcon />;
     case "chart":
       return <TypeChartToolIcon />;
-    case "compare":
-      return <CompareToolIcon />;
     case "guide":
       return <GuideIcon className="h-5 w-5" />;
     case "bounty":
@@ -190,24 +175,6 @@ function TypeChartToolIcon() {
   );
 }
 
-function CompareToolIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      aria-hidden
-    >
-      <circle cx="8" cy="8" r="3" />
-      <circle cx="16" cy="8" r="3" />
-      <path d="M3.5 19c.7-2.6 2.7-4 4.5-4s3.8 1.4 4.5 4" strokeLinecap="round" />
-      <path d="M11.5 19c.7-2.6 2.7-4 4.5-4s3.8 1.4 4.5 4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function BountyToolIcon() {
   return (
     <svg
@@ -247,11 +214,8 @@ function ToolWorkspace({
   challengeName,
   tool,
   trainers,
-  badges,
   myTrainerId,
   signedIn,
-  initialCompareA,
-  initialCompareB,
   initialDexId,
   initialBountyMode,
   initialPlannerMode,
@@ -260,11 +224,8 @@ function ToolWorkspace({
   challengeName: string;
   tool: ToolsId;
   trainers: TrainerProfile[];
-  badges: BadgeDefinition[];
   myTrainerId?: string | null;
   signedIn?: boolean;
-  initialCompareA?: string | null;
-  initialCompareB?: string | null;
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
@@ -281,9 +242,7 @@ function ToolWorkspace({
           ? `What to do next in the story for ${challengeName}.`
           : tool === "bounty"
             ? `Who owns, who's seen, and who's cornered a whole line in ${challengeName}.`
-            : tool === "planner"
-              ? `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${challengeName}.`
-              : `Side-by-side squads and badges for ${challengeName}.`;
+            : `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${challengeName}.`;
 
   return (
     <div className="space-y-6">
@@ -319,16 +278,6 @@ function ToolWorkspace({
             myTrainerId={myTrainerId}
           />
         </Frame>
-      ) : null}
-
-      {tool === "compare" ? (
-        <TrainerCompare
-          slug={slug}
-          trainers={trainers}
-          badges={badges}
-          initialA={initialCompareA}
-          initialB={initialCompareB}
-        />
       ) : null}
 
       {tool === "guide" ? (

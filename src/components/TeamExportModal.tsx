@@ -9,13 +9,15 @@ import {
 } from "@/lib/board-warnings";
 import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 import { copyText } from "@/lib/copy-text";
-import type { BadgeDefinition, TrainerProfile } from "@/lib/challenge-types";
+import type { BadgeDefinition } from "@/lib/challenge-types";
 import {
   formatTrainerTeam,
   toolsChartPath,
   toolsGuidePath,
   trainerBoardPath,
   type TeamExportFormat,
+  type TeamExportSnapshotMeta,
+  type TeamExportTrainer,
 } from "@/lib/team-export";
 
 type TeamExportModalProps = {
@@ -24,11 +26,13 @@ type TeamExportModalProps = {
   challengeSlug: string;
   challengeName: string;
   challengeGame: string;
-  trainer: TrainerProfile;
+  trainer: TeamExportTrainer;
   badges: BadgeDefinition[];
   showCompetitiveDetails: boolean;
+  /** Set when the roster came from Trainer history instead of the live board. */
+  snapshot?: TeamExportSnapshotMeta | null;
   /** Only nudge about missing held items when the viewer can go fix them. */
-  canEdit: boolean;
+  canEdit?: boolean;
 };
 
 function absoluteUrl(path: string): string {
@@ -71,7 +75,8 @@ export function TeamExportModal({
   trainer,
   badges,
   showCompetitiveDetails,
-  canEdit,
+  snapshot = null,
+  canEdit = false,
 }: TeamExportModalProps) {
   const textareaId = useId();
   const formatTabId = useId();
@@ -123,15 +128,19 @@ export function TeamExportModal({
         guideUrl: absoluteUrl(toolsGuidePath(challengeSlug)),
         showCompetitiveDetails,
         badges,
+        snapshot,
       })
     : "";
 
   const activeHint =
     FORMAT_OPTIONS.find((o) => o.id === format)?.hint ?? FORMAT_OPTIONS[0].hint;
 
-  // Both formats carry the Main Squad, so the nudge is the same either way.
+  // Both formats carry the Main Squad, so the nudge is the same either way —
+  // but a past snapshot is as unfixable as someone else's board, so neither
+  // is worth interrupting.
+  const canFixHeldItems = canEdit && !snapshot;
   const missingItems =
-    open && canEdit ? findMissingHeldItems(trainer.pokemon) : [];
+    open && canFixHeldItems ? findMissingHeldItems(trainer.pokemon) : [];
   // Keep the two footer branches exact complements — if the board refreshes
   // mid-confirm and empties `missingItems`, the Copy button must come back.
   const showConfirm = confirmArmed && missingItems.length > 0;
@@ -177,7 +186,7 @@ export function TeamExportModal({
       open={open}
       onClose={onClose}
       size="md"
-      title="Export team"
+      title={snapshot ? "Export past team" : "Export team"}
       subtitle={activeHint}
       footer={
         <div className="space-y-2">
@@ -234,6 +243,11 @@ export function TeamExportModal({
               onClick={() => {
                 void handleCopyLink();
               }}
+              title={
+                snapshot
+                  ? "Copies the trainer's live board URL (snapshots have no link)"
+                  : "Copy shareable trainer board URL"
+              }
             >
               {copied === "link" ? "Link copied!" : "Copy board link"}
             </button>
@@ -261,6 +275,13 @@ export function TeamExportModal({
       }
     >
       <div className="space-y-3">
+        {snapshot ? (
+          <p className="border border-frame/50 bg-surface-2/40 px-3 py-2 text-xs text-muted">
+            Past board · <span className="text-ink">{snapshot.label}</span> ·
+            captured {snapshot.capturedAt}. Run {trainer.runNumber} as it stood
+            then — not the live board.
+          </p>
+        ) : null}
         <div
           role="tablist"
           aria-label="Export format"

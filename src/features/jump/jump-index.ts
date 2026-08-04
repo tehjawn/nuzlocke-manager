@@ -303,7 +303,10 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
       ],
     },
     ...EMERALD_GUIDE.chapters.map((chapter) => {
-      const chapterLabel = guideChapterLabel(chapter);
+      const postGame = chapter.section === "post-game";
+      const chapterLabel = postGame
+        ? `Post-game · ${chapter.title}`
+        : guideChapterLabel(chapter);
       return {
         id: `guide-chapter-${chapter.id}`,
         title: chapterLabel,
@@ -316,7 +319,9 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
           chapter.summary,
           "guide",
           "chapter",
-          `ch ${chapter.sortOrder + 1}`,
+          ...(postGame
+            ? ["post-game", "optional"]
+            : [`ch ${chapter.sortOrder + 1}`]),
           ...chapter.requiresBadges,
         ],
       };
