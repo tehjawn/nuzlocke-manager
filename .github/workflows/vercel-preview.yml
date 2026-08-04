@@ -135,6 +135,30 @@ jobs:
           npm ci
           npm run db:migrate:deploy
 
+      # --- Stable preview hostname -------------------------------------------
+      # Claimed before the build because NEXT_PUBLIC_APP_URL is inlined at build
+      # time, so the slot has to be known before `vercel build` runs.
+      - name: Claim a preview alias slot
+        id: slot
+        run: |
+          set -euo pipefail
+          chmod +x scripts/vercel-preview-slot.sh
+          scripts/vercel-preview-slot.sh claim "${{ github.event.pull_request.number }}" >/dev/null
+
+      # An empty slot URL would be worse than a hard failure: it writes
+      # AUTH_URL="" into the build env and passes --env AUTH_URL=, which
+      # overrides the project value and breaks sign-in with no obvious cause.
+      - name: Require the preview slot outputs
+        env:
+          SLOT_URL: ${{ steps.slot.outputs.url }}
+          SLOT_HOST: ${{ steps.slot.outputs.host }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SLOT_URL" ] || [ -z "$SLOT_HOST" ]; then
+            echo "::error::The slot step did not emit host/url outputs."
+            exit 1
+          fi
+
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
@@ -146,6 +170,8 @@ jobs:
       # preference to the process environment. It has to be rewritten here, not
       # just exported. Verified: the build fails without a reachable database.
       - name: Point the build at the child branch
+        env:
+          SLOT_URL: ${{ steps.slot.outputs.url }}
         run: |
           set -euo pipefail
           f=.vercel/.env.preview.local
@@ -158,6 +184,16 @@ jobs:
           printf 'DATABASE_URL_UNPOOLED="%s"\n' "$CHILD_DIRECT" >> "$f"
           echo "Rewrote DATABASE_URL / DATABASE_URL_UNPOOLED to the child branch."
 
+          # NEXT_PUBLIC_* is inlined into the client bundle at build time, so the
+          # slot URL has to be in place here as well as at deploy time. Both are
+          # needed: this covers the bundle, and --env covers the runtime — where
+          # the project's Preview AUTH_URL otherwise points at production and
+          # takes precedence over trustHost, sending sign-in to the prod domain.
+          sed -i '/^NEXT_PUBLIC_APP_URL=/d; /^AUTH_URL=/d' "$f"
+          printf 'NEXT_PUBLIC_APP_URL="%s"\n' "$SLOT_URL" >> "$f"
+          printf 'AUTH_URL="%s"\n' "$SLOT_URL" >> "$f"
+          echo "Pinned NEXT_PUBLIC_APP_URL / AUTH_URL to $SLOT_URL."
+
       - name: Build preview
         run: vercel build --token="$VERCEL_TOKEN"
 
@@ -166,6 +202,7 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          SLOT_URL: ${{ steps.slot.outputs.url }}
         run: |
           set -euo pipefail
           # Do not pass --target=preview. It makes Vercel evaluate the Ignored
@@ -174,9 +211,11 @@ jobs:
           # Preview is already the default; --prod is what selects production,
           # so omitting the flag still satisfies "never deploy to production".
           url="$(
-            vercel deploy --prebuilt --token="$VERCEL_TOKEN" \
+            vercel deploy --prebuilt --force --archive=tgz --token="$VERCEL_TOKEN" \
               --env "DATABASE_URL=${CHILD_POOLED}" \
               --env "DATABASE_URL_UNPOOLED=${CHILD_DIRECT}" \
+              --env "AUTH_URL=${SLOT_URL}" \
+              --env "NEXT_PUBLIC_APP_URL=${SLOT_URL}" \
               --meta "githubPrId=${PR_NUMBER}" \
               --meta "githubCommitRef=${HEAD_REF}" \
               --meta "deployPreviewLabel=1" \
@@ -190,6 +229,19 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $url"
 
+      # Discord only accepts redirect URIs registered ahead of time, so login
+      # works through the slot hostname, not the hashed deployment URL.
+      - name: Alias the deployment to the preview slot
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          SLOT_HOST: ${{ steps.slot.outputs.host }}
+        run: |
+          set -euo pipefail
+          scripts/vercel-preview-slot.sh verify \
+            "${{ github.event.pull_request.number }}" "$SLOT_HOST"
+          vercel alias set "$DEPLOY_URL" "$SLOT_HOST" --token="$VERCEL_TOKEN"
+          echo "Aliased $DEPLOY_URL → https://$SLOT_HOST"
+
       - name: Comment preview URL on PR
         uses: actions/github-script@v7
         with:
@@ -201,13 +253,17 @@ jobs:
             }
 
             const marker = '<!-- vercel-preview-bot -->';
+            const slotUrl = process.env.SLOT_URL;
             const body = [
               marker,
               `**Vercel Preview** for \`${context.payload.pull_request.head.sha.slice(0, 7)}\`:`,
-              url,
+              slotUrl || url,
               '',
+              ...(slotUrl
+                ? [`Sign in works on this URL only — the deployment URL (${url}) is not a registered Discord redirect.`, '']
+                : []),
               `Database: Neon branch \`${process.env.NEON_BRANCH}\` — isolated from production.`,
-              'Removing the `deploy preview` label, merging, or closing deletes it.',
+              'Removing the `deploy preview` label, merging, or closing releases the slot and deletes the branch.',
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
@@ -238,4 +294,5 @@ jobs:
             }
         env:
           PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+          SLOT_URL: ${{ steps.slot.outputs.url }}
           NEON_BRANCH: preview/pr-${{ github.event.pull_request.number }}

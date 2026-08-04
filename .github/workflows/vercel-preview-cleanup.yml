@@ -39,6 +39,7 @@ jobs:
         with:
           sparse-checkout: |
             scripts/vercel-preview-cleanup.sh
+            scripts/vercel-preview-slot.sh
           sparse-checkout-cone-mode: false
 
       # Removing the label emits an `unlabeled` event, which would re-enter this
@@ -70,6 +71,22 @@ jobs:
             echo "::error::Missing repository secret VERCEL_TOKEN."
             exit 1
           fi
+
+      # Must run before the deployments are deleted: slot ownership is resolved
+      # from the aliased deployment's githubPrId metadata, which disappears with
+      # the deployment. A slot whose deployment is already gone is treated as
+      # stale and released anyway, so a retry still cleans up.
+      #
+      # It must not be able to block the rest of teardown, though: a transient
+      # Vercel API error would otherwise leave the deployments and the Neon
+      # branch in place, with only the 7-day expiry to clean up after it.
+      - name: Release the preview alias slot
+        id: release_slot
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          chmod +x scripts/vercel-preview-slot.sh
+          scripts/vercel-preview-slot.sh release "${{ github.event.pull_request.number }}"
 
       - name: Collect PR commit SHAs
         uses: actions/github-script@v7
@@ -192,3 +209,10 @@ jobs:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch: preview/pr-${{ github.event.pull_request.number }}
           api_key: ${{ secrets.NEON_API_KEY }}
+
+      # Reported after the destructive steps so a stuck alias is visible without
+      # having let it prevent the branch and deployments from being removed.
+      - name: Report a failed slot release
+        if: always() && steps.release_slot.outcome == 'failure'
+        run: |
+          echo "::warning::Failed to release the preview alias slot. Remove the alias manually or re-run this workflow; a stale alias is reclaimed automatically on the next claim."
