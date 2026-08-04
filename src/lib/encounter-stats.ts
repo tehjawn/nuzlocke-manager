@@ -7,7 +7,7 @@ import {
   modernEmeraldSpeciesRef,
   type ModernEmeraldSpeciesRef,
 } from "@/lib/modern-emerald-dex";
-import { evolutionAncestors } from "@/lib/species-evolutions";
+import { evolutionFamily } from "@/lib/species-evolutions";
 
 /** Noise species excluded from popularity / rarity callout rankings. */
 const RANKING_EXCLUDED_NAMES = new Set(["zigzagoon"]);
@@ -440,24 +440,30 @@ export function personalSpeciesStatus(
 export type ExclusiveLineGroup = {
   rootPokedexId: number;
   rootSpecies: string;
-  /** True when every exclusive stage in this line belongs to one trainer. */
+  /**
+   * True only when one trainer's exclusive entries cover every stage of the
+   * real evolution family — not merely every stage present in `entries`.
+   */
   singleTrainer: boolean;
-  /** Stages in dex order — usually just one trainer's whole family. */
+  /** Exclusive stages in this line, in dex order (may be incomplete). */
   entries: ExclusiveSpecies[];
 };
 
-/** Lowest-dex ancestor for a species, or itself when it's already a base form. */
+/** Lowest-dex member of the full evolution family (base / baby form). */
 function lineRoot(pokedexId: number): { pokedexId: number; species: string } {
-  const ancestors = evolutionAncestors(pokedexId);
-  return ancestors.length > 0
-    ? { pokedexId: ancestors[0]!.pokedexId, species: ancestors[0]!.name }
-    : { pokedexId, species: modernEmeraldSpeciesRef(pokedexId).species };
+  const family = evolutionFamily(pokedexId);
+  const rootId = family[0] ?? pokedexId;
+  return { pokedexId: rootId, species: modernEmeraldSpeciesRef(rootId).species };
 }
 
 /**
  * Group `exclusiveOwnedSpecies` results by evolution line so a monopoly on
  * a whole family (e.g. every Treecko-line stage) reads as one callout
  * instead of N disconnected single-species rows.
+ *
+ * Pass the full pack exclusives list — never pre-filter by viewer. Line
+ * completeness is evaluated against the full Modern Emerald family, then
+ * callers may filter the resulting groups for display.
  */
 export function groupExclusivesByLine(
   exclusives: ExclusiveSpecies[],
@@ -469,7 +475,7 @@ export function groupExclusivesByLine(
     const group = groups.get(root.pokedexId) ?? {
       rootPokedexId: root.pokedexId,
       rootSpecies: root.species,
-      singleTrainer: true,
+      singleTrainer: false,
       entries: [],
     };
     group.entries.push(entry);
@@ -478,8 +484,17 @@ export function groupExclusivesByLine(
 
   for (const group of groups.values()) {
     group.entries.sort((a, b) => a.pokedexId - b.pokedexId);
-    group.singleTrainer =
-      new Set(group.entries.map((entry) => entry.trainerId)).size === 1;
+    const familyIds = evolutionFamily(group.rootPokedexId);
+    const ownedByTrainer = new Map<string, Set<number>>();
+    for (const entry of group.entries) {
+      const owned = ownedByTrainer.get(entry.trainerId) ?? new Set();
+      owned.add(entry.pokedexId);
+      ownedByTrainer.set(entry.trainerId, owned);
+    }
+
+    group.singleTrainer = [...ownedByTrainer.values()].some((owned) =>
+      familyIds.every((id) => owned.has(id)),
+    );
   }
 
   return [...groups.values()].sort(

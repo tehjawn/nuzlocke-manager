@@ -29,6 +29,7 @@ type BountyHunterViewProps = {
 };
 
 type StatusFilter = "all" | SpeciesOwnershipStatus;
+type ExclusiveLineFilter = "all" | "whole" | "split" | "partial";
 type SortMode = "dex" | "rarity" | "alpha";
 type BoardRow = { entry: SpeciesOwnershipEntry; status: SpeciesOwnershipStatus };
 
@@ -42,6 +43,16 @@ const STATUS_FILTERS: ReadonlyArray<{ id: StatusFilter; label: string }> = [
   { id: "owned", label: "Owned" },
   { id: "encountered", label: "Encountered" },
   { id: "untouched", label: "Untouched" },
+];
+
+const EXCLUSIVE_LINE_FILTERS: ReadonlyArray<{
+  id: ExclusiveLineFilter;
+  label: string;
+}> = [
+  { id: "all", label: "All" },
+  { id: "whole", label: "Owns the whole line" },
+  { id: "split", label: "Split across trainers" },
+  { id: "partial", label: "Partial line" },
 ];
 
 /** Color key for the tracker grid — same tones as the species cards. */
@@ -70,6 +81,7 @@ export function BountyHunterView({
   const [mode, setMode] = useState<BountyMode>(parseBountyMode(initialMode));
   const [viewerId, setViewerId] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [lineFilter, setLineFilter] = useState<ExclusiveLineFilter>("all");
   const [sort, setSort] = useState<SortMode>("dex");
   const [query, setQuery] = useState("");
 
@@ -134,26 +146,54 @@ export function BountyHunterView({
     });
   }, [queryRows, statusFilter, sort]);
 
-  const scopedExclusives = useMemo(() => {
-    const byTrainer = viewerId
-      ? exclusives.filter((entry) => entry.trainerId === viewerId)
-      : exclusives;
-    if (!q) return byTrainer;
-    return byTrainer.filter(
-      (entry) =>
-        entry.species.toLowerCase().includes(q) ||
-        entry.trainerHandle.toLowerCase().includes(q) ||
-        String(entry.pokedexId).includes(q),
-    );
-  }, [exclusives, viewerId, q]);
-
   const exclusiveGroups = useMemo(() => {
-    const groups = groupExclusivesByLine(scopedExclusives);
+    // Group the full pack first so line-completeness sees every trainer's
+    // stages; only then filter groups for the selected viewer / search.
+    let groups = groupExclusivesByLine(exclusives);
+    if (viewerId) {
+      groups = groups.filter((group) =>
+        group.entries.some((entry) => entry.trainerId === viewerId),
+      );
+    }
+    if (q) {
+      groups = groups.filter(
+        (group) =>
+          group.rootSpecies.toLowerCase().includes(q) ||
+          group.entries.some(
+            (entry) =>
+              entry.species.toLowerCase().includes(q) ||
+              entry.trainerHandle.toLowerCase().includes(q) ||
+              String(entry.pokedexId).includes(q),
+          ),
+      );
+    }
     if (sort === "alpha") {
-      return [...groups].sort((a, b) => a.rootSpecies.localeCompare(b.rootSpecies));
+      groups = [...groups].sort((a, b) =>
+        a.rootSpecies.localeCompare(b.rootSpecies),
+      );
     }
     return groups;
-  }, [scopedExclusives, sort]);
+  }, [exclusives, viewerId, q, sort]);
+
+  const exclusiveLineCounts = useMemo(() => {
+    const counts: Record<ExclusiveLineFilter, number> = {
+      all: exclusiveGroups.length,
+      whole: 0,
+      split: 0,
+      partial: 0,
+    };
+    for (const group of exclusiveGroups) {
+      counts[exclusiveLineKind(group)] += 1;
+    }
+    return counts;
+  }, [exclusiveGroups]);
+
+  const visibleExclusiveGroups = useMemo(() => {
+    if (lineFilter === "all") return exclusiveGroups;
+    return exclusiveGroups.filter(
+      (group) => exclusiveLineKind(group) === lineFilter,
+    );
+  }, [exclusiveGroups, lineFilter]);
 
   return (
     <div className="space-y-4">
@@ -258,15 +298,58 @@ export function BountyHunterView({
           />
         </>
       ) : (
-        <ExclusiveLineGroups
-          slug={slug}
-          groups={exclusiveGroups}
-          total={exclusives.length}
-          viewerScoped={Boolean(viewerId)}
-        />
+        <>
+          <div
+            role="group"
+            aria-label="Exclusive line filter"
+            className="flex flex-wrap gap-1.5"
+          >
+            {EXCLUSIVE_LINE_FILTERS.map((entry) => {
+              const active = lineFilter === entry.id;
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setLineFilter(entry.id)}
+                  className={`pressable rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                    active
+                      ? exclusiveLineChipActiveClass(entry.id)
+                      : "border-frame/50 bg-surface text-muted hover:bg-surface/80"
+                  }`}
+                >
+                  {entry.label} · {exclusiveLineCounts[entry.id]}
+                </button>
+              );
+            })}
+          </div>
+
+          <ExclusiveLineGroups
+            slug={slug}
+            groups={visibleExclusiveGroups}
+            total={exclusives.length}
+            viewerScoped={Boolean(viewerId)}
+            filtered={lineFilter !== "all" || Boolean(q) || Boolean(viewerId)}
+          />
+        </>
       )}
     </div>
   );
+}
+
+function exclusiveLineKind(group: ExclusiveLineGroup): Exclude<ExclusiveLineFilter, "all"> {
+  if (group.singleTrainer) return "whole";
+  if (new Set(group.entries.map((entry) => entry.trainerId)).size > 1) {
+    return "split";
+  }
+  return "partial";
+}
+
+function exclusiveLineChipActiveClass(filter: ExclusiveLineFilter): string {
+  if (filter === "whole") {
+    return "border-accent/40 bg-accent/15 text-accent-deep shadow-sm";
+  }
+  return "border-interactive/40 bg-interactive-soft text-ink shadow-sm";
 }
 
 function StatusLegend() {
@@ -423,11 +506,13 @@ function ExclusiveLineGroups({
   groups,
   total,
   viewerScoped,
+  filtered,
 }: {
   slug: string;
   groups: ExclusiveLineGroup[];
   total: number;
   viewerScoped: boolean;
+  filtered: boolean;
 }) {
   const shownCount = groups.reduce((sum, g) => sum + g.entries.length, 0);
 
@@ -440,50 +525,60 @@ function ExclusiveLineGroups({
       </p>
       {groups.length === 0 ? (
         <p className="rounded-md border border-frame/40 bg-surface/60 px-4 py-5 text-sm text-muted">
-          {viewerScoped
-            ? "This trainer has no exclusives right now."
-            : "No exclusives right now — every living species is shared or untouched."}
+          {filtered
+            ? "Nothing matches these filters."
+            : viewerScoped
+              ? "This trainer has no exclusives right now."
+              : "No exclusives right now — every living species is shared or untouched."}
         </p>
       ) : (
         <ul className="space-y-2.5">
-          {groups.map((group) => (
-            <li
-              key={group.rootPokedexId}
-              className="overflow-hidden rounded-lg border border-frame/40 bg-surface/50"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-frame/30 bg-surface-2/60 px-3 py-2">
-                <p className="text-sm font-semibold text-ink">
-                  {group.rootSpecies} line
-                  {group.entries.length > 1 ? (
-                    <span className="ml-1.5 font-normal text-muted">
-                      · {group.entries.length} stage
-                      {group.entries.length === 1 ? "" : "s"}
+          {groups.map((group) => {
+            const kind = exclusiveLineKind(group);
+            const multiTrainer = kind === "split";
+            return (
+              <li
+                key={group.rootPokedexId}
+                className="overflow-hidden rounded-lg border border-frame/40 bg-surface/50"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-frame/30 bg-surface-2/60 px-3 py-2">
+                  <p className="text-sm font-semibold text-ink">
+                    {group.rootSpecies} line
+                    {group.entries.length > 1 ? (
+                      <span className="ml-1.5 font-normal text-muted">
+                        · {group.entries.length} stage
+                        {group.entries.length === 1 ? "" : "s"}
+                      </span>
+                    ) : null}
+                  </p>
+                  {kind === "whole" ? (
+                    <span className="rounded-full border border-accent/35 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-deep">
+                      {group.entries[0]!.trainerHandle} owns the whole line
                     </span>
-                  ) : null}
-                </p>
-                {group.singleTrainer ? (
-                  <span className="rounded-full border border-accent/35 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-deep">
-                    {group.entries[0]!.trainerHandle} owns the whole line
-                  </span>
-                ) : (
-                  <span className="rounded-full border border-frame/50 bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
-                    Split across trainers
-                  </span>
-                )}
-              </div>
-              <ul className="grid grid-cols-3 gap-2 p-2.5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
-                {group.entries.map((entry) => (
-                  <li key={`${entry.pokedexId}-${entry.trainerId}`}>
-                    <ExclusiveCard
-                      slug={slug}
-                      entry={entry}
-                      showHandle={!group.singleTrainer}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
+                  ) : kind === "split" ? (
+                    <span className="rounded-full border border-frame/50 bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
+                      Split across trainers
+                    </span>
+                  ) : (
+                    <span className="rounded-full border border-frame/50 bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted">
+                      Partial line
+                    </span>
+                  )}
+                </div>
+                <ul className="grid grid-cols-3 gap-2 p-2.5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+                  {group.entries.map((entry) => (
+                    <li key={`${entry.pokedexId}-${entry.trainerId}`}>
+                      <ExclusiveCard
+                        slug={slug}
+                        entry={entry}
+                        showHandle={multiTrainer}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
