@@ -24,6 +24,19 @@ type StatGridProps = {
   compact?: boolean;
   /** Show ceiling values on the right (details modal). */
   showMax?: boolean;
+  /**
+   * Per-stat rank chip for the Pokédex species briefing. Tile branch only —
+   * the meter rows are a positional grid, so a fifth child would wrap.
+   */
+  ranks?: Partial<Record<StatKey, StatRankChip>> | null;
+};
+
+export type StatRankChip = {
+  letter: string;
+  /** Border / background / text classes from `statRankToneClass`. */
+  toneClass: string;
+  /** Tooltip spelling out the peer set behind the letter. */
+  hint: string;
 };
 
 const STAT_FILL: Record<StatKey, string> = {
@@ -91,6 +104,7 @@ export function StatGrid({
   tone = "neutral",
   compact = false,
   showMax = false,
+  ranks = null,
 }: StatGridProps) {
   const usesMeters =
     maxSpread != null || tone === "iv" || tone === "ev";
@@ -99,29 +113,40 @@ export function StatGrid({
   if (!usesMeters) {
     return (
       <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
-        {STAT_KEYS.map((key) => (
-          <div
-            key={key}
-            className={`rounded-lg border border-frame/40 bg-surface-2 text-center ${
-              compact ? "px-1 py-1" : "px-2 py-1.5"
-            }`}
-          >
-            <p
-              className={`font-semibold tracking-tight text-muted ${
-                compact ? "text-[9px]" : "text-[11px]"
+        {STAT_KEYS.map((key) => {
+          const rank = ranks?.[key] ?? null;
+          return (
+            <div
+              key={key}
+              className={`rounded-lg border border-frame/40 bg-surface-2 text-center ${
+                compact ? "px-1 py-1" : "px-2 py-1.5"
               }`}
             >
-              {STAT_LABELS[key]}
-            </p>
-            <p
-              className={`font-mono font-bold ${
-                compact ? "text-[11px]" : "text-sm"
-              }`}
-            >
-              {spread[key]}
-            </p>
-          </div>
-        ))}
+              <p
+                className={`font-semibold tracking-tight text-muted ${
+                  compact ? "text-[9px]" : "text-[11px]"
+                }`}
+              >
+                {STAT_LABELS[key]}
+              </p>
+              <p
+                className={`font-mono font-bold tabular-nums ${
+                  compact ? "text-[11px]" : "text-sm"
+                }`}
+              >
+                {spread[key]}
+              </p>
+              {rank ? (
+                <span
+                  className={`mt-0.5 inline-flex items-center justify-center rounded border px-1 text-[10px] font-bold leading-tight ${rank.toneClass}`}
+                  title={rank.hint}
+                >
+                  {rank.letter}
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     );
   }

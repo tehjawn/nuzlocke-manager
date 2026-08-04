@@ -7,6 +7,7 @@ import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import {
   exclusiveOwnedSpecies,
+  formatHolderHandles,
   groupExclusivesByLine,
   personalSpeciesStatus,
   speciesOwnershipBoard,
@@ -404,26 +405,17 @@ function statusChipActiveClass(status: StatusFilter): string {
   return "border-interactive/40 bg-interactive-soft text-ink shadow-sm";
 }
 
-function formatHolders(
-  holders: ReadonlyArray<{ trainerHandle: string }>,
-  limit = 2,
-): string {
-  if (holders.length === 0) return "";
-  const names = holders.map((h) => h.trainerHandle);
-  if (names.length <= limit) return names.join(", ");
-  const shown = names.slice(0, limit).join(", ");
-  return `${shown} +${names.length - limit} more`;
-}
-
 function statusSubtitle(row: BoardRow, viewerScoped: boolean): string {
   if (viewerScoped) {
     if (row.status === "owned") return "You own this";
     if (row.status === "encountered") return "You've seen this";
     return "Not yet";
   }
-  if (row.status === "owned") return `Owned · ${formatHolders(row.entry.owners)}`;
+  if (row.status === "owned") {
+    return `Owned · ${formatHolderHandles(row.entry.owners)}`;
+  }
   if (row.status === "encountered") {
-    return `Encountered · ${formatHolders(row.entry.encounteredBy)}`;
+    return `Encountered · ${formatHolderHandles(row.entry.encounteredBy)}`;
   }
   return "Open bounty";
 }

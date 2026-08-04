@@ -101,6 +101,11 @@ export function baseStatsForSpecies(
   return SPECIES_BASE_STATS[String(pokedexId)] ?? null;
 }
 
+/** Base stat total — the sum of all six stats in a spread. */
+export function bstOf(spread: StatSpread): number {
+  return STAT_KEYS.reduce((sum, key) => sum + spread[key], 0);
+}
+
 function natureMultiplier(
   nature: string | null | undefined,
   key: StatKey,
