@@ -1,0 +1,105 @@
+name: Vercel Preview Cleanup
+
+# On PR close/merge, or when the deploy preview label is removed:
+# 1) drop the deploy preview label (close/merge)
+# 2) delete matching non-production Vercel preview deployments
+
+on:
+  pull_request:
+    types: [closed, unlabeled]
+
+concurrency:
+  group: vercel-preview-cleanup-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cleanup:
+    if: >
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        github.event.action == 'closed' ||
+        (github.event.action == 'unlabeled' && github.event.label.name == 'deploy preview')
+      )
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: team_e42hUAqZYBofXWplQu3PWQDQ
+      VERCEL_PROJECT_ID: prj_oSFMhOd1eYpRT63wcLWwZToPSImh
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Checkout scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/vercel-preview-cleanup.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Remove deploy preview label
+        if: github.event.action == 'closed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const label = 'deploy preview';
+            const labels = (context.payload.pull_request.labels || []).map((l) => l.name);
+            if (!labels.includes(label)) {
+              core.info(`PR #${context.issue.number} does not have "${label}"; nothing to remove.`);
+              return;
+            }
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              name: label,
+            });
+            core.info(`Removed "${label}" from PR #${context.issue.number}.`);
+
+      - name: Require VERCEL_TOKEN
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Missing repository secret VERCEL_TOKEN."
+            exit 1
+          fi
+
+      - name: Collect PR commit SHAs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request.number;
+            const shas = [];
+            for await (const response of github.paginate.iterator(
+              github.rest.pulls.listCommits,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr,
+                per_page: 100,
+              }
+            )) {
+              for (const commit of response.data) {
+                shas.push(commit.sha);
+              }
+            }
+            const head = context.payload.pull_request.head.sha;
+            if (head && !shas.includes(head)) shas.push(head);
+            fs.writeFileSync('pr-commit-shas.txt', shas.join('\n') + '\n');
+            core.info(`Collected ${shas.length} commit SHA(s) for matching CLI previews.`);
+
+      - name: Delete Vercel preview deployments
+        shell: bash
+        run: |
+          chmod +x scripts/vercel-preview-cleanup.sh
+          SHAS=()
+          if [ -s pr-commit-shas.txt ]; then
+            while IFS= read -r sha; do
+              [ -n "$sha" ] || continue
+              SHAS+=("$sha")
+            done < pr-commit-shas.txt
+          fi
+          scripts/vercel-preview-cleanup.sh \
+            "${{ github.event.pull_request.number }}" \
+            "${{ github.event.pull_request.head.ref }}" \
+            "${SHAS[@]}"

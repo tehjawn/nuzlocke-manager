@@ -56,9 +56,18 @@ jobs:
 
       - name: Deploy preview
         id: deploy
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          url="$(vercel deploy --prebuilt --token="$VERCEL_TOKEN" | tee /dev/stderr | tail -n1)"
+          url="$(
+            vercel deploy --prebuilt --token="$VERCEL_TOKEN" \
+              --meta "githubPrId=${PR_NUMBER}" \
+              --meta "githubCommitRef=${HEAD_REF}" \
+              --meta "deployPreviewLabel=1" \
+              | tee /dev/stderr | tail -n1
+          )"
           if [ -z "$url" ] || [[ "$url" != https://* ]]; then
             echo "::error::Vercel did not return a preview URL (got: ${url:-empty})"
             exit 1
