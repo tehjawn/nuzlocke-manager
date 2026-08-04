@@ -418,6 +418,83 @@ export function speciesOwnershipBoard(
   });
 }
 
+/** "ash, misty +2 more" — shared by Bounty Hunter cards and the Pokédex strip. */
+export function formatHolderHandles(
+  holders: ReadonlyArray<{ trainerHandle: string }>,
+  limit = 2,
+): string {
+  if (holders.length === 0) return "";
+  const names = holders.map((h) => h.trainerHandle);
+  if (names.length <= limit) return names.join(", ");
+  const shown = names.slice(0, limit).join(", ");
+  return `${shown} +${names.length - limit} more`;
+}
+
+export type SpeciesOwnershipLookup = SpeciesOwnershipEntry & {
+  /** False when this species can't be caught in this season's ROM at all. */
+  inModernEmerald: boolean;
+};
+
+/**
+ * One species' ownership tier without building the whole 400+ row board —
+ * the Pokédex only ever asks about the open entry, and it browses the full
+ * National Dex, so it also needs an answer for species Modern Emerald
+ * doesn't ship. Tiering matches `speciesOwnershipBoard` exactly: a trainer
+ * can land in both `owners` and `encounteredBy` (holds one, buried another).
+ */
+export function speciesOwnershipFor(
+  trainers: TrainerProfile[],
+  pokedexId: number | null | undefined,
+): SpeciesOwnershipLookup | null {
+  if (pokedexId == null || pokedexId <= 0) return null;
+
+  const owners: SpeciesOwnershipHolder[] = [];
+  const encounteredBy: SpeciesOwnershipHolder[] = [];
+  let totalSeen = 0;
+
+  for (const trainer of trainers) {
+    let ownedHere = false;
+    let encounteredHere = false;
+
+    for (const mon of trainer.pokemon) {
+      if (resolvePokedexId(mon) !== pokedexId) continue;
+      totalSeen += 1;
+
+      if (OWNED_SLOTS.has(mon.slot)) {
+        if (ownedHere) continue;
+        ownedHere = true;
+        owners.push({
+          trainerId: trainer.id,
+          trainerHandle: trainer.handle,
+          slot: mon.slot === "MAIN" ? "MAIN" : "RESERVE",
+        });
+      } else if (mon.slot === "ENCOUNTERED" || mon.slot === "GRAVEYARD") {
+        if (encounteredHere) continue;
+        encounteredHere = true;
+        encounteredBy.push({
+          trainerId: trainer.id,
+          trainerHandle: trainer.handle,
+          slot: mon.slot,
+        });
+      }
+    }
+  }
+
+  return {
+    ...modernEmeraldSpeciesRef(pokedexId),
+    status:
+      owners.length > 0
+        ? "owned"
+        : encounteredBy.length > 0
+          ? "encountered"
+          : "untouched",
+    owners,
+    encounteredBy,
+    totalSeen,
+    inModernEmerald: modernEmeraldNationalIdSet().has(pokedexId),
+  };
+}
+
 /**
  * Re-tier a season-wide board entry relative to one trainer — owned by them,
  * merely encountered by them, or not on their board at all. Lets "my gaps"

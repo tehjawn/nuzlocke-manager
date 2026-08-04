@@ -274,7 +274,7 @@ function ToolWorkspace({
 
   const blurb =
     tool === "pokedex"
-      ? `Look up species for ${challengeName} — stats, matchups, and counters from your Main + Reserve.`
+      ? `Look up species for ${challengeName} — role, stat ranks, matchups, and who's already caught it.`
       : tool === "chart"
         ? `Modern 18-type chart first — pick a trainer below it to score Main Squad coverage.`
         : tool === "guide"

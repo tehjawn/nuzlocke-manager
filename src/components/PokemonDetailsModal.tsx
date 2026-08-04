@@ -7,6 +7,7 @@ import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
 import { MoveLabel } from "@/components/MoveLabel";
+import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
@@ -69,25 +70,6 @@ function MetaChip({ label, value }: { label: string; value: ReactNode }) {
           value
         )}
       </div>
-    </div>
-  );
-}
-
-function PlaystyleChips({
-  primary,
-  secondary,
-}: {
-  primary: string;
-  secondary: string | null;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1">
-      <span className="info-chip text-xs font-semibold">{primary}</span>
-      {secondary ? (
-        <span className="info-chip text-xs font-semibold text-muted">
-          {secondary}
-        </span>
-      ) : null}
     </div>
   );
 }

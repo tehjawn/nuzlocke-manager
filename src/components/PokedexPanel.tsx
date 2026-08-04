@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   startTransition,
@@ -14,8 +15,9 @@ import {
 } from "react";
 import { Frame } from "@/components/Frame";
 import { EvolutionPath } from "@/components/EvolutionPath";
+import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { StatGrid } from "@/components/StatGrid";
+import { StatGrid, type StatRankChip } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilitiesForSpecies } from "@/data/pokemon-lookups";
 import {
@@ -31,6 +33,14 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import {
+  formatHolderHandles,
+  personalSpeciesStatus,
+  speciesOwnershipFor,
+  type SpeciesOwnershipLookup,
+  type SpeciesOwnershipStatus,
+} from "@/lib/encounter-stats";
+import { recommendPlaystyle, type PlaystyleHint } from "@/lib/playstyle";
+import {
   getSquadCounterReroll,
   recommendSquadCounters,
   type SquadCounterSuggestion,
@@ -38,14 +48,22 @@ import {
 import type { PokemonType } from "@/lib/pokemon-types";
 import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 import {
+  baseStatRanksFor,
+  statRankHint,
+  statRankToneClass,
+  type SpeciesStatRanks,
+} from "@/lib/species-ranks";
+import {
   avatarImageClassName,
   avatarImageUrl,
 } from "@/lib/sprites";
-import { baseStatsForSpecies, STAT_KEYS } from "@/lib/stats";
+import { baseStatsForSpecies, bstOf, STAT_KEYS, STAT_LABELS } from "@/lib/stats";
 import {
   defensiveMatchups,
   formatMatchupMult,
+  stabOffense,
   type MatchupMult,
+  type StabOffense,
 } from "@/lib/type-matchups";
 import type { PokemonType as ChartType } from "@/lib/type-chart";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
@@ -133,13 +151,51 @@ export function PokedexPanel({
     : null;
   const abilities = selected ? abilitiesForSpecies(selected.pokedexId) : [];
   const matchups = useMemo(() => defensiveMatchups(types), [types]);
+  const offense = useMemo(() => stabOffense(types), [types]);
   const stabMoves = useMemo(
     () => signatureMovesForTypes(types as ChartType[]),
     [types],
   );
-  const bst = baseStats
-    ? STAT_KEYS.reduce((sum, key) => sum + baseStats[key], 0)
-    : null;
+  const bst = baseStats ? bstOf(baseStats) : null;
+
+  // Species-only playstyle: no nature / ability / IVs, so the tip stays true
+  // of every copy of this species rather than describing someone's specimen.
+  const playstyle = useMemo(
+    () =>
+      selected ? recommendPlaystyle({ pokedexId: selected.pokedexId }) : null,
+    [selected],
+  );
+  const ranks = useMemo(
+    () => (selected ? baseStatRanksFor(selected.pokedexId) : null),
+    [selected],
+  );
+  const statRankChips = useMemo(() => {
+    if (!ranks) return null;
+    const chips: Partial<Record<(typeof STAT_KEYS)[number], StatRankChip>> = {};
+    for (const key of STAT_KEYS) {
+      const result = ranks.perStat[key];
+      chips[key] = {
+        letter: result.rank,
+        toneClass: statRankToneClass(result.rank),
+        hint: statRankHint(STAT_LABELS[key], result, ranks.peerCount),
+      };
+    }
+    return chips;
+  }, [ranks]);
+  const ownership = useMemo(
+    () =>
+      selected ? speciesOwnershipFor(trainers, selected.pokedexId) : null,
+    [selected, trainers],
+  );
+  // Gate on the resolved profile, not the raw id — "signed in but not on this
+  // season" has an id upstream and still deserves no personal chip.
+  const myOwnershipStatus = useMemo(
+    () =>
+      ownership && myTrainer
+        ? personalSpeciesStatus(ownership, myTrainer.id)
+        : null,
+    [ownership, myTrainer],
+  );
 
   // Defer tip ranking so species selection paints first.
   const deferredSelected = useDeferredValue(selected);
@@ -409,12 +465,20 @@ export function PokedexPanel({
         {selected ? (
           <div className="min-w-0 self-start lg:sticky lg:top-4">
             <PokedexEntry
+              slug={slug}
               entry={selected}
               types={types}
               abilities={abilities}
               baseStats={baseStats}
               bst={bst}
+              playstyle={playstyle}
+              ranks={ranks}
+              statRankChips={statRankChips}
               matchups={matchups}
+              offense={offense}
+              ownership={ownership}
+              myOwnershipStatus={myOwnershipStatus}
+              packTrainerCount={trainers.length}
               stabMoves={stabMoves}
               typeTips={typeTips}
               tipRerollAction={tipReroll?.action ?? null}
@@ -479,12 +543,20 @@ function GenChip({
 }
 
 function PokedexEntry({
+  slug,
   entry,
   types,
   abilities,
   baseStats,
   bst,
+  playstyle,
+  ranks,
+  statRankChips,
   matchups,
+  offense,
+  ownership,
+  myOwnershipStatus,
+  packTrainerCount,
   stabMoves,
   typeTips,
   tipRerollAction,
@@ -500,12 +572,20 @@ function PokedexEntry({
   onMoreTips,
   onSelectSpecies,
 }: {
+  slug: string;
   entry: PokemonIndexEntry;
   types: PokemonType[];
   abilities: string[];
   baseStats: ReturnType<typeof baseStatsForSpecies>;
   bst: number | null;
+  playstyle: PlaystyleHint | null;
+  ranks: SpeciesStatRanks | null;
+  statRankChips: Partial<Record<(typeof STAT_KEYS)[number], StatRankChip>> | null;
   matchups: ReturnType<typeof defensiveMatchups>;
+  offense: StabOffense;
+  ownership: SpeciesOwnershipLookup | null;
+  myOwnershipStatus: SpeciesOwnershipStatus | null;
+  packTrainerCount: number;
   stabMoves: ReturnType<typeof signatureMovesForTypes>;
   typeTips: SquadCounterSuggestion[];
   tipRerollAction: "more" | "restart" | null;
@@ -592,19 +672,55 @@ function PokedexEntry({
           </div>
 
           <div className="min-w-0 space-y-4">
+            {playstyle ? (
+              <div>
+                <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
+                  Role
+                </p>
+                <PlaystyleChips
+                  primary={playstyle.primary}
+                  secondary={playstyle.secondary}
+                />
+                <p className="mt-1.5 text-[11px] leading-snug text-muted">
+                  {playstyle.tip}
+                </p>
+                {ranks ? (
+                  <p className="mt-1 text-[11px] leading-snug text-muted">
+                    {ranks.headline}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <div>
               <div className="mb-1.5 flex items-baseline justify-between gap-2">
                 <p className="text-xs font-semibold tracking-tight text-muted">
                   Base stats
                 </p>
                 {bst != null ? (
-                  <p className="text-[11px] font-semibold tabular-nums text-muted">
+                  <p className="flex items-baseline gap-1.5 text-[11px] font-semibold tabular-nums text-muted">
                     BST {bst}
+                    {ranks ? (
+                      <span
+                        className={`inline-flex items-center rounded border px-1 text-[10px] font-bold leading-tight ${statRankToneClass(ranks.bst.rank)}`}
+                        title={statRankHint("BST", ranks.bst, ranks.peerCount)}
+                      >
+                        {ranks.bst.rank}
+                      </span>
+                    ) : null}
                   </p>
                 ) : null}
               </div>
               {baseStats ? (
-                <StatGrid spread={baseStats} compact />
+                <>
+                  <StatGrid compact ranks={statRankChips} spread={baseStats} />
+                  {ranks ? (
+                    <p className="mt-1.5 text-[11px] leading-snug text-muted">
+                      Letters rank each stat F→S against the {ranks.peerCount}{" "}
+                      Modern Emerald species with catalogued stats.
+                    </p>
+                  ) : null}
+                </>
               ) : (
                 <p className="text-sm text-muted">
                   Base stats aren’t catalogued for this forme yet — try the base
@@ -612,41 +728,17 @@ function PokedexEntry({
                 </p>
               )}
             </div>
-
-            <MatchupSection
-              title="Weak to"
-              rows={[
-                ...matchups.x4.map((type) => ({
-                  type,
-                  mult: 4 as MatchupMult,
-                })),
-                ...matchups.x2.map((type) => ({
-                  type,
-                  mult: 2 as MatchupMult,
-                })),
-              ]}
-              empty="No super-effective weaknesses"
-            />
-            <MatchupSection
-              title="Resists / immune"
-              rows={[
-                ...matchups.x0.map((type) => ({
-                  type,
-                  mult: 0 as MatchupMult,
-                })),
-                ...matchups.x025.map((type) => ({
-                  type,
-                  mult: 0.25 as MatchupMult,
-                })),
-                ...matchups.x05.map((type) => ({
-                  type,
-                  mult: 0.5 as MatchupMult,
-                })),
-              ]}
-              empty="No resistances"
-            />
           </div>
         </div>
+
+        <PackStatusStrip
+          myStatus={myOwnershipStatus}
+          ownership={ownership}
+          packTrainerCount={packTrainerCount}
+          slug={slug}
+        />
+
+        <TypeStory matchups={matchups} offense={offense} types={types} />
 
         <div>
           <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
@@ -784,13 +876,23 @@ function PokedexEntry({
   );
 }
 
+type MatchupRow = { type: ChartType; mult: MatchupMult };
+
+/** Pair a bucket of defending types with the multiplier they all share. */
+function matchupRows(
+  types: readonly ChartType[],
+  mult: MatchupMult,
+): MatchupRow[] {
+  return types.map((type) => ({ type, mult }));
+}
+
 function MatchupSection({
   title,
   rows,
   empty,
 }: {
   title: string;
-  rows: Array<{ type: ChartType; mult: MatchupMult }>;
+  rows: MatchupRow[];
   empty: string;
 }) {
   return (
@@ -814,6 +916,174 @@ function MatchupSection({
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Species-centric type briefing: what hurts it (full typing) and what it
+ * threatens (STAB only). Separate from Type tips, which answers the different
+ * question of what the viewer's own board can do about it.
+ */
+function TypeStory({
+  types,
+  matchups,
+  offense,
+}: {
+  types: PokemonType[];
+  matchups: ReturnType<typeof defensiveMatchups>;
+  offense: StabOffense;
+}) {
+  return (
+    <div className="border-t border-frame/40 pt-4">
+      <p className="text-sm font-bold tracking-tight">Type story</p>
+      <p className="text-[11px] text-muted">
+        Defense reads its full typing; offense is STAB only — coverage moves
+        change it.
+      </p>
+      {types.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">
+          Typing isn’t on file for this forme — matchups unavailable.
+        </p>
+      ) : (
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <MatchupSection
+            empty="No super-effective weaknesses"
+            rows={[
+              ...matchupRows(matchups.x4, 4),
+              ...matchupRows(matchups.x2, 2),
+            ]}
+            title="Weak to"
+          />
+          <MatchupSection
+            empty="No resistances"
+            rows={[
+              ...matchupRows(matchups.x0, 0),
+              ...matchupRows(matchups.x025, 0.25),
+              ...matchupRows(matchups.x05, 0.5),
+            ]}
+            title="Resists / immune"
+          />
+          <MatchupSection
+            empty="Its own typing hits nothing for extra damage"
+            rows={matchupRows(offense.strongVs, 2)}
+            title="Its STAB threatens"
+          />
+          <MatchupSection
+            empty="Nothing resists its STAB"
+            rows={[
+              ...matchupRows(offense.immuneTo, 0),
+              ...matchupRows(offense.resistedBy, 0.5),
+            ]}
+            title="Walled by"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Theme tokens only — no Tailwind `dark:` variants. Those compile to
+ * `prefers-color-scheme`, which this app's `[data-theme]` toggle doesn't set,
+ * so an OS-light / app-dark viewer would get unreadable text.
+ */
+function packStatusChipClass(status: SpeciesOwnershipStatus): string {
+  if (status === "owned") {
+    return "border-accent/35 bg-accent/10 text-accent-deep";
+  }
+  if (status === "encountered") {
+    return "border-accent-2/45 bg-accent-2/15 text-ink";
+  }
+  return "border-frame/40 bg-surface/60 text-muted";
+}
+
+function packStatusLabel(status: SpeciesOwnershipStatus): string {
+  if (status === "owned") return "Owned";
+  if (status === "encountered") return "Encountered";
+  return "Untouched";
+}
+
+function personalStatusLabel(status: SpeciesOwnershipStatus): string {
+  if (status === "owned") return "You own this";
+  if (status === "encountered") return "You’ve seen this";
+  return "Not on your board";
+}
+
+/**
+ * Where this species stands across the season. Deep-links to Bounty Hunter
+ * rather than rebuilding its tracker — this is the one-species answer.
+ */
+function PackStatusStrip({
+  slug,
+  ownership,
+  myStatus,
+  packTrainerCount,
+}: {
+  slug: string;
+  ownership: SpeciesOwnershipLookup | null;
+  myStatus: SpeciesOwnershipStatus | null;
+  packTrainerCount: number;
+}) {
+  if (!ownership) return null;
+
+  const owners = formatHolderHandles(ownership.owners, 3);
+  const seenBy = formatHolderHandles(ownership.encounteredBy, 3);
+  // A species the ROM doesn't ship can't be an open bounty — never let it
+  // borrow the "Untouched" tier and read as catchable.
+  const offRom = !ownership.inModernEmerald;
+
+  return (
+    <div className="border-t border-frame/40 pt-4">
+      <p className="text-sm font-bold tracking-tight">In this pack</p>
+      <p className="text-[11px] text-muted">
+        Who’s holding it, who’s only seen it — across every board this season.
+      </p>
+
+      {packTrainerCount === 0 ? (
+        <p className="mt-3 text-sm text-muted">No boards to compare yet.</p>
+      ) : (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <span
+            className={`inline-flex items-center gap-1.5 self-start rounded-md border px-2 py-1 text-xs font-semibold ${
+              offRom
+                ? "border-frame/40 bg-surface/60 text-muted"
+                : packStatusChipClass(ownership.status)
+            }`}
+          >
+            {offRom ? "Not in Modern Emerald" : packStatusLabel(ownership.status)}
+          </span>
+
+          {myStatus ? (
+            <span className="inline-flex items-center self-start rounded-md border border-frame/50 bg-surface px-2 py-1 text-xs font-semibold text-muted">
+              {personalStatusLabel(myStatus)}
+            </span>
+          ) : null}
+
+          {owners ? (
+            <p className="text-xs text-muted">
+              Held by <span className="font-semibold text-ink">{owners}</span>
+            </p>
+          ) : null}
+          {seenBy ? (
+            <p className="text-xs text-muted">
+              Seen by <span className="font-semibold text-ink">{seenBy}</span>
+            </p>
+          ) : null}
+
+          {offRom ? (
+            <p className="text-xs text-muted">Not catchable this season.</p>
+          ) : ownership.status === "untouched" ? (
+            <Link
+              className="pressable self-start rounded-lg border border-frame bg-surface px-3 py-2 text-xs font-semibold tracking-tight"
+              data-testid="pack-status-bounty-link"
+              href={toolsHref(slug, "bounty", { mode: "tracker" })}
+            >
+              Open bounty — see all
+            </Link>
+          ) : null}
+        </div>
       )}
     </div>
   );

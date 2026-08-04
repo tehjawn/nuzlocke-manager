@@ -92,6 +92,33 @@ export function bestStabMultiplier(
   return { type: best, mult: bestMult };
 }
 
+export type StabOffense = {
+  /** Defenders its own typing hits for ≥2× — what it threatens on switch-in. */
+  strongVs: ChartType[];
+  /** Defenders that resist every one of its STAB types (best hit ≤½×). */
+  resistedBy: ChartType[];
+  /** Defenders immune to every one of its STAB types. */
+  immuneTo: ChartType[];
+};
+
+/**
+ * Offensive outlook of a typing against each mono-type defender, judged on
+ * STAB alone. Coverage moves obviously change this — it's the species-level
+ * "what does it threaten", not a moveset read.
+ */
+export function stabOffense(attackers: readonly ChipType[]): StabOffense {
+  const out: StabOffense = { strongVs: [], resistedBy: [], immuneTo: [] };
+  if (attackers.length === 0) return out;
+
+  for (const defender of TYPES) {
+    const { mult } = bestStabMultiplier(attackers, [defender]);
+    if (mult >= 2) out.strongVs.push(defender);
+    else if (mult === 0) out.immuneTo.push(defender);
+    else if (mult < 1) out.resistedBy.push(defender);
+  }
+  return out;
+}
+
 export function formatMatchupMult(m: MatchupMult | number): string {
   if (m === 0) return "0×";
   if (m === 0.25) return "¼×";

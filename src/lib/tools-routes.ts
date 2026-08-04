@@ -15,7 +15,7 @@ export const TOOLS_CATALOG: ReadonlyArray<{
     id: "pokedex",
     title: "Pokédex",
     blurb:
-      "Search species — sprite, typing, base stats, matchups, and counters from your Main + Reserve.",
+      "Species briefing — role, F→S stat ranks vs the ROM, matchups, and who in the pack owns it.",
   },
   {
     id: "chart",
