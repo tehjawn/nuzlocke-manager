@@ -10,6 +10,7 @@ import {
   listSeasonIndex,
 } from "@/lib/challenges";
 import { CTA_PRIMARY_LG, CTA_SECONDARY_LG } from "@/lib/cta";
+import { resolvePlayerSeasonEntryPath } from "@/lib/season-entry";
 import { pokemonInSlot } from "@/lib/trainer-display";
 
 export default async function HomePage() {
@@ -18,6 +19,13 @@ export default async function HomePage() {
   const activeMeta = seasons.find((c) => c.status === "ACTIVE");
   const active = activeMeta
     ? await getHomeCarouselChallenge(activeMeta.slug)
+    : null;
+
+  const openLeagueHref = activeMeta
+    ? await resolvePlayerSeasonEntryPath(
+        activeMeta.slug,
+        session?.user?.id,
+      )
     : null;
 
   const carouselTrainers: CarouselTrainer[] = (active?.trainers ?? [])
@@ -58,11 +66,8 @@ export default async function HomePage() {
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          {activeMeta ? (
-            <Link
-              href={`/challenges/${activeMeta.slug}`}
-              className={CTA_PRIMARY_LG}
-            >
+          {activeMeta && openLeagueHref ? (
+            <Link href={openLeagueHref} className={CTA_PRIMARY_LG}>
               Open {activeMeta.year} League →
             </Link>
           ) : (

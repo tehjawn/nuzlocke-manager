@@ -8,7 +8,11 @@ import type { Challenge } from "@/lib/challenge-types";
  */
 export function challengeToJumpSeasonContext(
   challenge: Challenge,
-  options?: { showGm?: boolean; myTrainerId?: string | null },
+  options?: {
+    showGm?: boolean;
+    myTrainerId?: string | null;
+    firstRun?: boolean;
+  },
 ): JumpSeasonContext {
   return {
     slug: challenge.slug,
@@ -17,6 +21,7 @@ export function challengeToJumpSeasonContext(
     status: challenge.status,
     showGm: Boolean(options?.showGm),
     myTrainerId: options?.myTrainerId ?? null,
+    firstRun: Boolean(options?.firstRun),
     trainers: (challenge.trainers ?? []).map((t) => ({
       id: t.id,
       handle: t.handle,
@@ -64,7 +69,11 @@ export function briefToJumpSeasonContext(
     year: number;
     status: Challenge["status"];
   },
-  options?: { showGm?: boolean; myTrainerId?: string | null },
+  options?: {
+    showGm?: boolean;
+    myTrainerId?: string | null;
+    firstRun?: boolean;
+  },
 ): JumpSeasonContext {
   return {
     slug: brief.slug,
@@ -73,6 +82,7 @@ export function briefToJumpSeasonContext(
     status: brief.status,
     showGm: Boolean(options?.showGm),
     myTrainerId: options?.myTrainerId ?? null,
+    firstRun: Boolean(options?.firstRun),
     trainers: [],
     badges: [],
     rules: [],

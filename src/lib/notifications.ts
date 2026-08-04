@@ -62,6 +62,43 @@ const notificationListSelect = {
   createdAt: true,
 } as const;
 
+/** Lightweight welcome readAt for first-run chrome gating (issue #183). */
+export async function getWelcomeReadAt(
+  userId: string,
+): Promise<string | null> {
+  const prisma = getPrisma();
+  const row = await prisma.notification.findUnique({
+    where: {
+      userId_type_actionKey: {
+        userId,
+        type: NOTIFICATION_TYPE_WELCOME,
+        actionKey: NOTIFICATION_ACTION_WELCOME,
+      },
+    },
+    select: { readAt: true },
+  });
+  return row?.readAt ? row.readAt.toISOString() : null;
+}
+
+/** Mark the pinned welcome notification read (setup complete / skip). */
+export async function markWelcomeNotificationRead(
+  userId: string,
+): Promise<NotificationItem | null> {
+  const prisma = getPrisma();
+  const row = await prisma.notification.findUnique({
+    where: {
+      userId_type_actionKey: {
+        userId,
+        type: NOTIFICATION_TYPE_WELCOME,
+        actionKey: NOTIFICATION_ACTION_WELCOME,
+      },
+    },
+    select: { id: true },
+  });
+  const id = row?.id ?? (await ensureWelcomeNotification(userId)).id;
+  return markNotificationRead(userId, id);
+}
+
 /** First-login welcome for Trash Pack 2026 — idempotent per user. */
 export async function ensureWelcomeNotification(userId: string) {
   const prisma = getPrisma();

@@ -254,6 +254,8 @@ model TrainerProfile {
   money           Int?
   mainSquadLocked Boolean  @default(false)
   sortOrder       Int      @default(0)
+  /// Set when the player finishes /new-trainer ("I'm ready!"). Null = still in intro.
+  introCompletedAt DateTime?
   /// Pointer to the living attempt; closed runs remain in `runs` for stats.
   activeRunId     String?  @unique
   createdAt       DateTime @default(now())

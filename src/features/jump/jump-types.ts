@@ -34,6 +34,8 @@ export type JumpSeasonContext = {
   status: string;
   showGm: boolean;
   myTrainerId: string | null;
+  /** First-run funnel (#183): limit Jump to Setup + My Trainer. */
+  firstRun?: boolean;
   trainers: Array<{
     id: string;
     handle: string;

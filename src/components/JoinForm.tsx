@@ -36,11 +36,11 @@ export function JoinForm({
               if (result.ok && result.trainerId) {
                 setError(null);
                 setMessage(result.message ?? "You're in");
-                router.push(`/challenges/${slug}/trainers/${result.trainerId}`);
+                router.push(`/challenges/${slug}/me`);
                 router.refresh();
               } else if (result.ok) {
                 setMessage(result.message ?? "You're in");
-                router.push(`/challenges/${slug}`);
+                router.push(`/challenges/${slug}/me`);
                 router.refresh();
               } else {
                 setMessage(null);
@@ -76,11 +76,7 @@ export function JoinForm({
           if (result.ok) {
             setError(null);
             setMessage(result.message ?? "Joined");
-            if (result.trainerId) {
-              router.push(`/challenges/${slug}/trainers/${result.trainerId}`);
-            } else {
-              router.push(`/challenges/${slug}`);
-            }
+            router.push(`/challenges/${slug}/me`);
             router.refresh();
           } else {
             setMessage(null);

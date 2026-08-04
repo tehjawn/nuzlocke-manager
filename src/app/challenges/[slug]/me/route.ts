@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getChallengeAccessFields } from "@/lib/challenges";
+import { getPrisma } from "@/lib/db";
 import {
   ensureTrainerForChallenge,
   revalidateProvisionedChallenge,
@@ -10,7 +11,10 @@ type RouteContext = {
   params: Promise<{ slug: string }>;
 };
 
-/** Authenticated shortcut: ensure a board exists, refresh caches, then open it. */
+/**
+ * Authenticated shortcut: ensure a board exists, then send unfinished intros
+ * to /new-trainer and everyone else to their board.
+ */
 export async function GET(_request: Request, context: RouteContext) {
   const { slug } = await context.params;
   const session = await auth();
@@ -38,5 +42,15 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   revalidateProvisionedChallenge(result.slug);
+
+  const trainer = await getPrisma().trainerProfile.findUnique({
+    where: { id: result.trainerId },
+    select: { id: true, introCompletedAt: true },
+  });
+
+  if (trainer && !trainer.introCompletedAt) {
+    redirect(`/challenges/${slug}/new-trainer`);
+  }
+
   redirect(`/challenges/${slug}/trainers/${result.trainerId}`);
 }

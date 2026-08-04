@@ -84,6 +84,8 @@ type TrainerBoardProps = {
   showCompetitiveDetails?: boolean;
   isGm: boolean;
   isDemo: boolean;
+  /** Soft CTA glow on Import save until the first successful import. */
+  encourageImportSave?: boolean;
 };
 
 function PencilIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
@@ -379,6 +381,7 @@ const shortcutLinkClass = `${shortcutTileBase} border-dashed border-frame/55 bg-
 
 function shortcutActionToneClass(
   tone: "accent" | "danger" | "import" | "neutral" = "neutral",
+  options?: { firstImport?: boolean },
 ) {
   switch (tone) {
     case "accent":
@@ -386,7 +389,9 @@ function shortcutActionToneClass(
     case "danger":
       return "border-danger/35 bg-danger/15 text-danger hover:brightness-105";
     case "import":
-      return "cta-import-save border-frame bg-surface text-ink shadow-sm";
+      return `cta-import-save border-frame bg-surface text-ink shadow-sm${
+        options?.firstImport ? " is-first-import" : ""
+      }`;
     default:
       return "border-frame bg-surface text-ink shadow-sm hover:bg-surface-2";
   }
@@ -418,6 +423,7 @@ function ShortcutActionTile({
   disabled,
   title,
   tone = "neutral",
+  firstImport = false,
 }: {
   label: string;
   icon: ReactNode;
@@ -425,6 +431,7 @@ function ShortcutActionTile({
   disabled?: boolean;
   title?: string;
   tone?: "accent" | "danger" | "import" | "neutral";
+  firstImport?: boolean;
 }) {
   return (
     <button
@@ -432,7 +439,7 @@ function ShortcutActionTile({
       disabled={disabled}
       title={title}
       onClick={onClick}
-      className={`${shortcutActionButtonBase} ${shortcutActionToneClass(tone)}`}
+      className={`${shortcutActionButtonBase} ${shortcutActionToneClass(tone, { firstImport })}`}
     >
       <span className="shrink-0" aria-hidden>
         {icon}
@@ -538,10 +545,9 @@ export function TrainerBoard({
   showCompetitiveDetails = canEdit,
   isGm,
   isDemo,
+  encourageImportSave = false,
 }: TrainerBoardProps) {
-  const [editingPlayer, setEditingPlayer] = useState(
-    canEdit && trainer.pokemon.length === 0,
-  );
+  const [editingPlayer, setEditingPlayer] = useState(false);
 
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -551,9 +557,10 @@ export function TrainerBoard({
   const wipeSave = useSaveStatus();
   const resetSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
+  const [importSaveGlow, setImportSaveGlow] = useState(encourageImportSave);
 
-  // Include slot/partyIndex — memorial wipe rewrites slots without changing ids.
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}`;
+  // Include slot/partyIndex — wipe/reset clear or rewrite the board.
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.money ?? ""}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}|${encourageImportSave ? 1 : 0}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
   /** Optimistic board after wipe/reset until RSC refresh lands. */
@@ -562,6 +569,7 @@ export function TrainerBoard({
     wipeCount: number;
     pokemon: PokemonEntry[];
     mainSquadLocked: boolean;
+    money: number | null;
   } | null>(null);
   /** Remount badge editor to drop pending debounced writes before wipe. */
   const [badgeEditorKey, setBadgeEditorKey] = useState(0);
@@ -630,23 +638,19 @@ export function TrainerBoard({
 
   if (serverStamp !== seenStamp) {
     setSeenStamp(serverStamp);
+    setImportSaveGlow(encourageImportSave);
 
     // Keep wipe/reset optimism until the RSC payload reflects the operation.
-    // Reset: empty board (including memorial). Wipe: higher wipeCount and no
-    // living mons — graves may remain. Avoid wipeCount !== so a server count
-    // ahead of optimism cannot pin a stale override.
-    const serverStillHasLiving = trainer.pokemon.some(
-      (p) =>
-        p.slot === "MAIN" ||
-        p.slot === "RESERVE" ||
-        p.slot === "ENCOUNTERED",
-    );
+    // Both clear the live board (including R.I.P.). Wipe also bumps wipeCount
+    // and zeros money. Avoid wipeCount !== so a server count ahead of optimism
+    // cannot pin a stale override.
     const wipeOrResetInFlight =
       boardOverride != null &&
       (boardOverride.kind === "reset"
         ? trainer.pokemon.length > 0
         : trainer.wipeCount < boardOverride.wipeCount ||
-          serverStillHasLiving);
+          trainer.pokemon.length > 0 ||
+          (trainer.money ?? 0) !== 0);
 
     setCommitted({
       handle: trainer.handle,
@@ -679,11 +683,14 @@ export function TrainerBoard({
   const wipeCount = boardOverride?.wipeCount ?? trainer.wipeCount ?? 0;
   const mainSquadLocked =
     boardOverride?.mainSquadLocked ?? trainer.mainSquadLocked;
+  const boardMoney =
+    boardOverride != null ? boardOverride.money : trainer.money;
   const boardTrainer = {
     ...trainer,
     pokemon: boardPokemon,
     wipeCount,
     mainSquadLocked,
+    money: boardMoney,
   };
 
   const main = pokemonInSlot(boardTrainer, "MAIN");
@@ -874,12 +881,12 @@ export function TrainerBoard({
       title: "Restart this run?",
       description: (
         <>
-          Moves Main Squad and Reserves into the season R.I.P. memorial (cause:
-          run wiped), clears Encountered, resets badges, and refreshes your
-          revive token for the next run. Existing memorial and your profile
-          (name, avatar, backdrops, status) stay. Locked Main Squad unlocks so
-          you can rebuild. This counts as wipe #{nextWipe}. A board history
-          snapshot is saved first.
+          Clears Main Squad, Reserves, Encountered, and R.I.P. on this board,
+          resets badges and money to 0, and refreshes your revive token for the
+          next run. Profile (name, avatar, backdrops, status) stays. Locked Main
+          Squad unlocks so you can rebuild. This counts as wipe #{nextWipe}. A
+          board history snapshot is saved first — prior partners live in History
+          / Memorial, not the live board.
         </>
       ),
       confirmLabel: "Record wipe",
@@ -894,6 +901,7 @@ export function TrainerBoard({
       wipeCount: nextWipe,
       pokemon: memorialPokemonAfterWipe(boardPokemon, nextWipe),
       mainSquadLocked: false,
+      money: 0,
     });
     setReviveUsed(false);
     setPokemonInspect(null);
@@ -943,6 +951,7 @@ export function TrainerBoard({
       wipeCount: 0,
       pokemon: [],
       mainSquadLocked: false,
+      money: trainer.money,
     });
     setCommitted((prev) => ({
       ...prev,
@@ -1135,11 +1144,14 @@ export function TrainerBoard({
           label="Import save"
           onClick={() => setSaveImportOpen(true)}
           tone="import"
+          firstImport={importSaveGlow}
         />
       ),
       toolbar: canEdit && (
         <button
-          className="pressable cta-import-save inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
+          className={`pressable cta-import-save inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60${
+            importSaveGlow ? " is-first-import" : ""
+          }`}
           data-tour="import-save"
           disabled={pending || wiping}
           onClick={() => setSaveImportOpen(true)}
@@ -1619,7 +1631,7 @@ export function TrainerBoard({
               badgesEarned={earnedBadgeKeys.length}
               badgesTotal={badges.length}
               wipes={wipeCount}
-              money={trainer.money}
+              money={boardTrainer.money}
               updatedAt={trainer.updatedAt}
             />
           </Frame>
@@ -1788,6 +1800,7 @@ export function TrainerBoard({
               });
               if (result.ok) {
                 partySave.markSaved(result.message ?? "Save imported");
+                setImportSaveGlow(false);
                 setSaveImportOpen(false);
                 // Mirror server gate: non-GMs may only spend a revive via import.
                 if (

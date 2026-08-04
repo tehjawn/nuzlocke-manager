@@ -7,6 +7,8 @@ export const ONBOARDING_STORAGE_KEY = "nuzlocke-onboarding-step";
 export const ONBOARDING_TRANSITION_KEY = "nuzlocke-onboarding-transition";
 /** Survives App Router remounts while a tour is in progress. */
 export const ONBOARDING_ACTIVE_KEY = "nuzlocke-onboarding-active";
+export const ONBOARDING_START_EVENT = "nuzlocke-start-onboarding-tour";
+export const ONBOARDING_END_EVENT = "nuzlocke-end-onboarding-tour";
 
 /**
  * Mobile workspace panel the tour needs before measuring a step.
@@ -212,4 +214,50 @@ export function writeOnboardingTransition(active: boolean) {
   } catch {
     // ignore
   }
+}
+
+/** Wipe step / active / bridge flags (tour finished, skipped, or forced end). */
+export function clearOnboardingTourState() {
+  clearOnboardingStep();
+  writeOnboardingActive(false);
+  writeOnboardingTransition(false);
+}
+
+export function requestEndOnboardingTour() {
+  clearOnboardingTourState();
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(ONBOARDING_END_EVENT));
+}
+
+/**
+ * Whether LoggedInChrome should mount the tour open. Only resume when the
+ * current route matches the saved step (or a Next/Back bridge is in flight) —
+ * otherwise a remount on My Trainer mid-season-step would yank the user back.
+ */
+export function shouldOpenOnboardingTour(pathname: string): boolean {
+  if (!readOnboardingActive()) return false;
+  if (readOnboardingTransition()) return true;
+  const step = ONBOARDING_STEPS[readOnboardingStep()];
+  return step ? step.match(pathname) : false;
+}
+
+/** Season trainers board (`/challenges/{slug}`), not nested season tabs. */
+export function isOnboardingSeasonBoardPath(pathname: string): boolean {
+  return seasonMatch(pathname);
+}
+
+export type OnboardingMismatchAction = "bridge" | "complete" | "pause";
+
+/**
+ * What to do when the tour is open but the current path does not match the
+ * active step. Next/Back bridges keep navigating; landing on the league board
+ * outside a bridge finishes the tour (unlocks chrome); anything else pauses.
+ */
+export function onboardingMismatchAction(
+  pathname: string,
+  bridging: boolean,
+): OnboardingMismatchAction {
+  if (bridging) return "bridge";
+  if (isOnboardingSeasonBoardPath(pathname)) return "complete";
+  return "pause";
 }

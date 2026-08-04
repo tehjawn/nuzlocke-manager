@@ -41,7 +41,7 @@ test("currentRunNumber is wipeCount + 1", () => {
   assert.equal(currentRunNumber(2), 3);
 });
 
-test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encountered", () => {
+test("memorialRowsAfterWipe clears the live board (including prior graves)", () => {
   const result = memorialRowsAfterWipe(
     [
       {
@@ -76,57 +76,15 @@ test("memorialRowsAfterWipe keeps graves, memorializes Main/Reserve, drops Encou
         diedOnRun: null,
         runId: "run-2",
       },
-      {
-        id: "m1",
-        slot: "MAIN",
-        partyIndex: 1,
-        causeOfDeath: null,
-        diedOnRun: null,
-        runId: "run-2",
-      },
     ],
     2,
     "run-2",
   );
 
-  assert.deepEqual(
-    result.map((p) => p.id),
-    ["g0", "m0", "m1", "r0"],
-  );
-  assert.ok(result.every((p) => p.slot === "GRAVEYARD"));
-  assert.deepEqual(
-    result.map((p) => p.partyIndex),
-    [0, 1, 2, 3],
-  );
-  assert.equal(result[1]?.causeOfDeath, "Run wiped (#2)");
-  assert.equal(result[1]?.diedOnRun, 2);
-  assert.equal(result[1]?.runId, "run-2");
-  assert.equal(result[0]?.causeOfDeath, "Crit");
-  assert.equal(result[0]?.diedOnRun, 1);
-  assert.equal(result[0]?.runId, "run-1");
+  assert.deepEqual(result, []);
 });
 
-test("memorialRowsAfterWipe preserves an existing cause of death", () => {
-  const result = memorialRowsAfterWipe(
-    [
-      {
-        id: "m0",
-        slot: "MAIN",
-        partyIndex: 0,
-        causeOfDeath: "Already noted",
-        diedOnRun: null,
-        runId: null,
-      },
-    ],
-    1,
-    "run-1",
-  );
-  assert.equal(result[0]?.causeOfDeath, "Already noted");
-  assert.equal(result[0]?.diedOnRun, 1);
-  assert.equal(result[0]?.runId, "run-1");
-});
-
-test("memorialPokemonAfterWipe preserves species payload while rewriting slot", () => {
+test("memorialPokemonAfterWipe returns an empty board", () => {
   const result = memorialPokemonAfterWipe(
     [
       mon({
@@ -137,18 +95,17 @@ test("memorialPokemonAfterWipe preserves species payload while rewriting slot", 
         nickname: "Muddy",
         level: 16,
       }),
+      mon({
+        id: "g0",
+        slot: "GRAVEYARD",
+        partyIndex: 0,
+        species: "Zigzagoon",
+        causeOfDeath: "Crit",
+        diedOnRun: 1,
+      }),
     ],
     1,
     "run-1",
   );
-  assert.equal(result.length, 1);
-  assert.equal(result[0]?.id, "m0");
-  assert.equal(result[0]?.slot, "GRAVEYARD");
-  assert.equal(result[0]?.partyIndex, 0);
-  assert.equal(result[0]?.species, "Mudkip");
-  assert.equal(result[0]?.nickname, "Muddy");
-  assert.equal(result[0]?.level, 16);
-  assert.equal(result[0]?.causeOfDeath, "Run wiped (#1)");
-  assert.equal(result[0]?.diedOnRun, 1);
-  assert.equal(result[0]?.runId, "run-1");
+  assert.deepEqual(result, []);
 });

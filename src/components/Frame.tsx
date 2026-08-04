@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  useEffect,
+  useRef,
   useState,
   type CSSProperties,
   type ReactNode,
@@ -24,7 +26,11 @@ type FrameProps = {
   collapsible?: boolean;
   /** Initial open state when collapsible (default true). */
   defaultOpen?: boolean;
-  /** Curated or custom TrainerCard background; omit / null = default fill. */
+  /** Controlled open state when collapsible (overrides internal state). */
+  open?: boolean;
+  /** Fires when the disclosure opens/closes. */
+  onOpenChange?: (open: boolean) => void;
+  /** Curated or custom TrainerCard background; omit / null = default frame fill. */
   cardBackgroundKey?: string | null;
   /** Spotlight target for the first-run onboarding tour. */
   "data-tour"?: string;
@@ -49,12 +55,17 @@ export function Frame({
   dense = false,
   collapsible = false,
   defaultOpen = true,
+  open: openControlled,
+  onOpenChange,
   cardBackgroundKey = null,
   "data-tour": dataTour,
 }: FrameProps) {
   // React 19 DOM types no longer include defaultOpen on <details>; keep an
   // uncontrolled-style initial open via local state + the open attribute.
-  const [open, setOpen] = useState(defaultOpen);
+  const [openUncontrolled, setOpenUncontrolled] = useState(defaultOpen);
+  const controlled = openControlled !== undefined;
+  const open = controlled ? openControlled : openUncontrolled;
+  const detailsRef = useRef<HTMLDetailsElement | null>(null);
   const dataBg = cardBackgroundDataAttr(cardBackgroundKey);
   const customUrl = cardBackgroundCustomUrl(cardBackgroundKey);
   const style = customUrl
@@ -62,6 +73,15 @@ export function Frame({
         ["--card-bg-custom" as string]: cssTextureUrl(customUrl),
       } as CSSProperties)
     : undefined;
+
+  // Native <details> toggles itself on click. When controlled and the parent
+  // recomputes the same `open` value, React may skip the attribute update —
+  // force the DOM back in sync (ref writes must not happen during render).
+  useEffect(() => {
+    if (!controlled) return;
+    const node = detailsRef.current;
+    if (node && node.open !== open) node.open = open;
+  }, [controlled, open]);
 
   const shellClass = `gba-frame overflow-hidden ${
     tone === "rip" ? "bg-rip" : ""
@@ -76,12 +96,15 @@ export function Frame({
   ) : null;
 
   function handleToggle(event: ToggleEvent<HTMLDetailsElement>) {
-    setOpen(event.currentTarget.open);
+    const next = event.currentTarget.open;
+    if (!controlled) setOpenUncontrolled(next);
+    onOpenChange?.(next);
   }
 
   if (collapsible && title) {
     return (
       <details
+        ref={detailsRef}
         data-tour={dataTour}
         data-card-bg={dataBg}
         style={style}

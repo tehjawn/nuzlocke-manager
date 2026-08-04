@@ -1,6 +1,6 @@
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 
-/** Slots that hold living partners and should join the memorial on wipe. */
+/** Slots that hold living partners lost when a wipe is recorded. */
 export const WIPE_MEMORIAL_SLOTS = ["MAIN", "RESERVE"] as const;
 
 export type WipeMemorialRow = {
@@ -21,64 +21,25 @@ export function wipeCauseOfDeath(wipeNumber: number): string {
   return `Run wiped (#${wipeNumber})`;
 }
 
-function livingSlotRank(slot: PokemonSlot): number {
-  if (slot === "MAIN") return 0;
-  if (slot === "RESERVE") return 1;
-  return 2;
-}
-
 /**
- * Season memorial after a wipe: keep existing graves, append living Main/Reserve
- * into GRAVEYARD (Encountered is discarded), preserving MAIN→RESERVE order.
- * `wipeNumber` is the wipe being recorded (also the run that just ended).
- * `closedRunId` tags newly memorialized partners to that closed run.
+ * Live board after a wipe: empty (party, box, encountered, and R.I.P.).
+ * Pre-wipe partners are captured in the board history snapshot taken before
+ * the wipe. Cross-run graves belong in Memorial / trainer history — not the
+ * live board.
  */
 export function memorialRowsAfterWipe(
-  rows: WipeMemorialRow[],
-  wipeNumber: number,
-  closedRunId: string | null = null,
+  _rows: WipeMemorialRow[],
+  _wipeNumber: number,
+  _closedRunId: string | null = null,
 ): WipeMemorialRow[] {
-  const graves = rows.filter((p) => p.slot === "GRAVEYARD");
-  const memorialSlots: ReadonlySet<PokemonSlot> = new Set(WIPE_MEMORIAL_SLOTS);
-  const living = rows
-    .filter((p) => memorialSlots.has(p.slot))
-    .sort((a, b) => {
-      const bySlot = livingSlotRank(a.slot) - livingSlotRank(b.slot);
-      if (bySlot !== 0) return bySlot;
-      return a.partyIndex - b.partyIndex;
-    });
-
-  let nextIndex =
-    graves.reduce((max, p) => Math.max(max, p.partyIndex), -1) + 1;
-  const cause = wipeCauseOfDeath(wipeNumber);
-  const memorialized = living.map((p) => ({
-    id: p.id,
-    slot: "GRAVEYARD" as const,
-    partyIndex: nextIndex++,
-    causeOfDeath: p.causeOfDeath?.trim() || cause,
-    diedOnRun: wipeNumber,
-    runId: closedRunId,
-  }));
-
-  return [...graves, ...memorialized];
+  return [];
 }
 
-/** Client-friendly wrapper that preserves full Pokémon payloads. */
+/** Client-friendly wrapper — wipe clears every live slot. */
 export function memorialPokemonAfterWipe(
-  pokemon: PokemonEntry[],
-  wipeNumber: number,
-  closedRunId: string | null = null,
+  _pokemon: PokemonEntry[],
+  _wipeNumber: number,
+  _closedRunId: string | null = null,
 ): PokemonEntry[] {
-  const byId = new Map(pokemon.map((p) => [p.id, p]));
-  return memorialRowsAfterWipe(pokemon, wipeNumber, closedRunId).map((row) => {
-    const source = byId.get(row.id)!;
-    return {
-      ...source,
-      slot: row.slot,
-      partyIndex: row.partyIndex,
-      causeOfDeath: row.causeOfDeath,
-      diedOnRun: row.diedOnRun,
-      runId: row.runId,
-    };
-  });
+  return [];
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   archiveNotificationAction,
@@ -10,10 +10,14 @@ import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { UserMenu } from "@/components/UserMenu";
 import {
+  ONBOARDING_END_EVENT,
+  ONBOARDING_START_EVENT,
   ONBOARDING_STEPS,
-  readOnboardingActive,
+  clearOnboardingTourState,
+  shouldOpenOnboardingTour,
   writeOnboardingActive,
   writeOnboardingStep,
+  writeOnboardingTransition,
 } from "@/lib/onboarding";
 import { feedbackNotificationHref } from "@/lib/feedback-types";
 import {
@@ -32,10 +36,6 @@ type LoggedInChromeProps = {
   feedbackHref?: string | null;
 };
 
-function hasUnreadWelcome(items: NotificationItem[]) {
-  return items.some((n) => !n.readAt && isWelcomeNotification(n));
-}
-
 function findWelcome(items: NotificationItem[]) {
   return items.find(isWelcomeNotification);
 }
@@ -53,16 +53,35 @@ export function LoggedInChrome({
   const [notifications, setNotifications] = useState(() =>
     withPinnedWelcome(initialNotifications),
   );
-  const [tourOpen, setTourOpen] = useState(() => {
-    const pinned = withPinnedWelcome(initialNotifications);
-    const unread = hasUnreadWelcome(pinned);
-    const active = readOnboardingActive();
-    if (unread || active) {
+  // Bumped when sessionStorage tour flags change without a pathname change
+  // (start/end events, Skip). Included in the open expression so React re-reads
+  // storage; pathname changes re-derive on their own.
+  const [tourTick, setTourTick] = useState(0);
+  const tourOpen =
+    tourTick >= 0 && shouldOpenOnboardingTour(pathname);
+
+  function bumpTourTick() {
+    setTourTick((n) => n + 1);
+  }
+
+  // /new-trainer sets onboarding session flags before navigating here; start
+  // / end events still cover explicit restart and CompleteFirstRunLink.
+  useEffect(() => {
+    function onStart() {
+      writeOnboardingStep(0);
       writeOnboardingActive(true);
-      return true;
+      bumpTourTick();
     }
-    return false;
-  });
+    function onEnd() {
+      bumpTourTick();
+    }
+    window.addEventListener(ONBOARDING_START_EVENT, onStart);
+    window.addEventListener(ONBOARDING_END_EVENT, onEnd);
+    return () => {
+      window.removeEventListener(ONBOARDING_START_EVENT, onStart);
+      window.removeEventListener(ONBOARDING_END_EVENT, onEnd);
+    };
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
@@ -128,22 +147,25 @@ export function LoggedInChrome({
   }
 
   async function dismissTour() {
-    writeOnboardingActive(false);
+    clearOnboardingTourState();
+    bumpTourTick();
     const welcome = findWelcome(notifications);
     if (welcome) {
       await markRead(welcome);
     }
-    setTourOpen(false);
   }
 
   function startTour() {
     writeOnboardingStep(0);
     writeOnboardingActive(true);
-    setTourOpen(true);
     // Avoid a useless /me bounce if we're already on a trainer board.
     if (!ONBOARDING_STEPS[0].match(pathname)) {
+      writeOnboardingTransition(true);
+      bumpTourTick();
       router.push(ONBOARDING_STEPS[0].href);
+      return;
     }
+    bumpTourTick();
   }
 
   async function onSelectNotification(notification: NotificationItem) {

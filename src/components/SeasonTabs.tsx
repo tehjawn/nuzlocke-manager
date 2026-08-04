@@ -22,9 +22,10 @@ export type SeasonTab = {
 export function getSeasonTabs(
   slug: string,
   status: ChallengeStatus = "ACTIVE",
+  options?: { firstRun?: boolean },
 ): SeasonTab[] {
   const base = `/challenges/${slug}`;
-  return [
+  const tabs: SeasonTab[] = [
     {
       href: `${base}/about`,
       label: "About",
@@ -63,6 +64,16 @@ export function getSeasonTabs(
       icon: <TournamentIcon />,
     },
   ];
+
+  // First-run (#183): keep orientation tabs; hide deep tools until welcome done.
+  if (options?.firstRun) {
+    return tabs.filter((tab) =>
+      tab.label === "About" ||
+      tab.label === "Rules / FAQ" ||
+      tab.label === "Trainers",
+    );
+  }
+  return tabs;
 }
 
 export function isSeasonTabActive(tab: SeasonTab, pathname: string): boolean {
@@ -71,9 +82,13 @@ export function isSeasonTabActive(tab: SeasonTab, pathname: string): boolean {
     : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
 }
 
-export function SeasonTabs({ slug, status = "ACTIVE" }: SeasonTabsProps) {
+export function SeasonTabs({
+  slug,
+  status = "ACTIVE",
+  firstRun = false,
+}: SeasonTabsProps & { firstRun?: boolean }) {
   const pathname = usePathname();
-  const tabs = getSeasonTabs(slug, status);
+  const tabs = getSeasonTabs(slug, status, { firstRun });
 
   return (
     <div

@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "AUTH_URL=http://localhost:3000 NEXT_PUBLIC_APP_URL=http://localhost:3000 next dev --port 3000",
     "build": "prisma generate && next build",
     "vercel-build": "prisma generate && if [ \"$VERCEL_ENV\" = \"production\" ]; then DATABASE_URL=\"${DATABASE_URL_UNPOOLED:-$DATABASE_URL}\" prisma migrate deploy; fi && next build",
-    "start": "next start",
+    "start": "AUTH_URL=http://localhost:3000 NEXT_PUBLIC_APP_URL=http://localhost:3000 next start --port 3000",
     "test": "tsx --test \"src/**/*.test.ts\"",
     "lint": "eslint",
     "db:generate": "prisma generate",

@@ -8,6 +8,9 @@ import {
 } from "@/features/jump";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallengeShell } from "@/lib/challenges";
+import { getPrisma, isDatabaseConfigured } from "@/lib/db";
+import { FORCE_FIRST_RUN_CHROME, isFirstRunChrome } from "@/lib/first-run";
+import { getWelcomeReadAt } from "@/lib/notifications";
 import { getAccessForChallenge } from "@/lib/permissions";
 
 
@@ -44,10 +47,11 @@ export default async function SeasonWorkspaceLayout({
     redirect(`/challenges/${slug}/join`);
   }
 
-  const myTrainerId = session?.user?.id
-    ? challenge.trainers.find((trainer) => trainer.userId === session.user.id)
-        ?.id ?? null
+  const myTrainer = session?.user?.id
+    ? challenge.trainers.find((trainer) => trainer.userId === session.user.id) ??
+      null
     : null;
+  const myTrainerId = myTrainer?.id ?? null;
 
   if (
     session?.user?.id &&
@@ -57,7 +61,36 @@ export default async function SeasonWorkspaceLayout({
     redirect(`/challenges/${slug}/me`);
   }
 
-  const showGm = Boolean(access?.isGm);
+  // Own board exists but /new-trainer unfinished — finish create before season chrome.
+  if (
+    session?.user?.id &&
+    myTrainerId &&
+    challenge.source === "database" &&
+    !access?.isGm &&
+    isDatabaseConfigured()
+  ) {
+    const intro = await getPrisma().trainerProfile.findUnique({
+      where: { id: myTrainerId },
+      select: { introCompletedAt: true },
+    });
+    if (intro && !intro.introCompletedAt) {
+      redirect(`/challenges/${slug}/new-trainer`);
+    }
+  }
+
+  // TEMP: FORCE_FIRST_RUN_CHROME also hides GM chrome so the preview matches
+  // a real new-player session.
+  const showGm =
+    Boolean(access?.isGm) && !FORCE_FIRST_RUN_CHROME;
+  const welcomeReadAt = session?.user?.id
+    ? await getWelcomeReadAt(session.user.id)
+    : null;
+  const firstRun = isFirstRunChrome({
+    signedIn: Boolean(session?.user),
+    welcomeCompleted: welcomeReadAt != null,
+    hasProgress: (myTrainer?.pokemon.length ?? 0) > 0,
+    isGm: Boolean(access?.isGm),
+  });
 
   return (
     <>
@@ -65,6 +98,7 @@ export default async function SeasonWorkspaceLayout({
         season={challengeToJumpSeasonContext(challenge, {
           showGm,
           myTrainerId,
+          firstRun,
         })}
       />
       <ChallengeShell
@@ -79,6 +113,7 @@ export default async function SeasonWorkspaceLayout({
         showGm={showGm}
         myTrainerId={myTrainerId}
         signedIn={Boolean(session?.user)}
+        firstRun={firstRun}
       >
         {children}
       </ChallengeShell>
