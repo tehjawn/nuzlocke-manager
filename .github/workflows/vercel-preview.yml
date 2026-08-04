@@ -31,7 +31,14 @@ jobs:
       - name: Require VERCEL_TOKEN
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::error::Missing repository secret VERCEL_TOKEN. Create one at https://vercel.com/account/tokens and add it under Settings → Secrets and variables → Actions."
+            echo "::error::Missing repository secret VERCEL_TOKEN. Create a full account token at https://vercel.com/account/tokens (not a scoped/custom project token) and add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          code="$(curl -sS -o /tmp/vercel-user.json -w '%{http_code}' -H "Authorization: Bearer $VERCEL_TOKEN" https://api.vercel.com/v2/user || true)"
+          if [ "$code" != "200" ]; then
+            echo "::error::VERCEL_TOKEN cannot load /v2/user (HTTP $code). The Vercel CLI needs a full account token. Scoped tokens (e.g. vcp_…) can access the project API but fail on vercel pull/deploy with 'Could not retrieve Project Settings'."
+            head -c 300 /tmp/vercel-user.json || true
+            echo
             exit 1
           fi
 

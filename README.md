@@ -135,8 +135,9 @@ Upstash is optional. Leave `KV_*` unset locally and on Vercel until you want the
 Automatic Git preview builds are skipped (`vercel.json` → `ignoreCommand`). A PR
 gets a preview only when it has the GitHub label **`deploy preview`**:
 
-1. Create a [Vercel token](https://vercel.com/account/tokens) with access to the
-   `nuzlocke-manager` project.
+1. Create a **full account** [Vercel token](https://vercel.com/account/tokens)
+   (not a scoped/custom `vcp_…` project token — those break `vercel pull` /
+   `vercel deploy` with “Could not retrieve Project Settings”).
 2. Add it as the repository Actions secret `VERCEL_TOKEN`
    (`gh secret set VERCEL_TOKEN`).
 3. On a PR, add the `deploy preview` label. GitHub Actions builds and deploys a
