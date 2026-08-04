@@ -22,6 +22,8 @@ export type SpeciesWarning = {
   holders: { id: string; label: string }[];
 };
 
+export type MissingHeldItemMon = { id: string; label: string };
+
 function monLabel(mon: PokemonEntry): string {
   return mon.nickname?.trim() || mon.species;
 }
@@ -66,6 +68,20 @@ export function findDuplicateHeldItems(
     }
   }
   return warnings;
+}
+
+/**
+ * Main Squad mons with no held item, in board order (pre-export soft nudge).
+ * Reserves are excluded on purpose — boxed mons are routinely item-less, so
+ * counting them would fire the warning on essentially every export.
+ */
+export function findMissingHeldItems(
+  pokemon: PokemonEntry[],
+): MissingHeldItemMon[] {
+  return pokemon
+    .filter((mon) => mon.slot === "MAIN" && !normalizeItem(mon.heldItem))
+    .sort((a, b) => a.partyIndex - b.partyIndex)
+    .map((mon) => ({ id: mon.id, label: monLabel(mon) }));
 }
 
 /** Same species already on Main / Reserves (soft dupe-clause nudge). */
