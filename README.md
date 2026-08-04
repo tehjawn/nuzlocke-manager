@@ -83,7 +83,6 @@ Requires Postgres 18 client tools (`brew install postgresql@18`). The script ref
 ### After seed
 
 - Discord login auto-joins **Trash Pack 2026** and opens your board (`/challenges/2026-trash-pack/me`)
-- Demo trainer: Ash Ketchum (example only)
 - GM invite (optional): `TRASHPACK-GM` via `/challenges/2026-trash-pack/join?gm=1`
 
 Flow: Discord login → your trainer board. Done.
