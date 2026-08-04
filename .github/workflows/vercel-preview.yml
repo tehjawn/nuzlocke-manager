@@ -141,8 +141,23 @@ jobs:
       - name: Claim a preview alias slot
         id: slot
         run: |
+          set -euo pipefail
           chmod +x scripts/vercel-preview-slot.sh
           scripts/vercel-preview-slot.sh claim "${{ github.event.pull_request.number }}" >/dev/null
+
+      # An empty slot URL would be worse than a hard failure: it writes
+      # AUTH_URL="" into the build env and passes --env AUTH_URL=, which
+      # overrides the project value and breaks sign-in with no obvious cause.
+      - name: Require the preview slot outputs
+        env:
+          SLOT_URL: ${{ steps.slot.outputs.url }}
+          SLOT_HOST: ${{ steps.slot.outputs.host }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SLOT_URL" ] || [ -z "$SLOT_HOST" ]; then
+            echo "::error::The slot step did not emit host/url outputs."
+            exit 1
+          fi
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
@@ -222,6 +237,8 @@ jobs:
           SLOT_HOST: ${{ steps.slot.outputs.host }}
         run: |
           set -euo pipefail
+          scripts/vercel-preview-slot.sh verify \
+            "${{ github.event.pull_request.number }}" "$SLOT_HOST"
           vercel alias set "$DEPLOY_URL" "$SLOT_HOST" --token="$VERCEL_TOKEN"
           echo "Aliased $DEPLOY_URL → https://$SLOT_HOST"
 
