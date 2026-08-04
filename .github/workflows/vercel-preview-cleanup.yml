@@ -141,14 +141,42 @@ jobs:
           BRANCH: preview/pr-${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          found="$(
-            curl -sS --fail-with-body \
-              -H "Authorization: Bearer $NEON_API_KEY" \
-              "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
-            | jq -r --arg b "$BRANCH" \
-                '.branches[] | select(.name == $b and .default != true) | .id' \
-            | head -n1
-          )"
+          api="https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches"
+          found=""
+          cursor=""
+          # `search` is a partial match on name or ID, so the exact-name and
+          # non-default checks below still do the real filtering. It only keeps
+          # the result set small. The listing is cursor-paginated: a project with
+          # more branches than one page can return the target on a later page, so
+          # follow `pagination.next` before concluding the branch is absent.
+          for _ in $(seq 1 50); do
+            args=(--data-urlencode "search=$BRANCH" --data-urlencode "limit=100")
+            if [ -n "$cursor" ]; then
+              args+=(--data-urlencode "cursor=$cursor")
+            fi
+            resp="$(
+              curl -sS --fail-with-body --get \
+                -H "Authorization: Bearer $NEON_API_KEY" \
+                "${args[@]}" \
+                "$api"
+            )"
+            found="$(
+              jq -r --arg b "$BRANCH" \
+                '[.branches[]? | select(.name == $b and .default != true) | .id] | first // empty' \
+                <<<"$resp"
+            )"
+            if [ -n "$found" ]; then
+              break
+            fi
+            next="$(jq -r '.pagination.next // empty' <<<"$resp")"
+            # Neon echoes the current cursor on the last page, so stop on an
+            # empty, unchanged, or exhausted page rather than looping forever.
+            if [ -z "$next" ] || [ "$next" = "$cursor" ] \
+               || [ "$(jq -r '(.branches // []) | length' <<<"$resp")" -eq 0 ]; then
+              break
+            fi
+            cursor="$next"
+          done
           if [ -n "$found" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "Found Neon branch $BRANCH ($found)."
