@@ -310,9 +310,9 @@ export async function fetchSeasonMemorialGraveRows(slug: string): Promise<{
 
 export async function fetchDefaultJumpBrief() {
   "use cache";
-  cacheLife("hours");
   cacheTag("seasons:index");
   if (!isDatabaseConfigured()) {
+    cacheLife("hours");
     const seed =
       CHALLENGES.find((c) => c.status === "ACTIVE") ?? CHALLENGES[0] ?? null;
     return seed
@@ -324,15 +324,38 @@ export async function fetchDefaultJumpBrief() {
         }
       : null;
   }
-  const prisma = getPrisma();
-  const active = await prisma.challenge.findFirst({
-    where: { status: "ACTIVE" },
-    orderBy: { year: "desc" },
-    select: { slug: true, name: true, year: true, status: true },
-  });
-  if (active) return active;
-  return prisma.challenge.findFirst({
-    orderBy: { year: "desc" },
-    select: { slug: true, name: true, year: true, status: true },
-  });
+  try {
+    const prisma = getPrisma();
+    const active = await prisma.challenge.findFirst({
+      where: { status: "ACTIVE" },
+      orderBy: { year: "desc" },
+      select: { slug: true, name: true, year: true, status: true },
+    });
+    // Awaited, not returned as a promise: a rejection has to surface inside
+    // this try, and inside the "use cache" boundary, to be contained at all.
+    const brief =
+      active ??
+      (await prisma.challenge.findFirst({
+        orderBy: { year: "desc" },
+        select: { slug: true, name: true, year: true, status: true },
+      }));
+    cacheLife("hours");
+    return brief;
+  } catch {
+    // The database is configured but unreachable — an autosuspended Neon
+    // compute cold-starting, a network blip, an incident. Callers already
+    // handle null, so degrade instead of taking the whole render down.
+    //
+    // This has to be caught here rather than in getDefaultJumpChallenge:
+    // a "use cache" function that rejects during prerender fails the build
+    // regardless of what the caller does with the rejection.
+    //
+    // Cached for minutes rather than hours so the next request retries: a
+    // build that ran during a blip must not pin "no season" for an hour.
+    // Not "seconds" — profiles that expire under five minutes are treated as
+    // dynamic holes and excluded from prerendering, and the root layout awaits
+    // this outside any <Suspense>, so that would fail the build a second way.
+    cacheLife("minutes");
+    return null;
+  }
 }
