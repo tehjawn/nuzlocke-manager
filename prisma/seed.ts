@@ -168,17 +168,20 @@ async function main() {
       challengeId: challenge.id,
       type: "NOTE",
       message:
-        "Season refreshed: Ash showcase demo board only. Discord login auto-provisions player trainers.",
+        "Season refreshed: rules, FAQ, and badges. Discord login auto-provisions player trainers.",
     },
   });
 
   const kept = await prisma.trainerProfile.count({
     where: { challengeId: challenge.id, userId: { not: null } },
   });
+  const demo = await prisma.trainerProfile.count({
+    where: { challengeId: challenge.id, userId: null },
+  });
 
   console.log("Seed complete.");
   console.log(`  Kept ${kept} player-linked trainer(s)`);
-  console.log(`  Demo: Ash showcase board (unclaimed)`);
+  console.log(`  Demo / unclaimed trainer(s): ${demo}`);
   console.log(`  GM invite: ${challenge.gmInviteCode}`);
   console.log(`  Player invite: ${challenge.playerInviteCode ?? "(none — public auto-join)"}`);
 }

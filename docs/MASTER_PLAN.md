@@ -176,7 +176,7 @@ Dark mode is **optional later**; default is warm light (matches Gen 3 menus bett
 
 **Auth:** Auth.js with **Discord**. For **PUBLIC** / **UNLISTED** seasons, login auto-creates a membership + personal trainer board (no invite/claim dance). **INVITE** seasons still require a code, then auto-create a board. **GM** elevation uses an optional GM invite code.
 
-**Demo data:** Seed includes a single unclaimed **Ash Ketchum** example board so the league isn’t empty. Real players never “claim” Ash — they get their own board.
+**Demo data:** Seed refreshes season meta (rules, FAQ, badges) only. Real players get their own board on Discord login — no showcase demo trainer.
 
 **Privacy default:** Challenges can be invite-gated; Trash Pack 2026 ships **PUBLIC** for easy friend onboarding.
 
@@ -244,7 +244,7 @@ Next.js App Router, Prisma/Postgres, Zod stubs, sprite helpers, docs.
 - Challenge home (rules + FAQ)
 - League board (summary)
 - Trainer board read view with sprites
-- Seed Trash Pack 2026 structure (badges, rules/FAQ, Ash demo board)
+- Seed Trash Pack 2026 structure (badges, rules/FAQ)
 - Warm light theme as default
 
 ### Phase 2 — Auth & editing (spreadsheet retirement) ✅
@@ -256,7 +256,7 @@ Next.js App Router, Prisma/Postgres, Zod stubs, sprite helpers, docs.
 - GM console (visibility, invites, rules/FAQ, Main Squad lock, unclaim)
 - Mobile-usable edit flows (view/edit toggle + modals; further polish optional)
 - Activity log on league hub (+ emoji reactions)
-- Simplified join UX (no claim dance; Ash demo only; `/me` shortcut)
+- Simplified join UX (no claim dance; `/me` shortcut)
 
 ### Phase 3 — Seasons & endgame ✅ (core)
 
