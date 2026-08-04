@@ -1832,6 +1832,7 @@ export function TrainerBoard({
         }}
         badges={badges}
         showCompetitiveDetails={showCompetitiveDetails}
+        canEdit={canEdit}
       />
 
       {!isDemo && (isGm || showCompetitiveDetails) && boardHistoryOpen ? (
