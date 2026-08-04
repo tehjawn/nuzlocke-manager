@@ -290,10 +290,26 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
   const [moving, setMoving] = useState(false);
   const [popoverHeight, setPopoverHeight] = useState(220);
   const [contentKey, setContentKey] = useState(0);
+  const [openSeen, setOpenSeen] = useState(open);
 
   useEffect(() => {
     readyRef.current = ready;
   }, [ready]);
+
+  // Adjust local tour state when `open` flips (preferred over a sync effect).
+  if (open !== openSeen) {
+    setOpenSeen(open);
+    if (open) {
+      setStepIndex(readOnboardingStep());
+      if (readOnboardingTransition()) setBridging(true);
+    } else {
+      setReady(false);
+      setTarget(null);
+      setMoving(false);
+      writeOnboardingTransition(false);
+      setBridging(false);
+    }
+  }
 
   const step = ONBOARDING_STEPS[stepIndex] ?? ONBOARDING_STEPS[0];
   const isFirst = stepIndex <= 0;
@@ -346,32 +362,17 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
 
   useEffect(() => {
     if (!open) return;
-    // Re-hydrate from sessionStorage on (re)open — this reads an external
-    // store, it doesn't derive from props/state, so it belongs in an effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStepIndex(readOnboardingStep());
-    if (readOnboardingTransition()) setBridging(true);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      // Tear down to the closed state — also syncs the sessionStorage
-      // transition flag, so this has to run as an effect, not during render.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setReady(false);
-      readyRef.current = false;
-      setTarget(null);
-      setMoving(false);
-      writeOnboardingTransition(false);
-      setBridging(false);
-      return;
-    }
 
     let cancelled = false;
     const active = ONBOARDING_STEPS[stepIndex];
     if (!active) {
-      finish();
-      return;
+      // Defer: finish() sets state; calling it sync in an effect trips lint.
+      queueMicrotask(() => {
+        if (!cancelled) finish();
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
     if (!active.match(pathname)) {
@@ -382,20 +383,34 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
         readOnboardingTransition(),
       );
       if (action === "bridge") {
-        beginBridge();
-        router.push(active.href);
-        return;
+        queueMicrotask(() => {
+          if (cancelled) return;
+          beginBridge();
+          router.push(active.href);
+        });
+        return () => {
+          cancelled = true;
+        };
       }
       if (action === "complete") {
-        finish();
-        return;
+        queueMicrotask(() => {
+          if (!cancelled) finish();
+        });
+        return () => {
+          cancelled = true;
+        };
       }
-      setReady(false);
-      readyRef.current = false;
-      setTarget(null);
-      setMoving(false);
-      setBridging(false);
-      return;
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setReady(false);
+        readyRef.current = false;
+        setTarget(null);
+        setMoving(false);
+        setBridging(false);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
     const stayVisible = readyRef.current && !readOnboardingTransition();

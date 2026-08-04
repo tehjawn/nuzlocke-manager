@@ -60,7 +60,7 @@ export function NewTrainerForm({
       writeOnboardingStep(0);
       writeOnboardingActive(true);
       router.replace(
-        `/challenges/${challengeSlug}/trainers/${trainerId}?tour=1`,
+        `/challenges/${challengeSlug}/trainers/${trainerId}`,
       );
       router.refresh();
     });

@@ -64,8 +64,8 @@ export function LoggedInChrome({
     setTourTick((n) => n + 1);
   }
 
-  // /new-trainer → board with ?tour=1 may mount after LoggedInChrome; listen.
-  // CompleteFirstRunLink / Skip also end the tour across layout remounts.
+  // /new-trainer sets onboarding session flags before navigating here; start
+  // / end events still cover explicit restart and CompleteFirstRunLink.
   useEffect(() => {
     function onStart() {
       writeOnboardingStep(0);

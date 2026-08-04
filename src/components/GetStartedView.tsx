@@ -2,9 +2,6 @@
 
 import Link from "next/link";
 import {
-  useCallback,
-  useEffect,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -14,7 +11,7 @@ import { CompleteFirstRunLink } from "@/components/CompleteFirstRunLink";
 import { Frame } from "@/components/Frame";
 import { SaveExportGuide } from "@/components/SaveExportGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
-import { CTA_PRIMARY, CTA_SECONDARY } from "@/lib/cta";
+import { CTA_PRIMARY } from "@/lib/cta";
 import {
   isSetupSectionChecked,
   nextSetupSection,
@@ -22,6 +19,7 @@ import {
   setSetupSectionChecked,
   setupCheckoffsStorageKey,
   subscribeSetupCheckoffs,
+  type SetupCheckoffs,
   type SetupSectionId,
 } from "@/lib/setup-checkoffs";
 import type { WelcomeVideoEmbed } from "@/lib/welcome-video";
@@ -64,6 +62,19 @@ function sectionTitle(
   );
 }
 
+/** Treat server-known imports as checked without a mount-effect write. */
+function checkoffsWithImport(
+  checkoffs: SetupCheckoffs,
+  hasImportedSave: boolean,
+): SetupCheckoffs {
+  if (!hasImportedSave || isSetupSectionChecked(checkoffs, "import")) {
+    return checkoffs;
+  }
+  return {
+    checkedSectionIds: [...checkoffs.checkedSectionIds, "import"],
+  };
+}
+
 export function GetStartedView({
   slug,
   trainerHref,
@@ -75,15 +86,13 @@ export function GetStartedView({
   welcomeLockedMessage,
   welcomeFallbackUrl,
 }: GetStartedViewProps) {
-  const storageKey = useMemo(
-    () => setupCheckoffsStorageKey(slug, trainerId),
-    [slug, trainerId],
-  );
-  const checkoffs = useSyncExternalStore(
+  const storageKey = setupCheckoffsStorageKey(slug, trainerId);
+  const storedCheckoffs = useSyncExternalStore(
     (onStoreChange) => subscribeSetupCheckoffs(storageKey, onStoreChange),
     () => readSetupCheckoffs(storageKey),
     () => readSetupCheckoffs(storageKey),
   );
+  const checkoffs = checkoffsWithImport(storedCheckoffs, hasImportedSave);
 
   const sectionRefs = useRef<Partial<Record<SetupSectionId, HTMLElement | null>>>(
     {},
@@ -94,31 +103,25 @@ export function GetStartedView({
     null,
   );
 
-  const markDone = useCallback(
-    (id: SetupSectionId) => {
-      const nextCheckoffs = setSetupSectionChecked(storageKey, id, true);
-      const next = nextSetupSection(nextCheckoffs);
-      setExpanded(next);
-      if (next) {
-        requestAnimationFrame(() => {
-          sectionRefs.current[next]?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
+  function markDone(id: SetupSectionId) {
+    const nextCheckoffs = setSetupSectionChecked(storageKey, id, true);
+    const sealed =
+      hasImportedSave && !isSetupSectionChecked(nextCheckoffs, "import")
+        ? setSetupSectionChecked(storageKey, "import", true)
+        : nextCheckoffs;
+    const next = nextSetupSection(sealed);
+    setExpanded(next);
+    if (next) {
+      requestAnimationFrame(() => {
+        sectionRefs.current[next]?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
         });
-      }
-    },
-    [storageKey],
-  );
+      });
+    }
+  }
 
-  // Import section completes when the board already has Pokémon.
-  useEffect(() => {
-    if (!hasImportedSave) return;
-    if (isSetupSectionChecked(checkoffs, "import")) return;
-    setSetupSectionChecked(storageKey, "import", true);
-  }, [hasImportedSave, checkoffs, storageKey]);
-
-  const autoExpand = nextSetupSection(checkoffs) ?? "import";
+  const autoExpand = nextSetupSection(checkoffs);
   const openId = expanded === "closed" ? null : (expanded ?? autoExpand);
 
   const welcomeDone = isSetupSectionChecked(checkoffs, "welcome");
@@ -127,6 +130,15 @@ export function GetStartedView({
   const gamemodeDone = isSetupSectionChecked(checkoffs, "gamemode");
   const importDone =
     isSetupSectionChecked(checkoffs, "import") || hasImportedSave;
+
+  // Once import is detected, collapse step 5 if the user had it open.
+  const [importDoneSeen, setImportDoneSeen] = useState(importDone);
+  if (importDone !== importDoneSeen) {
+    setImportDoneSeen(importDone);
+    if (importDone && expanded === "import") {
+      setExpanded("closed");
+    }
+  }
 
   function bindOpen(id: SetupSectionId) {
     return {
@@ -410,8 +422,8 @@ export function GetStartedView({
                 </li>
               </ol>
               {signedIn ? (
-                <Link href={trainerHref} className={CTA_SECONDARY}>
-                  Open trainer board →
+                <Link href={trainerHref} className={CTA_PRIMARY}>
+                  Open trainer board & import save →
                 </Link>
               ) : null}
               {importDone ? (

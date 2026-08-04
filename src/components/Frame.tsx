@@ -75,8 +75,8 @@ export function Frame({
     : undefined;
 
   // Native <details> toggles itself on click. When controlled and the parent
-  // recomputes the same `open` value (e.g. closing an auto-expanded section),
-  // React skips the attribute update — force the DOM back in sync.
+  // recomputes the same `open` value, React may skip the attribute update —
+  // force the DOM back in sync (ref writes must not happen during render).
   useEffect(() => {
     if (!controlled) return;
     const node = detailsRef.current;

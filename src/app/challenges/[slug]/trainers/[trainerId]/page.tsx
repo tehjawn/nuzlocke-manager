@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
-import { StartOnboardingTourOnMount } from "@/components/StartOnboardingTourOnMount";
 import { TrainerBoard } from "@/components/TrainerBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import {
@@ -159,10 +157,14 @@ export default async function TrainerBoardPage({ params }: PageProps) {
 
   let encourageImportSave = false;
   if (canEdit && isDatabaseConfigured()) {
-    const imported = await getPrisma().trainerBoardSnapshot.count({
-      where: { trainerId: trainer.id, trigger: "IMPORT" },
-    });
-    encourageImportSave = imported === 0;
+    const hasMain = trainer.pokemon.some((p) => p.slot === "MAIN");
+    if (!hasMain) {
+      const imported = await getPrisma().trainerBoardSnapshot.count({
+        where: { trainerId: trainer.id, trigger: "IMPORT" },
+      });
+      // Persistent glow only before the first import (and with an empty Main).
+      encourageImportSave = imported === 0;
+    }
   }
 
   return (
@@ -187,9 +189,6 @@ export default async function TrainerBoardPage({ params }: PageProps) {
       >
         <DataSourceBanner source={challenge.source} />
         <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
-        <Suspense fallback={null}>
-          <StartOnboardingTourOnMount />
-        </Suspense>
 
         <TrainerBoard
           leagueBoardHref={`/challenges/${challenge.slug}`}
