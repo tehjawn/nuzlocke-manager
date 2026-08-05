@@ -633,7 +633,7 @@ function TierFilters({
           }}
         >
           <option value="all">All species</option>
-          <option value="owned">Owned in pack</option>
+          <option value="owned">Owned by trainer</option>
           {myTrainerId ? <option value="mine">Owned by me</option> : null}
           <option value="untouched">Untouched</option>
         </select>

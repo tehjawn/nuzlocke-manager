@@ -131,7 +131,10 @@ export function BountyHunterView({
   const [viewerId, setViewerId] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [lineFilter, setLineFilter] = useState<ExclusiveLineFilter>("all");
-  const [sort, setSort] = useState<SortMode>("dex");
+  // Showcase is a catch-quality browser first — open on catch tier, not dex #.
+  const [sort, setSort] = useState<SortMode>(
+    parseBountyMode(initialMode) === "showcase" ? "catch" : "dex",
+  );
   const [query, setQuery] = useState("");
 
   const board = useMemo(() => speciesOwnershipBoard(trainers), [trainers]);
@@ -143,9 +146,13 @@ export function BountyHunterView({
 
   function selectMode(next: BountyMode) {
     setMode(next);
-    // Modes don't share a sort vocabulary — drop anything the next one can't
-    // honour rather than leaving a select pointing at a missing <option>.
-    if (!MODE_SORTS[next].some((option) => option.id === sort)) setSort("dex");
+    // Showcase defaults to catch-tier sort; other modes fall back to dex when
+    // the current sort isn't in that mode's vocabulary.
+    if (next === "showcase") {
+      setSort("catch");
+    } else if (!MODE_SORTS[next].some((option) => option.id === sort)) {
+      setSort("dex");
+    }
     // Keep the shareable ?mode= URL without a tools-route RSC refetch.
     const url = new URL(window.location.href);
     url.searchParams.set("tool", "bounty");

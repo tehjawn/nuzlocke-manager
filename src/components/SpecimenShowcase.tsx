@@ -261,7 +261,8 @@ export function SpecimenShowcase({
           {gradedCount > 0
             ? `${gradedCount} of ${rows.length} Pokémon are graded here.`
             : "no Pokémon on this page are graded for you."}{" "}
-          Species, level, BST tier, and type are shown for everyone.
+          Species, level, BST score, competitive score, and type are shown for
+          everyone.
           {showScopeNudge && (
             <>
               {" "}
@@ -290,7 +291,7 @@ export function SpecimenShowcase({
             : "Nothing matches these filters."}
         </p>
       ) : (
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {visible.map((row) => (
             <li key={row.id}>
               <SpecimenCard onSelect={() => setOpenRowId(row.id)} row={row} />
@@ -318,9 +319,9 @@ const SLOT_BADGES: Record<PokemonSlot, string | null> = {
 };
 
 /**
- * Dense browse tile. Deliberately not a third full specimen card — it borrows
- * `PokemonSlotCard`'s ring/sprite chrome verbatim and hands everything else to
- * `PokemonDetailsModal` on click.
+ * Sprite-first browse tile. Catch-ring chrome stays; the letter grades are
+ * labeled BST / Comp so they never read as anonymous report-card marks next
+ * to the trainer handle.
  */
 function SpecimenCard({
   onSelect,
@@ -335,7 +336,10 @@ function SpecimenCard({
   const showSpecies = Boolean(row.nickname?.trim());
   const slotBadge = SLOT_BADGES[row.slot];
   const meta =
-    [showSpecies ? row.species : null, row.level !== null ? `Lv ${row.level}` : null]
+    [
+      showSpecies ? row.species : null,
+      row.level !== null ? `Lv ${row.level}` : null,
+    ]
       .filter(Boolean)
       .join(" · ") || "—";
 
@@ -351,69 +355,68 @@ function SpecimenCard({
         className={`pokemon-catch-ring pokemon-catch-ring--${hasChrome ? tier : "oof"} h-full`}
       >
         <div
-          className={`flex h-full flex-col gap-1.5 rounded-lg border bg-surface p-2 ${
+          className={`flex h-full flex-col gap-2 rounded-lg border bg-surface p-2.5 ${
             hasChrome ? "border-transparent" : "border-frame"
           } ${row.slot === "GRAVEYARD" ? "opacity-90" : ""}`}
         >
-          <div className="flex items-start gap-2">
-            <div
-              className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border bg-surface-2 ${
-                hasChrome
-                  ? `pokemon-catch-sprite pokemon-catch-sprite--${tier}`
-                  : "border-frame"
-              }`}
-            >
-              <PokemonSpriteImage
-                alt=""
-                className="pixelated h-12 w-12 object-contain"
-                height={56}
-                pokedexId={row.pokedexId}
-                shiny={row.isShiny}
-                species={row.species}
-                width={56}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold leading-tight tracking-tight">
-                {label}
-                {row.isShiny && (
-                  <span className="ml-0.5 text-accent-2" title="Shiny">
-                    ✦
-                  </span>
-                )}
-              </p>
-              <p className="truncate text-[10px] leading-tight text-muted">
-                {meta}
-              </p>
-              <p className="truncate font-mono text-[10px] leading-tight tabular-nums text-muted">
-                #
-                {row.pokedexId !== null
-                  ? String(row.pokedexId).padStart(3, "0")
-                  : "—"}
-              </p>
-            </div>
+          <div
+            className={`mx-auto flex aspect-square w-full max-w-[5.5rem] items-center justify-center rounded-lg border bg-surface-2 sm:max-w-[6.5rem] ${
+              hasChrome
+                ? `pokemon-catch-sprite pokemon-catch-sprite--${tier}`
+                : "border-frame"
+            }`}
+          >
+            <PokemonSpriteImage
+              alt=""
+              className="pixelated h-[88%] w-[88%] object-contain"
+              height={96}
+              pokedexId={row.pokedexId}
+              shiny={row.isShiny}
+              species={row.species}
+              width={96}
+            />
+          </div>
+
+          <div className="min-w-0 space-y-0.5 text-center">
+            <p className="truncate text-sm font-bold leading-tight tracking-tight">
+              {label}
+              {row.isShiny && (
+                <span className="ml-0.5 text-accent-2" title="Shiny">
+                  ✦
+                </span>
+              )}
+            </p>
+            <p className="truncate text-[11px] leading-tight text-muted">
+              {meta}
+            </p>
+            <p className="truncate font-mono text-[10px] leading-tight tabular-nums text-muted">
+              #
+              {row.pokedexId !== null
+                ? String(row.pokedexId).padStart(3, "0")
+                : "—"}
+            </p>
           </div>
 
           {row.types.length > 0 && (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap justify-center gap-1">
               {row.types.map((entry) => (
                 <TypeBadge key={entry} size="sm" type={entry} />
               ))}
             </div>
           )}
 
-          <div className="mt-auto flex flex-wrap items-center gap-1 pt-0.5">
+          {tier !== null && (
+            <p
+              className={`truncate text-center text-[11px] font-bold leading-tight tracking-tight ${catchTierToneClass(tier)}`}
+            >
+              {catchTierLabel(tier)}
+            </p>
+          )}
+
+          <div className="mt-auto flex flex-wrap items-center justify-center gap-1 pt-0.5">
             <span className="min-w-0 max-w-full truncate rounded border border-frame/40 bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
               {row.trainerHandle}
             </span>
-            {row.bstRank !== null && (
-              <span
-                className={`inline-flex items-center rounded border px-1 text-[10px] font-bold leading-tight ${statRankToneClass(row.bstRank)}`}
-                title={`BST ${row.bst} — tier ${row.bstRank} among Modern Emerald species`}
-              >
-                {row.bstRank}
-              </span>
-            )}
             {slotBadge !== null && (
               <span className="inline-flex items-center gap-0.5 rounded border border-frame/40 bg-surface-2 px-1 py-0.5 text-[10px] font-semibold text-muted">
                 {row.slot === "GRAVEYARD" && (
@@ -424,15 +427,52 @@ function SpecimenCard({
             )}
           </div>
 
-          {tier !== null && (
-            <p
-              className={`truncate text-[10px] font-semibold leading-tight tracking-tight ${catchTierToneClass(tier)}`}
-            >
-              {catchTierLabel(tier)}
-            </p>
+          {(row.bstRank !== null || row.competitiveRank !== null) && (
+            <div className="flex flex-wrap items-center justify-center gap-1">
+              {row.bstRank !== null && (
+                <ScoreChip
+                  kind="BST"
+                  letter={row.bstRank}
+                  title={`BST Score: ${row.bstRank} — base stat total ${row.bst} vs Modern Emerald roster`}
+                />
+              )}
+              {row.competitiveRank !== null && (
+                <ScoreChip
+                  kind="Comp"
+                  letter={row.competitiveRank}
+                  title={`Competitive Score: ${row.competitiveRank}${
+                    row.competitiveReason
+                      ? ` — ${row.competitiveReason}`
+                      : ""
+                  }`}
+                />
+              )}
+            </div>
           )}
         </div>
       </div>
     </button>
+  );
+}
+
+function ScoreChip({
+  kind,
+  letter,
+  title,
+}: {
+  kind: "BST" | "Comp";
+  letter: StatRank;
+  title: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold leading-tight ${statRankToneClass(letter)}`}
+      title={title}
+    >
+      <span className="font-semibold tracking-tight opacity-80">{kind}</span>
+      <span aria-label={`${kind === "BST" ? "BST" : "Competitive"} Score: ${letter}`}>
+        {letter}
+      </span>
+    </span>
   );
 }
