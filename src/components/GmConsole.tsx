@@ -1284,6 +1284,7 @@ export function GmConsole({
       <RandomizerSeedModal
         open={seedParserOpen}
         onClose={() => setSeedParserOpen(false)}
+        slug={challenge.slug}
       />
       {confirmDialog}
     </div>

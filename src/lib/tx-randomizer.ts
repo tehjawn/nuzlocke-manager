@@ -427,24 +427,43 @@ export function buildCaughtIndex(
  *
  * The ROM tracks this itself in `NuzlockeEncounterFlags`, so this reads the
  * truth rather than inferring it from stored `catchRoute` strings — a failed
- * catch still burns the slot, and the flags know that. Rows sharing a `slotKey`
- * are one slot in game, so spending any of them marks all of them.
+ * catch still burns the slot, and the flags know that.
+ *
+ * Only the label whose own `nuzlockeBit` is set is marked. We deliberately do
+ * **not** expand across `slotKey` / `aliasesRoute101` siblings (Scorched Slab,
+ * Navel Rock, … share Route 101's bit 0 in the ROM) — painting every alias as
+ * "spent" with the early-route catch is wrong for the seed-scanner UI.
  */
 export function buildUsedRouteIndex(
   usedEncounterBits: readonly number[],
 ): (label: string) => boolean {
   const bits = new Set(usedEncounterBits);
-  const usedSlotKeys = new Set<number>();
-  for (const route of CATCH_ROUTE_TABLE) {
-    if (route.nuzlockeBit != null && bits.has(route.nuzlockeBit)) {
-      if (route.slotKey != null) usedSlotKeys.add(route.slotKey);
-    }
-  }
   const usedLabels = new Set<string>();
   for (const route of CATCH_ROUTE_TABLE) {
-    if (route.slotKey != null && usedSlotKeys.has(route.slotKey)) {
+    if (route.nuzlockeBit != null && bits.has(route.nuzlockeBit)) {
       usedLabels.add(route.label);
     }
   }
   return (label: string) => usedLabels.has(label);
+}
+
+/**
+ * Which Pokémon (if any) logged a catch on each route label.
+ *
+ * Used for the seed parser's route accordion chrome — when the slot is spent
+ * and we know who they caught there, show that sprite next to the checkmark.
+ * Only the Pokémon's own catch-route label is mapped; shared `slotKey` aliases
+ * are not.
+ */
+export function buildSlotPokemonIndex(
+  caught: readonly { pokedexId: number; catchRoute: string | null }[],
+): (label: string) => number | null {
+  const byLabel = new Map<string, number>();
+  for (const mon of caught) {
+    if (!mon.pokedexId) continue;
+    const route = findCatchRoute(mon.catchRoute);
+    if (!route) continue;
+    if (!byLabel.has(route.label)) byLabel.set(route.label, mon.pokedexId);
+  }
+  return (label: string) => byLabel.get(label) ?? null;
 }
