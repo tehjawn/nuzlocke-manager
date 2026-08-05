@@ -892,6 +892,13 @@ export function RandomizerSeedModal({
                   </p>
                 ) : null}
 
+                {/* Hatch geography is independent of wild remaps — show on By route
+                    even when wild randomization is off (vanilla tables). */}
+                {view === "route" &&
+                (!obtainFilter || obtainFilter === "singleSlot") ? (
+                  <HatchSafeSpotsNote randomizerContext />
+                ) : null}
+
                 {obtainFilter && obtainFilter !== "singleSlot" ? (
                   <BucketSpeciesView
                     bucket={obtainFilter}
@@ -927,18 +934,15 @@ export function RandomizerSeedModal({
                     }
                   />
                 ) : view === "route" ? (
-                  <div className="space-y-3">
-                    <HatchSafeSpotsNote randomizerContext />
-                    <RouteView
-                      areas={filteredAreas}
-                      totalTables={parsed.areas.length}
-                      caughtState={parsed.caughtState}
-                      isRouteUsed={parsed.isRouteUsed}
-                      slotPokemon={parsed.slotPokemon ?? NO_SLOT_POKEMON}
-                      slug={slug}
-                      onNavigate={onClose}
-                    />
-                  </div>
+                  <RouteView
+                    areas={filteredAreas}
+                    totalTables={parsed.areas.length}
+                    caughtState={parsed.caughtState}
+                    isRouteUsed={parsed.isRouteUsed}
+                    slotPokemon={parsed.slotPokemon ?? NO_SLOT_POKEMON}
+                    slug={slug}
+                    onNavigate={onClose}
+                  />
                 ) : (
                   <StaticView
                     statics={filteredStatics}
