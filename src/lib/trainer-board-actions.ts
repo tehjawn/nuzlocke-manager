@@ -1,11 +1,11 @@
 export type TrainerBoardActionKey =
   | "copy"
+  | "endRun"
   | "export"
   | "history"
   | "import"
   | "reset"
-  | "revive"
-  | "wipe";
+  | "revive";
 
 export const TRAINER_BOARD_ACTION_ORDER: readonly TrainerBoardActionKey[] = [
   "revive",
@@ -13,6 +13,6 @@ export const TRAINER_BOARD_ACTION_ORDER: readonly TrainerBoardActionKey[] = [
   "export",
   "copy",
   "history",
-  "wipe",
+  "endRun",
   "reset",
 ];

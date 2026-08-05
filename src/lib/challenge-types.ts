@@ -60,6 +60,10 @@ export type TrainerProfile = {
   wipeCount: number;
   /** 1-based living attempt; equals wipeCount + 1 when in sync. */
   activeRunNumber: number;
+  /** Runs finished by beating the Championship this season. */
+  completionCount: number;
+  /** Run is over and the next one has not started — the board is the final team. */
+  runEnded: boolean;
   /** Last imported Pokédollars; null when never imported / unknown. */
   money: number | null;
   mainSquadLocked: boolean;

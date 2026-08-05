@@ -4,7 +4,11 @@ import { clampEvs, clampIvs, IvsSchema, parseStatSpread } from "@/lib/stats";
 import type { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/db";
 
-export type BoardSnapshotTrigger = "IMPORT" | "WIPE" | "GM_RESET";
+export type BoardSnapshotTrigger =
+  | "IMPORT"
+  | "WIPE"
+  | "GM_RESET"
+  | "VICTORY";
 
 export type TrainerBoardSnapshotPayload = {
   wipeCount: number;
@@ -122,6 +126,8 @@ export function defaultSnapshotLabel(
       return `Wipe #${wipeCount + 1}`;
     case "GM_RESET":
       return "Pre-GM reset";
+    case "VICTORY":
+      return `Final team · run #${wipeCount + 1}`;
   }
 }
 
@@ -371,5 +377,7 @@ export function snapshotTriggerLabel(trigger: BoardSnapshotTrigger): string {
       return "Wipe";
     case "GM_RESET":
       return "GM reset";
+    case "VICTORY":
+      return "Final team";
   }
 }

@@ -6,7 +6,12 @@ type TrainerStatsSummaryProps = {
   fallen: number;
   badgesEarned: number;
   badgesTotal: number;
-  wipes: number;
+  /** 1-based attempt on the board right now — the durable count, not closed wipes. */
+  runNumber: number;
+  /** Run is finished and the next one hasn't started; the board is the final team. */
+  runEnded?: boolean;
+  /** Championship finishes this season. */
+  completions: number;
   money: number | null;
   updatedAt: string | null;
 };
@@ -31,6 +36,30 @@ const iconBase = {
   strokeWidth: 1.75,
   "aria-hidden": true,
 } as const;
+
+/** Circular arrow — attempts, not failures. */
+function RunsIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className}>
+      <path d="M20 12a8 8 0 1 1-2.4-5.7" strokeLinecap="round" />
+      <path d="M20 4v4.5h-4.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Champion's laurel — runs finished, not restarted. */
+function CompletionsIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className}>
+      <path d="M8.5 4.5v5a3.5 3.5 0 0 0 7 0v-5h-7z" strokeLinejoin="round" />
+      <path
+        d="M8.5 6H6a2.5 2.5 0 0 0 2.5 2.5M15.5 6H18a2.5 2.5 0 0 1-2.5 2.5"
+        strokeLinejoin="round"
+      />
+      <path d="M12 13v3.5M9 19.5h6" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 /** Poké Ball–ish mark for caught count. */
 function CaughtIcon({ className = "h-3.5 w-3.5" }: IconProps) {
@@ -66,23 +95,6 @@ function BadgesIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
-function WipesIcon({ className = "h-3.5 w-3.5" }: IconProps) {
-  return (
-    <svg {...iconBase} className={className}>
-      <path
-        d="M12 4v4M8.5 6.5l2 2.5M15.5 6.5l-2 2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5.5 14c1.2-2.2 3.2-3.5 6.5-3.5s5.3 1.3 6.5 3.5"
-        strokeLinecap="round"
-      />
-      <path d="M7 18h10" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function MoneyIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
@@ -111,7 +123,9 @@ export function TrainerStatsSummary({
   fallen,
   badgesEarned,
   badgesTotal,
-  wipes,
+  runNumber,
+  runEnded = false,
+  completions,
   money,
   updatedAt,
 }: TrainerStatsSummaryProps) {
@@ -140,9 +154,15 @@ export function TrainerStatsSummary({
       complete: badgesComplete,
     },
     {
-      label: "Wipes",
-      value: String(wipes ?? 0),
-      icon: <WipesIcon />,
+      label: runEnded ? "Run (finished)" : "Run",
+      value: String(runNumber),
+      icon: <RunsIcon />,
+    },
+    {
+      label: "Completions",
+      value: String(completions),
+      icon: <CompletionsIcon />,
+      complete: completions > 0,
     },
     {
       label: "Money",

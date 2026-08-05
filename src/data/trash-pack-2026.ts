@@ -36,7 +36,7 @@ const rules = [
     id: "r5",
     sortOrder: 5,
     title: "1 Revive Token",
-    body: "One revive per run. Recording a wipe starts a new run with a fresh revive token.",
+    body: "One revive per run. Starting a new run gives you a fresh revive token.",
     isCore: false,
   },
   {
@@ -68,7 +68,7 @@ const faqs = [
     sortOrder: 2,
     question: "What if I don't have any more playable Pokémon?",
     answer:
-      'If all playable Pokémon are dead, then the Nuzlocke run is considered a wipe. You\'ll have to start the game over and try the Nuzlocke challenge again. Navigate to the "Game Mode Setting" page on how to set up your game again. On your trainer board, use Record wipe to move Main and Reserves into the R.I.P. memorial, clear Encountered, reset badges, refresh your revive token for the next run, and count the restart — season memorial and your profile (name, avatar, backdrops, status) stay across wipes.',
+      'If all playable Pokémon are dead, then the Nuzlocke run is considered a wipe. You\'ll have to start the game over and try the Nuzlocke challenge again. Navigate to the "Game Mode Setting" page on how to set up your game again. On your trainer board, use End run → Start a new run to move Main and Reserves into the R.I.P. memorial, clear Encountered, reset badges, refresh your revive token for the next run, and count the restart — season memorial and your profile (name, avatar, backdrops, status) stay across runs.',
   },
   {
     id: "f3",
@@ -110,6 +110,13 @@ const faqs = [
     question: "I'm new to the game, what are some resources I can use?",
     answer:
       "Navigate to the [Tools] page to get the summarized understanding of how to train, battle, and play Pokémon.",
+  },
+  {
+    id: "f9",
+    sortOrder: 9,
+    question: "I beat the Champion — what do I do on my board?",
+    answer:
+      "Import your final save so the board matches the game, then use End run and pick \"This is my final team\". That records the completion, keeps every Pokémon exactly where it is, and locks your board as the roster you'll bring to the tournament — nothing is cleared and no wipe is counted. Your board then offers Start a new run whenever you want to play another attempt.",
   },
 ];
 

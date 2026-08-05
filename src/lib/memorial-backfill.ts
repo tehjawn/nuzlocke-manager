@@ -54,12 +54,12 @@ function snapTime(a: MemorialBackfillSnapshot, b: MemorialBackfillSnapshot): num
 }
 
 function triggerRank(trigger: BoardSnapshotTrigger): number {
-  if (trigger === "WIPE") return 0;
+  if (trigger === "WIPE" || trigger === "VICTORY") return 0;
   if (trigger === "GM_RESET") return 1;
   return 2;
 }
 
-/** Prefer end-of-run wipe, then GM reset, then newest import/other. */
+/** Prefer the end-of-run capture (wipe or victory), then GM reset, then newest import/other. */
 export function pickMemorialSourceSnapshot(
   snapshots: MemorialBackfillSnapshot[],
 ): MemorialBackfillSnapshot | null {

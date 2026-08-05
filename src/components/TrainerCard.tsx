@@ -322,9 +322,9 @@ export function TrainerCard({
               <div className="flex items-center justify-between gap-3 pt-0.5">
                 <p className="min-w-0 truncate text-xs text-muted">
                   {caughtCount} caught • {encounteredCount} encountered •{" "}
-                  {ripCount} R.I.P.
-                  {(trainer.wipeCount ?? 0) > 0
-                    ? ` • ${trainer.wipeCount} wipe${trainer.wipeCount === 1 ? "" : "s"}`
+                  {ripCount} R.I.P. • Run {trainer.activeRunNumber}
+                  {trainer.completionCount > 0
+                    ? ` • ${trainer.completionCount} completion${trainer.completionCount === 1 ? "" : "s"}`
                     : ""}
                   {trainer.money != null
                     ? ` • $${trainer.money.toLocaleString("en-US")}`

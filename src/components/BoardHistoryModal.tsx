@@ -127,7 +127,9 @@ function runHeadline(run: TrainerHistoryRunSummary): string {
       ? "GM reset"
       : run.endReason === "WIPE"
         ? "Wiped"
-        : "Closed";
+        : run.endReason === "VICTORY"
+          ? "Champion"
+          : "Closed";
   return `Run ${run.runNumber} · ${reason}`;
 }
 

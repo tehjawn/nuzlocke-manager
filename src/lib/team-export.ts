@@ -23,6 +23,8 @@ export type TeamExportTrainer = {
   /** Run this roster belongs to: the live run, or the snapshot's run. */
   runNumber: number;
   wipeCount: number;
+  /** Championship finishes this season; omitted for historical snapshots. */
+  completionCount?: number;
   earnedBadgeKeys: string[];
   pokemon: PokemonEntry[];
 };
@@ -222,12 +224,16 @@ export function formatTrainerTeamExport(
   const badgesLine =
     badgeLabels.length > 0 ? badgeLabels.join(", ") : "none";
 
-  const wipeNote =
-    trainer.wipeCount > 0 ? ` · Wipes: ${trainer.wipeCount}` : "";
+  // Run N is the attempt this roster belongs to; closed-wipe count is an
+  // internal detail and stays out of the paste.
+  const completionNote =
+    (trainer.completionCount ?? 0) > 0
+      ? ` · Completions: ${trainer.completionCount}`
+      : "";
 
   const headerLines = [
     `# ${opts.challengeGame} Nuzlocke — ${opts.challengeName}`,
-    `Trainer: ${trainer.handle} · Run ${trainer.runNumber}${wipeNote} · Badges: ${badgesLine}`,
+    `Trainer: ${trainer.handle} · Run ${trainer.runNumber}${completionNote} · Badges: ${badgesLine}`,
   ];
   if (opts.snapshot) {
     headerLines.push(
