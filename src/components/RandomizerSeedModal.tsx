@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
+import { HatchSafeSpotsNote } from "@/components/HatchSafeSpotsNote";
 import { Modal } from "@/components/Modal";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -889,6 +890,13 @@ export function RandomizerSeedModal({
                   <p className="rounded-lg border border-frame/50 bg-surface-2 px-3 py-1.5 text-[0.7rem] leading-snug text-muted">
                     {bucketHint(obtainFilter)}
                   </p>
+                ) : null}
+
+                {/* Hatch geography is independent of wild remaps — show on By route
+                    even when wild randomization is off (vanilla tables). */}
+                {view === "route" &&
+                (!obtainFilter || obtainFilter === "singleSlot") ? (
+                  <HatchSafeSpotsNote randomizerContext />
                 ) : null}
 
                 {obtainFilter && obtainFilter !== "singleSlot" ? (

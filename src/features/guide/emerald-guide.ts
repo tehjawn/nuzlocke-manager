@@ -651,6 +651,21 @@ export const EMERALD_GUIDE: GuideDocument = {
       priority: "critical",
       sortOrder: 20,
     },
+    {
+      id: "lavaridge-wynaut-egg",
+      chapterId: "lavaridge",
+      title: "Optional: Lavaridge gift egg",
+      summary:
+        "Old woman in Lavaridge gives a Wynaut egg — hatch somewhere with no wild table.",
+      detail:
+        "In **Lavaridge Town**, talk to the **old woman** near the hot springs for a **gift egg** (vanilla **Wynaut**). Season **No Breeding** rules usually still allow this gift path — confirm with hosts.\n\n**Where to hatch:** Lavaridge itself has **no wild table**, so outdoor walking here (or indoors in the Center) is hatch-safe. Other safe outdoor maps include Oldale, Fallarbor, Verdanturf, Mauville, Fortree, Mt. Chimney, Littleroot, and Rustboro. Avoid outdoor hatching in coastal cities with surf/fish tables (Petalburg, Slateport, Lilycove, …).\n\nIf **statics randomization** is on, confirm whether this gift path remaps; wild remaps alone do not change breeding/gift eggs.",
+      locations: ["Lavaridge Town"],
+      requiresSteps: ["lavaridge-flannery"],
+      priority: "optional",
+      sortOrder: 30,
+      nuzlockeNote:
+        "Gift egg — log under gift rules if your season tracks them. Hatch on an egg-only / indoor / no-wild-table map so you don’t burn a remapped wild route.",
+    },
 
     // —— Petalburg Gym ——
     {
@@ -1184,13 +1199,13 @@ export const EMERALD_GUIDE: GuideDocument = {
       summary:
         "Meteor Falls Steven rematch — ME awards an Arceus egg for beating him the second time.",
       detail:
-        "After the National Dex, return to **Meteor Falls** and find **Steven** for a tough rematch.\n\nVanilla Emerald gives a Steel-heavy squad; **Modern Emerald** may change levels, species, or both depending on difficulty and trainer rando. Scout the first send-out before committing your ace.\n\n**Modern Emerald reward:** beating Steven for the **second time** grants an **Arceus egg** (gift / egg — not a wild static). Hatch and nickname under your season gift rules.\n\nHeal first — optional boss, not a story gate.",
+        "After the National Dex, return to **Meteor Falls** and find **Steven** for a tough rematch.\n\nVanilla Emerald gives a Steel-heavy squad; **Modern Emerald** may change levels, species, or both depending on difficulty and trainer rando. Scout the first send-out before committing your ace.\n\n**Modern Emerald reward:** beating Steven for the **second time** grants an **Arceus egg** (gift / egg — not a wild static). Hatch and nickname under your season gift rules.\n\n**Where to hatch:** walk indoors (a Pokémon Center) or an outdoor map with **no wild table** — Oldale, Fallarbor, Verdanturf, Mauville, Fortree, Mt. Chimney, Lavaridge, Littleroot, Rustboro, and similar. Avoid outdoor hatching in coastal cities that still have surf/fish tables (Petalburg, Slateport, Lilycove, …) or you’ll risk burning that water slot. Wild remaps don’t change which maps have tables.\n\nHeal first — optional boss, not a story gate.",
       locations: ["Meteor Falls"],
       requiresSteps: ["postgame-national-dex"],
       priority: "optional",
       sortOrder: 60,
       nuzlockeNote:
-        "The fight itself isn’t a catch. Arceus egg counts as a gift encounter if your rules log gifts — confirm with hosts. A wipe still counts under death rules.",
+        "The fight itself isn’t a catch. Arceus egg counts as a gift encounter if your rules log gifts — confirm with hosts. A wipe still counts under death rules. Hatch on an egg-only / indoor map so you don’t spend a remapped wild route.",
     },
     {
       id: "postgame-battle-frontier",

@@ -102,6 +102,40 @@ export function findCatchRoute(route: string | null | undefined): CatchRoute | n
 }
 
 /**
+ * Outdoor mapsecs with no wild encounter table — walking there never rolls a
+ * grass/surf/fish/rock-smash encounter, so hatching an egg won't burn a wild
+ * route slot. Indoors (Centers, houses, marts) are always safe too; those are
+ * not catalog rows.
+ *
+ * `egg-only` = no wild table and no script static. `static` with empty
+ * `encounters` = gifts/fossils/legendaries may live here, but outdoor tiles
+ * still have no wild table.
+ */
+export function isHatchSafeOutdoor(route: CatchRoute): boolean {
+  return (
+    route.kind === "egg-only" ||
+    (route.kind === "static" && route.encounters.length === 0)
+  );
+}
+
+/** Canonical outdoor hatch-safe labels, in catalog order. */
+export const HATCH_SAFE_OUTDOOR_ROUTES: readonly string[] = CATCH_ROUTE_TABLE.filter(
+  isHatchSafeOutdoor,
+).map((route) => route.label);
+
+/**
+ * Town/city labels that still have wild tables (usually water/fishing). Look
+ * hatch-safe on a map but outdoor walking can still consume a slot — prefer a
+ * Center or a true hatch-safe outdoor label instead.
+ */
+export const HATCH_FALSE_FRIEND_ROUTES: readonly string[] = CATCH_ROUTE_TABLE.filter(
+  (route) =>
+    route.kind === "wild" &&
+    route.encounters.length > 0 &&
+    /(?:Town|City)$/.test(route.label),
+).map((route) => route.label);
+
+/**
  * Aliases are searchable too, so a player typing a label we have since renamed
  * ("Starter gift") still finds its row — the canonical label is what they pick.
  */
