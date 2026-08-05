@@ -3,9 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  useCallback,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -81,8 +81,12 @@ import {
   type PokedexMode,
 } from "@/lib/tools-routes";
 
-/** Keep the first paint light; scroll loads more. */
+/** Keep the first paint light; scroll windows more. */
 const PAGE_SIZE = 32;
+/** Fixed row height — National Dex rows are uniform (sprite + py), so we can
+ *  virtualize both directions without measuring. */
+const DEX_ROW_HEIGHT = 40;
+const DEX_ROW_OVERSCAN = 8;
 
 function resolveDirectoryEntry(
   pokedexId: number | null | undefined,
@@ -207,27 +211,8 @@ export function PokedexPanel({
   const selectedIndex = selected
     ? results.findIndex((m) => m.pokedexId === selected.pokedexId)
     : -1;
-  const {
-    visible,
-    total,
-    hasMore,
-    hasEarlier,
-    earlierCount,
-    laterCount,
-    scrollRef,
-    sentinelRef,
-    loadMore,
-    loadEarlier,
-  } = useDexListReveal(results, resetKey, selectedIndex);
-
-  // Scroll the active row into view when focus changes (ref re-attaches).
-  const activeRowRef = useCallback(
-    (node: HTMLButtonElement | null) => {
-      if (!node || mode !== "briefing") return;
-      node.scrollIntoView({ block: "nearest", inline: "nearest" });
-    },
-    [mode, focusId],
-  );
+  const { visible, total, startIndex, padTop, padBottom, scrollRef } =
+    useDexVirtualList(results, resetKey, selectedIndex);
 
   const types = useMemo(
     () => (selected ? typesForPokedexId(selected.pokedexId) : []),
@@ -482,34 +467,28 @@ export function PokedexPanel({
                 ref={scrollRef}
                 className="max-h-[min(22rem,42vh)] overflow-y-auto overscroll-contain lg:max-h-[min(28rem,48vh)]"
               >
-                <ul role="listbox" aria-label="Pokédex list">
-                  {hasEarlier ? (
-                    <li className="flex flex-col items-center gap-1.5 border-b border-frame/25 py-2">
-                      <span className="text-[10px] text-muted">
-                        {earlierCount} earlier…
-                      </span>
-                      <button
-                        type="button"
-                        className="pressable rounded-lg border border-frame bg-surface px-2.5 py-1 text-[11px] font-semibold"
-                        onClick={loadEarlier}
-                      >
-                        Load earlier
-                      </button>
-                    </li>
-                  ) : null}
-                  {visible.map((mon) => {
+                <ul
+                  role="listbox"
+                  aria-label="Pokédex list"
+                  style={{
+                    paddingTop: padTop,
+                    paddingBottom: padBottom,
+                  }}
+                >
+                  {visible.map((mon, i) => {
                     const active = selected?.pokedexId === mon.pokedexId;
                     return (
                       <li
                         key={mon.pokedexId}
-                        className="[content-visibility:auto] [contain-intrinsic-size:auto_2.5rem]"
+                        data-dex-index={startIndex + i}
+                        className="box-border"
+                        style={{ height: DEX_ROW_HEIGHT }}
                       >
                         <button
                           type="button"
                           role="option"
                           aria-selected={active}
-                          ref={active ? activeRowRef : undefined}
-                          className={`pressable flex w-full items-center gap-2 border-b border-frame/25 px-1.5 py-1 text-left last:border-b-0 ${
+                          className={`pressable flex h-full w-full items-center gap-2 border-b border-frame/25 px-1.5 text-left ${
                             active
                               ? "bg-interactive-soft"
                               : "hover:bg-surface-2/80"
@@ -536,23 +515,6 @@ export function PokedexPanel({
                     );
                   })}
                 </ul>
-                {hasMore ? (
-                  <div
-                    ref={sentinelRef}
-                    className="flex flex-col items-center gap-1.5 py-2"
-                  >
-                    <span className="text-[10px] text-muted">
-                      {laterCount} more…
-                    </span>
-                    <button
-                      type="button"
-                      className="pressable rounded-lg border border-frame bg-surface px-2.5 py-1 text-[11px] font-semibold"
-                      onClick={loadMore}
-                    >
-                      Load more
-                    </button>
-                  </div>
-                ) : null}
               </div>
             )}
           </Frame>
@@ -1259,94 +1221,128 @@ function PackStatusStrip({
   );
 }
 
-function useDexListReveal<T>(
+/**
+ * Fixed-row virtual list for the National Dex sidebar.
+ * Spacers carry the full scroll height; only the viewport (+ overscan) mounts.
+ * Scroll either way — no sentinel / load-more choreography.
+ */
+function useDexVirtualList<T>(
   items: T[],
   resetKey: string,
   focusIndex: number = -1,
 ) {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [startOffset, setStartOffset] = useState(0);
-  const [prevKey, setPrevKey] = useState(resetKey);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef(0);
+  const [range, setRange] = useState({
+    start: 0,
+    end: PAGE_SIZE,
+    padTop: 0,
+    padBottom: 0,
+  });
 
   const total = items.length;
 
-  // Reset window when the search / gen filter changes.
-  let offset = startOffset;
-  let count = visibleCount;
-  if (prevKey !== resetKey) {
-    setPrevKey(resetKey);
-    offset = 0;
-    count = PAGE_SIZE;
-    setStartOffset(0);
-    setVisibleCount(PAGE_SIZE);
-  }
-
-  // Jump a PAGE_SIZE window onto the focused row instead of mounting 0..N
-  // (mid-dex restore used to paint hundreds of sprite rows on first open).
-  if (focusIndex >= 0 && total > 0) {
-    const end = offset + count;
-    if (focusIndex < offset || focusIndex >= end) {
-      offset = Math.max(0, focusIndex - Math.floor(PAGE_SIZE / 2));
-      count = Math.min(PAGE_SIZE, total - offset);
-      if (focusIndex >= offset + count) {
-        count = Math.min(total - offset, focusIndex - offset + 1);
-      }
-      if (offset !== startOffset) setStartOffset(offset);
-      if (count !== visibleCount) setVisibleCount(count);
-    }
-  }
-
-  const visible = items.slice(offset, offset + count);
-  const earlierCount = offset;
-  const laterCount = Math.max(0, total - offset - count);
-  const hasMore = laterCount > 0;
-  const hasEarlier = earlierCount > 0;
-
-  const loadMore = () => {
-    setVisibleCount((c) => Math.min(c + PAGE_SIZE, total - startOffset));
-  };
-
-  const loadEarlier = () => {
-    setStartOffset((s) => {
-      const dec = Math.min(PAGE_SIZE, s);
-      if (dec > 0) {
-        setVisibleCount((c) => c + dec);
-      }
-      return s - dec;
-    });
-  };
-
+  // Measure + scroll → window. Passive listener; rAF-coalesced.
   useEffect(() => {
     const root = scrollRef.current;
-    const sentinel = sentinelRef.current;
-    if (!root || !sentinel || !hasMore) return;
+    if (!root) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setVisibleCount((c) =>
-            Math.min(c + PAGE_SIZE, total - startOffset),
-          );
-        }
-      },
-      { root, rootMargin: "120px" },
+    const sync = () => {
+      const scrollTop = root.scrollTop;
+      const viewportHeight = root.clientHeight;
+      if (total === 0) {
+        setRange({ start: 0, end: 0, padTop: 0, padBottom: 0 });
+        return;
+      }
+      const vh = Math.max(viewportHeight, DEX_ROW_HEIGHT);
+      const start = Math.max(
+        0,
+        Math.floor(scrollTop / DEX_ROW_HEIGHT) - DEX_ROW_OVERSCAN,
+      );
+      const end = Math.min(
+        total,
+        Math.ceil((scrollTop + vh) / DEX_ROW_HEIGHT) + DEX_ROW_OVERSCAN,
+      );
+      const padTop = start * DEX_ROW_HEIGHT;
+      const padBottom = Math.max(0, (total - end) * DEX_ROW_HEIGHT);
+      setRange((prev) =>
+        prev.start === start &&
+        prev.end === end &&
+        prev.padTop === padTop &&
+        prev.padBottom === padBottom
+          ? prev
+          : { start, end, padTop, padBottom },
+      );
+    };
+
+    const onScroll = () => {
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0;
+        sync();
+      });
+    };
+
+    sync();
+    root.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(sync);
+    ro.observe(root);
+    return () => {
+      root.removeEventListener("scroll", onScroll);
+      ro.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [total, resetKey]);
+
+  // Filter change: snap to top (focus jump below may override in the same commit).
+  useLayoutEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    if (focusIndex < 0) {
+      root.scrollTop = 0;
+    }
+  }, [resetKey, focusIndex]);
+
+  // Keep the focused species in view — math scroll, not DOM query.
+  useLayoutEffect(() => {
+    const root = scrollRef.current;
+    if (!root || focusIndex < 0 || total === 0) return;
+
+    const rowTop = focusIndex * DEX_ROW_HEIGHT;
+    const rowBottom = rowTop + DEX_ROW_HEIGHT;
+    const viewTop = root.scrollTop;
+    const viewBottom = viewTop + root.clientHeight;
+    if (rowTop < viewTop || rowBottom > viewBottom) {
+      const maxScroll = Math.max(0, total * DEX_ROW_HEIGHT - root.clientHeight);
+      const centered = rowTop - (root.clientHeight - DEX_ROW_HEIGHT) / 2;
+      root.scrollTop = Math.max(0, Math.min(maxScroll, centered));
+    }
+
+    // Recompute the mounted window from the (possibly updated) scrollTop.
+    const scrollTop = root.scrollTop;
+    const vh = Math.max(root.clientHeight, DEX_ROW_HEIGHT);
+    const start = Math.max(
+      0,
+      Math.floor(scrollTop / DEX_ROW_HEIGHT) - DEX_ROW_OVERSCAN,
     );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, total, count, resetKey, startOffset]);
+    const end = Math.min(
+      total,
+      Math.ceil((scrollTop + vh) / DEX_ROW_HEIGHT) + DEX_ROW_OVERSCAN,
+    );
+    setRange({
+      start,
+      end,
+      padTop: start * DEX_ROW_HEIGHT,
+      padBottom: Math.max(0, (total - end) * DEX_ROW_HEIGHT),
+    });
+  }, [focusIndex, resetKey, total]);
 
   return {
-    visible,
+    visible: items.slice(range.start, range.end),
     total,
-    hasMore,
-    hasEarlier,
-    earlierCount,
-    laterCount,
+    startIndex: range.start,
+    padTop: range.padTop,
+    padBottom: range.padBottom,
     scrollRef: scrollRef as RefObject<HTMLDivElement>,
-    sentinelRef: sentinelRef as RefObject<HTMLDivElement>,
-    loadMore,
-    loadEarlier,
   };
 }
