@@ -40,7 +40,11 @@ export default async function ActivityPage({ params }: PageProps) {
     <>
       <DataSourceBanner source={challenge.source} />
       <div className="mb-4">
-        <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
+        <SeasonStatusBanner
+          slug={challenge.slug}
+          status={challenge.status}
+          isGm={Boolean(access?.isGm)}
+        />
       </div>
       <ActivityFeedInfinite
         slug={challenge.slug}

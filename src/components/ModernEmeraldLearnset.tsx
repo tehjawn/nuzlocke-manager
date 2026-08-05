@@ -32,26 +32,28 @@ export function ModernEmeraldLearnset({
         </p>
       </div>
 
-      {learnset.levelUp.length > 0 && (
-        <div className="rounded-lg border border-frame/40 bg-surface-2">
-          <GroupHeading count={learnset.levelUp.length} label="Level up" />
-          <ul className="grid gap-px border-t border-frame/30 bg-frame/20 sm:grid-cols-2">
-            {learnset.levelUp.map(({ level, move }, index) => (
-              <li
-                className="flex min-w-0 items-center gap-2 bg-surface-2 px-2 py-1.5 text-xs"
-                key={`${level}-${move}-${index}`}
-              >
-                <span className="w-9 shrink-0 font-semibold tabular-nums text-muted">
-                  Lv {level}
-                </span>
-                <MoveLabel className="text-xs" move={move} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="mt-1.5 space-y-1.5">
+      <div className="space-y-1.5">
+        {learnset.levelUp.length > 0 && (
+          <DisclosureShell
+            count={learnset.levelUp.length}
+            label="Level up"
+            testId="learnset-level-up"
+          >
+            <ul className="grid gap-px border-t border-frame/30 bg-frame/20 sm:grid-cols-2">
+              {learnset.levelUp.map(({ level, move }, index) => (
+                <li
+                  className="flex min-w-0 items-center gap-2 bg-surface-2 px-2 py-1.5 text-xs"
+                  key={`${level}-${move}-${index}`}
+                >
+                  <span className="w-9 shrink-0 font-semibold tabular-nums text-muted">
+                    Lv {level}
+                  </span>
+                  <MoveLabel className="text-xs" move={move} />
+                </li>
+              ))}
+            </ul>
+          </DisclosureShell>
+        )}
         {learnset.tmHm.length > 0 && (
           <MachineDisclosure moves={learnset.tmHm} />
         )}
@@ -70,15 +72,6 @@ export function ModernEmeraldLearnset({
           />
         )}
       </div>
-    </div>
-  );
-}
-
-function GroupHeading({ count, label }: { count: number; label: string }) {
-  return (
-    <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-      <p className="text-[11px] font-semibold text-ink">{label}</p>
-      <span className="text-[10px] tabular-nums text-muted">{count}</span>
     </div>
   );
 }

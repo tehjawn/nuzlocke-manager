@@ -188,7 +188,11 @@ export default async function TrainerBoardPage({ params }: PageProps) {
         className={`mx-auto w-full flex-1 space-y-6 px-4 pb-16 pt-2 sm:px-6 ${SITE_SHELL_MAX_CLASS}`}
       >
         <DataSourceBanner source={challenge.source} />
-        <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
+        <SeasonStatusBanner
+          slug={challenge.slug}
+          status={challenge.status}
+          isGm={Boolean(access?.isGm)}
+        />
 
         <TrainerBoard
           leagueBoardHref={`/challenges/${challenge.slug}`}

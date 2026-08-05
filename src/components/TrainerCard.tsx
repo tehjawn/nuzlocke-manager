@@ -343,6 +343,7 @@ export function TrainerCard({
 
       <PokemonDetailsModal
         open={detailsPokemon != null}
+        slug={challenge.slug}
         pokemon={detailsPokemon}
         showCompetitiveDetails={showCompetitiveDetails}
         onClose={() => setDetailsPokemon(null)}

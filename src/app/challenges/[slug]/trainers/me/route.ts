@@ -5,13 +5,13 @@ type RouteContext = {
 };
 
 /**
- * Authenticated shortcut: ensure a board exists, then send unfinished intros
- * to /new-trainer and everyone else to their board.
+ * Shared “my board” link for a season (#238). Static `me` segment wins over
+ * `trainers/[trainerId]` — same ensure-board / intro / redirect flow as `/me`.
  */
 export async function GET(_request: Request, context: RouteContext) {
   const { slug } = await context.params;
   return redirectToOwnTrainerBoard({
     slug,
-    loginCallbackPath: `/challenges/${slug}/me`,
+    loginCallbackPath: `/challenges/${slug}/trainers/me`,
   });
 }

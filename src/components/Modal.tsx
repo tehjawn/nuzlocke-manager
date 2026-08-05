@@ -11,7 +11,7 @@ import { createPortal } from "react-dom";
 
 type ModalProps = {
   open: boolean;
-  title: string;
+  title: ReactNode;
   /** Optional line under the title (species · Lv, etc.). */
   subtitle?: ReactNode;
   /** Extra controls before Close (e.g. View / Edit toggle). */

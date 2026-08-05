@@ -675,6 +675,7 @@ function TrainerHistoryBody({
       {detailsPokemon ? (
         <PokemonDetailsModal
           open
+          slug={challengeSlug}
           pokemon={detailsPokemon}
           showCompetitiveDetails={showCompetitiveDetails}
           onClose={() => setDetailsPokemon(null)}

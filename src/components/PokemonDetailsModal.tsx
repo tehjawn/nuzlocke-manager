@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { EvolutionPath } from "@/components/EvolutionPath";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
@@ -9,7 +10,7 @@ import { Modal } from "@/components/Modal";
 import { MoveLabel } from "@/components/MoveLabel";
 import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { StatGrid } from "@/components/StatGrid";
+import { StatGrid, type StatRankChip } from "@/components/StatGrid";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
@@ -26,11 +27,21 @@ import {
 } from "@/lib/iv-quality";
 import { recommendPlaystyle } from "@/lib/playstyle";
 import {
+  baseStatRanksFor,
+  statRankHint,
+  statRankToneClass,
+} from "@/lib/species-ranks";
+import {
+  baseStatsForSpecies,
+  bstOf,
   calcBattleStats,
   calcMaxBattleStats,
   isEmptySpread,
   natureEffectDescription,
+  STAT_KEYS,
+  STAT_LABELS,
 } from "@/lib/stats";
+import { toolsHref } from "@/lib/tools-routes";
 
 const ModernEmeraldLearnset = dynamic(
   () =>
@@ -48,6 +59,8 @@ type PokemonDetailsModalProps = {
   open: boolean;
   pokemon: PokemonEntry | null;
   onClose: () => void;
+  /** Challenge slug — enables the species → Pokédex link (#236). */
+  slug?: string;
   /** Own-board: switch into the edit form. */
   onEdit?: () => void;
   /**
@@ -78,14 +91,31 @@ export function PokemonDetailsModal({
   open,
   pokemon,
   onClose,
+  slug,
   onEdit,
   showCompetitiveDetails = true,
 }: PokemonDetailsModalProps) {
   if (!open || !pokemon) return null;
 
   const nickname = pokemon.nickname?.trim() ?? "";
-  const title = nickname || pokemon.species;
   const showSpeciesInSubtitle = Boolean(nickname);
+  const pokedexHref =
+    slug && pokemon.pokedexId != null
+      ? toolsHref(slug, "pokedex", { id: pokemon.pokedexId })
+      : null;
+  const speciesLabel = pokedexHref ? (
+    <Link
+      href={pokedexHref}
+      className="text-accent-deep underline-offset-2 hover:underline"
+      onClick={onClose}
+    >
+      {pokemon.species}
+    </Link>
+  ) : (
+    pokemon.species
+  );
+  // Nickname stays plain text; species is the Pokédex link (title or subtitle).
+  const title = nickname || speciesLabel;
   const battle = showCompetitiveDetails
     ? calcBattleStats({
         pokedexId: pokemon.pokedexId,
@@ -133,18 +163,46 @@ export function PokemonDetailsModal({
       ? catchTierLabel(catchTier)
       : null;
 
-  const subtitleParts: string[] = [];
-  if (showSpeciesInSubtitle) subtitleParts.push(pokemon.species);
-  if (pokemon.level != null) subtitleParts.push(`Lv ${pokemon.level}`);
-  const subtitleText = subtitleParts.join(" · ");
-  const hasSubtitle =
-    Boolean(subtitleText) || pokemon.isShiny;
+  // Species-level ranks (Pokédex) — separate from specimen CatchTier under the sprite.
+  const baseStats = baseStatsForSpecies(pokemon.pokedexId);
+  const bst = baseStats ? bstOf(baseStats) : null;
+  const ranks = baseStatRanksFor(pokemon.pokedexId);
+  let statRankChips: Partial<
+    Record<(typeof STAT_KEYS)[number], StatRankChip>
+  > | null = null;
+  if (ranks) {
+    statRankChips = {};
+    for (const key of STAT_KEYS) {
+      const result = ranks.perStat[key];
+      statRankChips[key] = {
+        letter: result.rank,
+        toneClass: statRankToneClass(result.rank),
+        hint: statRankHint(STAT_LABELS[key], result, ranks.peerCount),
+      };
+    }
+  }
+
+  const levelText =
+    pokemon.level != null
+      ? showSpeciesInSubtitle
+        ? ` · Lv ${pokemon.level}`
+        : `Lv ${pokemon.level}`
+      : null;
+  const hasSubtitleMeta = showSpeciesInSubtitle || levelText != null;
+  const hasSubtitle = hasSubtitleMeta || pokemon.isShiny;
 
   const subtitle = (
     <>
-      {subtitleText}
+      {showSpeciesInSubtitle ? speciesLabel : null}
+      {levelText}
       {pokemon.isShiny ? (
-        <span className={subtitleText ? "ml-1.5 font-semibold text-accent-2" : "font-semibold text-accent-2"}>
+        <span
+          className={
+            hasSubtitleMeta
+              ? "ml-1.5 font-semibold text-accent-2"
+              : "font-semibold text-accent-2"
+          }
+        >
           Shiny ✦
         </span>
       ) : null}
@@ -304,6 +362,45 @@ export function PokemonDetailsModal({
                 <p className="mt-1.5 text-[11px] leading-snug text-muted">
                   {playstyle.tip}
                 </p>
+              </div>
+            ) : null}
+
+            {baseStats ? (
+              <div>
+                <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-xs font-semibold tracking-tight text-muted">
+                    Species base stats
+                  </p>
+                  {bst != null ? (
+                    <p className="flex items-baseline gap-1.5 text-[11px] font-semibold tabular-nums text-muted">
+                      BST {bst}
+                      {ranks ? (
+                        <span
+                          className={`inline-flex items-center rounded border px-1 text-[10px] font-bold leading-tight ${statRankToneClass(ranks.bst.rank)}`}
+                          title={statRankHint(
+                            "BST",
+                            ranks.bst,
+                            ranks.peerCount,
+                          )}
+                        >
+                          {ranks.bst.rank}
+                        </span>
+                      ) : null}
+                    </p>
+                  ) : null}
+                </div>
+                <StatGrid compact ranks={statRankChips} spread={baseStats} />
+                {ranks ? (
+                  <>
+                    <p className="mt-1.5 text-[11px] leading-snug text-muted">
+                      {ranks.headline}
+                    </p>
+                    <p className="mt-1 text-[10px] leading-snug text-muted">
+                      Letters rank each base stat F→S against the{" "}
+                      {ranks.peerCount} Modern Emerald species.
+                    </p>
+                  </>
+                ) : null}
               </div>
             ) : null}
 

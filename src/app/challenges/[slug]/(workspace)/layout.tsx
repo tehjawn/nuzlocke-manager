@@ -114,6 +114,7 @@ export default async function SeasonWorkspaceLayout({
         myTrainerId={myTrainerId}
         signedIn={Boolean(session?.user)}
         firstRun={firstRun}
+        isGm={Boolean(access?.isGm)}
       >
         {children}
       </ChallengeShell>
