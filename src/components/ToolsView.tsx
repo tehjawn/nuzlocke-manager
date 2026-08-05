@@ -165,7 +165,7 @@ function ToolWorkspace({
 
   const blurb =
     tool === "pokedex"
-      ? `Look up species for ${challengeName} — role, F→S BST ranks, matchups, who's already caught it, or browse the full tier ladder.`
+      ? `Look up species for ${challengeName} — role, F→S BST ranks, competitive viability, matchups, and who's already caught it.`
       : tool === "chart"
         ? `Modern 18-type chart first — pick a trainer below it to score Main Squad coverage.`
         : tool === "guide"

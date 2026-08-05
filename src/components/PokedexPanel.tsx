@@ -17,7 +17,7 @@ import { Frame } from "@/components/Frame";
 import { EvolutionPath } from "@/components/EvolutionPath";
 import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { PokedexTierList } from "@/components/PokedexTierList";
+import { PokedexTierList, CompetitiveTierBrief } from "@/components/PokedexTierList";
 import { StatGrid, type StatRankChip } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilitiesForSpecies } from "@/data/pokemon-lookups";
@@ -79,7 +79,8 @@ const PAGE_SIZE = 32;
 
 const POKEDEX_MODES: ReadonlyArray<{ id: PokedexMode; label: string }> = [
   { id: "briefing", label: "Briefing" },
-  { id: "tiers", label: "Tier list" },
+  { id: "tiers", label: "BST" },
+  { id: "competitive", label: "Competitive" },
 ];
 
 type PokedexPanelProps = {
@@ -269,8 +270,8 @@ export function PokedexPanel({
     // Keep the shareable ?mode= URL without a tools-route RSC refetch.
     const url = new URL(window.location.href);
     url.searchParams.set("tool", "pokedex");
-    if (next === "tiers") {
-      url.searchParams.set("mode", "tiers");
+    if (next === "tiers" || next === "competitive") {
+      url.searchParams.set("mode", next);
       url.searchParams.delete("id");
     } else {
       url.searchParams.delete("mode");
@@ -338,8 +339,9 @@ export function PokedexPanel({
         })}
       </div>
 
-      {mode === "tiers" ? (
+      {mode === "tiers" || mode === "competitive" ? (
         <PokedexTierList
+          ladder={mode === "competitive" ? "competitive" : "bst"}
           trainers={trainers}
           myTrainerId={myTrainerId}
           onSelectSpecies={(pokedexId) => {
@@ -762,6 +764,8 @@ function PokedexEntry({
                 ) : null}
               </div>
             ) : null}
+
+            <CompetitiveTierBrief pokedexId={entry.pokedexId} />
 
             <div>
               <div className="mb-1.5 flex items-baseline justify-between gap-2">

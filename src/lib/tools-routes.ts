@@ -26,7 +26,7 @@ export const TOOLS_CATALOG: ReadonlyArray<{
     id: "pokedex",
     title: "Pokédex",
     blurb:
-      "Species briefing — role, F→S BST ranks vs the ROM, matchups, ownership — plus a browsable S→F tier ladder.",
+      "Species briefing — role, F→S BST ranks vs the ROM, matchups, ownership — plus BST and competitive tier ladders.",
   },
   {
     id: "bounty",
@@ -133,12 +133,12 @@ export function parsePlannerMode(
   return "coverage";
 }
 
-/** Briefing is the default species lookup; tiers is the BST ladder. */
-export type PokedexMode = "briefing" | "tiers";
+/** Briefing is the default; tiers = BST ladder; competitive = curated viability. */
+export type PokedexMode = "briefing" | "tiers" | "competitive";
 
 export function parsePokedexMode(
   raw: string | null | undefined,
 ): PokedexMode {
-  if (raw === "tiers") return "tiers";
+  if (raw === "tiers" || raw === "competitive") return raw;
   return "briefing";
 }
