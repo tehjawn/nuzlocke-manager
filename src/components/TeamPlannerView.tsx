@@ -29,8 +29,15 @@ import {
   setPlannerDraftIds,
 } from "@/features/planner/planner-drafts";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
-import { CTA_SECONDARY_SM } from "@/lib/cta";
+import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
+import {
+  catchTierHasChrome,
+  catchTierLabel,
+  catchTierToneClass,
+} from "@/lib/iv-quality";
 import type { PokemonType } from "@/lib/pokemon-types";
+import { recommendTeam } from "@/lib/recommend-team";
+import { statRankToneClass, type StatRank } from "@/lib/species-ranks";
 import {
   coverageOffenseGrid,
   coverageVerdict,
@@ -61,6 +68,7 @@ const MODES: ReadonlyArray<{ id: PlannerMode; label: string }> = [
   { id: "coverage", label: "Coverage" },
   { id: "prep", label: "Gym / League" },
   { id: "vs", label: "vs Trainer" },
+  { id: "recommended", label: "Recommended" },
 ];
 
 function livingBox(trainer: TrainerProfile): PokemonEntry[] {
@@ -511,6 +519,13 @@ export function TeamPlannerView({
                 opponentMain={opponentMain}
               />
             ) : null}
+            {mode === "recommended" ? (
+              <RecommendedPanel
+                pool={pool}
+                poolById={poolById}
+                onApply={(entryIds) => commitSlots(toSlots(entryIds))}
+              />
+            ) : null}
           </section>
         </div>
       </div>
@@ -711,6 +726,163 @@ function LivingBoxGrid({
         );
       })}
     </ul>
+  );
+}
+
+function RecommendScoreChip({
+  kind,
+  letter,
+  title,
+}: {
+  kind: "BST" | "Comp";
+  letter: StatRank;
+  title: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold leading-tight ${statRankToneClass(letter)}`}
+      title={title}
+    >
+      <span className="font-semibold tracking-tight opacity-80">{kind}</span>
+      <span>{letter}</span>
+    </span>
+  );
+}
+
+function RecommendedPanel({
+  pool,
+  poolById,
+  onApply,
+}: {
+  pool: PokemonEntry[];
+  poolById: Map<string, PokemonEntry>;
+  onApply: (entryIds: string[]) => void;
+}) {
+  const result = useMemo(() => recommendTeam(pool), [pool]);
+
+  if (pool.length === 0) {
+    return (
+      <Frame dense title="Recommended">
+        <p className="text-sm text-muted">
+          No living Main or Reserve Pokémon to recommend from.
+        </p>
+      </Frame>
+    );
+  }
+
+  const picks = result.picks;
+
+  return (
+    <Frame dense title="Recommended">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p
+            className={`text-lg font-semibold tracking-tight ${
+              result.coverageTone === "good"
+                ? "text-accent-deep"
+                : result.coverageTone === "warn"
+                  ? "text-danger"
+                  : "text-ink"
+            }`}
+          >
+            {result.coverageLabel}
+            <span className="ml-2 align-middle text-xs font-bold tabular-nums text-muted">
+              {result.coveredCount}/{result.totalTypes}
+            </span>
+          </p>
+          <p className="mt-0.5 text-[12px] leading-snug text-muted">
+            {result.coverageLine}
+          </p>
+        </div>
+        <button
+          type="button"
+          className={CTA_PRIMARY_SM}
+          onClick={() => onApply(result.entryIds)}
+          disabled={result.entryIds.length === 0}
+        >
+          Apply to Planned
+        </button>
+      </div>
+
+      <ol className="mt-3 space-y-2">
+        {picks.map((pick, index) => {
+          const entry = poolById.get(pick.entryId);
+          if (!entry) return null;
+          const catchLabel = catchTierHasChrome(pick.quality.catchTier)
+            ? catchTierLabel(pick.quality.catchTier)
+            : null;
+          return (
+            <li
+              key={pick.entryId}
+              className="flex items-start gap-2 rounded border border-frame/50 bg-surface-2/40 px-2 py-1.5"
+            >
+              <span className="mt-2 w-4 shrink-0 text-center text-[11px] font-bold tabular-nums text-muted">
+                {index + 1}
+              </span>
+              <PokemonHoverPreview pokemon={entry}>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+                  <PokemonSpriteImage
+                    alt={monLabel(entry)}
+                    className="pixelated h-10 w-10 object-contain"
+                    height={40}
+                    loading="lazy"
+                    pokedexId={entry.pokedexId}
+                    shiny={entry.isShiny}
+                    species={entry.species}
+                    width={40}
+                  />
+                </div>
+              </PokemonHoverPreview>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="truncate text-sm font-semibold text-ink">
+                    {monLabel(entry)}
+                  </span>
+                  <span className="flex flex-wrap gap-0.5">
+                    {entry.types.slice(0, 2).map((t) => (
+                      <TypeBadge key={`${entry.id}-${t}`} type={t} size="sm" />
+                    ))}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[12px] leading-snug text-muted">
+                  {pick.reason}
+                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  {catchLabel ? (
+                    <span
+                      className={`rounded border border-frame/40 px-1.5 py-0.5 text-[10px] font-bold leading-tight ${catchTierToneClass(pick.quality.catchTier)}`}
+                    >
+                      {catchLabel}
+                    </span>
+                  ) : null}
+                  {pick.quality.bstRank ? (
+                    <RecommendScoreChip
+                      kind="BST"
+                      letter={pick.quality.bstRank}
+                      title={`BST Score: ${pick.quality.bstRank}`}
+                    />
+                  ) : null}
+                  {pick.quality.competitive ? (
+                    <RecommendScoreChip
+                      kind="Comp"
+                      letter={pick.quality.competitive}
+                      title={`Competitive Score: ${pick.quality.competitive}`}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      <p className="mt-3 text-[10px] leading-snug text-muted">
+        Optimizes type coverage plus catch / BST / competitive proxies from
+        living Main + Reserve. Ignores level caps, gym answers, and rival
+        matchups — use Gym / League or vs Trainer for those lenses. Apply fills
+        Planned; you can still edit afterward.
+      </p>
+    </Frame>
   );
 }
 

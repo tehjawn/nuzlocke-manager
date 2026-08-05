@@ -124,12 +124,12 @@ export function parseBountyMode(
   return "tracker";
 }
 
-export type PlannerMode = "coverage" | "prep" | "vs";
+export type PlannerMode = "coverage" | "prep" | "vs" | "recommended";
 
 export function parsePlannerMode(
   raw: string | null | undefined,
 ): PlannerMode {
-  if (raw === "prep" || raw === "vs") return raw;
+  if (raw === "prep" || raw === "vs" || raw === "recommended") return raw;
   return "coverage";
 }
 
