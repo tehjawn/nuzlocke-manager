@@ -273,7 +273,7 @@ function ActivityRow({
           <p className="mt-1 text-[11px] tracking-tight text-muted">
             {item.type.replaceAll("_", " ")}
             {" · "}
-            {new Date(item.createdAt).toLocaleString()}
+            {formatActivityWhen(item.createdAt)}
             {item.trainerHandle ? (
               <>
                 {" · "}
@@ -411,6 +411,18 @@ function ActivityRow({
       ) : null}
     </li>
   );
+}
+
+function formatActivityWhen(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      dateStyle: "short",
+      timeStyle: "medium",
+      timeZone: "America/New_York",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
 }
 
 function ActivityMessageText({
