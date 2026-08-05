@@ -6,6 +6,7 @@ export {
   type ParsedSaveBadges,
   type ParsedSaveRevive,
   type ParsedSaveMoney,
+  type ParsedSaveRandomizer,
   type ParsedSaveSafariZoneAreas,
   type ParseSaveResult,
   type SaveMonCategory,
