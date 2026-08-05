@@ -1688,6 +1688,7 @@ export function TrainerBoard({
       {canEdit && pokemonInspect?.mode === "view" ? (
         <PokemonDetailsModal
           open
+          slug={challengeSlug}
           pokemon={pokemonFormToEntry(pokemonInspect.form)}
           onClose={() => setPokemonInspect(null)}
           onEdit={() =>
@@ -1860,6 +1861,7 @@ export function TrainerBoard({
       {!canEdit ? (
         <PokemonDetailsModal
           open={detailsPokemon != null}
+          slug={challengeSlug}
           pokemon={detailsPokemon}
           showCompetitiveDetails={showCompetitiveDetails}
           onClose={() => setDetailsPokemon(null)}

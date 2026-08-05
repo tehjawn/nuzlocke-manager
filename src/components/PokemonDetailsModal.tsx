@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { EvolutionPath } from "@/components/EvolutionPath";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
@@ -31,6 +32,7 @@ import {
   isEmptySpread,
   natureEffectDescription,
 } from "@/lib/stats";
+import { toolsHref } from "@/lib/tools-routes";
 
 const ModernEmeraldLearnset = dynamic(
   () =>
@@ -48,6 +50,8 @@ type PokemonDetailsModalProps = {
   open: boolean;
   pokemon: PokemonEntry | null;
   onClose: () => void;
+  /** Challenge slug — enables the species → Pokédex link (#236). */
+  slug?: string;
   /** Own-board: switch into the edit form. */
   onEdit?: () => void;
   /**
@@ -78,14 +82,31 @@ export function PokemonDetailsModal({
   open,
   pokemon,
   onClose,
+  slug,
   onEdit,
   showCompetitiveDetails = true,
 }: PokemonDetailsModalProps) {
   if (!open || !pokemon) return null;
 
   const nickname = pokemon.nickname?.trim() ?? "";
-  const title = nickname || pokemon.species;
   const showSpeciesInSubtitle = Boolean(nickname);
+  const pokedexHref =
+    slug && pokemon.pokedexId != null
+      ? toolsHref(slug, "pokedex", { id: pokemon.pokedexId })
+      : null;
+  const speciesLabel = pokedexHref ? (
+    <Link
+      href={pokedexHref}
+      className="text-accent-deep underline-offset-2 hover:underline"
+      onClick={onClose}
+    >
+      {pokemon.species}
+    </Link>
+  ) : (
+    pokemon.species
+  );
+  // Nickname stays plain text; species is the Pokédex link (title or subtitle).
+  const title = nickname || speciesLabel;
   const battle = showCompetitiveDetails
     ? calcBattleStats({
         pokedexId: pokemon.pokedexId,
@@ -133,18 +154,26 @@ export function PokemonDetailsModal({
       ? catchTierLabel(catchTier)
       : null;
 
-  const subtitleParts: string[] = [];
-  if (showSpeciesInSubtitle) subtitleParts.push(pokemon.species);
-  if (pokemon.level != null) subtitleParts.push(`Lv ${pokemon.level}`);
-  const subtitleText = subtitleParts.join(" · ");
-  const hasSubtitle =
-    Boolean(subtitleText) || pokemon.isShiny;
+  const subtitleParts: ReactNode[] = [];
+  if (showSpeciesInSubtitle) subtitleParts.push(speciesLabel);
+  if (pokemon.level != null) {
+    subtitleParts.push(
+      showSpeciesInSubtitle ? ` · Lv ${pokemon.level}` : `Lv ${pokemon.level}`,
+    );
+  }
+  const hasSubtitle = subtitleParts.length > 0 || pokemon.isShiny;
 
   const subtitle = (
     <>
-      {subtitleText}
+      {subtitleParts}
       {pokemon.isShiny ? (
-        <span className={subtitleText ? "ml-1.5 font-semibold text-accent-2" : "font-semibold text-accent-2"}>
+        <span
+          className={
+            subtitleParts.length > 0
+              ? "ml-1.5 font-semibold text-accent-2"
+              : "font-semibold text-accent-2"
+          }
+        >
           Shiny ✦
         </span>
       ) : null}
