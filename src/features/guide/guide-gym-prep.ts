@@ -1,5 +1,6 @@
 import type { GuideChapter, GuideGymPrep } from "@/features/guide/guide-types";
 import type { PokemonEntry } from "@/lib/challenge-types";
+import { DEFAULT_BADGE_DEFINITIONS } from "@/lib/constants";
 import { lookupMoveMeta } from "@/lib/move-meta";
 import type { PokemonType } from "@/lib/pokemon-types";
 
@@ -34,6 +35,79 @@ export function formatGymPrepTypeMatch(match: GymPrepTypeMatch): string {
 /** True when at least one answer is species typing rather than a coverage move. */
 export function hasTypingMatch(match: GymPrepSquadMatch): boolean {
   return match.typeMatches.some((m) => m.viaMove == null);
+}
+
+export type GymPrepLevelState = "under" | "ready" | "over";
+
+export type GymPrepLevelVerdict = {
+  state: GymPrepLevelState;
+  /** `level - aceLevel` (negative when under). */
+  delta: number;
+  level: number;
+  aceLevel: number;
+};
+
+/**
+ * Compare a mon’s level to the checkpoint ace / house-rule cap.
+ * `null` level → no verdict (render like today).
+ */
+export function levelVerdictForGymPrep(
+  level: number | null | undefined,
+  aceLevel: number,
+): GymPrepLevelVerdict | null {
+  if (level == null || !Number.isFinite(level)) return null;
+  const delta = level - aceLevel;
+  if (delta < 0) return { state: "under", delta, level, aceLevel };
+  if (delta > 0) return { state: "over", delta, level, aceLevel };
+  return { state: "ready", delta: 0, level, aceLevel };
+}
+
+/** Cleared gyms are history; the next unearned badge is the live house-rule cap. */
+export type GymPrepCapRole = "cleared" | "live" | "upcoming";
+
+/** First unearned badge in definition order — the live Trash Pack level cap. */
+export function liveCapBadgeKey(
+  earnedBadgeKeys: readonly string[],
+): string | null {
+  const earned = new Set(earnedBadgeKeys);
+  for (const def of DEFAULT_BADGE_DEFINITIONS) {
+    if (!earned.has(def.key)) return def.key;
+  }
+  return null;
+}
+
+export function gymPrepCapRole(
+  badgeKey: string | undefined,
+  earnedBadgeKeys: readonly string[],
+): GymPrepCapRole {
+  if (!badgeKey) return "upcoming";
+  if (earnedBadgeKeys.includes(badgeKey)) return "cleared";
+  return liveCapBadgeKey(earnedBadgeKeys) === badgeKey ? "live" : "upcoming";
+}
+
+/** e.g. "Lv. 24 · 7 under", "Lv. 31", "Lv. 36 · 5 over cap". */
+export function formatGymPrepLevelVerdict(
+  verdict: GymPrepLevelVerdict,
+  capRole: GymPrepCapRole = "live",
+): string {
+  if (verdict.state === "under") {
+    return `Lv. ${verdict.level} · ${Math.abs(verdict.delta)} under`;
+  }
+  if (verdict.state === "over") {
+    const overLabel =
+      capRole === "live" ? "over cap" : capRole === "cleared" ? "over" : "over target";
+    return `Lv. ${verdict.level} · ${verdict.delta} ${overLabel}`;
+  }
+  return `Lv. ${verdict.level}`;
+}
+
+/**
+ * Type/coverage answer that is also fight-ready on level (or has no level to
+ * judge). Underleveled answers still match on typing but do not count as covered.
+ */
+export function isGymPrepLevelReady(match: GymPrepSquadMatch, aceLevel: number): boolean {
+  const verdict = levelVerdictForGymPrep(match.entry.level, aceLevel);
+  return verdict == null || verdict.state !== "under";
 }
 
 /**

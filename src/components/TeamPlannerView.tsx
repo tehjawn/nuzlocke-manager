@@ -9,9 +9,14 @@ import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TypeBadge } from "@/components/TypeBadge";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
 import {
+  formatGymPrepLevelVerdict,
   formatGymPrepTypeMatch,
+  gymPrepCapRole,
   hasTypingMatch,
+  isGymPrepLevelReady,
+  levelVerdictForGymPrep,
   squadMatchesForGymPrep,
+  type GymPrepCapRole,
   type GymPrepSquadMatch,
 } from "@/features/guide/guide-gym-prep";
 import type { GuideGymPrep } from "@/features/guide/guide-types";
@@ -80,9 +85,42 @@ function monLabel(entry: PokemonEntry): string {
 }
 
 /** e.g. "Swampert · Water, Electric via Thunderbolt" */
-function prepMatchTip(match: GymPrepSquadMatch): string {
+function prepMatchTip(
+  match: GymPrepSquadMatch,
+  aceLevel: number,
+  capRole: GymPrepCapRole,
+): string {
   const reasons = match.typeMatches.map(formatGymPrepTypeMatch).join(", ");
-  return reasons ? `${monLabel(match.entry)} · ${reasons}` : monLabel(match.entry);
+  const base = reasons
+    ? `${monLabel(match.entry)} · ${reasons}`
+    : monLabel(match.entry);
+  const verdict = levelVerdictForGymPrep(match.entry.level, aceLevel);
+  if (!verdict) return base;
+  return `${base} · ${formatGymPrepLevelVerdict(verdict, capRole)}`;
+}
+
+/** Fixed-size status chip so ✓ / ! don’t shift the prep row. */
+function PrepStatusIcon({
+  kind,
+  title,
+}: {
+  kind: "cleared" | "under";
+  title: string;
+}) {
+  const cleared = kind === "cleared";
+  return (
+    <span
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold leading-none ${
+        cleared
+          ? "bg-accent/20 text-accent-deep"
+          : "bg-danger/15 text-danger"
+      }`}
+      title={title}
+      aria-label={cleared ? "Cleared" : "Underleveled"}
+    >
+      {cleared ? "✓" : "!"}
+    </span>
+  );
 }
 
 function firstEmptySlot(ids: readonly string[]): number {
@@ -459,7 +497,12 @@ export function TeamPlannerView({
               />
             ) : null}
             {mode === "prep" ? (
-              <PrepPanels slug={slug} draft={draft} gymPreps={gymPreps} />
+              <PrepPanels
+                slug={slug}
+                draft={draft}
+                gymPreps={gymPreps}
+                earnedBadgeKeys={viewer?.earnedBadgeKeys ?? []}
+              />
             ) : null}
             {mode === "vs" ? (
               <VsTrainerPanel
@@ -926,6 +969,7 @@ function PrepPanels({
   slug,
   draft,
   gymPreps,
+  earnedBadgeKeys,
 }: {
   slug: string;
   draft: PokemonEntry[];
@@ -935,6 +979,7 @@ function PrepPanels({
     title: string;
     prep: GuideGymPrep;
   }>;
+  earnedBadgeKeys: readonly string[];
 }) {
   const draftAsSquad = useMemo(
     () => draft.map((p) => ({ ...p, slot: "MAIN" as const })),
@@ -943,18 +988,26 @@ function PrepPanels({
 
   const gymAnswered = useMemo(
     () =>
-      gymPreps.filter(
-        (entry) => squadMatchesForGymPrep(draftAsSquad, entry.prep).length > 0,
-      ).length,
-    [gymPreps, draftAsSquad],
+      gymPreps.filter((entry) => {
+        if (gymPrepCapRole(entry.prep.badgeKey, earnedBadgeKeys) === "cleared") {
+          return true;
+        }
+        const matches = squadMatchesForGymPrep(draftAsSquad, entry.prep);
+        return matches.some((m) => isGymPrepLevelReady(m, entry.prep.aceLevel));
+      }).length,
+    [gymPreps, draftAsSquad, earnedBadgeKeys],
   );
 
   const leagueAnswered = useMemo(
     () =>
-      ELITE_FOUR_PREP.filter(
-        (prep) => squadMatchesForGymPrep(draftAsSquad, prep).length > 0,
-      ).length,
-    [draftAsSquad],
+      ELITE_FOUR_PREP.filter((prep) => {
+        if (gymPrepCapRole(prep.badgeKey, earnedBadgeKeys) === "cleared") {
+          return true;
+        }
+        const matches = squadMatchesForGymPrep(draftAsSquad, prep);
+        return matches.some((m) => isGymPrepLevelReady(m, prep.aceLevel));
+      }).length,
+    [draftAsSquad, earnedBadgeKeys],
   );
 
   const gymGaps = gymPreps.length - gymAnswered;
@@ -987,8 +1040,8 @@ function PrepPanels({
             {draft.length === 0
               ? "Place a planned Main to see draft answers."
               : gymGaps + leagueGaps === 0
-                ? "Every specialty has an answer in this draft — typing or a known coverage move."
-                : `Expand a row for bring / careful types. ${
+                ? "Every specialty has a level-ready answer in this draft — typing or a known coverage move."
+                : `Expand a row for bring / careful types and level gaps. ${
                     gymGaps > 0
                       ? `${gymGaps} gym${gymGaps === 1 ? "" : "s"} still open.`
                       : `${leagueGaps} league slot${leagueGaps === 1 ? "" : "s"} still open.`
@@ -1009,6 +1062,7 @@ function PrepPanels({
               prep={entry.prep}
               draft={draft}
               badge={gymBadgeFromTitle(entry.title)}
+              earnedBadgeKeys={earnedBadgeKeys}
               guideHref={toolsHref(slug, "guide", {
                 chapter: entry.chapterId,
               })}
@@ -1036,14 +1090,16 @@ function PrepPanels({
               index={index + 1}
               prep={prep}
               draft={draft}
+              earnedBadgeKeys={earnedBadgeKeys}
             />
           ))}
         </ul>
       </div>
 
       <p className="mt-2 text-[10px] leading-snug text-muted">
-        A dashed outline means that answer comes from a known damaging move
-        rather than the Pokémon’s own typing — expand a row to see which move.
+        Green dotted outline = species typing answer. Gold dashed outline =
+        known damaging coverage move (expand a row to see which). Underleveled
+        answers still show but don’t count as covered.
       </p>
     </Frame>
   );
@@ -1072,12 +1128,14 @@ function PrepCard({
   index,
   badge,
   guideHref,
+  earnedBadgeKeys,
 }: {
   prep: GuideGymPrep;
   draft: PokemonEntry[];
   index?: number;
   badge?: string | null;
   guideHref?: string;
+  earnedBadgeKeys: readonly string[];
 }) {
   const [open, setOpen] = useState(false);
   const matches = squadMatchesForGymPrep(
@@ -1086,9 +1144,14 @@ function PrepCard({
   );
   const specialty = prep.specialtyTypes[0];
   const notes = prep.partyNotes ? shortenPartyNotes(prep.partyNotes) : "";
+  const capRole = gymPrepCapRole(prep.badgeKey, earnedBadgeKeys);
+  const cleared = capRole === "cleared";
+  const levelReady = matches.some((m) => isGymPrepLevelReady(m, prep.aceLevel));
+  const hasTypeAnswer = matches.length > 0;
+  const underOnly = hasTypeAnswer && !levelReady && !cleared;
 
   return (
-    <li>
+    <li className={cleared ? "opacity-70" : undefined}>
       <details
         open={open}
         onToggle={(event) => setOpen(event.currentTarget.open)}
@@ -1100,48 +1163,93 @@ function PrepCard({
               {index}.
             </span>
           ) : null}
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-            {prep.leaderName}
-            {badge ? (
-              <span className="ml-1.5 font-medium text-muted">{badge}</span>
-            ) : null}
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+            <span className={cleared ? "text-muted line-through" : "text-ink"}>
+              {prep.leaderName}
+              {badge ? (
+                <span className="ml-1.5 font-medium text-muted">{badge}</span>
+              ) : null}
+            </span>
+            <span
+              className={`ml-1.5 font-medium tabular-nums ${
+                cleared
+                  ? "text-accent-deep"
+                  : underOnly
+                    ? "text-danger"
+                    : capRole === "live"
+                      ? "text-accent-2"
+                      : "text-muted"
+              }`}
+              title={
+                cleared
+                  ? "Badge earned — checkpoint cleared"
+                  : underOnly
+                    ? "Type answers exist but all are underleveled"
+                    : capRole === "live"
+                      ? "Live house-rule level cap (next undefeated gym)"
+                      : "Upcoming target level"
+              }
+            >
+              {cleared ? "· Cleared!" : `· Lv. ${prep.aceLevel}`}
+            </span>
           </span>
-          {specialty ? <TypeBadge type={specialty} size="sm" /> : null}
-          <span className="flex shrink-0 items-center gap-0.5">
-            {matches.length > 0 ? (
-              matches.slice(0, SUMMARY_MATCH_LIMIT).map((match) => (
-                <span
-                  key={match.entry.id}
-                  className={`inline-flex rounded ${
-                    hasTypingMatch(match)
-                      ? "border border-transparent"
-                      : "border border-dashed border-accent-2/60"
-                  }`}
-                  title={prepMatchTip(match)}
-                >
-                  <PokemonSpriteImage
-                    alt={monLabel(match.entry)}
-                    className="pixelated h-6 w-6 object-contain"
-                    height={24}
-                    loading="lazy"
-                    pokedexId={match.entry.pokedexId}
-                    shiny={match.entry.isShiny}
-                    species={match.entry.species}
-                    width={24}
-                  />
+          {specialty || !cleared || underOnly ? (
+            <span className="flex shrink-0 items-center gap-3">
+              {specialty ? <TypeBadge type={specialty} size="sm" /> : null}
+              {!cleared ? (
+                <span className="flex items-center gap-0.5">
+                  {matches.length > 0 ? (
+                    matches.slice(0, SUMMARY_MATCH_LIMIT).map((match) => (
+                      <span
+                        key={match.entry.id}
+                        className={`inline-flex rounded ${
+                          hasTypingMatch(match)
+                            ? "border border-dotted border-accent/60"
+                            : "border border-dashed border-accent-2/60"
+                        } ${
+                          levelVerdictForGymPrep(
+                            match.entry.level,
+                            prep.aceLevel,
+                          )?.state === "under"
+                            ? "opacity-50"
+                            : ""
+                        }`}
+                        title={prepMatchTip(match, prep.aceLevel, capRole)}
+                      >
+                        <PokemonSpriteImage
+                          alt={monLabel(match.entry)}
+                          className="pixelated h-6 w-6 object-contain"
+                          height={24}
+                          loading="lazy"
+                          pokedexId={match.entry.pokedexId}
+                          shiny={match.entry.isShiny}
+                          species={match.entry.species}
+                          width={24}
+                        />
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[10px] font-semibold text-danger/80">
+                      —
+                    </span>
+                  )}
+                  {matches.length > SUMMARY_MATCH_LIMIT ? (
+                    <span className="text-[10px] font-semibold tabular-nums text-muted">
+                      +{matches.length - SUMMARY_MATCH_LIMIT}
+                    </span>
+                  ) : null}
                 </span>
-              ))
-            ) : (
-              <span className="text-[10px] font-semibold text-danger/80">
-                —
-              </span>
-            )}
-            {matches.length > SUMMARY_MATCH_LIMIT ? (
-              <span className="text-[10px] font-semibold tabular-nums text-muted">
-                +{matches.length - SUMMARY_MATCH_LIMIT}
-              </span>
-            ) : null}
-          </span>
+              ) : null}
+              {cleared ? (
+                <PrepStatusIcon kind="cleared" title="Badge earned" />
+              ) : underOnly ? (
+                <PrepStatusIcon
+                  kind="under"
+                  title="Type answers exist but all are underleveled"
+                />
+              ) : null}
+            </span>
+          ) : null}
         </summary>
         <div className="space-y-2 border-t border-frame/40 px-2.5 py-2 pl-7">
           {matches.length > 0 ? (
@@ -1149,15 +1257,23 @@ function PrepCard({
               {matches.map((match) => {
                 const primary = match.typeMatches[0];
                 const viaMove = primary?.viaMove ?? null;
+                const verdict = levelVerdictForGymPrep(
+                  match.entry.level,
+                  prep.aceLevel,
+                );
                 return (
                   <li
                     key={match.entry.id}
                     className={`inline-flex items-center gap-1 rounded px-1 py-0.5 ${
-                      viaMove
-                        ? "border border-dashed border-accent-2/50 bg-accent-2/10"
-                        : "border border-accent/30 bg-accent/10"
+                      verdict?.state === "under"
+                        ? "border border-danger/40 bg-danger/5"
+                        : verdict?.state === "over" && capRole === "live"
+                          ? "border border-accent-2/50 bg-accent-2/10"
+                          : viaMove
+                            ? "border border-dashed border-accent-2/50 bg-accent-2/10"
+                            : "border border-dotted border-accent/50 bg-accent/10"
                     }`}
-                    title={prepMatchTip(match)}
+                    title={prepMatchTip(match, prep.aceLevel, capRole)}
                   >
                     <PokemonSpriteImage
                       alt={monLabel(match.entry)}
@@ -1182,6 +1298,19 @@ function PrepCard({
                     {viaMove ? (
                       <span className="text-[10px] font-medium text-muted">
                         via {viaMove}
+                      </span>
+                    ) : null}
+                    {verdict ? (
+                      <span
+                        className={`text-[10px] font-semibold tabular-nums ${
+                          verdict.state === "under"
+                            ? "text-danger"
+                            : verdict.state === "over" && capRole === "live"
+                              ? "text-accent-2"
+                              : "text-muted"
+                        }`}
+                      >
+                        {formatGymPrepLevelVerdict(verdict, capRole)}
                       </span>
                     ) : null}
                   </li>
