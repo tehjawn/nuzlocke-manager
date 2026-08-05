@@ -5,6 +5,7 @@ export {
   type ParsedSaveTrainer,
   type ParsedSaveBadges,
   type ParsedSaveRevive,
+  type ParsedSaveEncounterFlags,
   type ParsedSaveMoney,
   type ParsedSaveRandomizer,
   type ParsedSaveSafariZoneAreas,
