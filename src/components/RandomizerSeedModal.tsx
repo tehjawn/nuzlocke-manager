@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -354,6 +354,7 @@ export function RandomizerSeedModal({
   const [obtainFilter, setObtainFilter] = useState<ObtainabilityBucket | null>(
     null,
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredSpecies = useMemo(() => {
     if (!parsed) return [];
@@ -435,6 +436,7 @@ export function RandomizerSeedModal({
     setQuery("");
     setCompTiers([]);
     setObtainFilter(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function onFile(file: File | null) {
@@ -513,12 +515,35 @@ export function RandomizerSeedModal({
   const confidence =
     check && check.checked > 0 ? check.matched / check.checked : null;
   const lowConfidence = confidence != null && confidence < 0.7;
+  const playable = Boolean(rz?.reliable && !rz?.chaos);
+  const hasSecondaryFilters = obtainFilter != null || compTiers.length > 0;
+  const filterSummary = [
+    obtainFilter ? `Scarcity: ${bucketLabel(obtainFilter)}` : null,
+    compTiers.length > 0
+      ? `Comp: ${compTiers.map((t) => (t === "untiered" ? "–" : t)).join(",")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const seedHex = rz
+    ? rz.otId.toString(16).toUpperCase().padStart(8, "0")
+    : "";
+  const settingsChips = rz ? describeSettings(rz) : [];
+
+  function clearSecondaryFilters() {
+    setObtainFilter(null);
+    setCompTiers([]);
+  }
+
+  const accept =
+    ".state,.sav,.srm,.ss0,.ss1,.ss2,.ss3,.ss4,.ss5,.ss6,.ss7,.ss8,.ss9,.s0,.s1,.s2,.s3,.s4,.s5,.s6,.s7,.s8,.s9,.sr0,.sr1,.sr2,.sr3,.sr4,.sr5,.sr6,.sr7,.sr8,.sr9,application/octet-stream";
 
   return (
     <Modal
       open={open}
       title="Randomizer seed parser"
       size="fullscreen"
+      containScroll
       onClose={() => {
         reset();
         onClose();
@@ -541,239 +566,330 @@ export function RandomizerSeedModal({
         </div>
       }
     >
-      <div className="space-y-4 text-sm">
-        <p className="text-muted">
-          Modern Emerald doesn’t rewrite encounter tables — it rerolls each
-          species as it spawns, seeded by the player’s trainer ID. Drop in their
-          save and this replays that mapping offline: where a Pokémon actually
-          lives in their run, what each route holds, and what the scripted
-          encounters rolled. Species they already own and route slots they have
-          already spent are marked. Afterplay’s{" "}
-          <code className="text-ink">.sav</code> /{" "}
-          <code className="text-ink">.srm</code> export is the most reliable
-          source; emulator states work too.
-        </p>
+      <div className="flex min-h-0 flex-1 flex-col text-sm">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={accept}
+          disabled={parsing}
+          className="sr-only"
+          onChange={(e) => {
+            void onFile(e.target.files?.[0] ?? null);
+            // Allow re-picking the same file after a failed parse.
+            e.target.value = "";
+          }}
+        />
 
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold tracking-wide text-muted">
-            Save file
-          </span>
-          <input
-            type="file"
-            accept=".state,.sav,.srm,.ss0,.ss1,.ss2,.ss3,.ss4,.ss5,.ss6,.ss7,.ss8,.ss9,.s0,.s1,.s2,.s3,.s4,.s5,.s6,.s7,.s8,.s9,.sr0,.sr1,.sr2,.sr3,.sr4,.sr5,.sr6,.sr7,.sr8,.sr9,application/octet-stream"
-            disabled={parsing}
-            className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-frame file:bg-surface-2 file:px-3 file:py-1.5 file:text-xs file:font-semibold"
-            onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
+        {!parsed ? (
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-5">
+            <p className="text-muted">
+              Drop a Gen 3 save to replay this run’s randomizer encounter map —
+              where each Pokémon lives, what each route holds, and what
+              scripted encounters rolled.
+            </p>
 
-        {parsing ? <p className="text-muted">Reading save…</p> : null}
-        {error ? (
-          <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-danger">
-            {error}
-          </p>
-        ) : null}
+            <details className="group rounded-lg border border-frame/50 bg-surface-2">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold tracking-tight text-muted [&::-webkit-details-marker]:hidden">
+                How this works
+                <span
+                  aria-hidden
+                  className="text-[0.65rem] transition group-open:rotate-90"
+                >
+                  ▸
+                </span>
+              </summary>
+              <p className="border-t border-frame/40 px-3 py-2 text-xs leading-relaxed text-muted">
+                Modern Emerald doesn’t rewrite encounter tables — it rerolls
+                each species as it spawns, seeded by the player’s trainer ID.
+                This tool replays that mapping offline. Species they already
+                own and route slots they have already spent are marked.
+                Afterplay’s <code className="text-ink">.sav</code> /{" "}
+                <code className="text-ink">.srm</code> export is the most
+                reliable source; emulator states work too.
+              </p>
+            </details>
 
-        {parsed && rz ? (
+            <button
+              type="button"
+              disabled={parsing}
+              className="pressable flex w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-frame bg-surface-2 px-4 py-10 text-center disabled:opacity-60"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <span className="text-sm font-semibold tracking-tight text-ink">
+                {parsing ? "Reading save…" : "Choose a save file"}
+              </span>
+              <span className="text-xs text-muted">
+                .sav / .srm preferred · emulator states accepted
+              </span>
+            </button>
+
+            {error ? (
+              <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-danger">
+                {error}
+              </p>
+            ) : null}
+          </div>
+        ) : rz ? (
           <>
-            <div className="space-y-2 rounded-lg border border-frame bg-surface-2 p-3">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <p className="text-xs font-semibold tracking-wide text-muted">
-                  Seed
+            <div className="shrink-0 space-y-2 border-b border-frame/60 bg-surface-2/90 px-4 py-2.5 sm:px-5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <p className="min-w-0 font-mono text-sm font-semibold tracking-tight text-ink">
+                  Seed {seedHex}
                 </p>
-                <p className="font-mono text-ink">
-                  {rz.otId.toString(16).toUpperCase().padStart(8, "0")}
-                </p>
-                <p className="text-xs text-muted">
+                <p className="min-w-0 truncate text-xs text-muted">
                   {parsed.trainerName ? `${parsed.trainerName} · ` : ""}
                   {parsed.format}
                 </p>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {describeSettings(rz).map((chip) => (
-                  <span
-                    key={chip}
-                    className="rounded-full border border-frame bg-surface px-2 py-0.5 text-xs text-muted"
-                  >
-                    {chip}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {!rz.reliable ? (
-              <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-danger">
-                Couldn’t read the trainer ID or the randomizer settings from this
-                save. Ask for an Afterplay <code>.sav</code> / <code>.srm</code>{" "}
-                export instead of an emulator state.
-              </p>
-            ) : rz.chaos ? (
-              <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-danger">
-                Chaos mode is on. The ROM rerolls from live RNG on every
-                encounter rather than from the seed, so no mapping can be
-                predicted for this run — not by this tool and not by anything
-                else.
-              </p>
-            ) : (
-              <>
-                {check && check.checked > 0 ? (
-                  <p
-                    className={`rounded-lg border px-3 py-2 text-xs ${
-                      lowConfidence
-                        ? "border-danger/40 bg-danger/10 text-danger"
-                        : "border-frame bg-surface-2 text-muted"
-                    }`}
-                  >
-                    <strong className="font-semibold">
-                      {check.matched}/{check.checked}
-                    </strong>{" "}
-                    of this trainer’s own catches land on the species this seed
-                    predicts for those routes
-                    {check.skipped > 0
-                      ? ` (${check.skipped} skipped — gifts, fossils, and trades have no wild table)`
-                      : ""}
-                    .{" "}
-                    {lowConfidence
-                      ? "That is too low to trust: the tables here are pinned to one Modern Emerald build, and this save looks like a different one. Treat everything below as unverified."
-                      : "Evolved catches count when the seed rolls a relative — high-level slots spawn already-evolved."}
-                  </p>
-                ) : null}
-
-                {!parsed.encounterFlagsReliable ? (
-                  <p className="rounded-lg border border-frame bg-surface-2 px-3 py-2 text-xs text-muted">
-                    Couldn’t read this run’s encounter flags, so spent route
-                    slots aren’t marked below. Caught species still are.
-                  </p>
-                ) : null}
-
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-0.5 text-[0.65rem] font-semibold tracking-wide text-muted">
-                      Scarcity
-                    </span>
-                    {OBTAINABILITY_CHIPS.map((chip) => {
-                      const count = parsed.obtainability[chip.id].length;
-                      const active = obtainFilter === chip.id;
-                      return (
-                        <button
-                          key={chip.id}
-                          type="button"
-                          aria-pressed={active}
-                          title={bucketHint(chip.id)}
-                          className={`pressable rounded-full border px-2.5 py-1 text-xs font-semibold tracking-tight ${
-                            active
-                              ? chip.tone
-                              : "border-frame/50 bg-surface text-muted opacity-70 hover:opacity-100"
-                          }`}
-                          onClick={() => {
-                            setObtainFilter((prev) =>
-                              prev === chip.id ? null : chip.id,
-                            );
-                            setView("species");
-                          }}
-                        >
-                          {bucketLabel(chip.id)} ({count})
-                        </button>
-                      );
-                    })}
-                    {obtainFilter ? (
-                      <button
-                        type="button"
-                        className="pressable rounded-full border border-frame/50 bg-surface px-2.5 py-1 text-xs font-semibold tracking-tight text-muted hover:text-ink"
-                        onClick={() => setObtainFilter(null)}
+                <details className="group relative">
+                  <summary className="cursor-pointer list-none text-[0.65rem] font-semibold text-muted underline-offset-2 hover:underline [&::-webkit-details-marker]:hidden group-open:text-ink">
+                    Settings
+                  </summary>
+                  <div className="absolute left-0 top-full z-20 mt-1 flex max-w-[min(100vw-2rem,24rem)] flex-col gap-0.5 rounded-lg border border-frame bg-surface p-1.5 shadow-lg">
+                    {settingsChips.map((chip) => (
+                      <span
+                        key={chip}
+                        className="rounded px-2 py-1 text-xs text-muted"
                       >
-                        Clear
-                      </button>
-                    ) : null}
-                  </div>
-                  {obtainFilter ? (
-                    <p className="text-[0.7rem] leading-snug text-muted">
-                      {bucketHint(obtainFilter)}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex flex-wrap gap-1 rounded-lg border border-frame bg-surface-2 p-1">
-                    {VIEW_TABS.map((tab) => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        aria-pressed={view === tab.id}
-                        disabled={
-                          obtainFilter != null &&
-                          obtainFilter !== "singleSlot" &&
-                          tab.id !== "species"
-                        }
-                        className={`pressable rounded-md px-3 py-1.5 text-xs font-semibold tracking-tight ${
-                          view === tab.id
-                            ? "bg-accent text-[var(--on-accent)]"
-                            : "text-muted"
-                        } disabled:cursor-not-allowed disabled:opacity-40`}
-                        onClick={() => {
-                          setView(tab.id);
-                          if (tab.id === "statics") setObtainFilter(null);
-                        }}
-                      >
-                        {tab.label}
-                      </button>
+                        {chip}
+                      </span>
                     ))}
                   </div>
-                  <input
-                    type="search"
-                    value={query}
-                    placeholder="Filter by Pokémon or route…"
-                    aria-label="Filter by Pokémon or route"
-                    className="min-w-0 flex-1 rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </div>
+                </details>
 
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="mr-0.5 text-[0.65rem] font-semibold tracking-wide text-muted">
-                    Comp
-                  </span>
-                  {COMP_TIER_FILTERS.map((tier) => {
-                    const active = compTiers.includes(tier.id);
-                    const tone =
-                      tier.id === "untiered"
-                        ? "border-frame/40 bg-surface-2/70 text-muted"
-                        : competitiveTierToneClass(tier.id);
-                    return (
-                      <button
-                        key={tier.id}
-                        type="button"
-                        aria-pressed={active}
-                        title={
-                          tier.id === "untiered"
-                            ? "Untiered — not curated yet"
-                            : `Competitive ${tier.id}`
-                        }
-                        className={`pressable inline-flex min-w-7 items-center justify-center rounded border px-1.5 py-0.5 text-[0.7rem] font-bold leading-none ${
-                          active
-                            ? tone
-                            : "border-frame/50 bg-surface text-muted opacity-55 hover:opacity-90"
-                        }`}
-                        onClick={() =>
-                          setCompTiers((prev) => toggleCompTier(prev, tier.id))
-                        }
-                      >
-                        {tier.label}
-                      </button>
-                    );
-                  })}
-                  {compTiers.length > 0 ? (
-                    <button
-                      type="button"
-                      className="pressable ml-0.5 text-[0.65rem] font-semibold text-muted underline-offset-2 hover:text-ink hover:underline"
-                      onClick={() => setCompTiers([])}
+                <button
+                  type="button"
+                  disabled={parsing}
+                  className="pressable ml-auto shrink-0 rounded-md border border-frame bg-surface px-2.5 py-1 text-[0.7rem] font-semibold tracking-tight text-muted hover:text-ink disabled:opacity-60"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {parsing ? "Reading…" : "Replace save…"}
+                </button>
+              </div>
+
+              {error ? (
+                <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+                  {error}
+                </p>
+              ) : null}
+
+              {!rz.reliable ? (
+                <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+                  Couldn’t read the trainer ID or the randomizer settings from
+                  this save. Ask for an Afterplay{" "}
+                  <code className="text-ink">.sav</code> /{" "}
+                  <code className="text-ink">.srm</code> export instead of an
+                  emulator state.
+                </p>
+              ) : rz.chaos ? (
+                <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+                  Chaos mode is on. The ROM rerolls from live RNG on every
+                  encounter rather than from the seed, so no mapping can be
+                  predicted for this run — not by this tool and not by anything
+                  else.
+                </p>
+              ) : (
+                <>
+                  {check && check.checked > 0 ? (
+                    <details
+                      className={`group rounded-lg border px-3 py-1.5 text-xs ${
+                        lowConfidence
+                          ? "border-danger/40 bg-danger/10 text-danger"
+                          : "border-frame/60 bg-surface text-muted"
+                      }`}
                     >
-                      Clear
-                    </button>
-                  ) : (
-                    <span className="text-[0.65rem] text-muted">All tiers</span>
-                  )}
-                </div>
+                      <summary className="flex cursor-pointer list-none items-baseline gap-x-2 [&::-webkit-details-marker]:hidden">
+                        <span>
+                          <strong className="font-semibold">
+                            {check.matched}/{check.checked}
+                          </strong>{" "}
+                          catches match
+                          {lowConfidence ? " — too low to trust" : ""}
+                        </span>
+                        <span className="ml-auto shrink-0 text-[0.65rem] font-semibold underline-offset-2 hover:underline">
+                          <span className="group-open:hidden">Details</span>
+                          <span className="hidden group-open:inline">Less</span>
+                        </span>
+                      </summary>
+                      <p className="mt-1.5 border-t border-current/15 pt-1.5 leading-relaxed">
+                        {check.matched}/{check.checked} of this trainer’s own
+                        catches land on the species this seed predicts for those
+                        routes
+                        {check.skipped > 0
+                          ? ` (${check.skipped} skipped — gifts, fossils, and trades have no wild table)`
+                          : ""}
+                        .{" "}
+                        {lowConfidence
+                          ? "That is too low to trust: the tables here are pinned to one Modern Emerald build, and this save looks like a different one. Treat everything below as unverified."
+                          : "Evolved catches count when the seed rolls a relative — high-level slots spawn already-evolved."}
+                      </p>
+                    </details>
+                  ) : null}
+
+                  {!parsed.encounterFlagsReliable ? (
+                    <p className="rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs text-muted">
+                      Couldn’t read this run’s encounter flags, so spent route
+                      slots aren’t marked below. Caught species still are.
+                    </p>
+                  ) : null}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap gap-1 rounded-lg border border-frame bg-surface p-1">
+                      {VIEW_TABS.map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          aria-pressed={view === tab.id}
+                          disabled={
+                            obtainFilter != null &&
+                            obtainFilter !== "singleSlot" &&
+                            tab.id !== "species"
+                          }
+                          className={`pressable rounded-md px-2.5 py-1 text-xs font-semibold tracking-tight ${
+                            view === tab.id
+                              ? "bg-accent text-[var(--on-accent)]"
+                              : "text-muted"
+                          } disabled:cursor-not-allowed disabled:opacity-40`}
+                          onClick={() => {
+                            setView(tab.id);
+                            if (tab.id === "statics") setObtainFilter(null);
+                          }}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <input
+                      type="search"
+                      value={query}
+                      placeholder="Search…"
+                      aria-label="Filter by Pokémon or route"
+                      className="min-w-[8rem] flex-1 rounded-lg border border-frame bg-surface px-2.5 py-1.5 text-sm"
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+
+                    {hasSecondaryFilters ? (
+                      <span className="inline-flex max-w-full items-center gap-1.5 text-[0.7rem] font-semibold text-accent-deep">
+                        <span className="truncate rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5">
+                          {filterSummary}
+                        </span>
+                        <button
+                          type="button"
+                          className="shrink-0 underline underline-offset-2 hover:text-ink"
+                          onClick={clearSecondaryFilters}
+                        >
+                          Clear
+                        </button>
+                      </span>
+                    ) : null}
+
+                    <details className="group relative">
+                      <summary
+                        className={`pressable cursor-pointer list-none rounded-lg border px-2.5 py-1.5 text-xs font-semibold tracking-tight [&::-webkit-details-marker]:hidden ${
+                          hasSecondaryFilters
+                            ? "border-accent/40 bg-accent/10 text-accent-deep"
+                            : "border-frame bg-surface text-muted hover:text-ink"
+                        }`}
+                      >
+                        Filters ▾
+                      </summary>
+                      <div className="absolute right-0 top-full z-30 mt-1 w-[min(100vw-2rem,20rem)] space-y-3 rounded-lg border border-frame bg-surface p-3 shadow-lg">
+                        <div className="space-y-1.5">
+                          <p className="text-[0.65rem] font-semibold tracking-wide text-muted">
+                            Scarcity
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {OBTAINABILITY_CHIPS.map((chip) => {
+                              const count =
+                                parsed.obtainability[chip.id].length;
+                              const active = obtainFilter === chip.id;
+                              return (
+                                <button
+                                  key={chip.id}
+                                  type="button"
+                                  aria-pressed={active}
+                                  title={bucketHint(chip.id)}
+                                  className={`pressable rounded-full border px-2.5 py-1 text-xs font-semibold tracking-tight ${
+                                    active
+                                      ? chip.tone
+                                      : "border-frame/50 bg-surface-2 text-muted opacity-70 hover:opacity-100"
+                                  }`}
+                                  onClick={() => {
+                                    setObtainFilter((prev) =>
+                                      prev === chip.id ? null : chip.id,
+                                    );
+                                    setView("species");
+                                  }}
+                                >
+                                  {bucketLabel(chip.id)} ({count})
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <p className="text-[0.65rem] font-semibold tracking-wide text-muted">
+                            Comp
+                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {COMP_TIER_FILTERS.map((tier) => {
+                              const active = compTiers.includes(tier.id);
+                              const tone =
+                                tier.id === "untiered"
+                                  ? "border-frame/40 bg-surface-2/70 text-muted"
+                                  : competitiveTierToneClass(tier.id);
+                              return (
+                                <button
+                                  key={tier.id}
+                                  type="button"
+                                  aria-pressed={active}
+                                  title={
+                                    tier.id === "untiered"
+                                      ? "Untiered — not curated yet"
+                                      : `Competitive ${tier.id}`
+                                  }
+                                  className={`pressable inline-flex min-w-7 items-center justify-center rounded border px-1.5 py-0.5 text-[0.7rem] font-bold leading-none ${
+                                    active
+                                      ? tone
+                                      : "border-frame/50 bg-surface-2 text-muted opacity-55 hover:opacity-90"
+                                  }`}
+                                  onClick={() =>
+                                    setCompTiers((prev) =>
+                                      toggleCompTier(prev, tier.id),
+                                    )
+                                  }
+                                >
+                                  {tier.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {hasSecondaryFilters ? (
+                          <button
+                            type="button"
+                            className="text-[0.7rem] font-semibold text-muted underline underline-offset-2 hover:text-ink"
+                            onClick={clearSecondaryFilters}
+                          >
+                            Clear filters
+                          </button>
+                        ) : null}
+                      </div>
+                    </details>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {playable ? (
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
+                {obtainFilter ? (
+                  <p className="rounded-lg border border-frame/50 bg-surface-2 px-3 py-1.5 text-[0.7rem] leading-snug text-muted">
+                    {bucketHint(obtainFilter)}
+                  </p>
+                ) : null}
 
                 {obtainFilter && obtainFilter !== "singleSlot" ? (
                   <BucketSpeciesView
@@ -803,9 +919,9 @@ export function RandomizerSeedModal({
                     isRouteUsed={parsed.isRouteUsed}
                     slug={slug}
                     onNavigate={onClose}
-                    scarcityNote={
+                    listNote={
                       obtainFilter === "singleSlot"
-                        ? "Single-slot species — one wild area in this seed."
+                        ? "Single-slot species in this seed"
                         : null
                     }
                   />
@@ -829,8 +945,8 @@ export function RandomizerSeedModal({
                     onNavigate={onClose}
                   />
                 )}
-              </>
-            )}
+              </div>
+            ) : null}
           </>
         ) : null}
       </div>
@@ -927,7 +1043,7 @@ function SpeciesView({
   isRouteUsed,
   slug,
   onNavigate,
-  scarcityNote = null,
+  listNote = null,
 }: {
   entries: SpeciesSighting[];
   total: number;
@@ -935,21 +1051,20 @@ function SpeciesView({
   isRouteUsed: (label: string) => boolean;
   slug: string;
   onNavigate: () => void;
-  scarcityNote?: string | null;
+  /** Overrides the default “catchable somewhere” blurb (e.g. single-slot). */
+  listNote?: string | null;
 }) {
   const shown = entries.slice(0, SPECIES_PAGE);
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted">
-        {scarcityNote ? `${scarcityNote} ` : null}
-        {entries.length} of {total} species
-        {scarcityNote
-          ? ""
-          : " are catchable somewhere in this seed"}
+        {listNote
+          ? `${entries.length} of ${total} — ${listNote}`
+          : `${entries.length} of ${total} species are catchable somewhere in this seed`}
         {shown.length < entries.length
           ? ` — showing the first ${shown.length}, keep typing to narrow it down`
           : ""}
-        {scarcityNote ? "." : ". Best route first."}
+        {listNote ? "." : ". Best route first."}
       </p>
       <ul className="space-y-1.5">
         {shown.map((entry) => (
@@ -1169,23 +1284,64 @@ function RouteView({
     [areas, isRouteUsed, resolveSlot],
   );
   const usedCount = groups.filter((g) => g.used).length;
+  const [openLabels, setOpenLabels] = useState<Set<string>>(() => new Set());
+
+  function setRouteOpen(label: string, open: boolean) {
+    setOpenLabels((prev) => {
+      const has = prev.has(label);
+      if (open === has) return prev;
+      const next = new Set(prev);
+      if (open) next.add(label);
+      else next.delete(label);
+      return next;
+    });
+  }
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted">
-        {groups.length} route{groups.length === 1 ? "" : "s"}
-        {areas.length !== totalTables
-          ? ` matching filter (${totalTables} wild tables in seed)`
-          : ` · ${totalTables} wild tables`}
-        {usedCount > 0
-          ? ` · ${usedCount} slot${usedCount === 1 ? "" : "s"} spent`
-          : ""}
-        . Collapsed by default — expand to scan the pool.
-      </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-xs text-muted">
+          {groups.length} route{groups.length === 1 ? "" : "s"}
+          {areas.length !== totalTables
+            ? ` matching filter (${totalTables} wild tables in seed)`
+            : ` · ${totalTables} wild tables`}
+          {usedCount > 0
+            ? ` · ${usedCount} slot${usedCount === 1 ? "" : "s"} spent`
+            : ""}
+          .
+        </p>
+        {groups.length > 0 ? (
+          <p className="shrink-0 text-[0.7rem] font-semibold text-muted">
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-ink"
+              onClick={() =>
+                setOpenLabels(new Set(groups.map((group) => group.label)))
+              }
+            >
+              Expand all
+            </button>
+            <span aria-hidden className="mx-1.5">
+              ·
+            </span>
+            <button
+              type="button"
+              className="underline underline-offset-2 hover:text-ink"
+              onClick={() => setOpenLabels(new Set())}
+            >
+              Collapse all
+            </button>
+          </p>
+        ) : null}
+      </div>
       <ul className="space-y-1.5">
         {groups.map((group) => (
           <li key={group.label}>
             <details
+              open={openLabels.has(group.label)}
+              onToggle={(event) => {
+                setRouteOpen(group.label, event.currentTarget.open);
+              }}
               className={`group/route overflow-hidden rounded-lg border ${
                 group.used
                   ? "border-accent/50 bg-accent/10"

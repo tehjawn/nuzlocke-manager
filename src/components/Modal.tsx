@@ -22,6 +22,11 @@ type ModalProps = {
   /** @deprecated Prefer `size="wide"`. */
   wide?: boolean;
   size?: "default" | "md" | "wide" | "fullscreen";
+  /**
+   * When true, the body does not scroll — children fill the panel height and
+   * manage their own overflow (sticky toolbars + independent results panes).
+   */
+  containScroll?: boolean;
 };
 
 const FOCUSABLE =
@@ -37,6 +42,7 @@ export function Modal({
   footer,
   wide = false,
   size,
+  containScroll = false,
 }: ModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -125,7 +131,13 @@ export function Modal({
             </button>
           </div>
         </header>
-        <div className="relative z-[1] flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-4 sm:p-5">
+        <div
+          className={`relative z-[1] flex min-h-0 flex-1 flex-col overscroll-contain ${
+            containScroll
+              ? "overflow-hidden p-0"
+              : "overflow-y-auto p-4 sm:p-5"
+          }`}
+        >
           {children}
         </div>
         {footer && (
