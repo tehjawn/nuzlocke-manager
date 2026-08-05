@@ -6,10 +6,12 @@ import { BountyHunterView } from "@/components/BountyHunterView";
 import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
 import { PokedexPanel } from "@/components/PokedexPanel";
+import { SeasonStatsView } from "@/components/SeasonStatsView";
 import { TeamPlannerView } from "@/components/TeamPlannerView";
 import { ToolChip, TOOL_TONE_CHIP, toolsTone } from "@/components/tool-icons";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
 import type { TrainerProfile } from "@/lib/challenge-types";
+import type { SeasonStatsData } from "@/lib/season-stats";
 import {
   parseToolsId,
   TOOLS_CATALOG,
@@ -39,6 +41,8 @@ type ToolsViewProps = {
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
   initialPokedexMode?: PokedexMode | null;
+  /** Season Stats extras, server-computed only when that tool is open. */
+  seasonStats?: SeasonStatsData | null;
 };
 
 export function ToolsView({
@@ -53,6 +57,7 @@ export function ToolsView({
   initialBountyMode = null,
   initialPlannerMode = null,
   initialPokedexMode = null,
+  seasonStats = null,
 }: ToolsViewProps) {
   const searchParams = useSearchParams();
   const tool =
@@ -78,6 +83,7 @@ export function ToolsView({
       initialBountyMode={initialBountyMode}
       initialPlannerMode={initialPlannerMode}
       initialPokedexMode={initialPokedexMode}
+      seasonStats={seasonStats}
     />
   );
 }
@@ -142,6 +148,21 @@ function ToolsDirectory({
   );
 }
 
+/** Exhaustive by construction — a new ToolsId fails to compile until added. */
+const TOOL_BLURBS: Record<ToolsId, (challengeName: string) => string> = {
+  guide: (name) => `What to do next in the story for ${name}.`,
+  pokedex: (name) =>
+    `Look up species for ${name} — role, F→S BST ranks, competitive viability, matchups, and who's already caught it.`,
+  bounty: (name) =>
+    `Who owns, who's seen, who's cornered a whole line — and every Pokémon on a board — in ${name}.`,
+  planner: (name) =>
+    `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${name}.`,
+  stats: (name) =>
+    `Who's winning ${name} — badge race, wallets, god catches, shinies, and the season's records.`,
+  chart: () =>
+    "Modern 18-type chart first — pick a trainer below it to score Main Squad coverage.",
+};
+
 function ToolWorkspace({
   slug,
   challengeName,
@@ -154,6 +175,7 @@ function ToolWorkspace({
   initialBountyMode,
   initialPlannerMode,
   initialPokedexMode,
+  seasonStats,
 }: {
   slug: string;
   challengeName: string;
@@ -166,21 +188,12 @@ function ToolWorkspace({
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
   initialPokedexMode?: PokedexMode | null;
+  seasonStats?: SeasonStatsData | null;
 }) {
   const meta = TOOLS_CATALOG.find((t) => t.id === tool)!;
   const hubHref = toolsHubHref(slug);
   const tone = toolsTone(tool);
-
-  const blurb =
-    tool === "pokedex"
-      ? `Look up species for ${challengeName} — role, F→S BST ranks, competitive viability, matchups, and who's already caught it.`
-      : tool === "chart"
-        ? `Modern 18-type chart first — pick a trainer below it to score Main Squad coverage.`
-        : tool === "guide"
-          ? `What to do next in the story for ${challengeName}.`
-          : tool === "bounty"
-            ? `Who owns, who's seen, who's cornered a whole line — and every Pokémon on a board — in ${challengeName}.`
-            : `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${challengeName}.`;
+  const blurb = TOOL_BLURBS[tool](challengeName);
 
   return (
     <div className="space-y-6">
@@ -257,6 +270,15 @@ function ToolWorkspace({
           trainers={trainers}
           myTrainerId={myTrainerId}
           initialMode={initialPlannerMode}
+        />
+      ) : null}
+
+      {tool === "stats" ? (
+        <SeasonStatsView
+          slug={slug}
+          trainers={trainers}
+          myTrainerId={myTrainerId}
+          seasonStats={seasonStats}
         />
       ) : null}
     </div>

@@ -399,6 +399,26 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
         "tools",
       ],
     },
+    {
+      id: `stats-${ctx.slug}`,
+      title: "Season Stats",
+      subtitle: `${ctx.name} · Leaderboards & records`,
+      href: toolsHref(ctx.slug, "stats"),
+      category: "navigate" as const,
+      tags: [
+        "stats",
+        "season",
+        "leaderboard",
+        "standings",
+        "hall of fame",
+        "records",
+        "richest",
+        "badges",
+        "god",
+        "shiny",
+        "tools",
+      ],
+    },
   ];
 }
 

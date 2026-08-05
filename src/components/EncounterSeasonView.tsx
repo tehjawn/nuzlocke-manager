@@ -1,17 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { EncounterLedger } from "@/components/EncounterLedger";
 import { ModeTabs } from "@/components/ModeTabs";
 import { PersonalRoutesView } from "@/components/PersonalRoutesView";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import {
+  DexStatIcon,
+  PokeballStatIcon,
+  RouteStatIcon,
+  RouteTopCallout,
+  SpeciesStatIcon,
+  SpeciesTopCallout,
+  StatBlock,
+} from "@/components/SeasonStatCards";
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
-import type {
-  EncounterRouteHighlight,
-  EncounterSeasonHighlights,
-  EncounterSpeciesHighlight,
-} from "@/lib/encounter-stats";
+import type { EncounterSeasonHighlights } from "@/lib/encounter-stats";
 import type { ModernEmeraldSpeciesRef } from "@/lib/modern-emerald-dex";
 import type { PersonalRouteStatus } from "@/lib/personal-routes";
 import { toolsHref } from "@/lib/tools-routes";
@@ -96,6 +101,8 @@ export function EncounterSeasonView({
             <SpeciesTopCallout
               label="Most logged"
               entries={highlights.mostLogged}
+              href={toolsHref(slug, "stats", { section: "species" })}
+              hrefLabel="Season stats →"
               showCount
             />
           ) : null}
@@ -110,6 +117,8 @@ export function EncounterSeasonView({
             <RouteTopCallout
               label="Deadliest routes"
               entries={highlights.deadliestRoutes}
+              href={toolsHref(slug, "stats", { section: "memorial" })}
+              hrefLabel="Season stats →"
             />
           ) : null}
         </div>
@@ -157,216 +166,6 @@ export function EncounterSeasonView({
           />
         ) : null}
       </ModeTabs>    </div>
-  );
-}
-
-function StatBlock({
-  icon,
-  value,
-  label,
-  hint,
-}: {
-  icon: ReactNode;
-  value: string;
-  label: string;
-  hint: string;
-}) {
-  return (
-    <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 text-[11px] font-bold leading-snug text-muted">
-          {label}
-        </p>
-        <span className="shrink-0 text-accent-deep/80" aria-hidden>
-          {icon}
-        </span>
-      </div>
-      <p className="mt-1.5 font-display text-2xl font-bold tabular-nums leading-none tracking-tight">
-        {value}
-      </p>
-      <p className="mt-1 text-[10px] leading-snug text-muted/80">{hint}</p>
-    </div>
-  );
-}
-
-function PokeballStatIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-    >
-      <circle cx="12" cy="12" r="8" />
-      <path d="M4 12h16" strokeLinecap="round" />
-      <circle cx="12" cy="12" r="2.25" />
-    </svg>
-  );
-}
-
-function SpeciesStatIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-    >
-      <circle cx="8" cy="9" r="2.5" />
-      <circle cx="16" cy="9" r="2.5" />
-      <circle cx="12" cy="15.5" r="2.5" />
-    </svg>
-  );
-}
-
-function DexStatIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-    >
-      <rect x="5" y="3.5" width="14" height="17" rx="2.5" />
-      <circle cx="12" cy="11" r="3" />
-      <path d="M9.5 17h5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function RouteStatIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-    >
-      <path
-        d="M6 18c2-4 3-6 3-9a3 3 0 016 0c0 3 1 5 3 9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="12" cy="9" r="1.25" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function SpeciesTopCallout({
-  entries,
-  href,
-  label,
-  showCount = false,
-}: {
-  entries: EncounterSpeciesHighlight[];
-  href?: string;
-  label: string;
-  showCount?: boolean;
-}) {
-  const content = (
-    <>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-          {label}
-        </p>
-        {href && (
-          <span className="text-[10px] font-semibold text-interactive">
-            View all →
-          </span>
-        )}
-      </div>
-      <ol className="mt-2 space-y-1">
-        {entries.map((entry, index) => (
-          <li
-            key={`${entry.species}-${entry.pokedexId ?? "x"}`}
-            className="flex items-center gap-2"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface/80 text-sm font-bold tabular-nums text-muted">
-              {index + 1}
-            </span>
-            <span className="relative inline-block h-10 w-10 shrink-0">
-              <PokemonSpriteImage
-                alt=""
-                className="pixelated h-full w-full object-contain"
-                height={40}
-                pokedexId={entry.pokedexId}
-                species={entry.species}
-                width={40}
-              />
-            </span>
-            <span className="min-w-0 truncate font-display text-sm font-bold leading-none">
-              {entry.species}
-              {showCount ? (
-                <span className="font-sans font-normal text-muted">
-                  {" · x"}
-                  {entry.count}
-                </span>
-              ) : null}
-            </span>
-          </li>
-        ))}
-      </ol>
-    </>
-  );
-
-  const className =
-    "rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5";
-
-  if (href) {
-    return (
-      <Link
-        aria-label={`View all ${label.toLowerCase()}`}
-        className={`${className} pressable transition-colors hover:border-interactive/40 hover:bg-interactive-soft/25`}
-        href={href}
-      >
-        {content}
-      </Link>
-    );
-  }
-
-  return (
-    <div className={className}>
-      {content}
-    </div>
-  );
-}
-
-function RouteTopCallout({
-  label,
-  entries,
-}: {
-  label: string;
-  entries: EncounterRouteHighlight[];
-}) {
-  return (
-    <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
-      <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-        {label}
-      </p>
-      <ol className="mt-2 space-y-1">
-        {entries.map((entry, index) => (
-          <li
-            key={entry.route}
-            className="flex items-center gap-2"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface/80 text-sm font-bold tabular-nums text-muted">
-              {index + 1}
-            </span>
-            <span className="min-w-0 truncate font-display text-sm font-bold leading-none">
-              {entry.route}
-              <span className="font-sans font-normal text-muted">
-                {" · "}
-                {entry.graveCount} fallen
-              </span>
-            </span>
-          </li>
-        ))}
-      </ol>
-    </div>
   );
 }
 

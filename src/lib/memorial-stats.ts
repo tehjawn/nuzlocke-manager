@@ -27,6 +27,13 @@ export type MemorialSeasonHighlights = {
   richest: MemorialTrainerHighlight | null;
 };
 
+/** "A", "A & B", or "A, B +2" — compact display for tied leader labels. */
+export function formatTiedLabels(labels: string[]): string {
+  if (labels.length <= 1) return labels[0] ?? "";
+  if (labels.length === 2) return `${labels[0]} & ${labels[1]}`;
+  return `${labels[0]}, ${labels[1]} +${labels.length - 2}`;
+}
+
 function trainerHighlight(
   leaders: TrainerProfile[],
   count: number,

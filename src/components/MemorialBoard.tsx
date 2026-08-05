@@ -6,14 +6,17 @@ import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { Frame } from "@/components/Frame";
 import { MemorialCauseEditor } from "@/components/MemorialCauseEditor";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { seasonCalloutLinkClass } from "@/components/SeasonStatCards";
 import { typeBadgeSoftStyle } from "@/components/TypeBadge";
 import { POKEMON_GENERATIONS } from "@/data/pokemon-index";
 import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
-import type {
-  CrossRunGravesResult,
-  MemorialGrave,
+import {
+  gravesPokemonByTrainerId,
+  type CrossRunGravesResult,
+  type MemorialGrave,
 } from "@/lib/memorial-backfill";
 import {
+  formatTiedLabels,
   memorialPokemonMatchesFilters,
   memorialSeasonHighlights,
 } from "@/lib/memorial-stats";
@@ -22,6 +25,7 @@ import {
   TYPE_COLORS,
   type PokemonType,
 } from "@/lib/pokemon-types";
+import { toolsHref } from "@/lib/tools-routes";
 import { displayName } from "@/lib/trainer-display";
 
 type MemorialBoardProps = {
@@ -32,10 +36,37 @@ type MemorialBoardProps = {
   gravesByTrainerId: Record<string, CrossRunGravesResult>;
 };
 
-function formatTiedLabels(labels: string[]): string {
-  if (labels.length <= 1) return labels[0] ?? "";
-  if (labels.length === 2) return `${labels[0]} & ${labels[1]}`;
-  return `${labels[0]}, ${labels[1]} +${labels.length - 2}`;
+/**
+ * Highlight card that deep-links into a Season Stats section. No aria-label:
+ * the accessible name comes from the content (label, leaders, counts, CTA).
+ */
+function SeasonStatsLinkCard({
+  href,
+  label,
+  tied = false,
+  cta = "Season stats →",
+  children,
+}: {
+  href: string;
+  label: string;
+  tied?: boolean;
+  cta?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link className={seasonCalloutLinkClass} href={href}>
+      <p className="flex items-center justify-between gap-2 text-[10px] font-bold tracking-wide text-muted uppercase">
+        <span>
+          {label}
+          {tied ? " · tied" : ""}
+        </span>
+        <span className="font-semibold normal-case tracking-normal text-interactive">
+          {cta}
+        </span>
+      </p>
+      {children}
+    </Link>
+  );
 }
 
 /** Newest attempt first — matches the trainer history accordion. */
@@ -91,12 +122,7 @@ export function MemorialBoard({
 
   const highlights = memorialSeasonHighlights(
     challenge.trainers,
-    Object.fromEntries(
-      allByTrainer.map((row) => [
-        row.trainer.id,
-        row.all.map((grave) => grave.pokemon),
-      ]),
-    ),
+    gravesPokemonByTrainerId(gravesByTrainerId),
   );
   const trainersById = new Map(
     challenge.trainers.map((trainer) => [trainer.id, trainer]),
@@ -218,11 +244,11 @@ export function MemorialBoard({
       {hasCallouts ? (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {highlights.heaviestMemorial ? (
-            <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
-              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-                Heaviest memorial
-                {highlights.heaviestMemorial.tied ? " · tied" : ""}
-              </p>
+            <SeasonStatsLinkCard
+              href={toolsHref(challenge.slug, "stats", { section: "memorial" })}
+              label="Heaviest memorial"
+              tied={highlights.heaviestMemorial.tied}
+            >
               <div className="mt-1 flex items-center gap-2.5">
                 {heaviestTrainers.length > 0 ? (
                   <div className="flex shrink-0 items-end -space-x-2">
@@ -248,15 +274,15 @@ export function MemorialBoard({
                   </p>
                 </div>
               </div>
-            </div>
+            </SeasonStatsLinkCard>
           ) : null}
 
           {highlights.mostPartyWipes ? (
-            <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
-              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-                Most party wipes
-                {highlights.mostPartyWipes.tied ? " · tied" : ""}
-              </p>
+            <SeasonStatsLinkCard
+              href={toolsHref(challenge.slug, "stats", { section: "memorial" })}
+              label="Most party wipes"
+              tied={highlights.mostPartyWipes.tied}
+            >
               <div className="mt-1 flex items-center gap-2.5">
                 {wipeTrainers.length > 0 ? (
                   <div className="flex shrink-0 items-end -space-x-2">
@@ -283,15 +309,15 @@ export function MemorialBoard({
                   </p>
                 </div>
               </div>
-            </div>
+            </SeasonStatsLinkCard>
           ) : null}
 
           {highlights.mostDeathProne ? (
-            <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
-              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-                Most death-prone Pokémon
-                {highlights.mostDeathProne.tied ? " · tied" : ""}
-              </p>
+            <SeasonStatsLinkCard
+              href={toolsHref(challenge.slug, "stats", { section: "memorial" })}
+              label="Most death-prone Pokémon"
+              tied={highlights.mostDeathProne.tied}
+            >
               <p className="mt-1 flex items-center gap-2.5 font-display text-sm font-bold leading-tight">
                 <span className="relative inline-block h-12 w-12 shrink-0">
                   <PokemonSpriteImage
@@ -310,15 +336,18 @@ export function MemorialBoard({
                   </span>
                 </span>
               </p>
-            </div>
+            </SeasonStatsLinkCard>
           ) : null}
 
           {highlights.richest ? (
-            <div className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2.5">
-              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-                Richest
-                {highlights.richest.tied ? " · tied" : ""}
-              </p>
+            <SeasonStatsLinkCard
+              href={toolsHref(challenge.slug, "stats", {
+                section: "standings",
+              })}
+              label="Richest"
+              tied={highlights.richest.tied}
+              cta="Full standings →"
+            >
               <div className="mt-1 flex items-center gap-2.5">
                 {richestTrainers.length > 0 ? (
                   <div className="flex shrink-0 items-end -space-x-2">
@@ -344,7 +373,7 @@ export function MemorialBoard({
                   </p>
                 </div>
               </div>
-            </div>
+            </SeasonStatsLinkCard>
           ) : null}
         </div>
       ) : null}

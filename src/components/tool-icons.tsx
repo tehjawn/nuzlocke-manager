@@ -68,6 +68,8 @@ export function ToolIcon({
       return <OwnershipToolIcon className={className} />;
     case "planner":
       return <PlannerToolIcon className={className} />;
+    case "stats":
+      return <SeasonStatsToolIcon className={className} />;
     case "chart":
       return <TypeChartToolIcon className={className} />;
   }
@@ -116,6 +118,18 @@ export function PlannerToolIcon({ className = "h-5 w-5" }: IconProps) {
       <rect x="4" y="5" width="16" height="14" rx="2" />
       <path d="M8 9.5h8M8 12.5h5M8 15.5h6" strokeLinecap="round" />
       <circle cx="16.5" cy="15.5" r="1.25" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** Trophy for the Season Stats hall of fame. */
+export function SeasonStatsToolIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M8 4.5h8v4.25a4 4 0 01-8 0z" strokeLinejoin="round" />
+      <path d="M8 6.25H5.25a2.9 2.9 0 002.95 2.9M16 6.25h2.75a2.9 2.9 0 01-2.95 2.9" />
+      <path d="M12 12.75v2.5M9.75 18.5c0-1.5 1-2.5 2.25-2.5s2.25 1 2.25 2.5" />
+      <path d="M8.5 19.5h7" strokeLinecap="round" />
     </svg>
   );
 }
