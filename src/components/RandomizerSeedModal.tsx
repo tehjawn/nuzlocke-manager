@@ -37,6 +37,13 @@ import {
   type SeedCheck,
   type SpeciesSighting,
 } from "@/lib/tx-randomizer";
+import {
+  bucketHint,
+  bucketLabel,
+  computeObtainabilityBuckets,
+  type ObtainabilityBucket,
+  type ObtainabilityBuckets,
+} from "@/lib/seed-obtainability";
 
 const KIND_LABELS: Record<EncounterKind, string> = {
   land: "Grass",
@@ -86,6 +93,7 @@ type Parsed = {
   areas: RolledArea[];
   species: SpeciesSighting[];
   statics: RolledStatic[];
+  obtainability: ObtainabilityBuckets;
   check: SeedCheck;
   caughtState: (pokedexId: number) => CaughtState;
   isRouteUsed: (label: string) => boolean;
@@ -93,6 +101,28 @@ type Parsed = {
   slotPokemon?: (label: string) => number | null;
   encounterFlagsReliable: boolean;
 };
+
+const OBTAINABILITY_CHIPS: Array<{
+  id: ObtainabilityBucket;
+  tone: string;
+}> = [
+  {
+    id: "unobtainable",
+    tone: "border-danger/40 bg-danger/10 text-danger",
+  },
+  {
+    id: "tradeEvo",
+    tone: "border-accent/40 bg-accent/10 text-accent-deep",
+  },
+  {
+    id: "evolutionOnly",
+    tone: "border-frame bg-surface text-ink",
+  },
+  {
+    id: "singleSlot",
+    tone: "border-frame bg-surface text-muted",
+  },
+];
 
 function speciesName(pokedexId: number): string {
   if (!pokedexId || pokedexId <= 0) return "Unknown species";
@@ -321,11 +351,22 @@ export function RandomizerSeedModal({
   const [view, setView] = useState<View>("species");
   const [query, setQuery] = useState("");
   const [compTiers, setCompTiers] = useState<CompTierKey[]>([]);
+  const [obtainFilter, setObtainFilter] = useState<ObtainabilityBucket | null>(
+    null,
+  );
 
   const filteredSpecies = useMemo(() => {
     if (!parsed) return [];
     const q = query.trim().toLowerCase();
     return parsed.species.filter((entry) => {
+      if (obtainFilter === "singleSlot") {
+        if (!parsed.obtainability.singleSlot.includes(entry.pokedexId)) {
+          return false;
+        }
+      } else if (obtainFilter) {
+        // Other buckets are species with no wild sources — listed separately.
+        return false;
+      }
       if (!matchesCompTier(entry.pokedexId, compTiers)) return false;
       if (!q) return true;
       return (
@@ -333,15 +374,32 @@ export function RandomizerSeedModal({
         entry.sources.some((source) => source.label.toLowerCase().includes(q))
       );
     });
-  }, [parsed, query, compTiers]);
+  }, [parsed, query, compTiers, obtainFilter]);
+
+  const filteredBucketIds = useMemo(() => {
+    if (!parsed || !obtainFilter || obtainFilter === "singleSlot") return [];
+    const ids = parsed.obtainability[obtainFilter];
+    const q = query.trim().toLowerCase();
+    return ids.filter((pokedexId) => {
+      if (!matchesCompTier(pokedexId, compTiers)) return false;
+      if (!q) return true;
+      return speciesName(pokedexId).toLowerCase().includes(q);
+    });
+  }, [parsed, obtainFilter, query, compTiers]);
 
   const filteredAreas = useMemo(() => {
     if (!parsed) return [];
+    if (obtainFilter && obtainFilter !== "singleSlot") return [];
     const q = query.trim().toLowerCase();
+    const singleSlot =
+      obtainFilter === "singleSlot"
+        ? new Set(parsed.obtainability.singleSlot)
+        : null;
     const out: RolledArea[] = [];
     for (const area of parsed.areas) {
       const labelMatch = !q || area.label.toLowerCase().includes(q);
       const slots = area.slots.filter((slot) => {
+        if (singleSlot && !singleSlot.has(slot.pokedexId)) return false;
         if (!matchesCompTier(slot.pokedexId, compTiers)) return false;
         if (!q || labelMatch) return true;
         return speciesName(slot.pokedexId).toLowerCase().includes(q);
@@ -350,10 +408,11 @@ export function RandomizerSeedModal({
       out.push(slots.length === area.slots.length ? area : { ...area, slots });
     }
     return out;
-  }, [parsed, query, compTiers]);
+  }, [parsed, query, compTiers, obtainFilter]);
 
   const filteredStatics = useMemo(() => {
     if (!parsed) return [];
+    if (obtainFilter) return [];
     const q = query.trim().toLowerCase();
     return parsed.statics.filter((entry) => {
       if (!matchesCompTier(entry.pokedexId, compTiers)) return false;
@@ -364,7 +423,7 @@ export function RandomizerSeedModal({
         speciesName(entry.vanillaPokedexId).toLowerCase().includes(q)
       );
     });
-  }, [parsed, query, compTiers]);
+  }, [parsed, query, compTiers, obtainFilter]);
 
   if (!open) return null;
 
@@ -375,6 +434,7 @@ export function RandomizerSeedModal({
     setView("species");
     setQuery("");
     setCompTiers([]);
+    setObtainFilter(null);
   }
 
   async function onFile(file: File | null) {
@@ -397,6 +457,8 @@ export function RandomizerSeedModal({
       const randomizer = result.randomizer;
       const playable = randomizer.reliable && !randomizer.chaos;
       const areas = playable ? rollWildTables(randomizer.otId, randomizer) : [];
+      const species = indexBySpecies(areas);
+      const statics = playable ? rollStatics(randomizer.otId, randomizer) : [];
       const owned = [...result.party, ...result.box, ...result.rip];
       // Encountered buffer can still carry a met-location for a just-battled
       // wild mon; include those so a spent slot can show who burned it.
@@ -409,8 +471,16 @@ export function RandomizerSeedModal({
         trainerName: result.trainer?.name ?? null,
         randomizer,
         areas,
-        species: indexBySpecies(areas),
-        statics: playable ? rollStatics(randomizer.otId, randomizer) : [],
+        species,
+        statics,
+        obtainability: playable
+          ? computeObtainabilityBuckets(areas, statics, species)
+          : {
+              unobtainable: [],
+              tradeEvo: [],
+              evolutionOnly: [],
+              singleSlot: [],
+            },
         check: checkSeedAgainstCatches(
           areas,
           owned.map((mon) => ({
@@ -424,6 +494,7 @@ export function RandomizerSeedModal({
         slotPokemon: buildSlotPokemonIndex(withRoutes),
         encounterFlagsReliable: result.encounterFlags.reliable,
       });
+      setObtainFilter(null);
     } catch (e) {
       setError(
         displayActionError(
@@ -575,6 +646,53 @@ export function RandomizerSeedModal({
                   </p>
                 ) : null}
 
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-0.5 text-[0.65rem] font-semibold tracking-wide text-muted">
+                      Scarcity
+                    </span>
+                    {OBTAINABILITY_CHIPS.map((chip) => {
+                      const count = parsed.obtainability[chip.id].length;
+                      const active = obtainFilter === chip.id;
+                      return (
+                        <button
+                          key={chip.id}
+                          type="button"
+                          aria-pressed={active}
+                          title={bucketHint(chip.id)}
+                          className={`pressable rounded-full border px-2.5 py-1 text-xs font-semibold tracking-tight ${
+                            active
+                              ? chip.tone
+                              : "border-frame/50 bg-surface text-muted opacity-70 hover:opacity-100"
+                          }`}
+                          onClick={() => {
+                            setObtainFilter((prev) =>
+                              prev === chip.id ? null : chip.id,
+                            );
+                            setView("species");
+                          }}
+                        >
+                          {bucketLabel(chip.id)} ({count})
+                        </button>
+                      );
+                    })}
+                    {obtainFilter ? (
+                      <button
+                        type="button"
+                        className="pressable rounded-full border border-frame/50 bg-surface px-2.5 py-1 text-xs font-semibold tracking-tight text-muted hover:text-ink"
+                        onClick={() => setObtainFilter(null)}
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                  {obtainFilter ? (
+                    <p className="text-[0.7rem] leading-snug text-muted">
+                      {bucketHint(obtainFilter)}
+                    </p>
+                  ) : null}
+                </div>
+
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex flex-wrap gap-1 rounded-lg border border-frame bg-surface-2 p-1">
                     {VIEW_TABS.map((tab) => (
@@ -582,12 +700,20 @@ export function RandomizerSeedModal({
                         key={tab.id}
                         type="button"
                         aria-pressed={view === tab.id}
+                        disabled={
+                          obtainFilter != null &&
+                          obtainFilter !== "singleSlot" &&
+                          tab.id !== "species"
+                        }
                         className={`pressable rounded-md px-3 py-1.5 text-xs font-semibold tracking-tight ${
                           view === tab.id
                             ? "bg-accent text-[var(--on-accent)]"
                             : "text-muted"
-                        }`}
-                        onClick={() => setView(tab.id)}
+                        } disabled:cursor-not-allowed disabled:opacity-40`}
+                        onClick={() => {
+                          setView(tab.id);
+                          if (tab.id === "statics") setObtainFilter(null);
+                        }}
                       >
                         {tab.label}
                       </button>
@@ -649,7 +775,18 @@ export function RandomizerSeedModal({
                   )}
                 </div>
 
-                {(view === "species" || view === "route") && !rz.wildPokemon ? (
+                {obtainFilter && obtainFilter !== "singleSlot" ? (
+                  <BucketSpeciesView
+                    bucket={obtainFilter}
+                    ids={filteredBucketIds}
+                    total={parsed.obtainability[obtainFilter].length}
+                    caughtState={parsed.caughtState}
+                    slug={slug}
+                    onNavigate={onClose}
+                  />
+                ) : (view === "species" || view === "route") &&
+                  !rz.wildPokemon &&
+                  obtainFilter !== "singleSlot" ? (
                   <p className="rounded-lg border border-frame bg-surface-2 px-3 py-2 text-muted">
                     Wild Pokémon randomization is off in this save — encounters
                     are vanilla Emerald tables. Nothing to remap.
@@ -657,11 +794,20 @@ export function RandomizerSeedModal({
                 ) : view === "species" ? (
                   <SpeciesView
                     entries={filteredSpecies}
-                    total={parsed.species.length}
+                    total={
+                      obtainFilter === "singleSlot"
+                        ? parsed.obtainability.singleSlot.length
+                        : parsed.species.length
+                    }
                     caughtState={parsed.caughtState}
                     isRouteUsed={parsed.isRouteUsed}
                     slug={slug}
                     onNavigate={onClose}
+                    scarcityNote={
+                      obtainFilter === "singleSlot"
+                        ? "Single-slot species — one wild area in this seed."
+                        : null
+                    }
                   />
                 ) : view === "route" ? (
                   <RouteView
@@ -692,6 +838,88 @@ export function RandomizerSeedModal({
   );
 }
 
+function CannotCatchPill() {
+  return (
+    <span
+      className="ml-1.5 shrink-0 rounded-full border border-danger/40 bg-danger/10 px-1.5 py-0.5 align-middle text-[0.65rem] font-semibold text-danger"
+      title="This fight sets FLAG_SYS_NO_CATCHING — it cannot be caught"
+    >
+      Cannot catch
+    </span>
+  );
+}
+
+function BucketSpeciesView({
+  bucket,
+  ids,
+  total,
+  caughtState,
+  slug,
+  onNavigate,
+}: {
+  bucket: ObtainabilityBucket;
+  ids: number[];
+  total: number;
+  caughtState: (pokedexId: number) => CaughtState;
+  slug: string;
+  onNavigate: () => void;
+}) {
+  const shown = ids.slice(0, SPECIES_PAGE);
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted">
+        {ids.length} of {total} {bucketLabel(bucket).toLowerCase()} species
+        {shown.length < ids.length
+          ? ` — showing the first ${shown.length}, keep typing to narrow it down`
+          : ""}
+        .
+      </p>
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-1.5">
+        {shown.map((pokedexId) => (
+          <li key={pokedexId}>
+            <PokemonHoverPreview
+              className="block"
+              speciesPreview={speciesHoverPreview(pokedexId)}
+            >
+              <Link
+                href={toolsHref(slug, "pokedex", { id: pokedexId })}
+                onClick={onNavigate}
+                aria-label={`Open ${speciesName(pokedexId)} in Pokédex`}
+                className={`pressable flex items-center gap-2 rounded-lg border p-2 ${
+                  bucket === "unobtainable"
+                    ? "border-danger/30 bg-danger/5 opacity-80"
+                    : bucket === "tradeEvo"
+                      ? "border-accent/30 bg-accent/5"
+                      : "border-frame bg-surface-2"
+                } hover:border-interactive/40`}
+              >
+                <span className="relative shrink-0">
+                  <Sprite pokedexId={pokedexId} size={36} />
+                  <CompTierStamp
+                    pokedexId={pokedexId}
+                    className="absolute -right-1 -top-1"
+                  />
+                </span>
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-x-1">
+                    <span className="truncate text-xs font-semibold tracking-tight text-ink">
+                      {speciesName(pokedexId)}
+                    </span>
+                    <CaughtPill state={caughtState(pokedexId)} />
+                  </span>
+                </span>
+              </Link>
+            </PokemonHoverPreview>
+          </li>
+        ))}
+      </ul>
+      {ids.length === 0 ? (
+        <p className="text-muted">Nothing matches that filter.</p>
+      ) : null}
+    </div>
+  );
+}
+
 function SpeciesView({
   entries,
   total,
@@ -699,6 +927,7 @@ function SpeciesView({
   isRouteUsed,
   slug,
   onNavigate,
+  scarcityNote = null,
 }: {
   entries: SpeciesSighting[];
   total: number;
@@ -706,16 +935,21 @@ function SpeciesView({
   isRouteUsed: (label: string) => boolean;
   slug: string;
   onNavigate: () => void;
+  scarcityNote?: string | null;
 }) {
   const shown = entries.slice(0, SPECIES_PAGE);
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted">
-        {entries.length} of {total} species are catchable somewhere in this seed
+        {scarcityNote ? `${scarcityNote} ` : null}
+        {entries.length} of {total} species
+        {scarcityNote
+          ? ""
+          : " are catchable somewhere in this seed"}
         {shown.length < entries.length
           ? ` — showing the first ${shown.length}, keep typing to narrow it down`
           : ""}
-        . Best route first.
+        {scarcityNote ? "." : ". Best route first."}
       </p>
       <ul className="space-y-1.5">
         {shown.map((entry) => (
@@ -1089,6 +1323,7 @@ function StaticRow({
   kindLabel,
   level,
   showVanilla,
+  noCatching,
   caughtState,
   slug,
   onNavigate,
@@ -1100,6 +1335,7 @@ function StaticRow({
   level: number;
   /** When false (event legendaries), skip the struck-through vanilla name. */
   showVanilla: boolean;
+  noCatching: boolean;
   caughtState: (pokedexId: number) => CaughtState;
   slug: string;
   onNavigate: () => void;
@@ -1115,7 +1351,9 @@ function StaticRow({
         href={toolsHref(slug, "pokedex", { id: pokedexId })}
         onClick={onNavigate}
         aria-label={`Open ${name} in Pokédex`}
-        className="pressable flex items-center gap-3 px-2.5 py-2 hover:bg-interactive-soft/35"
+        className={`pressable flex items-center gap-3 px-2.5 py-2 hover:bg-interactive-soft/35 ${
+          noCatching ? "opacity-60" : ""
+        }`}
       >
         <span className="relative shrink-0">
           <Sprite pokedexId={pokedexId} size={44} />
@@ -1126,10 +1364,14 @@ function StaticRow({
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            <span className="truncate text-sm font-semibold tracking-tight text-ink">
+            <span
+              className={`truncate text-sm font-semibold tracking-tight ${
+                noCatching ? "text-muted" : "text-ink"
+              }`}
+            >
               {name}
             </span>
-            <CaughtPill state={state} />
+            {noCatching ? <CannotCatchPill /> : <CaughtPill state={state} />}
             <span className="text-[0.7rem] tabular-nums text-muted">
               Lv{level}
             </span>
@@ -1168,10 +1410,15 @@ function StaticView({
 }) {
   const rerolled = statics.filter((entry) => entry.randomized);
   const fixed = statics.filter((entry) => !entry.randomized);
+  const uncatchableCount = statics.filter((entry) => entry.noCatching).length;
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">
-        {statics.length} of {total} scripted encounters.{" "}
+        {statics.length} of {total} scripted encounters
+        {uncatchableCount > 0
+          ? ` · ${uncatchableCount} cannot be caught (FLAG_SYS_NO_CATCHING)`
+          : ""}
+        .{" "}
         {randomized
           ? "Static battles and gifts reroll; event legendaries do not."
           : "Static randomization is off — everything below is vanilla."}
@@ -1188,6 +1435,7 @@ function StaticView({
                 kindLabel={STATIC_KIND_LABELS[entry.kind]}
                 level={entry.level}
                 showVanilla
+                noCatching={entry.noCatching}
                 caughtState={caughtState}
                 slug={slug}
                 onNavigate={onNavigate}
@@ -1222,6 +1470,7 @@ function StaticView({
                   kindLabel={STATIC_KIND_LABELS[entry.kind]}
                   level={entry.level}
                   showVanilla={false}
+                  noCatching={entry.noCatching}
                   caughtState={caughtState}
                   slug={slug}
                   onNavigate={onNavigate}

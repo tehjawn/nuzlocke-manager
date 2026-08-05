@@ -281,6 +281,8 @@ export type RolledStatic = {
   pokedexId: number;
   /** False for `seteventmon`, which the ROM never rerolls. */
   randomized: boolean;
+  /** True when the script sets `FLAG_SYS_NO_CATCHING` around this fight. */
+  noCatching: boolean;
 };
 
 /**
@@ -310,6 +312,7 @@ export function rollStatics(
         species,
         pokedexId: nationalFor(species),
         randomized: entry.randomized && settings.statics,
+        noCatching: entry.noCatching === true,
       };
     },
   );

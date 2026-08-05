@@ -31,7 +31,9 @@
  * `setwildbattle` (CreateScriptedWildMon) and `givemon` (ScriptGiveMon) reroll,
  * while `seteventmon` goes through CreateEventMon and does **not**, so those
  * legendaries stay vanilla. Both kinds are emitted, tagged, because "this one is
- * not randomized" is the useful answer.
+ * not randomized" is the useful answer. `setwildbattle` rows that set
+ * `FLAG_SYS_NO_CATCHING` (EV-gym dummies, legendary chase rounds) are kept and
+ * marked `noCatching` so the UI can label them without treating them as catches.
  *
  * The trainer-party and starter randomizers use the same machinery and were
  * emitted here until they turned out not to matter for the current season; see
@@ -372,6 +374,19 @@ const STATIC_COMMAND_KINDS = {
   seteventmon: { kind: "event", randomized: false },
 };
 
+/**
+ * True when this `setwildbattle` is an uncatchable fight — the script sets
+ * `FLAG_SYS_NO_CATCHING` either just before the command (Hyper Training gym) or
+ * between it and `dowildbattle` (legendary chase battles, Dusknoir gate).
+ */
+function isNoCatchingWildBattle(script, matchIndex) {
+  const window = script.slice(
+    Math.max(0, matchIndex - 160),
+    Math.min(script.length, matchIndex + 320),
+  );
+  return /^\s*setflag\s+FLAG_SYS_NO_CATCHING\b/m.test(window);
+}
+
 function readStaticEncounters(src, speciesIds, mapToArea, mapsecIds, speciesToNational) {
   const mapsDir = join(src, "data/maps");
   const rows = [];
@@ -384,8 +399,9 @@ function readStaticEncounters(src, speciesIds, mapToArea, mapsecIds, speciesToNa
     const section = mapToArea.get(mapId);
     const mapsec = section == null ? null : mapsecIds.get(section);
     if (mapsec == null) continue;
+    const scriptText = readFileSync(scripts, "utf8");
     const seen = new Set();
-    for (const m of readFileSync(scripts, "utf8").matchAll(
+    for (const m of scriptText.matchAll(
       /^\s*(setwildbattle|givemon|seteventmon)\s+(SPECIES_[A-Z0-9_]+)\s*,\s*(\d+)/gm,
     )) {
       const meta = STATIC_COMMAND_KINDS[m[1]];
@@ -395,10 +411,25 @@ function readStaticEncounters(src, speciesIds, mapToArea, mapsecIds, speciesToNa
       // never reaches, and it has no catalog row — drop anything the app cannot
       // name or draw rather than emitting a row that renders as "#0".
       if (!speciesToNational[species]) continue;
+      const noCatching =
+        m[1] === "setwildbattle" && isNoCatchingWildBattle(scriptText, m.index);
       // The same encounter is often scripted twice (a first visit and a
       // rematch); one row per species/level/kind is what a player cares about.
+      // Prefer keeping a catchable copy when both exist (chase round + finale).
       const key = `${species}|${m[3]}|${meta.kind}`;
-      if (seen.has(key)) continue;
+      if (seen.has(key)) {
+        if (!noCatching) {
+          const existing = rows.find(
+            (row) =>
+              row.mapsec === mapsec &&
+              row.species === species &&
+              row.level === Number(m[3]) &&
+              row.kind === meta.kind,
+          );
+          if (existing?.noCatching) delete existing.noCatching;
+        }
+        continue;
+      }
       seen.add(key);
       rows.push({
         mapsec,
@@ -406,6 +437,7 @@ function readStaticEncounters(src, speciesIds, mapToArea, mapsecIds, speciesToNa
         level: Number(m[3]),
         kind: meta.kind,
         randomized: meta.randomized,
+        ...(noCatching ? { noCatching: true } : {}),
       });
     }
   }
@@ -579,6 +611,8 @@ function main() {
       '  kind: "wild-battle" | "gift" | "event";',
       "  /** False for `seteventmon`, which the ROM never rerolls. */",
       "  randomized: boolean;",
+      "  /** True when the script sets `FLAG_SYS_NO_CATCHING` around this fight. */",
+      "  noCatching?: boolean;",
       "};",
       "",
       "/** Scripted encounters — legendaries, gifts, fossils, in-game trades. */",
@@ -591,10 +625,13 @@ function main() {
   );
 
   const mapsecCount = new Set(rows.map((r) => r.mapsec)).size;
+  const noCatchingCount = statics.filter((s) => s.noCatching).length;
   console.error(
     `Wrote ${rows.length} wild tables across ${mapsecCount} mapsecs to ${outPath}\n` +
       `  statics: ${statics.filter((s) => s.randomized).length} randomized, ` +
-      `${statics.filter((s) => !s.randomized).length} seteventmon (never rerolled)\n` +
+      `${statics.filter((s) => !s.randomized).length} seteventmon (never rerolled)` +
+      (noCatchingCount ? `, ${noCatchingCount} FLAG_SYS_NO_CATCHING` : "") +
+      `\n` +
       `  pools: evo0=${pools.evo0.length} evo1=${pools.evo1.length} evo2=${pools.evo2.length} ` +
       `legendary=${pools.legendary.length} all=${pools.all.length} allLegendary=${pools.allLegendary.length}\n` +
       `  species mapped to National Dex: ${speciesToNational.filter(Boolean).length}` +
