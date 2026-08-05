@@ -41,8 +41,8 @@
   --shadow-md: rgba(18, 22, 18, 0.2);
   --on-accent: #f4fff7;
   --accent-ink: #14532d;
-  /* Ink on gold informational chrome (`.gba-frame-title`) */
-  --on-chrome: #121612;
+  /* Ink on gold informational chrome (`.gba-frame-title`); override locally when chrome retints */
+  --on-chrome: var(--ink);
   /* Discord brand — same in light/dark */
   --discord: #5865f2;
   --discord-hover: #4752c4;
@@ -89,8 +89,8 @@
   --shadow-md: rgba(0, 0, 0, 0.6);
   --on-accent: #061209;
   --accent-ink: #d8ffe6;
-  /* Ink on gold informational chrome (`.gba-frame-title`) */
-  --on-chrome: #f3f7f1;
+  /* Ink on gold informational chrome (`.gba-frame-title`); override locally when chrome retints */
+  --on-chrome: var(--ink);
   --discord: #5865f2;
   --discord-hover: #4752c4;
   --on-discord: #ffffff;
@@ -4039,21 +4039,23 @@ button:disabled,
 
 /* Cleared Game Guide chapters — muted green chrome when collapsed */
 .guide-chapter--cleared .gba-frame-title {
+  --on-chrome: color-mix(in srgb, var(--ink) 82%, #1f5c3d);
   background: linear-gradient(
     180deg,
     color-mix(in srgb, #3f9f6e 22%, var(--surface-2)) 0%,
     color-mix(in srgb, #3f9f6e 10%, var(--surface-2)) 100%
   );
   border-bottom-color: color-mix(in srgb, #3f9f6e 40%, var(--frame));
-  color: color-mix(in srgb, var(--ink) 82%, #1f5c3d);
+  color: var(--on-chrome);
 }
 
 [data-theme="dark"] .guide-chapter--cleared .gba-frame-title {
+  --on-chrome: color-mix(in srgb, var(--ink) 88%, #9ee0bc);
   background: linear-gradient(
     180deg,
     color-mix(in srgb, #3f9f6e 14%, var(--surface-2)) 0%,
     color-mix(in srgb, #3f9f6e 6%, var(--surface-2)) 100%
   );
-  color: color-mix(in srgb, var(--ink) 88%, #9ee0bc);
+  color: var(--on-chrome);
 }
 
