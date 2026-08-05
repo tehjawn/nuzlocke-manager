@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
 import { BountyHunterView } from "@/components/BountyHunterView";
 import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
-import { GuideIcon } from "@/components/nav-icons";
 import { PokedexPanel } from "@/components/PokedexPanel";
 import { TeamPlannerView } from "@/components/TeamPlannerView";
+import { ToolIcon } from "@/components/tool-icons";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import {
@@ -98,7 +97,7 @@ function ToolsDirectory({
               <span className="gba-frame-title relative z-[1] flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-semibold sm:text-base">
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="shrink-0 text-[var(--on-chrome)]/80" aria-hidden>
-                    {toolIcon(entry.id)}
+                    <ToolIcon id={entry.id} />
                   </span>
                   <span className="min-w-0 truncate">{entry.title}</span>
                 </span>
@@ -122,90 +121,6 @@ function ToolsDirectory({
         ))}
       </ul>
     </div>
-  );
-}
-
-function toolIcon(id: ToolsId): ReactNode {
-  switch (id) {
-    case "pokedex":
-      return <PokedexToolIcon />;
-    case "chart":
-      return <TypeChartToolIcon />;
-    case "guide":
-      return <GuideIcon className="h-5 w-5" />;
-    case "bounty":
-      return <BountyToolIcon />;
-    case "planner":
-      return <PlannerToolIcon />;
-  }
-}
-
-function PokedexToolIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      aria-hidden
-    >
-      <rect x="5" y="3.5" width="14" height="17" rx="2.5" />
-      <circle cx="12" cy="11" r="3.25" />
-      <path d="M9.5 17.5h5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function TypeChartToolIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      aria-hidden
-    >
-      <rect x="4" y="4" width="6.5" height="6.5" rx="1" />
-      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1" />
-      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1" />
-      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" />
-    </svg>
-  );
-}
-
-function BountyToolIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="7.25" />
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2.75v2.5M12 18.75v2.5M2.75 12h2.5M18.75 12h2.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function PlannerToolIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      aria-hidden
-    >
-      <rect x="4" y="5" width="16" height="14" rx="2" />
-      <path d="M8 9.5h8M8 12.5h5M8 15.5h6" strokeLinecap="round" />
-      <circle cx="16.5" cy="15.5" r="1.25" fill="currentColor" stroke="none" />
-    </svg>
   );
 }
 
