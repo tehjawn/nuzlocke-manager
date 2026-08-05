@@ -74,6 +74,9 @@ export function SpecimenShowcase({
   const [shinyOnly, setShinyOnly] = useState(false);
   const [catchTier, setCatchTier] = useState<CatchTier | null>(null);
   const [bstRank, setBstRank] = useState<StatRank | null>(null);
+  const [competitiveRank, setCompetitiveRank] = useState<StatRank | null>(
+    null,
+  );
   const [openRowId, setOpenRowId] = useState<string | null>(null);
 
   // Everything except slot, so the chip tallies below describe what switching
@@ -82,6 +85,7 @@ export function SpecimenShowcase({
     const base: SpecimenFilters = {
       bstRank,
       catchTier,
+      competitiveRank,
       generation,
       query,
       shinyOnly,
@@ -90,7 +94,17 @@ export function SpecimenShowcase({
       type,
     };
     return rows.filter((row) => specimenMatchesFilters(row, base));
-  }, [rows, trainerId, type, generation, shinyOnly, catchTier, bstRank, query]);
+  }, [
+    rows,
+    trainerId,
+    type,
+    generation,
+    shinyOnly,
+    catchTier,
+    bstRank,
+    competitiveRank,
+    query,
+  ]);
 
   const slotCounts = useMemo(() => {
     const counts = new Map<SpecimenSlotScope, number>();
@@ -217,7 +231,7 @@ export function SpecimenShowcase({
           </select>
         </label>
         <label className="min-w-[8rem] space-y-1 text-xs font-semibold text-muted">
-          BST tier
+          BST score
           <select
             className={FILTER_SELECT_CLASS}
             data-testid="showcase-filter-bst-tier"
@@ -232,7 +246,31 @@ export function SpecimenShowcase({
             }
             value={bstRank ?? ""}
           >
-            <option value="">Any BST tier</option>
+            <option value="">Any BST score</option>
+            {BST_RANK_OPTIONS.map((entry) => (
+              <option key={entry} value={entry}>
+                {entry}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="min-w-[8rem] space-y-1 text-xs font-semibold text-muted">
+          Comp score
+          <select
+            className={FILTER_SELECT_CLASS}
+            data-testid="showcase-filter-comp-tier"
+            onChange={(event) =>
+              setCompetitiveRank(
+                (STAT_RANKS_BEST_FIRST as readonly string[]).includes(
+                  event.target.value,
+                )
+                  ? (event.target.value as StatRank)
+                  : null,
+              )
+            }
+            value={competitiveRank ?? ""}
+          >
+            <option value="">Any Comp score</option>
             {BST_RANK_OPTIONS.map((entry) => (
               <option key={entry} value={entry}>
                 {entry}
