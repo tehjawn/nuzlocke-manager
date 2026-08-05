@@ -1,0 +1,15 @@
+---
+description: Branch names use the current user's initials as the prefix
+alwaysApply: true
+---
+
+# Git branch naming
+
+When creating a new git branch, prefix it with the **current user's initials**, not another contributor's.
+
+- Format: `<initials>/<area>/<short-kebab-topic>`
+- For this user (`jawn` / jawncodes): use **`jn/`**
+  - Example: `jn/pokedex/bst-tier-list`
+- Do **not** copy another author's prefix from recent PRs (e.g. `jw/` is Jonathan / @alcas1).
+
+If initials are unclear, ask once before creating the branch.
