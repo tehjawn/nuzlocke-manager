@@ -8,10 +8,16 @@
 # somewhere prisma/schema.prisma does not describe. Nothing catches that until
 # `migrate deploy` runs somewhere real.
 #
+# The same final assertion also catches a schema.prisma edit with no migration
+# (e.g. someone ran `db push` locally and forgot `migrate dev`): the database
+# built from the base schema will not match HEAD's schema, and the failure
+# message below says so explicitly.
+#
 # What this does, against a throwaway database:
 #   1. builds the schema as it exists on the base ref
 #   2. records the base ref's migrations as already applied
 #   3. runs `migrate deploy`, which applies exactly this branch's new migrations
+#      (skipped when none were added — used for schema-only drift checks)
 #   4. asserts the database now matches prisma/schema.prisma exactly
 #
 # Step 1 builds from the base schema rather than replaying the migrations from
@@ -72,10 +78,7 @@ list_migrations "$MERGE_BASE" >"$work/base"
 list_migrations HEAD >"$work/head"
 comm -13 "$work/base" "$work/head" >"$work/added"
 
-if [ ! -s "$work/added" ]; then
-  echo "No migrations added against ${BASE_REF}; nothing to replay."
-  exit 0
-fi
+added_count="$(wc -l <"$work/added" | tr -d ' ')"
 
 # The baseline below is plain CREATE TABLE, and the migrations after it assume
 # they are the only thing that has touched this database. Against a database
@@ -113,6 +116,7 @@ npx --no-install prisma db execute --file "$work/baseline.sql"
 
 echo "==> Recording $(wc -l <"$work/base" | tr -d ' ') base migration(s) as applied"
 while read -r name; do
+  [ -n "$name" ] || continue
   if ! out="$(npx --no-install prisma migrate resolve --applied "$name" 2>&1)"; then
     echo "Failed to record base migration '${name}' as applied:" >&2
     printf '%s\n' "$out" | sed 's/^/    /' >&2
@@ -120,13 +124,18 @@ while read -r name; do
   fi
 done <"$work/base"
 
-echo "==> Applying this branch's new migration(s)"
-sed 's/^/    /' "$work/added"
-npx --no-install prisma migrate deploy
+if [ "$added_count" -eq 0 ]; then
+  echo "==> No migrations added against ${BASE_REF}; skipping deploy (schema-drift check only)."
+else
+  echo "==> Applying this branch's new migration(s)"
+  sed 's/^/    /' "$work/added"
+  npx --no-install prisma migrate deploy
+fi
 
 # `migrate deploy` succeeding only means the SQL ran. It does not mean the
 # result is the schema the application expects — a migration that adds a column
-# the schema does not declare, or omits one it does, still applies cleanly.
+# the schema does not declare, or omits one it does, still applies cleanly. The
+# same check catches a schema.prisma edit with no accompanying migration.
 echo "==> Checking the result matches prisma/schema.prisma"
 set +e
 npx --no-install prisma migrate diff \
@@ -137,12 +146,21 @@ drift=$?
 set -e
 
 if [ "$drift" -eq 2 ]; then
-  echo "${GITHUB_ACTIONS:+::error::}Migrations applied, but the database does not match prisma/schema.prisma." >&2
-  echo "The difference (database -> schema) is what your migrations failed to make:" >&2
-  sed 's/^/    /' "$work/drift.txt" >&2
-  echo >&2
-  echo "Fix: regenerate the migration with 'npx prisma migrate dev' so its SQL and" >&2
-  echo "     prisma/schema.prisma agree, or hand-write the missing statements." >&2
+  if [ "$added_count" -eq 0 ]; then
+    echo "${GITHUB_ACTIONS:+::error::}prisma/schema.prisma changed, but no migration adds the DDL." >&2
+    echo "The database matches the base schema; HEAD's schema differs by:" >&2
+    sed 's/^/    /' "$work/drift.txt" >&2
+    echo >&2
+    echo "Fix: run 'npx prisma migrate dev' (or 'npm run db:migrate') so the new" >&2
+    echo "     SQL ships with the schema change. Do not rely on 'db push' alone." >&2
+  else
+    echo "${GITHUB_ACTIONS:+::error::}Migrations applied, but the database does not match prisma/schema.prisma." >&2
+    echo "The difference (database -> schema) is what your migrations failed to make:" >&2
+    sed 's/^/    /' "$work/drift.txt" >&2
+    echo >&2
+    echo "Fix: regenerate the migration with 'npx prisma migrate dev' so its SQL and" >&2
+    echo "     prisma/schema.prisma agree, or hand-write the missing statements." >&2
+  fi
   exit 1
 elif [ "$drift" -ne 0 ]; then
   echo "${GITHUB_ACTIONS:+::error::}Could not compare the database with prisma/schema.prisma." >&2
@@ -150,4 +168,8 @@ elif [ "$drift" -ne 0 ]; then
   exit 1
 fi
 
-echo "OK: new migrations apply cleanly on top of ${BASE_REF} and match prisma/schema.prisma."
+if [ "$added_count" -eq 0 ]; then
+  echo "OK: prisma/schema.prisma matches the base database shape (no DDL drift)."
+else
+  echo "OK: new migrations apply cleanly on top of ${BASE_REF} and match prisma/schema.prisma."
+fi
