@@ -16,6 +16,7 @@ import {
   legacyCompareHref,
   parseBountyMode,
   parsePlannerMode,
+  parsePokedexMode,
   parseToolsId,
   toolsTitle,
 } from "@/lib/tools-routes";
@@ -94,6 +95,8 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     initialTool === "bounty" ? parseBountyMode(mode) : null;
   const initialPlannerMode =
     initialTool === "planner" ? parsePlannerMode(mode) : null;
+  const initialPokedexMode =
+    initialTool === "pokedex" ? parsePokedexMode(mode) : null;
 
   return (
     <Suspense
@@ -110,6 +113,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         initialDexId={initialDexId}
         initialBountyMode={initialBountyMode}
         initialPlannerMode={initialPlannerMode}
+        initialPokedexMode={initialPokedexMode}
       />
     </Suspense>
   );

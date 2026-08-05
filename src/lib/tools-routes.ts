@@ -26,7 +26,7 @@ export const TOOLS_CATALOG: ReadonlyArray<{
     id: "pokedex",
     title: "Pokédex",
     blurb:
-      "Species briefing — role, F→S stat ranks vs the ROM, matchups, and who in the pack owns it.",
+      "Species directory — role, F→S BST ranks vs the ROM, matchups, ownership — plus BST and competitive tier ladders.",
   },
   {
     id: "bounty",
@@ -131,4 +131,14 @@ export function parsePlannerMode(
 ): PlannerMode {
   if (raw === "prep" || raw === "vs") return raw;
   return "coverage";
+}
+
+/** Directory (briefing) is the default; tiers = BST ladder; competitive = curated viability. */
+export type PokedexMode = "briefing" | "tiers" | "competitive";
+
+export function parsePokedexMode(
+  raw: string | null | undefined,
+): PokedexMode {
+  if (raw === "tiers" || raw === "competitive") return raw;
+  return "briefing";
 }

@@ -18,8 +18,10 @@ import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 type SpeciesPreview = {
   species: string;
   pokedexId: number | null;
-  /** Extra muted line under the name (e.g. "Not owned yet"). */
+  /** Extra muted line under the name (e.g. "Not owned yet" / "Comp S"). */
   subtitle?: string;
+  /** Longer wrap text under the subtitle (e.g. competitive placement reason). */
+  detail?: string;
 };
 
 type PokemonHoverPreviewProps = {
@@ -41,6 +43,7 @@ type HoverModel = {
   isShiny: boolean;
   types: PokemonType[];
   subtitle: string | null;
+  detail: string | null;
 };
 
 function modelFromPokemon(pokemon: PokemonEntry): HoverModel {
@@ -52,6 +55,7 @@ function modelFromPokemon(pokemon: PokemonEntry): HoverModel {
     isShiny: pokemon.isShiny,
     types: pokemon.types,
     subtitle: null,
+    detail: null,
   };
 }
 
@@ -68,6 +72,7 @@ function modelFromSpecies(preview: SpeciesPreview): HoverModel {
     isShiny: false,
     types,
     subtitle: preview.subtitle?.trim() || null,
+    detail: preview.detail?.trim() || null,
   };
 }
 
@@ -108,14 +113,15 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
     const el = wrapRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const width = 176;
+    // Wider when a placement reason / detail line needs room to wrap.
+    const width = model.detail ? 240 : 176;
     const gap = 8;
     let left = rect.left + rect.width / 2 - width / 2;
     left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
     const above = rect.top > 200;
     const top = above ? rect.top - gap : rect.bottom + gap;
     setPos({ top, left, above });
-  }, []);
+  }, [model.detail]);
 
   const scheduleShow = useCallback(() => {
     // Touch / coarse pointers keep click→details; no sticky popover.
@@ -177,7 +183,9 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
             <div
               id={panelId}
               role="tooltip"
-              className="pokemon-hover-preview pointer-events-none fixed z-[80] w-44 rounded-lg border border-frame bg-surface p-2.5 shadow-lg"
+              className={`pokemon-hover-preview pointer-events-none fixed z-[80] rounded-lg border border-frame bg-surface p-2.5 shadow-lg ${
+                model.detail ? "w-60" : "w-44"
+              }`}
               style={{
                 top: pos.top,
                 left: pos.left,
@@ -216,13 +224,18 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
                     </p>
                   ) : null}
                   {model.subtitle ? (
-                    <p className="mt-0.5 text-[11px] text-muted">
+                    <p className="mt-0.5 text-[11px] font-semibold text-muted">
                       {model.subtitle}
-                      {dexLine ? ` · ${dexLine}` : ""}
+                      {dexLine && !model.detail ? ` · ${dexLine}` : ""}
                     </p>
                   ) : dexLine && !showSpeciesLine && model.level == null ? (
                     <p className="mt-0.5 text-[11px] tabular-nums text-muted">
                       {dexLine}
+                    </p>
+                  ) : null}
+                  {model.detail ? (
+                    <p className="mt-1 text-left text-[11px] leading-snug text-muted">
+                      {model.detail}
                     </p>
                   ) : null}
                 </div>

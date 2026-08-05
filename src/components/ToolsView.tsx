@@ -17,6 +17,7 @@ import {
   toolsHubHref,
   type BountyMode,
   type PlannerMode,
+  type PokedexMode,
   type ToolsId,
 } from "@/lib/tools-routes";
 
@@ -37,6 +38,7 @@ type ToolsViewProps = {
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
+  initialPokedexMode?: PokedexMode | null;
 };
 
 export function ToolsView({
@@ -50,6 +52,7 @@ export function ToolsView({
   initialDexId = null,
   initialBountyMode = null,
   initialPlannerMode = null,
+  initialPokedexMode = null,
 }: ToolsViewProps) {
   const searchParams = useSearchParams();
   const tool =
@@ -74,6 +77,7 @@ export function ToolsView({
       initialDexId={initialDexId}
       initialBountyMode={initialBountyMode}
       initialPlannerMode={initialPlannerMode}
+      initialPokedexMode={initialPokedexMode}
     />
   );
 }
@@ -142,6 +146,7 @@ function ToolWorkspace({
   initialDexId,
   initialBountyMode,
   initialPlannerMode,
+  initialPokedexMode,
 }: {
   slug: string;
   challengeName: string;
@@ -153,13 +158,14 @@ function ToolWorkspace({
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
+  initialPokedexMode?: PokedexMode | null;
 }) {
   const meta = TOOLS_CATALOG.find((t) => t.id === tool)!;
   const hubHref = toolsHubHref(slug);
 
   const blurb =
     tool === "pokedex"
-      ? `Look up species for ${challengeName} — role, stat ranks, matchups, and who's already caught it.`
+      ? `Look up species for ${challengeName} — role, F→S BST ranks, competitive viability, matchups, and who's already caught it.`
       : tool === "chart"
         ? `Modern 18-type chart first — pick a trainer below it to score Main Squad coverage.`
         : tool === "guide"
@@ -191,6 +197,7 @@ function ToolWorkspace({
           myTrainerId={myTrainerId}
           signedIn={signedIn}
           initialId={initialDexId}
+          initialMode={initialPokedexMode}
         />
       ) : null}
 

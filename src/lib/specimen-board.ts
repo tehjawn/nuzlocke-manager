@@ -22,6 +22,7 @@ import {
 } from "@/lib/iv-quality";
 import type { PokemonType } from "@/lib/pokemon-types";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
+import { competitiveTierFor } from "@/lib/competitive-tiers";
 import { baseStatRanksFor, STAT_RANKS, type StatRank } from "@/lib/species-ranks";
 import { calcBattleStats, calcMaxBattleStats, isEmptySpread } from "@/lib/stats";
 
@@ -56,6 +57,14 @@ export type SpecimenRow = {
   bst: number | null;
   /** F→S rank of that BST against the Modern Emerald roster; null with `bst`. */
   bstRank: StatRank | null;
+  /**
+   * Curated competitive viability letter, or null when the species is
+   * untiered / not yet curated. Independent of BST — a mon can be BST A and
+   * competitive S.
+   */
+  competitiveRank: StatRank | null;
+  /** One-line reason when `competitiveRank` is set; null otherwise. */
+  competitiveReason: string | null;
   /**
    * Catch tier, or null when it can't be shown. Two different nulls, hence
    * `catchTierHidden`: withheld from this viewer vs. genuinely nothing on file.
@@ -128,6 +137,8 @@ export function seasonSpecimenBoard(
     for (const pokemon of trainer.pokemon) {
       const pokedexId = resolvePokedexId(pokemon);
       const ranks = rankFor(rankCache, pokedexId);
+      const competitive =
+        pokedexId != null ? competitiveTierFor(pokedexId) : null;
       const catchTier = graded ? gradeCatchTier(pokemon) : null;
 
       rows.push({
@@ -153,6 +164,8 @@ export function seasonSpecimenBoard(
             : null,
         bst: ranks?.bst.value ?? null,
         bstRank: ranks?.bst.rank ?? null,
+        competitiveRank: competitive?.tier ?? null,
+        competitiveReason: competitive?.reason ?? null,
         catchTier,
         catchTierHidden: !graded,
         searchText: [
@@ -187,6 +200,7 @@ export type SpecimenFilters = {
   shinyOnly: boolean;
   catchTier: CatchTier | null;
   bstRank: StatRank | null;
+  competitiveRank: StatRank | null;
   /** Already lowercased and trimmed. */
   query: string;
 };
@@ -214,6 +228,12 @@ export function specimenMatchesFilters(
   // A hidden or ungraded row can't satisfy a tier filter — it has no tier.
   if (filters.catchTier && row.catchTier !== filters.catchTier) return false;
   if (filters.bstRank && row.bstRank !== filters.bstRank) return false;
+  if (
+    filters.competitiveRank &&
+    row.competitiveRank !== filters.competitiveRank
+  ) {
+    return false;
+  }
   if (filters.query && !row.searchText.includes(filters.query)) return false;
   return true;
 }
@@ -223,6 +243,7 @@ export type SpecimenSort =
   | "level"
   | "catch"
   | "bst"
+  | "competitive"
   | "trainer"
   | "alpha";
 
@@ -289,6 +310,14 @@ export function compareSpecimenRows(
       "desc",
     );
     if (primary === 0) primary = compareNullable(a.bst, b.bst, "desc");
+  } else if (sort === "competitive") {
+    // Same letter ladder as BST; untiered (null) sinks. Alpha breaks ties.
+    primary = compareNullable(
+      a.competitiveRank ? STAT_RANKS.indexOf(a.competitiveRank) : null,
+      b.competitiveRank ? STAT_RANKS.indexOf(b.competitiveRank) : null,
+      "desc",
+    );
+    if (primary === 0) primary = a.species.localeCompare(b.species);
   } else if (sort === "trainer") {
     primary =
       a.trainerSortOrder - b.trainerSortOrder ||
