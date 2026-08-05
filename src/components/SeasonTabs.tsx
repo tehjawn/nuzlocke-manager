@@ -9,6 +9,7 @@ import type { ChallengeStatus } from "@/lib/challenge-types";
 type SeasonTabsProps = {
   slug: string;
   status?: ChallengeStatus;
+  firstRun?: boolean;
   /** Temporary WIP gate (#240): Tournament tab is GM-only. */
   isGm?: boolean;
 };
@@ -93,7 +94,7 @@ export function SeasonTabs({
   status = "ACTIVE",
   firstRun = false,
   isGm = false,
-}: SeasonTabsProps & { firstRun?: boolean }) {
+}: SeasonTabsProps) {
   const pathname = usePathname();
   const tabs = getSeasonTabs(slug, status, { firstRun, isGm });
 

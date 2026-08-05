@@ -167,36 +167,38 @@ export function PokemonDetailsModal({
   const baseStats = baseStatsForSpecies(pokemon.pokedexId);
   const bst = baseStats ? bstOf(baseStats) : null;
   const ranks = baseStatRanksFor(pokemon.pokedexId);
-  const statRankChips = ranks
-    ? (Object.fromEntries(
-        STAT_KEYS.map((key) => {
-          const result = ranks.perStat[key];
-          const chip: StatRankChip = {
-            letter: result.rank,
-            toneClass: statRankToneClass(result.rank),
-            hint: statRankHint(STAT_LABELS[key], result, ranks.peerCount),
-          };
-          return [key, chip];
-        }),
-      ) as Partial<Record<(typeof STAT_KEYS)[number], StatRankChip>>)
-    : null;
-
-  const subtitleParts: ReactNode[] = [];
-  if (showSpeciesInSubtitle) subtitleParts.push(speciesLabel);
-  if (pokemon.level != null) {
-    subtitleParts.push(
-      showSpeciesInSubtitle ? ` · Lv ${pokemon.level}` : `Lv ${pokemon.level}`,
-    );
+  let statRankChips: Partial<
+    Record<(typeof STAT_KEYS)[number], StatRankChip>
+  > | null = null;
+  if (ranks) {
+    statRankChips = {};
+    for (const key of STAT_KEYS) {
+      const result = ranks.perStat[key];
+      statRankChips[key] = {
+        letter: result.rank,
+        toneClass: statRankToneClass(result.rank),
+        hint: statRankHint(STAT_LABELS[key], result, ranks.peerCount),
+      };
+    }
   }
-  const hasSubtitle = subtitleParts.length > 0 || pokemon.isShiny;
+
+  const levelText =
+    pokemon.level != null
+      ? showSpeciesInSubtitle
+        ? ` · Lv ${pokemon.level}`
+        : `Lv ${pokemon.level}`
+      : null;
+  const hasSubtitleMeta = showSpeciesInSubtitle || levelText != null;
+  const hasSubtitle = hasSubtitleMeta || pokemon.isShiny;
 
   const subtitle = (
     <>
-      {subtitleParts}
+      {showSpeciesInSubtitle ? speciesLabel : null}
+      {levelText}
       {pokemon.isShiny ? (
         <span
           className={
-            subtitleParts.length > 0
+            hasSubtitleMeta
               ? "ml-1.5 font-semibold text-accent-2"
               : "font-semibold text-accent-2"
           }
@@ -395,8 +397,7 @@ export function PokemonDetailsModal({
                     </p>
                     <p className="mt-1 text-[10px] leading-snug text-muted">
                       Letters rank each base stat F→S against the{" "}
-                      {ranks.peerCount} Modern Emerald species — separate from
-                      this catch&apos;s quality.
+                      {ranks.peerCount} Modern Emerald species.
                     </p>
                   </>
                 ) : null}
