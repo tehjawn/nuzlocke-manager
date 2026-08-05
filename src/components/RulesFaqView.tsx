@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import type { ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Frame } from "@/components/Frame";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { ModeTabs } from "@/components/ModeTabs";
 import {
   RuleIllustration,
   ruleIllustrationKind,
@@ -38,100 +37,67 @@ export function RulesFaqView({
 
   return (
     <div className="space-y-6">
-      <header className="space-y-3">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Rules / FAQ</h2>
-          <p className="mt-2 text-muted">
-            {tab === "faq"
-              ? `Common questions for ${challengeName}.`
-              : `How ${challengeName} works. Core Nuzlocke rules first, house rules after.`}
-          </p>
-        </div>
-        <div
-          role="tablist"
-          aria-label="Rules and FAQ"
-          className="gba-inset inline-flex gap-1 bg-surface-2/80 p-1"
-        >
-          <SubTab href={rulesHref} active={tab === "rules"} pathname={pathname}>
-            Rules
-          </SubTab>
-          <SubTab href={faqHref} active={tab === "faq"} pathname={pathname}>
-            FAQ
-          </SubTab>
-        </div>
+      <header>
+        <h2 className="text-2xl font-bold tracking-tight">Rules / FAQ</h2>
+        <p className="mt-2 text-muted">
+          {tab === "faq"
+            ? `Common questions for ${challengeName}.`
+            : `How ${challengeName} works. Core Nuzlocke rules first, house rules after.`}
+        </p>
       </header>
 
-      {tab === "rules" ? (
-        <ol className="space-y-4">
-          {rules.map((rule) => {
-            const illustration = ruleIllustrationKind(rule.title);
-            const showBody = rule.body.trim().length > 0;
+      <ModeTabs
+        aria-label="Rules and FAQ"
+        idPrefix="rules-faq"
+        value={tab}
+        tabs={[
+          { id: "rules", label: "Rules", href: rulesHref },
+          { id: "faq", label: "FAQ", href: faqHref },
+        ]}
+        linkReplace={pathname.endsWith("/rules")}
+        linkScroll={false}
+      >
+        {tab === "rules" ? (
+          <ol className="space-y-4">
+            {rules.map((rule) => {
+              const illustration = ruleIllustrationKind(rule.title);
+              const showBody = rule.body.trim().length > 0;
 
-            return (
-              <li key={rule.id}>
-                <Frame
-                  title={`${rule.sortOrder}. ${rule.title ?? "Rule"}`}
-                  actions={
-                    <span className="info-chip text-[11px] font-semibold tracking-tight">
-                      {rule.isCore ? "Core" : "House"}
-                    </span>
-                  }
-                >
-                  {illustration ? (
-                    <RuleIllustration kind={illustration} />
-                  ) : null}
-                  {showBody ? (
-                    <MarkdownContent
-                      className={illustration ? "mt-3" : ""}
-                      content={rule.body}
-                      toolsHref={toolsHref}
-                    />
-                  ) : null}
-                </Frame>
-              </li>
-            );
-          })}
-        </ol>
-      ) : (
-        <div className="space-y-4">
-          {faqs.map((faq) => (
-            <Frame key={faq.id} title={faq.question}>
-              <MarkdownContent content={faq.answer} toolsHref={toolsHref} />
-            </Frame>
-          ))}
-        </div>
-      )}
+              return (
+                <li key={rule.id}>
+                  <Frame
+                    title={`${rule.sortOrder}. ${rule.title ?? "Rule"}`}
+                    actions={
+                      <span className="info-chip text-[11px] font-semibold tracking-tight">
+                        {rule.isCore ? "Core" : "House"}
+                      </span>
+                    }
+                  >
+                    {illustration ? (
+                      <RuleIllustration kind={illustration} />
+                    ) : null}
+                    {showBody ? (
+                      <MarkdownContent
+                        className={illustration ? "mt-3" : ""}
+                        content={rule.body}
+                        toolsHref={toolsHref}
+                      />
+                    ) : null}
+                  </Frame>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <div className="space-y-4">
+            {faqs.map((faq) => (
+              <Frame key={faq.id} title={faq.question}>
+                <MarkdownContent content={faq.answer} toolsHref={toolsHref} />
+              </Frame>
+            ))}
+          </div>
+        )}
+      </ModeTabs>
     </div>
-  );
-}
-
-function SubTab({
-  href,
-  active,
-  pathname,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  pathname: string;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      role="tab"
-      aria-selected={active}
-      prefetch
-      className={`rounded-[calc(var(--radius-sm)-2px)] border px-3.5 py-1.5 text-sm font-semibold transition-colors ${
-        active
-          ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
-          : "border-transparent text-ink hover:bg-surface"
-      }`}
-      // Keep soft-nav within the season workspace when already on /rules
-      replace={pathname.endsWith("/rules")}
-      scroll={false}
-    >
-      {children}
-    </Link>
   );
 }

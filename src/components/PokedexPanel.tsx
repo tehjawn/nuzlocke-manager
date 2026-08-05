@@ -14,6 +14,7 @@ import {
 } from "react";
 import { Frame } from "@/components/Frame";
 import { EvolutionPath } from "@/components/EvolutionPath";
+import { ModeTabs } from "@/components/ModeTabs";
 import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { PokedexTierList, CompetitiveTierBrief } from "@/components/PokedexTierList";
@@ -382,33 +383,14 @@ export function PokedexPanel({
   );
 
   return (
-    <div className="space-y-4">
-      <div
-        role="tablist"
-        aria-label="Pokédex mode"
-        className="flex flex-wrap gap-1.5"
-      >
-        {POKEDEX_MODES.map((entry) => {
-          const active = mode === entry.id;
-          return (
-            <button
-              key={entry.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              className={`pressable inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold tracking-tight ${
-                active
-                  ? "bg-accent text-[var(--on-accent)]"
-                  : "border border-frame bg-surface"
-              }`}
-              onClick={() => selectMode(entry.id)}
-            >
-              {entry.label}
-            </button>
-          );
-        })}
-      </div>
-
+    <ModeTabs
+      aria-label="Pokédex mode"
+      idPrefix="pokedex"
+      value={mode}
+      tabs={POKEDEX_MODES}
+      onValueChange={selectMode}
+      panelClassName="space-y-4"
+    >
       {mode === "tiers" || mode === "competitive" ? (
         <PokedexTierList
           ladder={mode === "competitive" ? "competitive" : "bst"}
@@ -655,7 +637,7 @@ export function PokedexPanel({
       </div>
         </>
       )}
-    </div>
+    </ModeTabs>
   );
 }
 

@@ -1458,6 +1458,128 @@ button:disabled,
   box-shadow: inset 0 1px 2px color-mix(in srgb, var(--shadow) 60%, transparent);
 }
 
+/*
+  ModeTabs — Chrome-style folder tabs (#257).
+  One outer border. Chrome has a real bottom rule; the active tab overlaps it
+  (margin-bottom: -1px + surface bottom border). List must NOT use overflow-x
+  — that clips the overlap and leaves a hairline under the active tab.
+*/
+.mode-tabs {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border: 1px solid var(--frame);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.mode-tabs__chrome {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  gap: 0.65rem;
+  border-bottom: 1px solid var(--frame);
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--frame));
+  /* Room above tabs so hover fill / focus ring aren’t flush-clipped */
+  padding: 0.3rem 0.25rem 0;
+}
+
+.mode-tabs__list {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.15rem;
+  padding-top: 1px;
+}
+
+.mode-tabs__tab {
+  position: relative;
+  z-index: 0;
+  flex: 0 0 auto;
+  /* Overlap the chrome bottom rule */
+  margin-bottom: -1px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  padding: 0.5rem 0.9rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: none;
+  transform: none;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.mode-tabs--sm .mode-tabs__tab {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.mode-tabs__tab:hover:not([aria-selected="true"]) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 78%, var(--interactive-soft));
+  border-color: color-mix(in srgb, var(--frame) 65%, transparent);
+  /* Don’t paint a bottom edge — let the strip rule show under idle tabs */
+  border-bottom-color: transparent;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--frame-inner) 75%, transparent);
+  transform: none;
+}
+
+.mode-tabs__tab[aria-selected="true"] {
+  z-index: 1;
+  border-color: var(--frame);
+  /* Surface bottom border sits on the chrome rule and erases it */
+  border-bottom-color: var(--surface);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+/* Extra cover — extends 1px onto the chrome rule (safe now that list has no overflow) */
+.mode-tabs__tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--surface);
+  pointer-events: none;
+}
+
+.mode-tabs__tab:focus-visible {
+  outline: 2px solid var(--interactive);
+  outline-offset: -2px;
+}
+
+.mode-tabs__trailing {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 0 0.35rem 0.4rem;
+}
+
+.mode-tabs__panel {
+  position: relative;
+  z-index: 0;
+  min-width: 0;
+  /* No own border — lives inside the shared .mode-tabs frame */
+  background: var(--surface);
+  padding: 0.875rem;
+}
+
+.mode-tabs--sm .mode-tabs__panel {
+  padding: 0.75rem;
+}
+
 /* Battle / IV / EV stat meter track (Showdown-style rows) */
 .stat-meter-track {
   overflow: hidden;
