@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { AboutIcon, RulesIcon } from "@/components/nav-icons";
+import { AboutIcon, RulesIcon, ToolsIcon } from "@/components/nav-icons";
 import type { ChallengeStatus } from "@/lib/challenge-types";
 
 type SeasonTabsProps = {
@@ -151,17 +151,6 @@ function EncountersIcon() {
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
       <path d="M4 7h16M4 12h10M4 17h13" strokeLinecap="round" />
       <circle cx="18.5" cy="12" r="2.25" />
-    </svg>
-  );
-}
-
-function ToolsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
-      <path d="M14.5 6.5l3 3-8.5 8.5H6v-3L14.5 6.5z" strokeLinejoin="round" />
-      <path d="M12.5 8.5l3 3" strokeLinecap="round" />
-      <circle cx="7.5" cy="7.5" r="2.25" />
-      <path d="M16.5 16.5l2 2" strokeLinecap="round" />
     </svg>
   );
 }

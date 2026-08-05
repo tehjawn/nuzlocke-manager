@@ -1,32 +1,32 @@
 export type ToolsId =
-  | "pokedex"
-  | "chart"
   | "guide"
+  | "pokedex"
   | "bounty"
-  | "planner";
+  | "planner"
+  | "chart";
 
+/**
+ * Single source of truth for tool order — the hub grid, the header Tools menu,
+ * and the mobile drawer all render straight off this array, so adding a tool
+ * never needs a nav edit. Progress-first (what do I do next, who has what),
+ * then the lookup references.
+ */
 export const TOOLS_CATALOG: ReadonlyArray<{
   id: ToolsId;
   title: string;
   blurb: string;
 }> = [
   {
-    id: "pokedex",
-    title: "Pokédex",
-    blurb:
-      "Species briefing — role, F→S stat ranks vs the ROM, matchups, and who in the pack owns it.",
-  },
-  {
-    id: "chart",
-    title: "Type Chart",
-    blurb:
-      "Modern 18-type attack × defense multipliers — overlay a trainer's Main Squad coverage.",
-  },
-  {
     id: "guide",
     title: "Game Guide",
     blurb:
       "What to do next in Modern Emerald — story gates and easy-to-miss beats based on your badges.",
+  },
+  {
+    id: "pokedex",
+    title: "Pokédex",
+    blurb:
+      "Species briefing — role, F→S stat ranks vs the ROM, matchups, and who in the pack owns it.",
   },
   {
     id: "bounty",
@@ -39,6 +39,12 @@ export const TOOLS_CATALOG: ReadonlyArray<{
     title: "Team Planner",
     blurb:
       "Sandbox a Main of 6 — type coverage, defensive holes, and Elite Four / gym prep.",
+  },
+  {
+    id: "chart",
+    title: "Type Chart",
+    blurb:
+      "Modern 18-type attack × defense multipliers — overlay a trainer's Main Squad coverage.",
   },
 ];
 
@@ -71,11 +77,11 @@ export function parseToolsId(
 ): ToolsId | null {
   const raw = tool ?? tab;
   if (
-    raw === "pokedex" ||
-    raw === "chart" ||
     raw === "guide" ||
+    raw === "pokedex" ||
     raw === "bounty" ||
-    raw === "planner"
+    raw === "planner" ||
+    raw === "chart"
   ) {
     return raw;
   }
