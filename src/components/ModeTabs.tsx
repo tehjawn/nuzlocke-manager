@@ -71,7 +71,8 @@ export function ModeTabs<T extends string>({
               "aria-selected": selected,
               "aria-controls": panelId,
               "data-testid": tab["data-testid"],
-              className: "mode-tabs__tab pressable",
+              // No `.pressable` — its hover translateY clips inside the strip.
+              className: "mode-tabs__tab",
             };
 
             if (tab.href) {

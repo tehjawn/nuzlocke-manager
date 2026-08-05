@@ -1477,7 +1477,8 @@ button:disabled,
   border-bottom: none;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background: color-mix(in srgb, var(--surface-2) 90%, var(--frame));
-  padding: 0.2rem 0.25rem 0;
+  /* Room above tabs so hover fill / focus ring aren’t flush-clipped */
+  padding: 0.3rem 0.25rem 0;
 }
 
 .mode-tabs__list {
@@ -1487,6 +1488,8 @@ button:disabled,
   align-items: flex-end;
   gap: 0.15rem;
   overflow-x: auto;
+  /* overflow-x:auto forces a BFC that clips Y; pad the scrollport instead */
+  padding-top: 1px;
   scrollbar-width: none;
 }
 
@@ -1509,6 +1512,8 @@ button:disabled,
   line-height: 1.25;
   white-space: nowrap;
   text-decoration: none;
+  box-shadow: none;
+  transform: none;
   transition:
     color 120ms ease,
     background-color 120ms ease,
@@ -1523,6 +1528,8 @@ button:disabled,
 .mode-tabs__tab:hover {
   color: var(--ink);
   background: color-mix(in srgb, var(--surface) 55%, transparent);
+  transform: none;
+  box-shadow: none;
 }
 
 .mode-tabs__tab[aria-selected="true"] {
@@ -1535,7 +1542,7 @@ button:disabled,
 
 .mode-tabs__tab:focus-visible {
   outline: 2px solid var(--interactive);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 .mode-tabs__trailing {
