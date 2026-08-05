@@ -14,7 +14,7 @@ import {
   formatGymPrepTypeMatch,
   gymPrepCapRole,
   hasTypingMatch,
-  isGymPrepLevelReady,
+  isGymPrepAnswered,
   levelVerdictForGymPrep,
   squadMatchesForGymPrep,
   type GymPrepCapRole,
@@ -1136,25 +1136,25 @@ function PrepPanels({
 
   const gymAnswered = useMemo(
     () =>
-      gymPreps.filter((entry) => {
-        if (gymPrepCapRole(entry.prep.badgeKey, earnedBadgeKeys) === "cleared") {
-          return true;
-        }
-        const matches = squadMatchesForGymPrep(draftAsSquad, entry.prep);
-        return matches.some((m) => isGymPrepLevelReady(m, entry.prep.aceLevel));
-      }).length,
+      gymPreps.filter((entry) =>
+        isGymPrepAnswered(
+          squadMatchesForGymPrep(draftAsSquad, entry.prep),
+          entry.prep.aceLevel,
+          gymPrepCapRole(entry.prep.badgeKey, earnedBadgeKeys),
+        ),
+      ).length,
     [gymPreps, draftAsSquad, earnedBadgeKeys],
   );
 
   const leagueAnswered = useMemo(
     () =>
-      ELITE_FOUR_PREP.filter((prep) => {
-        if (gymPrepCapRole(prep.badgeKey, earnedBadgeKeys) === "cleared") {
-          return true;
-        }
-        const matches = squadMatchesForGymPrep(draftAsSquad, prep);
-        return matches.some((m) => isGymPrepLevelReady(m, prep.aceLevel));
-      }).length,
+      ELITE_FOUR_PREP.filter((prep) =>
+        isGymPrepAnswered(
+          squadMatchesForGymPrep(draftAsSquad, prep),
+          prep.aceLevel,
+          gymPrepCapRole(prep.badgeKey, earnedBadgeKeys),
+        ),
+      ).length,
     [draftAsSquad, earnedBadgeKeys],
   );
 
@@ -1294,9 +1294,9 @@ function PrepCard({
   const notes = prep.partyNotes ? shortenPartyNotes(prep.partyNotes) : "";
   const capRole = gymPrepCapRole(prep.badgeKey, earnedBadgeKeys);
   const cleared = capRole === "cleared";
-  const levelReady = matches.some((m) => isGymPrepLevelReady(m, prep.aceLevel));
   const hasTypeAnswer = matches.length > 0;
-  const underOnly = hasTypeAnswer && !levelReady && !cleared;
+  const underOnly =
+    hasTypeAnswer && !isGymPrepAnswered(matches, prep.aceLevel, capRole);
 
   return (
     <li className={cleared ? "opacity-70" : undefined}>

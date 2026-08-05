@@ -111,6 +111,25 @@ export function isGymPrepLevelReady(match: GymPrepSquadMatch, aceLevel: number):
 }
 
 /**
+ * Whether the checkpoint counts as answered by this draft.
+ *
+ * Level only enters the question at the live cap. The house rule pins the squad
+ * *below* every later checkpoint’s ace, so demanding level-readiness there would
+ * report rules-compliant play as a gap — and would make the count a function of
+ * badge progress rather than of the draft.
+ */
+export function isGymPrepAnswered(
+  matches: readonly GymPrepSquadMatch[],
+  aceLevel: number,
+  capRole: GymPrepCapRole,
+): boolean {
+  if (capRole === "cleared") return true;
+  if (matches.length === 0) return false;
+  if (capRole !== "live") return true;
+  return matches.some((match) => isGymPrepLevelReady(match, aceLevel));
+}
+
+/**
  * Main + Reserve mons that answer the gym’s recommended types, either by
  * species typing or by a known damaging move of that type (same idea as the
  * Coverage tab). Graveyard / encounter-only slots are ignored.
