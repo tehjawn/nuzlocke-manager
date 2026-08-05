@@ -76,7 +76,18 @@ export const TX_RANDOM_INCLUDE_LEGENDARIES_BIT = 4;
  *
  * GCC packs consecutive `u8 x:n` fields into a byte and starts a new one when a
  * field would straddle the boundary, so this follows the declaration order in
- * include/global.h rather than a flat bit count.
+ * include/global.h rather than a flat bit count:
+ *
+ *   byte 0: Chaos, WildPokemon, Similar, MapBased, IncludeLegendaries,
+ *           Type, TypeEffectiveness, Abilities
+ *   byte 1: Moves, Trainer, Evolutions, EvolutionMethods, EvoLimit:2,
+ *           Nuzlocke, NuzlockeHardcore
+ *   byte 2: OneTypeChallenge:5, PartyLimit:3
+ *   byte 3: NoItemPlayer, NoItemTrainer, PkmnCenter:2, LessEscapes,
+ *           BaseStatEqualizer:2  (LevelCap:2 spills — only 1 bit left)
+ *   byte 4: LevelCap:2, ExpMultiplier:2, Items, SpeciesClause, ShinyClause,
+ *           Nicknaming
+ *   byte 5: Mirror, Mirror_Thief, Static ← bit 2, NoEVs, …
  */
 export const TX_RANDOM_STATIC = [5, 2] as const;
 /**

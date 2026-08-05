@@ -1399,9 +1399,14 @@ function readRandomizerAbsolute(
   if (!nuzlockeFlagsLookCoherent(sb1Bytes, sb1Base + SB1_NUZLOCKE_ENCOUNTER_FLAGS)) {
     return EMPTY_RANDOMIZER;
   }
+  // `tx_Random_Static` lives at settingsOff + 5; a truncated buffer must not
+  // report reliable tables while that bit falls back to 0.
+  const settingsComplete =
+    settingsOff + TX_RANDOM_STATIC[0] < sb1Bytes.length;
   const bits = sb1Bytes[settingsOff]!;
   const bit = (index: number) => ((bits >>> index) & 1) === 1;
   const at = ([byte, index]: readonly [number, number]) =>
+    settingsComplete &&
     (((sb1Bytes[settingsOff + byte] ?? 0) >>> index) & 1) === 1;
   return {
     otId: otId ?? 0,
@@ -1411,7 +1416,7 @@ function readRandomizerAbsolute(
     includeLegendaries: bit(TX_RANDOM_INCLUDE_LEGENDARIES_BIT),
     chaos: bit(TX_RANDOM_CHAOS_BIT),
     statics: at(TX_RANDOM_STATIC),
-    reliable: otId != null && otId !== 0,
+    reliable: otId != null && otId !== 0 && settingsComplete,
   };
 }
 
@@ -1730,13 +1735,7 @@ function readModernDexFromEmbeddedFlash(
   ) {
     return null;
   }
-  const trainerId =
-    sb2.length >= SB2_TRAINER_ID + 4
-      ? new DataView(sb2.buffer, sb2.byteOffset + SB2_TRAINER_ID, 4).getUint32(
-          0,
-          true,
-        )
-      : null;
+  const trainerId = readTrainerIdFromSaveBlock2(sb2);
   return {
     seen: listDexBits(sb1, SB1_SEEN1, MODERN_NUM_SPECIES),
     badges: readBadgesAbsolute(sb1, SB1_FLAGS),
@@ -2099,6 +2098,15 @@ function readTrainerFromSaveBlock2(sb2: Uint8Array): ParsedSaveTrainer | null {
   return { name, gender: genderByte === 1 ? "F" : "M" };
 }
 
+/** `GetTrainerId(gSaveBlock2Ptr->playerTrainerId)` — little-endian u32 at 0x0A. */
+function readTrainerIdFromSaveBlock2(sb2: Uint8Array): number | null {
+  if (sb2.length < SB2_TRAINER_ID + 4) return null;
+  return new DataView(sb2.buffer, sb2.byteOffset + SB2_TRAINER_ID, 4).getUint32(
+    0,
+    true,
+  );
+}
+
 function readBadgesAbsolute(
   sb1: Uint8Array,
   flagsOffset: number,
@@ -2212,15 +2220,9 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
   if (speciesMode === "modern" && !revive.reliable) {
     warnings.push("Could not read revive token from SaveBlock1.");
   }
-  // SaveBlock2 is anchored here, so the seed comes straight from
-  // `playerTrainerId` rather than the OT-ID vote the EWRAM path has to use.
-  const trainerId =
-    sb2.length >= SB2_TRAINER_ID + 4
-      ? new DataView(sb2.buffer, sb2.byteOffset + SB2_TRAINER_ID, 4).getUint32(
-          0,
-          true,
-        )
-      : null;
+  // SaveBlock2 is anchored here, so the seed comes from `playerTrainerId` when
+  // the block is long enough, else falls back to modalOtId([...party, ...box, ...rip]).
+  const trainerId = readTrainerIdFromSaveBlock2(sb2);
   const randomizer =
     speciesMode === "modern"
       ? readRandomizerAbsolute(sb1, 0, trainerId ?? modalOtId([...party, ...box, ...rip]))

@@ -107,6 +107,9 @@ function isoRandomize1(value: number): number {
   return (Math.imul(1103515245, value | 0) + 24691) >>> 0;
 }
 
+/** ROM rejection-loop bound in `RandomSeededModulo` (src/random.c). */
+const I_MAX = 5;
+
 /**
  * `RandomSeededModulo` (src/random.c).
  *
@@ -125,7 +128,7 @@ export function randomSeededModulo(
   let i = 0;
   do {
     result = isoRandomize1((otId + value + result) >>> 0);
-  } while (result >= randMax && ++i !== 5);
+  } while (result >= randMax && ++i !== I_MAX);
   return result % modulo;
 }
 

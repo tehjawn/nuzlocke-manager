@@ -51,6 +51,9 @@ const ROD_LABELS: Record<string, string> = {
   super_rod: "Super Rod",
 };
 
+/** Emulator states run a few MB; anything past this is a mis-picked file. */
+const MAX_SAVE_BYTES = 32 * 1024 * 1024;
+
 const STATIC_KIND_LABELS: Record<RolledStatic["kind"], string> = {
   "wild-battle": "Static battle",
   gift: "Gift / fossil",
@@ -344,7 +347,7 @@ export function RandomizerSeedModal({
         return speciesName(slot.pokedexId).toLowerCase().includes(q);
       });
       if (slots.length === 0) continue;
-      out.push(slots === area.slots ? area : { ...area, slots });
+      out.push(slots.length === area.slots.length ? area : { ...area, slots });
     }
     return out;
   }, [parsed, query, compTiers]);
@@ -376,6 +379,12 @@ export function RandomizerSeedModal({
 
   async function onFile(file: File | null) {
     if (!file) return;
+    if (file.size > MAX_SAVE_BYTES) {
+      setError(
+        "That file is too large to be a Gen 3 save or emulator state. Expected under 32 MB.",
+      );
+      return;
+    }
     setParsing(true);
     setError(null);
     setParsed(null);
@@ -572,6 +581,7 @@ export function RandomizerSeedModal({
                       <button
                         key={tab.id}
                         type="button"
+                        aria-pressed={view === tab.id}
                         className={`pressable rounded-md px-3 py-1.5 text-xs font-semibold tracking-tight ${
                           view === tab.id
                             ? "bg-accent text-[var(--on-accent)]"
@@ -587,6 +597,7 @@ export function RandomizerSeedModal({
                     type="search"
                     value={query}
                     placeholder="Filter by Pokémon or route…"
+                    aria-label="Filter by Pokémon or route"
                     className="min-w-0 flex-1 rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
                     onChange={(e) => setQuery(e.target.value)}
                   />
@@ -985,16 +996,8 @@ function RouteView({
                     <PokemonHoverPreview
                       speciesPreview={speciesHoverPreview(group.slotPokedexId)}
                     >
-                      <Link
-                        href={toolsHref(slug, "pokedex", {
-                          id: group.slotPokedexId,
-                        })}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onNavigate();
-                        }}
-                        aria-label={`Open ${speciesName(group.slotPokedexId)} in Pokédex`}
-                        className="relative block rounded border border-accent/30 bg-surface p-0.5 hover:border-interactive/50"
+                      <span
+                        className="relative block rounded border border-accent/30 bg-surface p-0.5"
                         title={`Caught: ${speciesName(group.slotPokedexId)}`}
                       >
                         <Sprite pokedexId={group.slotPokedexId} size={28} />
@@ -1002,7 +1005,7 @@ function RouteView({
                           pokedexId={group.slotPokedexId}
                           className="absolute -right-1 -top-1"
                         />
-                      </Link>
+                      </span>
                     </PokemonHoverPreview>
                   ) : group.used ? (
                     <span
@@ -1027,6 +1030,20 @@ function RouteView({
                 </span>
               </summary>
               <div className="space-y-2.5 border-t border-frame/50 px-2.5 py-2">
+                {group.slotPokedexId ? (
+                  <p className="text-[0.7rem] text-muted">
+                    Caught{" "}
+                    <Link
+                      href={toolsHref(slug, "pokedex", {
+                        id: group.slotPokedexId,
+                      })}
+                      onClick={onNavigate}
+                      className="font-semibold text-ink underline-offset-2 hover:underline"
+                    >
+                      {speciesName(group.slotPokedexId)}
+                    </Link>
+                  </p>
+                ) : null}
                 {group.areas.map((area) => (
                   <div key={`${area.mapsec}-${area.kind}`}>
                     <p className="mb-1 text-[0.65rem] font-semibold tracking-wide text-muted">

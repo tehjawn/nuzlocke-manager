@@ -155,9 +155,16 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
     function onScroll() {
       setOpen(false);
     }
+    function onResize() {
+      place();
+    }
     window.addEventListener("scroll", onScroll, true);
-    return () => window.removeEventListener("scroll", onScroll, true);
-  }, [open]);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [open, place]);
 
   // Comp-tier detail makes the panel tall; a fixed "flip above at 200px"
   // heuristic clips under the viewport (and modal chrome) on early list rows.
