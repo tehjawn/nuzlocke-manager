@@ -39,8 +39,10 @@ export async function generateMetadata({
   params,
   searchParams,
 }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const { tool, tab, a, b } = await searchParams;
+  const [{ slug }, { tool, tab, a, b }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
   const challenge = await getChallengeMeta(slug);
   if (!challenge) return { title: "Tools" };
 
@@ -55,21 +57,25 @@ export async function generateMetadata({
 }
 
 export default async function ToolsPage({ params, searchParams }: PageProps) {
-  const { slug } = await params;
-  const { tool, tab, a, b, id, mode } = await searchParams;
+  const [{ slug }, sp, session] = await Promise.all([
+    params,
+    searchParams,
+    auth(),
+  ]);
+  const { tool, tab, a, b, id, mode } = sp;
   if (isLegacyCompareUrl({ a, b, tab, tool })) {
     redirect(legacyCompareHref(slug));
   }
-  const session = await auth();
   const challenge = await getChallengeToolsSummary(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
-  const gmLensOn = access?.isGm
-    ? await readGmLensOn(challenge.slug)
-    : false;
+  // Speculative read — ignored when the viewer isn't a GM (avoids a second
+  // round-trip after access resolves).
+  const gmLensOn =
+    access?.isGm === true ? await readGmLensOn(challenge.slug) : false;
 
   // One pass, two outputs: the redacted payload, and the ids whose competitive
   // fields survived it. Showcase needs the second to tell "IVs withheld from

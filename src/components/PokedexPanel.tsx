@@ -3,11 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -68,7 +70,9 @@ import type { PokemonType as ChartType } from "@/lib/type-chart";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 import {
   DEFAULT_POKEDEX_ID,
+  getPokedexLastIdServerSnapshot,
   readPokedexLastId,
+  subscribePokedexLastId,
   writePokedexLastId,
 } from "@/features/preferences/pokedex-last-id";
 import {
@@ -111,14 +115,11 @@ export function PokedexPanel({
   initialId = null,
   initialMode = null,
 }: PokedexPanelProps) {
-  // SSR / first paint: URL id wins, else Bulbasaur (localStorage hydrate below).
-  const initial =
-    resolveDirectoryEntry(initialId) ??
-    resolveDirectoryEntry(DEFAULT_POKEDEX_ID);
   // Search is independent of selection — picking an entry must not rewrite the query.
   const [query, setQuery] = useState("");
   const [generation, setGeneration] = useState<number | null>(null);
-  const [selected, setSelected] = useState<PokemonIndexEntry | null>(initial);
+  // User / popstate pick. Null → fall through to URL prop, then remembered, then Bulbasaur.
+  const [pickedId, setPickedId] = useState<number | null>(null);
   const [tipExcludeEntryIds, setTipExcludeEntryIds] = useState<string[]>([]);
   const [mode, setMode] = useState<PokedexMode>(
     parsePokedexMode(initialMode),
@@ -126,20 +127,27 @@ export function PokedexPanel({
   const deferred = useDeferredValue(query);
   const searching = deferred.trim().length > 0;
 
-  // Restore last focused species when the URL has no id. Must match SSR
-  // (Bulbasaur) on first paint — localStorage is client-only.
+  const rememberedId = useSyncExternalStore(
+    subscribePokedexLastId,
+    readPokedexLastId,
+    getPokedexLastIdServerSnapshot,
+  );
+  const focusId =
+    pickedId ?? initialId ?? rememberedId ?? DEFAULT_POKEDEX_ID;
+  const selected =
+    resolveDirectoryEntry(focusId) ??
+    resolveDirectoryEntry(DEFAULT_POKEDEX_ID);
+
+  // Drop tip exclusions when the focused species changes (including store hydrate).
+  const [tipFocusId, setTipFocusId] = useState(focusId);
+  if (tipFocusId !== focusId) {
+    setTipFocusId(focusId);
+    setTipExcludeEntryIds([]);
+  }
+
+  // Remember deep-linked species without a setState hydrate.
   useEffect(() => {
-    if (initialId != null) {
-      const fromUrl = resolveDirectoryEntry(initialId);
-      if (fromUrl) writePokedexLastId(fromUrl.pokedexId);
-      return;
-    }
-    const remembered = resolveDirectoryEntry(readPokedexLastId());
-    const entry = remembered ?? resolveDirectoryEntry(DEFAULT_POKEDEX_ID);
-    if (!entry) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage hydrate
-    setSelected(entry);
-    writePokedexLastId(entry.pokedexId);
+    if (initialId != null) writePokedexLastId(initialId);
   }, [initialId]);
 
   // Mode / species URL updates use history.pushState (not the Next router) so
@@ -153,13 +161,11 @@ export function PokedexPanel({
       const idRaw = url.searchParams.get("id");
       const idNum = idRaw != null ? Number(idRaw) : NaN;
       setMode(nextMode);
-      setTipExcludeEntryIds([]);
       if (Number.isFinite(idNum) && idNum > 0) {
-        const entry = findPokemonById(idNum);
-        if (entry) {
-          setSelected(entry);
-          writePokedexLastId(entry.pokedexId);
-        }
+        setPickedId(idNum);
+        writePokedexLastId(idNum);
+      } else {
+        setPickedId(null);
       }
     }
     window.addEventListener("popstate", onPopState);
@@ -198,28 +204,30 @@ export function PokedexPanel({
   }, [deferred, generation, searching]);
 
   const resetKey = `${deferred}|${generation ?? "all"}`;
-  const selectedIndex = useMemo(
-    () =>
-      selected
-        ? results.findIndex((m) => m.pokedexId === selected.pokedexId)
-        : -1,
-    [results, selected],
-  );
-  const { visible, total, hasMore, scrollRef, sentinelRef, loadMore } =
-    useDexListReveal(results, resetKey, selectedIndex);
+  const selectedIndex = selected
+    ? results.findIndex((m) => m.pokedexId === selected.pokedexId)
+    : -1;
+  const {
+    visible,
+    total,
+    hasMore,
+    hasEarlier,
+    earlierCount,
+    laterCount,
+    scrollRef,
+    sentinelRef,
+    loadMore,
+    loadEarlier,
+  } = useDexListReveal(results, resetKey, selectedIndex);
 
-  // After the focused row is in the reveal window, bring it into the scrollport.
-  const focusMounted = selectedIndex >= 0 && selectedIndex < visible.length;
-  useEffect(() => {
-    if (mode !== "briefing" || !focusMounted || selected == null) return;
-    const root = scrollRef.current;
-    if (!root) return;
-    const active = root.querySelector<HTMLElement>(
-      '[role="option"][aria-selected="true"]',
-    );
-    if (!active) return;
-    active.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [mode, selected, focusMounted, scrollRef]);
+  // Scroll the active row into view when focus changes (ref re-attaches).
+  const activeRowRef = useCallback(
+    (node: HTMLButtonElement | null) => {
+      if (!node || mode !== "briefing") return;
+      node.scrollIntoView({ block: "nearest", inline: "nearest" });
+    },
+    [mode, focusId],
+  );
 
   const types = useMemo(
     () => (selected ? typesForPokedexId(selected.pokedexId) : []),
@@ -335,8 +343,7 @@ export function PokedexPanel({
   }
 
   function selectEntry(entry: PokemonIndexEntry) {
-    setSelected(entry);
-    setTipExcludeEntryIds([]);
+    setPickedId(entry.pokedexId);
     setMode("briefing");
     writePokedexLastId(entry.pokedexId);
     writePokedexUrl("briefing", entry.pokedexId);
@@ -476,14 +483,32 @@ export function PokedexPanel({
                 className="max-h-[min(22rem,42vh)] overflow-y-auto overscroll-contain lg:max-h-[min(28rem,48vh)]"
               >
                 <ul role="listbox" aria-label="Pokédex list">
+                  {hasEarlier ? (
+                    <li className="flex flex-col items-center gap-1.5 border-b border-frame/25 py-2">
+                      <span className="text-[10px] text-muted">
+                        {earlierCount} earlier…
+                      </span>
+                      <button
+                        type="button"
+                        className="pressable rounded-lg border border-frame bg-surface px-2.5 py-1 text-[11px] font-semibold"
+                        onClick={loadEarlier}
+                      >
+                        Load earlier
+                      </button>
+                    </li>
+                  ) : null}
                   {visible.map((mon) => {
                     const active = selected?.pokedexId === mon.pokedexId;
                     return (
-                      <li key={mon.pokedexId}>
+                      <li
+                        key={mon.pokedexId}
+                        className="[content-visibility:auto] [contain-intrinsic-size:auto_2.5rem]"
+                      >
                         <button
                           type="button"
                           role="option"
                           aria-selected={active}
+                          ref={active ? activeRowRef : undefined}
                           className={`pressable flex w-full items-center gap-2 border-b border-frame/25 px-1.5 py-1 text-left last:border-b-0 ${
                             active
                               ? "bg-interactive-soft"
@@ -517,7 +542,7 @@ export function PokedexPanel({
                     className="flex flex-col items-center gap-1.5 py-2"
                   >
                     <span className="text-[10px] text-muted">
-                      {total - visible.length} more…
+                      {laterCount} more…
                     </span>
                     <button
                       type="button"
@@ -1240,36 +1265,58 @@ function useDexListReveal<T>(
   focusIndex: number = -1,
 ) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [startOffset, setStartOffset] = useState(0);
   const [prevKey, setPrevKey] = useState(resetKey);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  const total = items.length;
+
+  // Reset window when the search / gen filter changes.
+  let offset = startOffset;
+  let count = visibleCount;
   if (prevKey !== resetKey) {
     setPrevKey(resetKey);
+    offset = 0;
+    count = PAGE_SIZE;
+    setStartOffset(0);
     setVisibleCount(PAGE_SIZE);
   }
 
-  const total = items.length;
-  // Reveal enough rows that the focused species can mount (progressive list
-  // is prefix-sliced, not windowed — mid-dex ids need everything above them).
-  const needed =
-    focusIndex >= 0 ? Math.min(Math.max(focusIndex + 1, PAGE_SIZE), total) : PAGE_SIZE;
-  const effectiveCount = Math.max(visibleCount, needed);
-  const visible = items.slice(0, effectiveCount);
-  const hasMore = effectiveCount < total;
+  // Jump a PAGE_SIZE window onto the focused row instead of mounting 0..N
+  // (mid-dex restore used to paint hundreds of sprite rows on first open).
+  if (focusIndex >= 0 && total > 0) {
+    const end = offset + count;
+    if (focusIndex < offset || focusIndex >= end) {
+      offset = Math.max(0, focusIndex - Math.floor(PAGE_SIZE / 2));
+      count = Math.min(PAGE_SIZE, total - offset);
+      if (focusIndex >= offset + count) {
+        count = Math.min(total - offset, focusIndex - offset + 1);
+      }
+      if (offset !== startOffset) setStartOffset(offset);
+      if (count !== visibleCount) setVisibleCount(count);
+    }
+  }
+
+  const visible = items.slice(offset, offset + count);
+  const earlierCount = offset;
+  const laterCount = Math.max(0, total - offset - count);
+  const hasMore = laterCount > 0;
+  const hasEarlier = earlierCount > 0;
 
   const loadMore = () => {
-    setVisibleCount((count) =>
-      Math.min(Math.max(count, needed) + PAGE_SIZE, total),
-    );
+    setVisibleCount((c) => Math.min(c + PAGE_SIZE, total - startOffset));
   };
 
-  useEffect(() => {
-    if (focusIndex < 0) return;
-    setVisibleCount((count) =>
-      Math.max(count, Math.min(focusIndex + 1, total)),
-    );
-  }, [focusIndex, total, resetKey]);
+  const loadEarlier = () => {
+    setStartOffset((s) => {
+      const dec = Math.min(PAGE_SIZE, s);
+      if (dec > 0) {
+        setVisibleCount((c) => c + dec);
+      }
+      return s - dec;
+    });
+  };
 
   useEffect(() => {
     const root = scrollRef.current;
@@ -1279,8 +1326,8 @@ function useDexListReveal<T>(
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          setVisibleCount((count) =>
-            Math.min(Math.max(count, needed) + PAGE_SIZE, total),
+          setVisibleCount((c) =>
+            Math.min(c + PAGE_SIZE, total - startOffset),
           );
         }
       },
@@ -1288,14 +1335,18 @@ function useDexListReveal<T>(
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, total, effectiveCount, resetKey, needed]);
+  }, [hasMore, total, count, resetKey, startOffset]);
 
   return {
     visible,
     total,
     hasMore,
+    hasEarlier,
+    earlierCount,
+    laterCount,
     scrollRef: scrollRef as RefObject<HTMLDivElement>,
     sentinelRef: sentinelRef as RefObject<HTMLDivElement>,
     loadMore,
+    loadEarlier,
   };
 }
