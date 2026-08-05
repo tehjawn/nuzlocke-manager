@@ -52,7 +52,8 @@ export type TeamDefensiveProfile = {
   teamImmunities: ChartType[];
 };
 
-const SE_THRESHOLD = 2;
+/** Super-effective threshold shared by coverage verdicts and recommend scoring. */
+export const SE_THRESHOLD = 2;
 
 function asChartType(type: string): ChartType | null {
   return (TYPES as readonly string[]).includes(type)

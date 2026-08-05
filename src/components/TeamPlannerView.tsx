@@ -758,13 +758,7 @@ function RecommendedPanel({
   poolById: Map<string, PokemonEntry>;
   onApply: (entryIds: string[]) => void;
 }) {
-  const [nonce, setNonce] = useState(0);
-  const result = useMemo(
-    () => recommendTeam(pool),
-    // nonce lets Recompute force a fresh run after box edits land in props.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional recompute trigger
-    [pool, nonce],
-  );
+  const result = useMemo(() => recommendTeam(pool), [pool]);
 
   if (pool.length === 0) {
     return (
@@ -800,23 +794,14 @@ function RecommendedPanel({
             {result.coverageLine}
           </p>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            className={CTA_PRIMARY_SM}
-            onClick={() => onApply(result.entryIds)}
-            disabled={result.entryIds.length === 0}
-          >
-            Apply to Planned
-          </button>
-          <button
-            type="button"
-            className={CTA_SECONDARY_SM}
-            onClick={() => setNonce((n) => n + 1)}
-          >
-            Recompute
-          </button>
-        </div>
+        <button
+          type="button"
+          className={CTA_PRIMARY_SM}
+          onClick={() => onApply(result.entryIds)}
+          disabled={result.entryIds.length === 0}
+        >
+          Apply to Planned
+        </button>
       </div>
 
       <ol className="mt-3 space-y-2">

@@ -4,18 +4,22 @@
  */
 
 import type { PokemonEntry } from "@/lib/challenge-types";
+import { competitiveTierFor } from "@/lib/competitive-tiers";
 import {
+  catchTierLabel,
   catchTierRank,
   ivCatchTier,
   type CatchTier,
 } from "@/lib/iv-quality";
-import { competitiveTierFor } from "@/lib/competitive-tiers";
 import {
   STAT_RANKS,
   baseStatRanksFor,
   type StatRank,
 } from "@/lib/species-ranks";
+import { TYPES } from "@/lib/type-chart";
 import {
+  SE_THRESHOLD,
+  bestOffenseVsType,
   coverageVerdict,
   offensiveCoverage,
   teamDefensiveProfile,
@@ -90,6 +94,13 @@ const COMPETITIVE_FALLBACK = 0.4;
 /** Missing BST percentile → neutral mid. */
 const BST_FALLBACK = 0.5;
 
+type ScoredTeam = {
+  entryIds: string[];
+  teamScore: number;
+  coverageScore: number;
+  meanQuality: number;
+};
+
 function resolveWeights(
   partial?: Partial<RecommendTeamWeights>,
 ): RecommendTeamWeights {
@@ -135,35 +146,62 @@ export function monQualityScore(
   };
 }
 
+/** Per defending type: best offensive multiplier this mon can land. */
+function monCoverageVector(mon: PokemonEntry): Float64Array {
+  const vec = new Float64Array(TYPES.length);
+  for (let i = 0; i < TYPES.length; i++) {
+    vec[i] = bestOffenseVsType(mon, TYPES[i]!).mult;
+  }
+  return vec;
+}
+
+/**
+ * Invert coverage gaps into 0–1 from element-wise max across mon vectors.
+ * Blinds cost full weight; soft gaps half. Empty → 0.
+ */
+function coverageScoreFromVectors(
+  vectors: readonly Float64Array[],
+): number {
+  const total = TYPES.length;
+  if (vectors.length === 0) return 0;
+  let penalty = 0;
+  for (let i = 0; i < total; i++) {
+    let best = 0;
+    for (const vec of vectors) {
+      if (vec[i]! > best) best = vec[i]!;
+    }
+    if (best >= SE_THRESHOLD) continue;
+    penalty += best === 0 ? 1 : SOFT_GAP_WEIGHT;
+  }
+  return Math.max(0, 1 - penalty / total);
+}
+
 /**
  * Invert coverage gaps into 0–1. Blinds cost full weight; soft gaps half.
- * Empty team → 0.
+ * Empty team → 0. Public helper — search path uses precomputed vectors.
  */
 export function coverageScoreFromTeam(
   team: readonly PokemonEntry[],
 ): number {
   if (team.length === 0) return 0;
-  const coverage = offensiveCoverage(team);
-  const total = coverage.cells.length;
-  if (total === 0) return 0;
-  let penalty = 0;
-  for (const gap of coverage.gaps) {
-    penalty += gap.bestMult === 0 ? 1 : SOFT_GAP_WEIGHT;
-  }
-  return Math.max(0, 1 - penalty / total);
+  return coverageScoreFromVectors(team.map(monCoverageVector));
 }
 
-function teamObjective(
-  team: readonly PokemonEntry[],
+function teamObjectiveFromIds(
+  entryIds: readonly string[],
+  vectorsById: Map<string, Float64Array>,
   qualityById: Map<string, number>,
   weights: RecommendTeamWeights,
 ): { teamScore: number; coverageScore: number; meanQuality: number } {
-  const coverageScore = coverageScoreFromTeam(team);
-  const meanQuality =
-    team.length === 0
-      ? 0
-      : team.reduce((sum, m) => sum + (qualityById.get(m.id) ?? 0), 0) /
-        team.length;
+  const vectors: Float64Array[] = [];
+  let qualitySum = 0;
+  for (const id of entryIds) {
+    const vec = vectorsById.get(id);
+    if (vec) vectors.push(vec);
+    qualitySum += qualityById.get(id) ?? 0;
+  }
+  const coverageScore = coverageScoreFromVectors(vectors);
+  const meanQuality = entryIds.length === 0 ? 0 : qualitySum / entryIds.length;
   const teamScore =
     weights.coverage * coverageScore + weights.quality * meanQuality;
   return { teamScore, coverageScore, meanQuality };
@@ -183,7 +221,7 @@ function compareTeamScores(
   return a.entryIds.length - b.entryIds.length;
 }
 
-/** Combinations of `k` indices from `0..n-1`, yielding sorted id arrays. */
+/** Combinations of `k` indices from `0..n-1`, yielding id arrays. */
 function* combinations(
   ids: readonly string[],
   k: number,
@@ -205,9 +243,9 @@ function exhaustiveBest(
   pool: readonly PokemonEntry[],
   size: number,
   qualityById: Map<string, number>,
-  byId: Map<string, PokemonEntry>,
+  vectorsById: Map<string, Float64Array>,
   weights: RecommendTeamWeights,
-): { entryIds: string[]; teamScore: number; coverageScore: number; meanQuality: number } {
+): ScoredTeam {
   // Prefer higher-quality seeds first so ties resolve toward quality when scores match.
   const sortedIds = [...pool]
     .sort((a, b) => {
@@ -218,19 +256,17 @@ function exhaustiveBest(
     })
     .map((m) => m.id);
 
-  let best: {
-    entryIds: string[];
-    teamScore: number;
-    coverageScore: number;
-    meanQuality: number;
-  } | null = null;
+  let best: ScoredTeam | null = null;
 
-  for (const entryIds of combinations(sortedIds, size)) {
-    const team = entryIds
-      .map((id) => byId.get(id))
-      .filter((m): m is PokemonEntry => m != null);
-    const scored = teamObjective(team, qualityById, weights);
-    const candidate = { entryIds: [...entryIds].sort(), ...scored };
+  for (const combo of combinations(sortedIds, size)) {
+    const entryIds = [...combo].sort();
+    const scored = teamObjectiveFromIds(
+      entryIds,
+      vectorsById,
+      qualityById,
+      weights,
+    );
+    const candidate = { entryIds, ...scored };
     if (!best || compareTeamScores(candidate, best) < 0) {
       best = candidate;
     }
@@ -250,9 +286,9 @@ function greedyBest(
   pool: readonly PokemonEntry[],
   size: number,
   qualityById: Map<string, number>,
-  byId: Map<string, PokemonEntry>,
+  vectorsById: Map<string, Float64Array>,
   weights: RecommendTeamWeights,
-): { entryIds: string[]; teamScore: number; coverageScore: number; meanQuality: number } {
+): ScoredTeam {
   const remaining = new Set(pool.map((m) => m.id));
   const chosen: string[] = [];
 
@@ -277,6 +313,7 @@ function greedyBest(
 
   while (chosen.length < size && remaining.size > 0) {
     let bestAdd: string | null = null;
+    let bestIds: string[] | null = null;
     let bestScored: {
       teamScore: number;
       coverageScore: number;
@@ -285,21 +322,21 @@ function greedyBest(
 
     for (const id of remaining) {
       const trialIds = [...chosen, id].sort();
-      const team = trialIds
-        .map((tid) => byId.get(tid))
-        .filter((m): m is PokemonEntry => m != null);
-      const scored = teamObjective(team, qualityById, weights);
+      const scored = teamObjectiveFromIds(
+        trialIds,
+        vectorsById,
+        qualityById,
+        weights,
+      );
       if (
         !bestScored ||
         compareTeamScores(
           { teamScore: scored.teamScore, entryIds: trialIds },
-          {
-            teamScore: bestScored.teamScore,
-            entryIds: [...chosen, bestAdd!].sort(),
-          },
+          { teamScore: bestScored.teamScore, entryIds: bestIds! },
         ) < 0
       ) {
         bestAdd = id;
+        bestIds = trialIds;
         bestScored = scored;
       }
     }
@@ -310,17 +347,13 @@ function greedyBest(
   }
 
   const entryIds = [...chosen].sort();
-  const team = entryIds
-    .map((id) => byId.get(id))
-    .filter((m): m is PokemonEntry => m != null);
-  const scored = teamObjective(team, qualityById, weights);
+  const scored = teamObjectiveFromIds(
+    entryIds,
+    vectorsById,
+    qualityById,
+    weights,
+  );
   return { entryIds, ...scored };
-}
-
-function titleCaseCatch(tier: CatchTier): string {
-  if (tier === "oof") return "Oof catch";
-  if (tier === "shit") return "Shit catch";
-  return `${tier.charAt(0).toUpperCase()}${tier.slice(1)} catch`;
 }
 
 function buildPickReason(
@@ -345,7 +378,8 @@ function buildPickReason(
 
   const qualityBits: string[] = [];
   if (quality.catchRank >= 3) {
-    qualityBits.push(titleCaseCatch(quality.catchTier));
+    const label = catchTierLabel(quality.catchTier);
+    if (label) qualityBits.push(label);
   }
   if (quality.bstRank === "S" || quality.bstRank === "A") {
     qualityBits.push(`BST ${quality.bstRank}`);
@@ -357,7 +391,8 @@ function buildPickReason(
     if (quality.bstRank) qualityBits.push(`BST ${quality.bstRank}`);
     else if (quality.competitive) qualityBits.push(`Comp ${quality.competitive}`);
     else if (quality.catchRank >= 2) {
-      qualityBits.push(titleCaseCatch(quality.catchTier));
+      const label = catchTierLabel(quality.catchTier);
+      if (label) qualityBits.push(label);
     }
   }
 
@@ -379,7 +414,7 @@ function annotatePicks(
   const coverage = offensiveCoverage(team);
   const contributors = new Map<string, string[]>();
   for (const cell of coverage.cells) {
-    if (cell.bestMult < 2 || !cell.viaEntryId) continue;
+    if (cell.bestMult < SE_THRESHOLD || !cell.viaEntryId) continue;
     const list = contributors.get(cell.viaEntryId) ?? [];
     list.push(cell.defendingType);
     contributors.set(cell.viaEntryId, list);
@@ -396,7 +431,7 @@ function annotatePicks(
     for (const t of mine) {
       const still =
         withoutCov?.cells.find((c) => c.defendingType === t)?.bestMult ?? 0;
-      if (still < 2) unique.push(t);
+      if (still < SE_THRESHOLD) unique.push(t);
       else shared.push(t);
     }
     uniqueByMon.set(mon.id, unique);
@@ -437,16 +472,22 @@ export function recommendTeam(
   const weights = resolveWeights(opts?.weights);
 
   if (pool.length === 0) {
+    const emptyCoverage = offensiveCoverage([]);
+    const emptyVerdict = coverageVerdict(
+      [],
+      emptyCoverage,
+      teamDefensiveProfile([]),
+    );
     return {
       entryIds: [],
       teamScore: 0,
       coverageScore: 0,
       meanQuality: 0,
-      coverageLabel: "Soft",
-      coverageTone: "neutral",
+      coverageLabel: emptyVerdict.label,
+      coverageTone: emptyVerdict.tone,
       coverageLine: "Catch living Pokémon to recommend a Main.",
-      coveredCount: 0,
-      totalTypes: 18,
+      coveredCount: emptyVerdict.coveredCount,
+      totalTypes: emptyVerdict.total,
       picks: [],
     };
   }
@@ -457,17 +498,19 @@ export function recommendTeam(
     { score: number; quality: RecommendTeamPickQuality }
   >();
   const qualityById = new Map<string, number>();
+  const vectorsById = new Map<string, Float64Array>();
   for (const mon of pool) {
     const scored = monQualityScore(mon, weights);
     qualityMap.set(mon.id, scored);
     qualityById.set(mon.id, scored.score);
+    vectorsById.set(mon.id, monCoverageVector(mon));
   }
 
   const target = Math.min(size, pool.length);
   const search =
     pool.length <= exhaustiveMax
-      ? exhaustiveBest(pool, target, qualityById, byId, weights)
-      : greedyBest(pool, target, qualityById, byId, weights);
+      ? exhaustiveBest(pool, target, qualityById, vectorsById, weights)
+      : greedyBest(pool, target, qualityById, vectorsById, weights);
 
   const team = search.entryIds
     .map((id) => byId.get(id))
