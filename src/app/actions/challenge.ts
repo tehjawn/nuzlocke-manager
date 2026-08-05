@@ -54,6 +54,7 @@ import {
   closeActiveRunAndStartNextInTx,
   closeActiveRunInTx,
   ensureActiveRunInTx,
+  isEndedRun,
   setActiveRunReviveInTx,
   startNextRunAfterEndInTx,
 } from "@/lib/trainer-runs";
@@ -854,6 +855,7 @@ export async function completeTrainerIntroAction(input: {
 }
 
 class ChampionshipGateError extends Error {}
+class RunAlreadyEndedError extends Error {}
 
 /**
  * Championship finish: archive this run as won and freeze the board as the
@@ -880,6 +882,10 @@ export async function recordFinalTeamAction(input: {
         wipeCount: trainer.wipeCount,
         activeRunId: trainer.activeRunId,
       });
+      // Re-check inside the transaction so a double submit can't record two
+      // completions for one run.
+      if (isEndedRun(activeBefore)) throw new RunAlreadyEndedError();
+
       const earnedRows = await tx.badgeProgress.findMany({
         where: { trainerId: trainer.id, earned: true },
         select: { badge: { select: { key: true } } },
@@ -942,6 +948,9 @@ export async function recordFinalTeamAction(input: {
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Final team locked in" };
   } catch (e) {
+    if (e instanceof RunAlreadyEndedError) {
+      return { ok: false, error: "This run is already finished" };
+    }
     if (e instanceof ChampionshipGateError) {
       return {
         ok: false,
@@ -967,9 +976,11 @@ export async function startNewRunAction(input: {
 }): Promise<ActionResult> {
   try {
     const { trainer, userId } = await requireTrainerEditAccess(input.trainerId);
-    const afterCompletion = trainer.runEndedAt != null;
 
     const prisma = getPrisma();
+    // Read from the run inside the transaction, not from the profile flag — a
+    // completion racing this call must not get closed a second time as a wipe.
+    let afterCompletion = false;
     let nextRunNumber = 0;
     let wipeCount = 0;
     let activityMessage = "";
@@ -980,6 +991,8 @@ export async function startNewRunAction(input: {
         wipeCount: trainer.wipeCount,
         activeRunId: trainer.activeRunId,
       });
+      afterCompletion = isEndedRun(activeBefore);
+
       let nextRunId: string;
       if (afterCompletion) {
         const next = await startNextRunAfterEndInTx(tx, {

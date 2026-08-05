@@ -251,13 +251,18 @@ export async function closeActiveRunAndStartNextInTx(
   return { closed, next };
 }
 
-/** Sync TrainerProfile.reviveUsed + active TrainerRun.reviveUsed together. */
+/**
+ * Sync TrainerProfile.reviveUsed + active TrainerRun.reviveUsed together.
+ * No-op once the run has ended — its revive is archived history, and there is
+ * no live attempt left to spend a token on.
+ */
 export async function setActiveRunReviveInTx(
   tx: TxClient,
   trainer: { id: string; wipeCount: number; activeRunId: string | null },
   reviveUsed: boolean,
 ): Promise<void> {
   const active = await ensureActiveRunInTx(tx, trainer);
+  if (isEndedRun(active)) return;
   await tx.trainerRun.update({
     where: { id: active.id },
     data: { reviveUsed },

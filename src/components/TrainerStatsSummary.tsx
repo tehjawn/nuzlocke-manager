@@ -41,10 +41,7 @@ const iconBase = {
 function RunsIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
-      <path
-        d="M20 12a8 8 0 1 1-2.4-5.7"
-        strokeLinecap="round"
-      />
+      <path d="M20 12a8 8 0 1 1-2.4-5.7" strokeLinecap="round" />
       <path d="M20 4v4.5h-4.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -54,11 +51,11 @@ function RunsIcon({ className = "h-3.5 w-3.5" }: IconProps) {
 function CompletionsIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
+      <path d="M8.5 4.5v5a3.5 3.5 0 0 0 7 0v-5h-7z" strokeLinejoin="round" />
       <path
-        d="M8.5 4.5v5a3.5 3.5 0 0 0 7 0v-5h-7z"
+        d="M8.5 6H6a2.5 2.5 0 0 0 2.5 2.5M15.5 6H18a2.5 2.5 0 0 1-2.5 2.5"
         strokeLinejoin="round"
       />
-      <path d="M8.5 6H6a2.5 2.5 0 0 0 2.5 2.5M15.5 6H18a2.5 2.5 0 0 1-2.5 2.5" strokeLinejoin="round" />
       <path d="M12 13v3.5M9 19.5h6" strokeLinecap="round" />
     </svg>
   );
@@ -97,7 +94,6 @@ function BadgesIcon({ className = "h-3.5 w-3.5" }: IconProps) {
     </svg>
   );
 }
-
 
 function MoneyIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
@@ -164,9 +160,9 @@ export function TrainerStatsSummary({
     },
     {
       label: "Completions",
-      value: String(completions ?? 0),
+      value: String(completions),
       icon: <CompletionsIcon />,
-      complete: (completions ?? 0) > 0,
+      complete: completions > 0,
     },
     {
       label: "Money",

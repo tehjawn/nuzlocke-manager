@@ -158,7 +158,7 @@ export function GmConsole({
       if (t.userId) acc.claimed += 1;
       if (t.mainSquadLocked) acc.locked += 1;
       acc.wipeTotal += t.wipeCount;
-      acc.completionTotal += t.completionCount ?? 0;
+      acc.completionTotal += t.completionCount;
       return acc;
     },
     { claimed: 0, locked: 0, wipeTotal: 0, completionTotal: 0 },
@@ -588,7 +588,7 @@ export function GmConsole({
                           <p className="gm-console__trainer-meta">
                             {t.realName ? `${t.realName} · ` : ""}
                             Run {t.activeRunNumber}
-                            {(t.completionCount ?? 0) > 0
+                            {t.completionCount > 0
                               ? ` · ${t.completionCount} completion${t.completionCount === 1 ? "" : "s"}`
                               : ""}
                             {t.runEnded ? " · run finished" : ""}

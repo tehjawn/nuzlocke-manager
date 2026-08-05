@@ -726,9 +726,13 @@ export function TrainerBoard({
   const runNumber = wipeCount + 1;
   const completionCount = trainer.completionCount ?? 0;
   /** Run closed, next one not started: the board is a frozen final team. */
-  const runEnded = runEndedOverride ?? trainer.runEnded ?? false;
+  const runEnded = runEndedOverride ?? trainer.runEnded;
   const mainSquadLocked =
-    boardOverride?.mainSquadLocked ?? (runEnded || trainer.mainSquadLocked);
+    boardOverride?.mainSquadLocked ??
+    // Only the in-flight completion forces the lock. Once the server answers,
+    // mainSquadLocked is the truth again — a GM unlocking a finished board to
+    // fix something has to actually unlock it.
+    (runEndedOverride === true || trainer.mainSquadLocked);
   const boardMoney =
     boardOverride != null ? boardOverride.money : trainer.money;
   const boardTrainer = {
@@ -750,6 +754,8 @@ export function TrainerBoard({
   const encountered = pokemonInSlot(boardTrainer, "ENCOUNTERED");
   const wipeButtonClass =
     "pressable inline-flex h-9 items-center justify-center gap-1.5 border-danger/25 bg-danger/10 px-3 text-xs font-semibold tracking-tight text-danger disabled:opacity-60";
+  const endRunButtonClass =
+    "pressable inline-flex h-9 items-center justify-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60";
   const wiping =
     wipeSave.status.kind === "saving" || resetSave.status.kind === "saving";
   const seasonLinkTiles = [
@@ -1287,7 +1293,7 @@ export function TrainerBoard({
     },
     revive: {
       shortcut:
-        canEdit && !isDemo && !reviveUsed ? (
+        canEdit && !isDemo && !reviveUsed && !runEnded ? (
           <ShortcutActionTile
             disabled={pending || wiping}
             icon={<ReviveShortcutIcon className="h-4 w-4" />}
@@ -1318,7 +1324,9 @@ export function TrainerBoard({
       toolbar: !isDemo && (
         <ReviveControl
           canReset={isGm}
-          canUse={canEdit}
+          // A finished run has no attempt left to revive into, and its token is
+          // already archived on the closed run.
+          canUse={canEdit && !runEnded}
           disabled={pending}
           onReset={resetReviveToken}
           onUse={spendReviveToken}
@@ -1332,7 +1340,8 @@ export function TrainerBoard({
       ),
     },
     // One control, two states: a run in progress ends here; a run that already
-    // ended only has one thing left to do.
+    // ended only has one thing left to do. "End run" opens a modal and destroys
+    // nothing, so the danger tone is saved for the restart that does.
     endRun: {
       shortcut: canEdit && (
         <ShortcutActionTile
@@ -1349,12 +1358,12 @@ export function TrainerBoard({
             if (runEnded) void startNewRun();
             else setEndRunOpen(true);
           }}
-          tone="danger"
+          tone={runEnded ? "danger" : "neutral"}
         />
       ),
       toolbar: canEdit && (
         <button
-          className={wipeButtonClass}
+          className={runEnded ? wipeButtonClass : endRunButtonClass}
           disabled={pending || wiping}
           onClick={() => {
             if (runEnded) void startNewRun();
@@ -1747,14 +1756,20 @@ export function TrainerBoard({
           <Frame title="Badge case">
             {canEdit ? (
               <div className="space-y-2">
-                <p className="text-xs text-muted">Tap a badge to toggle it.</p>
+                <p className="text-xs text-muted">
+                  {/* A finished board is the archived record of a run; only a
+                      GM correcting it should still be able to edit badges. */}
+                  {runEnded && !isGm
+                    ? "This run is finished — badges are locked in."
+                    : "Tap a badge to toggle it."}
+                </p>
                 <BadgeCaseEditor
                   key={`badges-${badgeEditorKey}-${wipeCount}`}
                   trainerId={trainer.id}
                   badges={badges}
                   earnedKeys={earnedBadgeKeys}
                   wipeCount={wipeCount}
-                  disabled={wiping}
+                  disabled={wiping || (runEnded && !isGm)}
                   layout="tray"
                   onEarnedKeysChange={setEarnedBadgeKeys}
                 />
