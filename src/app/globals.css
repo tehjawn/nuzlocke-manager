@@ -41,6 +41,8 @@
   --shadow-md: rgba(18, 22, 18, 0.2);
   --on-accent: #f4fff7;
   --accent-ink: #14532d;
+  /* Ink on gold informational chrome (`.gba-frame-title`) */
+  --on-chrome: #121612;
   /* Discord brand — same in light/dark */
   --discord: #5865f2;
   --discord-hover: #4752c4;
@@ -87,6 +89,8 @@
   --shadow-md: rgba(0, 0, 0, 0.6);
   --on-accent: #061209;
   --accent-ink: #d8ffe6;
+  /* Ink on gold informational chrome (`.gba-frame-title`) */
+  --on-chrome: #f3f7f1;
   --discord: #5865f2;
   --discord-hover: #4752c4;
   --on-discord: #ffffff;
@@ -1156,7 +1160,7 @@ button:disabled,
     color-mix(in srgb, var(--accent-2) 22%, var(--surface-2)) 0%,
     var(--surface-2) 100%
   );
-  color: var(--ink);
+  color: var(--on-chrome);
   border-bottom: 1px solid color-mix(in srgb, var(--accent-2) 45%, var(--frame));
   font-weight: 600;
   letter-spacing: -0.01em;

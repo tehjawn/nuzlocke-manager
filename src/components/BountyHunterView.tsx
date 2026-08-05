@@ -379,16 +379,15 @@ function statusLegendClass(status: SpeciesOwnershipStatus): string {
     return "border-accent/35 bg-accent/10 text-accent-deep";
   }
   if (status === "encountered") {
-    return "border-amber-700/35 bg-amber-700/10 text-amber-900 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100";
+    // Theme tokens only — no Tailwind `dark:` (prefers-color-scheme ≠ [data-theme]).
+    return "border-accent-2/45 bg-accent-2/15 text-ink";
   }
   return "border-frame/40 bg-surface/60 text-muted";
 }
 
 function statusSwatchClass(status: SpeciesOwnershipStatus): string {
   if (status === "owned") return "bg-accent";
-  if (status === "encountered") {
-    return "bg-amber-700 dark:bg-amber-400";
-  }
+  if (status === "encountered") return "bg-accent-2";
   return "bg-ink/25";
 }
 
@@ -397,7 +396,7 @@ function statusChipActiveClass(status: StatusFilter): string {
     return "border-accent/40 bg-accent/15 text-accent-deep shadow-sm";
   }
   if (status === "encountered") {
-    return "border-amber-700/35 bg-amber-700/10 text-amber-900 shadow-sm dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100";
+    return "border-accent-2/45 bg-accent-2/15 text-ink shadow-sm";
   }
   if (status === "untouched") {
     return "border-frame bg-ink/10 text-muted shadow-sm";
@@ -488,7 +487,7 @@ function statusCardClass(status: SpeciesOwnershipStatus): string {
     return "border-accent/35 bg-accent/10 hover:border-accent/55 hover:bg-accent/15";
   }
   if (status === "encountered") {
-    return "border-amber-700/35 bg-amber-700/10 hover:border-amber-700/50 hover:bg-amber-700/15 dark:border-amber-400/35 dark:bg-amber-400/10 dark:hover:border-amber-400/50 dark:hover:bg-amber-400/15";
+    return "border-accent-2/45 bg-accent-2/15 hover:border-accent-2/60 hover:bg-accent-2/20";
   }
   return "border-frame/30 bg-surface/50 hover:border-interactive/40 hover:bg-interactive-soft/40";
 }

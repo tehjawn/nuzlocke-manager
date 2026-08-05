@@ -206,7 +206,8 @@ function StepChips({ step }: { step: ResolvedGuideStep }) {
             chip === "Required"
               ? "border-interactive/40 bg-interactive-soft/60 text-interactive"
               : chip === "Gym prep"
-                ? "border-amber-700/35 bg-amber-700/10 text-amber-900 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100"
+                ? // Theme tokens only — no Tailwind `dark:` (prefers-color-scheme ≠ [data-theme]).
+                  "border-accent-2/45 bg-accent-2/15 text-ink"
                 : "border-frame/70 text-muted"
           }`}
         >
@@ -527,7 +528,7 @@ function ChapterAccordion({
           aria-expanded={open}
           aria-controls={panelId}
           onClick={onToggle}
-          className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-black/5 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-interactive dark:hover:bg-white/5"
+          className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-ink/5 focus-visible:outline focus-visible:-outline-offset-2 focus-visible:outline-interactive"
         >
           <span
             aria-hidden
@@ -542,14 +543,14 @@ function ChapterAccordion({
               {postGame ? (
                 <span
                   aria-hidden
-                  className="shrink-0 rounded-md border border-amber-700/30 bg-amber-700/10 px-1.5 py-px text-[0.65rem] font-bold tracking-tight text-amber-900 dark:border-amber-400/35 dark:bg-amber-400/10 dark:text-amber-100"
+                  className="shrink-0 rounded-md border border-accent-2/40 bg-accent-2/15 px-1.5 py-px text-[0.65rem] font-bold tracking-tight text-ink"
                 >
                   Post-game
                 </span>
               ) : (
                 <span
                   aria-hidden
-                  className="shrink-0 rounded-md border border-[var(--on-chrome)]/25 bg-black/10 px-1.5 py-px text-[0.65rem] font-bold tabular-nums text-[var(--on-chrome)]/85 dark:bg-white/10"
+                  className="shrink-0 rounded-md border border-[var(--on-chrome)]/25 bg-[var(--on-chrome)]/10 px-1.5 py-px text-[0.65rem] font-bold tabular-nums text-[var(--on-chrome)]/85"
                 >
                   Ch. {guideChapterNumber(chapter)}
                 </span>
@@ -560,7 +561,7 @@ function ChapterAccordion({
               <span
                 className={`rounded-full border px-1.5 py-px text-[0.65rem] font-semibold tracking-tight ${
                   cleared
-                    ? "border-emerald-700/35 bg-emerald-700/15 text-emerald-800 dark:border-emerald-400/35 dark:bg-emerald-400/15 dark:text-emerald-200"
+                    ? "border-accent/35 bg-accent/15 text-accent-deep"
                     : isActive && !postGame
                       ? "border-interactive/45 bg-interactive-soft/70 text-interactive"
                       : "border-frame/70 text-[var(--on-chrome)]/70"
