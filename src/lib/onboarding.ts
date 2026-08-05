@@ -13,11 +13,11 @@ export const ONBOARDING_END_EVENT = "nuzlocke-end-onboarding-tour";
 /**
  * Mobile workspace panel the tour needs before measuring a step.
  * Dispatched as `ONBOARDING_PANEL_EVENT` so MobileWorkspace can open/close
- * Info/Feed without the tour importing UI modules.
+ * Info without the tour importing UI modules.
  */
 export const ONBOARDING_PANEL_EVENT = "nuzlocke-tour-panel";
 
-export type OnboardingMobilePanel = "info" | "feed" | null;
+export type OnboardingMobilePanel = "info" | null;
 
 export type OnboardingRoute = "trainer" | "season" | "setup";
 
@@ -27,7 +27,7 @@ export type OnboardingStep = {
   /** CSS selector for spotlight; omit for a centered dark-overlay step. */
   element?: string;
   /**
-   * On narrow viewports, open/close the mobile Info/Feed panel before the
+   * On narrow viewports, open/close the mobile Info panel before the
    * spotlight is measured. `null` closes any open panel. Desktop ignores this
    * (the left rail already shows Info + tabs).
    */
@@ -95,7 +95,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: "season-trainers",
     route: "season",
     element: "[data-tour='tab-trainers']",
-    // Close Info/Feed so the Trainers tab + board are what the user sees.
+    // Close Info so the Trainers tab + board are what the user sees.
     mobilePanel: null,
     title: "Season 2026 trainers",
     description:

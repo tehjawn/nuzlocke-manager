@@ -5,8 +5,7 @@ import { ActivityFeedInfinite } from "@/components/ActivityFeed";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { getAccessForChallenge } from "@/lib/permissions";
-import { getChallenge, listChallengeActivities } from "@/lib/challenges";
-
+import { getChallengeMeta, listChallengeActivities } from "@/lib/challenges";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -16,21 +15,21 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
-  if (!challenge) return { title: "Pack feed" };
-  return { title: `Pack feed · ${challenge.name}` };
+  const challenge = await getChallengeMeta(slug);
+  if (!challenge) return { title: "Activity" };
+  return { title: `Activity · ${challenge.name}` };
 }
 
 export default async function ActivityPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeMeta(slug);
   if (!challenge) notFound();
 
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
-  const canReact = Boolean(access?.role);
+  const canReact = Boolean(session?.user?.id && access?.role);
 
   const page = await listChallengeActivities(slug, session?.user?.id, {
     limit: 30,

@@ -72,6 +72,13 @@ export function getSeasonTabs(
     });
   }
 
+  tabs.push({
+    href: `${base}/activity`,
+    label: "Activity",
+    match: "prefix",
+    icon: <ActivityIcon />,
+  });
+
   // First-run (#183): keep orientation tabs; hide deep tools until welcome done.
   if (options?.firstRun) {
     return tabs.filter((tab) =>
@@ -161,6 +168,17 @@ function MemorialIcon() {
       <path d="M8 20V9.5a4 4 0 018 0V20" strokeLinecap="round" />
       <path d="M6 20h12" strokeLinecap="round" />
       <path d="M12 5.5V4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ActivityIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M5 7h11M5 12h14M5 17h8" strokeLinecap="round" />
+      <circle cx="18.5" cy="7" r="1.75" />
+      <circle cx="10.5" cy="12" r="1.75" />
+      <circle cx="15.5" cy="17" r="1.75" />
     </svg>
   );
 }

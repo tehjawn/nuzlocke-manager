@@ -138,6 +138,7 @@ export function coalesceActivityItems(items: ActivityItem[]): ActivityItem[] {
 
 function shouldCollapseFeedItems(newer: ActivityItem, older: ActivityItem) {
   if (newer.message !== older.message) return false;
+  if (newer.trainerId !== older.trainerId) return false;
   if (newer.trainerHandle !== older.trainerHandle) return false;
 
   if (
