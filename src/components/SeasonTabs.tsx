@@ -9,6 +9,8 @@ import type { ChallengeStatus } from "@/lib/challenge-types";
 type SeasonTabsProps = {
   slug: string;
   status?: ChallengeStatus;
+  /** Temporary WIP gate (#240): Tournament tab is GM-only. */
+  isGm?: boolean;
 };
 
 export type SeasonTab = {
@@ -22,7 +24,7 @@ export type SeasonTab = {
 export function getSeasonTabs(
   slug: string,
   status: ChallengeStatus = "ACTIVE",
-  options?: { firstRun?: boolean },
+  options?: { firstRun?: boolean; isGm?: boolean },
 ): SeasonTab[] {
   const base = `/challenges/${slug}`;
   const tabs: SeasonTab[] = [
@@ -57,13 +59,17 @@ export function getSeasonTabs(
       match: "prefix",
       icon: <MemorialIcon />,
     },
-    {
+  ];
+
+  // TEMP (#240): Tournament / Ladder is still WIP — GMs only.
+  if (options?.isGm) {
+    tabs.push({
       href: `${base}/tournament`,
       label: status === "TOURNAMENT" ? "Ladder" : "Tournament",
       match: "prefix",
       icon: <TournamentIcon />,
-    },
-  ];
+    });
+  }
 
   // First-run (#183): keep orientation tabs; hide deep tools until welcome done.
   if (options?.firstRun) {
@@ -86,9 +92,10 @@ export function SeasonTabs({
   slug,
   status = "ACTIVE",
   firstRun = false,
+  isGm = false,
 }: SeasonTabsProps & { firstRun?: boolean }) {
   const pathname = usePathname();
-  const tabs = getSeasonTabs(slug, status, { firstRun });
+  const tabs = getSeasonTabs(slug, status, { firstRun, isGm });
 
   return (
     <div

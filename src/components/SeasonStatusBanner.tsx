@@ -6,9 +6,15 @@ import { seasonStatusLabel } from "@/lib/season-status";
 type SeasonStatusBannerProps = {
   slug: string;
   status: ChallengeStatus;
+  /** Temporary WIP gate (#240): tournament CTA is GM-only. */
+  isGm?: boolean;
 };
 
-export function SeasonStatusBanner({ slug, status }: SeasonStatusBannerProps) {
+export function SeasonStatusBanner({
+  slug,
+  status,
+  isGm = false,
+}: SeasonStatusBannerProps) {
   if (status === "ACTIVE" || status === "DRAFT") return null;
 
   if (status === "ARCHIVED") {
@@ -36,14 +42,17 @@ export function SeasonStatusBanner({ slug, status }: SeasonStatusBannerProps) {
         {seasonStatusLabel(status)}
       </p>
       <p className="mt-1 text-muted">
-        Main Squads are locked for the ladder. Check the tournament board.
+        Main Squads are locked for the ladder.
+        {isGm ? " Check the tournament board." : null}
       </p>
-      <Link
-        href={`/challenges/${slug}/tournament`}
-        className={`${CTA_PRIMARY_SM} mt-3`}
-      >
-        Open tournament
-      </Link>
+      {isGm ? (
+        <Link
+          href={`/challenges/${slug}/tournament`}
+          className={`${CTA_PRIMARY_SM} mt-3`}
+        >
+          Open tournament
+        </Link>
+      ) : null}
     </div>
   );
 }

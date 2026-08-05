@@ -77,18 +77,22 @@ export function buildGlobalResults(): JumpResult[] {
   ];
 }
 
-function seasonSectionTabs(slug: string, status: string) {
+function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
   const base = `/challenges/${slug}`;
-  const tournamentLabel = status === "TOURNAMENT" ? "Ladder" : "Tournament";
-  return [
+  const tabs = [
     { href: `${base}/about`, label: "About" },
     { href: `${base}/rules`, label: "Rules / FAQ" },
     { href: base, label: "Trainers" },
     { href: `${base}/encounters`, label: "Encounters" },
     { href: `${base}/tools`, label: "Tools" },
     { href: `${base}/memorial`, label: "Memorial" },
-    { href: `${base}/tournament`, label: tournamentLabel },
   ];
+  // TEMP (#240): Tournament / Ladder is still WIP — GMs only.
+  if (isGm) {
+    const tournamentLabel = status === "TOURNAMENT" ? "Ladder" : "Tournament";
+    tabs.push({ href: `${base}/tournament`, label: tournamentLabel });
+  }
+  return tabs;
 }
 
 export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
@@ -120,7 +124,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
     return navigate;
   }
 
-  const tabs = seasonSectionTabs(ctx.slug, ctx.status);
+  const tabs = seasonSectionTabs(ctx.slug, ctx.status, ctx.showGm);
 
   const navigate: JumpResult[] = [
     {

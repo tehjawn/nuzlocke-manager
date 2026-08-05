@@ -31,6 +31,9 @@ export default async function TournamentPage({ params }: PageProps) {
   const access = challenge.id
     ? await getAccessForChallenge(challenge.id)
     : null;
+  // TEMP (#240): Tournament is WIP — refuse non-GMs at the route too.
+  if (!access?.isGm) notFound();
+
   const tournament = challenge.id
     ? await getTournamentForChallenge(challenge.id)
     : null;
@@ -39,12 +42,16 @@ export default async function TournamentPage({ params }: PageProps) {
     <>
       <DataSourceBanner source={challenge.source} />
       <div className="mb-4">
-        <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
+        <SeasonStatusBanner
+          slug={challenge.slug}
+          status={challenge.status}
+          isGm
+        />
       </div>
       <TournamentBracket
         challenge={challenge}
         tournament={tournament}
-        isGm={Boolean(access?.isGm)}
+        isGm
       />
     </>
   );

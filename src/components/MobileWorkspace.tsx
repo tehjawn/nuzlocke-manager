@@ -22,6 +22,8 @@ type MobileWorkspaceProps = {
    * stays the primary path on phones.
    */
   firstRun?: boolean;
+  /** Temporary WIP gate (#240): Tournament tab is GM-only. */
+  isGm?: boolean;
   /** The routed page content, shown when a section tab is selected. */
   children: ReactNode;
   className?: string;
@@ -45,6 +47,7 @@ export function MobileWorkspace({
   generalInfo,
   packFeed,
   firstRun = false,
+  isGm = false,
   children,
   className = "",
 }: MobileWorkspaceProps) {
@@ -65,7 +68,7 @@ export function MobileWorkspace({
     setPanel(null);
   }
 
-  const tabs = getSeasonTabs(slug, status, { firstRun });
+  const tabs = getSeasonTabs(slug, status, { firstRun, isGm });
   const select = (next: "info" | "feed") =>
     setPanel((cur) => (cur === next ? null : next));
 

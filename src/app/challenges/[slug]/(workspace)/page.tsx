@@ -62,7 +62,11 @@ export default async function LeagueBoardPage({ params }: PageProps) {
     <>
       <DataSourceBanner source={challenge.source} />
       <div className="mb-4">
-        <SeasonStatusBanner slug={challenge.slug} status={challenge.status} />
+        <SeasonStatusBanner
+          slug={challenge.slug}
+          status={challenge.status}
+          isGm={Boolean(access?.isGm)}
+        />
       </div>
 
       <TrainersSection

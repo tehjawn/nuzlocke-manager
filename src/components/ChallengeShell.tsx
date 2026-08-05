@@ -37,6 +37,8 @@ type ChallengeShellProps = {
    * and deep tools so Get Started stays the focus.
    */
   firstRun?: boolean;
+  /** Temporary WIP gate (#240): Tournament tab is GM-only. */
+  isGm?: boolean;
   children: ReactNode;
 };
 
@@ -53,6 +55,7 @@ export function ChallengeShell({
   myTrainerId = null,
   signedIn = false,
   firstRun = false,
+  isGm = false,
   children,
 }: ChallengeShellProps) {
   // Shared between the mobile Info/Feed tabs and the desktop sticky rail.
@@ -146,7 +149,12 @@ export function ChallengeShell({
           scrollClassName="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]"
         >
           {generalInfo}
-          <SeasonTabs slug={slug} status={status} firstRun={firstRun} />
+          <SeasonTabs
+            slug={slug}
+            status={status}
+            firstRun={firstRun}
+            isGm={isGm}
+          />
           {firstRun ? null : packFeed}
         </ScrollFadeRail>
 
@@ -161,6 +169,7 @@ export function ChallengeShell({
           generalInfo={generalInfo}
           packFeed={packFeed}
           firstRun={firstRun}
+          isGm={isGm}
           className="min-w-0 flex-1"
         >
           {children}
