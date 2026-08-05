@@ -158,6 +158,8 @@ export function randomizeWildSpecies(
   settings: RandomizerSettings,
 ): number {
   if (!settings.wildPokemon) return romSpecies;
+  // The table covers 0…NUM_SPECIES; only a species id the ROM does not have
+  // falls through, and leaving those alone beats rolling on a garbage slot.
   const slot = SPECIES_EVO_SLOT[romSpecies] ?? EVO_SLOT_SELF;
   if (slot === EVO_SLOT_SELF) return romSpecies;
   if (slot === EVO_SLOT_LEGENDARY && !settings.includeLegendaries) {

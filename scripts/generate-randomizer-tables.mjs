@@ -156,21 +156,55 @@ function readSpeciesToNational(speciesIds) {
   return { table, unresolved };
 }
 
+/**
+ * `gSpeciesMapping`, reproduced exactly — including where the ROM is wrong.
+ *
+ * Six of the tail entries are written `[SPECIES_X - 1] = …`. That is an
+ * off-by-one in the hack, not a convention: `[SPECIES_FARIGIRAF - 1]` lands on
+ * Annihilape's slot and, being later in the initializer list, silently
+ * overwrites it. The knock-on shift runs to the end of the table and leaves
+ * Kleavor with no entry at all (so it zero-fills to `EVO_TYPE_0`).
+ *
+ * Those wrong slots are what the ROM actually rolls with, so they are copied
+ * verbatim: applied in source order, last write wins, zero-filled to
+ * `NUM_SPECIES` — anything else would predict a game nobody is playing.
+ */
 function readEvoSlots(src, speciesIds) {
   const text = readFileSync(join(src, "src/pokemon.c"), "utf8");
   const block = /static const u8 gSpeciesMapping\[[^\]]*\]\s*=\s*\{([\s\S]*?)\n\};/.exec(text);
   if (!block) throw new Error("gSpeciesMapping not found");
-  const table = [];
-  for (const m of block[1].matchAll(/\[(SPECIES_[A-Z0-9_]+)\]\s*=\s*(EVO_TYPE_[A-Z0-9_]+)/g)) {
-    const id = speciesIds.get(m[1]);
-    const slot = EVO_SLOT[m[2]];
-    if (id != null && slot != null) table[id] = slot;
+
+  const assignments = [];
+  const lines = block[1].split("\n");
+  for (const line of lines) {
+    // Commented-out entries contribute nothing to the compiled array.
+    const code = line.split("//")[0];
+    const m = /\[\s*(SPECIES_[A-Z0-9_]+)\s*(?:([-+])\s*(\d+)\s*)?\]\s*=\s*(EVO_TYPE_[A-Z0-9_]+)/.exec(
+      code,
+    );
+    if (!m) continue;
+    const base = speciesIds.get(m[1]);
+    const slot = EVO_SLOT[m[4]];
+    if (base == null || slot == null) continue;
+    const offset = m[2] ? Number(m[3]) * (m[2] === "-" ? -1 : 1) : 0;
+    assignments.push({ index: base + offset, slot, shifted: offset !== 0 });
   }
-  if (table.length === 0) throw new Error("gSpeciesMapping parsed empty");
-  // Unlisted ids are zero-filled by the C designated initializer, which is
-  // EVO_TYPE_0 — not "unrandomized". Mirror that instead of guessing SELF.
-  for (let i = 0; i < table.length; i++) if (table[i] == null) table[i] = EVO_SLOT.EVO_TYPE_0;
-  return table;
+  if (assignments.length === 0) throw new Error("gSpeciesMapping parsed empty");
+
+  // `u8 gSpeciesMapping[NUM_SPECIES + 1]`, zero-filled — and 0 is EVO_TYPE_0,
+  // which means "roll from the first-stage pool", not "leave alone".
+  const size = (speciesIds.get("SPECIES_EGG") ?? Math.max(...assignments.map((a) => a.index))) + 1;
+  const table = new Array(size).fill(EVO_SLOT.EVO_TYPE_0);
+  const clobbered = [];
+  const written = new Set();
+  for (const { index, slot } of assignments) {
+    if (index < 0 || index >= size) continue;
+    if (written.has(index)) clobbered.push(index);
+    written.add(index);
+    table[index] = slot;
+  }
+  const shiftedCount = assignments.filter((a) => a.shifted).length;
+  return { table, shiftedCount, clobbered };
 }
 
 function readPool(src, name, speciesIds) {
@@ -312,7 +346,11 @@ function main() {
   const speciesIds = readSpeciesIds(src);
   const speciesNames = readSpeciesNames(src, speciesIds);
   const { table: speciesToNational, unresolved } = readSpeciesToNational(speciesIds);
-  const evoSlots = readEvoSlots(src, speciesIds);
+  const {
+    table: evoSlots,
+    shiftedCount,
+    clobbered,
+  } = readEvoSlots(src, speciesIds);
   const pools = {
     evo0: readPool(src, "sRandomSpeciesEvo0", speciesIds),
     evo1: readPool(src, "sRandomSpeciesEvo1", speciesIds),
@@ -447,6 +485,16 @@ function main() {
       `  species mapped to National Dex: ${speciesToNational.filter(Boolean).length}` +
       (unresolved.length ? ` (unresolved: ${unresolved.join(", ")})` : ""),
   );
+  if (shiftedCount > 0) {
+    console.error(
+      `  note: ${shiftedCount} gSpeciesMapping entries use the ROM's off-by-one ` +
+        `[SPECIES_X - 1] form` +
+        (clobbered.length
+          ? `, overwriting ${clobbered.length} earlier slot(s) at index ${clobbered.join(", ")}`
+          : "") +
+        " — copied as-is.",
+    );
+  }
   if (driftCount > 0) {
     console.error(
       `  WARNING: ${driftCount} species id(s) disagree with modern-emerald-species.json — ` +
