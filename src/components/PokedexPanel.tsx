@@ -5,11 +5,12 @@ import Link from "next/link";
 import {
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
-  type RefObject,
 } from "react";
 import { Frame } from "@/components/Frame";
 import { EvolutionPath } from "@/components/EvolutionPath";
@@ -67,13 +68,31 @@ import {
 import type { PokemonType as ChartType } from "@/lib/type-chart";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
 import {
+  DEFAULT_POKEDEX_ID,
+  getPokedexLastIdServerSnapshot,
+  readPokedexLastId,
+  subscribePokedexLastId,
+  writePokedexLastId,
+} from "@/features/preferences/pokedex-last-id";
+import {
   parsePokedexMode,
   toolsHref,
   type PokedexMode,
 } from "@/lib/tools-routes";
 
-/** Keep the first paint light; scroll loads more. */
+/** Keep the first paint light; scroll windows more. */
 const PAGE_SIZE = 32;
+/** Fixed row height — National Dex rows are uniform (sprite + py), so we can
+ *  virtualize both directions without measuring. */
+const DEX_ROW_HEIGHT = 40;
+const DEX_ROW_OVERSCAN = 8;
+
+function resolveDirectoryEntry(
+  pokedexId: number | null | undefined,
+): PokemonIndexEntry | null {
+  if (pokedexId == null || !(pokedexId > 0)) return null;
+  return findPokemonById(pokedexId) ?? null;
+}
 
 const POKEDEX_MODES: ReadonlyArray<{ id: PokedexMode; label: string }> = [
   { id: "briefing", label: "Directory" },
@@ -99,18 +118,40 @@ export function PokedexPanel({
   initialId = null,
   initialMode = null,
 }: PokedexPanelProps) {
-  const initial =
-    initialId != null ? (findPokemonById(initialId) ?? null) : null;
   // Search is independent of selection — picking an entry must not rewrite the query.
   const [query, setQuery] = useState("");
   const [generation, setGeneration] = useState<number | null>(null);
-  const [selected, setSelected] = useState<PokemonIndexEntry | null>(initial);
+  // User / popstate pick. Null → fall through to URL prop, then remembered, then Bulbasaur.
+  const [pickedId, setPickedId] = useState<number | null>(null);
   const [tipExcludeEntryIds, setTipExcludeEntryIds] = useState<string[]>([]);
   const [mode, setMode] = useState<PokedexMode>(
     parsePokedexMode(initialMode),
   );
   const deferred = useDeferredValue(query);
   const searching = deferred.trim().length > 0;
+
+  const rememberedId = useSyncExternalStore(
+    subscribePokedexLastId,
+    readPokedexLastId,
+    getPokedexLastIdServerSnapshot,
+  );
+  const focusId =
+    pickedId ?? initialId ?? rememberedId ?? DEFAULT_POKEDEX_ID;
+  const selected =
+    resolveDirectoryEntry(focusId) ??
+    resolveDirectoryEntry(DEFAULT_POKEDEX_ID);
+
+  // Drop tip exclusions when the focused species changes (including store hydrate).
+  const [tipFocusId, setTipFocusId] = useState(focusId);
+  if (tipFocusId !== focusId) {
+    setTipFocusId(focusId);
+    setTipExcludeEntryIds([]);
+  }
+
+  // Remember deep-linked species without a setState hydrate.
+  useEffect(() => {
+    if (initialId != null) writePokedexLastId(initialId);
+  }, [initialId]);
 
   // Mode / species URL updates use history.pushState (not the Next router) so
   // the tools page doesn't RSC-refetch. Sync React state when the user hits
@@ -123,10 +164,11 @@ export function PokedexPanel({
       const idRaw = url.searchParams.get("id");
       const idNum = idRaw != null ? Number(idRaw) : NaN;
       setMode(nextMode);
-      setTipExcludeEntryIds([]);
       if (Number.isFinite(idNum) && idNum > 0) {
-        const entry = findPokemonById(idNum);
-        if (entry) setSelected(entry);
+        setPickedId(idNum);
+        writePokedexLastId(idNum);
+      } else {
+        setPickedId(null);
       }
     }
     window.addEventListener("popstate", onPopState);
@@ -165,15 +207,13 @@ export function PokedexPanel({
   }, [deferred, generation, searching]);
 
   const resetKey = `${deferred}|${generation ?? "all"}`;
-  const { visible, total, hasMore, scrollRef, sentinelRef, loadMore } =
-    useDexListReveal(results, resetKey);
-
-  const selectedIndex = useMemo(
-    () =>
-      selected
-        ? results.findIndex((m) => m.pokedexId === selected.pokedexId)
-        : -1,
-    [results, selected],
+  const selectedIndex = selected
+    ? results.findIndex((m) => m.pokedexId === selected.pokedexId)
+    : -1;
+  const { visible, total, startIndex, scrollRef, onScroll } = useDexVirtualList(
+    results,
+    resetKey,
+    selectedIndex,
   );
 
   const types = useMemo(
@@ -290,10 +330,16 @@ export function PokedexPanel({
   }
 
   function selectEntry(entry: PokemonIndexEntry) {
-    setSelected(entry);
-    setTipExcludeEntryIds([]);
+    const arrivingFromOtherMode = mode !== "briefing";
+    setPickedId(entry.pokedexId);
     setMode("briefing");
+    writePokedexLastId(entry.pokedexId);
     writePokedexUrl("briefing", entry.pokedexId);
+    // Tier / competitive lists are long — jump back to the top of the page so
+    // the Directory entry isn't still buried under the prior scroll offset.
+    if (arrivingFromOtherMode) {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
   }
 
   function selectMode(next: PokedexMode) {
@@ -427,61 +473,64 @@ export function PokedexPanel({
             ) : (
               <div
                 ref={scrollRef}
+                onScroll={onScroll}
                 className="max-h-[min(22rem,42vh)] overflow-y-auto overscroll-contain lg:max-h-[min(28rem,48vh)]"
               >
-                <ul role="listbox" aria-label="Pokédex list">
-                  {visible.map((mon) => {
-                    const active = selected?.pokedexId === mon.pokedexId;
-                    return (
-                      <li key={mon.pokedexId}>
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={active}
-                          className={`pressable flex w-full items-center gap-2 border-b border-frame/25 px-1.5 py-1 text-left last:border-b-0 ${
-                            active
-                              ? "bg-interactive-soft"
-                              : "hover:bg-surface-2/80"
-                          }`}
-                          onClick={() => selectEntry(mon)}
-                        >
-                          <span className="w-9 shrink-0 text-right font-mono text-[11px] font-bold tabular-nums text-muted">
-                            {formatDexNo(mon.pokedexId)}
-                          </span>
-                          <PokemonSpriteImage
-                            alt=""
-                            className="pixelated h-8 w-8 shrink-0 object-contain"
-                            height={32}
-                            loading="lazy"
-                            pokedexId={mon.pokedexId}
-                            species={mon.name}
-                            width={32}
-                          />
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">
-                            {mon.name}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-                {hasMore ? (
-                  <div
-                    ref={sentinelRef}
-                    className="flex flex-col items-center gap-1.5 py-2"
+                {/*
+                  Fixed total height + absolutely positioned window.
+                  Padding-based virtualization desyncs when row math drifts;
+                  a stable scroll height keeps up/down scrolling honest.
+                */}
+                <div
+                  role="listbox"
+                  aria-label="Pokédex list"
+                  className="relative w-full"
+                  style={{ height: total * DEX_ROW_HEIGHT }}
+                >
+                  <ul
+                    className="absolute left-0 right-0 m-0 list-none p-0"
+                    style={{ top: startIndex * DEX_ROW_HEIGHT }}
                   >
-                    <span className="text-[10px] text-muted">
-                      {total - visible.length} more…
-                    </span>
-                    <button
-                      type="button"
-                      className="pressable rounded-lg border border-frame bg-surface px-2.5 py-1 text-[11px] font-semibold"
-                      onClick={loadMore}
-                    >
-                      Load more
-                    </button>
-                  </div>
-                ) : null}
+                    {visible.map((mon) => {
+                      const active = selected?.pokedexId === mon.pokedexId;
+                      return (
+                        <li
+                          key={mon.pokedexId}
+                          className="box-border m-0 overflow-hidden p-0"
+                          style={{ height: DEX_ROW_HEIGHT }}
+                        >
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={active}
+                            className={`pressable flex h-full w-full items-center gap-2 border-b border-frame/25 px-1.5 text-left ${
+                              active
+                                ? "bg-interactive-soft"
+                                : "hover:bg-surface-2/80"
+                            }`}
+                            onClick={() => selectEntry(mon)}
+                          >
+                            <span className="w-9 shrink-0 text-right font-mono text-[11px] font-bold tabular-nums text-muted">
+                              {formatDexNo(mon.pokedexId)}
+                            </span>
+                            <PokemonSpriteImage
+                              alt=""
+                              className="pixelated h-8 w-8 shrink-0 object-contain"
+                              height={32}
+                              loading="lazy"
+                              pokedexId={mon.pokedexId}
+                              species={mon.name}
+                              width={32}
+                            />
+                            <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">
+                              {mon.name}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               </div>
             )}
           </Frame>
@@ -1188,48 +1237,132 @@ function PackStatusStrip({
   );
 }
 
-function useDexListReveal<T>(items: T[], resetKey: string) {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [prevKey, setPrevKey] = useState(resetKey);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+/**
+ * Fixed-row virtual list for the National Dex sidebar.
+ *
+ * Outer block height = total * rowHeight (stable scroll range).
+ * Inner list is absolutely positioned at startIndex * rowHeight and only
+ * mounts the viewport (+ overscan). Window updates from React onScroll so
+ * the listener always sits on the live scrollport.
+ */
+function useDexVirtualList<T>(
+  items: T[],
+  resetKey: string,
+  focusIndex: number = -1,
+) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const rafRef = useRef(0);
+  const totalRef = useRef(items.length);
+  const prevFocusRef = useRef(focusIndex);
+  const prevResetRef = useRef(resetKey);
+  totalRef.current = items.length;
 
-  if (prevKey !== resetKey) {
-    setPrevKey(resetKey);
-    setVisibleCount(PAGE_SIZE);
-  }
+  const [startIndex, setStartIndex] = useState(0);
+  const [endIndex, setEndIndex] = useState(PAGE_SIZE);
+  // Flip when the scrollport mounts/unmounts so we re-sync after mode toggles.
+  const [scrollEpoch, setScrollEpoch] = useState(0);
 
   const total = items.length;
-  const visible = items.slice(0, visibleCount);
-  const hasMore = visibleCount < total;
 
-  const loadMore = () => {
-    setVisibleCount((count) => Math.min(count + PAGE_SIZE, total));
+  const syncFromDom = () => {
+    const root = scrollRef.current;
+    if (!root) return;
+
+    const len = totalRef.current;
+    if (len === 0) {
+      setStartIndex(0);
+      setEndIndex(0);
+      return;
+    }
+
+    const scrollTop = root.scrollTop;
+    const viewportHeight = Math.max(root.clientHeight, DEX_ROW_HEIGHT);
+    const nextStart = Math.max(
+      0,
+      Math.floor(scrollTop / DEX_ROW_HEIGHT) - DEX_ROW_OVERSCAN,
+    );
+    const nextEnd = Math.min(
+      len,
+      Math.ceil((scrollTop + viewportHeight) / DEX_ROW_HEIGHT) +
+        DEX_ROW_OVERSCAN,
+    );
+    setStartIndex((prev) => (prev === nextStart ? prev : nextStart));
+    setEndIndex((prev) => (prev === nextEnd ? prev : nextEnd));
   };
 
-  useEffect(() => {
-    const root = scrollRef.current;
-    const sentinel = sentinelRef.current;
-    if (!root || !sentinel || !hasMore) return;
+  const onScroll = () => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      syncFromDom();
+    });
+  };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setVisibleCount((count) => Math.min(count + PAGE_SIZE, total));
-        }
-      },
-      { root, rootMargin: "120px" },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, total, visibleCount, resetKey]);
+  const setScrollRef = useRef((node: HTMLDivElement | null) => {
+    const prev = scrollRef.current;
+    scrollRef.current = node;
+    if (prev === node) return;
+    // Remount (e.g. Directory ↔ tiers): force a layout sync on the new node.
+    if (node) setScrollEpoch((n) => n + 1);
+  }).current;
+
+  // Focus jump + resize + sync when list/focus changes or the scrollport remounts.
+  useLayoutEffect(() => {
+    const root = scrollRef.current;
+    const focusChanged = prevFocusRef.current !== focusIndex;
+    const resetChanged = prevResetRef.current !== resetKey;
+    prevFocusRef.current = focusIndex;
+    prevResetRef.current = resetKey;
+
+    if (!root) return;
+
+    if (total === 0) {
+      setStartIndex(0);
+      setEndIndex(0);
+      return;
+    }
+
+    if (focusIndex < 0) {
+      if (resetChanged) root.scrollTop = 0;
+    } else {
+      const rowTop = focusIndex * DEX_ROW_HEIGHT;
+      const rowBottom = rowTop + DEX_ROW_HEIGHT;
+      const viewTop = root.scrollTop;
+      const viewBottom = viewTop + root.clientHeight;
+      const notVisible = rowTop < viewTop || rowBottom > viewBottom;
+      // Jump on selection/filter change, or when remount left scrollTop at 0
+      // while the window state still pointed mid-list (empty space).
+      if (focusChanged || resetChanged || notVisible) {
+        const maxScroll = Math.max(
+          0,
+          total * DEX_ROW_HEIGHT - root.clientHeight,
+        );
+        const centered = rowTop - (root.clientHeight - DEX_ROW_HEIGHT) / 2;
+        root.scrollTop = Math.max(0, Math.min(maxScroll, centered));
+      }
+    }
+
+    syncFromDom();
+
+    const ro = new ResizeObserver(() => syncFromDom());
+    ro.observe(root);
+    return () => {
+      ro.disconnect();
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
+    };
+  }, [focusIndex, resetKey, total, scrollEpoch]);
+
+  const start = Math.min(startIndex, Math.max(0, total));
+  const end = Math.min(Math.max(endIndex, start), total);
 
   return {
-    visible,
+    visible: items.slice(start, end),
     total,
-    hasMore,
-    scrollRef: scrollRef as RefObject<HTMLDivElement>,
-    sentinelRef: sentinelRef as RefObject<HTMLDivElement>,
-    loadMore,
+    startIndex: start,
+    scrollRef: setScrollRef,
+    onScroll,
   };
 }
