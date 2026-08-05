@@ -13,21 +13,21 @@ import {
 import { createPortal } from "react-dom";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import {
-  clearRecentJumps,
+  clearRecentSearches,
   defaultSuggestions,
-  getRecentJumps,
-  saveRecentJump,
-  searchJumpIndex,
-} from "@/features/jump/jump-index";
-import { useJump } from "@/features/jump/JumpProvider";
+  getRecentSearches,
+  saveRecentSearch,
+  querySearchIndex,
+} from "@/features/search/search-index";
+import { useSearch } from "@/features/search/SearchProvider";
 import type {
-  JumpCategory,
-  JumpFuseHit,
-  JumpResult,
-} from "@/features/jump/jump-types";
+  SearchCategory,
+  SearchFuseHit,
+  SearchResult,
+} from "@/features/search/search-types";
 import { getAppliedTheme, toggleTheme } from "@/lib/theme";
 
-const CATEGORY_ORDER: JumpCategory[] = [
+const CATEGORY_ORDER: SearchCategory[] = [
   "navigate",
   "trainer",
   "pokemon",
@@ -37,7 +37,7 @@ const CATEGORY_ORDER: JumpCategory[] = [
   "action",
 ];
 
-const CATEGORY_LABEL: Record<JumpCategory, string> = {
+const CATEGORY_LABEL: Record<SearchCategory, string> = {
   navigate: "Navigate",
   trainer: "Trainers",
   pokemon: "Pokémon",
@@ -79,13 +79,13 @@ function HighlightedText({
 }
 
 function matchIndices(
-  matches: JumpFuseHit["matches"],
+  matches: SearchFuseHit["matches"],
   key: "title" | "subtitle",
 ) {
   return matches?.find((m) => m.key === key)?.indices;
 }
 
-function ResultIcon({ item }: { item: JumpResult }) {
+function ResultIcon({ item }: { item: SearchResult }) {
   if (item.pokemonSprite) {
     return (
       <PokemonSpriteImage
@@ -101,7 +101,7 @@ function ResultIcon({ item }: { item: JumpResult }) {
   }
 
   if (item.imageUrl) {
-    // Plain img: Jump icons come from Showdown / PokeAPI / Blob and must not
+    // Plain img: Search icons come from Showdown / PokeAPI / Blob and must not
     // depend on next/image remotePatterns (custom avatars break search in prod).
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -134,8 +134,8 @@ function ResultIcon({ item }: { item: JumpResult }) {
   );
 }
 
-export function JumpPalette() {
-  const { open, setOpen, results, index } = useJump();
+export function SearchPalette() {
+  const { open, setOpen, results, index } = useSearch();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [recents, setRecents] = useState<string[]>([]);
@@ -147,7 +147,7 @@ export function JumpPalette() {
     setSeenOpen(open);
     if (open) {
       setQuery("");
-      setRecents(getRecentJumps());
+      setRecents(getRecentSearches());
     }
   }
 
@@ -162,12 +162,12 @@ export function JumpPalette() {
   // Derive from the live index so hits refresh when season registration lands
   // after hydration (stale hits were empty forever in prod until retyping).
   const hits = useMemo(() => {
-    if (!query.trim()) return [] as JumpFuseHit[];
-    return searchJumpIndex(index, query);
+    if (!query.trim()) return [] as SearchFuseHit[];
+    return querySearchIndex(index, query);
   }, [index, query]);
 
   const groupedHits = useMemo(() => {
-    const groups = new Map<JumpCategory, JumpFuseHit[]>();
+    const groups = new Map<SearchCategory, SearchFuseHit[]>();
     for (const hit of hits) {
       const list = groups.get(hit.item.category) ?? [];
       list.push(hit);
@@ -190,9 +190,9 @@ export function JumpPalette() {
   }, [setOpen]);
 
   const runResult = useCallback(
-    (item: JumpResult) => {
-      saveRecentJump(item.title);
-      setRecents(getRecentJumps());
+    (item: SearchResult) => {
+      saveRecentSearch(item.title);
+      setRecents(getRecentSearches());
       close();
 
       if (item.action === "toggle-theme") {
@@ -222,15 +222,15 @@ export function JumpPalette() {
     >
       <button
         type="button"
-        aria-label="Close jump"
-        className="absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px] motion-safe:animate-[jump-scrim-in_140ms_ease-out]"
+        aria-label="Close search"
+        className="absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px] motion-safe:animate-[search-scrim-in_140ms_ease-out]"
         onClick={close}
       />
 
       <Command
         shouldFilter={false}
-        label="Jump"
-        className="gba-frame relative z-10 w-full max-w-xl overflow-hidden shadow-[0_16px_48px_var(--shadow-md)] outline-none motion-safe:animate-[jump-panel-in_160ms_cubic-bezier(0.22,1,0.36,1)] sm:rounded-xl"
+        label="Search"
+        className="gba-frame relative z-10 w-full max-w-xl overflow-hidden shadow-[0_16px_48px_var(--shadow-md)] outline-none motion-safe:animate-[search-panel-in_160ms_cubic-bezier(0.22,1,0.36,1)] sm:rounded-xl"
       >
         <div className="relative z-[1] flex items-center gap-2 border-b border-frame/70 px-3 py-2.5 sm:px-4">
           <SearchGlyph className="h-4 w-4 shrink-0 text-muted" />
@@ -238,7 +238,7 @@ export function JumpPalette() {
             ref={inputRef}
             value={query}
             onValueChange={onQueryChange}
-            placeholder="Jump to trainer, Pokémon, page…"
+            placeholder="Search trainers, Pokémon, pages…"
             className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ink outline-none placeholder:text-muted/80"
           />
           <kbd className="hidden shrink-0 rounded border border-frame/80 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-muted sm:inline">
@@ -258,7 +258,7 @@ export function JumpPalette() {
                     <button
                       type="button"
                       onClick={() => {
-                        clearRecentJumps();
+                        clearRecentSearches();
                         setRecents([]);
                       }}
                       className="text-[11px] font-medium text-muted hover:text-ink"
@@ -286,7 +286,7 @@ export function JumpPalette() {
                 className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
               >
                 {suggestions.map((item) => (
-                  <JumpItem
+                  <SearchItem
                     key={item.id}
                     item={item}
                     onSelect={() => runResult(item)}
@@ -309,7 +309,7 @@ export function JumpPalette() {
               className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
             >
               {group.items.map((hit) => (
-                <JumpItem
+                <SearchItem
                   key={hit.item.id}
                   item={hit.item}
                   titleIndices={matchIndices(hit.matches, "title")}
@@ -322,7 +322,7 @@ export function JumpPalette() {
         </Command.List>
 
         <footer className="relative z-[1] flex items-center justify-between gap-3 border-t border-frame/60 bg-surface-2/80 px-3 py-2 text-[11px] text-muted sm:px-4">
-          <span className="font-medium tracking-tight">Jump</span>
+          <span className="font-medium tracking-tight">Search</span>
           <span className="flex items-center gap-2 font-mono">
             <span>
               <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">↑</kbd>{" "}
@@ -341,13 +341,13 @@ export function JumpPalette() {
   );
 }
 
-function JumpItem({
+function SearchItem({
   item,
   onSelect,
   titleIndices,
   subtitleIndices,
 }: {
-  item: JumpResult;
+  item: SearchResult;
   onSelect: () => void;
   titleIndices?: ReadonlyArray<readonly [number, number]>;
   subtitleIndices?: ReadonlyArray<readonly [number, number]>;

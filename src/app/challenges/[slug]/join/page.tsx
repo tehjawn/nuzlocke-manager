@@ -6,9 +6,9 @@ import { Frame } from "@/components/Frame";
 import { JoinForm } from "@/components/JoinForm";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import {
-  SeasonJumpRegistrar,
-  challengeToJumpSeasonContext,
-} from "@/features/jump";
+  SeasonSearchRegistrar,
+  challengeToSearchSeasonContext,
+} from "@/features/search";
 import { isInviteOnly } from "@/lib/challenge-access";
 import { getChallenge } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -70,8 +70,8 @@ export default async function JoinPage({ params, searchParams }: PageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <SeasonJumpRegistrar
-        season={challengeToJumpSeasonContext(challenge, {
+      <SeasonSearchRegistrar
+        season={challengeToSearchSeasonContext(challenge, {
           showGm: Boolean(access?.isGm),
         })}
       />

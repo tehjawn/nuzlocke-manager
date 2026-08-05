@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { GmIcon, MyTrainerIcon, RulesIcon, ToolsIcon } from "@/components/nav-icons";
-import { ToolIcon } from "@/components/tool-icons";
-import { JumpTrigger } from "@/features/jump";
+import { ToolChip } from "@/components/tool-icons";
+import { SearchTrigger } from "@/features/search";
 import {
   TOOLS_CATALOG,
   toolsHref,
@@ -213,8 +213,8 @@ export function MobileNavDrawer({
                   </nav>
 
                   <div className="flex items-center justify-between rounded-md border border-frame bg-surface px-3 py-2">
-                    <span className="text-sm font-medium">Jump</span>
-                    <JumpTrigger
+                    <span className="text-sm font-medium">Search</span>
+                    <SearchTrigger
                       showShortcut={false}
                       onBeforeOpen={() => setOpen(false)}
                       className="h-8 border-interactive/35 bg-interactive-soft"
@@ -242,7 +242,7 @@ function isUnder(pathname: string, href: string): boolean {
 
 /**
  * Tools as an expanding row rather than five flat ones (#253) — the drawer also
- * carries Rules, My Trainer, GM, Jump, and the account actions, and inlining
+ * carries Rules, My Trainer, GM, Search, and the account actions, and inlining
  * the whole catalog would bury them. Renders off `TOOLS_CATALOG` so it tracks
  * the header menu without a second list to maintain.
  */
@@ -281,12 +281,17 @@ function ToolsNavSection({
               <Link
                 href={toolsHref(slug, tool.id)}
                 onClick={onNavigate}
-                className="flex h-10 items-center gap-3 rounded-md border border-transparent px-3 text-sm font-medium hover:border-interactive/40 hover:bg-interactive-soft/60"
+                className="flex items-center gap-2.5 rounded-md border border-transparent px-2.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/60"
               >
-                <span className="shrink-0 text-accent-deep" aria-hidden>
-                  <ToolIcon id={tool.id} className="h-4 w-4" />
+                <ToolChip id={tool.id} />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium leading-tight">
+                    {tool.title}
+                  </span>
+                  <span className="mt-0.5 block truncate text-xs leading-snug text-muted">
+                    {tool.navLabel}
+                  </span>
                 </span>
-                {tool.title}
               </Link>
             </li>
           ))}
@@ -294,10 +299,12 @@ function ToolsNavSection({
             <Link
               href={toolsHubHref(slug)}
               onClick={onNavigate}
-              className="flex h-10 items-center justify-between gap-3 rounded-md border border-transparent px-3 text-sm font-semibold text-interactive hover:border-interactive/40 hover:bg-interactive-soft/60"
+              className="flex items-center justify-between gap-3 rounded-md border border-transparent px-2.5 py-2 text-xs font-medium text-muted hover:border-frame hover:bg-surface-2 hover:text-ink"
             >
               All tools
-              <span aria-hidden>→</span>
+              <span aria-hidden className="text-muted/80">
+                →
+              </span>
             </Link>
           </li>
         </ul>

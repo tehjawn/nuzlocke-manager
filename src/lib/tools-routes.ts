@@ -6,43 +6,70 @@ export type ToolsId =
   | "chart";
 
 /**
+ * Crest Pulse token roles used for per-tool icon chips (nav + hub). Keeps
+ * scan-color identity without inventing new brand hues.
+ */
+export type ToolsTone =
+  | "accent"
+  | "accent-2"
+  | "interactive"
+  | "danger"
+  | "discord"
+  | "muted";
+
+export type ToolsCatalogEntry = {
+  id: ToolsId;
+  title: string;
+  /** One-line nav/hub scan label — not the marketing blurb. */
+  navLabel: string;
+  tone: ToolsTone;
+  blurb: string;
+};
+
+/**
  * Single source of truth for tool order — the hub grid, the header Tools menu,
  * and the mobile drawer all render straight off this array, so adding a tool
  * never needs a nav edit. Progress-first (what do I do next, who has what),
  * then the lookup references.
  */
-export const TOOLS_CATALOG: ReadonlyArray<{
-  id: ToolsId;
-  title: string;
-  blurb: string;
-}> = [
+export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
   {
     id: "guide",
     title: "Game Guide",
+    navLabel: "Next story gates",
+    tone: "accent",
     blurb:
       "What to do next in Modern Emerald — story gates and easy-to-miss beats based on your badges.",
   },
   {
     id: "pokedex",
     title: "Pokédex",
+    navLabel: "Species & tiers",
+    tone: "danger",
     blurb:
       "Species directory — role, F→S BST ranks vs the ROM, matchups, ownership — plus BST and competitive tier ladders.",
   },
   {
     id: "bounty",
     title: "Pokémon Ownership",
+    navLabel: "Who owns what",
+    tone: "accent-2",
     blurb:
       "Every Modern Emerald species — who's owned it, who's just seen it, who's cornered a line.",
   },
   {
     id: "planner",
     title: "Team Planner",
+    navLabel: "Coverage & prep",
+    tone: "interactive",
     blurb:
       "Sandbox a Main of 6 — type coverage, defensive holes, and Elite Four / gym prep.",
   },
   {
     id: "chart",
     title: "Type Chart",
+    navLabel: "Matchup table",
+    tone: "discord",
     blurb:
       "Modern 18-type attack × defense multipliers — overlay a trainer's Main Squad coverage.",
   },

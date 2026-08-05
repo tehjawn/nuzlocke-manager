@@ -1,19 +1,19 @@
-import type { JumpSeasonContext } from "@/features/jump/jump-types";
+import type { SearchSeasonContext } from "@/features/search/search-types";
 import type { Challenge } from "@/lib/challenge-types";
 
 /**
- * Slim, JSON-safe season payload for the Jump client index.
+ * Slim, JSON-safe season payload for the Search client index.
  * Built on the server so we don't ship full Pokémon forms / activities
  * into the client component Flight props (large prod graphs).
  */
-export function challengeToJumpSeasonContext(
+export function challengeToSearchSeasonContext(
   challenge: Challenge,
   options?: {
     showGm?: boolean;
     myTrainerId?: string | null;
     firstRun?: boolean;
   },
-): JumpSeasonContext {
+): SearchSeasonContext {
   return {
     slug: challenge.slug,
     name: challenge.name,
@@ -62,7 +62,7 @@ export function challengeToJumpSeasonContext(
 }
 
 /** Root-layout default: identity only until a season page registers the index. */
-export function briefToJumpSeasonContext(
+export function briefToSearchSeasonContext(
   brief: {
     slug: string;
     name: string;
@@ -74,7 +74,7 @@ export function briefToJumpSeasonContext(
     myTrainerId?: string | null;
     firstRun?: boolean;
   },
-): JumpSeasonContext {
+): SearchSeasonContext {
   return {
     slug: brief.slug,
     name: brief.name,

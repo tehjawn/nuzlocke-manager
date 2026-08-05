@@ -672,8 +672,8 @@ export function TrainerBoard({
   const [boardHistoryOpen, setBoardHistoryOpen] = useState(false);
   const [teamExportOpen, setTeamExportOpen] = useState(false);
   const searchParams = useSearchParams();
-  const jumpPokemonId = searchParams.get("pokemon");
-  const [openedJumpPokemonId, setOpenedJumpPokemonId] = useState<string | null>(
+  const searchPokemonId = searchParams.get("pokemon");
+  const [openedSearchPokemonId, setOpenedSearchPokemonId] = useState<string | null>(
     null,
   );
 
@@ -1127,12 +1127,12 @@ export function TrainerBoard({
     setDetailsPokemon(mon);
   }
 
-  // League Jump deep-link: /trainers/:id?pokemon=:pokemonId opens that mon.
-  if (!jumpPokemonId && openedJumpPokemonId) {
-    setOpenedJumpPokemonId(null);
-  } else if (jumpPokemonId && jumpPokemonId !== openedJumpPokemonId) {
-    const mon = boardPokemon.find((p) => p.id === jumpPokemonId) ?? null;
-    setOpenedJumpPokemonId(jumpPokemonId);
+  // Search deep-link: /trainers/:id?pokemon=:pokemonId opens that mon.
+  if (!searchPokemonId && openedSearchPokemonId) {
+    setOpenedSearchPokemonId(null);
+  } else if (searchPokemonId && searchPokemonId !== openedSearchPokemonId) {
+    const mon = boardPokemon.find((p) => p.id === searchPokemonId) ?? null;
+    setOpenedSearchPokemonId(searchPokemonId);
     if (mon) {
       if (canEdit) {
         setPokemonInspect({

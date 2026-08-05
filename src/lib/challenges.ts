@@ -13,7 +13,7 @@ import {
   fetchChallengeShellRow,
   fetchChallengeSlotRow,
   fetchChallengeToolsSummaryRow,
-  fetchDefaultJumpBrief,
+  fetchDefaultSearchBrief,
   fetchHomeCarouselRow,
   fetchSeasonIndexRows,
   fetchSeasonMemorialGraveRows,
@@ -239,7 +239,7 @@ export async function getSeasonMemorialGraves(
 
 /**
  * Workspace layout chrome — MAIN summary + activities, no box payloads.
- * Enough for Jump trainers, myTrainerId, and the activity rail.
+ * Enough for Search trainers, myTrainerId, and the activity rail.
  */
 export async function getChallengeShell(
   slug: string,
@@ -452,7 +452,7 @@ export async function getTrainer(
   return { challenge, trainer };
 }
 
-export type JumpSeasonBrief = {
+export type SearchSeasonBrief = {
   slug: string;
   name: string;
   year: number;
@@ -460,13 +460,13 @@ export type JumpSeasonBrief = {
 };
 
 /**
- * Active (else newest) season brief for root Jump / header — no trainers,
- * no Pokémon. Season pages register the full Jump index via SeasonJumpRegistrar.
+ * Active (else newest) season brief for root Search / header — no trainers,
+ * no Pokémon. Season pages register the full Search index via SeasonSearchRegistrar.
  */
-export const getDefaultJumpChallenge = cache(
-  async (): Promise<JumpSeasonBrief | null> => {
+export const getDefaultSearchChallenge = cache(
+  async (): Promise<SearchSeasonBrief | null> => {
     try {
-      return await fetchDefaultJumpBrief();
+      return await fetchDefaultSearchBrief();
     } catch {
       return null;
     }

@@ -3867,8 +3867,8 @@ button:disabled,
   }
 }
 
-/* League Jump (⌘K) portal entrance */
-@keyframes jump-scrim-in {
+/* Search palette (⌘K) portal entrance */
+@keyframes search-scrim-in {
   from {
     opacity: 0;
   }
@@ -3877,7 +3877,7 @@ button:disabled,
   }
 }
 
-@keyframes jump-panel-in {
+@keyframes search-panel-in {
   from {
     opacity: 0;
     transform: translateY(8px) scale(0.98);

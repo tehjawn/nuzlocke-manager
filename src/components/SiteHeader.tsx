@@ -8,9 +8,9 @@ import {
   SiteHeaderSessionFallback,
 } from "@/components/SiteHeaderSession";
 import { ToolsMenu } from "@/components/ToolsMenu";
-import { JumpTrigger } from "@/features/jump";
+import { SearchTrigger } from "@/features/search";
 import type { Challenge } from "@/lib/challenge-types";
-import { getChallenge, getDefaultJumpChallenge } from "@/lib/challenges";
+import { getChallenge, getDefaultSearchChallenge } from "@/lib/challenges";
 
 /** Shared shell width for the site header, footer, and page content. */
 export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
@@ -48,7 +48,7 @@ export async function SiteHeader({
   let seasonStatus: Challenge["status"] | null = null;
 
   if (seasonSlug == null && seasonYear == null) {
-    const defaults = await getDefaultJumpChallenge();
+    const defaults = await getDefaultSearchChallenge();
     seasonSlug = defaults?.slug ?? null;
     seasonYear = defaults?.year ?? null;
     seasonStatus = defaults?.status ?? null;
@@ -59,7 +59,7 @@ export async function SiteHeader({
     seasonStatus = challenge?.status ?? null;
     if (seasonName == null) seasonName = challenge?.name ?? null;
   } else if (seasonSlug == null && seasonYear != null) {
-    const defaults = await getDefaultJumpChallenge();
+    const defaults = await getDefaultSearchChallenge();
     if (defaults?.year === seasonYear) {
       seasonSlug = defaults.slug;
       seasonStatus = defaults.status;
@@ -71,7 +71,7 @@ export async function SiteHeader({
     seasonStatus = challenge?.status ?? null;
   }
 
-  // Status is only needed for the global-page Jump GM registrar.
+  // Status is only needed for the global-page Search GM registrar.
   if (!challengeSlug && seasonSlug != null && seasonStatus == null) {
     const challenge = await getChallenge(seasonSlug);
     seasonStatus = challenge?.status ?? null;
@@ -117,7 +117,7 @@ export async function SiteHeader({
           </div>
         </div>
         <nav className="relative flex shrink-0 items-center gap-2 text-sm">
-          <JumpTrigger />
+          <SearchTrigger />
           {/* Inline pills at sm+; below that they collapse into the drawer. */}
           <div className="hidden items-center gap-2 sm:flex">
             {/* TEMP: Seasons index + SeasonsIcon hidden while only one season exists

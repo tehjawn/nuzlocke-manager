@@ -129,7 +129,7 @@ export async function fetchChallengeSlotRow(
 }
 
 /**
- * Workspace chrome: meta + activity preview + MAIN summary for Jump / myTrainerId.
+ * Workspace chrome: meta + activity preview + MAIN summary for Search / myTrainerId.
  * Avoids shipping RESERVE / GRAVEYARD / ENCOUNTERED (+ competitive columns).
  */
 export async function fetchChallengeShellRow(slug: string) {
@@ -309,7 +309,7 @@ export async function fetchSeasonMemorialGraveRows(slug: string): Promise<{
   return { runs, snapshots };
 }
 
-export async function fetchDefaultJumpBrief() {
+export async function fetchDefaultSearchBrief() {
   "use cache";
   cacheTag("seasons:index");
   if (!isDatabaseConfigured()) {
@@ -347,7 +347,7 @@ export async function fetchDefaultJumpBrief() {
     // compute cold-starting, a network blip, an incident. Callers already
     // handle null, so degrade instead of taking the whole render down.
     //
-    // This has to be caught here rather than in getDefaultJumpChallenge:
+    // This has to be caught here rather than in getDefaultSearchChallenge:
     // a "use cache" function that rejects during prerender fails the build
     // regardless of what the caller does with the rejection.
     //

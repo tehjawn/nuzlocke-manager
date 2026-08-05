@@ -6,9 +6,9 @@ import {
 import { MobileMenuAuth } from "@/components/MobileMenuAuth";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import {
-  SeasonJumpRegistrar,
-  briefToJumpSeasonContext,
-} from "@/features/jump";
+  SeasonSearchRegistrar,
+  briefToSearchSeasonContext,
+} from "@/features/search";
 import type { Challenge } from "@/lib/challenge-types";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { isGmForChallengeSlug } from "@/lib/permissions";
@@ -48,14 +48,14 @@ export async function SiteHeaderSession({
 
   return (
     <>
-      {/* Global pages have no season Jump registrar — keep GM Console in sync. */}
+      {/* Global pages have no season Search registrar — keep GM Console in sync. */}
       {!challengeSlug &&
       seasonSlug &&
       seasonYear != null &&
       seasonStatus &&
       menuShowGm ? (
-        <SeasonJumpRegistrar
-          season={briefToJumpSeasonContext(
+        <SeasonSearchRegistrar
+          season={briefToSearchSeasonContext(
             {
               slug: seasonSlug,
               name: seasonName ?? seasonSlug,

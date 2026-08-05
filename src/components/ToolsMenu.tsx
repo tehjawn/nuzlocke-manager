@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { ToolsIcon } from "@/components/nav-icons";
-import { ToolIcon } from "@/components/tool-icons";
+import { ToolChip } from "@/components/tool-icons";
 import {
   TOOLS_CATALOG,
   toolsHref,
@@ -148,7 +148,7 @@ export function ToolsMenu({ slug }: ToolsMenuProps) {
   const rovingIndex = activeIndex < 0 ? 0 : activeIndex;
 
   const rowClass =
-    "relative z-[1] flex gap-2.5 px-3 py-2.5 hover:bg-accent/15 focus-visible:bg-accent/15 focus-visible:outline-none";
+    "relative z-[1] flex items-center gap-2.5 px-2.5 py-2 hover:bg-interactive-soft/50 focus-visible:bg-interactive-soft/50 focus-visible:outline-none";
 
   return (
     <div ref={rootRef} className="relative" onBlur={onFocusOut}>
@@ -175,7 +175,7 @@ export function ToolsMenu({ slug }: ToolsMenuProps) {
             role="menu"
             aria-labelledby={triggerId}
             onKeyDown={onMenuKeyDown}
-            className="gba-frame gba-frame-menu max-h-[calc(100vh-6rem)] w-[21rem] overflow-y-auto"
+            className="gba-frame gba-frame-menu max-h-[calc(100vh-6rem)] w-[17rem] overflow-y-auto"
           >
             {TOOLS_CATALOG.map((tool, index) => (
               <Link
@@ -189,15 +189,13 @@ export function ToolsMenu({ slug }: ToolsMenuProps) {
                 onClick={dismiss}
                 className={rowClass}
               >
-                <span className="mt-0.5 shrink-0 text-accent-deep" aria-hidden>
-                  <ToolIcon id={tool.id} className="h-4 w-4" />
-                </span>
+                <ToolChip id={tool.id} />
                 <span className="min-w-0">
-                  <span className="block text-sm font-medium">
+                  <span className="block truncate text-sm font-medium leading-tight">
                     {tool.title}
                   </span>
-                  <span className="mt-0.5 block line-clamp-2 text-xs leading-snug text-muted">
-                    {tool.blurb}
+                  <span className="mt-0.5 block truncate text-xs leading-snug text-muted">
+                    {tool.navLabel}
                   </span>
                 </span>
               </Link>
@@ -211,10 +209,12 @@ export function ToolsMenu({ slug }: ToolsMenuProps) {
               role="menuitem"
               tabIndex={HUB_INDEX === rovingIndex ? 0 : -1}
               onClick={dismiss}
-              className={`${rowClass} items-center justify-between border-t border-frame/60 text-sm font-semibold text-interactive`}
+              className={`${rowClass} justify-between border-t border-frame/50 text-xs font-medium text-muted hover:text-ink`}
             >
               All tools
-              <span aria-hidden>→</span>
+              <span aria-hidden className="text-muted/80">
+                →
+              </span>
             </Link>
           </div>
         </div>

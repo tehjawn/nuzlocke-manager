@@ -2,14 +2,14 @@ import Fuse, { type IFuseOptions } from "fuse.js";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
 import { guideChapterLabel } from "@/features/guide/guide-gym-prep";
 import type {
-  JumpFuseHit,
-  JumpResult,
-  JumpSeasonContext,
-} from "@/features/jump/jump-types";
+  SearchFuseHit,
+  SearchResult,
+  SearchSeasonContext,
+} from "@/features/search/search-types";
 import { avatarImageUrl } from "@/lib/sprites";
 import { toolsHref } from "@/lib/tools-routes";
 
-const FUSE_OPTIONS: IFuseOptions<JumpResult> = {
+const FUSE_OPTIONS: IFuseOptions<SearchResult> = {
   keys: [
     { name: "title", weight: 0.5 },
     { name: "subtitle", weight: 0.25 },
@@ -21,7 +21,9 @@ const FUSE_OPTIONS: IFuseOptions<JumpResult> = {
   minMatchCharLength: 1,
 };
 
-const RECENT_KEY = "nuzlocke-jump-recents";
+const RECENT_KEY = "nuzlocke-search-recents";
+/** Pre-rename key — read once, then migrate to RECENT_KEY. */
+const LEGACY_RECENT_KEY = "nuzlocke-jump-recents";
 const MAX_RECENTS = 6;
 const MAX_RESULTS = 24;
 
@@ -32,7 +34,7 @@ const SLOT_LABEL: Record<string, string> = {
   ENCOUNTERED: "Encountered",
 };
 
-export function buildGlobalResults(): JumpResult[] {
+export function buildGlobalResults(): SearchResult[] {
   return [
     {
       id: "nav-home",
@@ -95,13 +97,13 @@ function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
   return tabs;
 }
 
-export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
+export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
   const base = `/challenges/${ctx.slug}`;
 
   // First-run funnel: only Setup + My Trainer (+ GM if somehow firstRun+GM —
   // GMs are excluded from firstRun by the layout predicate).
   if (ctx.firstRun) {
-    const navigate: JumpResult[] = [
+    const navigate: SearchResult[] = [
       {
         id: `nav-setup-${ctx.slug}`,
         title: "Setup",
@@ -115,7 +117,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
       navigate.push({
         id: `nav-me-${ctx.slug}`,
         title: "My Trainer",
-        subtitle: "Jump to your board",
+        subtitle: "Go to your board",
         href: `${base}/me`,
         category: "navigate",
         tags: ["me", "my board", "my trainer", "self"],
@@ -126,7 +128,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
 
   const tabs = seasonSectionTabs(ctx.slug, ctx.status, ctx.showGm);
 
-  const navigate: JumpResult[] = [
+  const navigate: SearchResult[] = [
     {
       id: `nav-season-${ctx.slug}`,
       title: ctx.name,
@@ -173,7 +175,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
     navigate.push({
       id: `nav-me-${ctx.slug}`,
       title: "My Trainer",
-      subtitle: "Jump to your board",
+      subtitle: "Go to your board",
       href: `${base}/me`,
       category: "navigate",
       tags: ["me", "my board", "my trainer", "self"],
@@ -191,7 +193,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
     });
   }
 
-  const trainers: JumpResult[] = ctx.trainers.map((t) => {
+  const trainers: SearchResult[] = ctx.trainers.map((t) => {
     const badges = t.earnedBadgeKeys ?? [];
     const mons = t.pokemon ?? [];
     const badgeCount = badges.length;
@@ -221,7 +223,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
     };
   });
 
-  const pokemon: JumpResult[] = ctx.trainers.flatMap((t) =>
+  const pokemon: SearchResult[] = ctx.trainers.flatMap((t) =>
     (t.pokemon ?? []).map((mon) => {
       const label = mon.nickname?.trim() || mon.species;
       const slot = SLOT_LABEL[mon.slot] ?? mon.slot;
@@ -258,7 +260,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
     }),
   );
 
-  const badges: JumpResult[] = ctx.badges.map((b) => ({
+  const badges: SearchResult[] = ctx.badges.map((b) => ({
     id: `badge-${b.key}`,
     title: b.label,
     subtitle: [b.leaderName?.trim(), b.category].filter(Boolean).join(" · "),
@@ -267,7 +269,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
     tags: [b.label, b.key, b.leaderName ?? "", b.category, "badge", "gym"],
   }));
 
-  const rules: JumpResult[] = [
+  const rules: SearchResult[] = [
     ...ctx.rules.map((r) => ({
       id: `rule-${r.id}`,
       title: r.title?.trim() || "Rule",
@@ -286,7 +288,7 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
     })),
   ];
 
-  const guide: JumpResult[] = [
+  const guide: SearchResult[] = [
     {
       id: `guide-hub-${ctx.slug}`,
       title: "Game Guide",
@@ -400,14 +402,14 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
   ];
 }
 
-export function createJumpIndex(results: JumpResult[]) {
+export function createSearchIndex(results: SearchResult[]) {
   return new Fuse(results, FUSE_OPTIONS);
 }
 
-export function searchJumpIndex(
-  index: Fuse<JumpResult>,
+export function querySearchIndex(
+  index: Fuse<SearchResult>,
   query: string,
-): JumpFuseHit[] {
+): SearchFuseHit[] {
   const trimmed = query.trim();
   if (!trimmed) return [];
   return index.search(trimmed).slice(0, MAX_RESULTS).map((hit) => ({
@@ -416,7 +418,7 @@ export function searchJumpIndex(
   }));
 }
 
-export function defaultSuggestions(results: JumpResult[]): JumpResult[] {
+export function defaultSuggestions(results: SearchResult[]): SearchResult[] {
   const preferredIds = [
     results.find((r) => r.id.startsWith("nav-me-"))?.id,
     results.find((r) => r.title === "Memorial")?.id,
@@ -427,7 +429,7 @@ export function defaultSuggestions(results: JumpResult[]): JumpResult[] {
     results.find((r) => r.id === "action-theme")?.id,
   ].filter(Boolean) as string[];
 
-  const picked: JumpResult[] = [];
+  const picked: SearchResult[] = [];
   for (const id of preferredIds) {
     const hit = results.find((r) => r.id === id);
     if (hit && !picked.some((p) => p.id === hit.id)) picked.push(hit);
@@ -444,10 +446,24 @@ export function defaultSuggestions(results: JumpResult[]): JumpResult[] {
   return picked;
 }
 
-export function getRecentJumps(): string[] {
+function readRecentRaw(): string | null {
+  const current = localStorage.getItem(RECENT_KEY);
+  if (current) return current;
+  const legacy = localStorage.getItem(LEGACY_RECENT_KEY);
+  if (!legacy) return null;
+  try {
+    localStorage.setItem(RECENT_KEY, legacy);
+    localStorage.removeItem(LEGACY_RECENT_KEY);
+  } catch {
+    // keep reading legacy if migrate write fails
+  }
+  return legacy;
+}
+
+export function getRecentSearches(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(RECENT_KEY);
+    const raw = readRecentRaw();
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed)
@@ -458,23 +474,25 @@ export function getRecentJumps(): string[] {
   }
 }
 
-export function saveRecentJump(title: string) {
+export function saveRecentSearch(title: string) {
   if (typeof window === "undefined" || !title.trim()) return;
   try {
     const next = [
       title.trim(),
-      ...getRecentJumps().filter((q) => q !== title.trim()),
+      ...getRecentSearches().filter((q) => q !== title.trim()),
     ].slice(0, MAX_RECENTS);
     localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    localStorage.removeItem(LEGACY_RECENT_KEY);
   } catch {
     // private mode / blocked storage
   }
 }
 
-export function clearRecentJumps() {
+export function clearRecentSearches() {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(RECENT_KEY);
+    localStorage.removeItem(LEGACY_RECENT_KEY);
   } catch {
     // ignore
   }
