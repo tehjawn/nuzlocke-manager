@@ -262,6 +262,18 @@ export type CrossRunGravesResult = {
   recoveredCount: number;
 };
 
+/** Flatten a cross-run graves map to the bare rows the aggregators consume. */
+export function gravesPokemonByTrainerId(
+  gravesByTrainerId: Record<string, CrossRunGravesResult>,
+): Record<string, PokemonEntry[]> {
+  return Object.fromEntries(
+    Object.entries(gravesByTrainerId).map(([trainerId, result]) => [
+      trainerId,
+      result.graves.map((grave) => grave.pokemon),
+    ]),
+  );
+}
+
 /** Run a live grave belongs to, falling back for legacy rows with neither tag. */
 function liveGraveRunNumber(
   grave: PokemonEntry,

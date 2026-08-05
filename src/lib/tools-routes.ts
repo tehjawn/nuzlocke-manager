@@ -3,6 +3,7 @@ export type ToolsId =
   | "pokedex"
   | "bounty"
   | "planner"
+  | "stats"
   | "chart";
 
 /**
@@ -66,6 +67,14 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
       "Sandbox a Main of 6 — type coverage, defensive holes, and Elite Four / gym prep.",
   },
   {
+    id: "stats",
+    title: "Season Stats",
+    navLabel: "Season leaderboards",
+    tone: "accent-2",
+    blurb:
+      "Hall of fame — badge race, richest wallets, god catches, shinies, and every season-wide leaderboard.",
+  },
+  {
     id: "chart",
     title: "Type Chart",
     navLabel: "Matchup table",
@@ -86,6 +95,7 @@ export function toolsHref(
     id?: string | number | null;
     chapter?: string | null;
     mode?: string | null;
+    section?: string | null;
   },
 ): string {
   const params = new URLSearchParams({ tool });
@@ -94,6 +104,7 @@ export function toolsHref(
   }
   if (query?.chapter) params.set("chapter", query.chapter);
   if (query?.mode) params.set("mode", query.mode);
+  if (query?.section) params.set("section", query.section);
   return `/challenges/${slug}/tools?${params.toString()}`;
 }
 
@@ -108,6 +119,7 @@ export function parseToolsId(
     raw === "pokedex" ||
     raw === "bounty" ||
     raw === "planner" ||
+    raw === "stats" ||
     raw === "chart"
   ) {
     return raw;
@@ -168,4 +180,31 @@ export function parsePokedexMode(
 ): PokedexMode {
   if (raw === "tiers" || raw === "competitive") return raw;
   return "briefing";
+}
+
+/**
+ * Season Stats page sections. Deep links use `?section=` rather than a `#hash`
+ * because the tools page streams behind a loading boundary — the App Router's
+ * hash scroll fires against the skeleton and is consumed before the section
+ * exists. SeasonStatsView reads the param reactively and scrolls itself.
+ */
+export type StatsSection = "standings" | "quality" | "species" | "memorial";
+
+export function parseStatsSection(
+  raw: string | null | undefined,
+): StatsSection | null {
+  if (
+    raw === "standings" ||
+    raw === "quality" ||
+    raw === "species" ||
+    raw === "memorial"
+  ) {
+    return raw;
+  }
+  return null;
+}
+
+/** DOM id of a Season Stats section — single source for links and anchors. */
+export function statsSectionId(section: StatsSection): string {
+  return `season-stats-${section}`;
 }
