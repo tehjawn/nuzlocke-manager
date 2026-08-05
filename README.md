@@ -85,8 +85,10 @@ that from happening:
   the directory only — the SQL does not change.
 
 CI checks these on every PR (`.github/workflows/migration-checks.yml`), and
-rejects any change to a migration that already exists on `main`. Run them
-yourself before pushing:
+rejects any change to a migration that already exists on `main`. It also rejects
+a `prisma/schema.prisma` edit that changes DDL without a matching migration
+(the `db push` without `migrate dev` hole). Run the checks yourself before
+pushing:
 
 ```bash
 scripts/check-migration-order.sh                 # ordering, duplicates, edits to applied migrations
@@ -96,7 +98,7 @@ DATABASE_URL="postgresql://nuzlocke:nuzlocke@localhost:5432/scratch" \
 
 The replay check wants a database it can clobber — point it at a scratch one, not
 your dev database. It builds the schema as of `main`, applies only the migrations
-your branch adds, then asserts the result matches `prisma/schema.prisma`.
+your branch adds (if any), then asserts the result matches `prisma/schema.prisma`.
 
 ### Sync local from Neon
 

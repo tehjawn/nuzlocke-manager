@@ -8,13 +8,14 @@ name: Migration Checks
 #
 # Runs on every PR rather than filtering on paths, so it can be made a required
 # check without leaving PRs that touch no migrations waiting on a run that never
-# starts. Both jobs exit early and cheaply when there is nothing to check.
+# starts. Jobs exit early and cheaply when there is nothing to check.
 
 on:
   pull_request:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: migration-checks-pr-${{ github.event.pull_request.number }}
@@ -38,9 +39,100 @@ jobs:
       - name: Check migration ordering
         run: scripts/check-migration-order.sh "origin/${{ github.event.pull_request.base.ref }}"
 
+  # Apply / remove the "⚙️ migration" label when the PR adds (or stops adding)
+  # a migration directory. Fork PRs get a read-only token, so skip them cleanly
+  # rather than failing — do not switch to pull_request_target for this.
+  label:
+    name: Label
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
+
+      - name: Does this PR add migrations?
+        id: detect
+        run: |
+          set -euo pipefail
+          base="$(git merge-base "origin/${{ github.event.pull_request.base.ref }}" HEAD)"
+          list() {
+            git ls-tree -r --name-only "$1" -- prisma/migrations/ |
+              awk -F/ 'NF > 3 { print $3 }' | sort -u
+          }
+          added="$(comm -13 <(list "$base") <(list HEAD) | wc -l | tr -d ' ')"
+          echo "added=${added}" >> "$GITHUB_OUTPUT"
+          if [ "$added" -eq 0 ]; then
+            echo "No migrations added."
+          else
+            echo "${added} migration(s) added."
+          fi
+
+      - name: Apply or remove migration label
+        uses: actions/github-script@v7
+        env:
+          ADDED: ${{ steps.detect.outputs.added }}
+        with:
+          script: |
+            const label = '⚙️ migration';
+            const shouldHave = process.env.ADDED !== '0';
+            const labels = (context.payload.pull_request.labels || []).map((l) => l.name);
+            const has = labels.includes(label);
+            const pr = context.payload.pull_request.number;
+
+            if (shouldHave && !has) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr,
+                  labels: [label],
+                });
+                core.info(`Added "${label}" to PR #${pr}.`);
+              } catch (error) {
+                // Label missing from the repo, or a transient permission quirk —
+                // do not fail the check over cosmetics.
+                if (error.status === 404 || error.status === 403) {
+                  core.warning(`Could not add "${label}" (HTTP ${error.status}); skipping.`);
+                  return;
+                }
+                throw error;
+              }
+            } else if (!shouldHave && has) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr,
+                  name: label,
+                });
+                core.info(`Removed "${label}" from PR #${pr}.`);
+              } catch (error) {
+                if (error.status === 404) {
+                  core.info(`Label "${label}" was already absent on PR #${pr}.`);
+                  return;
+                }
+                if (error.status === 403) {
+                  core.warning(`Could not remove "${label}" (HTTP 403); skipping.`);
+                  return;
+                }
+                throw error;
+              }
+            } else if (shouldHave) {
+              core.info(`PR #${pr} already has "${label}".`);
+            } else {
+              core.info(`PR #${pr} has no added migrations; label not needed.`);
+            }
+
   # Applies this PR's new migrations to a throwaway Postgres and checks the
-  # result. A service container rather than a Neon branch: Neon Free allows 10
-  # branches for the whole project, and previews already compete for those.
+  # result. Also runs when prisma/schema.prisma differs from the base even with
+  # no new migrations — that is the db-push-without-migrate hole. A service
+  # container rather than a Neon branch: Neon Free allows 10 branches for the
+  # whole project, and previews already compete for those.
   replay:
     name: Replay
     runs-on: ubuntu-latest
@@ -69,7 +161,7 @@ jobs:
         run: git fetch --no-tags origin "${{ github.event.pull_request.base.ref }}"
 
       # Before npm ci, which is the expensive part of this job.
-      - name: Does this PR add migrations?
+      - name: Does this PR need a replay?
         id: detect
         run: |
           set -euo pipefail
@@ -79,15 +171,23 @@ jobs:
               awk -F/ 'NF > 3 { print $3 }' | sort -u
           }
           added="$(comm -13 <(list "$base") <(list HEAD) | wc -l | tr -d ' ')"
-          echo "added=${added}" >> "$GITHUB_OUTPUT"
-          if [ "$added" -eq 0 ]; then
-            echo "No migrations added; skipping the replay."
+          if git diff --quiet "$base" HEAD -- prisma/schema.prisma; then
+            schema_changed=0
           else
+            schema_changed=1
+          fi
+          echo "added=${added}" >> "$GITHUB_OUTPUT"
+          echo "schema_changed=${schema_changed}" >> "$GITHUB_OUTPUT"
+          if [ "$added" -ne 0 ]; then
             echo "${added} migration(s) added; replaying."
+          elif [ "$schema_changed" -eq 1 ]; then
+            echo "prisma/schema.prisma differs from base with no new migrations; checking drift."
+          else
+            echo "No migrations added and schema unchanged; skipping the replay."
           fi
 
       - name: Setup Node
-        if: steps.detect.outputs.added != '0'
+        if: steps.detect.outputs.added != '0' || steps.detect.outputs.schema_changed == '1'
         uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -95,11 +195,11 @@ jobs:
 
       # CI resolves from package-lock.json; pnpm-lock.yaml is gitignored.
       - name: Install dependencies
-        if: steps.detect.outputs.added != '0'
+        if: steps.detect.outputs.added != '0' || steps.detect.outputs.schema_changed == '1'
         run: npm ci
 
       - name: Replay migrations against a scratch database
-        if: steps.detect.outputs.added != '0'
+        if: steps.detect.outputs.added != '0' || steps.detect.outputs.schema_changed == '1'
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/migcheck
         run: scripts/check-migration-replay.sh "origin/${{ github.event.pull_request.base.ref }}"
