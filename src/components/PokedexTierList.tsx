@@ -60,8 +60,6 @@ export function PokedexTierList({
   const [type, setType] = useState<PokemonType | null>(null);
   const [finalOnly, setFinalOnly] = useState(false);
   const [ownership, setOwnership] = useState<OwnershipFilter>("all");
-  const [hideUntiered, setHideUntiered] = useState(ladder === "competitive");
-  const [hideLegendaries, setHideLegendaries] = useState(true);
 
   const boardById = useMemo(() => {
     const map: BoardMap = new Map();
@@ -90,14 +88,10 @@ export function PokedexTierList({
       <CompetitiveLadder
         boardById={boardById}
         filterOpts={filterOpts}
-        hideLegendaries={hideLegendaries}
-        hideUntiered={hideUntiered}
         myTrainerId={myTrainerId}
         onSelectSpecies={onSelectSpecies}
         ownership={ownership}
         setFinalOnly={setFinalOnly}
-        setHideLegendaries={setHideLegendaries}
-        setHideUntiered={setHideUntiered}
         setOwnership={setOwnership}
         setType={setType}
         type={type}
@@ -230,14 +224,10 @@ function BstLadder({
 function CompetitiveLadder({
   boardById,
   filterOpts,
-  hideLegendaries,
-  hideUntiered,
   myTrainerId,
   onSelectSpecies,
   ownership,
   setFinalOnly,
-  setHideLegendaries,
-  setHideUntiered,
   setOwnership,
   setType,
   type,
@@ -245,19 +235,17 @@ function CompetitiveLadder({
 }: {
   boardById: BoardMap;
   filterOpts: FilterOpts;
-  hideLegendaries: boolean;
-  hideUntiered: boolean;
   myTrainerId: string | null;
   onSelectSpecies: (pokedexId: number) => void;
   ownership: OwnershipFilter;
   setFinalOnly: (v: boolean) => void;
-  setHideLegendaries: (v: boolean) => void;
-  setHideUntiered: (v: boolean) => void;
   setOwnership: (v: OwnershipFilter) => void;
   setType: (v: PokemonType | null) => void;
   type: PokemonType | null;
   finalOnly: boolean;
 }) {
+  const [hideUntiered, setHideUntiered] = useState(true);
+  const [hideLegendaries, setHideLegendaries] = useState(true);
   const meta = useMemo(() => competitiveTierMeta(), []);
   const tiers = useMemo(() => competitiveTierList(), []);
 
@@ -284,10 +272,10 @@ function CompetitiveLadder({
     0,
   );
 
-  const filterNotes = [
+  const filterNotes: string[] = [
     hideUntiered ? "untiered hidden" : null,
     hideLegendaries ? "legendaries hidden" : null,
-  ].filter(Boolean);
+  ].filter((note): note is string => note != null);
 
   return (
     <div className="space-y-4">
@@ -332,7 +320,8 @@ function CompetitiveLadder({
       />
 
       <p className="text-xs text-muted">
-        Showing {visibleCount} species
+        Showing {visibleCount}
+        {visibleCount !== curatedTotal ? ` of ${curatedTotal}` : ""} species
         {filterNotes.length > 0 ? ` (${filterNotes.join(" · ")})` : ""}
       </p>
 

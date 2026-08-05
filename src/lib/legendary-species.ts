@@ -46,7 +46,3 @@ export function isLegendaryNationalId(
   if (pokedexId == null || pokedexId <= 0) return false;
   return LEGENDARY_NATIONAL_IDS.has(pokedexId);
 }
-
-export function legendaryNationalIds(): readonly number[] {
-  return [...LEGENDARY_NATIONAL_IDS].sort((a, b) => a - b);
-}
