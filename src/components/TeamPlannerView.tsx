@@ -8,7 +8,12 @@ import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TypeBadge } from "@/components/TypeBadge";
 import { EMERALD_GUIDE } from "@/features/guide/emerald-guide";
-import { squadMatchesForGymPrep } from "@/features/guide/guide-gym-prep";
+import {
+  formatGymPrepTypeMatch,
+  hasTypingMatch,
+  squadMatchesForGymPrep,
+  type GymPrepSquadMatch,
+} from "@/features/guide/guide-gym-prep";
 import type { GuideGymPrep } from "@/features/guide/guide-types";
 import { ELITE_FOUR_PREP } from "@/features/planner/elite-four-prep";
 import {
@@ -44,6 +49,9 @@ type TeamPlannerViewProps = {
   initialMode?: PlannerMode | null;
 };
 
+/** Sprites shown on a collapsed prep row before spilling into a "+N" count. */
+const SUMMARY_MATCH_LIMIT = 4;
+
 const MODES: ReadonlyArray<{ id: PlannerMode; label: string }> = [
   { id: "coverage", label: "Coverage" },
   { id: "prep", label: "Gym / League" },
@@ -69,6 +77,12 @@ function defaultDraftIds(trainer: TrainerProfile): string[] {
 
 function monLabel(entry: PokemonEntry): string {
   return entry.nickname?.trim() || entry.species;
+}
+
+/** e.g. "Swampert · Water, Electric via Thunderbolt" */
+function prepMatchTip(match: GymPrepSquadMatch): string {
+  const reasons = match.typeMatches.map(formatGymPrepTypeMatch).join(", ");
+  return reasons ? `${monLabel(match.entry)} · ${reasons}` : monLabel(match.entry);
 }
 
 function firstEmptySlot(ids: readonly string[]): number {
@@ -973,7 +987,7 @@ function PrepPanels({
             {draft.length === 0
               ? "Place a planned Main to see draft answers."
               : gymGaps + leagueGaps === 0
-                ? "Every specialty has a typing answer in this draft."
+                ? "Every specialty has an answer in this draft — typing or a known coverage move."
                 : `Expand a row for bring / careful types. ${
                     gymGaps > 0
                       ? `${gymGaps} gym${gymGaps === 1 ? "" : "s"} still open.`
@@ -1026,6 +1040,11 @@ function PrepPanels({
           ))}
         </ul>
       </div>
+
+      <p className="mt-2 text-[10px] leading-snug text-muted">
+        A dashed outline means that answer comes from a known damaging move
+        rather than the Pokémon’s own typing — expand a row to see which move.
+      </p>
     </Frame>
   );
 }
@@ -1090,22 +1109,24 @@ function PrepCard({
           {specialty ? <TypeBadge type={specialty} size="sm" /> : null}
           <span className="flex shrink-0 items-center gap-0.5">
             {matches.length > 0 ? (
-              matches.slice(0, 4).map(({ entry, matchedTypes }) => (
+              matches.slice(0, SUMMARY_MATCH_LIMIT).map((match) => (
                 <span
-                  key={entry.id}
-                  className="inline-flex"
-                  title={`${monLabel(entry)}${
-                    matchedTypes[0] ? ` · ${matchedTypes[0]}` : ""
+                  key={match.entry.id}
+                  className={`inline-flex rounded ${
+                    hasTypingMatch(match)
+                      ? "border border-transparent"
+                      : "border border-dashed border-accent-2/60"
                   }`}
+                  title={prepMatchTip(match)}
                 >
                   <PokemonSpriteImage
-                    alt={monLabel(entry)}
+                    alt={monLabel(match.entry)}
                     className="pixelated h-6 w-6 object-contain"
                     height={24}
                     loading="lazy"
-                    pokedexId={entry.pokedexId}
-                    shiny={entry.isShiny}
-                    species={entry.species}
+                    pokedexId={match.entry.pokedexId}
+                    shiny={match.entry.isShiny}
+                    species={match.entry.species}
                     width={24}
                   />
                 </span>
@@ -1115,38 +1136,61 @@ function PrepCard({
                 —
               </span>
             )}
+            {matches.length > SUMMARY_MATCH_LIMIT ? (
+              <span className="text-[10px] font-semibold tabular-nums text-muted">
+                +{matches.length - SUMMARY_MATCH_LIMIT}
+              </span>
+            ) : null}
           </span>
         </summary>
         <div className="space-y-2 border-t border-frame/40 px-2.5 py-2 pl-7">
           {matches.length > 0 ? (
             <ul className="flex flex-wrap gap-1">
-              {matches.slice(0, 4).map(({ entry, matchedTypes }) => (
-                <li
-                  key={entry.id}
-                  className="inline-flex items-center gap-1 rounded border border-accent/30 bg-accent/10 px-1 py-0.5"
-                >
-                  <PokemonSpriteImage
-                    alt={monLabel(entry)}
-                    className="pixelated h-5 w-5 object-contain"
-                    height={20}
-                    loading="lazy"
-                    pokedexId={entry.pokedexId}
-                    shiny={entry.isShiny}
-                    species={entry.species}
-                    width={20}
-                  />
-                  <span className="text-[10px] font-semibold text-ink">
-                    {monLabel(entry)}
-                  </span>
-                  {matchedTypes[0] ? (
-                    <TypeBadge type={matchedTypes[0]} size="sm" variant="soft" />
-                  ) : null}
-                </li>
-              ))}
+              {matches.map((match) => {
+                const primary = match.typeMatches[0];
+                const viaMove = primary?.viaMove ?? null;
+                return (
+                  <li
+                    key={match.entry.id}
+                    className={`inline-flex items-center gap-1 rounded px-1 py-0.5 ${
+                      viaMove
+                        ? "border border-dashed border-accent-2/50 bg-accent-2/10"
+                        : "border border-accent/30 bg-accent/10"
+                    }`}
+                    title={prepMatchTip(match)}
+                  >
+                    <PokemonSpriteImage
+                      alt={monLabel(match.entry)}
+                      className="pixelated h-5 w-5 object-contain"
+                      height={20}
+                      loading="lazy"
+                      pokedexId={match.entry.pokedexId}
+                      shiny={match.entry.isShiny}
+                      species={match.entry.species}
+                      width={20}
+                    />
+                    <span className="text-[10px] font-semibold text-ink">
+                      {monLabel(match.entry)}
+                    </span>
+                    {primary ? (
+                      <TypeBadge
+                        type={primary.type}
+                        size="sm"
+                        variant="soft"
+                      />
+                    ) : null}
+                    {viaMove ? (
+                      <span className="text-[10px] font-medium text-muted">
+                        via {viaMove}
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="text-[11px] text-danger">
-              No recommended typing in this draft.
+              No recommended typing or coverage move in this draft.
             </p>
           )}
           <div className="flex flex-wrap gap-x-3 gap-y-1">

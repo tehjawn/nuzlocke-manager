@@ -271,7 +271,7 @@ function GymPrepDetails({
               Effective Pokémon you can use
             </p>
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {matches.map(({ entry, matchedTypes }) => {
+              {matches.map(({ entry, typeMatches }) => {
                 const label = entry.nickname?.trim() || entry.species;
                 return (
                   <li
@@ -295,13 +295,23 @@ function GymPrepDetails({
                       {entry.slot === "MAIN" ? "Main" : "Reserve"}
                     </span>
                     <span className="flex flex-wrap items-center justify-center gap-1">
-                      {matchedTypes.map((type) => (
-                        <TypeBadge
+                      {typeMatches.map(({ type, viaMove }) => (
+                        <span
                           key={`${entry.id}-${type}`}
-                          type={type}
-                          size="sm"
-                          variant="soft"
-                        />
+                          className="inline-flex items-center gap-1"
+                          title={
+                            viaMove
+                              ? `${type} coverage from ${viaMove}`
+                              : `${type} typing`
+                          }
+                        >
+                          <TypeBadge type={type} size="sm" variant="soft" />
+                          {viaMove ? (
+                            <span className="text-[0.6rem] font-medium text-muted">
+                              via {viaMove}
+                            </span>
+                          ) : null}
+                        </span>
                       ))}
                     </span>
                   </li>
@@ -311,8 +321,9 @@ function GymPrepDetails({
           </div>
         ) : (
           <p className="border-t border-frame/60 pt-2 text-xs text-muted">
-            No Main / Reserve mons match the recommended types yet — check the
-            Pokédex tool or your boxes for {prep.recommendedTypes.join(" / ")}.
+            No Main / Reserve mons match the recommended types — by typing or by
+            a known damaging move — yet. Check the Pokédex tool or your boxes
+            for {prep.recommendedTypes.join(" / ")}.
           </p>
         )
       ) : null}
