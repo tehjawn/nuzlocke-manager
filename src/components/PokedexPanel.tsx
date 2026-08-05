@@ -17,6 +17,7 @@ import { Frame } from "@/components/Frame";
 import { EvolutionPath } from "@/components/EvolutionPath";
 import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { PokedexTierList } from "@/components/PokedexTierList";
 import { StatGrid, type StatRankChip } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilitiesForSpecies } from "@/data/pokemon-lookups";
@@ -67,10 +68,19 @@ import {
 } from "@/lib/type-matchups";
 import type { PokemonType as ChartType } from "@/lib/type-chart";
 import { displayName, pokemonInSlot } from "@/lib/trainer-display";
-import { toolsHref } from "@/lib/tools-routes";
+import {
+  parsePokedexMode,
+  toolsHref,
+  type PokedexMode,
+} from "@/lib/tools-routes";
 
 /** Keep the first paint light; scroll loads more. */
 const PAGE_SIZE = 32;
+
+const POKEDEX_MODES: ReadonlyArray<{ id: PokedexMode; label: string }> = [
+  { id: "briefing", label: "Briefing" },
+  { id: "tiers", label: "Tier list" },
+];
 
 type PokedexPanelProps = {
   slug: string;
@@ -79,6 +89,7 @@ type PokedexPanelProps = {
   myTrainerId?: string | null;
   signedIn?: boolean;
   initialId?: number | null;
+  initialMode?: PokedexMode | null;
 };
 
 export function PokedexPanel({
@@ -87,6 +98,7 @@ export function PokedexPanel({
   myTrainerId = null,
   signedIn = false,
   initialId = null,
+  initialMode = null,
 }: PokedexPanelProps) {
   const router = useRouter();
   const initial =
@@ -96,6 +108,9 @@ export function PokedexPanel({
   const [generation, setGeneration] = useState<number | null>(null);
   const [selected, setSelected] = useState<PokemonIndexEntry | null>(initial);
   const [tipExcludeEntryIds, setTipExcludeEntryIds] = useState<string[]>([]);
+  const [mode, setMode] = useState<PokedexMode>(
+    parsePokedexMode(initialMode),
+  );
   const deferred = useDeferredValue(query);
   const searching = deferred.trim().length > 0;
 
@@ -238,6 +253,7 @@ export function PokedexPanel({
   function selectEntry(entry: PokemonIndexEntry) {
     setSelected(entry);
     setTipExcludeEntryIds([]);
+    setMode("briefing");
     startTransition(() => {
       router.replace(
         toolsHref(slug, "pokedex", {
@@ -246,6 +262,22 @@ export function PokedexPanel({
         { scroll: false },
       );
     });
+  }
+
+  function selectMode(next: PokedexMode) {
+    setMode(next);
+    // Keep the shareable ?mode= URL without a tools-route RSC refetch.
+    const url = new URL(window.location.href);
+    url.searchParams.set("tool", "pokedex");
+    if (next === "tiers") {
+      url.searchParams.set("mode", "tiers");
+      url.searchParams.delete("id");
+    } else {
+      url.searchParams.delete("mode");
+      if (selected) url.searchParams.set("id", String(selected.pokedexId));
+      else url.searchParams.delete("id");
+    }
+    window.history.replaceState(window.history.state, "", url.href);
   }
 
   function selectFromRun(mon: PokemonEntry) {
@@ -280,6 +312,43 @@ export function PokedexPanel({
 
   return (
     <div className="space-y-4">
+      <div
+        role="tablist"
+        aria-label="Pokédex mode"
+        className="flex flex-wrap gap-1.5"
+      >
+        {POKEDEX_MODES.map((entry) => {
+          const active = mode === entry.id;
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`pressable inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold tracking-tight ${
+                active
+                  ? "bg-accent text-[var(--on-accent)]"
+                  : "border border-frame bg-surface"
+              }`}
+              onClick={() => selectMode(entry.id)}
+            >
+              {entry.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {mode === "tiers" ? (
+        <PokedexTierList
+          trainers={trainers}
+          myTrainerId={myTrainerId}
+          onSelectSpecies={(pokedexId) => {
+            const entry = findPokemonById(pokedexId);
+            if (entry) selectEntry(entry);
+          }}
+        />
+      ) : (
+        <>
       <div className="space-y-1.5">
         <p className="text-sm font-bold text-muted">Search</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -509,6 +578,8 @@ export function PokedexPanel({
           </Frame>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

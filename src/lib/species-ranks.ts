@@ -1,4 +1,7 @@
-import { modernEmeraldNationalIds } from "@/lib/modern-emerald-dex";
+import {
+  modernEmeraldNationalIds,
+  modernEmeraldSpeciesRef,
+} from "@/lib/modern-emerald-dex";
 import {
   baseStatsForSpecies,
   bstOf,
@@ -11,6 +14,16 @@ import {
 export const STAT_RANKS = ["F", "D", "C", "B", "A", "S"] as const;
 
 export type StatRank = (typeof STAT_RANKS)[number];
+
+/** Best → worst — tier-list row order and "best first" filters. */
+export const STAT_RANKS_BEST_FIRST: readonly StatRank[] = [
+  "S",
+  "A",
+  "B",
+  "C",
+  "D",
+  "F",
+];
 
 export type StatRankResult = {
   value: number;
@@ -52,6 +65,32 @@ export function rankForPercentile(percentile: number): StatRank {
     if (percentile >= band.min) return band.rank;
   }
   return "F";
+}
+
+/**
+ * Inclusive floor / exclusive ceiling for a letter's percentile band, matching
+ * `RANK_CUTOFFS`. S opens at 0.9 and closes at 1; F opens at 0 and closes at
+ * 0.15. Used by the tier-list headers so "S" reads as *top 10% of the roster*
+ * rather than a vibe grade.
+ */
+export function rankBandPercentileRange(rank: StatRank): {
+  min: number;
+  max: number;
+} {
+  const index = RANK_CUTOFFS.findIndex((band) => band.rank === rank);
+  const min = RANK_CUTOFFS[index]?.min ?? 0;
+  const max = index <= 0 ? 1 : (RANK_CUTOFFS[index - 1]?.min ?? 1);
+  return { min, max };
+}
+
+/** Short band copy for tier-list row headers — e.g. "top 10%" / "75–90%". */
+export function rankBandLabel(rank: StatRank): string {
+  const { min, max } = rankBandPercentileRange(rank);
+  const lo = Math.round(min * 100);
+  const hi = Math.round(max * 100);
+  if (max >= 1) return `top ${100 - lo}%`;
+  if (min <= 0) return `bottom ${hi}%`;
+  return `${lo}–${hi}%`;
 }
 
 /**
@@ -249,4 +288,90 @@ export function baseStatRanksFor(
     shortfalls,
     headline: buildHeadline(bst, standouts, shortfalls),
   };
+}
+
+export type SpeciesTierEntry = {
+  pokedexId: number;
+  species: string;
+  /** 0 when unranked (no catalogued base stats). */
+  bst: number;
+  percentile: number;
+  /** Null for the Unranked bucket. */
+  rank: StatRank | null;
+};
+
+export type SpeciesTierBucket = {
+  /** Letter band, or `unranked` for species with no catalogued base stats. */
+  key: StatRank | "unranked";
+  entries: SpeciesTierEntry[];
+  peerCount: number;
+};
+
+let cachedTier: SpeciesTierBucket[] | null = null;
+
+/**
+ * Inverse of `baseStatRanksFor`: every Modern Emerald species bucketed by BST
+ * letter (S→F), plus an explicit Unranked bucket for formes/lines with no
+ * catalogued base stats. Reuses the cached `peerPool()` — no second percentile
+ * implementation — so a letter here always matches the species briefing.
+ */
+export function speciesTierList(): SpeciesTierBucket[] {
+  if (cachedTier) return cachedTier;
+
+  const pool = peerPool();
+  const byRank: Record<StatRank, SpeciesTierEntry[]> = {
+    S: [],
+    A: [],
+    B: [],
+    C: [],
+    D: [],
+    F: [],
+  };
+  const unranked: SpeciesTierEntry[] = [];
+
+  for (const pokedexId of modernEmeraldNationalIds()) {
+    const ref = modernEmeraldSpeciesRef(pokedexId);
+    const stats = baseStatsForSpecies(pokedexId);
+    if (!stats) {
+      unranked.push({
+        pokedexId,
+        species: ref.species,
+        bst: 0,
+        percentile: 0,
+        rank: null,
+      });
+      continue;
+    }
+    const bst = bstOf(stats);
+    const result = rankValue(pool.sorted.bst, bst);
+    byRank[result.rank].push({
+      pokedexId,
+      species: ref.species,
+      bst: result.value,
+      percentile: result.percentile,
+      rank: result.rank,
+    });
+  }
+
+  for (const rank of STAT_RANKS) {
+    byRank[rank].sort((a, b) => {
+      if (b.bst !== a.bst) return b.bst - a.bst;
+      return a.pokedexId - b.pokedexId;
+    });
+  }
+  unranked.sort((a, b) => a.pokedexId - b.pokedexId);
+
+  cachedTier = [
+    ...STAT_RANKS_BEST_FIRST.map((rank) => ({
+      key: rank,
+      entries: byRank[rank],
+      peerCount: pool.count,
+    })),
+    {
+      key: "unranked" as const,
+      entries: unranked,
+      peerCount: pool.count,
+    },
+  ];
+  return cachedTier;
 }

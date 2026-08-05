@@ -15,7 +15,11 @@ import {
   type CatchTier,
 } from "@/lib/iv-quality";
 import { POKEMON_TYPES, type PokemonType } from "@/lib/pokemon-types";
-import { STAT_RANKS, statRankToneClass, type StatRank } from "@/lib/species-ranks";
+import {
+  STAT_RANKS_BEST_FIRST,
+  statRankToneClass,
+  type StatRank,
+} from "@/lib/species-ranks";
 import {
   sortSpecimenRows,
   specimenMatchesFilters,
@@ -50,7 +54,7 @@ const SLOT_SCOPES: ReadonlyArray<{ id: SpecimenSlotScope; label: string }> = [
 
 /** God first — a "best catch" filter shouldn't open on the worst tier. */
 const CATCH_TIER_OPTIONS = [...CATCH_TIERS].reverse();
-const BST_RANK_OPTIONS = [...STAT_RANKS].reverse();
+const BST_RANK_OPTIONS = STAT_RANKS_BEST_FIRST;
 
 const FILTER_SELECT_CLASS =
   "w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink";
@@ -219,7 +223,11 @@ export function SpecimenShowcase({
             data-testid="showcase-filter-bst-tier"
             onChange={(event) =>
               setBstRank(
-                STAT_RANKS.find((entry) => entry === event.target.value) ?? null,
+                (STAT_RANKS_BEST_FIRST as readonly string[]).includes(
+                  event.target.value,
+                )
+                  ? (event.target.value as StatRank)
+                  : null,
               )
             }
             value={bstRank ?? ""}
