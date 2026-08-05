@@ -1012,7 +1012,7 @@ function personalStatusLabel(status: SpeciesOwnershipStatus): string {
 }
 
 /**
- * Where this species stands across the season. Deep-links to Bounty Hunter
+ * Where this species stands across the season. Deep-links to Pokémon Ownership
  * rather than rebuilding its tracker — this is the one-species answer.
  */
 function PackStatusStrip({
@@ -1030,7 +1030,7 @@ function PackStatusStrip({
 
   const owners = formatHolderHandles(ownership.owners, 3);
   const seenBy = formatHolderHandles(ownership.encounteredBy, 3);
-  // A species the ROM doesn't ship can't be an open bounty — never let it
+  // A species the ROM doesn't ship isn't merely unowned — never let it
   // borrow the "Untouched" tier and read as catchable.
   const offRom = !ownership.inModernEmerald;
 
@@ -1080,7 +1080,7 @@ function PackStatusStrip({
               data-testid="pack-status-bounty-link"
               href={toolsHref(slug, "bounty", { mode: "tracker" })}
             >
-              Open bounty — see all
+              Not owned yet — see all
             </Link>
           ) : null}
         </div>

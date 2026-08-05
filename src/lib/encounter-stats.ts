@@ -355,8 +355,8 @@ export type SpeciesOwnershipEntry = ModernEmeraldSpeciesRef & {
  * Every Modern Emerald species tagged with its season-wide ownership tier:
  * Owned (kept live in Main/Reserve) beats Encountered (an `ENCOUNTERED` stub
  * or a grave — someone touched it, nobody currently holds it) beats
- * Untouched. Powers Bounty Hunter's species tracker (owned vs. encountered
- * vs. open bounty in one view instead of three disconnected lists).
+ * Untouched. Powers Pokémon Ownership's species tracker (owned vs. encountered
+ * vs. untouched in one view instead of three disconnected lists).
  */
 export function speciesOwnershipBoard(
   trainers: TrainerProfile[],
@@ -418,7 +418,7 @@ export function speciesOwnershipBoard(
   });
 }
 
-/** "ash, misty +2 more" — shared by Bounty Hunter cards and the Pokédex strip. */
+/** "ash, misty +2 more" — shared by Ownership cards and the Pokédex strip. */
 export function formatHolderHandles(
   holders: ReadonlyArray<{ trainerHandle: string }>,
   limit = 2,

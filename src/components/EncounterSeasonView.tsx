@@ -150,7 +150,7 @@ export function EncounterSeasonView({
           href={toolsHref(slug, "bounty")}
           className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
         >
-          Open Bounty Hunter
+          Open Pokémon Ownership
         </Link>
       </div>
 
@@ -404,7 +404,7 @@ function MissingModernEmeraldGrid({
           href={toolsHref(slug, "bounty")}
           className="font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
         >
-          Hunt in Bounty Hunter
+          See who owns them
         </Link>
       </p>
       <ul className="grid grid-cols-5 gap-1.5 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-12">

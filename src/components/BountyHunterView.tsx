@@ -64,10 +64,13 @@ const STATUS_LEGEND: ReadonlyArray<{
 }> = [
   { id: "owned", label: "Owned", hint: "Currently held" },
   { id: "encountered", label: "Encountered", hint: "Seen or lost" },
-  { id: "untouched", label: "Untouched", hint: "Open bounty" },
+  { id: "untouched", label: "Untouched", hint: "Not owned yet" },
 ];
 
 /**
+ * Renders the **Pokémon Ownership** tool (`?tool=bounty` — the route id keeps
+ * the old name so existing links and Jump ids stay valid).
+ *
  * Species-status tracker (owned vs. encountered vs. untouched, any trainer
  * or one) plus pack exclusives grouped by evolution line. "Open bounties"
  * and "My gaps" from the old 3-mode UI are now the tracker filtered by
@@ -198,7 +201,7 @@ export function BountyHunterView({
 
   return (
     <div className="space-y-4">
-      <div role="group" aria-label="Bounty Hunter modes" className="flex flex-wrap gap-1.5">
+      <div role="group" aria-label="Pokémon Ownership modes" className="flex flex-wrap gap-1.5">
         {MODES.map((entry) => {
           const active = mode === entry.id;
           return (
@@ -416,7 +419,7 @@ function statusSubtitle(row: BoardRow, viewerScoped: boolean): string {
   if (row.status === "encountered") {
     return `Encountered · ${formatHolderHandles(row.entry.encounteredBy)}`;
   }
-  return "Open bounty";
+  return "Not owned yet";
 }
 
 function SpeciesGrid({

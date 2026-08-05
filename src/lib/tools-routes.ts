@@ -30,7 +30,7 @@ export const TOOLS_CATALOG: ReadonlyArray<{
   },
   {
     id: "bounty",
-    title: "Bounty Hunter",
+    title: "Pokémon Ownership",
     blurb:
       "Every Modern Emerald species — who's owned it, who's just seen it, who's cornered a line.",
   },
