@@ -107,14 +107,14 @@ export function legacyCompareHref(slug: string): string {
   return toolsHref(slug, "planner", { mode: "vs" });
 }
 
-export type BountyMode = "tracker" | "exclusives";
+export type BountyMode = "tracker" | "exclusives" | "showcase";
 
 export function parseBountyMode(
   raw: string | null | undefined,
 ): BountyMode {
   // "open"/"gaps" are pre-tracker-merge URLs — both land on the tracker,
   // which now covers both via the trainer + status filters.
-  if (raw === "exclusives") return raw;
+  if (raw === "exclusives" || raw === "showcase") return raw;
   return "tracker";
 }
 

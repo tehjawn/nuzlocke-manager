@@ -70,11 +70,18 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     ? await readGmLensOn(challenge.slug)
     : false;
 
-  const trainers = challenge.trainers.map((trainer) =>
-    canViewCompetitiveDetails(access, trainer.userId, gmLensOn)
-      ? trainer
-      : redactTrainerCompetitiveDetails(trainer),
-  );
+  // One pass, two outputs: the redacted payload, and the ids whose competitive
+  // fields survived it. Showcase needs the second to tell "IVs withheld from
+  // you" apart from "this specimen has no IVs on file" — post-redaction both
+  // look like `ivs: null`.
+  const competitiveTrainerIds: string[] = [];
+  const trainers = challenge.trainers.map((trainer) => {
+    if (canViewCompetitiveDetails(access, trainer.userId, gmLensOn)) {
+      competitiveTrainerIds.push(trainer.id);
+      return trainer;
+    }
+    return redactTrainerCompetitiveDetails(trainer);
+  });
 
   const myTrainerId =
     challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
@@ -97,6 +104,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         challengeName={challenge.name}
         trainers={trainers}
         myTrainerId={myTrainerId}
+        competitiveTrainerIds={competitiveTrainerIds}
         signedIn={Boolean(session?.user)}
         initialTool={initialTool}
         initialDexId={initialDexId}

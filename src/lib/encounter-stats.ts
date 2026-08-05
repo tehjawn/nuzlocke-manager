@@ -65,7 +65,8 @@ function speciesNameKey(species: string): string {
   return species.trim().toLowerCase();
 }
 
-function resolvePokedexId(
+/** Prefer the stored dex id; fall back to a name lookup for legacy rows. */
+export function resolvePokedexId(
   mon: Pick<PokemonEntry, "species" | "pokedexId">,
 ): number | null {
   if (mon.pokedexId != null && mon.pokedexId > 0) return mon.pokedexId;

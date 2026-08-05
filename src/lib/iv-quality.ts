@@ -280,16 +280,22 @@ export function specimenIsCracked(input: {
  * - good / great / cracked: existing randomizer bars
  * - god: absurd wild IV luck (3+ perfect or near-perfect)
  */
-export type CatchTier = "shit" | "oof" | "good" | "great" | "cracked" | "god";
+/** Worst → best, so array order doubles as the tier ladder. */
+export const CATCH_TIERS = [
+  "shit",
+  "oof",
+  "good",
+  "great",
+  "cracked",
+  "god",
+] as const;
 
-const CATCH_TIER_RANK: Record<CatchTier, number> = {
-  shit: 0,
-  oof: 1,
-  good: 2,
-  great: 3,
-  cracked: 4,
-  god: 5,
-};
+export type CatchTier = (typeof CATCH_TIERS)[number];
+
+/** Ladder position, worst = 0. Sort keys read this rather than re-listing it. */
+export function catchTierRank(tier: CatchTier): number {
+  return CATCH_TIERS.indexOf(tier);
+}
 
 const CATCH_TIER_LABEL: Record<CatchTier, string | null> = {
   shit: "Shit catch",
@@ -301,7 +307,7 @@ const CATCH_TIER_LABEL: Record<CatchTier, string | null> = {
 };
 
 function maxCatchTier(a: CatchTier, b: CatchTier): CatchTier {
-  return CATCH_TIER_RANK[a] >= CATCH_TIER_RANK[b] ? a : b;
+  return catchTierRank(a) >= catchTierRank(b) ? a : b;
 }
 
 /** Beginner-facing label; null only when tier chrome should stay silent. */

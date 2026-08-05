@@ -75,7 +75,7 @@ function boardLeagueInclude() {
   };
 }
 
-/** Tools / bounty / planner: all slots + moves, no IV/EV/heldItem. */
+/** Tools / bounty / planner: all slots, full columns (redacted per viewer). */
 function boardPokemonToolsInclude() {
   return {
     ...challengeMetaInclude,
@@ -171,8 +171,9 @@ export async function fetchChallengeBoardSummaryRow(slug: string) {
 }
 
 /**
- * Tools page: all Pokémon slots with summary + moves (Pokédex tips), without
- * heldItem / nature / ability / IVs / EVs.
+ * Tools page: all Pokémon slots with full columns. The cache is viewer-blind
+ * by design — `tools/page.tsx` redacts competitive fields per trainer after
+ * the hit, so IVs/EVs never reach a client that isn't entitled to them.
  */
 export async function fetchChallengeToolsSummaryRow(slug: string) {
   "use cache";
