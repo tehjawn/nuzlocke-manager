@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
+import { HatchSafeSpotsNote } from "@/components/HatchSafeSpotsNote";
 import { Modal } from "@/components/Modal";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -926,15 +927,18 @@ export function RandomizerSeedModal({
                     }
                   />
                 ) : view === "route" ? (
-                  <RouteView
-                    areas={filteredAreas}
-                    totalTables={parsed.areas.length}
-                    caughtState={parsed.caughtState}
-                    isRouteUsed={parsed.isRouteUsed}
-                    slotPokemon={parsed.slotPokemon ?? NO_SLOT_POKEMON}
-                    slug={slug}
-                    onNavigate={onClose}
-                  />
+                  <div className="space-y-3">
+                    <HatchSafeSpotsNote randomizerContext />
+                    <RouteView
+                      areas={filteredAreas}
+                      totalTables={parsed.areas.length}
+                      caughtState={parsed.caughtState}
+                      isRouteUsed={parsed.isRouteUsed}
+                      slotPokemon={parsed.slotPokemon ?? NO_SLOT_POKEMON}
+                      slug={slug}
+                      onNavigate={onClose}
+                    />
+                  </div>
                 ) : (
                   <StaticView
                     statics={filteredStatics}

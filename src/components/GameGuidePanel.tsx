@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Frame } from "@/components/Frame";
+import { HatchSafeSpotsNote } from "@/components/HatchSafeSpotsNote";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TypeBadge } from "@/components/TypeBadge";
@@ -866,6 +867,7 @@ export function GameGuidePanel({
           device for the selected trainer. Optional pickups like Cut don’t
           affect the story bar. Post-game steps use their own checklist below.
         </p>
+        <HatchSafeSpotsNote className="mt-3" randomizerContext />
       </Frame>
 
       {guideComplete ? (

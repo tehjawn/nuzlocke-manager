@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { Suspense } from "react";
@@ -103,6 +104,7 @@ export default async function RootLayout({
             <CelebrationHost />
           </SearchHost>
         </PokemonSpritePreferenceProvider>
+        <Analytics />
       </body>
     </html>
   );
