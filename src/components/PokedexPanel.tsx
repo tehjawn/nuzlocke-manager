@@ -2,9 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  startTransition,
   useDeferredValue,
   useEffect,
   useMemo,
@@ -78,9 +76,9 @@ import {
 const PAGE_SIZE = 32;
 
 const POKEDEX_MODES: ReadonlyArray<{ id: PokedexMode; label: string }> = [
-  { id: "briefing", label: "Briefing" },
-  { id: "tiers", label: "BST" },
-  { id: "competitive", label: "Competitive" },
+  { id: "briefing", label: "Directory" },
+  { id: "tiers", label: "BST Tier List" },
+  { id: "competitive", label: "Competitive Tier List" },
 ];
 
 type PokedexPanelProps = {
@@ -101,7 +99,6 @@ export function PokedexPanel({
   initialId = null,
   initialMode = null,
 }: PokedexPanelProps) {
-  const router = useRouter();
   const initial =
     initialId != null ? (findPokemonById(initialId) ?? null) : null;
   // Search is independent of selection — picking an entry must not rewrite the query.
@@ -114,6 +111,27 @@ export function PokedexPanel({
   );
   const deferred = useDeferredValue(query);
   const searching = deferred.trim().length > 0;
+
+  // Mode / species URL updates use history.pushState (not the Next router) so
+  // the tools page doesn't RSC-refetch. Sync React state when the user hits
+  // back/forward through those entries.
+  useEffect(() => {
+    function onPopState() {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("tool") !== "pokedex") return;
+      const nextMode = parsePokedexMode(url.searchParams.get("mode"));
+      const idRaw = url.searchParams.get("id");
+      const idNum = idRaw != null ? Number(idRaw) : NaN;
+      setMode(nextMode);
+      setTipExcludeEntryIds([]);
+      if (Number.isFinite(idNum) && idNum > 0) {
+        const entry = findPokemonById(idNum);
+        if (entry) setSelected(entry);
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   const myTrainer = useMemo(
     () =>
@@ -251,34 +269,40 @@ export function PokedexPanel({
     typeTips,
   ]);
 
+  function writePokedexUrl(
+    nextMode: PokedexMode,
+    nextId: number | null,
+  ) {
+    // Keep the shareable ?mode= / ?id= URL without a tools-route RSC refetch.
+    // pushState (not replace) so BST/Competitive → briefing is undoable.
+    const url = new URL(window.location.href);
+    url.searchParams.set("tool", "pokedex");
+    if (nextMode === "tiers" || nextMode === "competitive") {
+      url.searchParams.set("mode", nextMode);
+      url.searchParams.delete("id");
+    } else {
+      url.searchParams.delete("mode");
+      if (nextId != null) url.searchParams.set("id", String(nextId));
+      else url.searchParams.delete("id");
+    }
+    if (url.href === window.location.href) return;
+    window.history.pushState(window.history.state, "", url.href);
+  }
+
   function selectEntry(entry: PokemonIndexEntry) {
     setSelected(entry);
     setTipExcludeEntryIds([]);
     setMode("briefing");
-    startTransition(() => {
-      router.replace(
-        toolsHref(slug, "pokedex", {
-          id: entry.pokedexId,
-        }),
-        { scroll: false },
-      );
-    });
+    writePokedexUrl("briefing", entry.pokedexId);
   }
 
   function selectMode(next: PokedexMode) {
+    if (next === mode) return;
     setMode(next);
-    // Keep the shareable ?mode= URL without a tools-route RSC refetch.
-    const url = new URL(window.location.href);
-    url.searchParams.set("tool", "pokedex");
-    if (next === "tiers" || next === "competitive") {
-      url.searchParams.set("mode", next);
-      url.searchParams.delete("id");
-    } else {
-      url.searchParams.delete("mode");
-      if (selected) url.searchParams.set("id", String(selected.pokedexId));
-      else url.searchParams.delete("id");
-    }
-    window.history.replaceState(window.history.state, "", url.href);
+    writePokedexUrl(
+      next,
+      next === "briefing" ? (selected?.pokedexId ?? null) : null,
+    );
   }
 
   function selectFromRun(mon: PokemonEntry) {

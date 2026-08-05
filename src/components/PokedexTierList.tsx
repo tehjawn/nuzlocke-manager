@@ -320,7 +320,7 @@ function CompetitiveLadder({
                 keyLabel={bucket.key === "untiered" ? "untiered" : bucket.key}
                 subtitle={
                   bucket.key === "untiered"
-                    ? "Not curated yet — open a briefing, don’t trust a letter"
+                    ? "Not curated yet — open the directory, don’t trust a letter"
                     : competitiveTierBandBlurb(bucket.key)
                 }
               />
@@ -370,8 +370,8 @@ function CompetitiveSpriteGrid({
                 type="button"
                 aria-label={
                   entry.reason
-                    ? `Open ${entry.species} briefing. ${subtitle}: ${entry.reason}`
-                    : `Open ${entry.species} briefing. ${subtitle}`
+                    ? `Open ${entry.species} in Directory. ${subtitle}: ${entry.reason}`
+                    : `Open ${entry.species} in Directory. ${subtitle}`
                 }
                 onClick={() => onSelectSpecies(entry.pokedexId)}
                 className={`pressable group flex h-full w-full flex-col items-center gap-1 rounded-md border px-1.5 py-2 ${
@@ -433,7 +433,7 @@ function SpriteGrid({
                   ? `${entry.species} · BST ${entry.bst} · ${entry.rank}`
                   : `${entry.species} · unranked`
               }
-              aria-label={`Open ${entry.species} briefing`}
+              aria-label={`Open ${entry.species} in Directory`}
               onClick={() => onSelectSpecies(entry.pokedexId)}
               className={`pressable group flex h-full w-full flex-col items-center gap-1 rounded-md border px-1.5 py-2 ${
                 owned
