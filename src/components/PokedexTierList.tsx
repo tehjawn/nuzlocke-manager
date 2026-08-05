@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import {
@@ -323,58 +324,11 @@ function CompetitiveLadder({
                     : competitiveTierBandBlurb(bucket.key)
                 }
               />
-              {bucket.key === "untiered" ? (
-                <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
-                  {bucket.entries.map((entry) => {
-                    const own = boardById.get(entry.pokedexId);
-                    const owned =
-                      own?.status === "owned" || Boolean(own?.ownedByMe);
-                    return (
-                      <li key={entry.pokedexId}>
-                        <button
-                          type="button"
-                          title={`${entry.species} · untiered`}
-                          aria-label={`Open ${entry.species} briefing`}
-                          onClick={() => onSelectSpecies(entry.pokedexId)}
-                          className={`pressable group flex h-full w-full flex-col items-center gap-1 rounded-md border px-1.5 py-2 ${
-                            owned
-                              ? "border-accent/35 bg-accent/10 hover:border-accent/55"
-                              : "border-frame/30 bg-surface/50 hover:border-interactive/40 hover:bg-interactive-soft/40"
-                          }`}
-                        >
-                          <PokemonSpriteImage
-                            alt=""
-                            className={`pixelated h-12 w-12 object-contain sm:h-14 sm:w-14 ${
-                              owned
-                                ? ""
-                                : "opacity-55 grayscale-[35%] group-hover:opacity-100 group-hover:grayscale-0"
-                            }`}
-                            height={56}
-                            loading="lazy"
-                            pokedexId={entry.pokedexId}
-                            species={entry.species}
-                            width={56}
-                          />
-                          <span className="max-w-full truncate text-[10px] font-semibold text-ink">
-                            {entry.species}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <ul className="divide-y divide-frame/30 overflow-hidden rounded-lg border border-frame/40 bg-surface/40">
-                  {bucket.entries.map((entry) => (
-                    <CompetitiveRow
-                      key={entry.pokedexId}
-                      boardById={boardById}
-                      entry={entry}
-                      onSelectSpecies={onSelectSpecies}
-                    />
-                  ))}
-                </ul>
-              )}
+              <CompetitiveSpriteGrid
+                boardById={boardById}
+                entries={bucket.entries}
+                onSelectSpecies={onSelectSpecies}
+              />
             </li>
           ))}
         </ul>
@@ -383,59 +337,76 @@ function CompetitiveLadder({
   );
 }
 
-function CompetitiveRow({
+function CompetitiveSpriteGrid({
   boardById,
-  entry,
+  entries,
   onSelectSpecies,
 }: {
   boardById: BoardMap;
-  entry: CompetitiveTierEntry;
+  entries: CompetitiveTierEntry[];
   onSelectSpecies: (pokedexId: number) => void;
 }) {
-  const own = boardById.get(entry.pokedexId);
-  const owned = own?.status === "owned" || Boolean(own?.ownedByMe);
-  const tier = entry.tier!;
-
   return (
-    <li>
-      <button
-        type="button"
-        onClick={() => onSelectSpecies(entry.pokedexId)}
-        className={`pressable flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-interactive-soft/50 ${
-          owned ? "bg-accent/5" : ""
-        }`}
-      >
-        <PokemonSpriteImage
-          alt=""
-          className="pixelated mt-0.5 h-10 w-10 shrink-0 object-contain"
-          height={40}
-          loading="lazy"
-          pokedexId={entry.pokedexId}
-          species={entry.species}
-          width={40}
-        />
-        <span className="min-w-0 flex-1 space-y-0.5">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-bold tracking-tight text-ink">
-              {entry.species}
-            </span>
-            <span
-              className={`inline-flex items-center rounded border px-1 py-0.5 text-[10px] font-bold leading-tight ${statRankToneClass(tier)}`}
+    <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+      {entries.map((entry) => {
+        const own = boardById.get(entry.pokedexId);
+        const owned = own?.status === "owned" || Boolean(own?.ownedByMe);
+        const subtitle =
+          entry.tier != null
+            ? `Comp ${entry.tier}`
+            : "Untiered — not curated yet";
+        return (
+          <li key={entry.pokedexId}>
+            <PokemonHoverPreview
+              className="h-full"
+              speciesPreview={{
+                species: entry.species,
+                pokedexId: entry.pokedexId,
+                subtitle,
+                detail: entry.reason ?? undefined,
+              }}
             >
-              {tier}
-            </span>
-            {owned ? (
-              <span className="text-[10px] font-semibold text-accent-deep">
-                Owned
-              </span>
-            ) : null}
-          </span>
-          <span className="block text-xs leading-snug text-muted">
-            {entry.reason}
-          </span>
-        </span>
-      </button>
-    </li>
+              <button
+                type="button"
+                aria-label={
+                  entry.reason
+                    ? `Open ${entry.species} briefing. ${subtitle}: ${entry.reason}`
+                    : `Open ${entry.species} briefing. ${subtitle}`
+                }
+                onClick={() => onSelectSpecies(entry.pokedexId)}
+                className={`pressable group flex h-full w-full flex-col items-center gap-1 rounded-md border px-1.5 py-2 ${
+                  owned
+                    ? "border-accent/35 bg-accent/10 hover:border-accent/55"
+                    : "border-frame/30 bg-surface/50 hover:border-interactive/40 hover:bg-interactive-soft/40"
+                }`}
+              >
+                <PokemonSpriteImage
+                  alt=""
+                  className={`pixelated h-12 w-12 object-contain transition-[filter,opacity] duration-150 sm:h-14 sm:w-14 ${
+                    owned
+                      ? ""
+                      : "opacity-55 grayscale-[35%] group-hover:opacity-100 group-hover:grayscale-0"
+                  }`}
+                  height={56}
+                  loading="lazy"
+                  pokedexId={entry.pokedexId}
+                  species={entry.species}
+                  width={56}
+                />
+                <span className="max-w-full truncate text-[10px] font-semibold text-ink">
+                  {entry.species}
+                </span>
+                <span className="text-[9px] font-semibold tabular-nums text-muted">
+                  {entry.tier != null
+                    ? `Comp ${entry.tier}`
+                    : `#${String(entry.pokedexId).padStart(3, "0")}`}
+                </span>
+              </button>
+            </PokemonHoverPreview>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
