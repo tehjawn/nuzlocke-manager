@@ -330,10 +330,16 @@ export function PokedexPanel({
   }
 
   function selectEntry(entry: PokemonIndexEntry) {
+    const arrivingFromOtherMode = mode !== "briefing";
     setPickedId(entry.pokedexId);
     setMode("briefing");
     writePokedexLastId(entry.pokedexId);
     writePokedexUrl("briefing", entry.pokedexId);
+    // Tier / competitive lists are long — jump back to the top of the page so
+    // the Directory entry isn't still buried under the prior scroll offset.
+    if (arrivingFromOtherMode) {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
   }
 
   function selectMode(next: PokedexMode) {
