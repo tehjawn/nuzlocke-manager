@@ -15,16 +15,12 @@ import {
   checkSeedAgainstCatches,
   describeSettings,
   indexBySpecies,
-  rollStarters,
   rollStatics,
-  rollTrainerParties,
   rollWildTables,
   type CaughtState,
   type EncounterKind,
   type RolledArea,
-  type RolledStarter,
   type RolledStatic,
-  type RolledTrainer,
   type SeedCheck,
   type SpeciesSighting,
 } from "@/lib/tx-randomizer";
@@ -51,13 +47,12 @@ const STATIC_KIND_LABELS: Record<RolledStatic["kind"], string> = {
 /** Rows rendered at once before the search box has to narrow things down. */
 const SPECIES_PAGE = 60;
 
-type View = "species" | "route" | "trainers" | "statics";
+type View = "species" | "route" | "statics";
 
 const VIEW_TABS: Array<{ id: View; label: string }> = [
   { id: "species", label: "By Pokemon" },
   { id: "route", label: "By route" },
-  { id: "trainers", label: "Trainers" },
-  { id: "statics", label: "Statics & starter" },
+  { id: "statics", label: "Statics" },
 ];
 
 type Parsed = {
@@ -66,9 +61,7 @@ type Parsed = {
   randomizer: ParsedSaveRandomizer;
   areas: RolledArea[];
   species: SpeciesSighting[];
-  trainers: RolledTrainer[];
   statics: RolledStatic[];
-  starters: RolledStarter[];
   check: SeedCheck;
   caughtState: (pokedexId: number) => CaughtState;
   isRouteUsed: (label: string) => boolean;
@@ -228,21 +221,6 @@ export function RandomizerSeedModal({
     );
   }, [parsed, query]);
 
-  const filteredTrainers = useMemo(() => {
-    if (!parsed) return [];
-    const q = query.trim().toLowerCase();
-    if (!q) return parsed.trainers;
-    return parsed.trainers.filter(
-      (trainer) =>
-        trainer.name.toLowerCase().includes(q) ||
-        trainer.className.toLowerCase().includes(q) ||
-        trainer.locations.some((loc) => loc.toLowerCase().includes(q)) ||
-        trainer.party.some((mon) =>
-          speciesName(mon.pokedexId).toLowerCase().includes(q),
-        ),
-    );
-  }, [parsed, query]);
-
   const filteredStatics = useMemo(() => {
     if (!parsed) return [];
     const q = query.trim().toLowerCase();
@@ -286,9 +264,7 @@ export function RandomizerSeedModal({
         randomizer,
         areas,
         species: indexBySpecies(areas),
-        trainers: playable ? rollTrainerParties(randomizer.otId, randomizer) : [],
         statics: playable ? rollStatics(randomizer.otId, randomizer) : [],
-        starters: playable ? rollStarters(randomizer.otId, randomizer) : [],
         check: checkSeedAgainstCatches(
           areas,
           owned.map((mon) => ({
@@ -352,9 +328,9 @@ export function RandomizerSeedModal({
           Modern Emerald doesn’t rewrite encounter tables — it rerolls each
           species as it spawns, seeded by the player’s trainer ID. Drop in their
           save and this replays that mapping offline: where a Pokémon actually
-          lives in their run, what each route holds, and what the key trainers,
-          scripted encounters, and starter bag rolled. Species they already own
-          and route slots they have already spent are marked. Afterplay’s{" "}
+          lives in their run, what each route holds, and what the scripted
+          encounters rolled. Species they already own and route slots they have
+          already spent are marked. Afterplay’s{" "}
           <code className="text-ink">.sav</code> /{" "}
           <code className="text-ink">.srm</code> export is the most reliable
           source; emulator states work too.
@@ -472,7 +448,7 @@ export function RandomizerSeedModal({
                   <input
                     type="search"
                     value={query}
-                    placeholder="Filter by Pokémon, route, or trainer…"
+                    placeholder="Filter by Pokémon or route…"
                     className="min-w-0 flex-1 rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
                     onChange={(e) => setQuery(e.target.value)}
                   />
@@ -497,22 +473,11 @@ export function RandomizerSeedModal({
                     caughtState={parsed.caughtState}
                     isRouteUsed={parsed.isRouteUsed}
                   />
-                ) : view === "trainers" ? (
-                  <TrainerView
-                    trainers={filteredTrainers}
-                    total={parsed.trainers.length}
-                    randomized={rz.trainers}
-                    mapBased={rz.mapBased}
-                    caughtState={parsed.caughtState}
-                  />
                 ) : (
                   <StaticView
                     statics={filteredStatics}
                     total={parsed.statics.length}
-                    starters={parsed.starters}
                     randomized={rz.statics}
-                    starterRandomized={rz.starter}
-                    oneTypeChallenge={rz.oneTypeChallenge}
                     caughtState={parsed.caughtState}
                   />
                 )}
@@ -686,142 +651,21 @@ function MonSwap({
   );
 }
 
-function TrainerView({
-  trainers,
-  total,
-  randomized,
-  mapBased,
-  caughtState,
-}: {
-  trainers: RolledTrainer[];
-  total: number;
-  randomized: boolean;
-  mapBased: boolean;
-  caughtState: (pokedexId: number) => CaughtState;
-}) {
-  if (!randomized) {
-    return (
-      <p className="rounded-lg border border-frame bg-surface-2 px-3 py-2 text-muted">
-        Trainer randomization is off in this save — every gym leader, Elite Four
-        member, and rival battle runs its vanilla Modern Emerald team.
-      </p>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted">
-        {trainers.length} of {total} key battles — gym leaders, Elite Four,
-        champion, rival, and both teams. Levels are the ROM’s base values;{" "}
-        <code className="text-ink">GetScaledLevel</code> shifts them by 1–10
-        depending on difficulty and badge count.
-        {mapBased
-          ? " Map-based rolls depend on where the battle happens, so a trainer with no script of their own can’t be pinned."
-          : ""}
-      </p>
-      <ul className="space-y-2">
-        {trainers.map((trainer) => (
-          <li
-            key={trainer.id}
-            className="rounded-lg border border-frame bg-surface-2 p-2"
-          >
-            <p className="text-xs font-semibold tracking-wide text-muted">
-              {trainer.name} · {trainer.className.replaceAll("_", " ")}
-              {trainer.locations.length > 0
-                ? ` · ${trainer.locations.join(" / ")}`
-                : ""}
-            </p>
-            {trainer.locationUnknown ? (
-              <p className="mt-0.5 text-xs text-danger">
-                No battle script places this trainer, so the map half of the seed
-                is unknown — this party is a guess.
-              </p>
-            ) : trainer.variesByLocation ? (
-              <p className="mt-0.5 text-xs text-muted">
-                Fought in more than one place, and the roll differs between them;
-                the party below is for {trainer.locations[0]}.
-              </p>
-            ) : null}
-            <ul className="mt-1 space-y-0.5">
-              {trainer.party.map((mon, i) => (
-                <li key={`${mon.vanillaSpecies}-${i}`}>
-                  <MonSwap
-                    vanillaPokedexId={mon.vanillaPokedexId}
-                    pokedexId={mon.pokedexId}
-                    unchanged={mon.unchanged}
-                    trailing={`Lv${mon.level}`}
-                    caughtState={caughtState}
-                  />
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
-      {trainers.length === 0 ? (
-        <p className="text-muted">Nothing matches that filter.</p>
-      ) : null}
-    </div>
-  );
-}
-
 function StaticView({
   statics,
   total,
-  starters,
   randomized,
-  starterRandomized,
-  oneTypeChallenge,
   caughtState,
 }: {
   statics: RolledStatic[];
   total: number;
-  starters: RolledStarter[];
   randomized: boolean;
-  starterRandomized: boolean;
-  oneTypeChallenge: boolean;
   caughtState: (pokedexId: number) => CaughtState;
 }) {
   const rerolled = statics.filter((entry) => entry.randomized);
   const fixed = statics.filter((entry) => !entry.randomized);
   return (
     <div className="space-y-3">
-      <div className="space-y-2 rounded-lg border border-frame bg-surface-2 p-2">
-        <p className="text-xs font-semibold tracking-wide text-muted">
-          Birch’s bag — Route 101
-        </p>
-        {!starterRandomized ? (
-          <p className="text-xs text-muted">
-            Starter randomization is off; the bag holds the vanilla trio.
-          </p>
-        ) : oneTypeChallenge ? (
-          <p className="text-xs text-danger">
-            A one-type challenge is active, which sends the starter through a
-            separate type-filtered picker this tool does not model.
-          </p>
-        ) : (
-          <p className="text-xs text-muted">
-            Picked by a different algorithm from everything else here — the pool
-            is shuffled with a fixed seed and read at a stride of 27. Unlike the
-            wild tables, this one has no independent check against the run.
-          </p>
-        )}
-        {!oneTypeChallenge ? (
-          <ul className="space-y-0.5">
-            {starters.map((starter) => (
-              <li key={starter.starterId}>
-                <MonSwap
-                  vanillaPokedexId={starter.vanillaPokedexId}
-                  pokedexId={starter.pokedexId}
-                  unchanged={!starterRandomized}
-                  trailing={`Lv5 · slot ${starter.starterId + 1}`}
-                  caughtState={caughtState}
-                />
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-
       <div className="space-y-2">
         <p className="text-xs text-muted">
           {statics.length} of {total} scripted encounters.{" "}

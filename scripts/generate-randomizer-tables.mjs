@@ -27,17 +27,15 @@
  *   the *nuzlocke* mapsec, so the six Safari sub-areas roll on their synthesized
  *   0xD8–0xDD ids rather than the umbrella Safari mapsec.
  *
- * Three other randomizers share that RNG and are emitted here too:
- * - Trainers (`tx_Random_Trainer`, src/battle_main.c) — same call with
- *   `TX_RANDOM_T_TRAINER` and `additionalOffset = trainerNum`. `mapOffset` is
- *   the map the battle happens on, so trainers carry the mapsecs their
- *   `trainerbattle_*` scripts live in.
- * - Statics (`tx_Random_Static`) — `setwildbattle` (CreateScriptedWildMon) and
- *   `givemon` (ScriptGiveMon) reroll; `seteventmon` goes through CreateEventMon
- *   and does **not**, so those legendaries stay vanilla. Both kinds are emitted,
- *   tagged, because "this one is not randomized" is the useful answer.
- * - Starter (`tx_Random_Starter`, src/starter_choose.c) — a different algorithm:
- *   `ShuffleListU16(pool, 12289)` then `pool[starterId * 27]`.
+ * The static randomizer shares that RNG and is emitted here too:
+ * `setwildbattle` (CreateScriptedWildMon) and `givemon` (ScriptGiveMon) reroll,
+ * while `seteventmon` goes through CreateEventMon and does **not**, so those
+ * legendaries stay vanilla. Both kinds are emitted, tagged, because "this one is
+ * not randomized" is the useful answer.
+ *
+ * The trainer-party and starter randomizers use the same machinery and were
+ * emitted here until they turned out not to matter for the current season; see
+ * git history if they come back.
  *
  * Usage:
  *   node scripts/generate-randomizer-tables.mjs [path/to/pokeemerald]
@@ -354,130 +352,6 @@ function readWildTables(src, mapToArea, mapsecIds) {
 }
 
 /**
- * Trainer classes worth showing. `gTrainers` has 864 entries; a nuzlocke player
- * plans around the ones that can end a run, so the view is scoped to gym
- * leaders, the Elite Four, the champion, the rival, and the two teams.
- */
-const KEY_TRAINER_CLASSES = new Set([
-  "TRAINER_CLASS_LEADER",
-  "TRAINER_CLASS_ELITE_FOUR",
-  "TRAINER_CLASS_CHAMPION",
-  "TRAINER_CLASS_RIVAL",
-  "TRAINER_CLASS_TEAM_AQUA",
-  "TRAINER_CLASS_TEAM_MAGMA",
-  "TRAINER_CLASS_AQUA_ADMIN",
-  "TRAINER_CLASS_MAGMA_ADMIN",
-  "TRAINER_CLASS_AQUA_LEADER",
-  "TRAINER_CLASS_MAGMA_LEADER",
-]);
-
-function readTrainerIds(src) {
-  const text = readFileSync(join(src, "include/constants/opponents.h"), "utf8");
-  const byName = new Map();
-  for (const m of text.matchAll(/#define\s+(TRAINER_[A-Z0-9_]+)\s+(\d+)/g)) {
-    byName.set(m[1], Number(m[2]));
-  }
-  if (byName.size === 0) throw new Error("no TRAINER_* constants parsed");
-  return byName;
-}
-
-/** `sParty_<Name>[] = { { .iv, .lvl, .species }, … }` from trainer_parties.h. */
-function readTrainerParties(src, speciesIds) {
-  const text = readFileSync(join(src, "src/data/trainer_parties.h"), "utf8");
-  const byLabel = new Map();
-  for (const block of text.matchAll(
-    /static const struct \w+ (sParty_\w+)\[\]\s*=\s*\{([\s\S]*?)\n\};/g,
-  )) {
-    const mons = [];
-    for (const mon of block[2].matchAll(
-      /\.lvl\s*=\s*(\d+)\s*,[\s\S]*?\.species\s*=\s*(SPECIES_[A-Z0-9_]+)/g,
-    )) {
-      const id = speciesIds.get(mon[2]);
-      if (id != null) mons.push({ species: id, level: Number(mon[1]) });
-    }
-    if (mons.length > 0) byLabel.set(block[1], mons);
-  }
-  return byLabel;
-}
-
-/**
- * Which mapsec each trainer is fought on — `mapOffset` for a trainer roll is
- * `NuzlockeGetCurrentRegionMapSectionId()` at party-creation time, i.e. wherever
- * the player is standing. A handful of trainers appear in more than one map's
- * scripts; all of them are recorded so the runtime can say when the roll differs
- * by location instead of quietly picking one.
- */
-function readTrainerLocations(src, mapToArea, mapsecIds) {
-  const mapsDir = join(src, "data/maps");
-  const byTrainer = new Map();
-  for (const dir of readdirSync(mapsDir, { withFileTypes: true })) {
-    if (!dir.isDirectory()) continue;
-    const scripts = join(mapsDir, dir.name, "scripts.inc");
-    const mapJson = join(mapsDir, dir.name, "map.json");
-    if (!existsSync(scripts) || !existsSync(mapJson)) continue;
-    const mapId = JSON.parse(readFileSync(mapJson, "utf8")).id;
-    const section = mapToArea.get(mapId);
-    const mapsec = section == null ? null : mapsecIds.get(section);
-    if (mapsec == null) continue;
-    for (const m of readFileSync(scripts, "utf8").matchAll(
-      /^\s*trainerbattle\w*\s+(TRAINER_[A-Z0-9_]+)/gm,
-    )) {
-      const set = byTrainer.get(m[1]) ?? new Set();
-      set.add(mapsec);
-      byTrainer.set(m[1], set);
-    }
-  }
-  return byTrainer;
-}
-
-function readKeyTrainers(src, speciesIds, mapToArea, mapsecIds) {
-  const text = readFileSync(join(src, "src/data/trainers.h"), "utf8");
-  const trainerIds = readTrainerIds(src);
-  const parties = readTrainerParties(src, speciesIds);
-  const locations = readTrainerLocations(src, mapToArea, mapsecIds);
-
-  const rows = [];
-  for (const block of text.matchAll(
-    /\[(TRAINER_[A-Z0-9_]+)\]\s*=\s*\{([\s\S]*?)\n\s*\},/g,
-  )) {
-    const name = block[1];
-    const body = block[2];
-    const className = /\.trainerClass\s*=\s*(TRAINER_CLASS_[A-Z0-9_]+)/.exec(body)?.[1];
-    if (!className || !KEY_TRAINER_CLASSES.has(className)) continue;
-    const id = trainerIds.get(name);
-    const partyLabel = /\.party\s*=\s*\w+\((sParty_\w+)\)/.exec(body)?.[1];
-    const party = partyLabel ? parties.get(partyLabel) : null;
-    if (id == null || !party) continue;
-    rows.push({
-      id,
-      name: /\.trainerName\s*=\s*_\("([^"]*)"\)/.exec(body)?.[1] ?? name,
-      constant: name,
-      className: className.replace(/^TRAINER_CLASS_/, ""),
-      mapsecs: [...(locations.get(name) ?? [])].sort((a, b) => a - b),
-      party,
-    });
-  }
-
-  // Rematch entries (`TRAINER_ROXANNE_2` … `_5`) have no `trainerbattle_*` line
-  // of their own — Match Call sends you back to the same gym — so they inherit
-  // the location of their numbered sibling. Anything still unplaced keeps an
-  // empty list, and the runtime refuses to guess a map-based roll for it.
-  const byBase = new Map();
-  for (const row of rows) {
-    if (row.mapsecs.length === 0) continue;
-    const base = row.constant.replace(/_\d+$/, "");
-    if (!byBase.has(base)) byBase.set(base, row.mapsecs);
-  }
-  for (const row of rows) {
-    if (row.mapsecs.length > 0) continue;
-    const inherited = byBase.get(row.constant.replace(/_\d+$/, ""));
-    if (inherited) row.mapsecs = inherited;
-  }
-
-  return rows.sort((a, b) => a.id - b.id);
-}
-
-/**
  * Scripted encounters, split by whether the ROM actually rerolls them.
  *
  * `setwildbattle` and `givemon` route through CreateScriptedWildMon /
@@ -561,7 +435,6 @@ function main() {
   for (const [map, section] of remap) if (mapToArea.has(map)) mapToArea.set(map, section);
 
   const areas = readWildTables(src, mapToArea, mapsecIds);
-  const keyTrainers = readKeyTrainers(src, speciesIds, mapToArea, mapsecIds);
   const statics = readStaticEncounters(
     src,
     speciesIds,
@@ -622,7 +495,6 @@ function main() {
     if (!speciesToNational[species]) uncatalogued.add(`${where} ${species}`);
   };
   for (const row of rows) for (const mon of row.mons) check("wild", mon.species);
-  for (const t of keyTrainers) for (const mon of t.party) check("trainer", mon.species);
   for (const s of statics) check("static", s.species);
   for (const [name, pool] of Object.entries(pools)) {
     for (const species of pool) check(`pool:${name}`, species);
@@ -695,30 +567,6 @@ function main() {
       ...rows.map((row) => `  ${JSON.stringify(row)},`),
       "];",
       "",
-      "export type VanillaTrainerMon = {",
-      "  /** Vanilla ROM species id. */",
-      "  species: number;",
-      "  /** ROM level before `GetScaledLevel` applies difficulty and badge count. */",
-      "  level: number;",
-      "};",
-      "",
-      "export type VanillaTrainer = {",
-      "  /** `trainerNum` — also the `additionalOffset` fed to the RNG. */",
-      "  id: number;",
-      "  name: string;",
-      "  constant: string;",
-      "  /** `TRAINER_CLASS_*` with the prefix stripped. */",
-      "  className: string;",
-      "  /** Mapsecs whose scripts start this battle; `mapOffset` comes from these. */",
-      "  mapsecs: readonly number[];",
-      "  party: readonly VanillaTrainerMon[];",
-      "};",
-      "",
-      "/** Gym leaders, Elite Four, champion, rival, and the two teams. */",
-      "export const VANILLA_KEY_TRAINERS: readonly VanillaTrainer[] = [",
-      ...keyTrainers.map((row) => `  ${JSON.stringify(row)},`),
-      "];",
-      "",
       "export type VanillaStatic = {",
       "  mapsec: number;",
       "  species: number;",
@@ -733,30 +581,13 @@ function main() {
       ...statics.map((row) => `  ${JSON.stringify(row)},`),
       "];",
       "",
-      "/**",
-      " * `PickRandomStarter` (src/starter_choose.c) shuffles the pool with a fixed",
-      " * seed and reads `pool[starterId * 27]`, so only these three indices matter.",
-      " */",
-      "export const STARTER_POOL_STRIDE = 27;",
-      "/** `ShuffleListU16(pool, …, 12289)` — a literal in the ROM, not the seed. */",
-      "export const STARTER_SHUFFLE_SEED = 12289;",
-      "/** `sStarterMon` — the trio the picker shows when the starter is not randomized. */",
-      `export const VANILLA_STARTERS: readonly number[] = ${list(
-        ["SPECIES_TREECKO", "SPECIES_TORCHIC", "SPECIES_MUDKIP"].map((n) => {
-          const id = speciesIds.get(n);
-          if (id == null) throw new Error(`${n} not found`);
-          return id;
-        }),
-      )};`,
       "",
     ].join("\n"),
   );
 
   const mapsecCount = new Set(rows.map((r) => r.mapsec)).size;
-  const placedTrainers = keyTrainers.filter((t) => t.mapsecs.length > 0).length;
   console.error(
     `Wrote ${rows.length} wild tables across ${mapsecCount} mapsecs to ${outPath}\n` +
-      `  key trainers: ${keyTrainers.length} (${placedTrainers} located on a map)\n` +
       `  statics: ${statics.filter((s) => s.randomized).length} randomized, ` +
       `${statics.filter((s) => !s.randomized).length} seteventmon (never rerolled)\n` +
       `  pools: evo0=${pools.evo0.length} evo1=${pools.evo1.length} evo2=${pools.evo2.length} ` +

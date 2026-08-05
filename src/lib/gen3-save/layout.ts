@@ -72,21 +72,13 @@ export const TX_RANDOM_SIMILAR_BIT = 2;
 export const TX_RANDOM_MAP_BASED_BIT = 3;
 export const TX_RANDOM_INCLUDE_LEGENDARIES_BIT = 4;
 /**
- * Later bits, counted from `SB1_TX_SETTINGS` as `[byte, bit]`.
+ * `tx_Random_Static`, as `[byte, bit]` counted from `SB1_TX_SETTINGS`.
  *
  * GCC packs consecutive `u8 x:n` fields into a byte and starts a new one when a
- * field would straddle the boundary, so these follow the declaration order in
- * include/global.h rather than a flat bit count. Verified against a live save:
- * byte 5 bit 2 and byte 6 bit 1 read as set on a run whose starter and statics
- * are demonstrably randomized.
+ * field would straddle the boundary, so this follows the declaration order in
+ * include/global.h rather than a flat bit count.
  */
-export const TX_RANDOM_TRAINER = [1, 1] as const;
 export const TX_RANDOM_STATIC = [5, 2] as const;
-export const TX_RANDOM_STARTER = [6, 1] as const;
-/** `tx_Challenges_OneTypeChallenge` — 5 bits; 31 (all set) means "off". */
-export const TX_ONE_TYPE_CHALLENGE_BYTE = 2;
-export const TX_ONE_TYPE_CHALLENGE_MASK = 0x1f;
-export const TX_ONE_TYPE_CHALLENGE_OFF = 0x1f;
 /**
  * tx_Nuzlocke_RevivesUsed:4 — absolute offset (= nuz flags + 9 + 11).
  */

@@ -1149,7 +1149,7 @@ export function GmConsole({
               <Panel
                 kicker="06 · Ops"
                 title="Parse randomizer seed data"
-                description="Replay a trainer’s randomizer seed from their save: where a given Pokémon spawns in their run, what each route holds, and what the gym leaders, statics, and starter bag rolled — with their own catches and spent route slots marked."
+                description="Replay a trainer’s randomizer seed from their save: where a given Pokémon spawns in their run, what each route holds, and what the scripted encounters rolled — with their own catches and spent route slots marked."
               >
                 <button
                   type="button"

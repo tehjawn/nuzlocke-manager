@@ -66,16 +66,11 @@ import {
   SB1_SEEN1,
   SB1_TX_SETTINGS,
   SB2_TRAINER_ID,
-  TX_ONE_TYPE_CHALLENGE_BYTE,
-  TX_ONE_TYPE_CHALLENGE_MASK,
-  TX_ONE_TYPE_CHALLENGE_OFF,
   TX_RANDOM_CHAOS_BIT,
   TX_RANDOM_INCLUDE_LEGENDARIES_BIT,
   TX_RANDOM_MAP_BASED_BIT,
   TX_RANDOM_SIMILAR_BIT,
-  TX_RANDOM_STARTER,
   TX_RANDOM_STATIC,
-  TX_RANDOM_TRAINER,
   TX_RANDOM_WILD_POKEMON_BIT,
   CREST_SB2_ENCRYPTION_KEY,
   SB2_ENCRYPTION_KEY,
@@ -162,17 +157,8 @@ export type ParsedSaveRandomizer = {
   includeLegendaries: boolean;
   /** `tx_Random_Chaos` — draws from live RNG; no offline answer exists. */
   chaos: boolean;
-  /** `tx_Random_Trainer` — rerolls every trainer party. */
-  trainers: boolean;
   /** `tx_Random_Static` — rerolls `setwildbattle` and `givemon` encounters. */
   statics: boolean;
-  /** `tx_Random_Starter` — rerolls Birch's three choices. */
-  starter: boolean;
-  /**
-   * `tx_Challenges_OneTypeChallenge` — when active it overrides the starter
-   * roll with a type-filtered pick, which this parser does not model.
-   */
-  oneTypeChallenge: boolean;
   /** True when both the seed and the setting bits decoded coherently. */
   reliable: boolean;
 };
@@ -221,10 +207,7 @@ const EMPTY_RANDOMIZER: ParsedSaveRandomizer = {
   mapBased: false,
   includeLegendaries: false,
   chaos: false,
-  trainers: false,
   statics: false,
-  starter: false,
-  oneTypeChallenge: false,
   reliable: false,
 };
 const EMPTY_ENCOUNTER_FLAGS: ParsedSaveEncounterFlags = {
@@ -1420,9 +1403,6 @@ function readRandomizerAbsolute(
   const bit = (index: number) => ((bits >>> index) & 1) === 1;
   const at = ([byte, index]: readonly [number, number]) =>
     (((sb1Bytes[settingsOff + byte] ?? 0) >>> index) & 1) === 1;
-  const oneType =
-    (sb1Bytes[settingsOff + TX_ONE_TYPE_CHALLENGE_BYTE] ?? TX_ONE_TYPE_CHALLENGE_OFF) &
-    TX_ONE_TYPE_CHALLENGE_MASK;
   return {
     otId: otId ?? 0,
     wildPokemon: bit(TX_RANDOM_WILD_POKEMON_BIT),
@@ -1430,10 +1410,7 @@ function readRandomizerAbsolute(
     mapBased: bit(TX_RANDOM_MAP_BASED_BIT),
     includeLegendaries: bit(TX_RANDOM_INCLUDE_LEGENDARIES_BIT),
     chaos: bit(TX_RANDOM_CHAOS_BIT),
-    trainers: at(TX_RANDOM_TRAINER),
     statics: at(TX_RANDOM_STATIC),
-    starter: at(TX_RANDOM_STARTER),
-    oneTypeChallenge: oneType !== TX_ONE_TYPE_CHALLENGE_OFF && oneType !== 0,
     reliable: otId != null && otId !== 0,
   };
 }

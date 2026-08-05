@@ -1,12 +1,12 @@
 /**
- * Replay Modern Emerald's wild-encounter randomizer offline.
+ * Replay Modern Emerald's wild-encounter and static randomizers offline.
  *
  * The hack never rewrites the ROM's encounter tables. `CreateWildMon`
  * (src/wild_encounter.c) rerolls the vanilla species at spawn time via
  * `GetSpeciesRandomSeeded(species, TX_RANDOM_T_WILD_POKEMON, 0)`, and the only
  * per-save input to that chain is the player's 32-bit trainer ID. Given the ID
- * and five setting bits — both readable from a save — the entire "what actually
- * spawns where" mapping is reproducible without the ROM.
+ * and a handful of setting bits — both readable from a save — the entire "what
+ * actually spawns where" mapping is reproducible without the ROM.
  *
  * Tables come from `scripts/generate-randomizer-tables.mjs`; this file is only
  * the arithmetic and the two indexes the UI reads.
@@ -27,10 +27,6 @@ import {
   POOL_EVO_LEGENDARY,
   ROM_SPECIES_TO_NATIONAL,
   SPECIES_EVO_SLOT,
-  STARTER_POOL_STRIDE,
-  STARTER_SHUFFLE_SEED,
-  VANILLA_KEY_TRAINERS,
-  VANILLA_STARTERS,
   VANILLA_STATICS,
   VANILLA_WILD_TABLES,
   type VanillaStatic,
@@ -51,12 +47,8 @@ export type RandomizerSettings = {
   includeLegendaries: boolean;
   /** `tx_Random_Chaos` — rerolls from live RNG; nothing here can predict it. */
   chaos: boolean;
-  /** `tx_Random_Trainer` — rerolls every trainer party. */
-  trainers: boolean;
   /** `tx_Random_Static` — rerolls `setwildbattle` and `givemon` encounters. */
   statics: boolean;
-  /** `tx_Random_Starter` — rerolls Birch's three choices. */
-  starter: boolean;
 };
 
 export type EncounterKind = VanillaWildTable["kind"];
@@ -156,19 +148,19 @@ function poolFor(slot: number, settings: RandomizerSettings): readonly number[] 
 }
 
 /**
- * `GetSpeciesRandomSeeded(species, type, additionalOffset)`.
+ * `GetSpeciesRandomSeeded(species, type, 0)`.
  *
- * Every randomizer type shares this body; they differ only in what they pass as
- * `additionalOffset` (0 for wild and static, `trainerNum` for trainers) and in
- * which setting bit gates the call. Returns the species unchanged whenever the
- * ROM would: an `EVO_TYPE_SELF` species, or a legendary while legendaries are
- * excluded. Chaos mode is *not* modelled — callers must check `settings.chaos`
- * first, because the ROM draws from live RNG there and no offline answer exists.
+ * Wild and static rolls share this body and differ only in which setting bit
+ * gates the call. (The ROM's other types pass a non-zero `additionalOffset` —
+ * `trainerNum` for trainer parties — which nothing here needs.) Returns the
+ * species unchanged whenever the ROM would: an `EVO_TYPE_SELF` species, or a
+ * legendary while legendaries are excluded. Chaos mode is *not* modelled —
+ * callers must check `settings.chaos` first, because the ROM draws from live
+ * RNG there and no offline answer exists.
  */
 function rollSpecies(
   romSpecies: number,
   mapsec: number,
-  additionalOffset: number,
   otId: number,
   settings: RandomizerSettings,
 ): number {
@@ -182,9 +174,7 @@ function rollSpecies(
   const pool = poolFor(slot, settings);
   const mapOffset = settings.mapBased ? mapsec : 0;
   return (
-    pool[
-      randomSeededModulo(romSpecies + mapOffset + additionalOffset, pool.length, otId)
-    ] ?? romSpecies
+    pool[randomSeededModulo(romSpecies + mapOffset, pool.length, otId)] ?? romSpecies
   );
 }
 
@@ -196,7 +186,7 @@ export function randomizeWildSpecies(
   settings: RandomizerSettings,
 ): number {
   if (!settings.wildPokemon) return romSpecies;
-  return rollSpecies(romSpecies, mapsec, 0, otId, settings);
+  return rollSpecies(romSpecies, mapsec, otId, settings);
 }
 
 function nationalFor(romSpecies: number): number {
@@ -277,80 +267,6 @@ export function indexBySpecies(areas: readonly RolledArea[]): SpeciesSighting[] 
     .sort((a, b) => a.pokedexId - b.pokedexId);
 }
 
-export type RolledTrainerMon = {
-  vanillaSpecies: number;
-  vanillaPokedexId: number;
-  species: number;
-  pokedexId: number;
-  unchanged: boolean;
-  /** ROM level before difficulty and badge count scale it. */
-  level: number;
-};
-
-export type RolledTrainer = {
-  id: number;
-  name: string;
-  className: string;
-  /** Catch-route labels for the places this battle happens. */
-  locations: string[];
-  /**
-   * True when `mapBased` is on but the ROM scripts never place this trainer, so
-   * the map half of the seed is unknown and the party below is a guess.
-   */
-  locationUnknown: boolean;
-  /** True when the same trainer rolls differently depending on where you fight. */
-  variesByLocation: boolean;
-  party: RolledTrainerMon[];
-};
-
-/**
- * Gym leaders, Elite Four, champion, rival, and the two teams, with each party
- * slot resolved for this seed.
- *
- * `mapOffset` for a trainer is the mapsec you are standing on when the party is
- * built (src/battle_main.c), which is wherever their `trainerbattle_*` script
- * lives. Two trainers in the ROM have no script of their own; with `mapBased`
- * on, their rolls are flagged rather than fabricated.
- */
-export function rollTrainerParties(
-  otId: number,
-  settings: RandomizerSettings,
-): RolledTrainer[] {
-  return VANILLA_KEY_TRAINERS.map((trainer) => {
-    const mapsecs = trainer.mapsecs.length > 0 ? trainer.mapsecs : [0];
-    const locationUnknown = settings.mapBased && trainer.mapsecs.length === 0;
-    let variesByLocation = false;
-    const party = trainer.party.map((mon) => {
-      const rolls = mapsecs.map((mapsec) =>
-        rollSpecies(mon.species, mapsec, trainer.id, otId, settings),
-      );
-      if (new Set(rolls).size > 1) variesByLocation = true;
-      const species = rolls[0]!;
-      return {
-        vanillaSpecies: mon.species,
-        vanillaPokedexId: nationalFor(mon.species),
-        species,
-        pokedexId: nationalFor(species),
-        unchanged: species === mon.species,
-        level: mon.level,
-      };
-    });
-    return {
-      id: trainer.id,
-      name: trainer.name,
-      className: trainer.className,
-      locations: [
-        ...new Set(
-          trainer.mapsecs.map((mapsec) => MAPSEC_LABELS[mapsec]).filter(Boolean),
-        ),
-      ] as string[],
-      locationUnknown,
-      variesByLocation,
-      party,
-    };
-  });
-}
-
 export type RolledStatic = {
   label: string;
   mapsec: number;
@@ -379,7 +295,7 @@ export function rollStatics(
     (entry) => {
       const species =
         entry.randomized && settings.statics
-          ? rollSpecies(entry.species, entry.mapsec, 0, otId, settings)
+          ? rollSpecies(entry.species, entry.mapsec, otId, settings)
           : entry.species;
       return {
         label: MAPSEC_LABELS[entry.mapsec]!,
@@ -394,68 +310,6 @@ export function rollStatics(
       };
     },
   );
-}
-
-/**
- * `RandomSeeded(value, TRUE)` (src/random.c) — note it returns the *same* value
- * for the same input every call. `ShuffleListU16` leans on that, so the shuffle
- * below is far less random than it looks; that is the ROM's behaviour, not a
- * simplification.
- */
-function randomSeeded(value: number, otId: number): number {
-  return (isoRandomize1((otId + value) >>> 0) >>> 16) & 0xffff;
-}
-
-/** `ShuffleListU16` (src/random.c) — Fisher–Yates with a constant draw. */
-function shuffleListU16(list: readonly number[], seed: number, otId: number): number[] {
-  const out = [...list];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = randomSeeded(seed, otId) % (i + 1);
-    const swap = out[j]!;
-    out[j] = out[i]!;
-    out[i] = swap;
-  }
-  return out;
-}
-
-export type RolledStarter = {
-  /** 0, 1, 2 — left, middle, right in Birch's bag. */
-  starterId: number;
-  vanillaPokedexId: number;
-  pokedexId: number;
-};
-
-/**
- * `PickRandomStarter` (src/starter_choose.c).
- *
- * A different algorithm from everything else here: shuffle the whole pool with
- * the literal seed 12289, then read `pool[starterId * 27]`. The one-type
- * challenge takes a separate path that filters by type, which this does not
- * model — callers should skip the view when that challenge is active.
- */
-export function rollStarters(
-  otId: number,
-  settings: RandomizerSettings,
-): RolledStarter[] {
-  const vanilla = VANILLA_STARTERS.map((species) => nationalFor(species));
-  if (!settings.starter) {
-    return vanilla.map((pokedexId, starterId) => ({
-      starterId,
-      vanillaPokedexId: pokedexId,
-      pokedexId,
-    }));
-  }
-  const pool = settings.similar
-    ? POOL_EVO_0
-    : settings.includeLegendaries
-      ? POOL_ALL_LEGENDARY
-      : POOL_ALL;
-  const shuffled = shuffleListU16(pool, STARTER_SHUFFLE_SEED, otId);
-  return [0, 1, 2].map((starterId) => ({
-    starterId,
-    vanillaPokedexId: vanilla[starterId]!,
-    pokedexId: nationalFor(shuffled[starterId * STARTER_POOL_STRIDE] ?? 0),
-  }));
 }
 
 export type SeedCheckEntry = {
@@ -535,10 +389,8 @@ export function describeSettings(settings: RandomizerSettings): string[] {
   const chips: string[] = [];
   chips.push(settings.wildPokemon ? "Wild Pokémon randomized" : "Wild Pokémon vanilla");
   if (settings.chaos) chips.push("Chaos");
-  if (settings.trainers) chips.push("Trainers randomized");
   if (settings.statics) chips.push("Statics randomized");
-  if (settings.starter) chips.push("Starter randomized");
-  if (settings.wildPokemon || settings.trainers || settings.statics) {
+  if (settings.wildPokemon || settings.statics) {
     chips.push(settings.similar ? "Similar evolution stage" : "Any species");
     chips.push(settings.mapBased ? "Map-based" : "Global mapping");
     chips.push(
