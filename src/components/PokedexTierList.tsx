@@ -16,6 +16,10 @@ import {
   type SpeciesOwnershipStatus,
 } from "@/lib/encounter-stats";
 import { isLegendaryNationalId } from "@/lib/legendary-species";
+import {
+  modernEmeraldGenerationOf,
+  modernEmeraldGenerations,
+} from "@/lib/modern-emerald-dex";
 import { POKEMON_TYPES, type PokemonType } from "@/lib/pokemon-types";
 import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 import { evolutionsFrom } from "@/lib/species-evolutions";
@@ -58,6 +62,7 @@ export function PokedexTierList({
   onSelectSpecies,
 }: PokedexTierListProps) {
   const [type, setType] = useState<PokemonType | null>(null);
+  const [generation, setGeneration] = useState<number | null>(null);
   const [finalOnly, setFinalOnly] = useState(false);
   const [ownership, setOwnership] = useState<OwnershipFilter>("all");
 
@@ -75,12 +80,13 @@ export function PokedexTierList({
   const filterOpts = useMemo<FilterOpts>(
     () => ({
       type,
+      generation,
       finalOnly,
       ownership,
       boardById,
       myTrainerId,
     }),
-    [type, finalOnly, ownership, boardById, myTrainerId],
+    [type, generation, finalOnly, ownership, boardById, myTrainerId],
   );
 
   if (ladder === "competitive") {
@@ -88,14 +94,16 @@ export function PokedexTierList({
       <CompetitiveLadder
         boardById={boardById}
         filterOpts={filterOpts}
+        finalOnly={finalOnly}
+        generation={generation}
         myTrainerId={myTrainerId}
         onSelectSpecies={onSelectSpecies}
         ownership={ownership}
         setFinalOnly={setFinalOnly}
+        setGeneration={setGeneration}
         setOwnership={setOwnership}
         setType={setType}
         type={type}
-        finalOnly={finalOnly}
       />
     );
   }
@@ -104,14 +112,16 @@ export function PokedexTierList({
     <BstLadder
       boardById={boardById}
       filterOpts={filterOpts}
+      finalOnly={finalOnly}
+      generation={generation}
       myTrainerId={myTrainerId}
       onSelectSpecies={onSelectSpecies}
       ownership={ownership}
       setFinalOnly={setFinalOnly}
+      setGeneration={setGeneration}
       setOwnership={setOwnership}
       setType={setType}
       type={type}
-      finalOnly={finalOnly}
     />
   );
 }
@@ -119,25 +129,29 @@ export function PokedexTierList({
 function BstLadder({
   boardById,
   filterOpts,
+  finalOnly,
+  generation,
   myTrainerId,
   onSelectSpecies,
   ownership,
   setFinalOnly,
+  setGeneration,
   setOwnership,
   setType,
   type,
-  finalOnly,
 }: {
   boardById: BoardMap;
   filterOpts: FilterOpts;
+  finalOnly: boolean;
+  generation: number | null;
   myTrainerId: string | null;
   onSelectSpecies: (pokedexId: number) => void;
   ownership: OwnershipFilter;
   setFinalOnly: (v: boolean) => void;
+  setGeneration: (v: number | null) => void;
   setOwnership: (v: OwnershipFilter) => void;
   setType: (v: PokemonType | null) => void;
   type: PokemonType | null;
-  finalOnly: boolean;
 }) {
   const tiers = useMemo(() => speciesTierList(), []);
 
@@ -173,9 +187,11 @@ function BstLadder({
 
       <TierFilters
         finalOnly={finalOnly}
+        generation={generation}
         myTrainerId={myTrainerId}
         ownership={ownership}
         setFinalOnly={setFinalOnly}
+        setGeneration={setGeneration}
         setOwnership={setOwnership}
         setType={setType}
         type={type}
@@ -224,25 +240,29 @@ function BstLadder({
 function CompetitiveLadder({
   boardById,
   filterOpts,
+  finalOnly,
+  generation,
   myTrainerId,
   onSelectSpecies,
   ownership,
   setFinalOnly,
+  setGeneration,
   setOwnership,
   setType,
   type,
-  finalOnly,
 }: {
   boardById: BoardMap;
   filterOpts: FilterOpts;
+  finalOnly: boolean;
+  generation: number | null;
   myTrainerId: string | null;
   onSelectSpecies: (pokedexId: number) => void;
   ownership: OwnershipFilter;
   setFinalOnly: (v: boolean) => void;
+  setGeneration: (v: number | null) => void;
   setOwnership: (v: OwnershipFilter) => void;
   setType: (v: PokemonType | null) => void;
   type: PokemonType | null;
-  finalOnly: boolean;
 }) {
   const [hideUntiered, setHideUntiered] = useState(true);
   const [hideLegendaries, setHideLegendaries] = useState(true);
@@ -289,9 +309,11 @@ function CompetitiveLadder({
 
       <TierFilters
         finalOnly={finalOnly}
+        generation={generation}
         myTrainerId={myTrainerId}
         ownership={ownership}
         setFinalOnly={setFinalOnly}
+        setGeneration={setGeneration}
         setOwnership={setOwnership}
         setType={setType}
         type={type}
@@ -520,6 +542,8 @@ function TierHeader({
 function TierFilters({
   type,
   setType,
+  generation,
+  setGeneration,
   ownership,
   setOwnership,
   finalOnly,
@@ -529,6 +553,8 @@ function TierFilters({
 }: {
   type: PokemonType | null;
   setType: (v: PokemonType | null) => void;
+  generation: number | null;
+  setGeneration: (v: number | null) => void;
   ownership: OwnershipFilter;
   setOwnership: (v: OwnershipFilter) => void;
   finalOnly: boolean;
@@ -552,6 +578,28 @@ function TierFilters({
           {POKEMON_TYPES.map((entry) => (
             <option key={entry} value={entry}>
               {entry}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex min-w-[9rem] flex-1 flex-col gap-1 text-xs font-bold text-muted">
+        Generation
+        <select
+          className={FILTER_SELECT_CLASS}
+          data-testid="tier-filter-generation"
+          value={generation ?? ""}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            setGeneration(
+              modernEmeraldGenerations().find((gen) => gen === next) ?? null,
+            );
+          }}
+        >
+          <option value="">All generations</option>
+          {modernEmeraldGenerations().map((gen) => (
+            <option key={gen} value={gen}>
+              Gen {gen}
             </option>
           ))}
         </select>
@@ -603,6 +651,7 @@ function EmptyFilters() {
 
 type FilterOpts = {
   type: PokemonType | null;
+  generation: number | null;
   finalOnly: boolean;
   ownership: OwnershipFilter;
   boardById: BoardMap;
@@ -613,6 +662,12 @@ function matchesFilters(pokedexId: number, options: FilterOpts): boolean {
   if (options.type) {
     const types = typesForPokedexId(pokedexId);
     if (!types.includes(options.type)) return false;
+  }
+  if (
+    options.generation != null &&
+    modernEmeraldGenerationOf(pokedexId) !== options.generation
+  ) {
+    return false;
   }
   if (options.finalOnly && evolutionsFrom(pokedexId).length > 0) {
     return false;
