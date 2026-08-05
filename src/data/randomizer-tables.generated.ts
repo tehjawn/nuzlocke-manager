@@ -215,6 +215,8 @@ export type VanillaStatic = {
   kind: "wild-battle" | "gift" | "event";
   /** False for `seteventmon`, which the ROM never rerolls. */
   randomized: boolean;
+  /** True when the script sets `FLAG_SYS_NO_CATCHING` around this fight. */
+  noCatching?: boolean;
 };
 
 /** Scripted encounters — legendaries, gifts, fossils, in-game trades. */
@@ -227,12 +229,12 @@ export const VANILLA_STATICS: readonly VanillaStatic[] = [
   {"mapsec":10,"species":142,"level":20,"kind":"gift","randomized":true},
   {"mapsec":10,"species":388,"level":20,"kind":"gift","randomized":true},
   {"mapsec":10,"species":390,"level":20,"kind":"gift","randomized":true},
-  {"mapsec":12,"species":279,"level":1,"kind":"wild-battle","randomized":true},
-  {"mapsec":12,"species":297,"level":1,"kind":"wild-battle","randomized":true},
-  {"mapsec":12,"species":314,"level":1,"kind":"wild-battle","randomized":true},
-  {"mapsec":12,"species":384,"level":1,"kind":"wild-battle","randomized":true},
-  {"mapsec":12,"species":394,"level":1,"kind":"wild-battle","randomized":true},
-  {"mapsec":12,"species":423,"level":1,"kind":"wild-battle","randomized":true},
+  {"mapsec":12,"species":279,"level":1,"kind":"wild-battle","randomized":true,"noCatching":true},
+  {"mapsec":12,"species":297,"level":1,"kind":"wild-battle","randomized":true,"noCatching":true},
+  {"mapsec":12,"species":314,"level":1,"kind":"wild-battle","randomized":true,"noCatching":true},
+  {"mapsec":12,"species":384,"level":1,"kind":"wild-battle","randomized":true,"noCatching":true},
+  {"mapsec":12,"species":394,"level":1,"kind":"wild-battle","randomized":true,"noCatching":true},
+  {"mapsec":12,"species":423,"level":1,"kind":"wild-battle","randomized":true,"noCatching":true},
   {"mapsec":13,"species":398,"level":5,"kind":"gift","randomized":true},
   {"mapsec":13,"species":409,"level":50,"kind":"event","randomized":false},
   {"mapsec":34,"species":317,"level":29,"kind":"wild-battle","randomized":true},
@@ -242,12 +244,12 @@ export const VANILLA_STATICS: readonly VanillaStatic[] = [
   {"mapsec":58,"species":185,"level":40,"kind":"wild-battle","randomized":true},
   {"mapsec":59,"species":251,"level":45,"kind":"event","randomized":false},
   {"mapsec":62,"species":100,"level":25,"kind":"wild-battle","randomized":true},
-  {"mapsec":62,"species":243,"level":70,"kind":"wild-battle","randomized":true},
+  {"mapsec":62,"species":243,"level":70,"kind":"wild-battle","randomized":true,"noCatching":true},
   {"mapsec":62,"species":243,"level":70,"kind":"event","randomized":false},
   {"mapsec":63,"species":144,"level":70,"kind":"event","randomized":false},
   {"mapsec":67,"species":245,"level":70,"kind":"event","randomized":false},
-  {"mapsec":67,"species":245,"level":80,"kind":"wild-battle","randomized":true},
-  {"mapsec":67,"species":245,"level":90,"kind":"wild-battle","randomized":true},
+  {"mapsec":67,"species":245,"level":80,"kind":"wild-battle","randomized":true,"noCatching":true},
+  {"mapsec":67,"species":245,"level":90,"kind":"wild-battle","randomized":true,"noCatching":true},
   {"mapsec":70,"species":146,"level":70,"kind":"event","randomized":false},
   {"mapsec":73,"species":407,"level":60,"kind":"event","randomized":false},
   {"mapsec":73,"species":408,"level":60,"kind":"event","randomized":false},
@@ -258,9 +260,9 @@ export const VANILLA_STATICS: readonly VanillaStatic[] = [
   {"mapsec":85,"species":406,"level":50,"kind":"event","randomized":false},
   {"mapsec":85,"species":406,"level":70,"kind":"event","randomized":false},
   {"mapsec":197,"species":101,"level":30,"kind":"wild-battle","randomized":true},
-  {"mapsec":198,"species":244,"level":40,"kind":"wild-battle","randomized":true},
-  {"mapsec":198,"species":244,"level":50,"kind":"wild-battle","randomized":true},
-  {"mapsec":198,"species":244,"level":60,"kind":"wild-battle","randomized":true},
+  {"mapsec":198,"species":244,"level":40,"kind":"wild-battle","randomized":true,"noCatching":true},
+  {"mapsec":198,"species":244,"level":50,"kind":"wild-battle","randomized":true,"noCatching":true},
+  {"mapsec":198,"species":244,"level":60,"kind":"wild-battle","randomized":true,"noCatching":true},
   {"mapsec":198,"species":244,"level":70,"kind":"event","randomized":false},
   {"mapsec":200,"species":410,"level":70,"kind":"event","randomized":false},
   {"mapsec":201,"species":151,"level":50,"kind":"event","randomized":false},
@@ -270,7 +272,7 @@ export const VANILLA_STATICS: readonly VanillaStatic[] = [
   {"mapsec":211,"species":249,"level":70,"kind":"event","randomized":false},
   {"mapsec":211,"species":250,"level":70,"kind":"event","randomized":false},
   {"mapsec":211,"species":413,"level":80,"kind":"wild-battle","randomized":true},
-  {"mapsec":213,"species":420,"level":65,"kind":"wild-battle","randomized":true},
+  {"mapsec":213,"species":420,"level":65,"kind":"wild-battle","randomized":true,"noCatching":true},
   {"mapsec":213,"species":439,"level":40,"kind":"event","randomized":false},
   {"mapsec":214,"species":440,"level":40,"kind":"event","randomized":false},
 ];
