@@ -359,11 +359,16 @@ export function buildSeasonResults(ctx: JumpSeasonContext): JumpResult[] {
     ...guide,
     {
       id: `bounty-${ctx.slug}`,
-      title: "Bounty Hunter",
-      subtitle: `${ctx.name} · Open bounties & exclusives`,
+      title: "Pokémon Ownership",
+      subtitle: `${ctx.name} · Owned, seen & exclusives`,
       href: toolsHref(ctx.slug, "bounty"),
       category: "navigate" as const,
       tags: [
+        "ownership",
+        "owned",
+        "untouched",
+        // Kept so the tool's old name still finds it for anyone with the
+        // muscle memory — the rename is user-facing copy, not a new entry.
         "bounty",
         "hunter",
         "missing",

@@ -18,7 +18,7 @@ import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 type SpeciesPreview = {
   species: string;
   pokedexId: number | null;
-  /** Extra muted line under the name (e.g. "Open bounty"). */
+  /** Extra muted line under the name (e.g. "Not owned yet"). */
   subtitle?: string;
 };
 
@@ -76,7 +76,8 @@ function modelFromSpecies(preview: SpeciesPreview): HoverModel {
  * Touch devices keep the child click behavior (no sticky popover).
  *
  * Accepts a live board `pokemon` entry, or a catalog `speciesPreview` (e.g.
- * Bounty Hunter open targets — popup always renders full-color sprites).
+ * unowned species in Pokémon Ownership — popup always renders full-color
+ * sprites).
  */
 export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
   const { children, className = "" } = props;
