@@ -64,6 +64,14 @@ import {
   SB1_REVIVES_USED,
   SB1_REVIVES_USED_BYTE,
   SB1_SEEN1,
+  SB1_TX_SETTINGS,
+  SB2_TRAINER_ID,
+  TX_RANDOM_CHAOS_BIT,
+  TX_RANDOM_INCLUDE_LEGENDARIES_BIT,
+  TX_RANDOM_MAP_BASED_BIT,
+  TX_RANDOM_SIMILAR_BIT,
+  TX_RANDOM_STATIC,
+  TX_RANDOM_WILD_POKEMON_BIT,
   CREST_SB2_ENCRYPTION_KEY,
   SB2_ENCRYPTION_KEY,
   SECTOR_SIGNATURE,
@@ -129,6 +137,45 @@ export type ParsedSaveSafariZoneAreas = {
   reliable: boolean;
 };
 
+/**
+ * Everything needed to replay the wild-encounter randomizer offline.
+ *
+ * `otId` is the seed: `RandomSeededModulo` (src/random.c) mixes nothing else
+ * per-save, so trainer ID + these five bits reproduce the ROM's entire
+ * species → species mapping. See `@/lib/tx-randomizer`.
+ */
+export type ParsedSaveRandomizer = {
+  /** 32-bit `GetTrainerId(playerTrainerId)` — the randomizer's only seed. */
+  otId: number;
+  /** `tx_Random_WildPokemon` — master switch for wild encounters. */
+  wildPokemon: boolean;
+  /** `tx_Random_Similar` — reroll within the species' own evolution stage. */
+  similar: boolean;
+  /** `tx_Random_MapBased` — fold the area's mapsec into the seed. */
+  mapBased: boolean;
+  /** `tx_Random_IncludeLegendaries` — legendaries become valid destinations. */
+  includeLegendaries: boolean;
+  /** `tx_Random_Chaos` — draws from live RNG; no offline answer exists. */
+  chaos: boolean;
+  /** `tx_Random_Static` — rerolls `setwildbattle` and `givemon` encounters. */
+  statics: boolean;
+  /** True when both the seed and the setting bits decoded coherently. */
+  reliable: boolean;
+};
+
+/**
+ * Which nuzlocke encounter slots the run has already spent.
+ *
+ * `NuzlockeEncounterFlags` is the ROM's own record, so it counts a fled or
+ * fainted encounter that never produced a Pokémon — something a stored
+ * `catchRoute` list can never reconstruct.
+ */
+export type ParsedSaveEncounterFlags = {
+  /** `NuzlockeLUT` bit indices that are set. */
+  usedBits: number[];
+  reliable: boolean;
+};
+
 export type ParseSaveResult =
   | {
       ok: true;
@@ -139,6 +186,8 @@ export type ParseSaveResult =
       revive: ParsedSaveRevive;
       money: ParsedSaveMoney;
       safariZoneAreas: ParsedSaveSafariZoneAreas;
+      randomizer: ParsedSaveRandomizer;
+      encounterFlags: ParsedSaveEncounterFlags;
       party: ParsedSavePokemon[];
       box: ParsedSavePokemon[];
       rip: ParsedSavePokemon[];
@@ -149,6 +198,20 @@ export type ParseSaveResult =
 const EMPTY_MONEY: ParsedSaveMoney = { amount: 0, reliable: false };
 const EMPTY_SAFARI_ZONE_AREAS: ParsedSaveSafariZoneAreas = {
   areas: [],
+  reliable: false,
+};
+const EMPTY_RANDOMIZER: ParsedSaveRandomizer = {
+  otId: 0,
+  wildPokemon: false,
+  similar: false,
+  mapBased: false,
+  includeLegendaries: false,
+  chaos: false,
+  statics: false,
+  reliable: false,
+};
+const EMPTY_ENCOUNTER_FLAGS: ParsedSaveEncounterFlags = {
+  usedBits: [],
   reliable: false,
 };
 
@@ -1297,6 +1360,83 @@ function readReviveToken(
   };
 }
 
+/**
+ * The randomizer's seed is `GetTrainerId(gSaveBlock2Ptr->playerTrainerId)` —
+ * the same 32-bit value stamped as OT ID on every Pokémon the player caught
+ * themselves. SaveBlock2 is only anchored on the flash path, so elsewhere take
+ * the modal OT ID across the recovered mons: traded mons are a small minority,
+ * and a wrong seed shows up immediately in the catch cross-check downstream.
+ */
+function modalOtId(mons: readonly RawMon[]): number | null {
+  const votes = new Map<number, number>();
+  for (const mon of mons) {
+    if (!mon.oid) continue;
+    votes.set(mon.oid, (votes.get(mon.oid) ?? 0) + 1);
+  }
+  let best: number | null = null;
+  let bestCount = 0;
+  for (const [oid, count] of votes) {
+    if (count > bestCount) {
+      best = oid;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+/**
+ * `tx_Random_*` bits, gated on the same coherence check the revive token uses —
+ * the settings byte sits in the packed block right after the nuzlocke flags, so
+ * if those look like garbage the settings do too.
+ */
+function readRandomizerAbsolute(
+  sb1Bytes: Uint8Array,
+  sb1Base: number,
+  otId: number | null,
+): ParsedSaveRandomizer {
+  const settingsOff = sb1Base + SB1_TX_SETTINGS;
+  if (settingsOff >= sb1Bytes.length) return EMPTY_RANDOMIZER;
+  if (!nuzlockeFlagsLookCoherent(sb1Bytes, sb1Base + SB1_NUZLOCKE_ENCOUNTER_FLAGS)) {
+    return EMPTY_RANDOMIZER;
+  }
+  // `tx_Random_Static` lives at settingsOff + 5; a truncated buffer must not
+  // report reliable tables while that bit falls back to 0.
+  const settingsComplete =
+    settingsOff + TX_RANDOM_STATIC[0] < sb1Bytes.length;
+  const bits = sb1Bytes[settingsOff]!;
+  const bit = (index: number) => ((bits >>> index) & 1) === 1;
+  const at = ([byte, index]: readonly [number, number]) =>
+    settingsComplete &&
+    (((sb1Bytes[settingsOff + byte] ?? 0) >>> index) & 1) === 1;
+  return {
+    otId: otId ?? 0,
+    wildPokemon: bit(TX_RANDOM_WILD_POKEMON_BIT),
+    similar: bit(TX_RANDOM_SIMILAR_BIT),
+    mapBased: bit(TX_RANDOM_MAP_BASED_BIT),
+    includeLegendaries: bit(TX_RANDOM_INCLUDE_LEGENDARIES_BIT),
+    chaos: bit(TX_RANDOM_CHAOS_BIT),
+    statics: at(TX_RANDOM_STATIC),
+    reliable: otId != null && otId !== 0 && settingsComplete,
+  };
+}
+
+/** Every set bit in `NuzlockeEncounterFlags[9]` — the spent encounter slots. */
+function readEncounterFlagsAbsolute(
+  sb1Bytes: Uint8Array,
+  sb1Base: number,
+): ParsedSaveEncounterFlags {
+  const nuzBase = sb1Base + SB1_NUZLOCKE_ENCOUNTER_FLAGS;
+  if (!nuzlockeFlagsLookCoherent(sb1Bytes, nuzBase)) return EMPTY_ENCOUNTER_FLAGS;
+  const usedBits: number[] = [];
+  for (let byte = 0; byte < SB1_NUZLOCKE_FLAGS_LEN; byte++) {
+    const value = sb1Bytes[nuzBase + byte] ?? 0;
+    for (let bit = 0; bit < 8; bit++) {
+      if ((value >>> bit) & 1) usedBits.push(byte * 8 + bit);
+    }
+  }
+  return { usedBits, reliable: true };
+}
+
 function readSafariZoneAreasAbsolute(
   sb1Bytes: Uint8Array,
   sb1Base = 0,
@@ -1579,12 +1719,15 @@ function readModernDexFromEmbeddedFlash(
   badges: ParsedSaveBadges;
   revive: ParsedSaveRevive;
   safariZoneAreas: ParsedSaveSafariZoneAreas;
+  randomizer: ParsedSaveRandomizer;
+  encounterFlags: ParsedSaveEncounterFlags;
 } | null {
   const flash = extractEmbeddedFlash(bytes);
   if (!flash) return null;
   const blocks = parseFlashSave(flash);
   if (!blocks) return null;
   const sb1 = blocks.saveBlock1;
+  const sb2 = blocks.saveBlock2;
   if (SB1_SEEN1 + MODERN_DEX_FLAG_BYTES > sb1.length) return null;
   if (
     ownedMust.length > 0 &&
@@ -1592,11 +1735,14 @@ function readModernDexFromEmbeddedFlash(
   ) {
     return null;
   }
+  const trainerId = readTrainerIdFromSaveBlock2(sb2);
   return {
     seen: listDexBits(sb1, SB1_SEEN1, MODERN_NUM_SPECIES),
     badges: readBadgesAbsolute(sb1, SB1_FLAGS),
     revive: readReviveAbsolute(sb1),
     safariZoneAreas: readSafariZoneAreasAbsolute(sb1),
+    randomizer: readRandomizerAbsolute(sb1, 0, trainerId),
+    encounterFlags: readEncounterFlagsAbsolute(sb1, 0),
   };
 }
 
@@ -1625,6 +1771,8 @@ function classifyEwram(
         revive: EMPTY_REVIVE,
         money: EMPTY_MONEY,
         safariZoneAreas: EMPTY_SAFARI_ZONE_AREAS,
+        randomizer: EMPTY_RANDOMIZER,
+        encounterFlags: EMPTY_ENCOUNTER_FLAGS,
         party: [],
         box: [],
         rip: [],
@@ -1745,6 +1893,8 @@ function classifyEwram(
     speciesMode === "modern"
       ? readSafariZoneAreas(bytes, partyBase, speciesMode)
       : EMPTY_SAFARI_ZONE_AREAS;
+  let randomizer = EMPTY_RANDOMIZER;
+  let encounterFlags = EMPTY_ENCOUNTER_FLAGS;
   let dex: { seen: number[]; source: "table" | "bitfield" | "seen1" } | null =
     null;
 
@@ -1757,6 +1907,12 @@ function classifyEwram(
         badges = readBadgesAbsolute(bytes, meta.sb1 + SB1_FLAGS);
         revive = readReviveAbsolute(bytes, meta.sb1);
         safariZoneAreas = readSafariZoneAreasAbsolute(bytes, meta.sb1);
+        randomizer = readRandomizerAbsolute(
+          bytes,
+          meta.sb1,
+          modalOtId([...party, ...box, ...rip]),
+        );
+        encounterFlags = readEncounterFlagsAbsolute(bytes, meta.sb1);
         money = readMoneyFromEwram(
           bytes,
           meta.sb1,
@@ -1819,6 +1975,12 @@ function classifyEwram(
         }
         if (!safariZoneAreas.reliable && fromFlash.safariZoneAreas.reliable) {
           safariZoneAreas = fromFlash.safariZoneAreas;
+        }
+        if (!randomizer.reliable && fromFlash.randomizer.reliable) {
+          randomizer = fromFlash.randomizer;
+        }
+        if (!encounterFlags.reliable && fromFlash.encounterFlags.reliable) {
+          encounterFlags = fromFlash.encounterFlags;
         }
         warnings.push(
           `Pokédex: ${fromFlash.seen.length} seen (embedded flash seen1).`,
@@ -1918,6 +2080,8 @@ function classifyEwram(
     revive,
     money,
     safariZoneAreas,
+    randomizer,
+    encounterFlags,
     party: partyParsed,
     box: boxParsed,
     rip: ripParsed,
@@ -1932,6 +2096,15 @@ function readTrainerFromSaveBlock2(sb2: Uint8Array): ParsedSaveTrainer | null {
   const genderByte = sb2[8] ?? 0xff;
   if (genderByte > 1) return { name, gender: null };
   return { name, gender: genderByte === 1 ? "F" : "M" };
+}
+
+/** `GetTrainerId(gSaveBlock2Ptr->playerTrainerId)` — little-endian u32 at 0x0A. */
+function readTrainerIdFromSaveBlock2(sb2: Uint8Array): number | null {
+  if (sb2.length < SB2_TRAINER_ID + 4) return null;
+  return new DataView(sb2.buffer, sb2.byteOffset + SB2_TRAINER_ID, 4).getUint32(
+    0,
+    true,
+  );
 }
 
 function readBadgesAbsolute(
@@ -2047,6 +2220,17 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
   if (speciesMode === "modern" && !revive.reliable) {
     warnings.push("Could not read revive token from SaveBlock1.");
   }
+  // SaveBlock2 is anchored here, so the seed comes from `playerTrainerId` when
+  // the block is long enough, else falls back to modalOtId([...party, ...box, ...rip]).
+  const trainerId = readTrainerIdFromSaveBlock2(sb2);
+  const randomizer =
+    speciesMode === "modern"
+      ? readRandomizerAbsolute(sb1, 0, trainerId ?? modalOtId([...party, ...box, ...rip]))
+      : EMPTY_RANDOMIZER;
+  const encounterFlags =
+    speciesMode === "modern"
+      ? readEncounterFlagsAbsolute(sb1, 0)
+      : EMPTY_ENCOUNTER_FLAGS;
   const money = readMoney(sb1, sb2, speciesMode);
 
   const partyParsed = partyLiving.map((m) => toParsed(m, "party", speciesMode));
@@ -2105,6 +2289,8 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
     revive,
     money,
     safariZoneAreas,
+    randomizer,
+    encounterFlags,
     party: partyParsed,
     box: boxParsed,
     rip: ripParsed,

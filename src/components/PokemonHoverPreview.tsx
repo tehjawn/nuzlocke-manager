@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -33,7 +34,7 @@ type PokemonHoverPreviewProps = {
   | { speciesPreview: SpeciesPreview; pokemon?: never }
 );
 
-type PreviewPos = { top: number; left: number; above: boolean };
+type PreviewPos = { top: number; left: number };
 
 type HoverModel = {
   species: string;
@@ -93,6 +94,7 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
 
   const panelId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [open, setOpen] = useState(false);
@@ -118,9 +120,8 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
     const gap = 8;
     let left = rect.left + rect.width / 2 - width / 2;
     left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
-    const above = rect.top > 200;
-    const top = above ? rect.top - gap : rect.bottom + gap;
-    setPos({ top, left, above });
+    // Provisional — useLayoutEffect measures the panel and flips/clamps.
+    setPos({ top: rect.bottom + gap, left });
   }, [model.detail]);
 
   const scheduleShow = useCallback(() => {
@@ -154,9 +155,36 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
     function onScroll() {
       setOpen(false);
     }
+    function onResize() {
+      place();
+    }
     window.addEventListener("scroll", onScroll, true);
-    return () => window.removeEventListener("scroll", onScroll, true);
-  }, [open]);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [open, place]);
+
+  // Comp-tier detail makes the panel tall; a fixed "flip above at 200px"
+  // heuristic clips under the viewport (and modal chrome) on early list rows.
+  useLayoutEffect(() => {
+    if (!open || !pos) return;
+    const panel = panelRef.current;
+    const el = wrapRef.current;
+    if (!panel || !el) return;
+    const rect = el.getBoundingClientRect();
+    const height = panel.offsetHeight;
+    const gap = 8;
+    const margin = 8;
+    const spaceBelow = window.innerHeight - rect.bottom - gap;
+    const spaceAbove = rect.top - gap;
+    const preferAbove = spaceBelow < height && spaceAbove >= spaceBelow;
+    let top = preferAbove ? rect.top - gap - height : rect.bottom + gap;
+    top = Math.max(margin, Math.min(top, window.innerHeight - height - margin));
+    if (top === pos.top) return;
+    setPos({ top, left: pos.left });
+  }, [open, pos]);
 
   const nickname = model.nickname?.trim() ?? "";
   const label = nickname || model.species;
@@ -181,15 +209,15 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
       {open && pos && typeof document !== "undefined"
         ? createPortal(
             <div
+              ref={panelRef}
               id={panelId}
               role="tooltip"
-              className={`pokemon-hover-preview pointer-events-none fixed z-[80] rounded-lg border border-frame bg-surface p-2.5 shadow-lg ${
+              className={`pokemon-hover-preview pointer-events-none fixed z-[110] rounded-lg border border-frame bg-surface p-2.5 shadow-lg ${
                 model.detail ? "w-60" : "w-44"
               }`}
               style={{
                 top: pos.top,
                 left: pos.left,
-                transform: pos.above ? "translateY(-100%)" : undefined,
               }}
             >
               <div className="flex flex-col items-center gap-1.5 text-center">

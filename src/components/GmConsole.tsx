@@ -16,6 +16,7 @@ import {
 import { updateFeedbackStatusAction } from "@/app/actions/feedback";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { RandomizerSeedModal } from "@/components/RandomizerSeedModal";
 import { displayActionError } from "@/lib/action-error-display";
 import type { Challenge } from "@/lib/challenge-types";
 import {
@@ -142,6 +143,7 @@ export function GmConsole({
     text: string;
   } | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
+  const [seedParserOpen, setSeedParserOpen] = useState(false);
   const navLabelId = useId();
   const challengeId = challenge.id;
 
@@ -1146,6 +1148,20 @@ export function GmConsole({
 
               <Panel
                 kicker="06 · Ops"
+                title="Parse randomizer seed data"
+                description="Replay a trainer’s randomizer seed from their save: where a given Pokémon spawns in their run, what each route holds, and what the scripted encounters rolled — with their own catches and spent route slots marked."
+              >
+                <button
+                  type="button"
+                  className="gm-console__btn gm-console__btn--primary"
+                  onClick={() => setSeedParserOpen(true)}
+                >
+                  Open seed parser
+                </button>
+              </Panel>
+
+              <Panel
+                kicker="06 · Ops"
                 title="Reconstruct memorial history"
                 description="Backfill missing R.I.P. entries from each trainer’s retained board snapshots (wipe / import / reset). Existing graves stay; duplicates are skipped."
               >
@@ -1265,6 +1281,11 @@ export function GmConsole({
         </div>
       </div>
 
+      <RandomizerSeedModal
+        open={seedParserOpen}
+        onClose={() => setSeedParserOpen(false)}
+        slug={challenge.slug}
+      />
       {confirmDialog}
     </div>
   );

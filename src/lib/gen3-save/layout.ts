@@ -60,6 +60,37 @@ export const CREST_SB1_FLAGS = 0x1270;
 export const SB1_NUZLOCKE_ENCOUNTER_FLAGS = 0x3d94;
 export const SB1_NUZLOCKE_FLAGS_LEN = 9;
 /**
+ * `tx_Random_*` bitfields, packed immediately after `NuzlockeEncounterFlags[9]`
+ * (include/global.h). The first byte is Chaos … Abilities, LSB first — the five
+ * bits below are the ones that decide how a wild species is rerolled.
+ */
+export const SB1_TX_SETTINGS =
+  SB1_NUZLOCKE_ENCOUNTER_FLAGS + SB1_NUZLOCKE_FLAGS_LEN;
+export const TX_RANDOM_CHAOS_BIT = 0;
+export const TX_RANDOM_WILD_POKEMON_BIT = 1;
+export const TX_RANDOM_SIMILAR_BIT = 2;
+export const TX_RANDOM_MAP_BASED_BIT = 3;
+export const TX_RANDOM_INCLUDE_LEGENDARIES_BIT = 4;
+/**
+ * `tx_Random_Static`, as `[byte, bit]` counted from `SB1_TX_SETTINGS`.
+ *
+ * GCC packs consecutive `u8 x:n` fields into a byte and starts a new one when a
+ * field would straddle the boundary, so this follows the declaration order in
+ * include/global.h rather than a flat bit count:
+ *
+ *   byte 0: Chaos, WildPokemon, Similar, MapBased, IncludeLegendaries,
+ *           Type, TypeEffectiveness, Abilities
+ *   byte 1: Moves, Trainer, Evolutions, EvolutionMethods, EvoLimit:2,
+ *           Nuzlocke, NuzlockeHardcore
+ *   byte 2: OneTypeChallenge:5, PartyLimit:3
+ *   byte 3: NoItemPlayer, NoItemTrainer, PkmnCenter:2, LessEscapes,
+ *           BaseStatEqualizer:2  (LevelCap:2 spills — only 1 bit left)
+ *   byte 4: LevelCap:2, ExpMultiplier:2, Items, SpeciesClause, ShinyClause,
+ *           Nicknaming
+ *   byte 5: Mirror, Mirror_Thief, Static ← bit 2, NoEVs, …
+ */
+export const TX_RANDOM_STATIC = [5, 2] as const;
+/**
  * tx_Nuzlocke_RevivesUsed:4 — absolute offset (= nuz flags + 9 + 11).
  */
 export const SB1_REVIVES_USED = 0x3da8;
