@@ -32,7 +32,7 @@ export type FirstRunInput = {
 
 /**
  * Whether season workspace chrome should be backloaded (hide SeasonTabs rail,
- * pack feed, and dense header/Jump destinations).
+ * pack feed, and dense header/Search destinations).
  */
 export function isFirstRunChrome(input: FirstRunInput): boolean {
   // Preview mode: any signed-in session looks like day-one.

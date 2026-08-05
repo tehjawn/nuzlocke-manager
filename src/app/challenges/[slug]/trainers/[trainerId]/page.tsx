@@ -5,9 +5,9 @@ import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { TrainerBoard } from "@/components/TrainerBoard";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import {
-  SeasonJumpRegistrar,
-  challengeToJumpSeasonContext,
-} from "@/features/jump";
+  SeasonSearchRegistrar,
+  challengeToSearchSeasonContext,
+} from "@/features/search";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getTrainer } from "@/lib/challenges";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
@@ -169,8 +169,8 @@ export default async function TrainerBoardPage({ params }: PageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <SeasonJumpRegistrar
-        season={challengeToJumpSeasonContext(challenge, {
+      <SeasonSearchRegistrar
+        season={challengeToSearchSeasonContext(challenge, {
           showGm,
           myTrainerId,
           firstRun,

@@ -7,7 +7,7 @@ import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
 import { PokedexPanel } from "@/components/PokedexPanel";
 import { TeamPlannerView } from "@/components/TeamPlannerView";
-import { ToolIcon } from "@/components/tool-icons";
+import { ToolChip, TOOL_TONE_CHIP, toolsTone } from "@/components/tool-icons";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import {
@@ -106,10 +106,12 @@ function ToolsDirectory({
               className="pressable gba-frame group flex h-full flex-col overflow-hidden text-left transition-colors"
             >
               <span className="gba-frame-title relative z-[1] flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-semibold sm:text-base">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 text-[var(--on-chrome)]/80" aria-hidden>
-                    <ToolIcon id={entry.id} />
-                  </span>
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <ToolChip
+                    id={entry.id}
+                    className="h-8 w-8"
+                    iconClassName="h-4 w-4"
+                  />
                   <span className="min-w-0 truncate">{entry.title}</span>
                 </span>
                 <span
@@ -120,6 +122,11 @@ function ToolsDirectory({
                 </span>
               </span>
               <span className="relative z-[1] flex flex-1 flex-col p-4 sm:p-5">
+                <span
+                  className={`mb-2 inline-flex w-fit rounded border px-1.5 py-0.5 text-[11px] font-semibold tracking-tight ${TOOL_TONE_CHIP[entry.tone]}`}
+                >
+                  {entry.navLabel}
+                </span>
                 <span className="text-sm leading-relaxed text-muted">
                   {entry.blurb}
                 </span>
@@ -162,6 +169,7 @@ function ToolWorkspace({
 }) {
   const meta = TOOLS_CATALOG.find((t) => t.id === tool)!;
   const hubHref = toolsHubHref(slug);
+  const tone = toolsTone(tool);
 
   const blurb =
     tool === "pokedex"
@@ -185,7 +193,21 @@ function ToolWorkspace({
           All tools
         </Link>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">{meta.title}</h2>
+          <div className="flex items-center gap-3">
+            <ToolChip
+              id={tool}
+              className="h-9 w-9"
+              iconClassName="h-[1.125rem] w-[1.125rem]"
+            />
+            <div className="min-w-0">
+              <h2 className="text-2xl font-bold tracking-tight">{meta.title}</h2>
+              <p
+                className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[11px] font-semibold tracking-tight ${TOOL_TONE_CHIP[tone]}`}
+              >
+                {meta.navLabel}
+              </p>
+            </div>
+          </div>
           <p className="mt-2 text-base text-muted">{blurb}</p>
         </div>
       </header>

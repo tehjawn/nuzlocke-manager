@@ -3,9 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ChallengeShell } from "@/components/ChallengeShell";
 import {
-  SeasonJumpRegistrar,
-  challengeToJumpSeasonContext,
-} from "@/features/jump";
+  SeasonSearchRegistrar,
+  challengeToSearchSeasonContext,
+} from "@/features/search";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallengeShell } from "@/lib/challenges";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
@@ -94,8 +94,8 @@ export default async function SeasonWorkspaceLayout({
 
   return (
     <>
-      <SeasonJumpRegistrar
-        season={challengeToJumpSeasonContext(challenge, {
+      <SeasonSearchRegistrar
+        season={challengeToSearchSeasonContext(challenge, {
           showGm,
           myTrainerId,
           firstRun,

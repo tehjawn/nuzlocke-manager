@@ -14,41 +14,41 @@ import type Fuse from "fuse.js";
 import {
   buildGlobalResults,
   buildSeasonResults,
-  createJumpIndex,
-} from "@/features/jump/jump-index";
-import type { JumpResult, JumpSeasonContext } from "@/features/jump/jump-types";
+  createSearchIndex,
+} from "@/features/search/search-index";
+import type { SearchResult, SearchSeasonContext } from "@/features/search/search-types";
 
-type JumpContextValue = {
+type SearchContextValue = {
   open: boolean;
   setOpen: (open: boolean) => void;
   toggle: () => void;
-  results: JumpResult[];
-  index: Fuse<JumpResult>;
+  results: SearchResult[];
+  index: Fuse<SearchResult>;
   /** Route-level season overlay; returns an owner id for safe unregister. */
-  registerSeason: (ctx: JumpSeasonContext) => number;
+  registerSeason: (ctx: SearchSeasonContext) => number;
   /** Clear route overlay only if this owner still owns it. */
   unregisterSeason: (ownerId: number) => void;
 };
 
-const JumpContext = createContext<JumpContextValue | null>(null);
+const SearchContext = createContext<SearchContextValue | null>(null);
 
-export function JumpProvider({
+export function SearchProvider({
   children,
   defaultSeason = null,
 }: {
   children: ReactNode;
   /** Active season index for global pages (home, about, login, …). */
-  defaultSeason?: JumpSeasonContext | null;
+  defaultSeason?: SearchSeasonContext | null;
 }) {
   const [open, setOpen] = useState(false);
-  const [routeSeason, setRouteSeason] = useState<JumpSeasonContext | null>(
+  const [routeSeason, setRouteSeason] = useState<SearchSeasonContext | null>(
     null,
   );
   const generationRef = useRef(0);
   const activeOwnerRef = useRef<number | null>(null);
 
   // In-season pages overlay richer context (GM / my board); elsewhere fall back
-  // to the active season so Jump still finds trainers from the homepage.
+  // to the active season so Search still finds trainers from the homepage.
   const season = routeSeason ?? defaultSeason;
 
   const results = useMemo(() => {
@@ -57,9 +57,9 @@ export function JumpProvider({
     return [...buildSeasonResults(season), ...global];
   }, [season]);
 
-  const index = useMemo(() => createJumpIndex(results), [results]);
+  const index = useMemo(() => createSearchIndex(results), [results]);
 
-  const registerSeason = useCallback((ctx: JumpSeasonContext) => {
+  const registerSeason = useCallback((ctx: SearchSeasonContext) => {
     const ownerId = ++generationRef.current;
     activeOwnerRef.current = ownerId;
     setRouteSeason(ctx);
@@ -100,18 +100,18 @@ export function JumpProvider({
     [open, toggle, results, index, registerSeason, unregisterSeason],
   );
 
-  return <JumpContext.Provider value={value}>{children}</JumpContext.Provider>;
+  return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
 }
 
-export function useJump() {
-  const ctx = useContext(JumpContext);
+export function useSearch() {
+  const ctx = useContext(SearchContext);
   if (!ctx) {
-    throw new Error("useJump must be used within JumpProvider");
+    throw new Error("useSearch must be used within SearchProvider");
   }
   return ctx;
 }
 
 /** Safe for optional header triggers outside the provider during SSR edge cases. */
-export function useJumpOptional() {
-  return useContext(JumpContext);
+export function useSearchOptional() {
+  return useContext(SearchContext);
 }

@@ -11,7 +11,7 @@ const ROM_AUTHOR_URL = "https://github.com/chethtrayen/nzl_modern";
 const creditLinkClass =
   "font-medium text-ink underline-offset-2 hover:text-accent-deep hover:underline";
 
-/** Global secondary chrome: About, credit, sound, theme. Auth + Jump stay in the header. */
+/** Global secondary chrome: About, credit, sound, theme. Auth + Search stay in the header. */
 export function SiteFooter() {
   return (
     <footer className="mt-auto">

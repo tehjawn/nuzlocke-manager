@@ -3,9 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { GmConsole } from "@/components/GmConsole";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import {
-  SeasonJumpRegistrar,
-  challengeToJumpSeasonContext,
-} from "@/features/jump";
+  SeasonSearchRegistrar,
+  challengeToSearchSeasonContext,
+} from "@/features/search";
 import type { Challenge } from "@/lib/challenge-types";
 import { getChallenge } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
@@ -76,11 +76,11 @@ export default async function GmPage({ params, searchParams }: PageProps) {
     listFeedbackForGm(challenge.id),
     searchParams,
   ]);
-  const jumpSeason = challengeToJumpSeasonContext(challenge, { showGm: true });
+  const searchSeason = challengeToSearchSeasonContext(challenge, { showGm: true });
 
   return (
     <div className="gm-console-page flex flex-1 flex-col">
-      <SeasonJumpRegistrar season={jumpSeason} />
+      <SeasonSearchRegistrar season={searchSeason} />
       <SiteHeader
         challengeSlug={challenge.slug}
         challengeYear={challenge.year}

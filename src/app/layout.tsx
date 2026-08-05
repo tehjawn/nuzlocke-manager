@@ -6,10 +6,10 @@ import { NavigationProgress } from "@/components/NavigationProgress";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SnackbarHost } from "@/components/Snackbar";
 import { CelebrationHost } from "@/features/fx/CelebrationHost";
-import { JumpHost } from "@/features/jump/JumpHost";
-import { briefToJumpSeasonContext } from "@/features/jump/jump-season";
+import { SearchHost } from "@/features/search/SearchHost";
+import { briefToSearchSeasonContext } from "@/features/search/search-season";
 import { PokemonSpritePreferenceProvider } from "@/features/preferences/PokemonSpritePreferenceProvider";
-import { getDefaultJumpChallenge } from "@/lib/challenges";
+import { getDefaultSearchChallenge } from "@/lib/challenges";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -74,11 +74,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Cached season brief only — GM membership is request-time and is applied
-  // from SiteHeaderSession (Suspense) on global pages / SeasonJumpRegistrar
+  // from SiteHeaderSession (Suspense) on global pages / SeasonSearchRegistrar
   // on challenge pages.
-  const defaultChallenge = await getDefaultJumpChallenge();
+  const defaultChallenge = await getDefaultSearchChallenge();
   const defaultSeason = defaultChallenge
-    ? briefToJumpSeasonContext(defaultChallenge)
+    ? briefToSearchSeasonContext(defaultChallenge)
     : null;
 
   return (
@@ -96,12 +96,12 @@ export default async function RootLayout({
           <NavigationProgress />
         </Suspense>
         <PokemonSpritePreferenceProvider>
-          <JumpHost defaultSeason={defaultSeason}>
+          <SearchHost defaultSeason={defaultSeason}>
             {children}
             <SiteFooter />
             <SnackbarHost />
             <CelebrationHost />
-          </JumpHost>
+          </SearchHost>
         </PokemonSpritePreferenceProvider>
       </body>
     </html>

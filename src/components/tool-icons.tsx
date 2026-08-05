@@ -5,9 +5,47 @@
  * The hub/rail glyph for Tools itself is `ToolsIcon` in `nav-icons.tsx`.
  */
 
-import type { ToolsId } from "@/lib/tools-routes";
+import {
+  TOOLS_CATALOG,
+  type ToolsId,
+  type ToolsTone,
+} from "@/lib/tools-routes";
 
 type IconProps = { className?: string };
+
+/** Soft chip fill + ink from existing Crest Pulse tokens. */
+export const TOOL_TONE_CHIP: Record<ToolsTone, string> = {
+  accent: "border-accent/40 bg-accent/15 text-accent-deep",
+  "accent-2": "border-accent-2/50 bg-accent-2/20 text-ink",
+  interactive: "border-interactive/45 bg-interactive-soft text-interactive",
+  danger: "border-danger/40 bg-danger/12 text-danger",
+  discord: "border-discord/40 bg-discord/15 text-discord",
+  muted: "border-frame bg-surface-2 text-muted",
+};
+
+export function toolsTone(id: ToolsId): ToolsTone {
+  return TOOLS_CATALOG.find((t) => t.id === id)?.tone ?? "muted";
+}
+
+/** Color-coded icon tile used in nav menus and the Tools hub/workspace. */
+export function ToolChip({
+  id,
+  className = "",
+  iconClassName = "h-4 w-4",
+}: {
+  id: ToolsId;
+  className?: string;
+  iconClassName?: string;
+}) {
+  return (
+    <span
+      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${TOOL_TONE_CHIP[toolsTone(id)]} ${className}`}
+      aria-hidden
+    >
+      <ToolIcon id={id} className={iconClassName} />
+    </span>
+  );
+}
 
 const base = {
   viewBox: "0 0 24 24",

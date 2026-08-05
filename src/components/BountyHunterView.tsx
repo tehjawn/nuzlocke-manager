@@ -112,7 +112,7 @@ const STATUS_LEGEND: ReadonlyArray<{
 
 /**
  * Renders the **Pokémon Ownership** tool (`?tool=bounty` — the route id keeps
- * the old name so existing links and Jump ids stay valid).
+ * the old name so existing links and Search ids stay valid).
  *
  * Species-status tracker (owned vs. encountered vs. untouched, any trainer
  * or one) plus pack exclusives grouped by evolution line. "Open bounties"

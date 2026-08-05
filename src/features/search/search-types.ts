@@ -1,4 +1,4 @@
-export type JumpCategory =
+export type SearchCategory =
   | "navigate"
   | "trainer"
   | "pokemon"
@@ -7,12 +7,12 @@ export type JumpCategory =
   | "guide"
   | "action";
 
-export type JumpResult = {
+export type SearchResult = {
   id: string;
   title: string;
   subtitle: string;
   href?: string;
-  category: JumpCategory;
+  category: SearchCategory;
   /** Extra tokens for fuzzy matching (handles, species, routes, etc.). */
   tags: string[];
   /** Optional left icon URL (trainer avatar / Pokémon sprite). */
@@ -27,14 +27,14 @@ export type JumpResult = {
   action?: "toggle-theme";
 };
 
-export type JumpSeasonContext = {
+export type SearchSeasonContext = {
   slug: string;
   name: string;
   year: number;
   status: string;
   showGm: boolean;
   myTrainerId: string | null;
-  /** First-run funnel (#183): limit Jump to Setup + My Trainer. */
+  /** First-run funnel (#183): limit Search to Setup + My Trainer. */
   firstRun?: boolean;
   trainers: Array<{
     id: string;
@@ -66,8 +66,8 @@ export type JumpSeasonContext = {
   faqs: Array<{ id: string; question: string; answer: string }>;
 };
 
-export type JumpFuseHit = {
-  item: JumpResult;
+export type SearchFuseHit = {
+  item: SearchResult;
   matches?: ReadonlyArray<{
     key?: string;
     indices: ReadonlyArray<readonly [number, number]>;
