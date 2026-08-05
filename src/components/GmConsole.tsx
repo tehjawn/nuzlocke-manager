@@ -158,9 +158,10 @@ export function GmConsole({
       if (t.userId) acc.claimed += 1;
       if (t.mainSquadLocked) acc.locked += 1;
       acc.wipeTotal += t.wipeCount;
+      acc.completionTotal += t.completionCount ?? 0;
       return acc;
     },
-    { claimed: 0, locked: 0, wipeTotal: 0 },
+    { claimed: 0, locked: 0, wipeTotal: 0, completionTotal: 0 },
   );
   const boardHref = `/challenges/${challenge.slug}`;
   const openFeedbackCount = feedbackSubmissions.filter(
@@ -247,6 +248,12 @@ export function GmConsole({
                 <span className="gm-console__stat-label">Total wipes</span>
                 <span className="gm-console__stat-value">
                   {rosterStats.wipeTotal}
+                </span>
+              </div>
+              <div className="gm-console__stat">
+                <span className="gm-console__stat-label">Completions</span>
+                <span className="gm-console__stat-value">
+                  {rosterStats.completionTotal}
                 </span>
               </div>
             </div>
@@ -580,7 +587,11 @@ export function GmConsole({
                           </div>
                           <p className="gm-console__trainer-meta">
                             {t.realName ? `${t.realName} · ` : ""}
-                            {t.wipeCount} wipe{t.wipeCount === 1 ? "" : "s"}
+                            Run {t.activeRunNumber}
+                            {(t.completionCount ?? 0) > 0
+                              ? ` · ${t.completionCount} completion${t.completionCount === 1 ? "" : "s"}`
+                              : ""}
+                            {t.runEnded ? " · run finished" : ""}
                             {t.reviveUsed ? " · revive used" : ""}
                             {t.userId
                               ? ` · ${t.userId.slice(0, 8)}…`

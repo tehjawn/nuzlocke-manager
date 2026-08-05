@@ -56,6 +56,8 @@ type DbChallenge = {
     statusEmoji: string | null;
     reviveUsed: boolean;
     wipeCount: number;
+    completionCount?: number;
+    runEndedAt?: Date | null;
     money?: number | null;
     safariZoneAreas?: string[];
     safariZoneAreasReliable?: boolean;
@@ -229,6 +231,8 @@ export function mapDbTrainer(
     safariZoneAreasReliable: trainer.safariZoneAreasReliable,
     wipeCount: trainer.wipeCount ?? 0,
     activeRunNumber: (trainer.wipeCount ?? 0) + 1,
+    completionCount: trainer.completionCount ?? 0,
+    runEnded: trainer.runEndedAt != null,
     money: trainer.money ?? null,
     mainSquadLocked: trainer.mainSquadLocked,
     sortOrder: trainer.sortOrder,

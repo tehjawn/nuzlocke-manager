@@ -2,11 +2,14 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 type TxClient = Prisma.TransactionClient | PrismaClient;
 
+export type TrainerRunEndReasonName = "WIPE" | "GM_RESET" | "VICTORY";
+
 export type TrainerRunRow = {
   id: string;
   trainerId: string;
   runNumber: number;
   status: "ACTIVE" | "CLOSED";
+  endReason: TrainerRunEndReasonName | null;
   wipeCountAtStart: number;
   reviveUsed: boolean;
   earnedBadgeKeys: string[];
@@ -17,6 +20,7 @@ const runSelect = {
   trainerId: true,
   runNumber: true,
   status: true,
+  endReason: true,
   wipeCountAtStart: true,
   reviveUsed: true,
   earnedBadgeKeys: true,
@@ -49,7 +53,18 @@ export async function createInitialActiveRunInTx(
   return run;
 }
 
-/** Return the active run, creating run 1 if the trainer predates the ledger. */
+/** A run closed as VICTORY stays the trainer's current run until they start the next one. */
+export function isEndedRun(run: TrainerRunRow): boolean {
+  return run.status === "CLOSED" && run.endReason === "VICTORY";
+}
+
+/**
+ * Return the active run, creating run 1 if the trainer predates the ledger.
+ *
+ * A run closed as VICTORY is returned as-is: the board is frozen as the final
+ * team, and edits to it (a GM fixing a typo) belong to the run that was won,
+ * not to a resurrected or freshly minted attempt.
+ */
 export async function ensureActiveRunInTx(
   tx: TxClient,
   trainer: { id: string; wipeCount: number; activeRunId: string | null },
@@ -59,7 +74,9 @@ export async function ensureActiveRunInTx(
       where: { id: trainer.activeRunId },
       select: runSelect,
     });
-    if (existing && existing.status === "ACTIVE") return existing;
+    if (existing && (existing.status === "ACTIVE" || isEndedRun(existing))) {
+      return existing;
+    }
   }
 
   const expectedNumber = trainer.wipeCount + 1;
@@ -127,10 +144,73 @@ export type CloseRunArchive = {
  * Archives revive + badges onto the closed run; new run starts with a fresh revive.
  * Caller increments trainer.wipeCount to match closed-run count.
  */
+/**
+ * Close the active run without opening the next one (Championship finish).
+ *
+ * The trainer keeps pointing at the closed run: the live board is still the
+ * team that won, and `wipeCount` does not move until they start a new attempt —
+ * so `wipeCount + 1` keeps naming the run on screen.
+ */
+export async function closeActiveRunInTx(
+  tx: TxClient,
+  trainer: { id: string; wipeCount: number; activeRunId: string | null },
+  endReason: TrainerRunEndReasonName,
+  archive: CloseRunArchive = { reviveUsed: false, earnedBadgeKeys: [] },
+): Promise<TrainerRunRow> {
+  const active = await ensureActiveRunInTx(tx, trainer);
+  return tx.trainerRun.update({
+    where: { id: active.id },
+    data: {
+      status: "CLOSED",
+      endedAt: new Date(),
+      endReason,
+      reviveUsed: archive.reviveUsed,
+      earnedBadgeKeys: archive.earnedBadgeKeys,
+    },
+    select: runSelect,
+  });
+}
+
+/**
+ * Open the attempt after a run that was already closed (see `closeActiveRunInTx`).
+ * Moves `wipeCount` up to the closed run's number so the invariant
+ * `activeRunNumber === wipeCount + 1` holds again, and clears the ended marker.
+ * Caller clears the live board.
+ */
+export async function startNextRunAfterEndInTx(
+  tx: TxClient,
+  trainer: { id: string; wipeCount: number; activeRunId: string | null },
+): Promise<TrainerRunRow> {
+  const ended = await ensureActiveRunInTx(tx, trainer);
+  const nextNumber = ended.runNumber + 1;
+  const next = await tx.trainerRun.create({
+    data: {
+      trainerId: trainer.id,
+      runNumber: nextNumber,
+      status: "ACTIVE",
+      wipeCountAtStart: nextNumber - 1,
+      reviveUsed: false,
+      earnedBadgeKeys: [],
+      startedAt: new Date(),
+    },
+    select: runSelect,
+  });
+  await tx.trainerProfile.update({
+    where: { id: trainer.id },
+    data: {
+      activeRunId: next.id,
+      wipeCount: nextNumber - 1,
+      reviveUsed: false,
+      runEndedAt: null,
+    },
+  });
+  return next;
+}
+
 export async function closeActiveRunAndStartNextInTx(
   tx: TxClient,
   trainer: { id: string; wipeCount: number; activeRunId: string | null },
-  endReason: "WIPE" | "GM_RESET" = "WIPE",
+  endReason: TrainerRunEndReasonName = "WIPE",
   archive: CloseRunArchive = { reviveUsed: false, earnedBadgeKeys: [] },
 ): Promise<{ closed: TrainerRunRow; next: TrainerRunRow }> {
   const active = await ensureActiveRunInTx(tx, trainer);

@@ -50,6 +50,8 @@ enum ActivityType {
   RULE_UPDATED
   NOTE
   WIPE
+  RUN_COMPLETED
+  RUN_STARTED
 }
 
 /// Why a trainer board snapshot was taken (pre-mutation boundary).
@@ -57,6 +59,7 @@ enum BoardSnapshotTrigger {
   IMPORT
   WIPE
   GM_RESET
+  VICTORY
 }
 
 /// Lifecycle of a single Nuzlocke attempt on a trainer board.
@@ -68,6 +71,7 @@ enum TrainerRunStatus {
 enum TrainerRunEndReason {
   WIPE
   GM_RESET
+  VICTORY
 }
 
 enum FeedbackCategory {
@@ -249,7 +253,13 @@ model TrainerProfile {
   safariZoneAreas String[] @default([])
   safariZoneAreasReliable Boolean @default(false)
   /// Closed-run count this season; active run number is wipeCount + 1.
+  /// A run closed as VICTORY does not count here until the next run starts.
   wipeCount       Int      @default(0)
+  /// Runs finished by beating the Championship this season.
+  completionCount Int      @default(0)
+  /// Set while a run is closed but the next one has not started — the board is
+  /// frozen as the final team. Cleared by "Start a new run" / GM reset.
+  runEndedAt      DateTime?
   /// Last imported Pokédollars from Gen 3 save (null = unknown / never imported).
   money           Int?
   mainSquadLocked Boolean  @default(false)

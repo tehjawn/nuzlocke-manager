@@ -7,8 +7,9 @@ import {
   deletePokemonAction,
   gmResetTrainerBoardAction,
   importFromSaveAction,
-  recordWipeAction,
+  recordFinalTeamAction,
   relocatePokemonAction,
+  startNewRunAction,
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
@@ -16,6 +17,7 @@ import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
 import { BoardHistoryModal } from "@/components/BoardHistoryModal";
+import { EndRunModal } from "@/components/EndRunModal";
 import { Frame, frameCountTitle } from "@/components/Frame";
 import {
   EMPTY_POKEMON_FORM,
@@ -49,7 +51,12 @@ import type {
   PokemonEntry,
   TrainerProfile,
 } from "@/lib/challenge-types";
+import {
+  CHAMPIONSHIP_BADGE_KEYS,
+  hasBeatenChampionship,
+} from "@/lib/championship";
 import { copyText } from "@/lib/copy-text";
+import { EMERALD_BADGE_META } from "@/lib/emerald-badges";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
@@ -138,6 +145,36 @@ function ImportSaveIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Finish line — ending the attempt, however it ended. */
+function EndRunIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M3.5 14V2.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M3.5 3.25h9v6h-9"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.5 6.25h9M8 3.25v6"
+        stroke="currentColor"
+        strokeWidth="1.25"
       />
     </svg>
   );
@@ -559,8 +596,12 @@ export function TrainerBoard({
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [importSaveGlow, setImportSaveGlow] = useState(encourageImportSave);
 
+  const [endRunOpen, setEndRunOpen] = useState(false);
+  /** Optimistic "run is over" until the RSC refresh carries runEnded. */
+  const [runEndedOverride, setRunEndedOverride] = useState<boolean | null>(null);
+
   // Include slot/partyIndex — wipe/reset clear or rewrite the board.
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.mainSquadLocked}|${trainer.money ?? ""}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}|${encourageImportSave ? 1 : 0}`;
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.completionCount}|${trainer.runEnded}|${trainer.mainSquadLocked}|${trainer.money ?? ""}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}|${encourageImportSave ? 1 : 0}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
   /** Optimistic board after wipe/reset until RSC refresh lands. */
@@ -676,13 +717,18 @@ export function TrainerBoard({
       setReviveUsed(trainer.reviveUsed);
       setEarnedBadgeKeys(trainer.earnedBadgeKeys);
       setBoardOverride(null);
+      setRunEndedOverride(null);
     }
   }
 
   const boardPokemon = boardOverride?.pokemon ?? trainer.pokemon;
   const wipeCount = boardOverride?.wipeCount ?? trainer.wipeCount ?? 0;
+  const runNumber = wipeCount + 1;
+  const completionCount = trainer.completionCount ?? 0;
+  /** Run closed, next one not started: the board is a frozen final team. */
+  const runEnded = runEndedOverride ?? trainer.runEnded ?? false;
   const mainSquadLocked =
-    boardOverride?.mainSquadLocked ?? trainer.mainSquadLocked;
+    boardOverride?.mainSquadLocked ?? (runEnded || trainer.mainSquadLocked);
   const boardMoney =
     boardOverride != null ? boardOverride.money : trainer.money;
   const boardTrainer = {
@@ -692,6 +738,11 @@ export function TrainerBoard({
     mainSquadLocked,
     money: boardMoney,
   };
+
+  const championshipEarned = hasBeatenChampionship(earnedBadgeKeys);
+  const missingChampionshipLabels = CHAMPIONSHIP_BADGE_KEYS.filter(
+    (key) => !earnedBadgeKeys.includes(key),
+  ).map((key) => EMERALD_BADGE_META[key]?.badgeName ?? key);
 
   const main = pokemonInSlot(boardTrainer, "MAIN");
   const reserves = pokemonInSlot(boardTrainer, "RESERVE");
@@ -872,24 +923,64 @@ export function TrainerBoard({
     });
   }
 
-  async function recordWipe() {
+  async function markFinalTeam() {
+    const previousEnded = runEndedOverride;
+    const ok = await confirm({
+      title: "Lock in your final team?",
+      description: (
+        <>
+          Archives run {runNumber} as a Championship completion and freezes this
+          board as your tournament roster — every Pokémon stays exactly where it
+          is, nothing is cleared, and no wipe is recorded. Main Squad locks; a
+          GM can unlock it if you need a correction. When you’re ready to play
+          again, Start a new run clears the board for run {runNumber + 1}.
+        </>
+      ),
+      confirmLabel: "This is my final team",
+    });
+    if (!ok) return;
+
+    setRunEndedOverride(true);
+    setEndRunOpen(false);
+    setPokemonInspect(null);
+    setDetailsPokemon(null);
+    setSaveImportOpen(false);
+
+    wipeSave.markSaving("Recording completion…");
+    startTransition(async () => {
+      const result = await recordFinalTeamAction({ trainerId: trainer.id });
+      if (result.ok) {
+        wipeSave.markSaved(result.message ?? "Final team locked in");
+        router.refresh();
+      } else {
+        setRunEndedOverride(previousEnded);
+        wipeSave.markError(result.error);
+      }
+    });
+  }
+
+  async function startNewRun() {
     const nextWipe = wipeCount + 1;
     const previousBadges = earnedBadgeKeys;
     const previousBoard = boardOverride;
     const previousRevive = reviveUsed;
+    const previousEnded = runEndedOverride;
     const ok = await confirm({
-      title: "Restart this run?",
+      title: `Start run ${nextWipe + 1}?`,
       description: (
         <>
           Clears Main Squad, Reserves, Encountered, and R.I.P. on this board,
           resets badges and money to 0, and refreshes your revive token for the
           next run. Profile (name, avatar, backdrops, status) stays. Locked Main
-          Squad unlocks so you can rebuild. This counts as wipe #{nextWipe}. A
-          board history snapshot is saved first — prior partners live in History
-          / Memorial, not the live board.
+          Squad unlocks so you can rebuild.{" "}
+          {runEnded
+            ? "Your finished run is already archived — its final team stays in History and Memorial."
+            : `This closes run ${runNumber} as wipe #${nextWipe}.`}{" "}
+          A board history snapshot is saved first — prior partners live in
+          History / Memorial, not the live board.
         </>
       ),
-      confirmLabel: "Record wipe",
+      confirmLabel: `Start run ${nextWipe + 1}`,
       tone: "danger",
     });
     if (!ok) return;
@@ -899,25 +990,30 @@ export function TrainerBoard({
     setBoardOverride({
       kind: "wipe",
       wipeCount: nextWipe,
-      pokemon: memorialPokemonAfterWipe(boardPokemon, nextWipe),
+      // A finished run was already archived intact — don't flash its winning
+      // squad as R.I.P. while the refresh lands.
+      pokemon: runEnded ? [] : memorialPokemonAfterWipe(boardPokemon, nextWipe),
       mainSquadLocked: false,
       money: 0,
     });
+    setRunEndedOverride(false);
     setReviveUsed(false);
+    setEndRunOpen(false);
     setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
 
-    wipeSave.markSaving("Recording wipe…");
+    wipeSave.markSaving("Starting new run…");
     startTransition(async () => {
-      const result = await recordWipeAction({ trainerId: trainer.id });
+      const result = await startNewRunAction({ trainerId: trainer.id });
       if (result.ok) {
-        wipeSave.markSaved(result.message ?? "Wipe recorded");
+        wipeSave.markSaved(result.message ?? "New run started");
         router.refresh();
       } else {
         setBoardOverride(previousBoard);
         setEarnedBadgeKeys(previousBadges);
         setReviveUsed(previousRevive);
+        setRunEndedOverride(previousEnded);
         setBadgeEditorKey((k) => k + 1);
         wipeSave.markError(result.error);
       }
@@ -1235,14 +1331,23 @@ export function TrainerBoard({
         />
       ),
     },
-    wipe: {
+    // One control, two states: a run in progress ends here; a run that already
+    // ended only has one thing left to do.
+    endRun: {
       shortcut: canEdit && (
         <ShortcutActionTile
           disabled={pending || wiping}
-          icon={<WipeIcon className="h-4 w-4" />}
-          label="Record wipe"
+          icon={
+            runEnded ? (
+              <WipeIcon className="h-4 w-4" />
+            ) : (
+              <EndRunIcon className="h-4 w-4" />
+            )
+          }
+          label={runEnded ? "Start new run" : "End run"}
           onClick={() => {
-            void recordWipe();
+            if (runEnded) void startNewRun();
+            else setEndRunOpen(true);
           }}
           tone="danger"
         />
@@ -1252,12 +1357,13 @@ export function TrainerBoard({
           className={wipeButtonClass}
           disabled={pending || wiping}
           onClick={() => {
-            void recordWipe();
+            if (runEnded) void startNewRun();
+            else setEndRunOpen(true);
           }}
           type="button"
         >
-          <WipeIcon />
-          Record wipe
+          {runEnded ? <WipeIcon /> : <EndRunIcon />}
+          {runEnded ? "Start new run" : "End run"}
         </button>
       ),
     },
@@ -1630,7 +1736,9 @@ export function TrainerBoard({
               fallen={graveyard.length}
               badgesEarned={earnedBadgeKeys.length}
               badgesTotal={badges.length}
-              wipes={wipeCount}
+              runNumber={runNumber}
+              runEnded={runEnded}
+              completions={completionCount}
               money={boardTrainer.money}
               updatedAt={trainer.updatedAt}
             />
@@ -1762,6 +1870,28 @@ export function TrainerBoard({
       ) : null}
 
       {canEdit ? (
+        <EndRunModal
+          open={endRunOpen}
+          onClose={() => setEndRunOpen(false)}
+          runNumber={runNumber}
+          completionCount={completionCount}
+          championshipEarned={championshipEarned}
+          missingChampionshipLabels={missingChampionshipLabels}
+          pending={pending || wiping}
+          onImportSave={() => {
+            setEndRunOpen(false);
+            setSaveImportOpen(true);
+          }}
+          onMarkFinalTeam={() => {
+            void markFinalTeam();
+          }}
+          onStartNewRun={() => {
+            void startNewRun();
+          }}
+        />
+      ) : null}
+
+      {canEdit ? (
         <SaveImportModal
           open={saveImportOpen}
           pending={pending}
@@ -1829,8 +1959,9 @@ export function TrainerBoard({
         trainer={{
           id: boardTrainer.id,
           handle: boardTrainer.handle,
-          runNumber: boardTrainer.activeRunNumber,
+          runNumber: runNumber,
           wipeCount: boardTrainer.wipeCount,
+          completionCount,
           earnedBadgeKeys,
           pokemon: boardTrainer.pokemon,
         }}
