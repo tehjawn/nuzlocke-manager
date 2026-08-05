@@ -357,8 +357,13 @@ export const EMERALD_GUIDE: GuideDocument = {
         "**Roxanne** is a Rock specialist. Water, Grass, and Fighting hit hard; Fire / Electric / Flying often bounce.\n\nThe **Stone Badge** unlocks **Cut** in the overworld if you pick up that HM — Cut is **not** required for the main story.",
       locations: ["Rustboro City"],
       requiresSteps: ["rustboro-petalburg-woods"],
+      // Ace levels: highest Pokémon on each Modern Emerald Normal party.
+      // ME Normal keeps vanilla Emerald gym parties (Hard+ may buff). Source:
+      // vanilla Emerald trainer data / standard Emerald nuzlocke level caps.
       gymPrep: {
         leaderName: "Roxanne",
+        aceLevel: 15,
+        badgeKey: "gym-1",
         specialtyTypes: ["Rock"],
         recommendedTypes: ["Water", "Grass", "Fighting"],
         cautionTypes: ["Fire", "Electric", "Flying", "Normal"],
@@ -436,6 +441,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       requiresBadges: ["gym-1"],
       gymPrep: {
         leaderName: "Brawly",
+        aceLevel: 19,
+        badgeKey: "gym-2",
         specialtyTypes: ["Fighting"],
         recommendedTypes: ["Flying", "Psychic", "Ghost"],
         cautionTypes: ["Normal", "Rock", "Steel", "Ice", "Dark"],
@@ -512,6 +519,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       requiresSteps: ["mauville-slateport-museum"],
       gymPrep: {
         leaderName: "Wattson",
+        aceLevel: 24,
+        badgeKey: "gym-3",
         specialtyTypes: ["Electric"],
         recommendedTypes: ["Ground"],
         cautionTypes: ["Water", "Flying"],
@@ -631,6 +640,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       locations: ["Lavaridge Town"],
       gymPrep: {
         leaderName: "Flannery",
+        aceLevel: 29,
+        badgeKey: "gym-4",
         specialtyTypes: ["Fire"],
         recommendedTypes: ["Water", "Ground", "Rock"],
         cautionTypes: ["Grass", "Bug", "Steel", "Ice"],
@@ -653,6 +664,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       requiresBadges: ["gym-1", "gym-2", "gym-3", "gym-4"],
       gymPrep: {
         leaderName: "Norman",
+        aceLevel: 31,
+        badgeKey: "gym-5",
         specialtyTypes: ["Normal"],
         recommendedTypes: ["Fighting"],
         cautionTypes: ["Ghost"],
@@ -727,6 +740,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       requiresSteps: ["fortree-devon-scope"],
       gymPrep: {
         leaderName: "Winona",
+        aceLevel: 33,
+        badgeKey: "gym-6",
         specialtyTypes: ["Flying"],
         recommendedTypes: ["Electric", "Ice", "Rock"],
         cautionTypes: ["Ground", "Grass", "Fighting", "Bug"],
@@ -847,6 +862,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       requiresSteps: ["mossdeep-aqua-hideout"],
       gymPrep: {
         leaderName: "Tate & Liza",
+        aceLevel: 42,
+        badgeKey: "gym-7",
         specialtyTypes: ["Psychic"],
         recommendedTypes: ["Dark", "Ghost", "Bug"],
         cautionTypes: ["Fighting", "Poison"],
@@ -962,6 +979,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       requiresSteps: ["sootopolis-waterfall"],
       gymPrep: {
         leaderName: "Juan",
+        aceLevel: 46,
+        badgeKey: "gym-8",
         specialtyTypes: ["Water"],
         recommendedTypes: ["Electric", "Grass"],
         cautionTypes: ["Fire", "Rock", "Ground"],
@@ -1011,6 +1030,8 @@ export const EMERALD_GUIDE: GuideDocument = {
       requiresSteps: ["e4-victory-road"],
       gymPrep: {
         leaderName: "Wallace (Champion)",
+        aceLevel: 58,
+        badgeKey: "championship",
         specialtyTypes: ["Water"],
         recommendedTypes: ["Electric", "Grass"],
         cautionTypes: ["Fire", "Rock", "Ground"],

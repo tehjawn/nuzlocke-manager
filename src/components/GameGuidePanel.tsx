@@ -17,8 +17,11 @@ import {
   subscribeGuideCheckoffs,
 } from "@/features/guide/guide-checkoffs";
 import {
+  formatGymPrepLevelVerdict,
   guideChapterLabel,
   guideChapterNumber,
+  gymPrepCapRole,
+  levelVerdictForGymPrep,
   squadMatchesForGymPrep,
 } from "@/features/guide/guide-gym-prep";
 import {
@@ -244,19 +247,31 @@ function TypeRow({
 function GymPrepDetails({
   step,
   trainer,
+  earnedBadgeKeys,
 }: {
   step: ResolvedGuideStep;
   trainer: TrainerProfile | null;
+  earnedBadgeKeys: readonly string[];
 }) {
   const prep = step.gymPrep;
   if (!prep) return null;
 
   const matches = trainer ? squadMatchesForGymPrep(trainer.pokemon, prep) : [];
+  const capRole = gymPrepCapRole(prep.badgeKey, earnedBadgeKeys);
+  const levelLabel =
+    capRole === "cleared"
+      ? `Lv. ${prep.aceLevel} (cleared)`
+      : capRole === "live"
+        ? `Lv. ${prep.aceLevel} · live cap`
+        : `Lv. ${prep.aceLevel} · target`;
 
   return (
     <div className="mt-3 space-y-2 rounded-md border border-frame/70 bg-surface-2/60 p-3">
       <p className="text-xs font-semibold tracking-tight text-ink">
         Gym prep — {prep.leaderName}
+        <span className="ml-1.5 font-medium tabular-nums text-muted">
+          {levelLabel}
+        </span>
       </p>
       <TypeRow label="Specialty" types={prep.specialtyTypes} />
       <TypeRow label="Bring" types={prep.recommendedTypes} />
@@ -273,10 +288,20 @@ function GymPrepDetails({
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {matches.map(({ entry, typeMatches }) => {
                 const label = entry.nickname?.trim() || entry.species;
+                const verdict = levelVerdictForGymPrep(
+                  entry.level,
+                  prep.aceLevel,
+                );
                 return (
                   <li
                     key={entry.id}
-                    className="flex flex-col items-center gap-1.5 rounded-md border border-frame/50 bg-surface/70 px-2 py-2.5"
+                    className={`flex flex-col items-center gap-1.5 rounded-md border px-2 py-2.5 ${
+                      verdict?.state === "under"
+                        ? "border-danger/40 bg-danger/5"
+                        : verdict?.state === "over" && capRole === "live"
+                          ? "border-accent-2/45 bg-accent-2/10"
+                          : "border-frame/50 bg-surface/70"
+                    }`}
                   >
                     <PokemonSpriteImage
                       alt={label}
@@ -294,6 +319,26 @@ function GymPrepDetails({
                     <span className="text-[0.65rem] font-medium text-muted">
                       {entry.slot === "MAIN" ? "Main" : "Reserve"}
                     </span>
+                    {verdict ? (
+                      <span
+                        className={`text-[0.65rem] font-semibold tabular-nums ${
+                          verdict.state === "under"
+                            ? "text-danger"
+                            : verdict.state === "over" && capRole === "live"
+                              ? "text-accent-2"
+                              : "text-muted"
+                        }`}
+                        title={
+                          verdict.state === "over" && capRole === "live"
+                            ? "Above the house-rule cap for the next undefeated gym"
+                            : verdict.state === "under"
+                              ? "Below the recommended fight level"
+                              : undefined
+                        }
+                      >
+                        {formatGymPrepLevelVerdict(verdict, capRole)}
+                      </span>
+                    ) : null}
                     <span className="flex flex-wrap items-center justify-center gap-1">
                       {typeMatches.map(({ type, viaMove }) => (
                         <span
@@ -339,6 +384,7 @@ function StepRow({
   expanded,
   onToggleExpand,
   trainer,
+  earnedBadgeKeys,
 }: {
   step: ResolvedGuideStep;
   index: number;
@@ -347,6 +393,7 @@ function StepRow({
   expanded: boolean;
   onToggleExpand: () => void;
   trainer: TrainerProfile | null;
+  earnedBadgeKeys: readonly string[];
 }) {
   const done = step.completed;
   const hasDetails = Boolean(
@@ -423,7 +470,11 @@ function StepRow({
           {expanded ? (
             <div className="px-3.5 pb-3.5">
               {step.detail ? <MarkdownContent content={step.detail} /> : null}
-              <GymPrepDetails step={step} trainer={trainer} />
+              <GymPrepDetails
+                step={step}
+                trainer={trainer}
+                earnedBadgeKeys={earnedBadgeKeys}
+              />
               {step.hms?.length ? (
                 <p className="mt-2 text-xs text-muted">
                   HM: {step.hms.join(", ")}
@@ -487,6 +538,7 @@ function ChapterAccordion({
   onToggleExpand,
   onToggleStep,
   trainer,
+  earnedBadgeKeys,
 }: {
   chapter: GuideChapter;
   steps: ResolvedGuideStep[];
@@ -501,6 +553,7 @@ function ChapterAccordion({
   onToggleExpand: (stepId: string) => void;
   onToggleStep: (step: ResolvedGuideStep) => void;
   trainer: TrainerProfile | null;
+  earnedBadgeKeys: readonly string[];
 }) {
   const counts = countSteps(steps);
   const postGame = isPostGameChapter(chapter);
@@ -614,6 +667,7 @@ function ChapterAccordion({
                 onToggleExpand={() => onToggleExpand(step.id)}
                 onToggle={() => onToggleStep(step)}
                 trainer={trainer}
+                earnedBadgeKeys={earnedBadgeKeys}
               />
             ))}
           </ul>
@@ -847,6 +901,7 @@ export function GameGuidePanel({
                   onToggleExpand={() => toggleExpanded(step.id)}
                   onToggle={() => toggleStep(step)}
                   trainer={selectedTrainer}
+                  earnedBadgeKeys={selectedTrainer?.earnedBadgeKeys ?? []}
                 />
               ))}
             </ul>
@@ -878,6 +933,7 @@ export function GameGuidePanel({
                 onToggleExpand={toggleExpanded}
                 onToggleStep={toggleStep}
                 trainer={selectedTrainer}
+                earnedBadgeKeys={selectedTrainer?.earnedBadgeKeys ?? []}
               />
             ),
           )}
@@ -929,6 +985,7 @@ export function GameGuidePanel({
                     onToggleExpand={toggleExpanded}
                     onToggleStep={toggleStep}
                     trainer={selectedTrainer}
+                    earnedBadgeKeys={selectedTrainer?.earnedBadgeKeys ?? []}
                   />
                 ),
               )}

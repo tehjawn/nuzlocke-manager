@@ -13,6 +13,17 @@ export type GuideGymPrep = {
   /** Types that often struggle into this gym’s specialty. */
   cautionTypes?: PokemonType[];
   /**
+   * Highest level on the leader’s party — the recommended fight level and
+   * Trash Pack house-rule cap for the next undefeated gym. Modern Emerald
+   * Normal keeps vanilla Emerald gym / E4 parties; Hard+ may buff them.
+   */
+  aceLevel: number;
+  /**
+   * Soft badge key (`gym-1`…`championship`) for progress context — cleared
+   * vs live cap vs upcoming target.
+   */
+  badgeKey?: string;
+  /**
    * Short party note. Vanilla Emerald baseline — Modern Emerald Normal keeps
    * gym parties; Hard+ may differ.
    */
