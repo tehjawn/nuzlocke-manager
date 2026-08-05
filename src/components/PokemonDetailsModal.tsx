@@ -10,7 +10,7 @@ import { Modal } from "@/components/Modal";
 import { MoveLabel } from "@/components/MoveLabel";
 import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { StatGrid } from "@/components/StatGrid";
+import { StatGrid, type StatRankChip } from "@/components/StatGrid";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
@@ -27,10 +27,19 @@ import {
 } from "@/lib/iv-quality";
 import { recommendPlaystyle } from "@/lib/playstyle";
 import {
+  baseStatRanksFor,
+  statRankHint,
+  statRankToneClass,
+} from "@/lib/species-ranks";
+import {
+  baseStatsForSpecies,
+  bstOf,
   calcBattleStats,
   calcMaxBattleStats,
   isEmptySpread,
   natureEffectDescription,
+  STAT_KEYS,
+  STAT_LABELS,
 } from "@/lib/stats";
 import { toolsHref } from "@/lib/tools-routes";
 
@@ -153,6 +162,24 @@ export function PokemonDetailsModal({
     showCompetitiveDetails && (showIvs || catchTierHasChrome(catchTier))
       ? catchTierLabel(catchTier)
       : null;
+
+  // Species-level ranks (Pokédex) — separate from specimen CatchTier under the sprite.
+  const baseStats = baseStatsForSpecies(pokemon.pokedexId);
+  const bst = baseStats ? bstOf(baseStats) : null;
+  const ranks = baseStatRanksFor(pokemon.pokedexId);
+  const statRankChips = ranks
+    ? (Object.fromEntries(
+        STAT_KEYS.map((key) => {
+          const result = ranks.perStat[key];
+          const chip: StatRankChip = {
+            letter: result.rank,
+            toneClass: statRankToneClass(result.rank),
+            hint: statRankHint(STAT_LABELS[key], result, ranks.peerCount),
+          };
+          return [key, chip];
+        }),
+      ) as Partial<Record<(typeof STAT_KEYS)[number], StatRankChip>>)
+    : null;
 
   const subtitleParts: ReactNode[] = [];
   if (showSpeciesInSubtitle) subtitleParts.push(speciesLabel);
@@ -333,6 +360,46 @@ export function PokemonDetailsModal({
                 <p className="mt-1.5 text-[11px] leading-snug text-muted">
                   {playstyle.tip}
                 </p>
+              </div>
+            ) : null}
+
+            {baseStats ? (
+              <div>
+                <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-xs font-semibold tracking-tight text-muted">
+                    Species base stats
+                  </p>
+                  {bst != null ? (
+                    <p className="flex items-baseline gap-1.5 text-[11px] font-semibold tabular-nums text-muted">
+                      BST {bst}
+                      {ranks ? (
+                        <span
+                          className={`inline-flex items-center rounded border px-1 text-[10px] font-bold leading-tight ${statRankToneClass(ranks.bst.rank)}`}
+                          title={statRankHint(
+                            "BST",
+                            ranks.bst,
+                            ranks.peerCount,
+                          )}
+                        >
+                          {ranks.bst.rank}
+                        </span>
+                      ) : null}
+                    </p>
+                  ) : null}
+                </div>
+                <StatGrid compact ranks={statRankChips} spread={baseStats} />
+                {ranks ? (
+                  <>
+                    <p className="mt-1.5 text-[11px] leading-snug text-muted">
+                      {ranks.headline}
+                    </p>
+                    <p className="mt-1 text-[10px] leading-snug text-muted">
+                      Letters rank each base stat F→S against the{" "}
+                      {ranks.peerCount} Modern Emerald species — separate from
+                      this catch&apos;s quality.
+                    </p>
+                  </>
+                ) : null}
               </div>
             ) : null}
 
