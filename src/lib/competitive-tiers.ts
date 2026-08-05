@@ -84,8 +84,8 @@ let cachedBuckets: CompetitiveTierBucket[] | null = null;
 
 /**
  * Hand-curated Modern Emerald nuzlocke viability ladder. Every ranked species
- * carries a one-line reason — the letter alone is never enough. Uncurated ME
- * species land in an explicit Untiered bucket rather than a guessed letter.
+ * carries a one-line reason — the letter alone is never enough. Any ME species
+ * still missing an entry lands in Untiered rather than a guessed letter.
  */
 export function competitiveTierList(): CompetitiveTierBucket[] {
   if (cachedBuckets) return cachedBuckets;
