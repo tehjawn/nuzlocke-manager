@@ -26,6 +26,11 @@ type ToolsViewProps = {
   trainers: TrainerProfile[];
   /** Signed-in trainer id for this season (Type Tips / ownership). */
   myTrainerId?: string | null;
+  /**
+   * Trainers whose competitive fields survived redaction for this viewer.
+   * Showcase reads it to label withheld catch tiers honestly.
+   */
+  competitiveTrainerIds?: string[];
   signedIn?: boolean;
   /** When null, show the Tools directory hub. */
   initialTool?: ToolsId | null;
@@ -39,6 +44,7 @@ export function ToolsView({
   challengeName,
   trainers,
   myTrainerId = null,
+  competitiveTrainerIds,
   signedIn = false,
   initialTool = null,
   initialDexId = null,
@@ -63,6 +69,7 @@ export function ToolsView({
       tool={tool}
       trainers={trainers}
       myTrainerId={myTrainerId}
+      competitiveTrainerIds={competitiveTrainerIds}
       signedIn={signedIn}
       initialDexId={initialDexId}
       initialBountyMode={initialBountyMode}
@@ -130,6 +137,7 @@ function ToolWorkspace({
   tool,
   trainers,
   myTrainerId,
+  competitiveTrainerIds,
   signedIn,
   initialDexId,
   initialBountyMode,
@@ -140,6 +148,7 @@ function ToolWorkspace({
   tool: ToolsId;
   trainers: TrainerProfile[];
   myTrainerId?: string | null;
+  competitiveTrainerIds?: string[];
   signedIn?: boolean;
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
@@ -156,7 +165,7 @@ function ToolWorkspace({
         : tool === "guide"
           ? `What to do next in the story for ${challengeName}.`
           : tool === "bounty"
-            ? `Who owns, who's seen, and who's cornered a whole line in ${challengeName}.`
+            ? `Who owns, who's seen, who's cornered a whole line — and every Pokémon on a board — in ${challengeName}.`
             : `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${challengeName}.`;
 
   return (
@@ -208,6 +217,7 @@ function ToolWorkspace({
           slug={slug}
           trainers={trainers}
           myTrainerId={myTrainerId}
+          competitiveTrainerIds={competitiveTrainerIds}
           initialMode={initialBountyMode}
         />
       ) : null}

@@ -32,12 +32,16 @@ export const pokemonFullSelect = {
 } as const;
 
 /**
- * Tools page: identity + moves for Pokédex tips / bounty / planner.
- * Still omits nature / ability / heldItem / IVs / EVs (Flight weight).
+ * Tools page: identity + moves for Pokédex tips / bounty / planner, plus the
+ * competitive columns Pokémon Ownership's Showcase needs — catch tier is
+ * IV/EV-derived, so a tier is uncomputable without them.
+ *
+ * Flight weight is still bounded: `redactTrainerCompetitiveDetails` runs at the
+ * page boundary, so the payload only carries spreads the viewer already owns
+ * (or has the GM lens for). Everyone else's arrive nulled, exactly as before.
  */
 export const pokemonToolsSelect = {
-  ...pokemonSummarySelect,
-  moves: true,
+  ...pokemonFullSelect,
 } as const;
 
 export const trainerUserSelect = {

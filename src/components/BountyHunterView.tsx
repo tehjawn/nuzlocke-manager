@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { SpecimenShowcase } from "@/components/SpecimenShowcase";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import {
   exclusiveOwnedSpecies,
@@ -17,6 +18,10 @@ import {
   type SpeciesOwnershipStatus,
 } from "@/lib/encounter-stats";
 import {
+  seasonSpecimenBoard,
+  type SpecimenSort,
+} from "@/lib/specimen-board";
+import {
   parseBountyMode,
   toolsHref,
   type BountyMode,
@@ -26,18 +31,54 @@ type BountyHunterViewProps = {
   slug: string;
   trainers: TrainerProfile[];
   myTrainerId?: string | null;
+  /** Trainers whose IVs survived redaction — Showcase grades only these. */
+  competitiveTrainerIds?: string[];
   initialMode?: BountyMode | null;
 };
 
 type StatusFilter = "all" | SpeciesOwnershipStatus;
 type ExclusiveLineFilter = "all" | "whole" | "split" | "partial";
-type SortMode = "dex" | "rarity" | "alpha";
+/**
+ * One control drives three boards, so the union is the superset. `MODE_SORTS`
+ * below is the source of truth for which options a mode actually offers, and
+ * `selectMode` resets anything the next mode can't honour.
+ */
+type SortMode = "dex" | "rarity" | "alpha" | SpecimenSort;
 type BoardRow = { entry: SpeciesOwnershipEntry; status: SpeciesOwnershipStatus };
 
 const MODES: ReadonlyArray<{ id: BountyMode; label: string }> = [
   { id: "tracker", label: "Species tracker" },
   { id: "exclusives", label: "Exclusives" },
+  { id: "showcase", label: "Showcase" },
 ];
+
+const MODE_SORTS: Record<
+  BountyMode,
+  ReadonlyArray<{ id: SortMode; label: string }>
+> = {
+  tracker: [
+    { id: "dex", label: "Dex order" },
+    { id: "rarity", label: "Rarity" },
+    { id: "alpha", label: "A–Z" },
+  ],
+  exclusives: [
+    { id: "dex", label: "Dex order" },
+    { id: "alpha", label: "A–Z" },
+  ],
+  showcase: [
+    { id: "dex", label: "Dex order" },
+    { id: "level", label: "Level (high → low)" },
+    { id: "catch", label: "Catch tier (best first)" },
+    { id: "bst", label: "BST tier (best first)" },
+    { id: "trainer", label: "Trainer" },
+    { id: "alpha", label: "A–Z" },
+  ],
+};
+
+/** Showcase reads the same `dex` / `alpha` ids the other modes use. */
+function specimenSortFor(sort: SortMode): SpecimenSort {
+  return sort === "rarity" ? "dex" : sort;
+}
 
 const STATUS_FILTERS: ReadonlyArray<{ id: StatusFilter; label: string }> = [
   { id: "all", label: "All" },
@@ -75,11 +116,15 @@ const STATUS_LEGEND: ReadonlyArray<{
  * or one) plus pack exclusives grouped by evolution line. "Open bounties"
  * and "My gaps" from the old 3-mode UI are now the tracker filtered by
  * status + trainer instead of separate tabs.
+ *
+ * Showcase drops an altitude: the first two modes answer "which *species* does
+ * the pack have?", Showcase answers "which *actual Pokémon* exist right now?"
  */
 export function BountyHunterView({
   slug,
   trainers,
   myTrainerId = null,
+  competitiveTrainerIds,
   initialMode = "tracker",
 }: BountyHunterViewProps) {
   const [mode, setMode] = useState<BountyMode>(parseBountyMode(initialMode));
@@ -91,11 +136,16 @@ export function BountyHunterView({
 
   const board = useMemo(() => speciesOwnershipBoard(trainers), [trainers]);
   const exclusives = useMemo(() => exclusiveOwnedSpecies(trainers), [trainers]);
+  const specimens = useMemo(
+    () => seasonSpecimenBoard(trainers, { competitiveTrainerIds }),
+    [trainers, competitiveTrainerIds],
+  );
 
   function selectMode(next: BountyMode) {
     setMode(next);
-    // Rarity is tracker-only — clear it before the option disappears.
-    if (next !== "tracker" && sort === "rarity") setSort("dex");
+    // Modes don't share a sort vocabulary — drop anything the next one can't
+    // honour rather than leaving a select pointing at a missing <option>.
+    if (!MODE_SORTS[next].some((option) => option.id === sort)) setSort("dex");
     // Keep the shareable ?mode= URL without a tools-route RSC refetch.
     const url = new URL(window.location.href);
     url.searchParams.set("tool", "bounty");
@@ -229,7 +279,11 @@ export function BountyHunterView({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Species, dex #…"
+            placeholder={
+              mode === "showcase"
+                ? "Species, nickname, trainer, route…"
+                : "Species, dex #…"
+            }
             className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
           />
         </label>
@@ -256,9 +310,11 @@ export function BountyHunterView({
             onChange={(event) => setSort(event.target.value as SortMode)}
             className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
           >
-            <option value="dex">Dex order</option>
-            {mode === "tracker" ? <option value="rarity">Rarity</option> : null}
-            <option value="alpha">A–Z</option>
+            {MODE_SORTS[mode].map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -301,6 +357,16 @@ export function BountyHunterView({
             }
           />
         </>
+      ) : mode === "showcase" ? (
+        <SpecimenShowcase
+          myTrainerId={myTrainerId}
+          onScopeToMyTrainer={() => setViewerId(myTrainerId ?? "")}
+          query={q}
+          rows={specimens}
+          slug={slug}
+          sort={specimenSortFor(sort)}
+          trainerId={viewerId || null}
+        />
       ) : (
         <>
           <div
