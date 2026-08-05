@@ -15,6 +15,7 @@ import {
   speciesOwnershipBoard,
   type SpeciesOwnershipStatus,
 } from "@/lib/encounter-stats";
+import { isLegendaryNationalId } from "@/lib/legendary-species";
 import { POKEMON_TYPES, type PokemonType } from "@/lib/pokemon-types";
 import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 import { evolutionsFrom } from "@/lib/species-evolutions";
@@ -60,6 +61,7 @@ export function PokedexTierList({
   const [finalOnly, setFinalOnly] = useState(false);
   const [ownership, setOwnership] = useState<OwnershipFilter>("all");
   const [hideUntiered, setHideUntiered] = useState(ladder === "competitive");
+  const [hideLegendaries, setHideLegendaries] = useState(true);
 
   const boardById = useMemo(() => {
     const map: BoardMap = new Map();
@@ -88,11 +90,13 @@ export function PokedexTierList({
       <CompetitiveLadder
         boardById={boardById}
         filterOpts={filterOpts}
+        hideLegendaries={hideLegendaries}
         hideUntiered={hideUntiered}
         myTrainerId={myTrainerId}
         onSelectSpecies={onSelectSpecies}
         ownership={ownership}
         setFinalOnly={setFinalOnly}
+        setHideLegendaries={setHideLegendaries}
         setHideUntiered={setHideUntiered}
         setOwnership={setOwnership}
         setType={setType}
@@ -226,11 +230,13 @@ function BstLadder({
 function CompetitiveLadder({
   boardById,
   filterOpts,
+  hideLegendaries,
   hideUntiered,
   myTrainerId,
   onSelectSpecies,
   ownership,
   setFinalOnly,
+  setHideLegendaries,
   setHideUntiered,
   setOwnership,
   setType,
@@ -239,11 +245,13 @@ function CompetitiveLadder({
 }: {
   boardById: BoardMap;
   filterOpts: FilterOpts;
+  hideLegendaries: boolean;
   hideUntiered: boolean;
   myTrainerId: string | null;
   onSelectSpecies: (pokedexId: number) => void;
   ownership: OwnershipFilter;
   setFinalOnly: (v: boolean) => void;
+  setHideLegendaries: (v: boolean) => void;
   setHideUntiered: (v: boolean) => void;
   setOwnership: (v: OwnershipFilter) => void;
   setType: (v: PokemonType | null) => void;
@@ -258,12 +266,15 @@ function CompetitiveLadder({
       .filter((bucket) => !(hideUntiered && bucket.key === "untiered"))
       .map((bucket) => ({
         ...bucket,
-        entries: bucket.entries.filter((entry) =>
-          matchesFilters(entry.pokedexId, filterOpts),
-        ),
+        entries: bucket.entries.filter((entry) => {
+          if (hideLegendaries && isLegendaryNationalId(entry.pokedexId)) {
+            return false;
+          }
+          return matchesFilters(entry.pokedexId, filterOpts);
+        }),
       }))
       .filter((bucket) => bucket.entries.length > 0);
-  }, [tiers, filterOpts, hideUntiered]);
+  }, [tiers, filterOpts, hideUntiered, hideLegendaries]);
 
   const curatedTotal = tiers
     .filter((b) => b.key !== "untiered")
@@ -272,6 +283,11 @@ function CompetitiveLadder({
     (sum, bucket) => sum + bucket.entries.length,
     0,
   );
+
+  const filterNotes = [
+    hideUntiered ? "untiered hidden" : null,
+    hideLegendaries ? "legendaries hidden" : null,
+  ].filter(Boolean);
 
   return (
     <div className="space-y-4">
@@ -292,21 +308,32 @@ function CompetitiveLadder({
         setType={setType}
         type={type}
         trailing={
-          <label className="flex items-center gap-2 self-end pb-2 text-sm font-semibold text-ink">
-            <input
-              type="checkbox"
-              className="size-4 rounded border-frame"
-              checked={hideUntiered}
-              onChange={(event) => setHideUntiered(event.target.checked)}
-            />
-            Hide untiered
-          </label>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 self-end pb-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-frame"
+                checked={hideLegendaries}
+                onChange={(event) => setHideLegendaries(event.target.checked)}
+              />
+              Hide legendaries
+            </label>
+            <label className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-frame"
+                checked={hideUntiered}
+                onChange={(event) => setHideUntiered(event.target.checked)}
+              />
+              Hide untiered
+            </label>
+          </div>
         }
       />
 
       <p className="text-xs text-muted">
         Showing {visibleCount} species
-        {hideUntiered ? " (untiered hidden)" : ""}
+        {filterNotes.length > 0 ? ` (${filterNotes.join(" · ")})` : ""}
       </p>
 
       {filteredBuckets.length === 0 ? (

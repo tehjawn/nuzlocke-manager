@@ -1,13 +1,105 @@
 {
   "meta": {
     "label": "Modern Emerald nuzlocke viability",
-    "blurb": "Curated for Trash Pack\u2013style Modern Emerald runs (level caps, permadeath). Letters are opinionated starting points \u2014 the reason is the point. Not Smogon, not raw BST. Species without an entry sit in Untiered until curated.",
+    "blurb": "Curated for Trash Pack–style Modern Emerald runs (level caps, permadeath). Letters are opinionated starting points — the reason is the point. Not Smogon, not raw BST. Hide legendaries stays on by default.",
     "updated": "2026-08-05"
   },
   "byId": {
+    "1": {
+      "tier": "D",
+      "reason": "Bulbasaur is evolution bait — Venusaur is the Pokémon."
+    },
+    "2": {
+      "tier": "C",
+      "reason": "Ivysaur bridges early Grass answers; still waiting on Venusaur's toolkit."
+    },
+    "3": {
+      "tier": "B",
+      "reason": "Venusaur with Sleep Powder + Giga Drain; answers Water/Ground, hates Ice/Fire/Flying."
+    },
+    "4": {
+      "tier": "D",
+      "reason": "Charmander is frail Fire bait until Charmeleon/Charizard come online."
+    },
+    "5": {
+      "tier": "C",
+      "reason": "Charmeleon fights midgame Fires; Charizard is the actual ceiling."
+    },
+    "6": {
+      "tier": "A",
+      "reason": "Charizard with Drought/ME Fire/Flying pressure — answers Grass/Bug, hates Rock/Water/Electric."
+    },
+    "7": {
+      "tier": "D",
+      "reason": "Squirtle is early Water filler — Blastoise carries the line."
+    },
+    "8": {
+      "tier": "C",
+      "reason": "Wartortle is a serviceable mid Water; Blastoise is why you kept it."
+    },
     "9": {
       "tier": "A",
-      "reason": "Bulky Water/Ice toolkit with reliable STAB \u2014 late arrival hurts, but it walls common late-game special attackers."
+      "reason": "Bulky Water/Ice toolkit with reliable STAB — late arrival hurts, but it walls common late-game special attackers."
+    },
+    "10": {
+      "tier": "F",
+      "reason": "Unevolved Bug fodder — replace at first real encounter."
+    },
+    "11": {
+      "tier": "F",
+      "reason": "Metapod does nothing — evolve or box."
+    },
+    "12": {
+      "tier": "C",
+      "reason": "Sleep Powder / Compound Eyes utility early — softens Roxanne-era fights, falls off hard midgame."
+    },
+    "13": {
+      "tier": "F",
+      "reason": "Unevolved Bug fodder — no damage, no bulk, no future."
+    },
+    "14": {
+      "tier": "F",
+      "reason": "Kakuna does nothing — evolve or box."
+    },
+    "15": {
+      "tier": "C",
+      "reason": "Fast Bug/Poison with Twineedle chip early; glass and outclassed once real Poison answers arrive."
+    },
+    "16": {
+      "tier": "D",
+      "reason": "Early Normal/Flying filler; evolves into a middling Pidgeot that still loses key MUs."
+    },
+    "17": {
+      "tier": "D",
+      "reason": "Pidgeotto is a middling bird mid; Pidgeot still loses key MUs."
+    },
+    "18": {
+      "tier": "C",
+      "reason": "Normal/Flying taxi with Gust/Aerial Ace — usable early, loses key MUs past Wattson."
+    },
+    "19": {
+      "tier": "D",
+      "reason": "Early Normal rodent — fine for route 1, liability past the first gym."
+    },
+    "20": {
+      "tier": "D",
+      "reason": "Normal rodent final — Hyper Fang filler that dies to any Fighting or rock slide."
+    },
+    "21": {
+      "tier": "D",
+      "reason": "Spearow is early Flying filler until Fearow."
+    },
+    "22": {
+      "tier": "C",
+      "reason": "Flying/Normal with Drill Peck pressure; fine route bird, no late-game ceiling."
+    },
+    "23": {
+      "tier": "D",
+      "reason": "Ekans is early Poison bait; Arbok's Intimidate is the point."
+    },
+    "24": {
+      "tier": "C",
+      "reason": "Poison with Intimidate pivot; answers Grass early, hates Ground/Psychic forever."
     },
     "25": {
       "tier": "C",
@@ -15,31 +107,419 @@
     },
     "26": {
       "tier": "B",
-      "reason": "Fast Electric revenge killer with Thunderbolt access \u2014 glass, but answers Water walls cleanly."
+      "reason": "Fast Electric revenge killer with Thunderbolt access — glass, but answers Water walls cleanly."
+    },
+    "27": {
+      "tier": "D",
+      "reason": "Sandshrew is early Ground filler; Sandslash answers Wattson."
+    },
+    "28": {
+      "tier": "B",
+      "reason": "Ground with sand-adjacent bulk and Dig/EQ; answers Wattson locally, Ice/Water ends it."
+    },
+    "29": {
+      "tier": "D",
+      "reason": "Nidoran♀ is evolution bait — Nidoqueen is the wall."
+    },
+    "30": {
+      "tier": "C",
+      "reason": "Nidorina is a serviceable Poison mid; Moon Stone unlocks the real mon."
+    },
+    "31": {
+      "tier": "B",
+      "reason": "Nidoqueen with Earth Power + toxic spikes utility; answers Electric, hates Ground/Psychic/Water."
+    },
+    "32": {
+      "tier": "D",
+      "reason": "Nidoran♂ is evolution bait — Nidoking is the breaker."
+    },
+    "33": {
+      "tier": "C",
+      "reason": "Nidorino hits harder mid; Nidoking is the coverage monster."
+    },
+    "34": {
+      "tier": "B",
+      "reason": "Nidoking with Sheer Force special sets; answers Electric, same 4x Ground fear."
+    },
+    "35": {
+      "tier": "C",
+      "reason": "Clefairy is a soft Fairy cleric mid; Clefable is the Softboiled form."
+    },
+    "36": {
+      "tier": "B",
+      "reason": "Fairy/Normal (ME) cleric with Softboiled/Moonblast paths — glue, not a primary breaker."
+    },
+    "37": {
+      "tier": "D",
+      "reason": "Vulpix is frail Fire bait until Ninetales."
+    },
+    "38": {
+      "tier": "B",
+      "reason": "Fire special with Nasty Plot / Flamethrower; answers Grass/Steel, needs Speed support."
+    },
+    "39": {
+      "tier": "D",
+      "reason": "Jigglypuff is early Normal status bait; Wigglytuff still lacks damage."
+    },
+    "40": {
+      "tier": "C",
+      "reason": "Normal/Fairy wall with status; Charm pivot early, zero late damage."
+    },
+    "41": {
+      "tier": "D",
+      "reason": "Zubat is early Poison/Flying fodder — Crobat is the line."
+    },
+    "42": {
+      "tier": "C",
+      "reason": "Golbat is a usable mid flyer; friendship unlocks Crobat's Speed."
+    },
+    "43": {
+      "tier": "D",
+      "reason": "Oddish is early Grass/Poison bait — Vileplume/Bellossom matter."
+    },
+    "44": {
+      "tier": "C",
+      "reason": "Gloom bridges Grass answers; stone evolution is the payoff."
+    },
+    "45": {
+      "tier": "B",
+      "reason": "Vileplume with Sleep Powder + Strong STAB; answers Water, hates Fire/Ice/Flying."
+    },
+    "46": {
+      "tier": "D",
+      "reason": "Paras is Spore bait with awful typing — Parasect barely improves it."
+    },
+    "47": {
+      "tier": "D",
+      "reason": "Bug/Grass with Spore niche — 4x Fire/Flying/Ice/Poison means it rarely survives the fight."
+    },
+    "48": {
+      "tier": "D",
+      "reason": "Venonat is early Bug filler; Venomoth is situational at best."
+    },
+    "49": {
+      "tier": "C",
+      "reason": "Bug/Poison with Sleep Powder + Quiver Dance paths; situational special sweeper."
+    },
+    "50": {
+      "tier": "D",
+      "reason": "Diglett is frail Ground Speed bait until Dugtrio."
+    },
+    "51": {
+      "tier": "B",
+      "reason": "Ground Speed demon with Arena Trap options; answers Electric, folds to Water/Ice."
+    },
+    "52": {
+      "tier": "D",
+      "reason": "Meowth is early Normal filler; Persian is still a temporary pivot."
+    },
+    "53": {
+      "tier": "C",
+      "reason": "Normal with Fake Out / Technician chip; early Speed control, replaced by real pivots."
+    },
+    "54": {
+      "tier": "D",
+      "reason": "Psyduck is confused Water bait; Golduck is the Calm Mind form."
+    },
+    "55": {
+      "tier": "B",
+      "reason": "Water with Cloud Nine / Calm Mind; answers weather cheese and special midgames cleanly."
+    },
+    "56": {
+      "tier": "D",
+      "reason": "Mankey is early Fighting bait; Primeape/Annihilape carry."
+    },
+    "57": {
+      "tier": "C",
+      "reason": "Primeape hits hard mid; ME Annihilape is the actual late form."
+    },
+    "58": {
+      "tier": "C",
+      "reason": "Growlithe is a solid early Fire/Intimidate pivot; Arcanine is the payoff."
     },
     "59": {
       "tier": "A",
       "reason": "Huge Attack + Intimidate pivot; Fire coverage punches holes in Grass/Steel and Steel/Fairy checks."
     },
+    "60": {
+      "tier": "D",
+      "reason": "Poliwag is early Water bait — Poliwrath/Politoed matter."
+    },
+    "61": {
+      "tier": "C",
+      "reason": "Poliwhirl is a usable Water mid; stone/trade unlocks the finals."
+    },
+    "62": {
+      "tier": "B",
+      "reason": "Poliwrath with Water/Fighting STAB; answers Norman/Rock, hates Electric/Flying/Psychic."
+    },
+    "63": {
+      "tier": "D",
+      "reason": "Abra teleports and dies — Kadabra/Alakazam are the line."
+    },
+    "64": {
+      "tier": "C",
+      "reason": "Kadabra special-nukes mid; trade into Alakazam for the real Speed."
+    },
     "65": {
       "tier": "A",
       "reason": "Psychic nuke with Calm Mind + Recover options; struggles into Dark/Bug but carries special midgames."
+    },
+    "66": {
+      "tier": "D",
+      "reason": "Machop is early Fighting bait; Machamp is the Norman answer."
+    },
+    "67": {
+      "tier": "C",
+      "reason": "Machoke hits hard mid; trade into Machamp for the ceiling."
     },
     "68": {
       "tier": "B",
       "reason": "Raw Fighting power for Norman and late Dark types, but slow and hated by Flying/Psychic."
     },
+    "69": {
+      "tier": "D",
+      "reason": "Bellsprout is early Grass bait; Victreebel is Growth payoff."
+    },
+    "70": {
+      "tier": "C",
+      "reason": "Weepinbell bridges Grass mid; Leaf Stone unlocks Victreebel."
+    },
+    "71": {
+      "tier": "B",
+      "reason": "Grass/Poison with Growth + Leaf Blade / Sludge Bomb; answers Water/Ground gyms hard."
+    },
+    "72": {
+      "tier": "C",
+      "reason": "Tentacool is a serviceable early Water/Poison; Tentacruel is League glue."
+    },
+    "73": {
+      "tier": "A",
+      "reason": "Water/Poison special wall with Rapid Spin / Toxic Spikes tools — Juan/Wallace glue."
+    },
+    "74": {
+      "tier": "D",
+      "reason": "Geodude is early Rock/Ground bait; Golem needs the trade."
+    },
+    "75": {
+      "tier": "C",
+      "reason": "Graveler walls mid Rock; trade into Golem for Explosion ceiling."
+    },
     "76": {
       "tier": "C",
-      "reason": "Rock/Ground wall with Explosion panic button \u2014 useful locally, outsped and walled too often."
+      "reason": "Rock/Ground wall with Explosion panic button — useful locally, outsped and walled too often."
+    },
+    "77": {
+      "tier": "D",
+      "reason": "Ponyta is frail Fire Speed bait until Rapidash."
+    },
+    "78": {
+      "tier": "B",
+      "reason": "Fire with Speed + Flare Blitz pressure; answers Grass/Bug, hates Water/Rock."
+    },
+    "79": {
+      "tier": "C",
+      "reason": "Slowpoke is bulky Water/Psychic bait; Slowbro/Slowking are the set."
     },
     "80": {
       "tier": "B",
       "reason": "Bulky Water/Psychic pivot with Calm Mind; Thunder Wave + Surf keeps midgame fights honest."
     },
+    "81": {
+      "tier": "C",
+      "reason": "Magnemite is evolution bait; the tier value is Magneton/Magnezone."
+    },
+    "82": {
+      "tier": "A",
+      "reason": "Electric/Steel Magneton — Flash Cannon + Thunderbolt deletes Water/Fairy before Magnezone."
+    },
+    "83": {
+      "tier": "D",
+      "reason": "Normal/Flying gimmick — one strong cut, no bulk, no second job."
+    },
+    "84": {
+      "tier": "D",
+      "reason": "Doduo is early Normal/Flying bait; Dodrio still mid."
+    },
+    "85": {
+      "tier": "C",
+      "reason": "Normal/Flying with Drill Peck; early physical flyer that loses to Electric/Rock forever."
+    },
+    "86": {
+      "tier": "D",
+      "reason": "Seel is early Water/Ice bait; Dewgong remains situational."
+    },
+    "87": {
+      "tier": "C",
+      "reason": "Water/Ice wall; answers Dragon/Flying locally, Fighting/Electric/Rock pile on."
+    },
+    "88": {
+      "tier": "D",
+      "reason": "Grimer is early Poison stall bait; Muk is the tank."
+    },
+    "89": {
+      "tier": "B",
+      "reason": "Poison tank with Minimize / Acid Armor stall; answers Fairy/Grass, hates Ground/Psychic."
+    },
+    "90": {
+      "tier": "D",
+      "reason": "Shellder is early Water bait; Cloyster Shell Smash is the point."
+    },
+    "91": {
+      "tier": "B",
+      "reason": "Cloyster with Shell Smash + Icicle Spear; glass but breaks once it boosts."
+    },
+    "92": {
+      "tier": "D",
+      "reason": "Gastly is frail Ghost bait; Gengar needs the trade."
+    },
+    "93": {
+      "tier": "C",
+      "reason": "Haunter special-threatens mid; trade into Gengar for Speed."
+    },
     "94": {
       "tier": "A",
       "reason": "Ghost/Poison that ignores Normal and threatens special walls; Levitate formes (ME) dodge Ground."
+    },
+    "95": {
+      "tier": "C",
+      "reason": "Onix is a bulky Rock mid; Metal Coat trade unlocks Steelix."
+    },
+    "96": {
+      "tier": "D",
+      "reason": "Drowzee is early Psychic status bait; Hypno is still C-tier."
+    },
+    "97": {
+      "tier": "C",
+      "reason": "Psychic with Hypnosis + Dream Eater; status cheese, outsped by most midgame threats."
+    },
+    "98": {
+      "tier": "D",
+      "reason": "Krabby is early Water physical bait; Kingler remains glass."
+    },
+    "99": {
+      "tier": "C",
+      "reason": "Water with huge Attack Crabhammer; early physical surf, Special Defense is paper."
+    },
+    "100": {
+      "tier": "D",
+      "reason": "Voltorb is early Electric Explosion bait; Electrode is still glass."
+    },
+    "101": {
+      "tier": "C",
+      "reason": "Electric with Explosion panic and Speed; glass revenge that folds to Ground."
+    },
+    "102": {
+      "tier": "D",
+      "reason": "Exeggcute is early Grass/Psychic bait; Exeggutor is the nuke."
+    },
+    "103": {
+      "tier": "B",
+      "reason": "Grass/Psychic special nuke; answers Water/Fighting, 4x Bug keeps it honest."
+    },
+    "104": {
+      "tier": "D",
+      "reason": "Cubone is early Ground bait; Marowak is the Thick Fat form."
+    },
+    "105": {
+      "tier": "B",
+      "reason": "Ground with Thick Fat / Bone Club; answers Electric/Fire/Rock, hates Water/Grass."
+    },
+    "106": {
+      "tier": "B",
+      "reason": "Fighting with High Jump Kick ceiling; answers Norman/Normal, hates Flying/Psychic."
+    },
+    "107": {
+      "tier": "C",
+      "reason": "Fighting with elemental punches; flexible coverage, weaker raw power than Hitmonlee."
+    },
+    "108": {
+      "tier": "C",
+      "reason": "Lickitung is bulky Normal mid; Rollout unlocks Lickilicky."
+    },
+    "109": {
+      "tier": "D",
+      "reason": "Koffing is early Poison bait; Weezing (Levitate) is the wall."
+    },
+    "110": {
+      "tier": "B",
+      "reason": "Poison with Levitate (ME) dodging Ground; answers Fairy/Grass, hates Psychic."
+    },
+    "111": {
+      "tier": "C",
+      "reason": "Rhyhorn is slow Rock/Ground mid; Rhydon/Rhyperior are the line."
+    },
+    "112": {
+      "tier": "B",
+      "reason": "Rhydon already hits like a truck; Hard Stone trade unlocks Rhyperior."
+    },
+    "113": {
+      "tier": "B",
+      "reason": "Chansey is Softboiled glue mid; friendship unlocks Blissey."
+    },
+    "114": {
+      "tier": "C",
+      "reason": "Tangela is bulky Grass mid; Ancient Power unlocks Tangrowth."
+    },
+    "115": {
+      "tier": "B",
+      "reason": "Normal with Scrappy / Parental Bond-adjacent pressure in ME — bulky Fake Out pivot."
+    },
+    "116": {
+      "tier": "D",
+      "reason": "Horsea is early Water bait; Kingdra is the rain payoff."
+    },
+    "117": {
+      "tier": "C",
+      "reason": "Seadra special-hits mid Water; Dragon Scale trade unlocks Kingdra."
+    },
+    "118": {
+      "tier": "D",
+      "reason": "Goldeen is early Water fish bait; Seaking is still D-adjacent."
+    },
+    "119": {
+      "tier": "D",
+      "reason": "Water fish with Horn Drill cheese; middling stats and Electric ends every fight."
+    },
+    "120": {
+      "tier": "C",
+      "reason": "Staryu is a fast early Water; Water Stone unlocks Starmie."
+    },
+    "121": {
+      "tier": "B",
+      "reason": "Starmie with Rapid Spin + dual STAB; answers Fighting/Fire, frail into Dark/Ghost/Bug."
+    },
+    "122": {
+      "tier": "C",
+      "reason": "Psychic/Fairy with screens; support niche, frail and Dark-weak."
+    },
+    "123": {
+      "tier": "B",
+      "reason": "Scyther is already a strong Bug/Flying mid; Metal Coat unlocks Scizor."
+    },
+    "124": {
+      "tier": "B",
+      "reason": "Ice/Psychic special with Lovely Kiss; answers Dragon/Flying, hates Steels and priority."
+    },
+    "125": {
+      "tier": "B",
+      "reason": "Electabuzz is a solid Electric mid; Thunder Stone unlocks Electivire."
+    },
+    "126": {
+      "tier": "B",
+      "reason": "Magmar is a solid Fire mid; Fire Stone unlocks Magmortar."
+    },
+    "127": {
+      "tier": "B",
+      "reason": "Bug with huge Attack and Swords Dance; answers Psychic/Dark/Grass under caps."
+    },
+    "128": {
+      "tier": "B",
+      "reason": "Normal with Intimidate + Sheer Force paths; answers Ghost poorly but smashes midgame."
+    },
+    "129": {
+      "tier": "F",
+      "reason": "Magikarp does nothing until Gyarados; dead weight under strict death rules if forced early."
     },
     "130": {
       "tier": "S",
@@ -49,9 +529,17 @@
       "tier": "B",
       "reason": "Special Water wall with Ice Beam; slow setup, but softens special checks for the late game."
     },
+    "132": {
+      "tier": "D",
+      "reason": "Transforms into whatever you need once — no identity, no reliable damage of its own."
+    },
+    "133": {
+      "tier": "C",
+      "reason": "Eevee is stone/friendship bait — every Eeveelution outclasses the base form."
+    },
     "134": {
       "tier": "A",
-      "reason": "Wish + Water STAB cleric that also hits hard specially \u2014 glue for unstable midgames."
+      "reason": "Wish + Water STAB cleric that also hits hard specially — glue for unstable midgames."
     },
     "135": {
       "tier": "A",
@@ -59,23 +547,243 @@
     },
     "136": {
       "tier": "B",
-      "reason": "Physical Fire with Flare Blitz\u2013style pressure (ME movepools vary) \u2014 trades bulk for OHKO threat."
+      "reason": "Physical Fire with Flare Blitz–style pressure (ME movepools vary) — trades bulk for OHKO threat."
+    },
+    "137": {
+      "tier": "C",
+      "reason": "Porygon is special Normal mid; Up-Grade starts the Porygon-Z line."
+    },
+    "138": {
+      "tier": "D",
+      "reason": "Omanyte is early Rock/Water bait; Omastar Shell Smash matters."
+    },
+    "139": {
+      "tier": "B",
+      "reason": "Rock/Water with Shell Smash; answers Fire/Flying, needs a free turn to matter."
+    },
+    "140": {
+      "tier": "D",
+      "reason": "Kabuto is early Rock/Water bait; Kabutops is the physical form."
+    },
+    "141": {
+      "tier": "B",
+      "reason": "Kabutops with Swords Dance Water/Rock; answers Flying/Ice/Fire, hates Grass/Electric/Fighting."
+    },
+    "142": {
+      "tier": "A",
+      "reason": "Rock/Flying Speed + STAB pressure; answers Fire/Bug/Fighting, Ice/Electric/Rock hate it."
     },
     "143": {
       "tier": "B",
       "reason": "Huge HP Normal tank; RestTalk sets stall fights, but Fighting weakness is everywhere."
     },
+    "144": {
+      "tier": "A",
+      "reason": "Ice/Flying legendary wall; answers Dragon/Flying, Ground/Rock/Electric pile on."
+    },
+    "145": {
+      "tier": "S",
+      "reason": "Electric/Flying legendary with Pressure + Thunderbolt — answers Water cores alone."
+    },
+    "146": {
+      "tier": "A",
+      "reason": "Fire/Flying legendary special; answers Grass/Bug/Steel, hates Rock/Water/Electric."
+    },
+    "147": {
+      "tier": "D",
+      "reason": "Dratini is Dragon bait with awful early stats; Dragonite is the payoff."
+    },
+    "148": {
+      "tier": "C",
+      "reason": "Dragonair bridges late Dragon; Lv55 Dragonite is the run-defining form."
+    },
     "149": {
       "tier": "S",
-      "reason": "Dragon/Flying with Outrage + Extreme Speed options in ME \u2014 late, but League-defining once evolved."
+      "reason": "Dragon/Flying with Outrage + Extreme Speed options in ME — late, but League-defining once evolved."
+    },
+    "150": {
+      "tier": "S",
+      "reason": "Psychic nuke with Calm Mind + Recover — run-defining if rules allow it."
+    },
+    "151": {
+      "tier": "A",
+      "reason": "Mythical with Transform / soft utility toolkit; flexible, not as raw as Mewtwo."
+    },
+    "152": {
+      "tier": "D",
+      "reason": "Chikorita is bulky early Grass bait; Meganium is the line."
+    },
+    "153": {
+      "tier": "C",
+      "reason": "Bayleef is a serviceable Grass mid; Meganium stays B."
+    },
+    "154": {
+      "tier": "B",
+      "reason": "Grass starter final with synthesis bulk; answers Water/Ground, Fire/Ice/Bug hurt."
+    },
+    "155": {
+      "tier": "D",
+      "reason": "Cyndaquil is frail Fire bait; Typhlosion is the special nuke."
+    },
+    "156": {
+      "tier": "C",
+      "reason": "Quilava fights mid Fires; Typhlosion is the Eruption ceiling."
+    },
+    "157": {
+      "tier": "A",
+      "reason": "Fire starter with Eruption / Flamethrower ceiling; answers Grass/Steel cleanly."
+    },
+    "158": {
+      "tier": "D",
+      "reason": "Totodile is early Water bait; Feraligatr is the physical closer."
+    },
+    "159": {
+      "tier": "C",
+      "reason": "Croconaw hits mid Water/Dark; Feraligatr is the Ice Fang form."
+    },
+    "160": {
+      "tier": "A",
+      "reason": "Water starter with Ice Fang / Crunch; answers Norman-to-Wallace threat stack well."
+    },
+    "161": {
+      "tier": "D",
+      "reason": "Sentret line is early Normal filler with no late-game path."
+    },
+    "162": {
+      "tier": "D",
+      "reason": "Normal with Quick Attack filler — Sentret final that never becomes a real Pokémon."
+    },
+    "163": {
+      "tier": "D",
+      "reason": "Hoothoot is early Flying filler; Noctowl is still situational."
+    },
+    "164": {
+      "tier": "C",
+      "reason": "Noctowl is a special Flying sponge; Reflect support niche only."
+    },
+    "165": {
+      "tier": "D",
+      "reason": "Ledyba is early Bug/Flying bait — Ledian barely improves it."
+    },
+    "166": {
+      "tier": "D",
+      "reason": "Bug/Flying with early Light Screen; no damage, no late role."
+    },
+    "167": {
+      "tier": "D",
+      "reason": "Spinarak is early Bug/Poison bait; Ariados remains mid."
+    },
+    "168": {
+      "tier": "C",
+      "reason": "Bug/Poison with Megahorn / Toxic Thread; early status, outclassed by Heracross."
     },
     "169": {
       "tier": "B",
       "reason": "Poison/Flying with Mean Look + Toxic stall; Confuse Ray buys turns under tight caps."
     },
+    "170": {
+      "tier": "D",
+      "reason": "Chinchou is early Water/Electric bait; Lanturn is the Volt Absorb form."
+    },
+    "171": {
+      "tier": "B",
+      "reason": "Water/Electric with Volt Absorb; answers Water and Ground-adjacent cores safely."
+    },
+    "172": {
+      "tier": "F",
+      "reason": "Pichu is baby Electric fodder — evolve before any real fight."
+    },
+    "173": {
+      "tier": "F",
+      "reason": "Cleffa is baby Fairy fodder — no fights until Clefairy/Clefable."
+    },
+    "174": {
+      "tier": "F",
+      "reason": "Igglybuff is baby Normal fodder — evolve immediately."
+    },
+    "175": {
+      "tier": "D",
+      "reason": "Togepi is baby Fairy bait; Togetic/Togekiss are the line."
+    },
+    "176": {
+      "tier": "C",
+      "reason": "Togetic is a soft Fairy/Flying mid; Heart Scale day unlocks Togekiss."
+    },
+    "177": {
+      "tier": "D",
+      "reason": "Natu is early Psychic/Flying bait; Xatu is the dual screen form."
+    },
+    "178": {
+      "tier": "B",
+      "reason": "Xatu with Magic Bounce / dual screen support; answers Fighting, frail offensively."
+    },
+    "179": {
+      "tier": "D",
+      "reason": "Mareep is early Electric bait; Ampharos is the wallbreaker."
+    },
+    "180": {
+      "tier": "C",
+      "reason": "Flaaffy bridges Electric mid; Ampharos is Heal Bell / Thunder."
+    },
     "181": {
       "tier": "A",
       "reason": "Electric wallbreaker with Thunder + Heal Bell support; Mega/ME bulk makes it a midgame anchor."
+    },
+    "182": {
+      "tier": "C",
+      "reason": "Grass with Sunny Day / Chlorophyll; situational sun abuser, outclassed by Victreebel."
+    },
+    "183": {
+      "tier": "C",
+      "reason": "Marill is Huge Power bait early; Azumarill is the Fairy smash."
+    },
+    "184": {
+      "tier": "A",
+      "reason": "Water/Fairy with Huge Power; answers Dark/Dragon and smashes midgame physical."
+    },
+    "185": {
+      "tier": "C",
+      "reason": "Rock with Sturdy + Explosion; early wall that Fighting/Water/Grass ends."
+    },
+    "186": {
+      "tier": "B",
+      "reason": "Politoed with Drizzle (ME) enables rain offense; mediocre alone."
+    },
+    "187": {
+      "tier": "D",
+      "reason": "Hoppip is early Grass/Flying bait; Jumpluff is status glue."
+    },
+    "188": {
+      "tier": "D",
+      "reason": "Skiploom is still frail Grass mid; Jumpluff remains C."
+    },
+    "189": {
+      "tier": "C",
+      "reason": "Grass/Flying with Sleep Powder / Leech Seed; status glue, frail forever."
+    },
+    "190": {
+      "tier": "D",
+      "reason": "Aipom is early Normal Speed bait; Double Hit unlocks Ambipom."
+    },
+    "191": {
+      "tier": "D",
+      "reason": "Sunkern has the worst BST in the game — only Sunny Day cheese keeps it from F."
+    },
+    "192": {
+      "tier": "D",
+      "reason": "Grass with sun-dependent damage — Sunkern final that still needs weather to matter."
+    },
+    "193": {
+      "tier": "C",
+      "reason": "Yanma is a fast Bug mid; Ancient Power unlocks Yanmega."
+    },
+    "194": {
+      "tier": "D",
+      "reason": "Wooper is early Water/Ground bait; Quagsire is the Unaware wall."
+    },
+    "195": {
+      "tier": "C",
+      "reason": "Quagsire is a Water/Ground Unaware sponge; answers Electric, hates Grass."
     },
     "196": {
       "tier": "A",
@@ -85,21 +793,129 @@
       "tier": "A",
       "reason": "Dark tank with Wish + Toxic; absorbs Psychic and pivots status safely."
     },
+    "198": {
+      "tier": "C",
+      "reason": "Murkrow is a Dark/Flying mid; night evolution unlocks Honchkrow."
+    },
+    "199": {
+      "tier": "A",
+      "reason": "Water/Psychic with Regenerator / Calm Mind; answers Fighting and special midgames."
+    },
+    "200": {
+      "tier": "C",
+      "reason": "Misdreavus is a Ghost mid; Spell Tag night unlocks Mismagius."
+    },
+    "201": {
+      "tier": "F",
+      "reason": "Unown's Hidden Power gimmick rarely wins real fights under level caps."
+    },
+    "202": {
+      "tier": "B",
+      "reason": "Psychic with Shadow Tag + Counter/Mirror Coat; traps checks if you play the turns."
+    },
+    "203": {
+      "tier": "C",
+      "reason": "Girafarig is Normal/Psychic mid; Signal Beam unlocks Farigiraf."
+    },
+    "204": {
+      "tier": "D",
+      "reason": "Pineco is early Bug bait with Explosion; Forretress is the Spikes form."
+    },
+    "205": {
+      "tier": "C",
+      "reason": "Forretress with Rapid Spin + spikes; passive, needs a partner to win."
+    },
+    "206": {
+      "tier": "C",
+      "reason": "Dunsparce is Normal mid with Coil; Drill Peck unlocks Dudunsparce."
+    },
+    "207": {
+      "tier": "C",
+      "reason": "Gligar is Ground/Flying mid; night evolution unlocks Gliscor."
+    },
     "208": {
       "tier": "B",
       "reason": "Steel/Ground physical wall; answers Fairy/Rock locally but hates Water/Fighting and is slow."
     },
+    "209": {
+      "tier": "D",
+      "reason": "Snubbull is early Fairy bait; Granbull remains mid."
+    },
+    "210": {
+      "tier": "C",
+      "reason": "Fairy with Intimidate; early pivot, outclassed by real Fairy/Fighting answers."
+    },
+    "211": {
+      "tier": "C",
+      "reason": "Qwilfish with Intimidate + spikes; early Water/Poison utility."
+    },
     "212": {
       "tier": "A",
-      "reason": "Bug/Steel with Technician-adjacent chip and Swords Dance pressure \u2014 answers Psychic/Dark gyms."
+      "reason": "Bug/Steel with Technician-adjacent chip and Swords Dance pressure — answers Psychic/Dark gyms."
+    },
+    "213": {
+      "tier": "B",
+      "reason": "Bug/Rock with absurd defenses; Toxic stall wall that struggles to finish fights."
     },
     "214": {
       "tier": "A",
       "reason": "Bug/Fighting megaton Attack; Guts/ME boosts let it smash Norman and late Normal cores."
     },
+    "215": {
+      "tier": "B",
+      "reason": "Sneasel is already a strong Dark/Ice mid; night evolution unlocks Weavile."
+    },
+    "216": {
+      "tier": "D",
+      "reason": "Teddiursa is early Normal bait; Ursaring/Bloodmoon matter."
+    },
+    "217": {
+      "tier": "B",
+      "reason": "Normal with Guts Facade; answers Ghost poorly but smashes physical midgames."
+    },
+    "218": {
+      "tier": "D",
+      "reason": "Slugma is early Fire bait; Magcargo's typing is still rough."
+    },
+    "219": {
+      "tier": "D",
+      "reason": "Fire/Rock with 4x Water — early Magcargo that Juan laughs at."
+    },
+    "220": {
+      "tier": "D",
+      "reason": "Swinub is early Ice/Ground bait; Mamoswine is the Ice Shard form."
+    },
+    "221": {
+      "tier": "C",
+      "reason": "Piloswine bridges Ice/Ground mid; Ancient Power unlocks Mamoswine."
+    },
+    "222": {
+      "tier": "D",
+      "reason": "Water/Rock coral; Natural Cure niche, no bulk for late gyms."
+    },
+    "223": {
+      "tier": "D",
+      "reason": "Remoraid is early Water bait; Octillery remains filler."
+    },
+    "224": {
+      "tier": "C",
+      "reason": "Water with Octazooka / Bullet Seed; special filler outclassed by Milotic/Starmie."
+    },
+    "225": {
+      "tier": "D",
+      "reason": "Ice/Flying present delivery — Spikes utility maybe, no credible offense."
+    },
+    "226": {
+      "tier": "C",
+      "reason": "Mantine is a special Water/Flying wall; zero offense under caps."
+    },
     "227": {
       "tier": "B",
       "reason": "Steel/Flying physically bulky pivot; Spikes/Roost sets (when available) help, but Electric/Fire hurts."
+    },
+    "228": {
+      "tier": "C",
+      "reason": "Houndour is a strong early Dark/Fire mid; Houndoom is Nasty Plot."
     },
     "229": {
       "tier": "A",
@@ -107,63 +923,287 @@
     },
     "230": {
       "tier": "A",
-      "reason": "Swift Swim Water under rain (or just raw special bulk) \u2014 Ice Beam + Surf covers late Dragons."
+      "reason": "Swift Swim Water under rain (or just raw special bulk) — Ice Beam + Surf covers late Dragons."
+    },
+    "231": {
+      "tier": "D",
+      "reason": "Phanpy is early Ground bait; Donphan is the Sturdy spinner."
+    },
+    "232": {
+      "tier": "A",
+      "reason": "Ground with Sturdy / Rapid Spin tools; answers Electric/Fire and midgame rocks."
+    },
+    "233": {
+      "tier": "B",
+      "reason": "Porygon2 is already bulky Normal mid; Dubious Disc unlocks Porygon-Z."
+    },
+    "234": {
+      "tier": "C",
+      "reason": "Normal with Intimidate; early pivot that becomes Wyrdeer later in ME."
+    },
+    "235": {
+      "tier": "B",
+      "reason": "Normal sketch toolbox — one perfect moveset wins local fights if you invest."
+    },
+    "236": {
+      "tier": "D",
+      "reason": "Tyrogue is baby Fighting bait — evolve into Hitmon* immediately."
+    },
+    "237": {
+      "tier": "C",
+      "reason": "Hitmontop with Intimidate + priority; role compression, middling damage."
+    },
+    "238": {
+      "tier": "D",
+      "reason": "Smoochum is baby Ice/Psychic bait; Jynx is the Lovely Kiss form."
+    },
+    "239": {
+      "tier": "D",
+      "reason": "Elekid is baby Electric bait; Electabuzz/Electivire carry."
+    },
+    "240": {
+      "tier": "D",
+      "reason": "Magby is baby Fire bait; Magmar/Magmortar carry."
+    },
+    "241": {
+      "tier": "A",
+      "reason": "Normal with Milk Drink + Body Slam; cleric that also threatens physical cores."
     },
     "242": {
       "tier": "A",
       "reason": "Softboiled Normal cleric with Seismic Toss consistency; Fighting weakness is the tax."
     },
+    "243": {
+      "tier": "S",
+      "reason": "Electric beast with Calm Mind + Volt Absorb paths — answers Water and special walls."
+    },
+    "244": {
+      "tier": "S",
+      "reason": "Fire beast with Sacred Fire / Extremespeed pressure — deletes Grass and Steel cores."
+    },
+    "245": {
+      "tier": "S",
+      "reason": "Water beast with Calm Mind + Pressure stall; answers Fire/Ground and special midgames."
+    },
+    "246": {
+      "tier": "D",
+      "reason": "Larvitar is Rock/Ground bait; Tyranitar is the S-tier payoff."
+    },
+    "247": {
+      "tier": "C",
+      "reason": "Pupitar bridges late Rock; Lv55 Tyranitar defines the late game."
+    },
     "248": {
       "tier": "S",
-      "reason": "Rock/Dark with huge Attack and Intimidate options \u2014 walls special and breaks physical cores."
+      "reason": "Rock/Dark with huge Attack and Intimidate options — walls special and breaks physical cores."
+    },
+    "249": {
+      "tier": "S",
+      "reason": "Psychic/Flying legendary tank; Multiscale-adjacent bulk makes it League glue."
+    },
+    "250": {
+      "tier": "S",
+      "reason": "Fire/Flying legendary with Sacred Fire; answers Grass/Steel and softens physical cores."
+    },
+    "251": {
+      "tier": "A",
+      "reason": "Psychic/Grass mythical with Recover + utility; supportive carry more than a breaker."
+    },
+    "252": {
+      "tier": "D",
+      "reason": "Treecko is frail Grass bait; Sceptile is the Leaf Blade sweeper."
+    },
+    "253": {
+      "tier": "C",
+      "reason": "Grovyle is a strong Grass mid; Sceptile is the Speed ceiling."
     },
     "254": {
       "tier": "A",
-      "reason": "Grass/Dragon (ME) or Grass sweeper with Leaf Blade + Dragon Dance paths \u2014 answers Water gyms hard."
+      "reason": "Grass/Dragon (ME) or Grass sweeper with Leaf Blade + Dragon Dance paths — answers Water gyms hard."
+    },
+    "255": {
+      "tier": "D",
+      "reason": "Torchic is early Fire bait; Blaziken is the S-tier payoff."
+    },
+    "256": {
+      "tier": "C",
+      "reason": "Combusken fights mid Fire/Fighting; Blaziken deletes Norman."
     },
     "257": {
       "tier": "S",
       "reason": "Blaze Blaziken-style Speed + Fighting coverage; deletes Norman and threatens late Ice/Steel."
     },
+    "258": {
+      "tier": "D",
+      "reason": "Mudkip is early Water bait; Swampert is the run-defining form."
+    },
+    "259": {
+      "tier": "C",
+      "reason": "Marshtomp already answers Wattson; Swampert finishes the line."
+    },
     "260": {
       "tier": "S",
-      "reason": "Water/Ground starter with Ice coverage \u2014 answers Wattson-to-Wallace threat stack almost alone."
+      "reason": "Water/Ground starter with Ice coverage — answers Wattson-to-Wallace threat stack almost alone."
+    },
+    "261": {
+      "tier": "D",
+      "reason": "Poochyena is early Dark filler; Mightyena is usable, the baby form is not."
+    },
+    "262": {
+      "tier": "B",
+      "reason": "Mightyena with Intimidate + Crunch; early Dark answer that fades late."
+    },
+    "263": {
+      "tier": "D",
+      "reason": "Zigzagoon is pickup utility; Linoone carries, the base form does not."
+    },
+    "264": {
+      "tier": "B",
+      "reason": "Linoone with Belly Drum + Extreme Speed (ME) — glass but breaks midgame once set up."
+    },
+    "265": {
+      "tier": "F",
+      "reason": "Wurmple is pure evolution fodder — no fights until Beautifly/Dustox."
+    },
+    "266": {
+      "tier": "F",
+      "reason": "Silcoon does nothing — evolve or box."
+    },
+    "267": {
+      "tier": "C",
+      "reason": "Beautifly is a frail Bug/Flying — Quiver Dance cheese only."
+    },
+    "268": {
+      "tier": "F",
+      "reason": "Cascoon does nothing — evolve or box."
+    },
+    "269": {
+      "tier": "C",
+      "reason": "Dustox is a special Bug/Poison sponge; Toxic stall niche, low damage."
+    },
+    "270": {
+      "tier": "D",
+      "reason": "Lotad early is weak; wait for Lombre/Ludicolo before investing deaths."
+    },
+    "271": {
+      "tier": "C",
+      "reason": "Lombre is a usable Water/Grass mid; Water Stone unlocks Ludicolo."
     },
     "272": {
       "tier": "B",
       "reason": "Water/Grass with Leech Seed + Rain Dish longevity; slow, but softens Juan/Wallace prep."
     },
+    "273": {
+      "tier": "D",
+      "reason": "Seedot early is weak; Nuzleaf/Shiftry are the actual Pokémon."
+    },
+    "274": {
+      "tier": "C",
+      "reason": "Nuzleaf is Grass/Dark mid; Leaf Stone unlocks Shiftry."
+    },
     "275": {
       "tier": "C",
-      "reason": "Grass/Dark with Explosion panic \u2014 early utility, falls off when real Grass answers arrive."
+      "reason": "Grass/Dark with Explosion panic — early utility, falls off when real Grass answers arrive."
+    },
+    "276": {
+      "tier": "D",
+      "reason": "Taillow is frail early Flying bait; Swellow is the Guts demon."
     },
     "277": {
       "tier": "S",
       "reason": "Normal/Flying Speed demon; Guts Facade or STAB Aerial Ace melts under level caps."
     },
+    "278": {
+      "tier": "D",
+      "reason": "Wingull is early Water/Flying bait; Pelipper is the surf taxi."
+    },
     "279": {
       "tier": "B",
       "reason": "Water/Flying with Water Sport/Protect utility; fine early surf taxi, outclassed as a fighter."
+    },
+    "280": {
+      "tier": "C",
+      "reason": "Ralts is fragile evolution bait — the tier value is entirely in Kirlia→Gardevoir/Gallade."
+    },
+    "281": {
+      "tier": "C",
+      "reason": "Kirlia bridges Psychic mid; Gardevoir/Gallade are the S/A finals."
     },
     "282": {
       "tier": "S",
       "reason": "Psychic/Fairy (ME) or Psychic Calm Mind + Trace; walls Fighting and special-sweeps midgame."
     },
+    "283": {
+      "tier": "D",
+      "reason": "Surskit is early Bug/Water filler; Masquerain is situational at best."
+    },
+    "284": {
+      "tier": "C",
+      "reason": "Bug/Flying with Intimidate / Quiver Dance; early utility, Electric/Rock ends it."
+    },
+    "285": {
+      "tier": "C",
+      "reason": "Shroomish is Spore bait early; Breloom is the S-tier payoff."
+    },
     "286": {
       "tier": "S",
-      "reason": "Grass/Fighting with Spore + Focus Punch / Mach Punch \u2014 deletes Normal gyms and walls."
+      "reason": "Grass/Fighting with Spore + Focus Punch / Mach Punch — deletes Normal gyms and walls."
+    },
+    "287": {
+      "tier": "D",
+      "reason": "Slakoth is Truant dead weight until Vigoroth."
+    },
+    "288": {
+      "tier": "B",
+      "reason": "Vigoroth is already a strong Normal mid; Slaking is the Truant nuke."
     },
     "289": {
       "tier": "A",
       "reason": "Truant monster Attack; Yawn + Return patterns win if you play the loaf turns correctly."
     },
+    "290": {
+      "tier": "D",
+      "reason": "Nincada is early Bug bait; Ninjask/Shedinja are the line."
+    },
+    "291": {
+      "tier": "B",
+      "reason": "Ninjask with Speed Boost + Baton Pass / SD; supports better mons more than it finishes."
+    },
     "292": {
       "tier": "S",
-      "reason": "Wonder Guard cheese \u2014 only Super Effective hits land; breaks entire gyms when typed right."
+      "reason": "Wonder Guard cheese — only Super Effective hits land; breaks entire gyms when typed right."
+    },
+    "293": {
+      "tier": "D",
+      "reason": "Whismur line only matters at Exploud; base form is noise without damage."
+    },
+    "294": {
+      "tier": "C",
+      "reason": "Loudred hits mid Normal; Exploud is the Boomburst form."
+    },
+    "295": {
+      "tier": "B",
+      "reason": "Exploud with Boomburst (ME) — special Normal wallbreaker, Fighting-weak."
+    },
+    "296": {
+      "tier": "D",
+      "reason": "Makuhita is early Fighting bait; Hariyama is Thick Fat."
     },
     "297": {
       "tier": "B",
       "reason": "Pure Fighting with Thick Fat; answers Norman, hates Flying/Psychic and needs support."
+    },
+    "298": {
+      "tier": "F",
+      "reason": "Azurill is baby Normal/Fairy fodder — evolve before fights."
+    },
+    "299": {
+      "tier": "C",
+      "reason": "Nosepass is a Rock mid with Magnet Pull; Thunder Stone unlocks Probopass."
+    },
+    "300": {
+      "tier": "D",
+      "reason": "Skitty is early Normal bait; Delcatty still lacks damage."
     },
     "301": {
       "tier": "C",
@@ -173,21 +1213,85 @@
       "tier": "B",
       "reason": "Dark/Ghost with stall tools; answers Psychic, but frail and Fire-weak."
     },
+    "303": {
+      "tier": "B",
+      "reason": "Mawile with Huge Power physical sets; answers Dark/Ice, hates Fire/Ground."
+    },
+    "304": {
+      "tier": "D",
+      "reason": "Aron is early Steel/Rock bait; Aggron is the S-tier wall."
+    },
+    "305": {
+      "tier": "C",
+      "reason": "Lairon walls mid Steel; Aggron anchors League physical."
+    },
     "306": {
       "tier": "S",
       "reason": "Steel/Rock megaton defenses; answers Fairy/Ice/Flying threats and anchors League physical."
+    },
+    "307": {
+      "tier": "D",
+      "reason": "Meditite is frail Fighting/Psychic bait; Medicham is the dual STAB form."
     },
     "308": {
       "tier": "B",
       "reason": "Fighting/Psychic with dual STAB; flexible, but Speed and frailty keep it out of S."
     },
+    "309": {
+      "tier": "D",
+      "reason": "Electrike is early Electric bait; Manectric is Intimidate/Thunderbolt."
+    },
     "310": {
       "tier": "A",
       "reason": "Electric with Intimidate + Thunderbolt; pivots Water and answers Juan safely."
     },
+    "311": {
+      "tier": "D",
+      "reason": "Electric cute Charm pivot — Plusle helps allies, not the death timer."
+    },
+    "312": {
+      "tier": "D",
+      "reason": "Electric cute support — Minun is a cheerleader under permadeath rules."
+    },
+    "313": {
+      "tier": "D",
+      "reason": "Bug with Illuminate bait; no late role beyond early Thunder Wave."
+    },
+    "314": {
+      "tier": "D",
+      "reason": "Bug with status support; Illumise is cute, not a gym answer."
+    },
+    "315": {
+      "tier": "C",
+      "reason": "Roselia is a solid Grass/Poison mid; beauty unlocks Roserade."
+    },
+    "316": {
+      "tier": "C",
+      "reason": "Gulpin is early Poison stall bait; Swalot can Toxic stall, Gulpin cannot."
+    },
+    "317": {
+      "tier": "C",
+      "reason": "Swalot Toxic + Stockpile stall; slow and replaced by better Poisons."
+    },
+    "318": {
+      "tier": "D",
+      "reason": "Carvanha is frail Water/Dark bait; Sharpedo is the Speed form."
+    },
     "319": {
       "tier": "B",
       "reason": "Water/Dark with Crunch + Surf; Speed helps, but Electric/Fighting and frailty bite."
+    },
+    "320": {
+      "tier": "D",
+      "reason": "Wailmer is early Water HP bait; Wailord's Spout still middling."
+    },
+    "321": {
+      "tier": "C",
+      "reason": "Water with huge HP and Water Spout ceiling; Electric/Grass and frailty hurt."
+    },
+    "322": {
+      "tier": "D",
+      "reason": "Numel is slow Fire/Ground fodder until Camerupt, and even then Water ends it."
     },
     "323": {
       "tier": "C",
@@ -197,53 +1301,317 @@
       "tier": "B",
       "reason": "Fire wall with Drought/ME heat; answers Grass/Ice, hates Water/Ground."
     },
+    "325": {
+      "tier": "D",
+      "reason": "Spoink is early Psychic bait; Grumpig remains situational."
+    },
+    "326": {
+      "tier": "C",
+      "reason": "Psychic with Thick Fat; early Calm Mind abuser, Dark/Ghost/Bug pile on."
+    },
+    "327": {
+      "tier": "F",
+      "reason": "Spinda’s confusion gimmick rarely wins real fights under level caps."
+    },
+    "328": {
+      "tier": "C",
+      "reason": "Trapinch is Arena Trap Ground mid; Flygon is the late payoff."
+    },
+    "329": {
+      "tier": "C",
+      "reason": "Vibrava bridges Ground/Dragon; Flygon is Outrage/EQ."
+    },
     "330": {
       "tier": "A",
       "reason": "Ground/Dragon with Outrage + Earthquake; late evolution, League-threatening once online."
+    },
+    "331": {
+      "tier": "D",
+      "reason": "Cacnea is early Grass bait; Cacturne is Dark/Grass mid."
+    },
+    "332": {
+      "tier": "B",
+      "reason": "Cactus with Sand Veil / Swords Dance; answers Water locally, hates Ice/Flying/Fire."
+    },
+    "333": {
+      "tier": "D",
+      "reason": "Swablu is early Normal/Flying bait; Altaria is Cotton Guard/DD."
     },
     "334": {
       "tier": "B",
       "reason": "Dragon/Flying with Cotton Guard / Dragon Dance paths; supportive, not a primary breaker."
     },
+    "335": {
+      "tier": "B",
+      "reason": "Normal with Toxic Boost / Facade; answers Ghost poorly but shreds midgame."
+    },
+    "336": {
+      "tier": "C",
+      "reason": "Poison with Shed Skin; answers Grass/Fairy locally, Ground/Psychic end it."
+    },
+    "337": {
+      "tier": "C",
+      "reason": "Rock/Psychic with Levitate; answers Electric, hates Dark/Bug/Water/Steel."
+    },
+    "338": {
+      "tier": "C",
+      "reason": "Rock/Psychic with Levitate; Fire/Psychic dual STAB, same Dark/Water holes."
+    },
+    "339": {
+      "tier": "D",
+      "reason": "Barboach is early Water/Ground bait; Whiscash answers Electric."
+    },
+    "340": {
+      "tier": "B",
+      "reason": "Water/Ground with EQ + Surf; answers Electric/Fire/Rock, Grass 4x is the tax."
+    },
+    "341": {
+      "tier": "D",
+      "reason": "Corphish is early Water bait; Crawdaunt is the Adaptability nuke."
+    },
+    "342": {
+      "tier": "B",
+      "reason": "Water/Dark with Adaptability-style STAB in ME; answers Psychic, Electric-weak."
+    },
+    "343": {
+      "tier": "D",
+      "reason": "Baltoy is early Ground/Psychic bait; Claydol is screens/Cosmic Power."
+    },
     "344": {
       "tier": "B",
       "reason": "Ground/Psychic with dual screens / Cosmic Power; answers Electric, hates Water/Ice/Dark."
+    },
+    "345": {
+      "tier": "D",
+      "reason": "Lileep is early Rock/Grass bait; Cradily is the storm drain wall."
+    },
+    "346": {
+      "tier": "B",
+      "reason": "Rock/Grass with Storm Drain; answers Water/Electric, hates Ice/Fighting/Bug."
+    },
+    "347": {
+      "tier": "D",
+      "reason": "Anorith is early Rock/Bug bait; Armaldo is the physical fossil."
+    },
+    "348": {
+      "tier": "B",
+      "reason": "Rock/Bug with Swords Dance; answers Flying/Ice, hates Water/Steel/Rock."
+    },
+    "349": {
+      "tier": "F",
+      "reason": "Feebas is Magikarp-tier Water bait — beauty unlocks Milotic."
     },
     "350": {
       "tier": "A",
       "reason": "Water with Marvel Scale + Recover; Calm Mind sweeps when statused correctly."
     },
+    "351": {
+      "tier": "C",
+      "reason": "Normal weather forme — Forecast niche that needs weather and still middling stats."
+    },
+    "352": {
+      "tier": "C",
+      "reason": "Kecleon’s Color Change is cute; middling stats mean it rarely finishes gyms."
+    },
+    "353": {
+      "tier": "D",
+      "reason": "Shuppet is early Ghost bait; Banette is the Attack form."
+    },
     "354": {
       "tier": "A",
       "reason": "Ghost with huge Attack; Shadow Ball / Shadow Claw deletes Psychic and Normal-immune checks."
+    },
+    "355": {
+      "tier": "D",
+      "reason": "Duskull is early Ghost wall bait; Dusknoir is the Pain Split form."
+    },
+    "356": {
+      "tier": "B",
+      "reason": "Dusclops is the bulky Ghost pivot before Dusknoir — Pain Split sets midgame."
+    },
+    "357": {
+      "tier": "C",
+      "reason": "Grass/Flying with Leech Seed; answers Water/Ground, Ice/Fire/Rock hurt badly."
+    },
+    "358": {
+      "tier": "C",
+      "reason": "Chimecho is a frail Psychic with Heal Bell — support niche, not a carry."
     },
     "359": {
       "tier": "A",
       "reason": "Dark with Super Luck crits / Sucker Punch revenge; answers Psychic and Ghost cleanly."
     },
+    "360": {
+      "tier": "F",
+      "reason": "Wynaut is baby Shadow Tag fodder — evolve into Wobbuffet."
+    },
+    "361": {
+      "tier": "D",
+      "reason": "Snorunt is early Ice bait; Glalie/Froslass matter."
+    },
+    "362": {
+      "tier": "B",
+      "reason": "Ice with Sheer Cold cheese / solid defenses; answers Dragons, hates Fighting/Steel/Fire."
+    },
+    "363": {
+      "tier": "D",
+      "reason": "Spheal is early Ice/Water bait; Walrein is Thick Fat."
+    },
+    "364": {
+      "tier": "C",
+      "reason": "Sealeo bridges Ice/Water mid; Walrein answers Dragons locally."
+    },
     "365": {
       "tier": "B",
       "reason": "Ice/Water with Thick Fat; answers Dragon/Flying locally, slow and Fighting-weak."
+    },
+    "366": {
+      "tier": "D",
+      "reason": "Clamperl is trade-item bait — Huntail/Gorebyss are the Shell Smash forms."
+    },
+    "367": {
+      "tier": "B",
+      "reason": "Water with Shell Smash + Crunch; physical breaker if Clamperl's tooth lands."
+    },
+    "368": {
+      "tier": "B",
+      "reason": "Water with Shell Smash + special STAB; Gorebyss special-sweeps midgame cleanly."
+    },
+    "369": {
+      "tier": "C",
+      "reason": "Water/Rock fossil wall; Rock Head utility, Fighting/Grass/Electric pile on."
+    },
+    "370": {
+      "tier": "F",
+      "reason": "Water with Attract / Charm — Luvdisc actively wastes a death slot."
+    },
+    "371": {
+      "tier": "D",
+      "reason": "Bagon is Dragon bait; Salamence is the S-tier payoff."
+    },
+    "372": {
+      "tier": "C",
+      "reason": "Shelgon is mid-evolution fodder — Salamence is the actual Pokémon."
     },
     "373": {
       "tier": "S",
       "reason": "Dragon/Flying physical nuke; Intimidate + DD makes it a League closer under caps."
     },
+    "374": {
+      "tier": "D",
+      "reason": "Beldum is Steel/Psychic bait; Metagross is the S-tier payoff."
+    },
+    "375": {
+      "tier": "C",
+      "reason": "Metang is mid-evolution Steel — Metagross holds the tier."
+    },
     "376": {
       "tier": "S",
-      "reason": "Steel/Psychic with Bullet Punch priority and Meteor Mash \u2014 answers Fairy/Ice and late specials."
+      "reason": "Steel/Psychic with Bullet Punch priority and Meteor Mash — answers Fairy/Ice and late specials."
+    },
+    "377": {
+      "tier": "A",
+      "reason": "Rock legendary wall; answers Fire/Flying/Bug, Water/Fighting/Ground tax it heavily."
+    },
+    "378": {
+      "tier": "A",
+      "reason": "Ice legendary special wall; answers Dragon/Flying/Ground, Steels and Fighting hurt."
+    },
+    "379": {
+      "tier": "S",
+      "reason": "Steel legendary with Clear Body; answers Fairy/Ice/Rock and anchors League physical."
+    },
+    "380": {
+      "tier": "S",
+      "reason": "Dragon/Psychic with Calm Mind + Recover; supportive special wincon under caps."
+    },
+    "381": {
+      "tier": "S",
+      "reason": "Dragon/Psychic special nuke; Soul Dew / Calm Mind deletes mid and late special walls."
+    },
+    "382": {
+      "tier": "S",
+      "reason": "Water legendary with Drizzle — rain team captain that breaks Juan/Wallace by itself."
+    },
+    "383": {
+      "tier": "S",
+      "reason": "Ground legendary with Drought; answers Water/Electric weather and smashes special walls."
+    },
+    "384": {
+      "tier": "S",
+      "reason": "Dragon/Flying sky nuke; Air Lock + Outrage / DD makes it the League closer."
+    },
+    "385": {
+      "tier": "A",
+      "reason": "Steel/Psychic mythical with Wish + Confusion; cleric that also hits hard specially."
+    },
+    "386": {
+      "tier": "S",
+      "reason": "Psychic forme with extreme Attack/Speed spreads — picks a wincon and deletes it."
+    },
+    "406": {
+      "tier": "D",
+      "reason": "Budew is baby Grass/Poison bait; Roselia/Roserade carry."
+    },
+    "407": {
+      "tier": "A",
+      "reason": "Grass/Poison with Technician / Leaf Storm; answers Water/Ground and softens walls."
+    },
+    "424": {
+      "tier": "B",
+      "reason": "Normal with Technician Fake Out / Double Hit — early Speed control, falls off late."
+    },
+    "429": {
+      "tier": "A",
+      "reason": "Ghost with Nasty Plot + Shadow Ball; deletes Psychic/Normal-immune checks."
+    },
+    "430": {
+      "tier": "A",
+      "reason": "Dark/Flying with Super Luck crits; answers Psychic and Grass, hates Electric/Ice/Rock."
+    },
+    "433": {
+      "tier": "D",
+      "reason": "Chingling is baby Psychic bait; Chimecho is Heal Bell niche."
+    },
+    "438": {
+      "tier": "D",
+      "reason": "Bonsly is baby Rock bait; Sudowoodo remains situational."
+    },
+    "439": {
+      "tier": "D",
+      "reason": "Mime Jr. is baby Psychic/Fairy bait; Mr. Mime is screens."
+    },
+    "440": {
+      "tier": "D",
+      "reason": "Happiny is baby Normal bait; Chansey/Blissey are the clerics."
+    },
+    "446": {
+      "tier": "D",
+      "reason": "Munchlax is baby Normal bait; Snorlax is RestTalk."
+    },
+    "458": {
+      "tier": "D",
+      "reason": "Mantyke is baby Water/Flying bait; Mantine is the special wall."
     },
     "461": {
       "tier": "A",
-      "reason": "Dark/Ice (ME Weavile) Speed + Knock Off / Ice Shard \u2014 revenge kills Dragons and Psychics."
+      "reason": "Dark/Ice (ME Weavile) Speed + Knock Off / Ice Shard — revenge kills Dragons and Psychics."
     },
     "462": {
       "tier": "S",
-      "reason": "Electric/Steel Magneton evolution \u2014 Volt Switch + Flash Cannon deletes Water/Fairy walls."
+      "reason": "Electric/Steel Magneton evolution — Volt Switch + Flash Cannon deletes Water/Fairy walls."
+    },
+    "463": {
+      "tier": "C",
+      "reason": "Normal with huge HP and support moves; Fighting-weak cleric without Blissey's punch."
     },
     "464": {
       "tier": "A",
       "reason": "Ground/Rock (ME Rhyperior) megaton Attack; Solid Rock softens SE hits under caps."
+    },
+    "465": {
+      "tier": "A",
+      "reason": "Grass wall with Regenerator-adjacent longevity in ME; answers Water/Ground, hates Ice/Fire/Bug."
     },
     "466": {
       "tier": "A",
@@ -255,115 +1623,7 @@
     },
     "468": {
       "tier": "A",
-      "reason": "Fairy/Flying (ME Togekiss) with Air Slash flinches + Nasty Plot \u2014 softens physical cores."
-    },
-    "472": {
-      "tier": "B",
-      "reason": "Ground/Flying (ME Gliscor) with Poison Heal stall; answers Electric, hates Ice/Water."
-    },
-    "473": {
-      "tier": "A",
-      "reason": "Ice/Ground (ME Mamoswine) with Ice Shard + EQ; deletes Dragons before they move."
-    },
-    "475": {
-      "tier": "A",
-      "reason": "Psychic/Fighting (ME Gallade) with Close Combat + Leaf Blade; answers Dark/Normal gyms."
-    },
-    "477": {
-      "tier": "A",
-      "reason": "Ghost (ME Dusknoir) with Pain Split / Will-O-Wisp; physical sponge for League."
-    },
-    "10": {
-      "tier": "F",
-      "reason": "Unevolved Bug fodder \u2014 replace at first real encounter."
-    },
-    "13": {
-      "tier": "F",
-      "reason": "Unevolved Bug fodder \u2014 no damage, no bulk, no future."
-    },
-    "16": {
-      "tier": "D",
-      "reason": "Early Normal/Flying filler; evolves into a middling Pidgeot that still loses key MUs."
-    },
-    "19": {
-      "tier": "D",
-      "reason": "Early Normal rodent \u2014 fine for route 1, liability past the first gym."
-    },
-    "129": {
-      "tier": "F",
-      "reason": "Magikarp does nothing until Gyarados; dead weight under strict death rules if forced early."
-    },
-    "161": {
-      "tier": "D",
-      "reason": "Sentret line is early Normal filler with no late-game path."
-    },
-    "191": {
-      "tier": "D",
-      "reason": "Sunkern has the worst BST in the game \u2014 only Sunny Day cheese keeps it from F."
-    },
-    "261": {
-      "tier": "D",
-      "reason": "Poochyena is early Dark filler; Mightyena is usable, the baby form is not."
-    },
-    "263": {
-      "tier": "D",
-      "reason": "Zigzagoon is pickup utility; Linoone carries, the base form does not."
-    },
-    "265": {
-      "tier": "F",
-      "reason": "Wurmple is pure evolution fodder \u2014 no fights until Beautifly/Dustox."
-    },
-    "270": {
-      "tier": "D",
-      "reason": "Lotad early is weak; wait for Lombre/Ludicolo before investing deaths."
-    },
-    "273": {
-      "tier": "D",
-      "reason": "Seedot early is weak; Nuzleaf/Shiftry are the actual Pok\u00e9mon."
-    },
-    "280": {
-      "tier": "C",
-      "reason": "Ralts is fragile evolution bait \u2014 the tier value is entirely in Kirlia\u2192Gardevoir/Gallade."
-    },
-    "283": {
-      "tier": "D",
-      "reason": "Surskit is early Bug/Water filler; Masquerain is situational at best."
-    },
-    "293": {
-      "tier": "D",
-      "reason": "Whismur line only matters at Exploud; base form is noise without damage."
-    },
-    "316": {
-      "tier": "C",
-      "reason": "Gulpin is early Poison stall bait; Swalot can Toxic stall, Gulpin cannot."
-    },
-    "322": {
-      "tier": "D",
-      "reason": "Numel is slow Fire/Ground fodder until Camerupt, and even then Water ends it."
-    },
-    "327": {
-      "tier": "F",
-      "reason": "Spinda\u2019s confusion gimmick rarely wins real fights under level caps."
-    },
-    "352": {
-      "tier": "C",
-      "reason": "Kecleon\u2019s Color Change is cute; middling stats mean it rarely finishes gyms."
-    },
-    "358": {
-      "tier": "C",
-      "reason": "Chimecho is a frail Psychic with Heal Bell \u2014 support niche, not a carry."
-    },
-    "424": {
-      "tier": "B",
-      "reason": "Normal with Technician Fake Out / Double Hit \u2014 early Speed control, falls off late."
-    },
-    "430": {
-      "tier": "A",
-      "reason": "Dark/Flying with Super Luck crits; answers Psychic and Grass, hates Electric/Ice/Rock."
-    },
-    "465": {
-      "tier": "A",
-      "reason": "Grass wall with Regenerator-adjacent longevity in ME; answers Water/Ground, hates Ice/Fire/Bug."
+      "reason": "Fairy/Flying (ME Togekiss) with Air Slash flinches + Nasty Plot — softens physical cores."
     },
     "469": {
       "tier": "A",
@@ -375,175 +1635,95 @@
     },
     "471": {
       "tier": "A",
-      "reason": "Ice Eeveelution with Freeze-Dry (when available) \u2014 answers Dragons and Ground."
+      "reason": "Ice Eeveelution with Freeze-Dry (when available) — answers Dragons and Ground."
+    },
+    "472": {
+      "tier": "B",
+      "reason": "Ground/Flying (ME Gliscor) with Poison Heal stall; answers Electric, hates Ice/Water."
+    },
+    "473": {
+      "tier": "A",
+      "reason": "Ice/Ground (ME Mamoswine) with Ice Shard + EQ; deletes Dragons before they move."
     },
     "474": {
       "tier": "A",
       "reason": "Normal special nuke with Adaptability-style STAB; deletes walls that lack Fighting."
     },
+    "475": {
+      "tier": "A",
+      "reason": "Psychic/Fighting (ME Gallade) with Close Combat + Leaf Blade; answers Dark/Normal gyms."
+    },
+    "476": {
+      "tier": "B",
+      "reason": "Rock/Steel with Magnet Pull; answers Fairy/Ice/Flying, Ground/Fighting/Water hurt."
+    },
+    "477": {
+      "tier": "A",
+      "reason": "Ghost (ME Dusknoir) with Pain Split / Will-O-Wisp; physical sponge for League."
+    },
     "478": {
       "tier": "A",
       "reason": "Ice/Ghost with Snow Cloak / spikes utility; answers Dragons and Psychic, hates Rock/Steel/Fire."
     },
+    "486": {
+      "tier": "A",
+      "reason": "Normal legendary with Slow Start tax — monster Attack once the turns clear."
+    },
+    "493": {
+      "tier": "S",
+      "reason": "Normal mythical that becomes any type; rule-bending if Arceus is legal."
+    },
     "700": {
       "tier": "S",
-      "reason": "Fairy with Pixilate Hyper Voice (ME) \u2014 walls Dragons and deletes Dark/Fighting cores."
+      "reason": "Fairy with Pixilate Hyper Voice (ME) — walls Dragons and deletes Dark/Fighting cores."
+    },
+    "894": {
+      "tier": "S",
+      "reason": "Electric legendary with absurd Speed; answers Water/Flying before they act."
+    },
+    "895": {
+      "tier": "A",
+      "reason": "Dragon legendary with huge Attack; late Regi that smashes physical cores."
+    },
+    "899": {
+      "tier": "B",
+      "reason": "Normal/Psychic (ME Wyrdeer) with Intimidate + Psyshield Bash; midgame pivot upgrade."
     },
     "900": {
       "tier": "A",
-      "reason": "Bug/Rock with Sharpness / Stone Axe pressure \u2014 answers Flying/Ice, hates Water/Steel."
+      "reason": "Bug/Rock with Sharpness / Stone Axe pressure — answers Flying/Ice, hates Water/Steel."
     },
     "901": {
       "tier": "A",
-      "reason": "Ground/Normal Ursaluna with Belly Drum / EQ \u2014 slow nuke that ends physical walls."
+      "reason": "Ground/Normal Ursaluna with Belly Drum / EQ — slow nuke that ends physical walls."
     },
     "979": {
       "tier": "S",
-      "reason": "Fighting/Ghost Annihilape with Rage Fist snowball \u2014 ignores Normal and threatens bulk cores."
+      "reason": "Fighting/Ghost Annihilape with Rage Fist snowball — ignores Normal and threatens bulk cores."
     },
     "981": {
       "tier": "B",
       "reason": "Normal/Psychic Farigiraf with Armor Tail; niche anti-priority, middling offense."
     },
-    "82": {
+    "982": {
+      "tier": "B",
+      "reason": "Normal with dual segment bulk; Boomburst / Coil paths make Dudunsparce a sleeper B."
+    },
+    "10001": {
+      "tier": "S",
+      "reason": "Deoxys-Attack — glass cannon that OHKOs under caps if it moves first."
+    },
+    "10002": {
       "tier": "A",
-      "reason": "Electric/Steel Magneton \u2014 Flash Cannon + Thunderbolt deletes Water/Fairy before Magnezone."
+      "reason": "Deoxys-Defense — Cosmic Power wall that stalls gyms when rules allow legendaries."
     },
-    "81": {
-      "tier": "C",
-      "reason": "Magnemite is evolution bait; the tier value is Magneton/Magnezone."
+    "10003": {
+      "tier": "S",
+      "reason": "Deoxys-Speed — extreme Speed control with Psycho Boost; revenge king."
     },
-    "264": {
-      "tier": "B",
-      "reason": "Linoone with Belly Drum + Extreme Speed (ME) \u2014 glass but breaks midgame once set up."
-    },
-    "262": {
-      "tier": "B",
-      "reason": "Mightyena with Intimidate + Crunch; early Dark answer that fades late."
-    },
-    "267": {
-      "tier": "C",
-      "reason": "Beautifly is a frail Bug/Flying \u2014 Quiver Dance cheese only."
-    },
-    "269": {
-      "tier": "C",
-      "reason": "Dustox is a special Bug/Poison sponge; Toxic stall niche, low damage."
-    },
-    "295": {
-      "tier": "B",
-      "reason": "Exploud with Boomburst (ME) \u2014 special Normal wallbreaker, Fighting-weak."
-    },
-    "317": {
-      "tier": "C",
-      "reason": "Swalot Toxic + Stockpile stall; slow and replaced by better Poisons."
-    },
-    "332": {
-      "tier": "B",
-      "reason": "Cactus with Sand Veil / Swords Dance; answers Water locally, hates Ice/Flying/Fire."
-    },
-    "342": {
-      "tier": "B",
-      "reason": "Water/Dark with Adaptability-style STAB in ME; answers Psychic, Electric-weak."
-    },
-    "346": {
-      "tier": "B",
-      "reason": "Rock/Grass with Storm Drain; answers Water/Electric, hates Ice/Fighting/Bug."
-    },
-    "348": {
-      "tier": "B",
-      "reason": "Rock/Bug with Swords Dance; answers Flying/Ice, hates Water/Steel/Rock."
-    },
-    "356": {
-      "tier": "B",
-      "reason": "Dusclops is the bulky Ghost pivot before Dusknoir \u2014 Pain Split sets midgame."
-    },
-    "362": {
-      "tier": "B",
-      "reason": "Ice with Sheer Cold cheese / solid defenses; answers Dragons, hates Fighting/Steel/Fire."
-    },
-    "372": {
-      "tier": "C",
-      "reason": "Shelgon is mid-evolution fodder \u2014 Salamence is the actual Pok\u00e9mon."
-    },
-    "375": {
-      "tier": "C",
-      "reason": "Metang is mid-evolution Steel \u2014 Metagross holds the tier."
-    },
-    "3": {
-      "tier": "B",
-      "reason": "Venusaur with Sleep Powder + Giga Drain; answers Water/Ground, hates Ice/Fire/Flying."
-    },
-    "6": {
+    "10272": {
       "tier": "A",
-      "reason": "Charizard with Drought/ME Fire/Flying pressure \u2014 answers Grass/Bug, hates Rock/Water/Electric."
-    },
-    "31": {
-      "tier": "B",
-      "reason": "Nidoqueen with Earth Power + toxic spikes utility; answers Electric, hates Ground/Psychic/Water."
-    },
-    "34": {
-      "tier": "B",
-      "reason": "Nidoking with Sheer Force special sets; answers Electric, same 4x Ground fear."
-    },
-    "45": {
-      "tier": "B",
-      "reason": "Vileplume with Sleep Powder + Strong STAB; answers Water, hates Fire/Ice/Flying."
-    },
-    "62": {
-      "tier": "B",
-      "reason": "Poliwrath with Water/Fighting STAB; answers Norman/Rock, hates Electric/Flying/Psychic."
-    },
-    "91": {
-      "tier": "B",
-      "reason": "Cloyster with Shell Smash + Icicle Spear; glass but breaks once it boosts."
-    },
-    "121": {
-      "tier": "B",
-      "reason": "Starmie with Rapid Spin + dual STAB; answers Fighting/Fire, frail into Dark/Ghost/Bug."
-    },
-    "141": {
-      "tier": "B",
-      "reason": "Kabutops with Swords Dance Water/Rock; answers Flying/Ice/Fire, hates Grass/Electric/Fighting."
-    },
-    "164": {
-      "tier": "C",
-      "reason": "Noctowl is a special Flying sponge; Reflect support niche only."
-    },
-    "178": {
-      "tier": "B",
-      "reason": "Xatu with Magic Bounce / dual screen support; answers Fighting, frail offensively."
-    },
-    "186": {
-      "tier": "B",
-      "reason": "Politoed with Drizzle (ME) enables rain offense; mediocre alone."
-    },
-    "195": {
-      "tier": "C",
-      "reason": "Quagsire is a Water/Ground Unaware sponge; answers Electric, hates Grass."
-    },
-    "205": {
-      "tier": "C",
-      "reason": "Forretress with Rapid Spin + spikes; passive, needs a partner to win."
-    },
-    "211": {
-      "tier": "C",
-      "reason": "Qwilfish with Intimidate + spikes; early Water/Poison utility."
-    },
-    "226": {
-      "tier": "C",
-      "reason": "Mantine is a special Water/Flying wall; zero offense under caps."
-    },
-    "237": {
-      "tier": "C",
-      "reason": "Hitmontop with Intimidate + priority; role compression, middling damage."
-    },
-    "291": {
-      "tier": "B",
-      "reason": "Ninjask with Speed Boost + Baton Pass / SD; supports better mons more than it finishes."
-    },
-    "303": {
-      "tier": "B",
-      "reason": "Mawile with Huge Power physical sets; answers Dark/Ice, hates Fire/Ground."
+      "reason": "Normal/Ground Bloodmoon with Mind's Eye special; answers Ghost and special walls."
     }
   }
 }
