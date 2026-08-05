@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { ChallengeShell } from "@/components/ChallengeShell";
+import {
+  ChallengeShell,
+  SEASON_LEFT_RAIL_CLASS,
+} from "@/components/ChallengeShell";
+import { SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import {
   SeasonSearchRegistrar,
   challengeToSearchSeasonContext,
@@ -23,8 +28,47 @@ type LayoutProps = {
  * Shared season chrome (header, info, tabs, feed).
  * Soft-navigating between season tabs keeps this layout mounted — only the
  * right-pane page segment swaps.
+ *
+ * Auth / membership reads stay behind <Suspense> so Cache Components can
+ * prerender a shell instead of Prerender-Bypass on every season request.
  */
-export default async function SeasonWorkspaceLayout({
+export default function SeasonWorkspaceLayout({
+  children,
+  params,
+}: LayoutProps) {
+  return (
+    <Suspense fallback={<SeasonWorkspaceShellFallback />}>
+      <SeasonWorkspaceDynamic params={params}>{children}</SeasonWorkspaceDynamic>
+    </Suspense>
+  );
+}
+
+function SeasonWorkspaceShellFallback() {
+  return (
+    <div className="flex flex-1 flex-col" aria-hidden>
+      <div className="h-14 border-b border-frame/20 bg-surface/40" />
+      <div
+        className={`mx-auto flex w-full flex-1 flex-col gap-6 px-4 pb-16 pt-2 sm:px-6 lg:flex-row lg:items-start ${SITE_SHELL_MAX_CLASS}`}
+      >
+        <div
+          className={`hidden animate-pulse space-y-4 lg:block ${SEASON_LEFT_RAIL_CLASS}`}
+        >
+          <div className="h-40 rounded-lg border border-frame/20 bg-surface" />
+          <div className="h-10 rounded-lg bg-frame/10" />
+          <div className="h-48 rounded-lg border border-frame/20 bg-surface" />
+        </div>
+        <div className="min-w-0 flex-1 animate-pulse space-y-4">
+          <div className="h-8 w-40 rounded-lg bg-frame/15" />
+          <div className="h-4 w-2/3 max-w-md rounded-lg bg-frame/10" />
+          <div className="h-28 rounded-lg border border-frame/20 bg-surface sm:h-36" />
+          <div className="h-28 rounded-lg border border-frame/20 bg-surface sm:h-36" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function SeasonWorkspaceDynamic({
   children,
   params,
 }: LayoutProps) {
@@ -108,8 +152,6 @@ export default async function SeasonWorkspaceLayout({
         game={challenge.game}
         description={challenge.description}
         status={challenge.status}
-        activities={challenge.activities ?? []}
-        canReact={Boolean(session?.user?.id && challenge.source === "database")}
         showGm={showGm}
         myTrainerId={myTrainerId}
         signedIn={Boolean(session?.user)}

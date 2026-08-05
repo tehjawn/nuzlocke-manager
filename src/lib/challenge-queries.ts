@@ -59,7 +59,7 @@ export const activityPreviewInclude = {
   orderBy: { createdAt: "desc" as const },
   take: 20,
   include: {
-    trainer: { select: { handle: true, avatarSpriteKey: true } },
+    trainer: { select: { id: true, handle: true, avatarSpriteKey: true } },
     actor: { select: { image: true } },
     reactions: { select: { emoji: true, userId: true } },
   },

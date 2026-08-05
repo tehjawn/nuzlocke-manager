@@ -6,7 +6,7 @@
  * players (welcome read, or any party mon) and GMs keep full chrome.
  *
  * First-run still shows About / Rules / Trainers tabs; Encounters, Tools,
- * Memorial, Tournament, and the pack feed stay hidden until welcome is done.
+ * Memorial, and Tournament stay hidden until welcome is done.
  * Brand-new players hit /new-trainer before their board.
  *
  * Season CTAs (home Open League, join) use `playerSeasonEntryPath` so create
@@ -31,8 +31,8 @@ export type FirstRunInput = {
 };
 
 /**
- * Whether season workspace chrome should be backloaded (hide SeasonTabs rail,
- * pack feed, and dense header/Search destinations).
+ * Whether season workspace chrome should be backloaded (hide SeasonTabs rail
+ * and dense header/Search destinations).
  */
 export function isFirstRunChrome(input: FirstRunInput): boolean {
   // Preview mode: any signed-in session looks like day-one.

@@ -238,8 +238,8 @@ export async function getSeasonMemorialGraves(
 }
 
 /**
- * Workspace layout chrome — MAIN summary + activities, no box payloads.
- * Enough for Search trainers, myTrainerId, and the activity rail.
+ * Workspace layout chrome — MAIN summary, no box payloads or activity feed.
+ * Enough for Search trainers and myTrainerId.
  */
 export async function getChallengeShell(
   slug: string,
@@ -522,7 +522,11 @@ type ActivityRow = {
   type: string;
   message: string;
   createdAt: Date;
-  trainer: { handle: string; avatarSpriteKey: string | null } | null;
+  trainer: {
+    id: string;
+    handle: string;
+    avatarSpriteKey: string | null;
+  } | null;
   actor: { image: string | null } | null;
   reactions: Array<{ emoji: string; userId: string }>;
 };
@@ -549,6 +553,7 @@ function mapActivityRows(
       type: a.type,
       message: a.message,
       createdAt: a.createdAt.toISOString(),
+      trainerId: a.trainer?.id ?? null,
       trainerHandle: a.trainer?.handle ?? null,
       avatarSrc: resolveActivityAvatarSrc({
         trainerAvatarSpriteKey: a.trainer?.avatarSpriteKey,
@@ -604,7 +609,7 @@ export async function listChallengeActivities(
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: limit + 1,
         include: {
-          trainer: { select: { handle: true, avatarSpriteKey: true } },
+          trainer: { select: { id: true, handle: true, avatarSpriteKey: true } },
           actor: { select: { image: true } },
           reactions: { select: { emoji: true, userId: true } },
         },

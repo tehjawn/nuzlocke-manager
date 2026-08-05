@@ -63,7 +63,6 @@ function boardShellInclude() {
   return {
     ...challengeMetaInclude,
     trainers: boardMainPartyTrainers(pokemonSummarySelect),
-    activities: activityPreviewInclude,
   };
 }
 
@@ -129,7 +128,7 @@ export async function fetchChallengeSlotRow(
 }
 
 /**
- * Workspace chrome: meta + activity preview + MAIN summary for Search / myTrainerId.
+ * Workspace chrome: meta + MAIN summary for Search / myTrainerId.
  * Avoids shipping RESERVE / GRAVEYARD / ENCOUNTERED (+ competitive columns).
  */
 export async function fetchChallengeShellRow(slug: string) {

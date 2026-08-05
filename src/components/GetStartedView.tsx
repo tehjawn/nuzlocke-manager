@@ -460,10 +460,10 @@ export function GetStartedView({
                 ·
               </span>
               <span>
-                <span className="font-semibold text-ink">React</span>
+                <span className="font-semibold text-ink">Memorial</span>
                 <span className="text-muted">
                   {" "}
-                  in the Pack feed when someone hits a big moment
+                  when a run ends — honor the team on the season memorial
                 </span>
               </span>
             </li>

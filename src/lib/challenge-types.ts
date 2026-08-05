@@ -115,6 +115,8 @@ export type ActivityItem = {
   type: string;
   message: string;
   createdAt: string;
+  /** Linked trainer board when the event has a trainer; null for system/GM-only. */
+  trainerId: string | null;
   trainerHandle: string | null;
   /** Player avatar URL when a trainer/actor is linked; null → app mark. */
   avatarSrc: string | null;

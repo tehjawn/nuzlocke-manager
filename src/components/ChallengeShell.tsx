@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ActivityFeed } from "@/components/ActivityFeed";
 import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { MobileWorkspace } from "@/components/MobileWorkspace";
@@ -8,10 +7,7 @@ import { ScrollFadeRail } from "@/components/ScrollFadeRail";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { GetStartedSeasonCta } from "@/components/GetStartedSeasonCta";
-import type {
-  ActivityItem,
-  ChallengeStatus,
-} from "@/lib/challenge-types";
+import type { ChallengeStatus } from "@/lib/challenge-types";
 import {
   seasonStatusChipClass,
   seasonStatusLabel,
@@ -27,14 +23,12 @@ type ChallengeShellProps = {
   game?: string | null;
   description: string;
   status?: ChallengeStatus;
-  activities?: ActivityItem[];
-  canReact?: boolean;
   showGm?: boolean;
   myTrainerId?: string | null;
   signedIn?: boolean;
   /**
-   * First-run funnel (#183): show About / Rules / Trainers only, hide pack feed
-   * and deep tools so Get Started stays the focus.
+   * First-run funnel (#183): show About / Rules / Trainers only and deep tools
+   * so Get Started stays the focus.
    */
   firstRun?: boolean;
   /** Temporary WIP gate (#240): Tournament tab is GM-only. */
@@ -49,8 +43,6 @@ export function ChallengeShell({
   game,
   description,
   status = "ACTIVE",
-  activities = [],
-  canReact = false,
   showGm = false,
   myTrainerId = null,
   signedIn = false,
@@ -58,7 +50,7 @@ export function ChallengeShell({
   isGm = false,
   children,
 }: ChallengeShellProps) {
-  // Shared between the mobile Info/Feed tabs and the desktop sticky rail.
+  // Shared between the mobile Info panel and the desktop sticky rail.
   const generalInfo = (
     <Frame title="General info">
       <dl className="space-y-3 text-sm">
@@ -121,15 +113,6 @@ export function ChallengeShell({
     </Frame>
   );
 
-  const packFeed = (
-    <ActivityFeed
-      slug={slug}
-      activities={activities}
-      canReact={canReact}
-      previewCount={5}
-    />
-  );
-
   return (
     <div className="flex flex-1 flex-col">
       <SiteHeader
@@ -143,7 +126,7 @@ export function ChallengeShell({
       <div
         className={`mx-auto flex w-full flex-1 flex-col gap-6 px-4 pb-16 pt-2 sm:px-6 lg:flex-row lg:items-start ${SITE_SHELL_MAX_CLASS}`}
       >
-        {/* Desktop: sticky left rail with info, section tabs, and the feed. */}
+        {/* Desktop: sticky left rail with info + section tabs. */}
         <ScrollFadeRail
           className={`hidden ${SEASON_LEFT_RAIL_CLASS} lg:block lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start`}
           scrollClassName="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]"
@@ -155,19 +138,17 @@ export function ChallengeShell({
             firstRun={firstRun}
             isGm={isGm}
           />
-          {firstRun ? null : packFeed}
         </ScrollFadeRail>
 
         {/*
-          Mobile: section tabs plus Info/Feed tabs at the top. Selecting Info or
-          Feed swaps the content area to that panel; section tabs navigate. On
+          Mobile: section tabs plus an Info panel at the top. Selecting Info
+          swaps the content area to that panel; section tabs navigate. On
           desktop this is just the page content column.
         */}
         <MobileWorkspace
           slug={slug}
           status={status}
           generalInfo={generalInfo}
-          packFeed={packFeed}
           firstRun={firstRun}
           isGm={isGm}
           className="min-w-0 flex-1"

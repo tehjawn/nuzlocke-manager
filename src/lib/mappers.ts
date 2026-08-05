@@ -100,7 +100,11 @@ type DbChallenge = {
     type: string;
     message: string;
     createdAt: Date;
-    trainer: { handle: string; avatarSpriteKey: string | null } | null;
+    trainer: {
+      id: string;
+      handle: string;
+      avatarSpriteKey: string | null;
+    } | null;
     actor: { image: string | null } | null;
     reactions?: Array<{ emoji: string; userId: string }>;
   }>;
@@ -195,6 +199,7 @@ function mapActivity(
     type: a.type,
     message: a.message,
     createdAt: a.createdAt.toISOString(),
+    trainerId: a.trainer?.id ?? null,
     trainerHandle: a.trainer?.handle ?? null,
     avatarSrc: resolveActivityAvatarSrc({
       trainerAvatarSpriteKey: a.trainer?.avatarSpriteKey,

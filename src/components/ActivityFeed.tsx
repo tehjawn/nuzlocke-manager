@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   useEffect,
   useOptimistic,
@@ -21,33 +20,14 @@ import {
 } from "@/app/actions/challenge";
 import { Frame } from "@/components/Frame";
 import { coalesceActivityItems } from "@/lib/activity-messages";
-import { activityPollHead } from "@/lib/activity-poll";
 import type {
   ActivityItem,
   ActivityReactionSummary,
 } from "@/lib/challenge-types";
 
-type ActivityPollPage = {
-  items: ActivityItem[];
-  nextCursor: string | null;
-  head?: string | null;
-  unchanged?: boolean;
-};
-
 const APP_MARK = "/nuzlocke-mark.png";
-
 const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
-const POLL_MS = 12_000;
-const POLL_IDLE_MS = 30_000;
 const PAGE_SIZE = 30;
-
-type ActivityFeedProps = {
-  slug: string;
-  activities: ActivityItem[];
-  canReact?: boolean;
-  /** When set, show this many rows with a link to the full activity page. */
-  previewCount?: number;
-};
 
 function mergeReaction(
   reactions: ActivityReactionSummary[],
@@ -77,153 +57,6 @@ function activitiesKey(items: ActivityItem[]) {
     .join("|");
 }
 
-/**
- * Shared Pack-feed poller. Resets watermarks when `resetKey` changes.
- * Guards overlapping polls so out-of-order responses can't rewind `head`.
- */
-function useActivityPoll(
-  slug: string,
-  limit: number,
-  onPage: (page: ActivityPollPage) => void,
-  resetKey: string,
-) {
-  const headRef = useRef<string | null>(null);
-  const lastChangeAtRef = useRef(0);
-  const onPageRef = useRef(onPage);
-  const unchangedPollsRef = useRef(0);
-
-  useEffect(() => {
-    onPageRef.current = onPage;
-  }, [onPage]);
-
-  useEffect(() => {
-    headRef.current = null;
-    lastChangeAtRef.current = Date.now();
-    unchangedPollsRef.current = 0;
-
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let inFlight = false;
-
-    async function poll() {
-      if (document.visibilityState === "hidden" || inFlight) return;
-      inFlight = true;
-      try {
-        const previousHead = headRef.current;
-        const next = await fetchChallengeActivitiesAction({
-          slug,
-          limit,
-          head: activityPollHead(previousHead, unchangedPollsRef.current),
-        });
-        if (cancelled) return;
-        if (next.head !== undefined) {
-          headRef.current = next.head ?? null;
-        }
-        if (next.unchanged) {
-          unchangedPollsRef.current += 1;
-          return;
-        }
-        unchangedPollsRef.current = 0;
-        if (headRef.current !== previousHead) {
-          lastChangeAtRef.current = Date.now();
-        }
-        onPageRef.current(next);
-      } catch {
-        // ignore transient poll failures
-      } finally {
-        inFlight = false;
-      }
-    }
-
-    function schedule() {
-      if (cancelled) return;
-      const idle =
-        Date.now() - lastChangeAtRef.current > POLL_IDLE_MS * 2
-          ? POLL_IDLE_MS
-          : POLL_MS;
-      timeoutId = setTimeout(async () => {
-        await poll();
-        schedule();
-      }, idle);
-    }
-
-    void poll().then(schedule);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void poll();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-
-    return () => {
-      cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [slug, limit, resetKey]);
-}
-
-export function ActivityFeed({
-  slug,
-  activities: activitiesProp,
-  canReact = false,
-  previewCount,
-}: ActivityFeedProps) {
-  const pathname = usePathname() ?? "";
-  const onFullPage = pathname === `/challenges/${slug}/activity`;
-  const propKey = activitiesKey(activitiesProp);
-  const [seenPropKey, setSeenPropKey] = useState(propKey);
-  const [polled, setPolled] = useState<ActivityItem[] | null>(null);
-
-  if (propKey !== seenPropKey) {
-    setSeenPropKey(propKey);
-    setPolled(null);
-  }
-
-  const pollLimit =
-    previewCount != null ? Math.max(previewCount * 4, 20) : 20;
-
-  useActivityPoll(
-    slug,
-    pollLimit,
-    (page) => {
-      setPolled(page.items);
-    },
-    propKey,
-  );
-
-  const activities = coalesceActivityItems(polled ?? activitiesProp);
-
-  const visible =
-    typeof previewCount === "number"
-      ? activities.slice(0, previewCount)
-      : activities;
-  const showAllLink =
-    typeof previewCount === "number" && !onFullPage && activities.length > 0;
-
-  return (
-    <Frame title="Pack feed">
-      {activities.length === 0 ? (
-        <p className="text-sm text-muted">No activity yet. Updates show here.</p>
-      ) : (
-        <>
-          <ul className="space-y-3">
-            {visible.map((item) => (
-              <ActivityRow key={item.id} item={item} canReact={canReact} />
-            ))}
-          </ul>
-          {showAllLink ? (
-            <Link
-              href={`/challenges/${slug}/activity`}
-              className="pressable mt-3 flex w-full items-center justify-center rounded-lg bg-surface px-3 py-2 text-sm font-bold hover:bg-accent/10"
-            >
-              View all activity
-            </Link>
-          ) : null}
-        </>
-      )}
-    </Frame>
-  );
-}
-
 type ActivityFeedInfiniteProps = {
   slug: string;
   initialItems: ActivityItem[];
@@ -231,7 +64,7 @@ type ActivityFeedInfiniteProps = {
   canReact?: boolean;
 };
 
-/** Full Pack feed page — cursor pages loaded via IntersectionObserver. */
+/** Activity page — load more on scroll only (no background polling). */
 export function ActivityFeedInfinite({
   slug,
   initialItems,
@@ -247,29 +80,10 @@ export function ActivityFeedInfinite({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
   const cursorRef = useRef<string | null>(initialCursor);
-  const paginatedRef = useRef(false);
 
   useEffect(() => {
     cursorRef.current = cursor;
   }, [cursor]);
-
-  useActivityPoll(
-    slug,
-    PAGE_SIZE,
-    (page) => {
-      if (!paginatedRef.current) {
-        setItems(coalesceActivityItems(page.items));
-        setCursor(page.nextCursor);
-        return;
-      }
-      setItems((prev) => {
-        const ids = new Set(page.items.map((item) => item.id));
-        const older = prev.filter((item) => !ids.has(item.id));
-        return coalesceActivityItems([...page.items, ...older]);
-      });
-    },
-    slug,
-  );
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -290,7 +104,6 @@ export function ActivityFeedInfinite({
               cursor: pageCursor,
               limit: PAGE_SIZE,
             });
-            paginatedRef.current = true;
             setItems((prev) =>
               coalesceActivityItems([...prev, ...page.items]),
             );
@@ -310,13 +123,18 @@ export function ActivityFeedInfinite({
   }, [slug, cursor]);
 
   return (
-    <Frame title="Pack feed">
+    <Frame title="Activity">
       {items.length === 0 ? (
         <p className="text-sm text-muted">No activity yet. Updates show here.</p>
       ) : (
         <ul className="space-y-3">
           {items.map((item) => (
-            <ActivityRow key={item.id} item={item} canReact={canReact} />
+            <ActivityRow
+              key={item.id}
+              slug={slug}
+              item={item}
+              canReact={canReact}
+            />
           ))}
         </ul>
       )}
@@ -328,16 +146,17 @@ export function ActivityFeedInfinite({
         <p className="mt-2 text-center text-sm text-danger">{error}</p>
       ) : null}
       {!cursor && items.length > 0 ? (
-        <p className="mt-3 text-center text-xs text-muted">End of feed</p>
+        <p className="mt-3 text-center text-xs text-muted">End of activity</p>
       ) : null}
     </Frame>
   );
 }
-
 function ActivityRow({
+  slug,
   item,
   canReact,
 }: {
+  slug: string;
   item: ActivityItem;
   canReact: boolean;
 }) {
@@ -393,40 +212,79 @@ function ActivityRow({
   const avatarLabel = item.trainerHandle
     ? `${item.trainerHandle}'s avatar`
     : "Nuzlocke Manager";
+  // Showdown trainer sprites are full-body; bias crop toward the head.
   const isSpriteAvatar = Boolean(
     item.avatarSrc &&
-      !item.avatarSrc.startsWith("/") &&
       !item.avatarSrc.includes("discord") &&
-      !item.avatarSrc.includes("blob.vercel-storage.com"),
+      !item.avatarSrc.includes("blob.vercel-storage.com") &&
+      item.avatarSrc !== APP_MARK,
+  );
+  const trainerHref =
+    item.trainerId != null
+      ? `/challenges/${slug}/trainers/${item.trainerId}`
+      : null;
+
+  const avatar = (
+    <span
+      className="relative mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-frame bg-surface-2"
+      title={avatarLabel}
+    >
+      <Image
+        src={avatarSrc}
+        alt=""
+        width={32}
+        height={32}
+        className={
+          isSpriteAvatar
+            ? "pixelated h-full w-full object-cover object-[center_15%]"
+            : "h-full w-full object-cover"
+        }
+        unoptimized
+      />
+    </span>
   );
 
   return (
     <li className="group relative border-b border-frame/20 pb-3 last:border-0">
       <div className="flex items-start gap-2.5">
-        <span
-          className="relative mt-0.5 h-8 w-8 shrink-0 overflow-hidden rounded-full border border-frame bg-surface-2"
-          title={avatarLabel}
-        >
-          <Image
-            src={avatarSrc}
-            alt=""
-            width={32}
-            height={32}
-            className={
-              isSpriteAvatar
-                ? "pixelated h-full w-full object-contain p-0.5"
-                : "h-full w-full object-cover"
-            }
-            unoptimized
-          />
-        </span>
+        {trainerHref ? (
+          <Link
+            href={trainerHref}
+            className="inline-flex shrink-0 rounded-full outline-offset-2 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-interactive"
+            aria-label={`${item.trainerHandle ?? "Trainer"} profile`}
+          >
+            {avatar}
+          </Link>
+        ) : (
+          avatar
+        )}
         <div className="min-w-0 flex-1">
-          <p className="text-sm leading-snug">{item.message}</p>
+          <p className="text-sm leading-snug">
+            <ActivityMessageText
+              message={item.message}
+              trainerHandle={item.trainerHandle}
+              trainerHref={trainerHref}
+            />
+          </p>
           <p className="mt-1 text-[11px] tracking-tight text-muted">
             {item.type.replaceAll("_", " ")}
             {" · "}
             {new Date(item.createdAt).toLocaleString()}
-            {item.trainerHandle ? ` · ${item.trainerHandle}` : ""}
+            {item.trainerHandle ? (
+              <>
+                {" · "}
+                {trainerHref ? (
+                  <Link
+                    href={trainerHref}
+                    className="font-semibold text-ink underline underline-offset-2 hover:text-accent-deep"
+                  >
+                    {item.trainerHandle}
+                  </Link>
+                ) : (
+                  item.trainerHandle
+                )}
+              </>
+            ) : null}
           </p>
         </div>
 
@@ -548,6 +406,39 @@ function ActivityRow({
         </div>
       ) : null}
     </li>
+  );
+}
+
+function ActivityMessageText({
+  message,
+  trainerHandle,
+  trainerHref,
+}: {
+  message: string;
+  trainerHandle: string | null;
+  trainerHref: string | null;
+}) {
+  if (!trainerHref || !trainerHandle) return message;
+
+  const parts = message.split(trainerHandle);
+  if (parts.length < 2) return message;
+
+  return (
+    <>
+      {parts.map((part, index) => (
+        <span key={`${index}-${part.slice(0, 12)}`}>
+          {index > 0 ? (
+            <Link
+              href={trainerHref}
+              className="font-semibold text-accent-deep underline underline-offset-2 hover:text-interactive"
+            >
+              {trainerHandle}
+            </Link>
+          ) : null}
+          {part}
+        </span>
+      ))}
+    </>
   );
 }
 
