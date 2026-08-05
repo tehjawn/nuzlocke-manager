@@ -679,7 +679,7 @@ export function RandomizerSeedModal({
                     {obtainFilter ? (
                       <button
                         type="button"
-                        className="pressable ml-0.5 text-[0.65rem] font-semibold text-muted underline-offset-2 hover:text-ink hover:underline"
+                        className="pressable rounded-full border border-frame/50 bg-surface px-2.5 py-1 text-xs font-semibold tracking-tight text-muted hover:text-ink"
                         onClick={() => setObtainFilter(null)}
                       >
                         Clear
