@@ -226,7 +226,11 @@ function ActivityRow({
 
   const avatar = (
     <span
-      className="relative mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-frame bg-surface-2"
+      className={`relative mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-surface-2 transition-colors ${
+        trainerHref
+          ? "border-frame group-hover/avatar:border-accent-deep group-focus-visible/avatar:border-accent-deep"
+          : "border-frame"
+      }`}
       title={avatarLabel}
     >
       <Image
@@ -250,7 +254,7 @@ function ActivityRow({
         {trainerHref ? (
           <Link
             href={trainerHref}
-            className="inline-flex shrink-0 rounded-full outline-offset-2 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-interactive"
+            className="group/avatar inline-flex shrink-0 rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-interactive"
             aria-label={`${item.trainerHandle ?? "Trainer"} profile`}
           >
             {avatar}
@@ -276,7 +280,7 @@ function ActivityRow({
                 {trainerHref ? (
                   <Link
                     href={trainerHref}
-                    className="font-semibold text-ink underline underline-offset-2 hover:text-accent-deep"
+                    className="underline-offset-2 hover:text-accent-deep hover:underline"
                   >
                     {item.trainerHandle}
                   </Link>
@@ -430,7 +434,7 @@ function ActivityMessageText({
           {index > 0 ? (
             <Link
               href={trainerHref}
-              className="font-semibold text-accent-deep underline underline-offset-2 hover:text-interactive"
+              className="underline-offset-2 hover:text-accent-deep hover:underline"
             >
               {trainerHandle}
             </Link>
