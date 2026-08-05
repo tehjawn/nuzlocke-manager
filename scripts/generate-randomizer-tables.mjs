@@ -493,7 +493,7 @@ const STATIC_COMMAND_KINDS = {
   seteventmon: { kind: "event", randomized: false },
 };
 
-function readStaticEncounters(src, speciesIds, mapToArea, mapsecIds) {
+function readStaticEncounters(src, speciesIds, mapToArea, mapsecIds, speciesToNational) {
   const mapsDir = join(src, "data/maps");
   const rows = [];
   for (const dir of readdirSync(mapsDir, { withFileTypes: true })) {
@@ -512,6 +512,10 @@ function readStaticEncounters(src, speciesIds, mapToArea, mapsecIds) {
       const meta = STATIC_COMMAND_KINDS[m[1]];
       const species = speciesIds.get(m[2]);
       if (!meta || species == null) continue;
+      // `SPECIES_TEST` in NavelRock_Unown_Room_1 is debug scaffolding the ROM
+      // never reaches, and it has no catalog row — drop anything the app cannot
+      // name or draw rather than emitting a row that renders as "#0".
+      if (!speciesToNational[species]) continue;
       // The same encounter is often scripted twice (a first visit and a
       // rematch); one row per species/level/kind is what a player cares about.
       const key = `${species}|${m[3]}|${meta.kind}`;
@@ -558,7 +562,13 @@ function main() {
 
   const areas = readWildTables(src, mapToArea, mapsecIds);
   const keyTrainers = readKeyTrainers(src, speciesIds, mapToArea, mapsecIds);
-  const statics = readStaticEncounters(src, speciesIds, mapToArea, mapsecIds);
+  const statics = readStaticEncounters(
+    src,
+    speciesIds,
+    mapToArea,
+    mapsecIds,
+    speciesToNational,
+  );
 
   const rows = [...areas.values()]
     .map((area) => ({
@@ -603,6 +613,25 @@ function main() {
     }
   } catch {
     // No shipped table yet — nothing to cross-check.
+  }
+
+  // Nothing emitted may reference a species the app cannot name or draw: the
+  // sprite helper throws on an unknown id, which takes the whole view down.
+  const uncatalogued = new Set();
+  const check = (where, species) => {
+    if (!speciesToNational[species]) uncatalogued.add(`${where} ${species}`);
+  };
+  for (const row of rows) for (const mon of row.mons) check("wild", mon.species);
+  for (const t of keyTrainers) for (const mon of t.party) check("trainer", mon.species);
+  for (const s of statics) check("static", s.species);
+  for (const [name, pool] of Object.entries(pools)) {
+    for (const species of pool) check(`pool:${name}`, species);
+  }
+  if (uncatalogued.size > 0) {
+    throw new Error(
+      `${uncatalogued.size} emitted species have no pokemon.json row: ` +
+        `${[...uncatalogued].join(", ")}. Add them to the catalog or filter them out.`,
+    );
   }
 
   const list = (values) => `[${values.join(", ")}]`;

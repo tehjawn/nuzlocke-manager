@@ -76,6 +76,7 @@ type Parsed = {
 };
 
 function speciesName(pokedexId: number): string {
+  if (!pokedexId || pokedexId <= 0) return "Unknown species";
   return findPokemonById(pokedexId)?.name ?? `#${pokedexId}`;
 }
 
@@ -83,7 +84,28 @@ function formatChance(chance: number): string {
   return `${chance % 1 === 0 ? chance : chance.toFixed(1)}%`;
 }
 
+/**
+ * A species the catalog has no row for — ROM debug scaffolding, or a species
+ * added upstream that `pokemon.json` has not caught up with.
+ *
+ * `pokemonSpriteUrl` falls back to a Showdown slug when it has no dex id, and
+ * `showdownProxyUrl` *throws* on a slug it cannot parse. That happens during
+ * render, so one unknown id takes the whole modal down with it. Draw a
+ * placeholder instead: a gap in a reference table is survivable, a blank screen
+ * is not.
+ */
 function Sprite({ pokedexId, size = 40 }: { pokedexId: number; size?: number }) {
+  if (!pokedexId || pokedexId <= 0) {
+    return (
+      <span
+        aria-hidden
+        className="flex shrink-0 items-center justify-center rounded border border-dashed border-frame text-xs text-muted"
+        style={{ height: size, width: size }}
+      >
+        ?
+      </span>
+    );
+  }
   const name = speciesName(pokedexId);
   return (
     <PokemonSpriteImage

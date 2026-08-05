@@ -449,7 +449,6 @@ export const VANILLA_STATICS: readonly VanillaStatic[] = [
   {"mapsec":211,"species":249,"level":70,"kind":"event","randomized":false},
   {"mapsec":211,"species":250,"level":70,"kind":"event","randomized":false},
   {"mapsec":211,"species":413,"level":80,"kind":"wild-battle","randomized":true},
-  {"mapsec":211,"species":458,"level":80,"kind":"event","randomized":false},
   {"mapsec":213,"species":420,"level":65,"kind":"wild-battle","randomized":true},
   {"mapsec":213,"species":439,"level":40,"kind":"event","randomized":false},
   {"mapsec":214,"species":440,"level":40,"kind":"event","randomized":false},
