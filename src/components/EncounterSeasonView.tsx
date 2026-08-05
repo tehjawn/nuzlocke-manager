@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { EncounterLedger } from "@/components/EncounterLedger";
+import { ModeTabs } from "@/components/ModeTabs";
 import { PersonalRoutesView } from "@/components/PersonalRoutesView";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
@@ -114,60 +115,48 @@ export function EncounterSeasonView({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div
-          aria-label="Encounter views"
-          className="inline-flex rounded-[var(--radius-sm)] border border-frame/50 bg-surface/40 p-0.5"
-          role="group"
-        >
-          {([
-            { id: "claims", label: "Route claims" },
-            {
-              id: "routes",
-              label: myTrainerId ? "My routes" : "Open routes",
-            },
-            { id: "missing", label: "Missing dex" },
-          ] satisfies ReadonlyArray<{ id: EncounterView; label: string }>).map(
-            (option) => (
-              <button
-                aria-pressed={view === option.id}
-                className={`pressable rounded-[calc(var(--radius-sm)-2px)] border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                  view === option.id
-                    ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
-                    : "border-transparent text-muted hover:bg-surface"
-                }`}
-                data-testid={`encounter-view-${option.id}`}
-                key={option.id}
-                onClick={() => setView(option.id)}
-                type="button"
-              >
-                {option.label}
-              </button>
-            ),
-          )}
-        </div>
-        <Link
-          href={toolsHref(slug, "bounty")}
-          className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-        >
-          Open Pokémon Ownership
-        </Link>
-      </div>
-
-      {view === "missing" && (
-        <MissingModernEmeraldGrid missing={missing} slug={slug} />
-      )}
-      {view === "claims" && (
-        <EncounterLedger groups={groups} slug={slug} />
-      )}
-      {view === "routes" && (
-        <PersonalRoutesView
-          myTrainerId={myTrainerId}
-          routeStatuses={routeStatuses}
-          slug={slug}
-        />
-      )}
-    </div>
+      <ModeTabs
+        aria-label="Encounter views"
+        idPrefix="encounters"
+        size="sm"
+        value={view}
+        tabs={[
+          { id: "claims", label: "Route claims", "data-testid": "encounter-view-claims" },
+          {
+            id: "routes",
+            label: myTrainerId ? "My routes" : "Open routes",
+            "data-testid": "encounter-view-routes",
+          },
+          { id: "missing", label: "Missing dex", "data-testid": "encounter-view-missing" },
+        ] satisfies ReadonlyArray<{
+          id: EncounterView;
+          label: string;
+          "data-testid": string;
+        }>}
+        onValueChange={setView}
+        trailing={
+          <Link
+            href={toolsHref(slug, "bounty")}
+            className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
+          >
+            Open Pokémon Ownership
+          </Link>
+        }
+      >
+        {view === "missing" ? (
+          <MissingModernEmeraldGrid missing={missing} slug={slug} />
+        ) : null}
+        {view === "claims" ? (
+          <EncounterLedger groups={groups} slug={slug} />
+        ) : null}
+        {view === "routes" ? (
+          <PersonalRoutesView
+            myTrainerId={myTrainerId}
+            routeStatuses={routeStatuses}
+            slug={slug}
+          />
+        ) : null}
+      </ModeTabs>    </div>
   );
 }
 

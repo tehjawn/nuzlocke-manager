@@ -21,6 +21,7 @@ import {
   seasonSpecimenBoard,
   type SpecimenSort,
 } from "@/lib/specimen-board";
+import { ModeTabs } from "@/components/ModeTabs";
 import {
   parseBountyMode,
   toolsHref,
@@ -258,28 +259,15 @@ export function BountyHunterView({
   }, [exclusiveGroups, lineFilter]);
 
   return (
-    <div className="space-y-4">
-      <div role="group" aria-label="Pokémon Ownership modes" className="flex flex-wrap gap-1.5">
-        {MODES.map((entry) => {
-          const active = mode === entry.id;
-          return (
-            <button
-              key={entry.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => selectMode(entry.id)}
-              className={`pressable rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                active
-                  ? "border-interactive/40 bg-interactive-soft text-ink shadow-sm"
-                  : "border-transparent bg-surface text-muted hover:bg-surface/80"
-              }`}
-            >
-              {entry.label}
-            </button>
-          );
-        })}
-      </div>
-
+    <ModeTabs
+      aria-label="Pokémon Ownership modes"
+      idPrefix="ownership"
+      size="sm"
+      value={mode}
+      tabs={MODES}
+      onValueChange={selectMode}
+      panelClassName="space-y-4"
+    >
       <div className="flex flex-wrap items-end gap-3">
         <label className="min-w-[12rem] flex-1 space-y-1 text-xs font-semibold text-muted">
           Search
@@ -411,7 +399,7 @@ export function BountyHunterView({
           />
         </>
       )}
-    </div>
+    </ModeTabs>
   );
 }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Frame } from "@/components/Frame";
+import { ModeTabs } from "@/components/ModeTabs";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TypeBadge } from "@/components/TypeBadge";
@@ -463,39 +464,14 @@ export function TeamPlannerView({
           </div>
         </aside>
 
-        <div className="min-w-0 space-y-3">
-          <div
-            role="tablist"
+        <div className="min-w-0">
+          <ModeTabs
             aria-label="Planner analysis"
-            className="flex gap-1 border-b border-frame/70"
-          >
-            {MODES.map((entry) => {
-              const active = mode === entry.id;
-              return (
-                <button
-                  key={entry.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  id={`planner-tab-${entry.id}`}
-                  onClick={() => selectMode(entry.id)}
-                  className={`pressable -mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${
-                    active
-                      ? "border-interactive text-ink"
-                      : "border-transparent text-muted hover:text-ink"
-                  }`}
-                >
-                  {entry.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <section
-            role="tabpanel"
-            aria-labelledby={`planner-tab-${mode}`}
-            className="min-w-0 space-y-3"
-            aria-live="polite"
+            idPrefix="planner"
+            value={mode}
+            tabs={MODES}
+            onValueChange={selectMode}
+            panelClassName="min-w-0 space-y-3"
           >
             {mode === "coverage" ? (
               <CoveragePanels
@@ -526,7 +502,7 @@ export function TeamPlannerView({
                 onApply={(entryIds) => commitSlots(toSlots(entryIds))}
               />
             ) : null}
-          </section>
+          </ModeTabs>
         </div>
       </div>
     </div>
