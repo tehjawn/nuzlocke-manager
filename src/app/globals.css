@@ -1318,6 +1318,15 @@ button:disabled,
   --bond-tint: #f0c14a;
 }
 
+/* Prismatic — Ultra friends; paint comes from the SVG gradient in BondHeart. */
+.pokemon-bond-heart--ultra {
+  --bond-tint: #c48ad4;
+}
+
+.pokemon-bond-heart--ultra .pokemon-bond-heart__outline {
+  opacity: 1;
+}
+
 .pokemon-bond-label--raw {
   color: color-mix(in srgb, var(--muted) 78%, transparent);
 }
@@ -1332,6 +1341,20 @@ button:disabled,
 
 .pokemon-bond-label--bonded {
   color: #f0c14a;
+}
+
+.pokemon-bond-label--ultra {
+  background-image: linear-gradient(
+    105deg,
+    #ff7a7a 0%,
+    #ffb84a 28%,
+    #6ad4a0 52%,
+    #6ab8ef 74%,
+    #c48ad4 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .pokemon-bond-heart--corner {

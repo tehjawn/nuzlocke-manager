@@ -4,11 +4,11 @@
  *
  * **Policy: the grades are public for every Pokémon in the season; the IV / EV
  * spreads behind them are not.** Announcing "God catch" (role-key IVs excellent
- * with a respectable overall spread) or a full bond heart (a near-capped EV
- * pool) to the whole pack is deliberate — that is what the Showcase is for.
- * Withholding the spread itself is equally deliberate. Publish the tier enum
- * and nothing finer: `summarizeIvs().headline` and friends name exact stats and
- * belong behind `showCompetitiveDetails`.
+ * with a respectable overall spread) or an Ultra-friends heart (max friendship
+ * or a capped EV pool) to the whole pack is deliberate — that is what the
+ * Showcase is for. Withholding the spread itself is equally deliberate. Publish
+ * the tier enum and nothing finer: `summarizeIvs().headline` and friends name
+ * exact stats and belong behind `showCompetitiveDetails`.
  *
  * `null` means **nothing on file to grade**, never "withheld from you". An
  * un-imported encounter has no IVs, and grading it "oof" would publish a bad

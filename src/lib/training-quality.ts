@@ -1,9 +1,9 @@
 /**
  * Training / bond quality — orthogonal to catch tier (IV luck).
  *
- * Ladder: raw → growing → trained → bonded.
- * Colors climb the same good → great → cracked tint family as catch chrome;
- * vocabulary stays care-shaped (not big-oof→god).
+ * Ladder: raw → growing → trained → bonded → ultra.
+ * Colors climb the same good → great → cracked → god tint family as catch
+ * chrome; vocabulary stays care-shaped (not big-oof→god).
  *
  * Thresholds are tuned for **organic Nuzlocke EV gain** (spread across stats
  * while grinding to a level cap), not Smogon 252/252 spreads. Trash Pack
@@ -11,10 +11,7 @@
  * pool with no single 252.
  */
 
-import {
-  classifyEv,
-  summarizeEvs,
-} from "@/lib/iv-quality";
+import { classifyEv, summarizeEvs } from "@/lib/iv-quality";
 import type { NatureAlignment } from "@/lib/playstyle";
 import { isEmptySpread, STAT_KEYS, type StatSpread } from "@/lib/stats";
 
@@ -24,15 +21,19 @@ export const TRAINING_TIERS = [
   "growing",
   "trained",
   "bonded",
+  "ultra",
 ] as const;
 
 export type TrainingTier = (typeof TRAINING_TIERS)[number];
 
 /**
- * Gen 3 friendship evolution threshold — also the bonded bar once friendship
- * is on the specimen. Documented once so chrome and import stay in sync.
+ * Gen 3 friendship evolution threshold — gold/`bonded` once friendship is on
+ * the specimen. Documented once so chrome and import stay in sync.
  */
 export const BONDED_FRIENDSHIP_MIN = 220;
+
+/** True max friendship — prismatic/`ultra` friendship path. */
+export const ULTRA_FRIENDSHIP_MIN = 255;
 
 /** Early grinding — enough to show a faint heart. */
 const GROWING_EV_TOTAL = 80;
@@ -49,12 +50,16 @@ const TRAINED_EV_TOTAL = 252;
  */
 const BONDED_EV_TOTAL = 450;
 
+/** True EV pool cap — prismatic/`ultra` training path. */
+export const ULTRA_EV_TOTAL = 510;
+
 /** Fill fraction for the bond heart glyph (raw = empty outline). */
 const TRAINING_TIER_FILL: Record<TrainingTier, number> = {
   raw: 0,
   growing: 0.4,
   trained: 0.85,
   bonded: 1,
+  ultra: 1,
 };
 
 const TRAINING_TIER_LABEL: Record<TrainingTier, string | null> = {
@@ -62,6 +67,7 @@ const TRAINING_TIER_LABEL: Record<TrainingTier, string | null> = {
   growing: "Acquaintances",
   trained: "Friends",
   bonded: "Best friends",
+  ultra: "Ultra friends",
 };
 
 export function trainingTierRank(tier: TrainingTier): number {
@@ -83,6 +89,9 @@ export function trainingTierTip(tier: TrainingTier): string {
   }
   if (tier === "bonded") {
     return "Best friends: ride or die.";
+  }
+  if (tier === "ultra") {
+    return "Ultra friends: maxed out. Unbreakable.";
   }
   return "Strangers: just met. Still figuring it out.";
 }
@@ -110,27 +119,73 @@ function hasStrongEv(evs: StatSpread): boolean {
   return STAT_KEYS.some((key) => classifyEv(evs[key] ?? 0) !== "average");
 }
 
+function isUltraBond(input: {
+  friendship: number | null | undefined;
+  evTotal: number;
+}): boolean {
+  if (
+    input.friendship != null &&
+    input.friendship >= ULTRA_FRIENDSHIP_MIN
+  ) {
+    return true;
+  }
+  return input.evTotal >= ULTRA_EV_TOTAL;
+}
+
+function isBonded(input: {
+  friendship: number | null | undefined;
+  evTotal: number;
+  natureHelps: boolean;
+  cracked: boolean;
+}): boolean {
+  if (
+    input.friendship != null &&
+    input.friendship >= BONDED_FRIENDSHIP_MIN
+  ) {
+    return true;
+  }
+  // No friendship column (or below the gold bar) — near-max organic pool
+  // (or nature-helping cracked EVs) stands in for endgame care.
+  if (input.friendship == null) {
+    return input.evTotal >= BONDED_EV_TOTAL || (input.natureHelps && input.cracked);
+  }
+  return false;
+}
+
 /**
  * Grade training / bond from EVs + nature fit + optional friendship.
  *
- * With friendship on file: gold/`bonded` needs trained + friendship ≥
- * {@link BONDED_FRIENDSHIP_MIN}.
+ * Top of the ladder:
+ * - **ultra** (prismatic): friendship ≥ {@link ULTRA_FRIENDSHIP_MIN} **or**
+ *   EV total ≥ {@link ULTRA_EV_TOTAL}
+ * - **bonded** (gold): friendship ≥ {@link BONDED_FRIENDSHIP_MIN}, or (when
+ *   friendship is missing) EV total ≥ {@link BONDED_EV_TOTAL} / nature+cracked
  *
- * Without friendship (pre-reimport rows): gold when the EV pool is nearly
- * capped ({@link BONDED_EV_TOTAL}+) — the organic endgame signal — or when
- * nature helps and EVs look competitively cracked.
+ * Friendship-only rows (no EV spread) can still reach bonded / ultra.
  */
 export function specimenTrainingTier(input: {
   evs?: StatSpread | null;
   natureAlignment?: NatureAlignment | null;
   friendship?: number | null;
 }): TrainingTier {
+  const friendship = input.friendship;
   const evs = isEmptySpread(input.evs) ? null : input.evs;
-  if (!evs) return "raw";
+  const total = evs ? evTotal(evs) : 0;
+
+  if (isUltraBond({ friendship, evTotal: total })) return "ultra";
+
+  if (!evs) {
+    if (
+      friendship != null &&
+      friendship >= BONDED_FRIENDSHIP_MIN
+    ) {
+      return "bonded";
+    }
+    return "raw";
+  }
 
   const summary = summarizeEvs(evs);
   const cracked = summary?.cracked ?? false;
-  const total = evTotal(evs);
   const natureHelps = input.natureAlignment === "helps";
   const strong = hasStrongEv(evs);
 
@@ -150,12 +205,15 @@ export function specimenTrainingTier(input: {
 
   if (tier !== "trained") return tier;
 
-  const friendship = input.friendship;
-  if (friendship != null) {
-    return friendship >= BONDED_FRIENDSHIP_MIN ? "bonded" : "trained";
+  if (
+    isBonded({
+      friendship,
+      evTotal: total,
+      natureHelps,
+      cracked,
+    })
+  ) {
+    return "bonded";
   }
-
-  // No friendship column yet — near-max organic pool stands in for endgame care.
-  if (total >= BONDED_EV_TOTAL || (natureHelps && cracked)) return "bonded";
   return "trained";
 }

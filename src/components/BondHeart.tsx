@@ -37,9 +37,11 @@ export function BondHeart({
   const tip = trainingTierTip(tier);
   const label = trainingTierLabel(tier) ?? "Strangers";
   const tipId = useId();
+  const gradientId = `bond-ultra-${useId().replace(/:/g, "")}`;
   const wrapRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<TipPos | null>(null);
+  const isUltra = tier === "ultra";
 
   const place = useCallback(() => {
     const el = wrapRef.current;
@@ -82,6 +84,7 @@ export function BondHeart({
 
   const fill = trainingTierFill(tier);
   const style = { "--bond-fill": `${fill * 100}%` } as CSSProperties;
+  const paint = isUltra ? `url(#${gradientId})` : undefined;
 
   return (
     <span
@@ -100,14 +103,34 @@ export function BondHeart({
         fill="none"
         viewBox="0 0 24 24"
       >
+        {isUltra ? (
+          <defs>
+            <linearGradient
+              id={gradientId}
+              x1="2"
+              y1="4"
+              x2="22"
+              y2="20"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop offset="0%" stopColor="#ff7a7a" />
+              <stop offset="28%" stopColor="#ffb84a" />
+              <stop offset="52%" stopColor="#6ad4a0" />
+              <stop offset="74%" stopColor="#6ab8ef" />
+              <stop offset="100%" stopColor="#c48ad4" />
+            </linearGradient>
+          </defs>
+        ) : null}
         <path
           className="pokemon-bond-heart__outline"
           d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
           strokeLinejoin="round"
+          style={paint ? { stroke: paint } : undefined}
         />
         <path
           className="pokemon-bond-heart__fill"
           d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+          style={paint ? { fill: paint } : undefined}
         />
       </svg>
       {open && pos && typeof document !== "undefined"
