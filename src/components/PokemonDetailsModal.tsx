@@ -552,6 +552,7 @@ export function PokemonDetailsModal({
         </div>
 
         <SurvivalPollSection
+          key={pokemon.id}
           pokemonId={pokemon.id}
           enabled={survivalMarketsEnabled}
           viewerUserId={viewerUserId}

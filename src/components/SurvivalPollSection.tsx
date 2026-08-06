@@ -134,12 +134,12 @@ export function SurvivalPollSection({
 
   useEffect(() => {
     let cancelled = false;
-    setLoaded(false);
-    setError(null);
     void getSurvivalMarketAction({ pokemonId }).then((view) => {
       if (cancelled) return;
       setMarket(view);
-      setComment(view?.votes.find((v) => v.user.id === viewerUserId)?.comment ?? "");
+      setComment(
+        view?.votes.find((v) => v.user.id === viewerUserId)?.comment ?? "",
+      );
       setLoaded(true);
     });
     return () => {
