@@ -784,9 +784,12 @@ function RecommendedPanel({
         {picks.map((pick, index) => {
           const entry = poolById.get(pick.entryId);
           if (!entry) return null;
-          const catchLabel = catchTierHasChrome(pick.quality.catchTier)
-            ? catchTierLabel(pick.quality.catchTier)
-            : null;
+          // Null tier = no IVs on file; it earns no chip at all.
+          const catchTier = pick.quality.catchTier;
+          const catchLabel =
+            catchTier && catchTierHasChrome(catchTier)
+              ? catchTierLabel(catchTier)
+              : null;
           return (
             <li
               key={pick.entryId}
@@ -824,9 +827,9 @@ function RecommendedPanel({
                   {pick.reason}
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-1">
-                  {catchLabel ? (
+                  {catchTier && catchLabel ? (
                     <span
-                      className={`rounded border border-frame/40 px-1.5 py-0.5 text-[10px] font-bold leading-tight ${catchTierToneClass(pick.quality.catchTier)}`}
+                      className={`rounded border border-frame/40 px-1.5 py-0.5 text-[10px] font-bold leading-tight ${catchTierToneClass(catchTier)}`}
                     >
                       {catchLabel}
                     </span>
