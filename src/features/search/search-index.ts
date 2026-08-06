@@ -551,6 +551,21 @@ export function shouldSkipFuzzySearch(query: string): boolean {
   return false;
 }
 
+/** Matches `/api/ai/jump` question `.max(300)`. */
+export const MAX_SEARCH_QUERY_CHARS = 300;
+
+/**
+ * How long to wait after the last keystroke before running Fuse.
+ * Longer queries wait longer; Ask-shaped / skipped queries return 0 (no Fuse).
+ */
+export function fuseDebounceMs(query: string): number {
+  const trimmed = query.trim();
+  if (!trimmed || shouldSkipFuzzySearch(trimmed)) return 0;
+  if (trimmed.length <= 8) return 50;
+  if (trimmed.length <= 16) return 120;
+  return 180;
+}
+
 /**
  * Queries the fuzzy index can't answer well — the ones #184 wants to hand to
  * the LLM. Implementation lives in `@/lib/ai/ask-guard` so the API can share it.

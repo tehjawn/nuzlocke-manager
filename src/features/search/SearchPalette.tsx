@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
   useCallback,
-  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -21,7 +20,9 @@ import {
   buildSeasonMemorialResults,
   clearRecentSearches,
   defaultSuggestions,
+  fuseDebounceMs,
   getRecentSearches,
+  MAX_SEARCH_QUERY_CHARS,
   recordSearchUse,
   saveRecentSearch,
   querySearchIndex,
@@ -133,9 +134,13 @@ export function SearchPalette() {
    */
   const [pathname, setPathname] = useState("");
   const [query, setQuery] = useState("");
-  /** Fuse runs against the deferred query so keystrokes stay responsive. */
-  const deferredQuery = useDeferredValue(query);
-  const searchPending = deferredQuery !== query;
+  /**
+   * Fuse input — length-scaled debounce so short lookups stay snappy and longer
+   * strings don't schedule Bitap on every keystroke. Ask-shaped queries sync
+   * immediately (Fuse is skipped anyway).
+   */
+  const [fuseQuery, setFuseQuery] = useState("");
+  const fuseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [recents, setRecents] = useState<string[]>([]);
   const [seenOpen, setSeenOpen] = useState(open);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,6 +151,7 @@ export function SearchPalette() {
     setSeenOpen(open);
     if (open) {
       setQuery("");
+      setFuseQuery("");
       setRecents(getRecentSearches());
       // Only reached when `open` flips true, which is always a client
       // interaction — prerender never runs this branch.
@@ -164,27 +170,49 @@ export function SearchPalette() {
     if (!open) resetAssist();
   }, [open, resetAssist]);
 
+  useEffect(() => {
+    if (fuseTimerRef.current) {
+      clearTimeout(fuseTimerRef.current);
+      fuseTimerRef.current = null;
+    }
+    const ms = fuseDebounceMs(query);
+    if (ms === 0) {
+      setFuseQuery(query);
+      return;
+    }
+    fuseTimerRef.current = setTimeout(() => {
+      fuseTimerRef.current = null;
+      setFuseQuery(query);
+    }, ms);
+    return () => {
+      if (fuseTimerRef.current) {
+        clearTimeout(fuseTimerRef.current);
+        fuseTimerRef.current = null;
+      }
+    };
+  }, [query]);
+
   const suggestions = useMemo(
     () => defaultSuggestions(results, pathname),
     [results, pathname],
   );
 
   const trimmedQuery = query.trim();
-  const deferredTrimmed = deferredQuery.trim();
+  const fuseTrimmed = fuseQuery.trim();
   /** Live Ask-shaped / long queries drop fuzzy immediately. */
   const skipFuzzyLive = shouldSkipFuzzySearch(trimmedQuery);
+  const searchPending = !skipFuzzyLive && fuseQuery !== query;
 
   // Derive from the live index so hits refresh when season registration lands
   // after hydration (stale hits were empty forever in prod until retyping).
-  // Also skip when the *live* query already looks like Ask/long NL so a lagging
-  // deferred value can't still schedule an expensive Bitap search.
+  // Skip when live OR fuse query looks Ask/long so Bitap never runs there.
   const hits = useMemo(() => {
-    if (!deferredTrimmed) return [] as SearchFuseHit[];
-    if (skipFuzzyLive || shouldSkipFuzzySearch(deferredTrimmed)) {
+    if (!fuseTrimmed) return [] as SearchFuseHit[];
+    if (skipFuzzyLive || shouldSkipFuzzySearch(fuseTrimmed)) {
       return [] as SearchFuseHit[];
     }
-    return querySearchIndex(index, deferredQuery);
-  }, [index, deferredQuery, deferredTrimmed, skipFuzzyLive]);
+    return querySearchIndex(index, fuseQuery);
+  }, [index, fuseQuery, fuseTrimmed, skipFuzzyLive]);
 
   const groupedHits = useMemo(() => {
     const groups = new Map<SearchCategory, SearchFuseHit[]>();
@@ -204,7 +232,8 @@ export function SearchPalette() {
     (value: string) => {
       // cmdk can emit a non-string in some clear/IME paths — coerce so the
       // controlled input never renders the literal "undefined".
-      const next = typeof value === "string" ? value : "";
+      const raw = typeof value === "string" ? value : "";
+      const next = raw.slice(0, MAX_SEARCH_QUERY_CHARS);
       setQuery(next);
       // A new query means the previous answer is stale — drop it immediately
       // so the palette never shows an answer to a question you edited away.
@@ -216,6 +245,7 @@ export function SearchPalette() {
   const close = useCallback(() => {
     setOpen(false);
     setQuery("");
+    setFuseQuery("");
   }, [setOpen]);
 
   const runResult = useCallback(
@@ -238,13 +268,13 @@ export function SearchPalette() {
   );
 
   const entityHints = useMemo(() => askEntityHints(season), [season]);
-  // Guard against the deferred query for fuzzy typing; NL asks use the live
-  // query (isQuestionLike short-circuits — no hint scan) so the Ask row doesn't
-  // wait a deferred frame and then pop in.
+  // Guard against the debounced fuse query for fuzzy typing; NL asks use the
+  // live query (isQuestionLike short-circuits — no hint scan) so the Ask row
+  // doesn't wait on the debounce timer.
   const askGuard = useMemo(() => {
-    const q = skipFuzzyLive ? trimmedQuery : deferredTrimmed;
+    const q = skipFuzzyLive ? trimmedQuery : fuseTrimmed;
     return evaluateAskQuery(q, { entityHints });
-  }, [skipFuzzyLive, trimmedQuery, deferredTrimmed, entityHints]);
+  }, [skipFuzzyLive, trimmedQuery, fuseTrimmed, entityHints]);
 
   /**
    * Ask is a fallback, never the default: only when the query clears the Ask
@@ -337,9 +367,22 @@ export function SearchPalette() {
             ref={inputRef}
             value={query}
             onValueChange={onQueryChange}
+            maxLength={MAX_SEARCH_QUERY_CHARS}
             placeholder="Search trainers, Pokémon, pages…"
             className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ink outline-none placeholder:text-muted/80"
           />
+          {query.length >= 240 ? (
+            <span
+              className={`shrink-0 font-mono text-[10px] tabular-nums ${
+                query.length >= MAX_SEARCH_QUERY_CHARS
+                  ? "font-semibold text-ink"
+                  : "text-muted"
+              }`}
+              aria-live="polite"
+            >
+              {query.length}/{MAX_SEARCH_QUERY_CHARS}
+            </span>
+          ) : null}
           <kbd className="hidden shrink-0 rounded border border-frame/80 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-muted sm:inline">
             esc
           </kbd>
