@@ -2,72 +2,32 @@
 
 import Link from "next/link";
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { Frame } from "@/components/Frame";
 import { MemorialCauseEditor } from "@/components/MemorialCauseEditor";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { seasonCalloutLinkClass } from "@/components/SeasonStatCards";
 import { typeBadgeSoftStyle } from "@/components/TypeBadge";
 import { POKEMON_GENERATIONS } from "@/data/pokemon-index";
-import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
-import {
-  gravesPokemonByTrainerId,
-  type CrossRunGravesResult,
-  type MemorialGrave,
+import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import type {
+  CrossRunGravesResult,
+  MemorialGrave,
 } from "@/lib/memorial-backfill";
-import {
-  formatTiedLabels,
-  memorialPokemonMatchesFilters,
-  memorialSeasonHighlights,
-} from "@/lib/memorial-stats";
+import { memorialPokemonMatchesFilters } from "@/lib/memorial-stats";
 import {
   POKEMON_TYPES,
   TYPE_COLORS,
   type PokemonType,
 } from "@/lib/pokemon-types";
-import { toolsHref } from "@/lib/tools-routes";
 import { displayName } from "@/lib/trainer-display";
 
 type MemorialBoardProps = {
-  challenge: Challenge;
+  slug: string;
+  trainers: TrainerProfile[];
   /** Trainer IDs the viewer may edit causes for (owner / GM with lens). */
   editableTrainerIds?: string[];
   /** Cross-run graves per trainer: live rows + graves recovered from history. */
   gravesByTrainerId: Record<string, CrossRunGravesResult>;
 };
-
-/**
- * Highlight card that deep-links into a Season Stats section. No aria-label:
- * the accessible name comes from the content (label, leaders, counts, CTA).
- */
-function SeasonStatsLinkCard({
-  href,
-  label,
-  tied = false,
-  cta = "Season stats →",
-  children,
-}: {
-  href: string;
-  label: string;
-  tied?: boolean;
-  cta?: string;
-  children: ReactNode;
-}) {
-  return (
-    <Link className={seasonCalloutLinkClass} href={href}>
-      <p className="flex items-center justify-between gap-2 text-[10px] font-bold tracking-wide text-muted uppercase">
-        <span>
-          {label}
-          {tied ? " · tied" : ""}
-        </span>
-        <span className="font-semibold normal-case tracking-normal text-interactive">
-          {cta}
-        </span>
-      </p>
-      {children}
-    </Link>
-  );
-}
 
 /** Newest attempt first — matches the trainer history accordion. */
 function groupByRun(
@@ -84,8 +44,13 @@ function groupByRun(
     .map(([runNumber, runGraves]) => ({ runNumber, graves: runGraves }));
 }
 
+/**
+ * Filterable cross-run grave browser. Season Stats owns the page chrome and
+ * memorial highlight cards (#288) — this is the list under Graves & wipes.
+ */
 export function MemorialBoard({
-  challenge,
+  slug,
+  trainers,
   editableTrainerIds = [],
   gravesByTrainerId,
 }: MemorialBoardProps) {
@@ -96,7 +61,7 @@ export function MemorialBoard({
   const filters = { type: typeFilter, generation: generationFilter };
   const filtering = typeFilter != null || generationFilter != null;
 
-  const allByTrainer = challenge.trainers.map((trainer) => ({
+  const allByTrainer = trainers.map((trainer) => ({
     trainer,
     all: gravesByTrainerId[trainer.id]?.graves ?? [],
     recovered: gravesByTrainerId[trainer.id]?.recoveredCount ?? 0,
@@ -115,65 +80,34 @@ export function MemorialBoard({
     (sum, row) => sum + row.graves.length,
     0,
   );
+  const totalGraves = allByTrainer.reduce(
+    (sum, row) => sum + row.all.length,
+    0,
+  );
+  const trainersWithLosses = allByTrainer.filter(
+    (row) => row.all.length > 0,
+  ).length;
   const recoveredCount = allByTrainer.reduce(
     (sum, row) => sum + row.recovered,
     0,
   );
-
-  const highlights = memorialSeasonHighlights(
-    challenge.trainers,
-    gravesPokemonByTrainerId(gravesByTrainerId),
-  );
-  const trainersById = new Map(
-    challenge.trainers.map((trainer) => [trainer.id, trainer]),
-  );
-
-  function trainersForHighlight(
-    highlight: { trainerIds: string[] } | null | undefined,
-  ): TrainerProfile[] {
-    if (!highlight) return [];
-    return highlight.trainerIds
-      .map((id) => trainersById.get(id))
-      .filter((trainer): trainer is TrainerProfile => Boolean(trainer));
-  }
-
-  const heaviestTrainers = trainersForHighlight(highlights.heaviestMemorial);
-  const wipeTrainers = trainersForHighlight(highlights.mostPartyWipes);
-  const richestTrainers = trainersForHighlight(highlights.richest);
-  const hasCallouts = Boolean(
-    highlights.heaviestMemorial ||
-      highlights.mostPartyWipes ||
-      highlights.mostDeathProne ||
-      highlights.richest,
-  );
-
-  const hasAnyGraves = highlights.totalGraves > 0;
+  const hasAnyGraves = totalGraves > 0;
 
   return (
     <div className="space-y-5">
-      <header className="space-y-1.5">
-        <p className="text-xs font-semibold tracking-tight text-accent-deep">
-          Across every wipe
-        </p>
-        <h2 className="text-2xl font-bold tracking-tight">Memorial</h2>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Every fallen partner from {challenge.name}
-          {challenge.status === "ARCHIVED"
-            ? " — season archived and read-only"
-            : ""}
-          , including losses carried through run restarts. Nicknames first;
-          causes when known.
-        </p>
+      <div className="space-y-1">
+        <h4 className="text-sm font-bold tracking-tight">Grave browser</h4>
         <p className="text-xs text-muted">
           {filtering
-            ? `${filteredGraveCount} shown · ${highlights.totalGraves} memorialized`
-            : `${highlights.totalGraves} memorialized`}{" "}
-          · {highlights.trainersWithLosses} trainers with losses
+            ? `${filteredGraveCount} shown · ${totalGraves} memorialized`
+            : `${totalGraves} memorialized`}{" "}
+          · {trainersWithLosses} trainers with losses
           {recoveredCount > 0
             ? ` · ${recoveredCount} recovered from board history`
             : ""}
+          . Nicknames first; causes when known.
         </p>
-      </header>
+      </div>
 
       {hasAnyGraves ? (
         <div className="space-y-3">
@@ -241,143 +175,6 @@ export function MemorialBoard({
         </div>
       ) : null}
 
-      {hasCallouts ? (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {highlights.heaviestMemorial ? (
-            <SeasonStatsLinkCard
-              href={toolsHref(challenge.slug, "stats", { section: "memorial" })}
-              label="Heaviest memorial"
-              tied={highlights.heaviestMemorial.tied}
-            >
-              <div className="mt-1 flex items-center gap-2.5">
-                {heaviestTrainers.length > 0 ? (
-                  <div className="flex shrink-0 items-end -space-x-2">
-                    {heaviestTrainers.slice(0, 3).map((trainer) => (
-                      <AvatarPortrait
-                        key={trainer.id}
-                        avatarSpriteKey={trainer.avatarSpriteKey}
-                        backgroundKey={trainer.avatarBackgroundKey}
-                        sizeClass="h-12 w-12"
-                        width={48}
-                        height={48}
-                        alt=""
-                      />
-                    ))}
-                  </div>
-                ) : null}
-                <div className="min-w-0">
-                  <p className="font-display text-sm font-bold leading-tight">
-                    {formatTiedLabels(highlights.heaviestMemorial.labels)}
-                  </p>
-                  <p className="text-[11px] text-muted">
-                    {highlights.heaviestMemorial.count} RIP
-                  </p>
-                </div>
-              </div>
-            </SeasonStatsLinkCard>
-          ) : null}
-
-          {highlights.mostPartyWipes ? (
-            <SeasonStatsLinkCard
-              href={toolsHref(challenge.slug, "stats", { section: "memorial" })}
-              label="Most party wipes"
-              tied={highlights.mostPartyWipes.tied}
-            >
-              <div className="mt-1 flex items-center gap-2.5">
-                {wipeTrainers.length > 0 ? (
-                  <div className="flex shrink-0 items-end -space-x-2">
-                    {wipeTrainers.slice(0, 3).map((trainer) => (
-                      <AvatarPortrait
-                        key={trainer.id}
-                        avatarSpriteKey={trainer.avatarSpriteKey}
-                        backgroundKey={trainer.avatarBackgroundKey}
-                        sizeClass="h-12 w-12"
-                        width={48}
-                        height={48}
-                        alt=""
-                      />
-                    ))}
-                  </div>
-                ) : null}
-                <div className="min-w-0">
-                  <p className="font-display text-sm font-bold leading-tight">
-                    {formatTiedLabels(highlights.mostPartyWipes.labels)}
-                  </p>
-                  <p className="text-[11px] text-muted">
-                    {highlights.mostPartyWipes.count} wipe
-                    {highlights.mostPartyWipes.count === 1 ? "" : "s"}
-                  </p>
-                </div>
-              </div>
-            </SeasonStatsLinkCard>
-          ) : null}
-
-          {highlights.mostDeathProne ? (
-            <SeasonStatsLinkCard
-              href={toolsHref(challenge.slug, "stats", { section: "memorial" })}
-              label="Most death-prone Pokémon"
-              tied={highlights.mostDeathProne.tied}
-            >
-              <p className="mt-1 flex items-center gap-2.5 font-display text-sm font-bold leading-tight">
-                <span className="relative inline-block h-12 w-12 shrink-0">
-                  <PokemonSpriteImage
-                    alt=""
-                    className="pixelated h-full w-full object-contain"
-                    height={48}
-                    pokedexId={highlights.mostDeathProne.pokedexId}
-                    species={highlights.mostDeathProne.species}
-                    width={48}
-                  />
-                </span>
-                <span className="min-w-0">
-                  {highlights.mostDeathProne.species}
-                  <span className="mt-0.5 block font-sans text-[11px] font-normal text-muted">
-                    {highlights.mostDeathProne.count} RIP across the season
-                  </span>
-                </span>
-              </p>
-            </SeasonStatsLinkCard>
-          ) : null}
-
-          {highlights.richest ? (
-            <SeasonStatsLinkCard
-              href={toolsHref(challenge.slug, "stats", {
-                section: "standings",
-              })}
-              label="Richest"
-              tied={highlights.richest.tied}
-              cta="Full standings →"
-            >
-              <div className="mt-1 flex items-center gap-2.5">
-                {richestTrainers.length > 0 ? (
-                  <div className="flex shrink-0 items-end -space-x-2">
-                    {richestTrainers.slice(0, 3).map((trainer) => (
-                      <AvatarPortrait
-                        key={trainer.id}
-                        avatarSpriteKey={trainer.avatarSpriteKey}
-                        backgroundKey={trainer.avatarBackgroundKey}
-                        sizeClass="h-12 w-12"
-                        width={48}
-                        height={48}
-                        alt=""
-                      />
-                    ))}
-                  </div>
-                ) : null}
-                <div className="min-w-0">
-                  <p className="font-display text-sm font-bold leading-tight">
-                    {formatTiedLabels(highlights.richest.labels)}
-                  </p>
-                  <p className="text-[11px] text-muted">
-                    ${highlights.richest.count.toLocaleString("en-US")}
-                  </p>
-                </div>
-              </div>
-            </SeasonStatsLinkCard>
-          ) : null}
-        </div>
-      ) : null}
-
       {!hasAnyGraves ? (
         <Frame title="R.I.P." tone="rip">
           <p className="text-sm text-muted">
@@ -423,7 +220,7 @@ export function MemorialBoard({
                         : ""}
                     </span>
                     <Link
-                      href={`/challenges/${challenge.slug}/trainers/${trainer.id}`}
+                      href={`/challenges/${slug}/trainers/${trainer.id}`}
                       className="text-xs font-bold text-white/90 underline-offset-2 hover:underline"
                     >
                       Board

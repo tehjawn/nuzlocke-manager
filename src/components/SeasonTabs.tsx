@@ -54,12 +54,6 @@ export function getSeasonTabs(
       match: "prefix",
       icon: <ToolsIcon />,
     },
-    {
-      href: `${base}/memorial`,
-      label: "Memorial",
-      match: "prefix",
-      icon: <MemorialIcon />,
-    },
   ];
 
   // TEMP (#240): Tournament / Ladder is still WIP — GMs only.
@@ -158,16 +152,6 @@ function EncountersIcon() {
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
       <path d="M4 7h16M4 12h10M4 17h13" strokeLinecap="round" />
       <circle cx="18.5" cy="12" r="2.25" />
-    </svg>
-  );
-}
-
-function MemorialIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
-      <path d="M8 20V9.5a4 4 0 018 0V20" strokeLinecap="round" />
-      <path d="M6 20h12" strokeLinecap="round" />
-      <path d="M12 5.5V4" strokeLinecap="round" />
     </svg>
   );
 }

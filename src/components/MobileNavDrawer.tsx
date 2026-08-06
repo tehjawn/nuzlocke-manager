@@ -244,7 +244,8 @@ function isUnder(pathname: string, href: string): boolean {
  * Tools as an expanding row rather than five flat ones (#253) — the drawer also
  * carries Rules, My Trainer, GM, Search, and the account actions, and inlining
  * the whole catalog would bury them. Renders off `TOOLS_CATALOG` so it tracks
- * the header menu without a second list to maintain.
+ * the header menu without a second list to maintain. Season Stats is included
+ * as a deep link to the Season Stats season tab (#288).
  */
 function ToolsNavSection({
   slug,

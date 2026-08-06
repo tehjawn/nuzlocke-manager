@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import {
@@ -45,6 +45,8 @@ type SeasonStatsViewProps = {
   myTrainerId?: string | null;
   /** Server-computed extras (cross-run graves + unredacted IV aggregates). */
   seasonStats?: SeasonStatsData | null;
+  /** Grave browser under Graves & wipes. */
+  memorialBrowser: ReactNode;
 };
 
 const sectionLinkClass =
@@ -55,6 +57,7 @@ export function SeasonStatsView({
   trainers,
   myTrainerId = null,
   seasonStats = null,
+  memorialBrowser,
 }: SeasonStatsViewProps) {
   const searchParams = useSearchParams();
   const section = parseStatsSection(searchParams.get("section"));
@@ -67,21 +70,16 @@ export function SeasonStatsView({
     document.getElementById(statsSectionId(section))?.scrollIntoView();
   }, [section]);
 
-  const encounter = useMemo(
-    () => encounterSeasonHighlights(trainers),
-    [trainers],
+  const encounter = encounterSeasonHighlights(trainers);
+  const exclusives = exclusiveOwnedSpecies(trainers);
+  const badges = badgeStandings(trainers);
+  const money = moneyStandings(trainers);
+  const totalWipes = trainers.reduce(
+    (sum, trainer) => sum + (trainer.wipeCount ?? 0),
+    0,
   );
-  const exclusives = useMemo(() => exclusiveOwnedSpecies(trainers), [trainers]);
-  const badges = useMemo(() => badgeStandings(trainers), [trainers]);
-  const money = useMemo(() => moneyStandings(trainers), [trainers]);
-  const totalWipes = useMemo(
-    () =>
-      trainers.reduce((sum, trainer) => sum + (trainer.wipeCount ?? 0), 0),
-    [trainers],
-  );
-  const trainersById = useMemo(
-    () => new Map(trainers.map((trainer) => [trainer.id, trainer])),
-    [trainers],
+  const trainersById = new Map(
+    trainers.map((trainer) => [trainer.id, trainer]),
   );
 
   const memorial = seasonStats?.memorial ?? null;
@@ -344,28 +342,10 @@ export function SeasonStatsView({
       </StatsSection>
 
       {memorial ? (
-        <StatsSection
-          section="memorial"
-          title="Graves & wipes"
-          action={
-            <Link
-              className={sectionLinkClass}
-              href={`/challenges/${slug}/memorial`}
-            >
-              Open Memorial →
-            </Link>
-          }
-        >
-          {memorial.totalGraves === 0 &&
-          !memorial.mostPartyWipes &&
-          encounter.deadliestRoutes.length === 0 ? (
-            <div className={seasonCalloutCardClass}>
-              <p className="text-sm text-muted">
-                No graves yet. May it stay that way — or at least stay
-                interesting.
-              </p>
-            </div>
-          ) : (
+        <StatsSection section="memorial" title="Graves & wipes">
+          {memorial.totalGraves > 0 ||
+          memorial.mostPartyWipes ||
+          encounter.deadliestRoutes.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {memorial.heaviestMemorial ? (
                 <TrainerHighlightCard
@@ -418,7 +398,8 @@ export function SeasonStatsView({
                 />
               ) : null}
             </div>
-          )}
+          ) : null}
+          <div className="pt-2">{memorialBrowser}</div>
         </StatsSection>
       ) : null}
     </div>

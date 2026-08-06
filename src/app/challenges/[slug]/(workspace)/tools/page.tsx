@@ -4,30 +4,22 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ToolsView } from "@/components/ToolsView";
 import {
-  getChallenge,
   getChallengeMeta,
   getChallengeToolsSummary,
-  getSeasonMemorialGraves,
 } from "@/lib/challenges";
 import { canViewCompetitiveDetails } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
-import { gravesPokemonByTrainerId } from "@/lib/memorial-backfill";
-import { memorialSeasonHighlights } from "@/lib/memorial-stats";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
-import {
-  godCatchBoard,
-  seasonCatchesByTrainer,
-  shinySeasonBoard,
-  type SeasonStatsData,
-} from "@/lib/season-stats";
 import {
   isLegacyCompareUrl,
   legacyCompareHref,
   parseBountyMode,
   parsePlannerMode,
   parsePokedexMode,
+  parseStatsSection,
   parseToolsId,
+  seasonStatsHref,
   toolsTitle,
 } from "@/lib/tools-routes";
 
@@ -42,6 +34,7 @@ type PageProps = {
     id?: string;
     chapter?: string;
     mode?: string;
+    section?: string;
   }>;
 };
 
@@ -57,9 +50,13 @@ export async function generateMetadata({
   if (!challenge) return { title: "Tools" };
 
   // Metadata resolves before the page's redirect, so match the destination.
-  const resolved = isLegacyCompareUrl({ a, b, tab, tool })
-    ? "planner"
-    : parseToolsId(tool, tab);
+  if (isLegacyCompareUrl({ a, b, tab, tool })) {
+    return { title: `Team Planner · Tools · ${challenge.name}` };
+  }
+  const resolved = parseToolsId(tool, tab);
+  if (resolved === "stats") {
+    return { title: `Season Stats · ${challenge.name}` };
+  }
   if (!resolved) return { title: `Tools · ${challenge.name}` };
   return {
     title: `${toolsTitle(resolved)} · Tools · ${challenge.name}`,
@@ -72,10 +69,16 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     searchParams,
     auth(),
   ]);
-  const { tool, tab, a, b, id, mode } = sp;
+  const { tool, tab, a, b, id, mode, section } = sp;
   if (isLegacyCompareUrl({ a, b, tab, tool })) {
     redirect(legacyCompareHref(slug));
   }
+  // Season Stats lives on the former Memorial tab (#288) — keep old Tools
+  // deep links working.
+  if (parseToolsId(tool, tab) === "stats") {
+    redirect(seasonStatsHref(slug, { section: parseStatsSection(section) }));
+  }
+
   const challenge = await getChallengeToolsSummary(slug, session?.user?.id);
   if (!challenge) notFound();
 
@@ -114,30 +117,6 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const initialPokedexMode =
     initialTool === "pokedex" ? parsePokedexMode(mode) : null;
 
-  // Season Stats needs data the tools payload doesn't carry: cross-run graves
-  // (a wipe clears the live board) and unredacted IVs for the god-catch
-  // board. Both are aggregated here so raw spreads never reach the client.
-  let seasonStats: SeasonStatsData | null = null;
-  if (initialTool === "stats") {
-    // Full board rather than the tools summary: live rows need IVs for the
-    // god-catch pass. Null on outage — the view shows "unavailable", never a
-    // fabricated zero.
-    const fullChallenge = await getChallenge(slug);
-    const boardTrainers = fullChallenge?.trainers ?? challenge.trainers;
-    const gravesPokemon = gravesPokemonByTrainerId(
-      await getSeasonMemorialGraves(slug, boardTrainers),
-    );
-    const catches = seasonCatchesByTrainer(boardTrainers, gravesPokemon);
-    seasonStats = {
-      badgesTotal: challenge.badges.length,
-      memorial: memorialSeasonHighlights(challenge.trainers, gravesPokemon),
-      godCatches: fullChallenge
-        ? godCatchBoard(fullChallenge.trainers, catches)
-        : null,
-      shinies: shinySeasonBoard(boardTrainers, catches),
-    };
-  }
-
   return (
     <Suspense
       fallback={<p className="text-sm text-muted">Loading tools…</p>}
@@ -154,7 +133,6 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         initialBountyMode={initialBountyMode}
         initialPlannerMode={initialPlannerMode}
         initialPokedexMode={initialPokedexMode}
-        seasonStats={seasonStats}
       />
     </Suspense>
   );

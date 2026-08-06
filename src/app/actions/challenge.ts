@@ -132,7 +132,7 @@ function revalidateBoardViews(slug: string, trainerId?: string) {
   updateTag(`season:${slug}:board`);
   revalidateTag(`season:${slug}`, "max");
   revalidatePath(`/challenges/${slug}`);
-  revalidatePath(`/challenges/${slug}/memorial`);
+  revalidatePath(`/challenges/${slug}/season-stats`);
   revalidatePath(`/challenges/${slug}/activity`);
   if (trainerId) {
     revalidatePath(`/challenges/${slug}/trainers/${trainerId}`);
@@ -1786,7 +1786,7 @@ export async function gmApplyMemorialBackfillAction(input: {
     });
 
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
-    revalidatePath(`/challenges/${trainer.challenge.slug}/memorial`);
+    revalidatePath(`/challenges/${trainer.challenge.slug}/season-stats`);
     return {
       ok: true,
       message: `Restored ${plan.candidates.length} memorial entr${
@@ -1932,7 +1932,7 @@ export async function gmReconstructMemorialHistoryAction(input: {
     }
 
     revalidateChallenge(challenge.slug);
-    revalidatePath(`/challenges/${challenge.slug}/memorial`);
+    revalidatePath(`/challenges/${challenge.slug}/season-stats`);
 
     if (totalRestored === 0) {
       return {

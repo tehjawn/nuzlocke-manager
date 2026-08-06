@@ -8,7 +8,8 @@ export type ToolsId =
 
 /**
  * Crest Pulse token roles used for per-tool icon chips (nav + hub). Keeps
- * scan-color identity without inventing new brand hues.
+ * scan-color identity without inventing new brand hues. Each catalog entry
+ * must use a distinct tone so the submenu / hub stay scannable.
  */
 export type ToolsTone =
   | "accent"
@@ -16,6 +17,7 @@ export type ToolsTone =
   | "interactive"
   | "danger"
   | "discord"
+  | "rip"
   | "muted";
 
 export type ToolsCatalogEntry = {
@@ -59,6 +61,14 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
       "Every Modern Emerald species — who's owned it, who's just seen it, who's cornered a line.",
   },
   {
+    id: "chart",
+    title: "Type Chart",
+    navLabel: "Matchup table",
+    tone: "discord",
+    blurb:
+      "Modern 18-type attack × defense multipliers — overlay a trainer's Main Squad coverage.",
+  },
+  {
     id: "planner",
     title: "Team Planner",
     navLabel: "Coverage & prep",
@@ -70,22 +80,28 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
     id: "stats",
     title: "Season Stats",
     navLabel: "Season leaderboards",
-    tone: "accent-2",
+    tone: "rip",
     blurb:
-      "Hall of fame — badge race, richest wallets, god catches, shinies, and every season-wide leaderboard.",
-  },
-  {
-    id: "chart",
-    title: "Type Chart",
-    navLabel: "Matchup table",
-    tone: "discord",
-    blurb:
-      "Modern 18-type attack × defense multipliers — overlay a trainer's Main Squad coverage.",
+      "Hall of fame — badge race, graves & wipes, god catches, shinies, and every season-wide leaderboard.",
   },
 ];
 
 export function toolsHubHref(slug: string): string {
   return `/challenges/${slug}/tools`;
+}
+
+/**
+ * Canonical Season Stats home (issue #288) — lives at `/season-stats`. Tools
+ * catalog / old `?tool=stats` and `/memorial` links alias here.
+ */
+export function seasonStatsHref(
+  slug: string,
+  query?: { section?: string | null },
+): string {
+  const base = `/challenges/${slug}/season-stats`;
+  const section = parseStatsSection(query?.section);
+  if (!section) return base;
+  return `${base}?${new URLSearchParams({ section }).toString()}`;
 }
 
 export function toolsHref(
@@ -98,6 +114,11 @@ export function toolsHref(
     section?: string | null;
   },
 ): string {
+  // Stats graduated out of Tools into its own season tab — keep callers
+  // (Encounters deep links, catalog cards) pointing at the canonical URL.
+  if (tool === "stats") {
+    return seasonStatsHref(slug, { section: query?.section });
+  }
   const params = new URLSearchParams({ tool });
   if (query?.id != null && query.id !== "") {
     params.set("id", String(query.id));
@@ -184,9 +205,8 @@ export function parsePokedexMode(
 
 /**
  * Season Stats page sections. Deep links use `?section=` rather than a `#hash`
- * because the tools page streams behind a loading boundary — the App Router's
- * hash scroll fires against the skeleton and is consumed before the section
- * exists. SeasonStatsView reads the param reactively and scrolls itself.
+ * so scroll survives Suspense / streaming boundaries — SeasonStatsView reads
+ * the param reactively and scrolls itself once the section is mounted.
  */
 export type StatsSection = "standings" | "quality" | "species" | "memorial";
 
