@@ -223,8 +223,8 @@ export function TrainerCard({
             className="absolute inset-0 z-1"
             aria-label={boardLabel}
           />
-          <div className="relative flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex items-start justify-between gap-2 sm:contents">
+          <div className="relative flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex min-w-0 items-start justify-between gap-2 sm:contents">
               <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 overflow-visible sm:w-28 sm:flex-none sm:shrink-0 sm:items-center sm:text-center md:w-32">
                 <AvatarPortrait
                   avatarSpriteKey={trainer.avatarSpriteKey}
@@ -255,7 +255,11 @@ export function TrainerCard({
                 </div>
               </div>
 
-              <div className="max-w-[58%] shrink-0 sm:hidden">
+              {/*
+                min-w-0 lets max-w-[58%] win over badge strip min-content;
+                shrink-0 previously forced the whole card past the viewport.
+              */}
+              <div className="min-w-0 max-w-[58%] sm:hidden">
                 <BadgeCase
                   badges={challenge.badges}
                   earnedKeys={trainer.earnedBadgeKeys}

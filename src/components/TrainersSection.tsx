@@ -165,8 +165,8 @@ export function TrainersSection({
       <div
         className={
           view === "grid"
-            ? "grid grid-cols-2 gap-3 md:gap-4"
-            : "grid gap-4"
+            ? "grid min-w-0 grid-cols-2 gap-3 md:gap-4"
+            : "grid min-w-0 gap-4"
         }
       >
         {ordered.map((trainer) => (

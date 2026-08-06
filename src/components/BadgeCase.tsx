@@ -209,7 +209,7 @@ export function BadgeCase({
 
     return (
       <div
-        className={`badge-case badge-case--strip flex flex-wrap items-center gap-2 ${
+        className={`badge-case badge-case--strip flex min-w-0 max-w-full flex-wrap items-center gap-2 ${
           hideCount ? "justify-center" : ""
         } ${completeClass} ${className}`}
       >
@@ -226,8 +226,11 @@ export function BadgeCase({
         )}
         {/* Frosted chip lifts badges off the card background so they stay
             legible regardless of which preset wash is active. */}
-        <div className="badge-case__shell rounded-lg bg-surface/70 px-2 py-1.5 shadow-sm backdrop-blur-sm">
-          <ul className="flex flex-wrap gap-1" aria-label={ariaProgress}>
+        <div className="badge-case__shell min-w-0 max-w-full rounded-lg bg-surface/70 px-2 py-1.5 shadow-sm backdrop-blur-sm">
+          <ul
+            className="flex min-w-0 max-w-full flex-wrap gap-1"
+            aria-label={ariaProgress}
+          >
             {badges.map((badge) => {
               const on = earned.has(badge.key);
               const meta = getEmeraldBadgeMeta(badge.key);
