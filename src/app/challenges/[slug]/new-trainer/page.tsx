@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { NewTrainerForm } from "@/components/NewTrainerForm";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
-import { getChallenge, getChallengeAccessFields } from "@/lib/challenges";
+import { getChallengeAccessFields, getChallengeMeta } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
 import {
   ensureTrainerForChallenge,
@@ -17,7 +17,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   return {
     title: challenge ? `Create trainer · ${challenge.name}` : "Create trainer",
   };
@@ -39,7 +39,7 @@ export default async function NewTrainerPage({ params }: PageProps) {
     notFound();
   }
 
-  const challenge = await getChallenge(slug, session.user.id);
+  const challenge = await getChallengeMeta(slug, session.user.id);
   if (!challenge) notFound();
 
   const result = await ensureTrainerForChallenge({

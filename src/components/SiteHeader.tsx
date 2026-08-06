@@ -11,7 +11,7 @@ import { ToolsMenu } from "@/components/ToolsMenu";
 import { TrainersMenu } from "@/components/TrainersMenu";
 import { SearchTrigger } from "@/features/search";
 import type { Challenge } from "@/lib/challenge-types";
-import { getChallenge, getDefaultSearchChallenge } from "@/lib/challenges";
+import { getChallengeMeta, getDefaultSearchChallenge } from "@/lib/challenges";
 
 /** Shared shell width for the site header, footer, and page content. */
 export const SITE_SHELL_MAX_CLASS = "max-w-7xl";
@@ -57,7 +57,7 @@ export async function SiteHeader({
     seasonGame = defaults?.game ?? null;
     if (seasonName == null) seasonName = defaults?.name ?? null;
   } else if (seasonSlug != null && seasonYear == null) {
-    const challenge = await getChallenge(seasonSlug);
+    const challenge = await getChallengeMeta(seasonSlug);
     seasonYear = challenge?.year ?? null;
     seasonStatus = challenge?.status ?? null;
     seasonGame = challenge?.game ?? null;
@@ -71,7 +71,7 @@ export async function SiteHeader({
       if (seasonName == null) seasonName = defaults.name ?? null;
     }
   } else if (seasonSlug != null && seasonName == null) {
-    const challenge = await getChallenge(seasonSlug);
+    const challenge = await getChallengeMeta(seasonSlug);
     seasonName = challenge?.name ?? null;
     seasonStatus = challenge?.status ?? null;
     seasonGame = challenge?.game ?? null;
@@ -79,11 +79,11 @@ export async function SiteHeader({
 
   // Status is only needed for the global-page Search GM registrar.
   if (!challengeSlug && seasonSlug != null && seasonStatus == null) {
-    const challenge = await getChallenge(seasonSlug);
+    const challenge = await getChallengeMeta(seasonSlug);
     seasonStatus = challenge?.status ?? null;
     if (seasonGame == null) seasonGame = challenge?.game ?? null;
   } else if (!challengeSlug && seasonSlug != null && seasonGame == null) {
-    const challenge = await getChallenge(seasonSlug);
+    const challenge = await getChallengeMeta(seasonSlug);
     seasonGame = challenge?.game ?? null;
   }
 

@@ -64,7 +64,11 @@ export async function requireTrainerEditAccess(trainerId: string) {
   const userId = await requireUserId();
   const trainer = await getPrisma().trainerProfile.findUnique({
     where: { id: trainerId },
-    include: { challenge: true },
+    // Narrow challenge select — this runs on every board mutation and the full
+    // row drags along the description plus both invite codes and the webhook.
+    include: {
+      challenge: { select: { id: true, slug: true, status: true } },
+    },
   });
   if (!trainer) throw new Error("Trainer not found");
 

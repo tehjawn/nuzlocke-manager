@@ -13,7 +13,6 @@ import {
 } from "@/features/search";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallengeShell } from "@/lib/challenges";
-import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { FORCE_FIRST_RUN_CHROME, isFirstRunChrome } from "@/lib/first-run";
 import { getWelcomeReadAt } from "@/lib/notifications";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -74,7 +73,12 @@ async function SeasonWorkspaceDynamic({
 }: LayoutProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallengeShell(slug, session?.user?.id);
+  // The welcome read only needs the session, so it rides alongside the shell
+  // fetch instead of queueing behind it (#313).
+  const [challenge, welcomeReadAt] = await Promise.all([
+    getChallengeShell(slug, session?.user?.id),
+    session?.user?.id ? getWelcomeReadAt(session.user.id) : null,
+  ]);
   if (!challenge) notFound();
 
   const access = challenge.id
@@ -105,30 +109,22 @@ async function SeasonWorkspaceDynamic({
     redirect(`/challenges/${slug}/me`);
   }
 
-  // Own board exists but /new-trainer unfinished — finish create before season chrome.
+  // Own board exists but /new-trainer unfinished — finish create before season
+  // chrome. The shell row already carries this, so no extra round-trip (#313).
   if (
     session?.user?.id &&
-    myTrainerId &&
+    myTrainer &&
     challenge.source === "database" &&
     !access?.isGm &&
-    isDatabaseConfigured()
+    myTrainer.introCompleted === false
   ) {
-    const intro = await getPrisma().trainerProfile.findUnique({
-      where: { id: myTrainerId },
-      select: { introCompletedAt: true },
-    });
-    if (intro && !intro.introCompletedAt) {
-      redirect(`/challenges/${slug}/new-trainer`);
-    }
+    redirect(`/challenges/${slug}/new-trainer`);
   }
 
   // TEMP: FORCE_FIRST_RUN_CHROME also hides GM chrome so the preview matches
   // a real new-player session.
   const showGm =
     Boolean(access?.isGm) && !FORCE_FIRST_RUN_CHROME;
-  const welcomeReadAt = session?.user?.id
-    ? await getWelcomeReadAt(session.user.id)
-    : null;
   const firstRun = isFirstRunChrome({
     signedIn: Boolean(session?.user),
     welcomeCompleted: welcomeReadAt != null,

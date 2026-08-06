@@ -251,6 +251,101 @@ async function captureSnapshot(
   return label;
 }
 
+/**
+ * Set-wide sibling of captureTrainerBoardSnapshotInTx for whole-season resets.
+ *
+ * Same fail-open savepoint contract, but a fixed five statements regardless of
+ * trainer count — the per-trainer version costs up to six each, which put a
+ * season reset ~220 round-trips deep inside one interactive transaction (#313).
+ */
+export async function captureTrainerBoardSnapshotsInTx(
+  tx: TxClient,
+  input: {
+    challengeId: string;
+    trainerIds: string[];
+    actorId?: string | null;
+    trigger: BoardSnapshotTrigger;
+    label?: string | null;
+  },
+): Promise<number> {
+  if (input.trainerIds.length === 0) return 0;
+
+  await tx.$executeRawUnsafe(`SAVEPOINT ${SNAPSHOT_SAVEPOINT}`);
+  try {
+    const trainers = await tx.trainerProfile.findMany({
+      where: { id: { in: input.trainerIds } },
+      select: {
+        id: true,
+        wipeCount: true,
+        reviveUsed: true,
+        mainSquadLocked: true,
+        activeRunId: true,
+        pokemon: true,
+        badges: {
+          where: { earned: true },
+          select: { badge: { select: { key: true } } },
+        },
+      },
+    });
+
+    const rows = [];
+    for (const trainer of trainers) {
+      const payload: TrainerBoardSnapshotPayload = {
+        wipeCount: trainer.wipeCount,
+        reviveUsed: trainer.reviveUsed,
+        mainSquadLocked: trainer.mainSquadLocked,
+        earnedBadgeKeys: trainer.badges.map((b) => b.badge.key),
+        pokemon: trainer.pokemon.map((p) => mapPokemonRow(p as DbPokemonRow)),
+      };
+      if (!isWorthCapturing(payload)) continue;
+      rows.push({
+        challengeId: input.challengeId,
+        trainerId: trainer.id,
+        runId: trainer.activeRunId ?? null,
+        actorId: input.actorId ?? null,
+        trigger: input.trigger,
+        label:
+          input.label ?? defaultSnapshotLabel(input.trigger, trainer.wipeCount),
+        payload: payload as unknown as Prisma.InputJsonValue,
+      });
+    }
+
+    if (rows.length > 0) {
+      await tx.trainerBoardSnapshot.createMany({ data: rows });
+      // Retention pruning across the whole set: one read, one delete. `skip` is
+      // per-trainer only, so the cut is computed here instead.
+      const existing = await tx.trainerBoardSnapshot.findMany({
+        where: { trainerId: { in: input.trainerIds } },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, trainerId: true },
+      });
+      const seen = new Map<string, number>();
+      const staleIds: string[] = [];
+      for (const snap of existing) {
+        const n = (seen.get(snap.trainerId) ?? 0) + 1;
+        seen.set(snap.trainerId, n);
+        if (n > BOARD_SNAPSHOT_RETENTION) staleIds.push(snap.id);
+      }
+      if (staleIds.length > 0) {
+        await tx.trainerBoardSnapshot.deleteMany({
+          where: { id: { in: staleIds } },
+        });
+      }
+    }
+
+    await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${SNAPSHOT_SAVEPOINT}`);
+    return rows.length;
+  } catch (error) {
+    console.error("[board-snapshot] bulk capture failed (fail-open)", {
+      challengeId: input.challengeId,
+      trigger: input.trigger,
+      error,
+    });
+    await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${SNAPSHOT_SAVEPOINT}`);
+    return 0;
+  }
+}
+
 /** One payload row → PokemonEntry, or null when the row is unusable. */
 function parseSnapshotPokemonRow(
   row: unknown,

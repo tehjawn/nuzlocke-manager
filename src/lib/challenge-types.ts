@@ -71,6 +71,11 @@ export type TrainerProfile = {
   /** Last imported Gen 3 playtime in whole seconds; null when never imported / unknown. */
   playTimeSeconds: number | null;
   mainSquadLocked: boolean;
+  /**
+   * Player finished /new-trainer. False = still in the intro funnel.
+   * Undefined on seed boards, which have no intro funnel — treat as done.
+   */
+  introCompleted?: boolean;
   sortOrder: number;
   userId: string | null;
   /** Discord login username for @mentions (no leading @). */
