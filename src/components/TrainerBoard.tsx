@@ -62,6 +62,7 @@ import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
 import { SeasonStatsToolIcon } from "@/components/tool-icons";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
+import { seasonStatsHref } from "@/lib/tools-routes";
 import {
   MAIN_PARTY_SIZE,
   firstOpenMainPartyIndex,
@@ -766,7 +767,7 @@ export function TrainerBoard({
       icon: <ToolsShortcutIcon />,
     },
     {
-      href: `${leagueBoardHref}/memorial`,
+      href: seasonStatsHref(challengeSlug),
       label: "Season Stats",
       icon: <SeasonStatsToolIcon className="h-6 w-6" />,
     },

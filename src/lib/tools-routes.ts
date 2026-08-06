@@ -91,14 +91,14 @@ export function toolsHubHref(slug: string): string {
 }
 
 /**
- * Canonical Season Stats home (issue #288) — lives in the former Memorial
- * season-tab slot. Tools catalog / old `?tool=stats` links alias here.
+ * Canonical Season Stats home (issue #288) — lives at `/season-stats`. Tools
+ * catalog / old `?tool=stats` and `/memorial` links alias here.
  */
 export function seasonStatsHref(
   slug: string,
   query?: { section?: string | null },
 ): string {
-  const base = `/challenges/${slug}/memorial`;
+  const base = `/challenges/${slug}/season-stats`;
   const section = parseStatsSection(query?.section);
   if (!section) return base;
   return `${base}?${new URLSearchParams({ section }).toString()}`;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ChallengeStatus } from "@/lib/challenge-types";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
 import { seasonStatusLabel } from "@/lib/season-status";
+import { seasonStatsHref } from "@/lib/tools-routes";
 
 type SeasonStatusBannerProps = {
   slug: string;
@@ -27,7 +28,7 @@ export function SeasonStatusBanner({
           Boards are read-only. Visit Season Stats for the full R.I.P. record.
         </p>
         <Link
-          href={`/challenges/${slug}/memorial`}
+          href={seasonStatsHref(slug)}
           className={`${CTA_PRIMARY_SM} mt-3`}
         >
           Open Season Stats

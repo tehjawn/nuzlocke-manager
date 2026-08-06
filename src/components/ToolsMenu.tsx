@@ -53,7 +53,7 @@ export function ToolsMenu({ slug }: ToolsMenuProps) {
   // Close on navigation. Adjusting state during render (rather than in an
   // effect) is the pattern this codebase uses for prop-derived resets. Most
   // tools share `/tools` and differ only by `?tool=`, so item clicks also
-  // dismiss explicitly below. Season Stats navigates to `/memorial`, which
+  // dismiss explicitly below. Season Stats navigates to `/season-stats`, which
   // this pathname check covers when leaving the tools route entirely.
   if (seenPath !== pathname) {
     setSeenPath(pathname);

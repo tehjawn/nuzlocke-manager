@@ -89,7 +89,7 @@ function SeasonGroup({
 function SeasonCard({ challenge: c }: { challenge: Challenge }) {
   const archived = isSeasonArchived(c.status);
   const href = archived
-    ? `/challenges/${c.slug}/memorial`
+    ? `/challenges/${c.slug}/season-stats`
     : `/challenges/${c.slug}`;
   const cta = archived ? "Open Season Stats →" : "Enter league board";
 

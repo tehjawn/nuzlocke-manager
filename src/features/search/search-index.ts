@@ -7,7 +7,7 @@ import type {
   SearchSeasonContext,
 } from "@/features/search/search-types";
 import { avatarImageUrl } from "@/lib/sprites";
-import { toolsHref } from "@/lib/tools-routes";
+import { toolsHref, seasonStatsHref } from "@/lib/tools-routes";
 
 const FUSE_OPTIONS: IFuseOptions<SearchResult> = {
   keys: [
@@ -87,7 +87,7 @@ function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
     { href: base, label: "Trainers" },
     { href: `${base}/encounters`, label: "Encounters" },
     { href: `${base}/tools`, label: "Tools" },
-    { href: `${base}/memorial`, label: "Season Stats" },
+    { href: seasonStatsHref(slug), label: "Season Stats" },
   ];
   // TEMP (#240): Tournament / Ladder is still WIP — GMs only.
   if (isGm) {
