@@ -11,17 +11,22 @@ import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
+import { SurvivalPollChip } from "@/components/SurvivalPollChip";
 import { formatPlayTime } from "@/lib/gen3-save/playtime";
 import { pokemonInSlot } from "@/lib/trainer-display";
 
 type TrainerCardProps = {
-  challenge: Pick<Challenge, "slug" | "badges">;
+  challenge: Pick<
+    Challenge,
+    "slug" | "badges" | "survivalMarketsEnabled"
+  >;
   trainer: TrainerProfile;
   variant?: "list" | "grid";
   /** Signed-in player's own card — soft revolving rainbow edge. */
   isYou?: boolean;
   /** Nature / ability / stats / moves — owners, or GMs with lens on. */
   showCompetitiveDetails?: boolean;
+  viewerUserId?: string | null;
 };
 
 export function TrainerCard({
@@ -30,6 +35,7 @@ export function TrainerCard({
   variant = "list",
   isYou = false,
   showCompetitiveDetails = false,
+  viewerUserId = null,
 }: TrainerCardProps) {
   const main = pokemonInSlot(trainer, "MAIN").slice(0, 6);
   const caughtCount = trainer.slotCounts
@@ -176,7 +182,7 @@ export function TrainerCard({
                           type="button"
                           title={label}
                           aria-label={`View ${label}`}
-                          className="pressable flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
+                          className="pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
                           onClick={() => setDetailsPokemon(mon)}
                         >
                           <PokemonSpriteImage
@@ -188,6 +194,14 @@ export function TrainerCard({
                             species={mon.species}
                             width={96}
                           />
+                          {mon.survivalPoll && mon.survivalPoll.total > 0 ? (
+                            <span className="pointer-events-none absolute bottom-0.5 left-0.5 right-0.5 flex justify-center">
+                              <SurvivalPollChip
+                                poll={mon.survivalPoll}
+                                compact
+                              />
+                            </span>
+                          ) : null}
                         </button>
                       </PokemonHoverPreview>
                     );
@@ -303,7 +317,7 @@ export function TrainerCard({
                         type="button"
                         title={label}
                         aria-label={`View ${label}`}
-                        className="pressable group/slot flex h-[5.25rem] w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
+                        className="pressable group/slot relative flex h-[5.25rem] w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
                         onClick={() => setDetailsPokemon(mon)}
                       >
                         <PokemonSpriteImage
@@ -318,6 +332,14 @@ export function TrainerCard({
                         <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover/slot:text-ink">
                           {label}
                         </span>
+                        {mon.survivalPoll && mon.survivalPoll.total > 0 ? (
+                          <span className="pointer-events-none absolute bottom-0.5 left-0.5 right-0.5 flex justify-center">
+                            <SurvivalPollChip
+                              poll={mon.survivalPoll}
+                              compact
+                            />
+                          </span>
+                        ) : null}
                       </button>
                     </PokemonHoverPreview>
                   );
@@ -354,6 +376,8 @@ export function TrainerCard({
         slug={challenge.slug}
         pokemon={detailsPokemon}
         showCompetitiveDetails={showCompetitiveDetails}
+        survivalMarketsEnabled={challenge.survivalMarketsEnabled ?? true}
+        viewerUserId={viewerUserId}
         onClose={() => setDetailsPokemon(null)}
       />
     </div>

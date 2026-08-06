@@ -95,6 +95,10 @@ type TrainerBoardProps = {
   isDemo: boolean;
   /** Soft CTA glow on Import save until the first successful import. */
   encourageImportSave?: boolean;
+  /** Survive/Die polls on living MAIN + RESERVE. */
+  survivalMarketsEnabled?: boolean;
+  /** Signed-in viewer — highlight on resolved poll roster. */
+  viewerUserId?: string | null;
 };
 
 function PencilIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
@@ -568,6 +572,8 @@ export function TrainerBoard({
   isGm,
   isDemo,
   encourageImportSave = false,
+  survivalMarketsEnabled = true,
+  viewerUserId = null,
 }: TrainerBoardProps) {
   const [editingPlayer, setEditingPlayer] = useState(false);
 
@@ -1812,6 +1818,8 @@ export function TrainerBoard({
           onEdit={() =>
             setPokemonInspect({ ...pokemonInspect, mode: "edit" })
           }
+          survivalMarketsEnabled={survivalMarketsEnabled}
+          viewerUserId={viewerUserId}
         />
       ) : null}
 
@@ -2009,6 +2017,8 @@ export function TrainerBoard({
           slug={challengeSlug}
           pokemon={detailsPokemon}
           showCompetitiveDetails={showCompetitiveDetails}
+          survivalMarketsEnabled={survivalMarketsEnabled}
+          viewerUserId={viewerUserId}
           onClose={() => setDetailsPokemon(null)}
         />
       ) : null}

@@ -15,6 +15,13 @@ import { failAction } from "@/lib/action-error";
 import { getPrisma } from "@/lib/db";
 import { MAX_PLAY_TIME_SECONDS } from "@/lib/gen3-save/playtime";
 import {
+  resolveMarketsForPokemonDeath,
+  resolveMarketsForVictory,
+  resolveMarketsForWipe,
+  voidMarketsForTrainer,
+  voidOpenMarketsForPokemonIds,
+} from "@/lib/survival-markets";
+import {
   MAIN_PARTY_SIZE,
   firstOpenMainPartyIndex,
 } from "@/lib/pokemon-board-dnd";
@@ -917,6 +924,9 @@ export async function recordFinalTeamAction(input: {
         { reviveUsed: trainer.reviveUsed, earnedBadgeKeys },
       );
 
+      // Living MAIN + RESERVE markets resolve Survive while IDs still exist.
+      await resolveMarketsForVictory(tx, trainer.id, activeBefore.id);
+
       const updated = await tx.trainerProfile.update({
         where: { id: trainer.id },
         data: {
@@ -1043,6 +1053,9 @@ export async function startNewRunAction(input: {
           livingLost > 0
             ? `${trainer.handle} restarted their run (wipe #${wipeCount}) — ${livingLost} partner${livingLost === 1 ? "" : "s"} lost`
             : `${trainer.handle} restarted their run (wipe #${wipeCount})`;
+
+        // Resolve remaining open polls as Die before IDs are wiped.
+        await resolveMarketsForWipe(tx, trainer.id, activeBefore.id);
       }
 
       // Clear the live board (party, box, encountered, R.I.P.). The state
@@ -1106,6 +1119,8 @@ async function hardResetTrainerInTx(
   tx: TxClient,
   trainerId: string,
 ): Promise<void> {
+  // Void open polls before live rows / runs disappear (not scored as Die).
+  await voidMarketsForTrainer(tx, trainerId);
   await tx.trainerProfile.update({
     where: { id: trainerId },
     data: { activeRunId: null },
@@ -2270,6 +2285,7 @@ export async function upsertPokemonAction(
         },
       });
       if (becameGrave) {
+        await resolveMarketsForPokemonDeath(prisma, data.id);
         const label = data.nickname || data.species;
         await logActivity({
           challengeId: trainer.challengeId,
@@ -2341,6 +2357,8 @@ export async function deletePokemonAction(input: {
     if (mon.slot === "MAIN" && trainer.mainSquadLocked && !access.isGm) {
       return { ok: false, error: "Main Squad is locked" };
     }
+    // Hard delete is not a death — void the open poll so it isn't scored.
+    await voidOpenMarketsForPokemonIds(prisma, [mon.id]);
     await prisma.pokemonEntry.delete({ where: { id: mon.id } });
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
     return { ok: true, message: "Pokémon removed" };
@@ -2530,6 +2548,13 @@ export async function relocatePokemonAction(
                 : { runId: mon.runId ?? activeRun.id }),
           },
         });
+      }
+
+      if (memorialized.length > 0) {
+        await resolveMarketsForPokemonDeath(
+          tx,
+          memorialized.map((entry) => entry.id),
+        );
       }
 
       const deathLabels = memorialized.map((entry) => entry.label);
@@ -2748,6 +2773,18 @@ export async function importFromSaveAction(
         ? data.replaceSlots
         : data.replaceSlots.filter((slot) => slot !== "GRAVEYARD");
       if (slotsToClear.length > 0) {
+        const doomed = await tx.pokemonEntry.findMany({
+          where: {
+            trainerId: trainer.id,
+            slot: { in: slotsToClear },
+          },
+          select: { id: true },
+        });
+        // Import recreates rows with new IDs — void open polls first.
+        await voidOpenMarketsForPokemonIds(
+          tx,
+          doomed.map((row) => row.id),
+        );
         await tx.pokemonEntry.deleteMany({
           where: {
             trainerId: trainer.id,
@@ -3115,6 +3152,7 @@ export async function gmUpdateChallengeMetaAction(input: {
   welcomeVideoUrl?: string | null;
   welcomeVideoPublishAt?: string | null;
   romUrl?: string | null;
+  survivalMarketsEnabled?: boolean;
 }): Promise<ActionResult> {
   try {
     await requireGm(input.challengeId);
@@ -3218,8 +3256,20 @@ export async function gmUpdateChallengeMetaAction(input: {
           ? { welcomeVideoPublishAt }
           : {}),
         ...(romUrl !== undefined ? { romUrl } : {}),
+        ...(input.survivalMarketsEnabled !== undefined
+          ? { survivalMarketsEnabled: input.survivalMarketsEnabled }
+          : {}),
       },
     });
+
+    // Mid-flight disable → void open polls (do not score as Die).
+    if (input.survivalMarketsEnabled === false) {
+      await prisma.survivalMarket.updateMany({
+        where: { challengeId: challenge.id, status: "OPEN" },
+        data: { status: "VOID", resolvedAt: new Date() },
+      });
+    }
+
     revalidateChallenge(challenge.slug);
     return { ok: true, message: "Challenge settings saved" };
   } catch (e) {

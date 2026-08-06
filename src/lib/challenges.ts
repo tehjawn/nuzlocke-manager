@@ -37,6 +37,7 @@ import {
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { mapDbChallenge, resolveActivityAvatarSrc } from "@/lib/mappers";
+import { loadSurvivalPollTallies } from "@/lib/survival-markets";
 
 export type { ActivityPage };
 
@@ -71,6 +72,7 @@ function seedAsChallenge(raw: (typeof CHALLENGES)[number]): Challenge {
     ...raw,
     source: "seed" as const,
     visibility: raw.visibility ?? "PUBLIC",
+    survivalMarketsEnabled: raw.survivalMarketsEnabled ?? true,
     // Match mapDbChallenge — invite codes never ride public payloads.
     playerInviteCode: null,
     gmInviteCode: null,
@@ -82,6 +84,36 @@ function seedAsChallenge(raw: (typeof CHALLENGES)[number]): Challenge {
     })),
     activities: [],
   };
+}
+
+/** Side-load Survive/Die tallies after cached board fetch (viewer-aware). */
+async function withSurvivalPollTallies(
+  challenge: Challenge,
+  viewerUserId?: string | null,
+): Promise<Challenge> {
+  if (!challenge.survivalMarketsEnabled || !isDatabaseConfigured()) {
+    return challenge;
+  }
+  const pokemonIds = challenge.trainers.flatMap((t) =>
+    t.pokemon.map((p) => p.id),
+  );
+  if (pokemonIds.length === 0) return challenge;
+  try {
+    const tallies = await loadSurvivalPollTallies(pokemonIds, viewerUserId);
+    if (tallies.size === 0) return challenge;
+    return {
+      ...challenge,
+      trainers: challenge.trainers.map((t) => ({
+        ...t,
+        pokemon: t.pokemon.map((p) => ({
+          ...p,
+          survivalPoll: tallies.get(p.id) ?? null,
+        })),
+      })),
+    };
+  } catch {
+    return challenge;
+  }
 }
 
 function summaryBoardInclude() {
@@ -111,7 +143,12 @@ export async function getChallenge(
   if (isDatabaseConfigured()) {
     try {
       const row = await fetchChallengeBoardRow(slug);
-      if (row) return mapDbChallenge(row, viewerUserId);
+      if (row) {
+        return withSurvivalPollTallies(
+          mapDbChallenge(row, viewerUserId),
+          viewerUserId,
+        );
+      }
     } catch {
       // Outage — don't fall through to seed (would look like a missing season).
       return null;
@@ -158,7 +195,12 @@ export async function getChallengeWithPokemonSlots(
   if (isDatabaseConfigured()) {
     try {
       const row = await fetchChallengeSlotRow(slug, slots);
-      if (row) return mapDbChallenge(row, viewerUserId);
+      if (row) {
+        return withSurvivalPollTallies(
+          mapDbChallenge(row, viewerUserId),
+          viewerUserId,
+        );
+      }
     } catch {
       return null;
     }
@@ -317,16 +359,19 @@ export async function getChallengeBoardSummary(
         else if (entry.slot === "ENCOUNTERED") cur.encountered = n;
         byTrainer.set(entry.trainerId, cur);
       }
-      return {
-        ...mapped,
-        trainers: mapped.trainers.map((t) => ({
-          ...t,
-          slotCounts: byTrainer.get(t.id) ?? {
-            ...emptySlotCounts(),
-            main: t.pokemon.length,
-          },
-        })),
-      };
+      return withSurvivalPollTallies(
+        {
+          ...mapped,
+          trainers: mapped.trainers.map((t) => ({
+            ...t,
+            slotCounts: byTrainer.get(t.id) ?? {
+              ...emptySlotCounts(),
+              main: t.pokemon.length,
+            },
+          })),
+        },
+        viewerUserId,
+      );
     } catch {
       return null;
     }
@@ -450,8 +495,9 @@ export async function getHomeCarouselChallenge(
 export async function getTrainer(
   slug: string,
   trainerId: string,
+  viewerUserId?: string | null,
 ): Promise<{ challenge: Challenge; trainer: TrainerProfile } | null> {
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallenge(slug, viewerUserId);
   if (!challenge) return null;
   const trainer = challenge.trainers.find((t) => t.id === trainerId);
   if (!trainer) return null;

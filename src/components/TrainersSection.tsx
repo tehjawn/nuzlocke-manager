@@ -19,12 +19,13 @@ const SORT_CHANGE_EVENT = "nuzlocke-trainers-sort";
 type TrainersView = "list" | "grid";
 
 type TrainersSectionProps = {
-  challenge: Pick<Challenge, "slug" | "badges">;
+  challenge: Pick<Challenge, "slug" | "badges" | "survivalMarketsEnabled">;
   trainers: TrainerProfile[];
   /** Highlight the signed-in player's card. */
   myTrainerId?: string | null;
   /** Trainer ids whose competitive details the viewer may see (own / GM view). */
   competitiveTrainerIds?: string[];
+  viewerUserId?: string | null;
 };
 
 function readView(): TrainersView {
@@ -96,6 +97,7 @@ export function TrainersSection({
   trainers,
   myTrainerId = null,
   competitiveTrainerIds = [],
+  viewerUserId = null,
 }: TrainersSectionProps) {
   const view = useSyncExternalStore<TrainersView>(
     subscribeView,
@@ -177,6 +179,7 @@ export function TrainersSection({
             variant={view}
             isYou={myTrainerId != null && trainer.id === myTrainerId}
             showCompetitiveDetails={competitiveIds.has(trainer.id)}
+            viewerUserId={viewerUserId}
           />
         ))}
       </div>
