@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { MobileWorkspace } from "@/components/MobileWorkspace";
@@ -14,7 +15,7 @@ import {
 } from "@/lib/season-status";
 
 /** Fixed left rail width — keeps tab navigations from shifting columns. */
-export const SEASON_LEFT_RAIL_CLASS = "w-full lg:w-[19.5rem] lg:shrink-0";
+export const SEASON_LEFT_RAIL_CLASS = "w-full lg:w-[17rem] lg:shrink-0";
 
 type ChallengeShellProps = {
   slug: string;
@@ -31,8 +32,8 @@ type ChallengeShellProps = {
    * so Get Started stays the focus.
    */
   firstRun?: boolean;
-  /** Temporary WIP gate (#240): Tournament tab is GM-only. */
-  isGm?: boolean;
+  /** GM view (lens) on — gates WIP Tournament under Info. */
+  gmViewOn?: boolean;
   children: ReactNode;
 };
 
@@ -47,13 +48,13 @@ export function ChallengeShell({
   myTrainerId = null,
   signedIn = false,
   firstRun = false,
-  isGm = false,
+  gmViewOn = false,
   children,
 }: ChallengeShellProps) {
   // Shared between the mobile Info panel and the desktop sticky rail.
   const generalInfo = (
     <Frame title="General info">
-      <dl className="space-y-3 text-sm">
+      <dl className="space-y-2.5 text-sm">
         <div>
           <dt className="text-xs font-semibold tracking-tight text-muted">
             Season Status
@@ -69,7 +70,7 @@ export function ChallengeShell({
         <div>
           <dt className="sr-only">Season title</dt>
           <dd>
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-lg font-bold leading-snug tracking-tight">
               {name}{" "}
               <span className="font-semibold text-muted">(Season {year})</span>
             </h1>
@@ -80,13 +81,16 @@ export function ChallengeShell({
             <dt className="text-xs font-semibold tracking-tight text-muted">
               Game
             </dt>
-            <dd className="mt-0.5 font-medium">{game}</dd>
+            <dd className="mt-0.5 text-sm font-medium">{game}</dd>
           </div>
         ) : null}
-        <div>
-          <dt className="sr-only">Description</dt>
-          <dd className="leading-relaxed text-muted">{description}</dd>
-        </div>
+        {/* Guest-only pitch — signed-in players already joined. */}
+        {!signedIn ? (
+          <div>
+            <dt className="sr-only">Description</dt>
+            <dd className="text-sm leading-relaxed text-muted">{description}</dd>
+          </div>
+        ) : null}
       </dl>
       {firstRun && myTrainerId ? (
         <p className="mt-3 text-sm leading-relaxed text-muted">
@@ -132,12 +136,22 @@ export function ChallengeShell({
           scrollClassName="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]"
         >
           {generalInfo}
-          <SeasonTabs
-            slug={slug}
-            status={status}
-            firstRun={firstRun}
-            isGm={isGm}
-          />
+          <Suspense
+            fallback={
+              <div
+                aria-hidden
+                className="h-64 animate-pulse rounded-[var(--radius)] border border-frame/50 bg-surface-2/50"
+              />
+            }
+          >
+            <SeasonTabs
+              slug={slug}
+              status={status}
+              firstRun={firstRun}
+              gmViewOn={gmViewOn}
+              myTrainerId={myTrainerId}
+            />
+          </Suspense>
         </ScrollFadeRail>
 
         {/*
@@ -150,7 +164,7 @@ export function ChallengeShell({
           status={status}
           generalInfo={generalInfo}
           firstRun={firstRun}
-          isGm={isGm}
+          gmViewOn={gmViewOn}
           className="min-w-0 flex-1"
         >
           {children}

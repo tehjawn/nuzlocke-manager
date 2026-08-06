@@ -25,6 +25,12 @@ type HeaderMenuProps = {
   items: HeaderMenuItem[];
   /** Optional wider panel for two-line rows. */
   menuClassName?: string;
+  /** Override the default trigger pill classes (border / text theme). */
+  triggerClassName?: string;
+  /** Override the default icon tint (`text-ink/70`). */
+  iconClassName?: string;
+  /** Override the default chevron tint (`text-muted`). */
+  chevronClassName?: string;
 };
 
 /**
@@ -37,6 +43,9 @@ export function HeaderMenu({
   icon,
   items,
   menuClassName = "w-52",
+  triggerClassName = "pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50",
+  iconClassName = "text-ink/70",
+  chevronClassName = "text-muted",
 }: HeaderMenuProps) {
   const itemCount = items.length;
   const [open, setOpen] = useState(false);
@@ -150,13 +159,13 @@ export function HeaderMenu({
         aria-controls={open ? menuId : undefined}
         onClick={onTriggerClick}
         onKeyDown={onTriggerKeyDown}
-        className="pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
+        className={triggerClassName}
       >
-        <span className="text-ink/70" aria-hidden>
+        <span className={iconClassName} aria-hidden>
           {icon}
         </span>
         {label}
-        <ChevronIcon open={open} />
+        <ChevronIcon open={open} className={chevronClassName} />
       </button>
 
       {open ? (
@@ -213,12 +222,18 @@ export function HeaderMenu({
   );
 }
 
-function ChevronIcon({ open }: { open: boolean }) {
+function ChevronIcon({
+  open,
+  className = "text-muted",
+}: {
+  open: boolean;
+  className?: string;
+}) {
   return (
     <svg
       aria-hidden
       viewBox="0 0 16 16"
-      className={`h-3.5 w-3.5 text-muted transition-transform ${open ? "rotate-180" : ""}`}
+      className={`h-3.5 w-3.5 transition-transform ${className} ${open ? "rotate-180" : ""}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="2"

@@ -83,6 +83,32 @@ export function FaqIcon({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+/** Checklist — Info → Get Started (ROM / Afterplay / save import). */
+export function GetStartedIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path
+        d="M7 4.5h10A1.5 1.5 0 0118.5 6v12a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 18V6A1.5 1.5 0 017 4.5z"
+        strokeLinejoin="round"
+      />
+      <path d="M9 9.5l1.5 1.5 3-3.25" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 14h6M9 17h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Feed lines — Info → Activity / season rail. */
+export function ActivityIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M5 7h11M5 12h14M5 17h8" strokeLinecap="round" />
+      <circle cx="18.5" cy="7" r="1.75" />
+      <circle cx="10.5" cy="12" r="1.75" />
+      <circle cx="15.5" cy="17" r="1.75" />
+    </svg>
+  );
+}
+
 export function PreferencesIcon({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg {...base} className={className}>
