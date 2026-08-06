@@ -3,8 +3,10 @@
 import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { BondHeart } from "@/components/BondHeart";
+import { BondHeart, TrainingTierCaption } from "@/components/BondHeart";
+import { CatchTierCaption } from "@/components/CatchTierIcon";
 import { EvolutionPath } from "@/components/EvolutionPath";
+import { GodPrismRays } from "@/components/GodPrismRays";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
@@ -13,22 +15,25 @@ import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid, type StatRankChip } from "@/components/StatGrid";
 import { SurvivalPollSection } from "@/components/SurvivalPollSection";
-import { SurvivalSentimentIcon } from "@/components/SurvivalPollChip";
+import {
+  SurvivalSentimentCaption,
+  SurvivalSentimentIcon,
+} from "@/components/SurvivalPollChip";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import {
   catchTierHasChrome,
-  catchTierLabel,
-  catchTierToneClass,
-  ivCatchTier,
   summarizeBattleStats,
   summarizeEvs,
   summarizeIvs,
-  type CatchTier,
 } from "@/lib/iv-quality";
 import { recommendPlaystyle } from "@/lib/playstyle";
+import {
+  resolveCatchTier,
+  resolveTrainingTier,
+} from "@/lib/pokemon-grades";
 import {
   baseStatRanksFor,
   statRankHint,
@@ -45,12 +50,6 @@ import {
   STAT_LABELS,
 } from "@/lib/stats";
 import { toolsHref } from "@/lib/tools-routes";
-import {
-  specimenTrainingTier,
-  trainingTierLabel,
-  trainingTierToneClass,
-  type TrainingTier,
-} from "@/lib/training-quality";
 
 const ModernEmeraldLearnset = dynamic(
   () =>
@@ -165,21 +164,11 @@ export function PokemonDetailsModal({
         ivs: showIvs ? ivs : null,
       })
     : null;
-  const catchTier: CatchTier = showCompetitiveDetails
-    ? ivCatchTier(showIvs ? ivs : null)
-    : "oof";
-  const catchLabel =
-    showCompetitiveDetails && (showIvs || catchTierHasChrome(catchTier))
-      ? catchTierLabel(catchTier)
-      : null;
-  const trainingTier: TrainingTier = showCompetitiveDetails
-    ? specimenTrainingTier({
-        evs: showEvs ? evs : null,
-        natureAlignment: playstyle?.natureAlignment ?? null,
-        friendship: pokemon.friendship,
-      })
-    : "raw";
-  const bondLabel = trainingTierLabel(trainingTier);
+  // Tier chrome is public — it rides on the entry (stamped at redaction) and
+  // not on `showCompetitiveDetails`, which gates the spreads themselves.
+  const catchTier = resolveCatchTier(pokemon);
+  const trainingTier = resolveTrainingTier(pokemon);
+  const hasCatchChrome = catchTier !== null && catchTierHasChrome(catchTier);
 
   // Species-level ranks (Pokédex) — separate from specimen CatchTier under the sprite.
   const baseStats = baseStatsForSpecies(pokemon.pokedexId);
@@ -282,18 +271,19 @@ export function PokemonDetailsModal({
           <div className="flex flex-col items-center gap-2 sm:items-stretch">
             <div
               className={
-                catchTierHasChrome(catchTier)
+                hasCatchChrome
                   ? `pokemon-catch-ring pokemon-catch-ring--emphasis pokemon-catch-ring--${catchTier} w-full max-w-[9.5rem] sm:max-w-none`
                   : undefined
               }
             >
               <div
                 className={`relative mx-auto flex h-36 w-36 items-center justify-center rounded-lg border sm:mx-0 sm:h-auto sm:w-full sm:aspect-square ${
-                  catchTierHasChrome(catchTier)
+                  hasCatchChrome
                     ? `pokemon-catch-sprite pokemon-catch-sprite--emphasis pokemon-catch-sprite--${catchTier}`
                     : "border-frame bg-surface-2"
                 }`}
               >
+                {catchTier === "god" ? <GodPrismRays /> : null}
                 <PokemonSpriteImage
                   alt=""
                   className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"
@@ -309,7 +299,7 @@ export function PokemonDetailsModal({
                     poll={pokemon.survivalPoll}
                   />
                 ) : null}
-                {showCompetitiveDetails ? (
+                {trainingTier !== null ? (
                   <BondHeart
                     className="pokemon-bond-heart--corner h-4 w-4"
                     tier={trainingTier}
@@ -317,20 +307,24 @@ export function PokemonDetailsModal({
                 ) : null}
               </div>
             </div>
-            {catchLabel ? (
-              <p
-                className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${catchTierToneClass(catchTier)}`}
-              >
-                {catchLabel}
-              </p>
-            ) : null}
-            {bondLabel ? (
-              <p
-                className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${trainingTierToneClass(trainingTier)}`}
-              >
-                {bondLabel}
-              </p>
-            ) : null}
+            {(catchTier !== null ||
+              (pokemon.survivalPoll && pokemon.survivalPoll.total > 0) ||
+              trainingTier !== null) && (
+              <div className="flex w-full flex-col gap-1">
+                {catchTier !== null ? (
+                  <CatchTierCaption tier={catchTier} variant="chip" />
+                ) : null}
+                {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+                  <SurvivalSentimentCaption
+                    poll={pokemon.survivalPoll}
+                    variant="chip"
+                  />
+                ) : null}
+                {trainingTier !== null ? (
+                  <TrainingTierCaption tier={trainingTier} variant="chip" />
+                ) : null}
+              </div>
+            )}
             {pokemon.types.length > 0 ? (
               <div className="flex flex-wrap justify-center gap-1 sm:justify-start">
                 {pokemon.types.map((t) => (

@@ -2,11 +2,13 @@
  * Season-wide **specimen** board — one row per actual Pokémon on any trainer's
  * board, as opposed to `speciesOwnershipBoard`'s one row per dex entry.
  *
- * Every grade here is borrowed, never re-derived: catch tier from
- * `ivCatchTier`, training tier from `specimenTrainingTier`, BST tier from
- * `baseStatRanksFor`. Pokémon Ownership's Showcase renders it; Season Stats
- * (#178) should aggregate the same rows rather than recomputing a second,
- * drifting ladder.
+ * Every grade here is borrowed, never re-derived: catch and bond tiers from
+ * `pokemon-grades`, BST tier from `baseStatRanksFor`. Pokémon Ownership's
+ * Showcase renders it; Season Stats (#178) should aggregate the same rows
+ * rather than recomputing a second, drifting ladder.
+ *
+ * Scope is **owned** Pokémon only — a mon a trainer merely walked into is not
+ * part of anyone's collection, and encounters carry no IVs to grade.
  */
 
 import { findPokemonById } from "@/data/pokemon-index";
@@ -16,29 +18,23 @@ import type {
   TrainerProfile,
 } from "@/lib/challenge-types";
 import { resolvePokedexId } from "@/lib/encounter-stats";
-import {
-  catchTierRank,
-  ivCatchTier,
-  type CatchTier,
-} from "@/lib/iv-quality";
+import { catchTierRank, type CatchTier } from "@/lib/iv-quality";
 import type { PokemonType } from "@/lib/pokemon-types";
+import { resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import { competitiveTierFor } from "@/lib/competitive-tiers";
-import { recommendPlaystyle } from "@/lib/playstyle";
 import { baseStatRanksFor, STAT_RANKS, type StatRank } from "@/lib/species-ranks";
-import { isEmptySpread } from "@/lib/stats";
-import {
-  specimenTrainingTier,
-  trainingTierRank,
-  type TrainingTier,
-} from "@/lib/training-quality";
+import { trainingTierRank, type TrainingTier } from "@/lib/training-quality";
 
-/** Slots that represent a Pokémon still in play (i.e. not memorialized). */
-export const LIVING_SLOTS: ReadonlySet<PokemonSlot> = new Set([
+/** Slots a trainer actually owns — ENCOUNTERED is "seen", not "caught". */
+const OWNED_SLOTS: ReadonlySet<PokemonSlot> = new Set([
   "MAIN",
   "RESERVE",
-  "ENCOUNTERED",
+  "GRAVEYARD",
 ]);
+
+/** Owned and still in play (i.e. not memorialized). */
+const LIVING_SLOTS: ReadonlySet<PokemonSlot> = new Set(["MAIN", "RESERVE"]);
 
 export type SpecimenRow = {
   /** `PokemonEntry.id` — unique across the season, so it doubles as a React key. */
@@ -72,20 +68,13 @@ export type SpecimenRow = {
   competitiveRank: StatRank | null;
   /** One-line reason when `competitiveRank` is set; null otherwise. */
   competitiveReason: string | null;
-  /**
-   * Catch tier, or null when it can't be shown. Two different nulls, hence
-   * `catchTierHidden`: withheld from this viewer vs. genuinely nothing on file.
-   */
+  /** Catch tier; null when the specimen has no IVs on file. Never withheld. */
   catchTier: CatchTier | null;
-  /** True when this trainer's IVs are redacted for the viewer. */
-  catchTierHidden: boolean;
   /**
-   * Training / bond tier, or null when withheld. `raw` means graded with no
-   * meaningful investment — heart stays off.
+   * Training / bond tier; null when nothing is on file. `raw` means graded
+   * with no meaningful investment — heart shows empty.
    */
   trainingTier: TrainingTier | null;
-  /** Same privacy gate as catch tier (IVs/EVs/friendship redacted together). */
-  trainingTierHidden: boolean;
   /** Lowercased haystack for the search box (species, nickname, handle, dex, route). */
   searchText: string;
 };
@@ -100,59 +89,25 @@ function rankFor(cache: RankCache, pokedexId: number | null) {
 }
 
 /**
- * Grade catch chrome from IVs only — matches board / details after #237.
- * Empty / all-zero spreads count as "no data" rather than six dump IVs.
- */
-function gradeCatchTier(pokemon: PokemonEntry): CatchTier | null {
-  const ivs = isEmptySpread(pokemon.ivs) ? null : pokemon.ivs;
-  if (!ivs) return null;
-  return ivCatchTier(ivs);
-}
-
-/**
- * Grade training / bond from EVs + nature fit + friendship.
- * Always returns a band when the viewer can see competitive columns; `raw`
- * means no heart. Never inferred from a redacted payload.
- */
-function gradeTrainingTier(pokemon: PokemonEntry): TrainingTier {
-  const playstyle = recommendPlaystyle({
-    pokedexId: pokemon.pokedexId,
-    nature: pokemon.nature,
-    ability: pokemon.ability,
-    ivs: isEmptySpread(pokemon.ivs) ? null : pokemon.ivs,
-  });
-  return specimenTrainingTier({
-    evs: pokemon.evs,
-    natureAlignment: playstyle?.natureAlignment ?? null,
-    friendship: pokemon.friendship,
-  });
-}
-
-/**
- * Flatten every trainer's box into specimen rows.
+ * Flatten every trainer's owned Pokémon into specimen rows.
  *
- * `competitiveTrainerIds` is the set whose IVs survived
- * `redactTrainerCompetitiveDetails` for this viewer — own board always, plus
- * everyone when a GM has the lens on. Rows outside it are graded `null` and
- * flagged hidden; the tier is never inferred from a redacted payload.
+ * Catch and bond tiers are public for the whole pack — `resolveCatchTier` reads
+ * the grade stamped at the redaction boundary for other trainers' mons, and
+ * derives it directly for boards the viewer owns.
  */
 export function seasonSpecimenBoard(
   trainers: TrainerProfile[],
-  options?: { competitiveTrainerIds?: Iterable<string> },
 ): SpecimenRow[] {
-  const canGrade = new Set(options?.competitiveTrainerIds ?? []);
   const rankCache: RankCache = new Map();
   const rows: SpecimenRow[] = [];
 
   for (const trainer of trainers) {
-    const graded = canGrade.has(trainer.id);
     for (const pokemon of trainer.pokemon) {
+      if (!OWNED_SLOTS.has(pokemon.slot)) continue;
       const pokedexId = resolvePokedexId(pokemon);
       const ranks = rankFor(rankCache, pokedexId);
       const competitive =
         pokedexId != null ? competitiveTierFor(pokedexId) : null;
-      const catchTier = graded ? gradeCatchTier(pokemon) : null;
-      const trainingTier = graded ? gradeTrainingTier(pokemon) : null;
 
       rows.push({
         id: pokemon.id,
@@ -179,10 +134,8 @@ export function seasonSpecimenBoard(
         bstRank: ranks?.bst.rank ?? null,
         competitiveRank: competitive?.tier ?? null,
         competitiveReason: competitive?.reason ?? null,
-        catchTier,
-        catchTierHidden: !graded,
-        trainingTier,
-        trainingTierHidden: !graded,
+        catchTier: resolveCatchTier(pokemon),
+        trainingTier: resolveTrainingTier(pokemon),
         searchText: [
           pokemon.species,
           pokemon.nickname ?? "",
@@ -204,7 +157,6 @@ export type SpecimenSlotScope =
   | "all"
   | "MAIN"
   | "RESERVE"
-  | "ENCOUNTERED"
   | "GRAVEYARD";
 
 export type SpecimenFilters = {
@@ -242,7 +194,7 @@ export function specimenMatchesFilters(
     return false;
   }
   if (filters.shinyOnly && !row.isShiny) return false;
-  // A hidden or ungraded row can't satisfy a tier filter — it has no tier.
+  // An ungraded row can't satisfy a tier filter — it has no tier.
   if (filters.catchTier && row.catchTier !== filters.catchTier) return false;
   if (filters.trainingTier && row.trainingTier !== filters.trainingTier) {
     return false;
@@ -277,8 +229,8 @@ const SLOT_ORDER: Record<PokemonSlot, number> = {
 
 /**
  * Nulls always sink, whichever way the column points: a species with no
- * catalogued base stats, a box mon with no level, and a redacted catch tier
- * are all "unknown", and unknowns belong under the answers rather than
+ * catalogued base stats, a box mon with no level, and an un-imported mon with
+ * no IVs are all "unknown", and unknowns belong under the answers rather than
  * winning a descending sort by being absent.
  */
 function compareNullable(

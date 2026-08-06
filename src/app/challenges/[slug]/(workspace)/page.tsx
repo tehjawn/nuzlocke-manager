@@ -13,7 +13,7 @@ import {
 } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
-import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
+import { toPublicTrainerPokemon } from "@/lib/pokemon-privacy";
 import { sortTrainersForViewer } from "@/lib/trainer-display";
 
 
@@ -55,7 +55,7 @@ export default async function LeagueBoardPage({ params }: PageProps) {
     (trainer) =>
       competitiveIdSet.has(trainer.id)
         ? trainer
-        : redactTrainerCompetitiveDetails(trainer),
+        : toPublicTrainerPokemon(trainer),
   );
 
   return (

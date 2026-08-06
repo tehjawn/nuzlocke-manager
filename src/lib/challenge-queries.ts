@@ -43,9 +43,10 @@ export const pokemonFullSelect = {
  * IV-derived and training tier needs EVs / friendship, so both are
  * uncomputable without them.
  *
- * Flight weight is still bounded: `redactTrainerCompetitiveDetails` runs at the
- * page boundary, so the payload only carries spreads the viewer already owns
- * (or has the GM lens for). Everyone else's arrive nulled, exactly as before.
+ * Flight weight is still bounded: `toPublicPokemonEntry` runs at the page
+ * boundary, so the payload only carries spreads the viewer already owns (or has
+ * the GM lens for). Everyone else's arrive nulled, with the catch / bond tiers
+ * stamped on in their place.
  */
 export const pokemonToolsSelect = {
   ...pokemonFullSelect,

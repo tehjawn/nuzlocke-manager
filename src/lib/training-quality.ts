@@ -3,7 +3,7 @@
  *
  * Ladder: raw → growing → trained → bonded.
  * Colors climb the same good → great → cracked tint family as catch chrome;
- * vocabulary stays care-shaped (not shit→god).
+ * vocabulary stays care-shaped (not big-oof→god).
  *
  * Thresholds are tuned for **organic Nuzlocke EV gain** (spread across stats
  * while grinding to a level cap), not Smogon 252/252 spreads. Trash Pack

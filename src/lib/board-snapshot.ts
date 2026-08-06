@@ -1,4 +1,5 @@
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
+import { toPublicPokemonEntry } from "@/lib/pokemon-privacy";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import { clampEvs, clampIvs, IvsSchema, parseStatSpread } from "@/lib/stats";
 import type { Prisma } from "@/generated/prisma/client";
@@ -462,16 +463,9 @@ export function parseSnapshotGraves(
     if (!isGraveyardRow(row)) continue;
     const parsed = parseSnapshotPokemonRow(row, graves.length);
     if (!parsed) continue;
-    graves.push({
-      ...parsed,
-      nature: null,
-      ability: null,
-      heldItem: null,
-      moves: [],
-      ivs: null,
-      evs: null,
-      friendship: null,
-    });
+    // Held item is not part of the shared public projection — Memorial hides
+    // it, live public boards still show it.
+    graves.push({ ...toPublicPokemonEntry(parsed), heldItem: null });
   }
 
   return {

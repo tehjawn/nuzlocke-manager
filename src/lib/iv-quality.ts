@@ -37,7 +37,8 @@ const BATTLE_PERFECT = 0.95;
 const BATTLE_STRONG = 0.82;
 const BATTLE_DUMP = 0.45;
 
-/** Dump IVs needed (with no strong/perfect) to call a catch "shit". */
+/** Dump IVs needed (with no strong/perfect) to call a catch "big oof" (`shit`). */
+
 const SHIT_DUMP_MIN = 4;
 /** Perfect or near-perfect (≥28) IVs needed for "god". */
 const GOD_NEAR_PERFECT_MIN = 3;
@@ -259,20 +260,9 @@ export function summarizeBattleStats(
 }
 
 /**
- * True when IVs look unusually strong (cracked / god catch chrome).
- * Training quality is separate — see `specimenTrainingTier`.
- */
-export function specimenIsCracked(input: {
-  ivs?: StatSpread | null;
-}): boolean {
-  const tier = ivCatchTier(input.ivs);
-  return tier === "cracked" || tier === "god";
-}
-
-/**
  * Randomizer catch quality for board-card chrome + details labels.
  *
- * - shit: mostly dump IVs, nothing redeeming
+ * - shit (label: Big oof): mostly dump IVs, nothing redeeming
  * - oof: below average / nothing notable (no chrome)
  * - good / great / cracked: existing randomizer bars
  * - god: absurd wild IV luck (3+ perfect or near-perfect)
@@ -295,7 +285,7 @@ export function catchTierRank(tier: CatchTier): number {
 }
 
 const CATCH_TIER_LABEL: Record<CatchTier, string | null> = {
-  shit: "Shit catch",
+  shit: "Big oof catch",
   oof: "Oof catch",
   good: "Good catch",
   great: "Great catch",
@@ -308,6 +298,26 @@ export function catchTierLabel(tier: CatchTier): string | null {
   return CATCH_TIER_LABEL[tier];
 }
 
+/** Hover tip body for the catch glyph — short name + vibe, no IV jargon. */
+export function catchTierTip(tier: CatchTier): string {
+  if (tier === "shit") {
+    return "Big oof: I'm so sorry…";
+  }
+  if (tier === "oof") {
+    return "Oof: Not even mid.";
+  }
+  if (tier === "good") {
+    return "Good: Not all bad!";
+  }
+  if (tier === "great") {
+    return "Great: Pretty decent!";
+  }
+  if (tier === "cracked") {
+    return "Cracked: A rare find.";
+  }
+  return "God: Born under a lucky star~";
+}
+
 /** Board / modal ring + sprite wash — oof stays plain. */
 export function catchTierHasChrome(tier: CatchTier): boolean {
   return tier !== "oof";
@@ -318,9 +328,14 @@ export function catchTierToneClass(tier: CatchTier): string {
   return `pokemon-catch-label--${tier}`;
 }
 
-/** IV-only tier (primary signal for randomizer catches). */
-export function ivCatchTier(ivs: StatSpread | null | undefined): CatchTier {
-  if (!ivs) return "oof";
+/**
+ * IV-only tier (primary signal for randomizer catches).
+ *
+ * Takes a present spread on purpose: a missing spread is "not graded", not a
+ * bad grade, and the tier is public season-wide. Callers go through
+ * `catchTierFor`, which owns that null.
+ */
+export function ivCatchTier(ivs: StatSpread): CatchTier {
   let perfect = 0;
   let strong = 0;
   let dump = 0;
@@ -347,20 +362,4 @@ export function ivCatchTier(ivs: StatSpread | null | undefined): CatchTier {
   if (perfect >= 1 || strong >= 1) return "good";
   if (dump >= SHIT_DUMP_MIN) return "shit";
   return "oof";
-}
-
-/**
- * Board catch tier — IV luck only.
- *
- * Training / bond chrome lives in `specimenTrainingTier` (EVs, nature fit,
- * friendship). Extra fields on `input` are ignored for API compatibility with
- * older call sites.
- */
-export function specimenCatchTier(input: {
-  ivs?: StatSpread | null;
-  evs?: StatSpread | null;
-  battle?: StatSpread | null;
-  battleMax?: StatSpread | null;
-}): CatchTier {
-  return ivCatchTier(input.ivs);
 }

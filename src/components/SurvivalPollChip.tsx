@@ -5,63 +5,45 @@ import type { SurvivalPollTally } from "@/lib/survival-market-types";
 
 type IconProps = { className?: string };
 
+/**
+ * Heavier than the icon set's usual 1.75 — these glyphs are pure line work at
+ * ~12px, with no interior detail to muddy, so the extra weight only helps.
+ */
 const iconBase = {
   viewBox: "0 0 24 24",
   fill: "none",
   stroke: "currentColor",
-  strokeWidth: 1.75,
+  strokeWidth: 2.25,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
   "aria-hidden": true,
 } as const;
 
-/** Flat flame — crowd leans Survive. */
-function SurviveFlameIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+/** Up arrow — crowd leans Survive. */
+function SurviveArrowIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={`pokemon-survival-sentiment__svg ${className}`}>
-      <path
-        d="M12 3c1.2 2.4 0 4.2-1.4 5.6C9.2 10 8 11.2 8 13.4c0 2.4 1.8 4.1 4 4.1s4-1.7 4-4.1c0-2.6-1.8-3.8-2.8-5.6C12.5 6.5 12.2 4.8 12 3z"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 17.5c1.1 0 2-.8 2-2 0-1.1-.9-1.8-2-2.8"
-        strokeLinecap="round"
-      />
+      <path d="M12 19V5.5" />
+      <path d="M6 11.5L12 5.5L18 11.5" />
     </svg>
   );
 }
 
-/** Flat bomb — crowd leans Die. */
-function DieBombIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+/** Down arrow — crowd leans Die. */
+function DieArrowIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={`pokemon-survival-sentiment__svg ${className}`}>
-      <circle cx="12" cy="14" r="6" />
-      <path
-        d="M14.2 8.6l1.6-1.6M15.8 7l1.4.4M17.2 8.4l.4 1.4"
-        strokeLinecap="round"
-      />
-      <path d="M12 11.5v5M9.5 14h5" strokeLinecap="round" />
+      <path d="M12 5v13.5" />
+      <path d="M6 12.5L12 18.5L18 12.5" />
     </svg>
   );
 }
 
-/** Flat praying hands — Survive/Die nearly even. */
-function SplitPrayIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+/** Tilde — Survive/Die nearly even. */
+function SplitTildeIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={`pokemon-survival-sentiment__svg ${className}`}>
-      <path
-        d="M10.2 4.5L7.5 9.2c-.4.7-.3 1.5.2 2l1.8 1.8v6.2c0 .5.4.9.9.9h.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M13.8 4.5l2.7 4.7c.4.7.3 1.5-.2 2l-1.8 1.8v6.2c0 .5-.4.9-.9.9h-.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10.5 12.5l1.5 1 1.5-1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M4 12C6.2 8.6 9.2 8.6 12 12C14.8 15.4 17.8 15.4 20 12" />
     </svg>
   );
 }
@@ -110,9 +92,9 @@ const SENTIMENT_ICON: Record<
   SurvivalSentiment,
   (props: IconProps) => ReactNode
 > = {
-  survive: SurviveFlameIcon,
-  die: DieBombIcon,
-  split: SplitPrayIcon,
+  survive: SurviveArrowIcon,
+  die: DieArrowIcon,
+  split: SplitTildeIcon,
 };
 
 const SENTIMENT_LABEL: Record<SurvivalSentiment, string> = {
@@ -122,8 +104,39 @@ const SENTIMENT_LABEL: Record<SurvivalSentiment, string> = {
 };
 
 /**
- * Corner mark for all-trainers party slots — flame / bomb / pray by vote lean.
- * Paired visually with {@link BondHeart} (mirrored bottom-left).
+ * Beginner-facing Survive/Die line under the sprite — % + lean, matching the
+ * catch / bond label rows. Null when there is nothing to show.
+ */
+export function survivalSentimentLabel(
+  poll: SurvivalPollTally,
+): string | null {
+  const sentiment = survivalSentimentFromPoll(poll);
+  if (!sentiment) return null;
+
+  const survivePct = Math.round((poll.survive / poll.total) * 100);
+  const diePct = 100 - survivePct;
+
+  if (poll.status === "RESOLVED_SURVIVE") {
+    return `Lived · ${survivePct}% called Survive`;
+  }
+  if (poll.status === "RESOLVED_DIE") {
+    return `Died · ${diePct}% called Die`;
+  }
+  if (sentiment === "survive") return `${survivePct}% Survive`;
+  if (sentiment === "die") return `${diePct}% Die`;
+  return `Split · ${survivePct}% / ${diePct}%`;
+}
+
+/** Label tone class — same tint family as the corner glyph. */
+export function survivalSentimentToneClass(
+  sentiment: SurvivalSentiment,
+): string {
+  return `pokemon-survival-label--${sentiment}`;
+}
+
+/**
+ * Corner mark for all-trainers party slots — green ↑ / yellow ~ / red ↓ by vote
+ * lean. Paired visually with {@link BondHeart} (mirrored bottom-left).
  * Renders nothing when there are no votes (or the poll was voided).
  */
 export function SurvivalSentimentIcon({
@@ -149,6 +162,89 @@ export function SurvivalSentimentIcon({
       <Icon className="h-full w-full" />
       <span className="sr-only">{SENTIMENT_LABEL[sentiment]}</span>
     </span>
+  );
+}
+
+/**
+ * Icon + meaning for details / hover preview.
+ * - `inline` — icon left of text (slot cards)
+ * - `chip` — bordered row for the details modal
+ * - `tile` — icon over text for the hover grade strip
+ */
+export function SurvivalSentimentCaption({
+  poll,
+  variant = "inline",
+  className = "",
+  iconClassName,
+}: {
+  poll: SurvivalPollTally;
+  variant?: "inline" | "chip" | "tile";
+  className?: string;
+  iconClassName?: string;
+}) {
+  const sentiment = survivalSentimentFromPoll(poll);
+  const label = survivalSentimentLabel(poll);
+  if (!sentiment || !label) return null;
+
+  const Icon = SENTIMENT_ICON[sentiment];
+  const title = sentimentTitle(poll, sentiment);
+  const tone = survivalSentimentToneClass(sentiment);
+  const iconSize =
+    iconClassName ??
+    (variant === "tile" ? "h-4 w-4 shrink-0" : "h-3.5 w-3.5 shrink-0");
+
+  const icon = (
+    <span
+      aria-hidden
+      className={`pokemon-survival-sentiment pokemon-survival-sentiment--${sentiment} inline-flex shrink-0 ${iconSize}`}
+    >
+      <Icon className="h-full w-full" />
+    </span>
+  );
+  const text = (
+    <span
+      className={`min-w-0 ${
+        variant === "tile"
+          ? "text-center text-[10px] font-semibold leading-tight tracking-tight"
+          : "truncate text-[11px] font-semibold tracking-tight"
+      } ${tone}`}
+    >
+      {label}
+    </span>
+  );
+
+  if (variant === "tile") {
+    return (
+      <div
+        className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md border border-frame/45 bg-surface-2/90 px-1 py-1.5 ${className}`}
+        title={title}
+      >
+        {icon}
+        {text}
+      </div>
+    );
+  }
+
+  if (variant === "chip") {
+    return (
+      <p
+        className={`inline-flex w-full max-w-full items-center gap-1.5 rounded-md border border-frame/45 bg-surface-2/90 px-2 py-1.5 ${className}`}
+        title={title}
+      >
+        {icon}
+        {text}
+      </p>
+    );
+  }
+
+  return (
+    <p
+      className={`inline-flex max-w-full items-center justify-center gap-1 sm:justify-start ${className}`}
+      title={title}
+    >
+      {icon}
+      {text}
+    </p>
   );
 }
 

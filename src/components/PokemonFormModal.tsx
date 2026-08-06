@@ -57,6 +57,11 @@ export type PokemonFormState = {
   /** Passthrough — set from save import; not edited in the form UI. */
   friendship: number | null;
   causeOfDeath: string;
+  /**
+   * Passthrough Survive/Die tally for the details preview — not edited in the
+   * form UI. Dropped on save; reattached from the board after refresh.
+   */
+  survivalPoll?: PokemonEntry["survivalPoll"];
 };
 
 export const EMPTY_POKEMON_FORM: PokemonFormState = {
@@ -109,6 +114,7 @@ export function pokemonEntryToForm(mon: PokemonEntry): PokemonFormState {
     evs: clampEvs(mon.evs ?? undefined),
     friendship: mon.friendship,
     causeOfDeath: mon.causeOfDeath ?? "",
+    survivalPoll: mon.survivalPoll ?? null,
   };
 }
 
@@ -144,6 +150,7 @@ export function pokemonFormToEntry(form: PokemonFormState): PokemonEntry {
     causeOfDeath: form.causeOfDeath.trim() || null,
     diedOnRun: null,
     runId: null,
+    survivalPoll: form.survivalPoll ?? null,
   };
 }
 

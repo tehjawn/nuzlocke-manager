@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { BondHeart } from "@/components/BondHeart";
+import { GodPrismRays } from "@/components/GodPrismRays";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
@@ -32,9 +33,11 @@ import {
 } from "@/lib/specimen-board";
 
 type SpecimenShowcaseProps = {
-  /** Enables the "just mine" nudge when catch tier is the sort. */
-  myTrainerId: string | null;
-  onScopeToMyTrainer: () => void;
+  /**
+   * Trainers whose IVs / EVs survived redaction for this viewer. Gates the
+   * numbers in the details modal only — tier chrome is public season-wide.
+   */
+  competitiveTrainerIds: string[];
   /** Already lowercased + trimmed by the caller. */
   query: string;
   rows: SpecimenRow[];
@@ -48,7 +51,6 @@ const SLOT_SCOPES: ReadonlyArray<{ id: SpecimenSlotScope; label: string }> = [
   { id: "living", label: "Living" },
   { id: "MAIN", label: "Main" },
   { id: "RESERVE", label: "Reserve" },
-  { id: "ENCOUNTERED", label: "Encountered" },
   { id: "GRAVEYARD", label: "Memorialized" },
   { id: "all", label: "All" },
 ];
@@ -61,8 +63,7 @@ const FILTER_SELECT_CLASS =
   "w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink";
 
 export function SpecimenShowcase({
-  myTrainerId,
-  onScopeToMyTrainer,
+  competitiveTrainerIds,
   query,
   rows,
   slug,
@@ -131,20 +132,10 @@ export function SpecimenShowcase({
     [slotScopedRows, slot, sort],
   );
 
-  const gradedCount = rows.filter((row) => !row.catchTierHidden).length;
-  const hiddenCount = rows.length - gradedCount;
-
   // Looked up in the whole season, not `visible`: the living-only default is
   // itself a filter, so a grave opened from the "Memorialized" chip must not
   // vanish mid-read if the scope changes underneath it.
   const openRow = rows.find((row) => row.id === openRowId) ?? null;
-  const showScopeNudge =
-    (sort === "catch" ||
-      sort === "training" ||
-      catchTier !== null) &&
-    myTrainerId !== null &&
-    trainerId !== myTrainerId &&
-    gradedCount > 0;
 
   return (
     <div className="space-y-4">
@@ -296,30 +287,6 @@ export function SpecimenShowcase({
         </button>
       </div>
 
-      {hiddenCount > 0 && (
-        <p className="rounded-md border border-frame/40 bg-surface/60 px-3 py-2 text-[11px] leading-snug text-muted">
-          Catch tier is IV-derived, and IVs stay private to their owner —{" "}
-          {gradedCount > 0
-            ? `${gradedCount} of ${rows.length} Pokémon are graded here.`
-            : "no Pokémon on this page are graded for you."}{" "}
-          Species, level, BST score, competitive score, and type are shown for
-          everyone.
-          {showScopeNudge && (
-            <>
-              {" "}
-              <button
-                className="font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-                data-testid="showcase-scope-to-me"
-                onClick={onScopeToMyTrainer}
-                type="button"
-              >
-                Show only my Pokémon
-              </button>
-            </>
-          )}
-        </p>
-      )}
-
       <p className="text-xs text-muted">
         {visible.length}
         {visible.length !== rows.length && ` of ${rows.length}`} Pokémon
@@ -345,7 +312,9 @@ export function SpecimenShowcase({
         onClose={() => setOpenRowId(null)}
         open={openRow !== null}
         pokemon={openRow?.pokemon ?? null}
-        showCompetitiveDetails={openRow !== null && !openRow.catchTierHidden}
+        showCompetitiveDetails={
+          openRow !== null && competitiveTrainerIds.includes(openRow.trainerId)
+        }
         slug={slug}
       />
     </div>
@@ -407,6 +376,7 @@ function SpecimenCard({
                 : "border-frame"
             }`}
           >
+            {tier === "god" ? <GodPrismRays /> : null}
             <PokemonSpriteImage
               alt=""
               className="pixelated h-[88%] w-[88%] object-contain"
@@ -416,7 +386,7 @@ function SpecimenCard({
               species={row.species}
               width={96}
             />
-            {row.trainingTier !== null && !row.trainingTierHidden ? (
+            {row.trainingTier !== null ? (
               <BondHeart
                 className="pokemon-bond-heart--corner h-3.5 w-3.5"
                 tier={row.trainingTier}

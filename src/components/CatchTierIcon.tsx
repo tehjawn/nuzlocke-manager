@@ -6,37 +6,143 @@ import {
   useId,
   useRef,
   useState,
-  type CSSProperties,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import {
-  trainingTierFill,
-  trainingTierLabel,
-  trainingTierTip,
-  trainingTierToneClass,
-  type TrainingTier,
-} from "@/lib/training-quality";
+  catchTierLabel,
+  catchTierTip,
+  catchTierToneClass,
+  type CatchTier,
+} from "@/lib/iv-quality";
 
-type BondHeartProps = {
-  tier: TrainingTier;
-  className?: string;
-};
+type IconProps = { className?: string; gradientId?: string };
 
 type TipPos = { top: number; centerX: number; above: boolean };
 
+const iconBase = {
+  viewBox: "0 0 24 24",
+  "aria-hidden": true,
+} as const;
+
+/** Dotted circle — big oof catch (`shit` key). */
+function ShitCircleIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className} fill="none">
+      <circle
+        cx="12"
+        cy="12"
+        r="8"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeDasharray="2.5 2.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Solid circle outline — oof catch. */
+function OofCircleIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className} fill="none">
+      <circle
+        cx="12"
+        cy="12"
+        r="8"
+        stroke="currentColor"
+        strokeWidth="2.25"
+      />
+    </svg>
+  );
+}
+
+/** Filled triangle — good catch. */
+function GoodTriangleIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className} fill="currentColor">
+      <path d="M12 4.5L20 19.5H4L12 4.5Z" />
+    </svg>
+  );
+}
+
+/** Filled diamond — great catch. */
+function GreatDiamondIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className} fill="currentColor">
+      <path d="M12 2.5L21.5 12L12 21.5L2.5 12L12 2.5Z" />
+    </svg>
+  );
+}
+
+/** Filled pentagon — cracked catch. */
+function CrackedPentagonIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className} fill="currentColor">
+      <path d="M12 2.5L21 9.1L17.5 20.5H6.5L3 9.1L12 2.5Z" />
+    </svg>
+  );
+}
+
+/** Prismatic hexagon — god catch. */
+function GodHexagonIcon({
+  className = "h-3.5 w-3.5",
+  gradientId = "catch-tier-god-fill",
+}: IconProps) {
+  return (
+    <svg {...iconBase} className={className}>
+      <defs>
+        <linearGradient
+          id={gradientId}
+          x1="2"
+          y1="4"
+          x2="22"
+          y2="20"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="#ff7a7a" />
+          <stop offset="28%" stopColor="#ffb84a" />
+          <stop offset="52%" stopColor="#6ad4a0" />
+          <stop offset="74%" stopColor="#6ab8ef" />
+          <stop offset="100%" stopColor="#c48ad4" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M12 2.5L20.5 7.25V16.75L12 21.5L3.5 16.75V7.25L12 2.5Z"
+        fill={`url(#${gradientId})`}
+      />
+    </svg>
+  );
+}
+
+const CATCH_TIER_ICON: Record<
+  CatchTier,
+  (props: IconProps) => ReactNode
+> = {
+  shit: ShitCircleIcon,
+  oof: OofCircleIcon,
+  good: GoodTriangleIcon,
+  great: GreatDiamondIcon,
+  cracked: CrackedPentagonIcon,
+  god: GodHexagonIcon,
+};
+
 /**
- * Outline heart that fills from the bottom as training / bond progresses.
- * Tint from `.pokemon-bond-heart--*`; hover shows a training-level tip
- * (portaled so `.gba-frame` overflow does not clip it). Safe inside parent
- * buttons — trigger is a span, not a nested button.
+ * Shape glyph for a catch tier — circle → triangle → diamond → pentagon →
+ * hexagon as the ladder climbs. Colors ride `currentColor` from a parent tone
+ * class (god uses its own prismatic fill). Hover tip matches {@link BondHeart}.
  */
-export function BondHeart({
+export function CatchTierIcon({
   tier,
   className = "h-3.5 w-3.5",
-}: BondHeartProps) {
-  const tip = trainingTierTip(tier);
-  const label = trainingTierLabel(tier) ?? "Strangers";
+}: {
+  tier: CatchTier;
+  className?: string;
+}) {
+  const gradientId = useId().replace(/:/g, "");
   const tipId = useId();
+  const tip = catchTierTip(tier);
+  const label = catchTierLabel(tier) ?? "Catch";
   const wrapRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<TipPos | null>(null);
@@ -80,8 +186,7 @@ export function BondHeart({
     };
   }, [open, place]);
 
-  const fill = trainingTierFill(tier);
-  const style = { "--bond-fill": `${fill * 100}%` } as CSSProperties;
+  const Icon = CATCH_TIER_ICON[tier];
 
   return (
     <span
@@ -89,27 +194,14 @@ export function BondHeart({
       aria-describedby={open ? tipId : undefined}
       aria-label={label}
       role="img"
-      className={`pokemon-bond-heart pokemon-bond-heart--${tier} ${className}`}
-      style={style}
+      className={`inline-flex cursor-help ${className}`}
       onMouseEnter={show}
       onMouseLeave={hide}
     >
-      <svg
-        aria-hidden
-        className="pokemon-bond-heart__svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <path
-          className="pokemon-bond-heart__outline"
-          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-          strokeLinejoin="round"
-        />
-        <path
-          className="pokemon-bond-heart__fill"
-          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-        />
-      </svg>
+      <Icon
+        className="h-full w-full"
+        gradientId={tier === "god" ? `catch-tier-god-${gradientId}` : undefined}
+      />
       {open && pos && typeof document !== "undefined"
         ? createPortal(
             <span
@@ -142,31 +234,31 @@ export function BondHeart({
 }
 
 /**
- * Heart + bond label for details / hover.
- * - `inline` — icon left of text
+ * Icon + catch label for details / hover.
+ * - `inline` — icon left of text (slot cards)
  * - `chip` — bordered row for the details modal
  * - `tile` — icon over text for the hover grade strip
  */
-export function TrainingTierCaption({
+export function CatchTierCaption({
   tier,
   variant = "inline",
   className = "",
   iconClassName,
 }: {
-  tier: TrainingTier;
+  tier: CatchTier;
   variant?: "inline" | "chip" | "tile";
   className?: string;
   iconClassName?: string;
 }) {
-  const label = trainingTierLabel(tier);
+  const label = catchTierLabel(tier);
   if (!label) return null;
 
-  const tone = trainingTierToneClass(tier);
+  const tone = catchTierToneClass(tier);
   const iconSize =
     iconClassName ??
     (variant === "tile" ? "h-4 w-4 shrink-0" : "h-3.5 w-3.5 shrink-0");
 
-  const icon = <BondHeart className={iconSize} tier={tier} />;
+  const icon = <CatchTierIcon className={`${tone} ${iconSize}`} tier={tier} />;
   const text = (
     <span
       className={`min-w-0 ${

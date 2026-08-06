@@ -8,9 +8,9 @@ import { competitiveTierFor } from "@/lib/competitive-tiers";
 import {
   catchTierLabel,
   catchTierRank,
-  ivCatchTier,
   type CatchTier,
 } from "@/lib/iv-quality";
+import { resolveCatchTier } from "@/lib/pokemon-grades";
 import {
   STAT_RANKS,
   baseStatRanksFor,
@@ -50,7 +50,8 @@ export type RecommendTeamOptions = {
 
 export type RecommendTeamPickQuality = {
   catchRank: number;
-  catchTier: CatchTier;
+  /** null when the mon has no IVs on file — ungraded, not a measured "oof". */
+  catchTier: CatchTier | null;
   bstPct: number | null;
   bstRank: StatRank | null;
   competitive: StatRank | null;
@@ -118,8 +119,11 @@ export function monQualityScore(
   entry: PokemonEntry,
   weights: RecommendTeamWeights = DEFAULT_WEIGHTS,
 ): { score: number; quality: RecommendTeamPickQuality } {
-  const catchTier = ivCatchTier(entry.ivs);
-  const catchRank = catchTierRank(catchTier);
+  const catchTier = resolveCatchTier(entry);
+  // Only the *score* floors an ungraded mon at "oof" — an unknown shouldn't
+  // outrank a measured bad one. The grade itself stays null so nothing
+  // downstream publishes a catch tier the app never measured.
+  const catchRank = catchTierRank(catchTier ?? "oof");
   const ranks = baseStatRanksFor(entry.pokedexId);
   const bstPct = ranks?.bst.percentile ?? null;
   const bstRank = ranks?.bst.rank ?? null;
@@ -377,7 +381,7 @@ function buildPickReason(
   }
 
   const qualityBits: string[] = [];
-  if (quality.catchRank >= 3) {
+  if (quality.catchTier && quality.catchRank >= 3) {
     const label = catchTierLabel(quality.catchTier);
     if (label) qualityBits.push(label);
   }
@@ -390,7 +394,7 @@ function buildPickReason(
   if (qualityBits.length === 0 && qualityScore >= 0.55) {
     if (quality.bstRank) qualityBits.push(`BST ${quality.bstRank}`);
     else if (quality.competitive) qualityBits.push(`Comp ${quality.competitive}`);
-    else if (quality.catchRank >= 2) {
+    else if (quality.catchTier && quality.catchRank >= 2) {
       const label = catchTierLabel(quality.catchTier);
       if (label) qualityBits.push(label);
     }

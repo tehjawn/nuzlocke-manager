@@ -30,7 +30,7 @@ type ToolsViewProps = {
   myTrainerId?: string | null;
   /**
    * Trainers whose competitive fields survived redaction for this viewer.
-   * Showcase reads it to label withheld catch tiers honestly.
+   * Gates raw spreads in the Showcase details modal; tier chrome is public.
    */
   competitiveTrainerIds?: string[];
   signedIn?: boolean;

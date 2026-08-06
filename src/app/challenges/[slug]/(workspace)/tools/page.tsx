@@ -10,7 +10,7 @@ import {
 import { canViewCompetitiveDetails } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
-import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
+import { toPublicTrainerPokemon } from "@/lib/pokemon-privacy";
 import {
   isLegacyCompareUrl,
   legacyCompareHref,
@@ -90,17 +90,16 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const gmLensOn =
     access?.isGm === true ? await readGmLensOn(challenge.slug) : false;
 
-  // One pass, two outputs: the redacted payload, and the ids whose competitive
-  // fields survived it. Showcase needs the second to tell "IVs withheld from
-  // you" apart from "this specimen has no IVs on file" — post-redaction both
-  // look like `ivs: null`.
+  // One pass, two outputs: the public payload, and the ids whose competitive
+  // fields survived it. Catch / bond tiers are stamped on during redaction and
+  // stay public; the ids gate the raw spreads in the details modal.
   const competitiveTrainerIds: string[] = [];
   const trainers = challenge.trainers.map((trainer) => {
     if (canViewCompetitiveDetails(access, trainer.userId, gmLensOn)) {
       competitiveTrainerIds.push(trainer.id);
       return trainer;
     }
-    return redactTrainerCompetitiveDetails(trainer);
+    return toPublicTrainerPokemon(trainer);
   });
 
   const myTrainerId =

@@ -3,29 +3,27 @@ import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
-import { SurvivalPollChip } from "@/components/SurvivalPollChip";
+import {
+  SurvivalSentimentCaption,
+  SurvivalSentimentIcon,
+} from "@/components/SurvivalPollChip";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
-import {
-  catchTierHasChrome,
-  ivCatchTier,
-  type CatchTier,
-} from "@/lib/iv-quality";
+import { catchTierHasChrome } from "@/lib/iv-quality";
 import { moveTypeWashStyle } from "@/lib/move-meta";
 import { resolveMoveName } from "@/lib/move-names";
-import { recommendPlaystyle } from "@/lib/playstyle";
+import {
+  resolveCatchTier,
+  resolveTrainingTier,
+} from "@/lib/pokemon-grades";
 import {
   calcBattleStats,
   calcMaxBattleStats,
   isEmptySpread,
   natureEffectDescription,
 } from "@/lib/stats";
-import {
-  specimenTrainingTier,
-  type TrainingTier,
-} from "@/lib/training-quality";
 
 type PokemonSlotCardProps = {
   pokemon?: PokemonEntry | null;
@@ -118,25 +116,12 @@ export function PokemonSlotCard({
       ? pokemon.moves.map((m) => m.trim()).filter(Boolean)
       : [];
   const showStatColumn = Boolean(battle || ivFallback);
-  const catchTier: CatchTier =
-    showCompetitiveDetails && !speciesOnly
-      ? ivCatchTier(isEmptySpread(pokemon.ivs) ? null : pokemon.ivs)
-      : "oof";
-  const trainingTier: TrainingTier =
-    showCompetitiveDetails && !speciesOnly
-      ? specimenTrainingTier({
-          evs: pokemon.evs,
-          natureAlignment:
-            recommendPlaystyle({
-              pokedexId: pokemon.pokedexId,
-              nature: pokemon.nature,
-              ability: pokemon.ability,
-              ivs: isEmptySpread(pokemon.ivs) ? null : pokemon.ivs,
-            })?.natureAlignment ?? null,
-          friendship: pokemon.friendship,
-        })
-      : "raw";
-  const tierRing = catchTierHasChrome(catchTier)
+  // Tier chrome is public — it survives redaction on the entry itself, so it
+  // does not ride on `showCompetitiveDetails` (which gates the numbers).
+  const catchTier = speciesOnly ? null : resolveCatchTier(pokemon);
+  const trainingTier = speciesOnly ? null : resolveTrainingTier(pokemon);
+  const hasCatchChrome = catchTier !== null && catchTierHasChrome(catchTier);
+  const tierRing = hasCatchChrome
     ? `pokemon-catch-ring pokemon-catch-ring--${catchTier}`
     : null;
 
@@ -197,7 +182,13 @@ export function PokemonSlotCard({
           memorial ? "opacity-90" : ""
         } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
       >
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
+        <div
+          className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border ${
+            hasCatchChrome
+              ? `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
+              : "border-frame/50 bg-surface-2"
+          }`}
+        >
           <PokemonSpriteImage
             alt=""
             className="pixelated h-10 w-10 object-contain"
@@ -207,6 +198,18 @@ export function PokemonSlotCard({
             species={pokemon.species}
             width={48}
           />
+          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+            <SurvivalSentimentIcon
+              className="pokemon-survival-sentiment--corner-dense h-3 w-3"
+              poll={pokemon.survivalPoll}
+            />
+          ) : null}
+          {trainingTier !== null ? (
+            <BondHeart
+              className="pokemon-bond-heart--corner-dense h-3 w-3"
+              tier={trainingTier}
+            />
+          ) : null}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold leading-tight">
@@ -222,11 +225,6 @@ export function PokemonSlotCard({
             {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
             {selectHint ? ` · ${selectHint}` : ""}
           </p>
-          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
-            <div className="mt-1">
-              <SurvivalPollChip poll={pokemon.survivalPoll} compact />
-            </div>
-          ) : null}
         </div>
       </div>
     );
@@ -260,7 +258,7 @@ export function PokemonSlotCard({
       <div className="flex shrink-0 items-start gap-3">
         <div
           className={`relative flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border bg-surface-2 ${
-            catchTierHasChrome(catchTier)
+            hasCatchChrome
               ? `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
               : "border-frame"
           }`}
@@ -274,7 +272,13 @@ export function PokemonSlotCard({
             species={pokemon.species}
             width={96}
           />
-          {showCompetitiveDetails ? (
+          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+            <SurvivalSentimentIcon
+              className="pokemon-survival-sentiment--corner h-3.5 w-3.5"
+              poll={pokemon.survivalPoll}
+            />
+          ) : null}
+          {trainingTier !== null ? (
             <BondHeart
               className="pokemon-bond-heart--corner h-3.5 w-3.5"
               tier={trainingTier}
@@ -303,7 +307,10 @@ export function PokemonSlotCard({
             ))}
           </div>
           {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
-            <SurvivalPollChip poll={pokemon.survivalPoll} />
+            <SurvivalSentimentCaption
+              className="justify-start text-left text-[11px] font-semibold tracking-tight"
+              poll={pokemon.survivalPoll}
+            />
           ) : null}
         </div>
       </div>
