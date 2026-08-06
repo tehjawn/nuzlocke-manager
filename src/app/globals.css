@@ -1158,8 +1158,9 @@ button:disabled,
 
 .pokemon-bond-heart--corner {
   position: absolute;
-  right: 0.2rem;
-  bottom: 0.15rem;
+  /* Clear inset — avoids the awkward “kissing the border” gap. */
+  right: 0.45rem;
+  bottom: 0.4rem;
   z-index: 2;
   /* Slightly larger hit target for hover tip without growing the glyph. */
   padding: 0.15rem;
