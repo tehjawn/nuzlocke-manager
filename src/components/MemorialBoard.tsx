@@ -226,7 +226,7 @@ export function MemorialBoard({
           </p>
         </Frame>
       ) : (
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {byTrainer.map((row) => {
             const { trainer, graves, all } = row;
             const wipes = trainer.wipeCount ?? 0;
@@ -238,7 +238,7 @@ export function MemorialBoard({
               <li key={trainer.id} className="min-h-0">
                 <button
                   type="button"
-                  className="pressable flex h-full w-full flex-col gap-1.5 rounded-md border border-frame/40 bg-surface/60 p-2 text-left transition-colors hover:border-interactive/40 hover:bg-interactive-soft/25 sm:p-2.5"
+                  className="pressable flex h-full w-full flex-col gap-2.5 rounded-md border border-frame/40 bg-surface/60 p-3 text-left transition-colors hover:border-interactive/40 hover:bg-interactive-soft/25"
                   onClick={() => setSelectedTrainerId(trainer.id)}
                   aria-label={
                     filtering
@@ -246,27 +246,27 @@ export function MemorialBoard({
                       : `${displayName(trainer)}: ${graves.length} RIP${wipes > 0 ? `, ${wipes} wipe${wipes === 1 ? "" : "s"}` : ""}`
                   }
                 >
-                  <div className="flex items-stretch gap-1.5">
-                    <div className="flex flex-1 items-center justify-center rounded-md bg-surface/80 py-0.5">
+                  <div className="flex items-stretch gap-2">
+                    <div className="flex flex-1 items-center justify-center rounded-md bg-surface/80 py-1">
                       <AvatarPortrait
                         avatarSpriteKey={trainer.avatarSpriteKey}
                         backgroundKey={trainer.avatarBackgroundKey}
-                        sizeClass="h-14 w-14"
-                        width={56}
-                        height={56}
+                        sizeClass="h-20 w-20"
+                        width={80}
+                        height={80}
                         alt=""
                       />
                     </div>
-                    <div className="flex flex-1 items-center justify-center rounded-md bg-surface/80 py-0.5">
+                    <div className="flex flex-1 items-center justify-center rounded-md bg-surface/80 py-1">
                       {teaser ? (
                         <PokemonSpriteImage
                           alt=""
-                          className="pixelated h-14 w-14 object-contain"
-                          height={56}
+                          className="pixelated h-20 w-20 object-contain"
+                          height={80}
                           pokedexId={teaser.pokemon.pokedexId}
                           shiny={teaser.pokemon.isShiny}
                           species={teaser.pokemon.species}
-                          width={56}
+                          width={80}
                         />
                       ) : (
                         <span className="text-[11px] font-semibold text-muted/60">
@@ -277,23 +277,23 @@ export function MemorialBoard({
                   </div>
 
                   <div className="min-w-0">
-                    <p className="font-display truncate text-xs font-bold leading-tight sm:text-sm">
+                    <p className="font-display truncate text-[15px] font-bold leading-tight">
                       {displayName(trainer)}
                     </p>
-                    <p className="mt-0.5 truncate text-[10px] leading-snug text-muted">
+                    <p className="mt-0.5 truncate text-[11px] leading-snug text-muted">
                       {teaserLabel
                         ? `Latest · ${teaserLabel}${teaser?.pokemon.isShiny ? " ✦" : ""}`
                         : "No matching graves"}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <div className="rounded-md bg-surface/80 px-2 py-1.5">
-                      <p className="font-display text-xl font-bold tabular-nums leading-none tracking-tight sm:text-2xl">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-md bg-surface/80 px-2.5 py-2.5">
+                      <p className="font-display text-3xl font-bold tabular-nums leading-none tracking-tight">
                         {filtering ? (
                           <>
                             {graves.length}
-                            <span className="text-sm font-semibold text-muted">
+                            <span className="text-lg font-semibold text-muted">
                               /{all.length}
                             </span>
                           </>
@@ -301,20 +301,20 @@ export function MemorialBoard({
                           graves.length
                         )}
                       </p>
-                      <p className="mt-0.5 text-[9px] font-bold tracking-wide text-muted uppercase">
+                      <p className="mt-1 text-[10px] font-bold tracking-wide text-muted uppercase">
                         RIP
                       </p>
                     </div>
-                    <div className="rounded-md bg-surface/80 px-2 py-1.5">
+                    <div className="rounded-md bg-surface/80 px-2.5 py-2.5">
                       <p
-                        className={`font-display text-xl font-bold tabular-nums leading-none tracking-tight sm:text-2xl ${
+                        className={`font-display text-3xl font-bold tabular-nums leading-none tracking-tight ${
                           wipes > 0 ? "" : "text-muted/40"
                         }`}
                       >
                         {wipes}
                       </p>
                       <p
-                        className={`mt-0.5 text-[9px] font-bold tracking-wide uppercase ${
+                        className={`mt-1 text-[10px] font-bold tracking-wide uppercase ${
                           wipes > 0 ? "text-muted" : "text-muted/50"
                         }`}
                       >
