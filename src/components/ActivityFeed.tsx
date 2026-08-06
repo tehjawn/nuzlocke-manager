@@ -14,20 +14,57 @@ import EmojiPicker, {
   Theme,
   type EmojiClickData,
 } from "emoji-picker-react";
-import {
-  fetchChallengeActivitiesAction,
-  toggleActivityReactionAction,
-} from "@/app/actions/challenge";
 import { Frame } from "@/components/Frame";
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import type {
   ActivityItem,
+  ActivityPage,
   ActivityReactionSummary,
 } from "@/lib/challenge-types";
 
 const APP_MARK = "/nuzlocke-mark.png";
 const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
 const PAGE_SIZE = 30;
+
+type ReactionResult = { ok: true } | { ok: false; error?: string };
+
+async function fetchActivityPage(
+  slug: string,
+  cursor: string,
+): Promise<ActivityPage> {
+  const params = new URLSearchParams({
+    cursor,
+    limit: String(PAGE_SIZE),
+  });
+  const res = await fetch(
+    `/api/challenges/${encodeURIComponent(slug)}/activities?${params}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) {
+    throw new Error(`Activity page failed (${res.status})`);
+  }
+  return (await res.json()) as ActivityPage;
+}
+
+async function postActivityReaction(
+  activityId: string,
+  emoji: string,
+): Promise<ReactionResult> {
+  const res = await fetch(
+    `/api/activities/${encodeURIComponent(activityId)}/reactions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji }),
+      cache: "no-store",
+    },
+  );
+  try {
+    return (await res.json()) as ReactionResult;
+  } catch {
+    return { ok: false, error: "Reaction failed" };
+  }
+}
 
 function mergeReaction(
   reactions: ActivityReactionSummary[],
@@ -80,47 +117,48 @@ export function ActivityFeedInfinite({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
   const cursorRef = useRef<string | null>(initialCursor);
+  const errorRef = useRef(false);
 
   useEffect(() => {
     cursorRef.current = cursor;
   }, [cursor]);
 
+  async function loadMore(pageCursor: string) {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    setError(null);
+    errorRef.current = false;
+    try {
+      const page = await fetchActivityPage(slug, pageCursor);
+      setItems((prev) => coalesceActivityItems([...prev, ...page.items]));
+      setCursor(page.nextCursor);
+    } catch {
+      errorRef.current = true;
+      setError("Couldn’t load more activity");
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    if (!sentinel || !cursor) return;
+    // Pause auto-fetch after a failure so we don't hammer the function.
+    if (!sentinel || !cursor || error) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
         const pageCursor = cursorRef.current;
-        if (loadingRef.current || !pageCursor) return;
-        loadingRef.current = true;
-        setLoading(true);
-        setError(null);
-        void (async () => {
-          try {
-            const page = await fetchChallengeActivitiesAction({
-              slug,
-              cursor: pageCursor,
-              limit: PAGE_SIZE,
-            });
-            setItems((prev) =>
-              coalesceActivityItems([...prev, ...page.items]),
-            );
-            setCursor(page.nextCursor);
-          } catch {
-            setError("Couldn’t load more activity");
-          } finally {
-            loadingRef.current = false;
-            setLoading(false);
-          }
-        })();
+        if (loadingRef.current || errorRef.current || !pageCursor) return;
+        void loadMore(pageCursor);
       },
       { rootMargin: "240px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [slug, cursor]);
+  }, [slug, cursor, error]);
 
   return (
     <Frame title="Activity">
@@ -143,7 +181,21 @@ export function ActivityFeedInfinite({
         <p className="mt-2 text-center text-sm text-muted">Loading…</p>
       ) : null}
       {error ? (
-        <p className="mt-2 text-center text-sm text-danger">{error}</p>
+        <div className="mt-2 flex flex-col items-center gap-2">
+          <p className="text-center text-sm text-danger">{error}</p>
+          {cursor ? (
+            <button
+              type="button"
+              className="text-sm text-accent-deep underline-offset-2 hover:underline"
+              onClick={() => {
+                const pageCursor = cursorRef.current;
+                if (pageCursor) void loadMore(pageCursor);
+              }}
+            >
+              Try again
+            </button>
+          ) : null}
+        </div>
       ) : null}
       {!cursor && items.length > 0 ? (
         <p className="mt-3 text-center text-xs text-muted">End of activity</p>
@@ -194,10 +246,7 @@ function ActivityRow({
     startTransition(async () => {
       setOptimistic(emoji);
       setOverride(mergeReaction(previous, emoji));
-      const result = await toggleActivityReactionAction({
-        activityId: item.id,
-        emoji,
-      });
+      const result = await postActivityReaction(item.id, emoji);
       if (!result.ok) {
         setOverride(previous);
       }

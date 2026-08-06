@@ -127,6 +127,14 @@ export type ActivityItem = {
   reactions: ActivityReactionSummary[];
 };
 
+export type ActivityPage = {
+  items: ActivityItem[];
+  nextCursor: string | null;
+  /** Latest activity watermark for poll short-circuit. */
+  head?: string | null;
+  unchanged?: boolean;
+};
+
 export type Challenge = {
   id?: string;
   slug: string;
