@@ -2,6 +2,7 @@
 
 import { AskSafeMarkdown } from "@/features/search/AskSafeMarkdown";
 import { PokemonRankingCard } from "@/features/search/PokemonRankingCard";
+import { askStarterPrompts } from "@/features/search/ask-canned";
 import { resolveAskSurfaces } from "@/features/search/ask-surfaces";
 import type { AskAnswer } from "@/features/search/ask-types";
 import type {
@@ -51,6 +52,7 @@ export function AskAnswerView({
   results,
   onRetry,
   onNavigate,
+  onAsk,
 }: {
   state: AssistState;
   related: SearchResult[];
@@ -58,8 +60,34 @@ export function AskAnswerView({
   results: SearchResult[];
   onRetry: () => void;
   onNavigate: (target: SearchResult | string) => void;
+  /** Submit a starter (or other) question from the empty state. */
+  onAsk: (question: string) => void;
 }) {
-  if (state.status === "idle") return null;
+  if (state.status === "idle") {
+    const starters = askStarterPrompts(season);
+    return (
+      <div className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+          Try asking
+        </p>
+        <p className="mt-1 text-sm leading-snug text-muted">
+          Pick a starter, or type your own below.
+        </p>
+        <div className="mt-3 flex flex-col gap-2">
+          {starters.map((starter) => (
+            <button
+              key={starter.question}
+              type="button"
+              onClick={() => onAsk(starter.question)}
+              className="pressable rounded-md border border-frame/70 bg-surface-2/60 px-3 py-2.5 text-left text-sm font-medium text-ink hover:border-interactive/45"
+            >
+              {starter.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const answer: AskAnswer | null =
     state.status === "answered" ? state.answer : null;

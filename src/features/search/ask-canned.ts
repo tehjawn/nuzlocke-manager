@@ -138,3 +138,49 @@ export function matchCannedAskIntent(
 export function isCannedAskQuestion(question: string): boolean {
   return findCannedIntent(normalizeAskQuestion(question)) != null;
 }
+
+export type AskStarterPrompt = {
+  /** Short chip label shown in the empty drawer. */
+  label: string;
+  /** Full question submitted when the chip is clicked. */
+  question: string;
+};
+
+/**
+ * Empty-state prompts for the Ask drawer. Mix of canned orientation (no
+ * Gemini) and common season questions so the rail never feels blank.
+ */
+export function askStarterPrompts(
+  season: SearchSeasonContext | null,
+): AskStarterPrompt[] {
+  const starters: AskStarterPrompt[] = [
+    { label: "What can you do?", question: "What can you do?" },
+    { label: "How do I get started?", question: "How do I play?" },
+  ];
+
+  if (!season) {
+    starters.push({ label: "What is this app?", question: "What is this app?" });
+    return starters;
+  }
+
+  starters.push(
+    {
+      label: "Strongest Pokémon?",
+      question: "What are the strongest Pokémon?",
+    },
+    {
+      label: "Who’s ahead in badges?",
+      question: "Who’s ahead in badges?",
+    },
+  );
+
+  if (season.myTrainerId) {
+    starters.push({
+      label: "Strongest on my team?",
+      question: "What are the strongest on my team?",
+    });
+  }
+
+  return starters;
+}
+

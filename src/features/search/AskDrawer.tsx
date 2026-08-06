@@ -257,6 +257,13 @@ function AskHost() {
           if (q) submitAsk(q);
         }}
         onNavigate={navigate}
+        onAsk={(question) => {
+          const q = question.trim();
+          if (!q || assist.status === "loading") return;
+          lastSubmittedRef.current = q;
+          setDraft("");
+          submitAsk(q);
+        }}
       />
     </AskPanelFrame>
   );
@@ -354,7 +361,9 @@ function AskPanelFrame({
         </button>
       </header>
 
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {children}
+      </div>
 
       <form
         onSubmit={(e) => {
@@ -400,7 +409,9 @@ function AskPanelFrame({
               setDraft(e.target.value.slice(0, MAX_SEARCH_QUERY_CHARS))
             }
             maxLength={MAX_SEARCH_QUERY_CHARS}
-            placeholder="Ask another question…"
+            placeholder={
+              assistStatus === "idle" ? "Ask a question…" : "Ask another question…"
+            }
             enterKeyHint="send"
             className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ink outline-none placeholder:text-muted/80"
           />
