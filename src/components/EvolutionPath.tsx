@@ -2,12 +2,14 @@
 
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { itemDexSlug } from "@/data/item-links";
 import {
   evolutionViewFor,
   type EvolutionConditionChip,
   type EvolutionOption,
   type EvolutionView,
 } from "@/lib/species-evolutions";
+import { toolsHref } from "@/lib/tools-routes";
 
 type EvolutionPathProps = {
   pokedexId: number;
@@ -18,25 +20,58 @@ type EvolutionPathProps = {
   shiny?: boolean;
   /** Caption under the highlighted stage. Defaults to "You" (specimen modal). */
   currentLabel?: string;
+  /**
+   * Season slug. When set, item condition chips link to their ItemDex entry —
+   * "needs a Spell Tag" is only half an answer without "and here's where one is".
+   */
+  slug?: string | null;
   /** When set, non-current stages navigate (e.g. Pokédex browse). */
   onSelectSpecies?: (pokedexId: number) => void;
 };
 
-function ConditionChip({ chip }: { chip: EvolutionConditionChip }) {
+/** ItemDex deep link, or null when the catalog doesn't know the item. */
+function itemHref(slug: string | null | undefined, name: string): string | null {
+  if (!slug) return null;
+  const item = itemDexSlug(name);
+  if (!item) return null;
+  return toolsHref(slug, "itemdex", { item });
+}
+
+function ConditionChip({
+  chip,
+  slug,
+}: {
+  chip: EvolutionConditionChip;
+  slug?: string | null;
+}) {
   if (chip.kind === "hold" && chip.label.startsWith("Hold ")) {
     const name = chip.label.slice(5);
+    const href = itemHref(slug, name);
     return (
       <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-frame/40 bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-ink">
         <span className="text-muted">Hold</span>
-        <HeldItemLabel name={name} embedded iconSize={12} />
+        {/* Unlinked chips stay `embedded` so they keep the flat chip look
+            rather than growing the InfoTip's own button chrome. */}
+        <HeldItemLabel
+          name={name}
+          href={href}
+          embedded={!href}
+          iconSize={12}
+        />
       </span>
     );
   }
 
   if (chip.kind === "item" || chip.kind === "hold") {
+    const href = itemHref(slug, chip.label);
     return (
       <span className="inline-flex max-w-full items-center rounded-md border border-frame/40 bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-ink">
-        <HeldItemLabel name={chip.label} embedded iconSize={12} />
+        <HeldItemLabel
+          name={chip.label}
+          href={href}
+          embedded={!href}
+          iconSize={12}
+        />
       </span>
     );
   }
@@ -126,12 +161,14 @@ function LinearChain({
   species,
   shiny,
   currentLabel,
+  slug,
   onSelectSpecies,
 }: {
   view: EvolutionView;
   species: string;
   shiny: boolean;
   currentLabel: string;
+  slug?: string | null;
   onSelectSpecies?: (pokedexId: number) => void;
 }) {
   const steps = view.forward;
@@ -173,6 +210,7 @@ function LinearChain({
                 <ConditionChip
                   key={`${step.into}-${chip.kind}-${chip.label}`}
                   chip={chip}
+                  slug={slug}
                 />
               ))}
             </div>
@@ -203,12 +241,14 @@ function BranchOptions({
   species,
   shiny,
   currentLabel,
+  slug,
   onSelectSpecies,
 }: {
   view: EvolutionView;
   species: string;
   shiny: boolean;
   currentLabel: string;
+  slug?: string | null;
   onSelectSpecies?: (pokedexId: number) => void;
 }) {
   return (
@@ -268,6 +308,7 @@ function BranchOptions({
                   <ConditionChip
                     key={`${option.into}-${chip.kind}-${chip.label}`}
                     chip={chip}
+                    slug={slug}
                   />
                 ))}
               </div>
@@ -340,6 +381,7 @@ export function EvolutionPath({
   moves,
   shiny = false,
   currentLabel = "You",
+  slug = null,
   onSelectSpecies,
 }: EvolutionPathProps) {
   const view = evolutionViewFor(pokedexId, { level, heldItem, moves });
@@ -371,6 +413,7 @@ export function EvolutionPath({
           species={species}
           shiny={shiny}
           currentLabel={resolvedCurrentLabel}
+          slug={slug}
           onSelectSpecies={onSelectSpecies}
         />
       ) : linear ? (
@@ -379,6 +422,7 @@ export function EvolutionPath({
           species={species}
           shiny={shiny}
           currentLabel={resolvedCurrentLabel}
+          slug={slug}
           onSelectSpecies={onSelectSpecies}
         />
       ) : null}

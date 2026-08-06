@@ -900,6 +900,7 @@ function PokedexEntry({
           pokedexId={entry.pokedexId}
           species={entry.name}
           currentLabel="Current"
+          slug={slug}
           onSelectSpecies={onSelectSpecies}
         />
 

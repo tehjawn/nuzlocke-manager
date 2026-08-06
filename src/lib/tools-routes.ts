@@ -1,6 +1,7 @@
 export type ToolsId =
   | "guide"
   | "pokedex"
+  | "itemdex"
   | "bounty"
   | "markets"
   | "planner"
@@ -11,6 +12,10 @@ export type ToolsId =
  * Crest Pulse token roles used for per-tool icon chips (nav + hub). Keeps
  * scan-color identity without inventing new brand hues. Each catalog entry
  * must use a distinct tone so the submenu / hub stay scannable.
+ *
+ * `relic` (amethyst) was added for the ItemDex: the seven tools before it had
+ * already taken every existing hue, and `muted` is the fallback tone rather
+ * than an identity.
  */
 export type ToolsTone =
   | "accent"
@@ -20,6 +25,7 @@ export type ToolsTone =
   | "danger"
   | "discord"
   | "rip"
+  | "relic"
   | "muted";
 
 export type ToolsCatalogEntry = {
@@ -53,6 +59,14 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
     tone: "danger",
     blurb:
       "Species directory — role, F→S BST ranks vs the ROM, matchups, ownership — plus BST and competitive tier ladders.",
+  },
+  {
+    id: "itemdex",
+    title: "ItemDex",
+    navLabel: "Items & where they drop",
+    tone: "relic",
+    blurb:
+      "Every Modern Emerald item — what it does and every ball, hidden square, shop and wild holder it comes from. Built for evolution items: four of them have no pickup in the ROM at all.",
   },
   {
     id: "bounty",
@@ -122,6 +136,8 @@ export function toolsHref(
     chapter?: string | null;
     mode?: string | null;
     section?: string | null;
+    /** ItemDex entry slug (`spell-tag`). */
+    item?: string | null;
   },
 ): string {
   // Stats graduated out of Tools into its own season tab — keep callers
@@ -136,6 +152,7 @@ export function toolsHref(
   if (query?.chapter) params.set("chapter", query.chapter);
   if (query?.mode) params.set("mode", query.mode);
   if (query?.section) params.set("section", query.section);
+  if (query?.item) params.set("item", query.item);
   return `/challenges/${slug}/tools?${params.toString()}`;
 }
 
@@ -148,6 +165,7 @@ export function parseToolsId(
   if (
     raw === "guide" ||
     raw === "pokedex" ||
+    raw === "itemdex" ||
     raw === "bounty" ||
     raw === "markets" ||
     raw === "planner" ||

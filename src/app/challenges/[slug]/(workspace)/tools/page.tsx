@@ -11,6 +11,8 @@ import { canViewCompetitiveDetails } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { toPublicTrainerPokemon } from "@/lib/pokemon-privacy";
+import { itemDexSlug } from "@/data/item-links";
+import { parseItemLens } from "@/data/items";
 import {
   isLegacyCompareUrl,
   legacyCompareHref,
@@ -38,6 +40,7 @@ type PageProps = {
     mode?: string;
     sort?: string;
     section?: string;
+    item?: string;
   }>;
 };
 
@@ -72,7 +75,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     searchParams,
     auth(),
   ]);
-  const { tool, tab, a, b, id, mode, section, sort } = sp;
+  const { tool, tab, a, b, id, mode, section, sort, item } = sp;
   if (isLegacyCompareUrl({ a, b, tab, tool })) {
     redirect(legacyCompareHref(slug));
   }
@@ -124,6 +127,12 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     initialTool === "markets"
       ? parseMarketsSort(sort, parseMarketsMode(mode))
       : null;
+  // Resolve through the catalog so `?item=` accepts a display name as well as
+  // a slug, and an unknown value falls back to the panel's default entry.
+  const initialItemSlug =
+    initialTool === "itemdex" ? itemDexSlug(item) : null;
+  const initialItemLens =
+    initialTool === "itemdex" ? parseItemLens(mode) : null;
 
   return (
     <Suspense
@@ -145,6 +154,8 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         initialPokedexMode={initialPokedexMode}
         initialMarketsMode={initialMarketsMode}
         initialMarketsSort={initialMarketsSort}
+        initialItemSlug={initialItemSlug}
+        initialItemLens={initialItemLens}
       />
     </Suspense>
   );

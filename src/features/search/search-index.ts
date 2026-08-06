@@ -6,6 +6,12 @@ import type {
   SearchResult,
   SearchSeasonContext,
 } from "@/features/search/search-types";
+// Digest, not `@/data/items` — this module is mounted from the root layout, so
+// the ~100 KB catalog would ship on every page for a palette most sessions
+// never open. `heldItemSpriteUrl` is free here: `lib/sprites` already pulls
+// `pokemon-index` into this bundle.
+import { ITEM_SEARCH_ROWS } from "@/data/items-lite.generated";
+import { heldItemSpriteUrl } from "@/data/pokemon-index";
 import { avatarImageUrl } from "@/lib/sprites";
 import { toolsHref, seasonStatsHref } from "@/lib/tools-routes";
 
@@ -292,6 +298,35 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
     });
   });
 
+  // The digest is already scoped to items someone would hunt — evolution gates
+  // and wild holds. Indexing all 343 bag rows (every TM, Mail and key item)
+  // would drown the palette for no one's benefit.
+  const items: SearchResult[] = ITEM_SEARCH_ROWS.map((item) => {
+    const bits = [
+      item.evolution ? "Evolution item" : null,
+      item.holdOnly ? "Wild hold only" : null,
+      item.holders.length > 0
+        ? `Held by ${item.holders.slice(0, 3).join(", ")}`
+        : null,
+    ].filter(Boolean);
+    return {
+      id: `item-${item.slug}`,
+      title: item.name,
+      subtitle: bits.join(" · "),
+      href: toolsHref(ctx.slug, "itemdex", { item: item.slug }),
+      category: "item" as const,
+      imageUrl: heldItemSpriteUrl(item.slug),
+      tags: [
+        item.slug.replace(/-/g, " "),
+        "item",
+        "itemdex",
+        ...(item.evolution ? ["evolve", "evolution"] : []),
+        ...item.holders,
+        ...item.wheres,
+      ],
+    };
+  });
+
   const badges: SearchResult[] = ctx.badges.map((b) => ({
     id: `badge-${b.key}`,
     title: b.label,
@@ -388,6 +423,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
     ...navigate,
     ...trainers,
     ...pokemon,
+    ...items,
     ...badges,
     ...rules,
     ...guide,
@@ -411,6 +447,24 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
         "modern emerald",
         "tools",
         "encounters",
+      ],
+    },
+    {
+      id: `itemdex-${ctx.slug}`,
+      title: "ItemDex",
+      subtitle: `${ctx.name} · Items & where they drop`,
+      href: toolsHref(ctx.slug, "itemdex"),
+      category: "navigate" as const,
+      tags: [
+        "item",
+        "items",
+        "itemdex",
+        "evolution",
+        "evolve",
+        "stone",
+        "held item",
+        "where to find",
+        "tools",
       ],
     },
     {
