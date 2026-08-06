@@ -48,12 +48,12 @@ export function SearchTrigger({
       }}
       aria-label="Search and navigate"
       title={`Search (${shortcut})`}
-      className={`pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-2.5 font-medium hover:border-interactive/50 sm:px-3 ${className}`}
+      className={`pressable inline-flex h-9 items-center gap-2 border-frame/55 bg-surface-2/70 px-2.5 font-medium text-muted hover:border-frame hover:bg-surface hover:text-ink sm:min-w-[9.75rem] sm:px-3.5 ${className}`}
     >
-      <SearchGlyph className="h-4 w-4 shrink-0 text-ink/70" />
+      <SearchGlyph className="h-4 w-4 shrink-0 text-muted" />
       <span className="hidden text-sm sm:inline">Search</span>
       {showShortcut ? (
-        <kbd className="hidden rounded border border-frame/80 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-muted md:inline">
+        <kbd className="ml-auto hidden rounded border border-frame/60 bg-surface/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-muted/80 md:inline">
           {shortcut}
         </kbd>
       ) : null}

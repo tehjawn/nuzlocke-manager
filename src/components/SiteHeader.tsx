@@ -1,13 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
-import { MyTrainerIcon, RulesIcon } from "@/components/nav-icons";
+import { InfoMenu } from "@/components/InfoMenu";
 import {
   SiteHeaderGmChrome,
   SiteHeaderSession,
   SiteHeaderSessionFallback,
 } from "@/components/SiteHeaderSession";
 import { ToolsMenu } from "@/components/ToolsMenu";
+import { TrainersMenu } from "@/components/TrainersMenu";
 import { SearchTrigger } from "@/features/search";
 import type { Challenge } from "@/lib/challenge-types";
 import { getChallenge, getDefaultSearchChallenge } from "@/lib/challenges";
@@ -138,27 +139,16 @@ export async function SiteHeader({
               Seasons
             </Link>
             */}
-            {seasonSlug && !firstRun ? (
-              <>
-                <Link
-                  href={`/challenges/${seasonSlug}/rules`}
-                  className="pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50"
-                >
-                  <RulesIcon className="h-4 w-4 text-ink/70" />
-                  Rules / FAQ
-                </Link>
-                <ToolsMenu slug={seasonSlug} />
-              </>
+            {/*
+              Info / Tools: season chrome only (hidden on first-run funnel).
+              Trainers: always when joined (incl. first-run, matching the old
+              My Trainer pill); otherwise All Trainers only outside first-run.
+            */}
+            {seasonSlug && !firstRun ? <InfoMenu slug={seasonSlug} /> : null}
+            {seasonSlug && (myTrainerId || !firstRun) ? (
+              <TrainersMenu slug={seasonSlug} myTrainerId={myTrainerId} />
             ) : null}
-            {challengeSlug && myTrainerId ? (
-              <Link
-                href={`/challenges/${challengeSlug}/me`}
-                className="pressable inline-flex h-9 items-center gap-2 border-accent/30 bg-accent px-3.5 font-semibold text-[var(--on-accent)]"
-              >
-                <MyTrainerIcon className="h-4 w-4" />
-                My Trainer
-              </Link>
-            ) : null}
+            {seasonSlug && !firstRun ? <ToolsMenu slug={seasonSlug} /> : null}
           </div>
           <Suspense
             fallback={

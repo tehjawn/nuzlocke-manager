@@ -4,7 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { GmIcon, MyTrainerIcon, RulesIcon, ToolsIcon } from "@/components/nav-icons";
+import {
+  AboutIcon,
+  FaqIcon,
+  GmIcon,
+  MyTrainerIcon,
+  RulesIcon,
+  ToolsIcon,
+  TrainersIcon,
+} from "@/components/nav-icons";
 import { ToolChip } from "@/components/tool-icons";
 import { SearchTrigger } from "@/features/search";
 import {
@@ -15,6 +23,8 @@ import {
 
 type NavRow =
   | { kind: "link"; key: string; href: string; label: string; icon: ReactNode }
+  | { kind: "info"; key: string; slug: string }
+  | { kind: "trainers"; key: string; slug: string; myTrainerId: string | null }
   | { kind: "tools"; key: string; slug: string };
 
 type MobileNavDrawerProps = {
@@ -32,7 +42,7 @@ type MobileNavDrawerProps = {
 /**
  * Hamburger-triggered navigation sheet for narrow viewports. The site header
  * keeps its inline pill row at `sm+`; below that header controls — nav links,
- * My Trainer, and account actions — collapse in here so the bar only needs the
+ * Trainers, and account actions — collapse in here so the bar only needs the
  * logo, notifications bell, and this trigger. Theme lives in the site footer.
  * Slides in from the right at ~90% width, full height. Reuses the app's portal
  * + `data-modal-open` scroll-lock convention (see Modal.tsx and globals.css).
@@ -63,23 +73,22 @@ export function MobileNavDrawer({
   const rows: NavRow[] = [];
   if (challengeSlug && !firstRun) {
     rows.push(
+      { kind: "info", key: "info", slug: challengeSlug },
       {
-        kind: "link",
-        key: "rules",
-        href: `/challenges/${challengeSlug}/rules`,
-        label: "Rules / FAQ",
-        icon: <RulesIcon />,
+        kind: "trainers",
+        key: "trainers",
+        slug: challengeSlug,
+        myTrainerId,
       },
       { kind: "tools", key: "tools", slug: challengeSlug },
     );
-  }
-  if (challengeSlug && myTrainerId) {
+  } else if (challengeSlug && myTrainerId) {
+    // First-run + joined: keep Trainers reachable (old My Trainer pill gate).
     rows.push({
-      kind: "link",
-      key: "me",
-      href: `/challenges/${challengeSlug}/me`,
-      label: "My Trainer",
-      icon: <MyTrainerIcon />,
+      kind: "trainers",
+      key: "trainers",
+      slug: challengeSlug,
+      myTrainerId,
     });
   }
   if (challengeSlug && showGm) {
@@ -187,16 +196,50 @@ export function MobileNavDrawer({
 
                 <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-3">
                   <nav className="flex flex-col gap-1">
-                    {rows.map((row) =>
-                      row.kind === "tools" ? (
-                        <ToolsNavSection
-                          key={row.key}
-                          slug={row.slug}
-                          // Already inside Tools? Show the siblings up front.
-                          initialOpen={isUnder(pathname, toolsHubHref(row.slug))}
-                          onNavigate={() => setOpen(false)}
-                        />
-                      ) : (
+                    {rows.map((row) => {
+                      if (row.kind === "info") {
+                        return (
+                          <InfoNavSection
+                            key={row.key}
+                            slug={row.slug}
+                            initialOpen={isUnder(
+                              pathname,
+                              `/challenges/${row.slug}/about`,
+                            ) || isUnder(pathname, `/challenges/${row.slug}/rules`)}
+                            onNavigate={() => setOpen(false)}
+                          />
+                        );
+                      }
+                      if (row.kind === "trainers") {
+                        const boardHref = `/challenges/${row.slug}`;
+                        const meHref = `${boardHref}/me`;
+                        return (
+                          <TrainersNavSection
+                            key={row.key}
+                            slug={row.slug}
+                            myTrainerId={row.myTrainerId}
+                            initialOpen={
+                              pathname === boardHref ||
+                              isUnder(pathname, meHref)
+                            }
+                            onNavigate={() => setOpen(false)}
+                          />
+                        );
+                      }
+                      if (row.kind === "tools") {
+                        return (
+                          <ToolsNavSection
+                            key={row.key}
+                            slug={row.slug}
+                            initialOpen={isUnder(
+                              pathname,
+                              toolsHubHref(row.slug),
+                            )}
+                            onNavigate={() => setOpen(false)}
+                          />
+                        );
+                      }
+                      return (
                         <Link
                           key={row.key}
                           href={row.href}
@@ -208,8 +251,8 @@ export function MobileNavDrawer({
                           </span>
                           {row.label}
                         </Link>
-                      ),
-                    )}
+                      );
+                    })}
                   </nav>
 
                   <div className="flex items-center justify-between rounded-md border border-frame bg-surface px-3 py-2">
@@ -217,7 +260,7 @@ export function MobileNavDrawer({
                     <SearchTrigger
                       showShortcut={false}
                       onBeforeOpen={() => setOpen(false)}
-                      className="h-8 border-interactive/35 bg-interactive-soft"
+                      className="h-8 min-w-0 border-interactive/35 bg-interactive-soft text-ink"
                     />
                   </div>
 
@@ -235,14 +278,143 @@ export function MobileNavDrawer({
 const NAV_ROW_CLASS =
   "flex h-11 items-center gap-3 rounded-md border border-transparent bg-surface px-3 text-sm font-medium hover:border-interactive/40 hover:bg-interactive-soft/60";
 
+const NESTED_LINK_CLASS =
+  "flex items-center gap-2.5 rounded-md border border-transparent px-2.5 py-2 hover:border-interactive/40 hover:bg-interactive-soft/60";
+
 /** Same prefix rule the season rail uses for active tabs (`SeasonTabs`). */
 function isUnder(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function InfoNavSection({
+  slug,
+  initialOpen,
+  onNavigate,
+}: {
+  slug: string;
+  initialOpen: boolean;
+  onNavigate: () => void;
+}) {
+  const [open, setOpen] = useState(initialOpen);
+  const listId = useId();
+  const base = `/challenges/${slug}`;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={listId}
+        onClick={() => setOpen((v) => !v)}
+        className={`${NAV_ROW_CLASS} w-full text-left`}
+      >
+        <span className="shrink-0 text-ink/70" aria-hidden>
+          <AboutIcon />
+        </span>
+        <span className="flex-1">Info</span>
+        <ChevronIcon open={open} />
+      </button>
+
+      {open ? (
+        <ul id={listId} className="ml-5 flex flex-col gap-1 border-l border-frame/60 pl-2">
+          <li>
+            <Link href={`${base}/about`} onClick={onNavigate} className={NESTED_LINK_CLASS}>
+              <span className="shrink-0 text-ink/70" aria-hidden>
+                <AboutIcon className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-medium">About</span>
+            </Link>
+          </li>
+          <li>
+            <Link href={`${base}/rules`} onClick={onNavigate} className={NESTED_LINK_CLASS}>
+              <span className="shrink-0 text-ink/70" aria-hidden>
+                <RulesIcon className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-medium">Rules</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              href={`${base}/rules?tab=faq`}
+              onClick={onNavigate}
+              className={NESTED_LINK_CLASS}
+            >
+              <span className="shrink-0 text-ink/70" aria-hidden>
+                <FaqIcon className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-medium">FAQ</span>
+            </Link>
+          </li>
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function TrainersNavSection({
+  slug,
+  myTrainerId,
+  initialOpen,
+  onNavigate,
+}: {
+  slug: string;
+  myTrainerId: string | null;
+  initialOpen: boolean;
+  onNavigate: () => void;
+}) {
+  const [open, setOpen] = useState(initialOpen);
+  const listId = useId();
+  const base = `/challenges/${slug}`;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={listId}
+        onClick={() => setOpen((v) => !v)}
+        className={`${NAV_ROW_CLASS} w-full text-left`}
+      >
+        <span className="shrink-0 text-ink/70" aria-hidden>
+          <TrainersIcon />
+        </span>
+        <span className="flex-1">Trainers</span>
+        <ChevronIcon open={open} />
+      </button>
+
+      {open ? (
+        <ul id={listId} className="ml-5 flex flex-col gap-1 border-l border-frame/60 pl-2">
+          <li>
+            <Link href={base} onClick={onNavigate} className={NESTED_LINK_CLASS}>
+              <span className="shrink-0 text-ink/70" aria-hidden>
+                <TrainersIcon className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-medium">All Trainers</span>
+            </Link>
+          </li>
+          {myTrainerId ? (
+            <li>
+              <Link
+                href={`${base}/me`}
+                onClick={onNavigate}
+                className={`${NESTED_LINK_CLASS} border-accent/25 bg-accent/12 font-semibold text-accent-deep hover:bg-accent/20`}
+              >
+                <span className="shrink-0 text-accent-deep" aria-hidden>
+                  <MyTrainerIcon className="h-4 w-4" />
+                </span>
+                <span className="text-sm">My Trainer</span>
+              </Link>
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Tools as an expanding row rather than five flat ones (#253) — the drawer also
- * carries Rules, My Trainer, GM, Search, and the account actions, and inlining
+ * carries Info, Trainers, GM, Search, and the account actions, and inlining
  * the whole catalog would bury them. Renders off `TOOLS_CATALOG` so it tracks
  * the header menu without a second list to maintain. Season Stats is included
  * as a deep link to the Season Stats season tab (#288).
