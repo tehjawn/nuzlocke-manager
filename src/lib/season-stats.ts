@@ -1,6 +1,6 @@
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { hasBeatenChampionship } from "@/lib/championship";
-import { summarizeIvs } from "@/lib/iv-quality";
+import { catchTierFor } from "@/lib/pokemon-grades";
 import type { MemorialSeasonHighlights } from "@/lib/memorial-stats";
 
 /**
@@ -113,7 +113,7 @@ export type GodCatchBoard = {
 };
 
 /**
- * Season-wide god-tier IV leaderboard (`summarizeIvs().god` — 3+ IVs at 28+).
+ * Season-wide god-tier IV leaderboard (role-aware `catchTierFor` === "god").
  *
  * Must run server-side on unredacted boards: IV spreads are competitive
  * details nulled by `toPublicPokemonEntry` for rival viewers.
@@ -130,7 +130,7 @@ export function godCatchBoard(
   for (const trainer of trainers) {
     let count = 0;
     for (const mon of catchesByTrainerId[trainer.id] ?? []) {
-      if (summarizeIvs(mon.ivs)?.god) count += 1;
+      if (catchTierFor(mon) === "god") count += 1;
     }
     counts.set(trainer.id, count);
     total += count;
