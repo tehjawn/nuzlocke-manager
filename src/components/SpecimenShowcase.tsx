@@ -31,9 +31,7 @@ import {
   type SpecimenSort,
 } from "@/lib/specimen-board";
 import {
-  trainingTierFill,
   trainingTierHasHeart,
-  trainingTierLabel,
 } from "@/lib/training-quality";
 
 type SpecimenShowcaseProps = {
@@ -425,9 +423,8 @@ function SpecimenCard({
             trainingTierHasHeart(row.trainingTier) &&
             !row.trainingTierHidden ? (
               <BondHeart
-                className={`pokemon-bond-heart--corner pokemon-bond-heart--${row.trainingTier} h-3.5 w-3.5`}
-                fill={trainingTierFill(row.trainingTier)}
-                label={trainingTierLabel(row.trainingTier) ?? "Trained"}
+                className="pokemon-bond-heart--corner h-3.5 w-3.5"
+                tier={row.trainingTier}
               />
             ) : null}
           </div>

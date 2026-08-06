@@ -45,7 +45,6 @@ import {
 import { toolsHref } from "@/lib/tools-routes";
 import {
   specimenTrainingTier,
-  trainingTierFill,
   trainingTierHasHeart,
   trainingTierLabel,
   trainingTierToneClass,
@@ -301,9 +300,8 @@ export function PokemonDetailsModal({
                 />
                 {bondLabel ? (
                   <BondHeart
-                    className={`pokemon-bond-heart--corner pokemon-bond-heart--${trainingTier} h-4 w-4`}
-                    fill={trainingTierFill(trainingTier)}
-                    label={bondLabel}
+                    className="pokemon-bond-heart--corner h-4 w-4"
+                    tier={trainingTier}
                   />
                 ) : null}
               </div>

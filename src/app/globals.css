@@ -1103,16 +1103,13 @@ button:disabled,
   color: transparent;
 }
 
-/*
- * Bond heart — training / care chrome (orthogonal to catch ring).
- * Tint family matches catch good → great → cracked; no shit / god prismatic.
- */
+/* Bond heart — training chrome; corner sits bottom-right of the sprite well. */
 .pokemon-bond-heart {
   --bond-fill: 0%;
   --bond-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
   display: inline-flex;
   color: var(--bond-tint);
-  pointer-events: none;
+  cursor: help;
 }
 
 .pokemon-bond-heart__svg {
@@ -1159,12 +1156,14 @@ button:disabled,
   color: #f0c14a;
 }
 
-/* Absolute placement inside a relative sprite well */
 .pokemon-bond-heart--corner {
   position: absolute;
-  left: 0.2rem;
+  right: 0.2rem;
   bottom: 0.15rem;
   z-index: 2;
+  /* Slightly larger hit target for hover tip without growing the glyph. */
+  padding: 0.15rem;
+  margin: -0.15rem;
 }
 
 .gba-frame-menu::before,

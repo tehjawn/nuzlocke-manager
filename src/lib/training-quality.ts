@@ -73,6 +73,20 @@ export function trainingTierLabel(tier: TrainingTier): string | null {
   return TRAINING_TIER_LABEL[tier];
 }
 
+/** Hover tip body for the bond heart — one short line per band. */
+export function trainingTierTip(tier: TrainingTier): string | null {
+  if (tier === "growing") {
+    return "Growing — some EV investment from training.";
+  }
+  if (tier === "trained") {
+    return "Trained — clear EV investment on this Pokémon.";
+  }
+  if (tier === "bonded") {
+    return "Bonded — heavily trained and cared for (near-capped EVs and/or high friendship).";
+  }
+  return null;
+}
+
 /** Heart fill 0–1 for CSS `--bond-fill`. */
 export function trainingTierFill(tier: TrainingTier): number {
   return TRAINING_TIER_FILL[tier];

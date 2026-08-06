@@ -23,9 +23,9 @@ import {
 } from "@/lib/stats";
 import {
   specimenTrainingTier,
-  trainingTierFill,
   trainingTierHasHeart,
   trainingTierLabel,
+  trainingTierToneClass,
   type TrainingTier,
 } from "@/lib/training-quality";
 
@@ -274,9 +274,8 @@ export function PokemonSlotCard({
           />
           {trainingTierHasHeart(trainingTier) && bondLabel ? (
             <BondHeart
-              className={`pokemon-bond-heart--corner pokemon-bond-heart--${trainingTier} h-3.5 w-3.5`}
-              fill={trainingTierFill(trainingTier)}
-              label={bondLabel}
+              className="pokemon-bond-heart--corner h-3.5 w-3.5"
+              tier={trainingTier}
             />
           ) : null}
         </div>
