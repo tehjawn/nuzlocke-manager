@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/db";
 import type {
+  SurvivalMarketListItem,
   SurvivalMarketStatus,
   SurvivalMarketView,
   SurvivalPollTally,
@@ -170,6 +171,77 @@ export async function loadSurvivalPollTallies(
     });
   }
   return out;
+}
+
+/**
+ * Season-wide Survive/Die board for the Tools page — open + resolved markets
+ * (void excluded). Slim tallies only; expand via getSurvivalMarketForPokemon.
+ */
+export async function listSurvivalMarketsForChallenge(input: {
+  challengeId: string;
+  viewerUserId?: string | null;
+}): Promise<SurvivalMarketListItem[]> {
+  const prisma = getPrisma();
+  const rows = await prisma.survivalMarket.findMany({
+    where: {
+      challengeId: input.challengeId,
+      status: { not: "VOID" },
+    },
+    select: {
+      id: true,
+      pokemonId: true,
+      trainerId: true,
+      status: true,
+      species: true,
+      nickname: true,
+      pokedexId: true,
+      isShiny: true,
+      resolvedAt: true,
+      votes: {
+        select: {
+          prediction: true,
+          userId: true,
+        },
+      },
+    },
+    orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+  });
+
+  const trainerIds = [...new Set(rows.map((row) => row.trainerId))];
+  const trainers =
+    trainerIds.length === 0
+      ? []
+      : await prisma.trainerProfile.findMany({
+          where: { id: { in: trainerIds } },
+          select: { id: true, handle: true },
+        });
+  const handleById = new Map(trainers.map((t) => [t.id, t.handle]));
+
+  return rows.map((row) => {
+    const counts = tallyVotes(row.votes);
+    const mine = input.viewerUserId
+      ? row.votes.find((v) => v.userId === input.viewerUserId)
+      : undefined;
+    return {
+      id: row.id,
+      status: row.status,
+      pokemonId: row.pokemonId,
+      species: row.species,
+      nickname: row.nickname,
+      pokedexId: row.pokedexId,
+      isShiny: row.isShiny,
+      survive: counts.survive,
+      die: counts.die,
+      total: counts.total,
+      survivePct: counts.survivePct,
+      resolvedAt: row.resolvedAt?.toISOString() ?? null,
+      myPrediction: mine?.prediction ?? null,
+      trainer: {
+        id: row.trainerId,
+        handle: handleById.get(row.trainerId) ?? "Trainer",
+      },
+    };
+  });
 }
 
 /** Details / grave: full market with voter chrome. */

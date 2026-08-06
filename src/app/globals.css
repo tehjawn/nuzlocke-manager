@@ -4,6 +4,7 @@
   Crest Pulse — color roles
   - accent (emerald): primary CTAs only (see .btn-cta*)
   - accent-2 (gold): informational chrome / highlights
+  - warn (flame orange): Survive/Die polls / caution accents
   - interactive (sky): hover affordances on clickable surfaces
   - info (cool gray wash): read-only value chips
 */
@@ -22,6 +23,7 @@
   --accent: #2f9a52;
   --accent-deep: #1f7a3d;
   --accent-2: #d4a017;
+  --warn: #e07a28;
   --interactive: #2f8fbf;
   --interactive-soft: #d7eef8;
   --info: #e7ebe3;
@@ -71,6 +73,7 @@
   --accent: #3ecf6a;
   --accent-deep: #6aeba0;
   --accent-2: #f0c040;
+  --warn: #f0923a;
   --interactive: #5ec4e8;
   --interactive-soft: #17303a;
   --info: #222a24;
@@ -120,6 +123,7 @@
   --color-accent-deep: var(--accent-deep);
   --color-accent-2: var(--accent-2);
   --color-accent-ink: var(--accent-ink);
+  --color-warn: var(--warn);
   --color-interactive: var(--interactive);
   --color-interactive-soft: var(--interactive-soft);
   --color-discord: var(--discord);

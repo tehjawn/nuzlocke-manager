@@ -56,3 +56,21 @@ export type SurvivalMarketView = {
   /** Why voting is blocked (signed out / non-member / closed / disabled). */
   voteBlockedReason: string | null;
 };
+
+/** Slim row for the Survive/Die Tools board (issue #189 browse surface). */
+export type SurvivalMarketListItem = {
+  id: string;
+  status: SurvivalMarketStatus;
+  pokemonId: string | null;
+  species: string;
+  nickname: string | null;
+  pokedexId: number | null;
+  isShiny: boolean;
+  survive: number;
+  die: number;
+  total: number;
+  survivePct: number;
+  resolvedAt: string | null;
+  myPrediction: SurvivalPrediction | null;
+  trainer: { id: string; handle: string };
+};

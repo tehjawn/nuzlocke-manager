@@ -128,6 +128,8 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         myTrainerId={myTrainerId}
         competitiveTrainerIds={competitiveTrainerIds}
         signedIn={Boolean(session?.user)}
+        survivalMarketsEnabled={challenge.survivalMarketsEnabled !== false}
+        viewerUserId={session?.user?.id ?? null}
         initialTool={initialTool}
         initialDexId={initialDexId}
         initialBountyMode={initialBountyMode}

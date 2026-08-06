@@ -120,11 +120,14 @@ export function SurvivalPollSection({
   pokemonId,
   enabled,
   viewerUserId,
+  onVoted,
 }: {
   pokemonId: string;
   /** Challenge flag — omit section entirely when off and no market. */
   enabled: boolean;
   viewerUserId?: string | null;
+  /** Fired after a successful cast so parent boards can refresh tallies. */
+  onVoted?: () => void;
 }) {
   const [market, setMarket] = useState<SurvivalMarketView | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -174,6 +177,7 @@ export function SurvivalPollSection({
       }
       const next = await getSurvivalMarketAction({ pokemonId });
       setMarket(next);
+      onVoted?.();
     });
   };
 

@@ -9,8 +9,12 @@ import {
   SURVIVAL_COMMENT_MAX,
   castSurvivalVote,
   getSurvivalMarketForPokemon,
+  listSurvivalMarketsForChallenge,
 } from "@/lib/survival-markets";
-import type { SurvivalMarketView } from "@/lib/survival-market-types";
+import type {
+  SurvivalMarketListItem,
+  SurvivalMarketView,
+} from "@/lib/survival-market-types";
 
 export type ActionResult =
   | { ok: true; message?: string }
@@ -72,6 +76,7 @@ export async function castSurvivalVoteAction(
     if (!result.ok) return { ok: false, error: result.error };
 
     revalidateBoardViews(mon.trainer.challenge.slug, mon.trainerId);
+    revalidatePath(`/challenges/${mon.trainer.challenge.slug}/tools`);
     return { ok: true, message: "Vote saved" };
   } catch (e) {
     return failAction("survival-vote-failed", e, "Couldn’t save vote");
@@ -99,5 +104,26 @@ export async function getSurvivalMarketAction(input: {
     });
   } catch {
     return null;
+  }
+}
+
+/** Survive/Die Tools board — slim season markets (void excluded). */
+export async function listSurvivalMarketsAction(input: {
+  slug: string;
+}): Promise<SurvivalMarketListItem[]> {
+  try {
+    const prisma = getPrisma();
+    const challenge = await prisma.challenge.findUnique({
+      where: { slug: input.slug },
+      select: { id: true },
+    });
+    if (!challenge) return [];
+    const access = await getAccessForChallenge(challenge.id);
+    return listSurvivalMarketsForChallenge({
+      challengeId: challenge.id,
+      viewerUserId: access?.userId ?? null,
+    });
+  } catch {
+    return [];
   }
 }
