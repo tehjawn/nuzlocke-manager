@@ -460,7 +460,7 @@ export function GetStartedView({
                 ·
               </span>
               <span>
-                <span className="font-semibold text-ink">Memorial</span>
+                <span className="font-semibold text-ink">Season Stats</span>
                 <span className="text-muted">
                   {" "}
                   when a run ends — honor the team on the season memorial

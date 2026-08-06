@@ -91,7 +91,7 @@ function SeasonCard({ challenge: c }: { challenge: Challenge }) {
   const href = archived
     ? `/challenges/${c.slug}/memorial`
     : `/challenges/${c.slug}`;
-  const cta = archived ? "Open memorial →" : "Enter league board";
+  const cta = archived ? "Open Season Stats →" : "Enter league board";
 
   return (
     <Frame>

@@ -60,6 +60,7 @@ import { EMERALD_BADGE_META } from "@/lib/emerald-badges";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
+import { SeasonStatsToolIcon } from "@/components/tool-icons";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
 import {
   MAIN_PARTY_SIZE,
@@ -368,23 +369,6 @@ function ToolsShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
       <path d="M12.5 8.5l3 3" strokeLinecap="round" />
       <circle cx="7.5" cy="7.5" r="2.25" />
       <path d="M16.5 16.5l2 2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function MemorialShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      aria-hidden="true"
-    >
-      <path d="M8 20V9.5a4 4 0 018 0V20" strokeLinecap="round" />
-      <path d="M6 20h12" strokeLinecap="round" />
-      <path d="M12 5.5V4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -783,8 +767,8 @@ export function TrainerBoard({
     },
     {
       href: `${leagueBoardHref}/memorial`,
-      label: "Memorial",
-      icon: <MemorialShortcutIcon />,
+      label: "Season Stats",
+      icon: <SeasonStatsToolIcon className="h-6 w-6" />,
     },
     {
       href: `${leagueBoardHref}/encounters`,

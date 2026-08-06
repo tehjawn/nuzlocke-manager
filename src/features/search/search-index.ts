@@ -87,7 +87,7 @@ function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
     { href: base, label: "Trainers" },
     { href: `${base}/encounters`, label: "Encounters" },
     { href: `${base}/tools`, label: "Tools" },
-    { href: `${base}/memorial`, label: "Memorial" },
+    { href: `${base}/memorial`, label: "Season Stats" },
   ];
   // TEMP (#240): Tournament / Ladder is still WIP — GMs only.
   if (isGm) {
@@ -143,7 +143,25 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
       subtitle: `${ctx.name} · ${tab.label}`,
       href: tab.href,
       category: "navigate" as const,
-      tags: [tab.label.toLowerCase(), "section", "tab"],
+      tags:
+        tab.label === "Season Stats"
+          ? [
+              "season stats",
+              "memorial",
+              "graves",
+              "wipes",
+              "leaderboard",
+              "standings",
+              "hall of fame",
+              "records",
+              "richest",
+              "badges",
+              "god",
+              "shiny",
+              "section",
+              "tab",
+            ]
+          : [tab.label.toLowerCase(), "section", "tab"],
     })),
     {
       id: `nav-faq-${ctx.slug}`,
@@ -391,26 +409,6 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
         "tools",
       ],
     },
-    {
-      id: `stats-${ctx.slug}`,
-      title: "Season Stats",
-      subtitle: `${ctx.name} · Leaderboards & records`,
-      href: toolsHref(ctx.slug, "stats"),
-      category: "navigate" as const,
-      tags: [
-        "stats",
-        "season",
-        "leaderboard",
-        "standings",
-        "hall of fame",
-        "records",
-        "richest",
-        "badges",
-        "god",
-        "shiny",
-        "tools",
-      ],
-    },
   ];
 }
 
@@ -433,7 +431,7 @@ export function querySearchIndex(
 export function defaultSuggestions(results: SearchResult[]): SearchResult[] {
   const preferredIds = [
     results.find((r) => r.id.startsWith("nav-me-"))?.id,
-    results.find((r) => r.title === "Memorial")?.id,
+    results.find((r) => r.title === "Season Stats")?.id,
     results.find((r) => r.title === "Encounters")?.id,
     results.find((r) => r.title === "Trainers" || r.subtitle.includes("League board"))
       ?.id,

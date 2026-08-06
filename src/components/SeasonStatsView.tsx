@@ -45,6 +45,8 @@ type SeasonStatsViewProps = {
   myTrainerId?: string | null;
   /** Server-computed extras (cross-run graves + unredacted IV aggregates). */
   seasonStats?: SeasonStatsData | null;
+  /** Grave browser rendered under Graves & wipes (canonical Season Stats page). */
+  memorialBrowser?: ReactNode;
 };
 
 const sectionLinkClass =
@@ -55,6 +57,7 @@ export function SeasonStatsView({
   trainers,
   myTrainerId = null,
   seasonStats = null,
+  memorialBrowser = null,
 }: SeasonStatsViewProps) {
   const searchParams = useSearchParams();
   const section = parseStatsSection(searchParams.get("section"));
@@ -344,27 +347,18 @@ export function SeasonStatsView({
       </StatsSection>
 
       {memorial ? (
-        <StatsSection
-          section="memorial"
-          title="Graves & wipes"
-          action={
-            <Link
-              className={sectionLinkClass}
-              href={`/challenges/${slug}/memorial`}
-            >
-              Open Memorial →
-            </Link>
-          }
-        >
+        <StatsSection section="memorial" title="Graves & wipes">
           {memorial.totalGraves === 0 &&
           !memorial.mostPartyWipes &&
           encounter.deadliestRoutes.length === 0 ? (
-            <div className={seasonCalloutCardClass}>
-              <p className="text-sm text-muted">
-                No graves yet. May it stay that way — or at least stay
-                interesting.
-              </p>
-            </div>
+            memorialBrowser ? null : (
+              <div className={seasonCalloutCardClass}>
+                <p className="text-sm text-muted">
+                  No graves yet. May it stay that way — or at least stay
+                  interesting.
+                </p>
+              </div>
+            )
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {memorial.heaviestMemorial ? (
@@ -419,6 +413,9 @@ export function SeasonStatsView({
               ) : null}
             </div>
           )}
+          {memorialBrowser ? (
+            <div className="pt-2">{memorialBrowser}</div>
+          ) : null}
         </StatsSection>
       ) : null}
     </div>
