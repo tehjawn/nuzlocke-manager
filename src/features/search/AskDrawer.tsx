@@ -135,6 +135,7 @@ function AskHost() {
 
   const onSeedAsk = useEffectEvent((q: string) => {
     submitAsk(q);
+    setDraft("");
   });
 
   useEffect(() => {
@@ -215,6 +216,7 @@ function AskHost() {
         if (!q || assist.status === "loading") return;
         lastSubmittedRef.current = q;
         submitAsk(q);
+        setDraft("");
       }}
       desktop={desktop}
     >
