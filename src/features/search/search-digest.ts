@@ -62,7 +62,22 @@ export function detectAskPlan(
 ): AskPlan {
   const q = question.toLowerCase().replace(/\s+/g, " ").trim();
 
-  const trainerHandles = ctx ? matchTrainerHandles(q, ctx) : [];
+  const selfHandle = resolveSelfHandle(ctx);
+  const refersToSelf = /\b(my|mine|i'm|im|i am)\b/.test(q);
+  // "me" alone is too noisy ("tell me the rules"); require team-ish context.
+  const personalRoster =
+    (refersToSelf || /\b(me|myself)\b/.test(q)) &&
+    /\b(team|party|squad|box|roster|mons?|pok[eé]mon|fallen|living|badges?|board|run)\b/.test(
+      q,
+    );
+
+  let trainerHandles = ctx ? matchTrainerHandles(q, ctx) : [];
+  if (personalRoster && selfHandle) {
+    const lower = selfHandle.toLowerCase();
+    if (!trainerHandles.some((h) => h.toLowerCase() === lower)) {
+      trainerHandles = [selfHandle, ...trainerHandles];
+    }
+  }
 
   const wantsDetail =
     /\b(nickname|nicknames|route|caught|shiny|shinies|status)\b/.test(q);
@@ -88,11 +103,12 @@ export function detectAskPlan(
 
   const roster =
     trainerHandles.length > 0 ||
+    personalRoster ||
     /\b(who|whose|ahead|behind|badge|badges|team|teams|party|fallen|living|dead|deaths?|memorial|grave|trainer|trainers|standings|leaderboard|box|squad|nickname|caught|route)\b/.test(
       q,
     );
 
-  // Named trainer → always pull their roster detail.
+  // "my team" / named handle → that trainer's roster only (never league-wide meta).
   if (trainerHandles.length > 0) {
     return {
       focus: "roster",
@@ -108,6 +124,22 @@ export function detectAskPlan(
     };
   }
 
+  // Personal ask but viewer has no board in this season — still roster-shaped
+  // so we don't answer with empty meta / Game Guide deflection.
+  if (personalRoster) {
+    return {
+      focus: "roster",
+      trainerHandles: selfHandle ? [selfHandle] : [],
+      includeMons: true,
+      includeFallenDetail: true,
+      includeRules: false,
+      includeRuleBodies: false,
+      includeFaqs: false,
+      leanMons,
+    };
+  }
+
+  // League-wide meta only — "strongest pokemon" with no "my team".
   if (meta && !league && !roster) {
     return {
       focus: "meta",
@@ -171,6 +203,15 @@ export function detectAskPlan(
     includeFaqs: true,
     leanMons,
   };
+}
+
+function resolveSelfHandle(
+  ctx?: SearchSeasonContext | null,
+): string | null {
+  if (!ctx?.myTrainerId) return null;
+  const mine = ctx.trainers.find((t) => t.id === ctx.myTrainerId);
+  const handle = mine?.handle?.trim();
+  return handle || null;
 }
 
 /** Back-compat wrapper — prefer `detectAskPlan`. */
@@ -311,13 +352,18 @@ function sortTrainersForPlan(
   );
   const list = [...ctx.trainers];
 
-  // Named in the question → only those trainers (plus nothing else).
+  // Named / "my" in the question → only those trainers.
   if (preferred.size > 0) {
     const named = list.filter((t) => preferred.has(t.handle.toLowerCase()));
     if (named.length) return named;
   }
 
+  // League-wide roster/full: keep the viewer first so budget cuts don't drop "my" team.
   list.sort((a, b) => {
+    if (ctx.myTrainerId) {
+      if (a.id === ctx.myTrainerId) return -1;
+      if (b.id === ctx.myTrainerId) return 1;
+    }
     const badgeDelta =
       (b.earnedBadgeKeys?.length ?? 0) - (a.earnedBadgeKeys?.length ?? 0);
     if (badgeDelta !== 0) return badgeDelta;
@@ -414,6 +460,19 @@ export function buildSeasonDigestFromPlan(
     pack,
     `SEASON: ${ctx.name} | year ${ctx.year} | status ${ctx.status} | focus ${plan.focus}`,
   );
+
+  const selfHandle = resolveSelfHandle(ctx);
+  if (selfHandle) {
+    pushLine(
+      pack,
+      `YOU: ${selfHandle} (the signed-in trainer — "my/me/mine" in the question means this handle)`,
+    );
+  } else if (plan.focus === "roster" && plan.includeMons) {
+    pushLine(
+      pack,
+      `YOU: (none — viewer has no trainer board in this season; cannot resolve "my team")`,
+    );
+  }
 
   const game = gameLine(ctx.game);
   if (game) pushLine(pack, game);
