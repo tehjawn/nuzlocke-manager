@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import {
@@ -138,6 +138,8 @@ export function SaveImportModal({
   const [safariZoneAreas, setSafariZoneAreas] = useState<string[] | null>(null);
   const [parsing, setParsing] = useState(false);
 
+  if (!open) return null;
+
   function reset() {
     setError(null);
     setFormat(null);
@@ -162,14 +164,6 @@ export function SaveImportModal({
     setParsing(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
-
-  // Modal stays mounted while closed; clear stale parse so reopen can't
-  // resubmit the previous save / playtime (issue #286).
-  useEffect(() => {
-    if (!open) reset();
-  }, [open]);
-
-  if (!open) return null;
 
   async function onFile(file: File | null) {
     if (!file) return;

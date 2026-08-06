@@ -1902,9 +1902,9 @@ export function TrainerBoard({
         />
       ) : null}
 
-      {canEdit ? (
+      {canEdit && saveImportOpen ? (
         <SaveImportModal
-          open={saveImportOpen}
+          open
           pending={pending}
           onClose={() => setSaveImportOpen(false)}
           onApply={(payload) => {
