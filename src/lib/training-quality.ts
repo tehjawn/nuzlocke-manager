@@ -4,6 +4,11 @@
  * Ladder: raw → growing → trained → bonded.
  * Colors climb the same good → great → cracked tint family as catch chrome;
  * vocabulary stays care-shaped (not shit→god).
+ *
+ * Thresholds are tuned for **organic Nuzlocke EV gain** (spread across stats
+ * while grinding to a level cap), not Smogon 252/252 spreads. Trash Pack
+ * Emerald cap is 63 at Champion — those mains typically sit near the 510 EV
+ * pool with no single 252.
  */
 
 import {
@@ -29,8 +34,20 @@ export type TrainingTier = (typeof TRAINING_TIERS)[number];
  */
 export const BONDED_FRIENDSHIP_MIN = 220;
 
-/** Total EV pool that counts as early investment (growing). */
-const GROWING_EV_TOTAL = 100;
+/** Early grinding — enough to show a faint heart. */
+const GROWING_EV_TOTAL = 80;
+
+/**
+ * Clear investment — about one fully trained attacking stat's worth of pool,
+ * usually reached mid-game under organic gain.
+ */
+const TRAINED_EV_TOTAL = 252;
+
+/**
+ * Near-capped EV pool (max 510). Endgame / level-cap mains land here even
+ * when EVs are spread thin — used as the no-friendship bonded stand-in.
+ */
+const BONDED_EV_TOTAL = 450;
 
 /** Fill fraction for the bond heart glyph (raw has no heart). */
 const TRAINING_TIER_FILL: Record<TrainingTier, number> = {
@@ -82,10 +99,12 @@ function hasStrongEv(evs: StatSpread): boolean {
 /**
  * Grade training / bond from EVs + nature fit + optional friendship.
  *
- * Phase 1 (no friendship on file): `bonded` only when trained, nature helps
- * the playstyle, and EVs are cracked — a temporary stand-in so gold stays rare.
- * Phase 1.5: with friendship present, gold requires friendship ≥
- * {@link BONDED_FRIENDSHIP_MIN} (Gen 3 evolution bar); the stand-in does not apply.
+ * With friendship on file: gold/`bonded` needs trained + friendship ≥
+ * {@link BONDED_FRIENDSHIP_MIN}.
+ *
+ * Without friendship (pre-reimport rows): gold when the EV pool is nearly
+ * capped ({@link BONDED_EV_TOTAL}+) — the organic endgame signal — or when
+ * nature helps and EVs look competitively cracked.
  */
 export function specimenTrainingTier(input: {
   evs?: StatSpread | null;
@@ -97,15 +116,19 @@ export function specimenTrainingTier(input: {
 
   const summary = summarizeEvs(evs);
   const cracked = summary?.cracked ?? false;
-  const perfectCount = summary?.perfect.length ?? 0;
+  const total = evTotal(evs);
   const natureHelps = input.natureAlignment === "helps";
-  const solid =
-    cracked || perfectCount >= 1 || hasStrongEv(evs) || evTotal(evs) >= GROWING_EV_TOTAL;
+  const strong = hasStrongEv(evs);
 
   let tier: TrainingTier = "raw";
-  if (cracked || perfectCount >= 2 || (natureHelps && solid)) {
+  if (
+    cracked ||
+    strong ||
+    total >= TRAINED_EV_TOTAL ||
+    (natureHelps && total >= GROWING_EV_TOTAL)
+  ) {
     tier = "trained";
-  } else if (hasStrongEv(evs) || evTotal(evs) >= GROWING_EV_TOTAL) {
+  } else if (total >= GROWING_EV_TOTAL) {
     tier = "growing";
   } else {
     return "raw";
@@ -118,7 +141,7 @@ export function specimenTrainingTier(input: {
     return friendship >= BONDED_FRIENDSHIP_MIN ? "bonded" : "trained";
   }
 
-  // Temporary stand-in until every specimen has friendship from import.
-  if (natureHelps && cracked) return "bonded";
+  // No friendship column yet — near-max organic pool stands in for endgame care.
+  if (total >= BONDED_EV_TOTAL || (natureHelps && cracked)) return "bonded";
   return "trained";
 }
