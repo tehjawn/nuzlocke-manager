@@ -83,12 +83,42 @@ export function TrainerCard({
     <ChampionRibbon completionCount={completionCount} dense />
   ) : null;
 
+  const statsFull = [
+    `${caughtCount} caught`,
+    `${encounteredCount} encountered`,
+    `${ripCount} R.I.P.`,
+    `Run ${trainer.activeRunNumber}`,
+    completionCount > 0
+      ? `${completionCount} completion${completionCount === 1 ? "" : "s"}`
+      : null,
+    trainer.money != null
+      ? `$${trainer.money.toLocaleString("en-US")}`
+      : null,
+    trainer.playTimeSeconds != null
+      ? formatPlayTime(trainer.playTimeSeconds)
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" • ");
+  // Phones: drop the long middle of the stats string so the footer can't
+  // contribute to horizontal overflow beside the revive chip.
+  const statsMobile = [
+    `${caughtCount} caught`,
+    `${ripCount} R.I.P.`,
+    `Run ${trainer.activeRunNumber}`,
+    trainer.money != null
+      ? `$${trainer.money.toLocaleString("en-US")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" • ");
+
   return (
     <div
       data-tour={
         isYou ? "your-trainer" : isDemo ? "demo-trainer" : undefined
       }
-      className={isYou ? "trainer-you-ring" : undefined}
+      className={`min-w-0${isYou ? " trainer-you-ring" : ""}`}
     >
       {variant === "grid" ? (
         <>
@@ -244,15 +274,16 @@ export function TrainerCard({
         </>
       ) : (
         <Frame
-          className="group transition-[border-color,box-shadow] duration-200 hover:border-interactive/45"
+          className="group min-w-0 transition-[border-color,box-shadow] duration-200 hover:border-interactive/45"
           cardBackgroundKey={cardBg}
           overlay={championOverlay}
         >
           {/*
             List layout:
-            - <sm: identity + badges on one row, squad/stats/revive below
-              (avoids clipping the 3×2 grid on narrow phones)
-            - sm+: identity rail | badges + squad + footer (existing)
+            - <sm: stack identity → full-width badge strip → squad → compact
+              stats. Side-by-side badges previously forced horizontal scroll
+              when the strip's min-content beat max-w.
+            - sm+: identity rail | badges + squad + footer
             Whole card opens the board; squad slots stay above the link.
           */}
           <Link
@@ -261,53 +292,47 @@ export function TrainerCard({
             aria-label={boardLabel}
           />
           <div className="relative flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex min-w-0 items-start justify-between gap-2 sm:contents">
-              <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 overflow-visible sm:w-28 sm:flex-none sm:shrink-0 sm:items-center sm:text-center md:w-32">
-                <AvatarPortrait
-                  avatarSpriteKey={trainer.avatarSpriteKey}
-                  backgroundKey={avatarBg}
-                  sizeClass="h-14 w-14 shrink-0 sm:h-24 sm:w-24 md:h-28 md:w-28"
-                  width={112}
-                  height={112}
-                />
-                <div className="min-w-0 w-full">
-                  <h2 className="truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep sm:text-base">
-                    {trainer.handle}
-                  </h2>
-                  {trainer.realName?.trim() ? (
-                    <p className="mt-0.5 truncate text-xs text-muted/80">
-                      {trainer.realName.trim()}
-                    </p>
-                  ) : null}
-                  {hasStatus ? (
-                    <div title={statusTitle} className="mt-0.5 min-w-0">
-                      <StatusLine
-                        emoji={trainer.statusEmoji}
-                        text={trainer.statusText}
-                        empty=""
-                        className="line-clamp-2 text-xs leading-snug text-muted sm:line-clamp-3"
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              {/*
-                min-w-0 lets max-w-[58%] win over badge strip min-content;
-                shrink-0 previously forced the whole card past the viewport.
-              */}
-              <div className="min-w-0 max-w-[58%] sm:hidden">
-                <BadgeCase
-                  badges={challenge.badges}
-                  earnedKeys={trainer.earnedBadgeKeys}
-                  strip
-                  className="justify-end"
-                />
+            <div className="flex min-w-0 flex-col items-start gap-1.5 overflow-visible sm:w-28 sm:shrink-0 sm:items-center sm:text-center md:w-32">
+              <AvatarPortrait
+                avatarSpriteKey={trainer.avatarSpriteKey}
+                backgroundKey={avatarBg}
+                sizeClass="h-14 w-14 shrink-0 sm:h-24 sm:w-24 md:h-28 md:w-28"
+                width={112}
+                height={112}
+              />
+              <div className="min-w-0 w-full">
+                <h2 className="truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep sm:text-base">
+                  {trainer.handle}
+                </h2>
+                {trainer.realName?.trim() ? (
+                  <p className="mt-0.5 truncate text-xs text-muted/80">
+                    {trainer.realName.trim()}
+                  </p>
+                ) : null}
+                {hasStatus ? (
+                  <div title={statusTitle} className="mt-0.5 min-w-0">
+                    <StatusLine
+                      emoji={trainer.statusEmoji}
+                      text={trainer.statusText}
+                      empty=""
+                      className="line-clamp-2 text-xs leading-snug text-muted sm:line-clamp-3"
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
 
             <div className="min-w-0 flex-1 space-y-2.5">
-              <div className="hidden sm:block">
+              <div className="min-w-0 sm:hidden">
+                <BadgeCase
+                  badges={challenge.badges}
+                  earnedKeys={trainer.earnedBadgeKeys}
+                  strip
+                  hideCount
+                  dense
+                />
+              </div>
+              <div className="hidden min-w-0 sm:block">
                 <BadgeCase
                   badges={challenge.badges}
                   earnedKeys={trainer.earnedBadgeKeys}
@@ -315,14 +340,14 @@ export function TrainerCard({
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
+              <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
                 {Array.from({ length: 6 }).map((_, i) => {
                   const mon = main.find((p) => p.partyIndex === i);
                   if (!mon) {
                     return (
                       <div
                         key={`slot-${i}`}
-                        className="flex h-[5.25rem] items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50 sm:h-24"
+                        className="flex h-[5.25rem] min-w-0 items-center justify-center rounded-lg border border-dashed border-frame/40 bg-surface-2/50 sm:h-24"
                         title="Empty"
                       >
                         <span className="text-muted/35">·</span>
@@ -334,13 +359,13 @@ export function TrainerCard({
                     <PokemonHoverPreview
                       key={mon.id}
                       pokemon={mon}
-                      className="relative z-2"
+                      className="relative z-2 min-w-0"
                     >
                       <button
                         type="button"
                         title={label}
                         aria-label={`View ${label}`}
-                        className="pressable group/slot relative flex h-[5.25rem] w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
+                        className="pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
                         onClick={() => setDetailsPokemon(mon)}
                       >
                         <PokemonSpriteImage
@@ -369,19 +394,15 @@ export function TrainerCard({
                 })}
               </div>
 
-              <div className="flex items-center justify-between gap-3 pt-0.5">
-                <p className="min-w-0 truncate text-xs text-muted">
-                  {caughtCount} caught • {encounteredCount} encountered •{" "}
-                  {ripCount} R.I.P. • Run {trainer.activeRunNumber}
-                  {completionCount > 0
-                    ? ` • ${completionCount} completion${completionCount === 1 ? "" : "s"}`
-                    : ""}
-                  {trainer.money != null
-                    ? ` • $${trainer.money.toLocaleString("en-US")}`
-                    : ""}
-                  {trainer.playTimeSeconds != null
-                    ? ` • ${formatPlayTime(trainer.playTimeSeconds)}`
-                    : ""}
+              <div className="flex min-w-0 items-center justify-between gap-3 pt-0.5">
+                <p
+                  className="min-w-0 truncate text-xs text-muted sm:hidden"
+                  title={statsFull}
+                >
+                  {statsMobile}
+                </p>
+                <p className="hidden min-w-0 truncate text-xs text-muted sm:block">
+                  {statsFull}
                 </p>
                 <ReviveToken
                   used={trainer.reviveUsed}

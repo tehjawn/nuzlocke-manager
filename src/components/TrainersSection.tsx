@@ -15,6 +15,8 @@ const VIEW_STORAGE_KEY = "nuzlocke-trainers-view";
 const VIEW_CHANGE_EVENT = "nuzlocke-trainers-view";
 const SORT_STORAGE_KEY = "nuzlocke-trainers-sort";
 const SORT_CHANGE_EVENT = "nuzlocke-trainers-sort";
+/** Matches Tailwind `md` — compact grid cards already target below this. */
+const MOBILE_VIEW_MQ = "(max-width: 767px)";
 
 type TrainersView = "list" | "grid";
 
@@ -28,14 +30,24 @@ type TrainersSectionProps = {
   viewerUserId?: string | null;
 };
 
-function readView(): TrainersView {
+function readStoredView(): TrainersView | null {
   try {
     const stored = localStorage.getItem(VIEW_STORAGE_KEY);
     if (stored === "list" || stored === "grid") return stored;
   } catch {
     // ignore
   }
-  return "list";
+  return null;
+}
+
+/** No explicit choice yet: grid on phones, list on md+. */
+function defaultViewForViewport(): TrainersView {
+  if (typeof window === "undefined") return "list";
+  return window.matchMedia(MOBILE_VIEW_MQ).matches ? "grid" : "list";
+}
+
+function readView(): TrainersView {
+  return readStoredView() ?? defaultViewForViewport();
 }
 
 function subscribeView(onStoreChange: () => void) {
@@ -43,11 +55,18 @@ function subscribeView(onStoreChange: () => void) {
     if (event.key === VIEW_STORAGE_KEY || event.key === null) onStoreChange();
   };
   const onCustom = () => onStoreChange();
+  const mql = window.matchMedia(MOBILE_VIEW_MQ);
+  // Viewport default only matters when nothing is stored yet.
+  const onMq = () => {
+    if (readStoredView() == null) onStoreChange();
+  };
   window.addEventListener("storage", onStorage);
   window.addEventListener(VIEW_CHANGE_EVENT, onCustom);
+  mql.addEventListener("change", onMq);
   return () => {
     window.removeEventListener("storage", onStorage);
     window.removeEventListener(VIEW_CHANGE_EVENT, onCustom);
+    mql.removeEventListener("change", onMq);
   };
 }
 
@@ -168,7 +187,7 @@ export function TrainersSection({
         className={
           view === "grid"
             ? "grid min-w-0 grid-cols-2 gap-3 md:gap-4"
-            : "grid min-w-0 gap-4"
+            : "grid min-w-0 grid-cols-1 gap-4"
         }
       >
         {ordered.map((trainer) => (
