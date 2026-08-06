@@ -22,8 +22,8 @@ import {
 } from "@/lib/encounter-stats";
 import { formatPokedollars } from "@/lib/gen3-save/money";
 import {
-  formatTiedLabels,
-  type MemorialTrainerHighlight,
+  type MemorialSpeciesHighlight,
+  type MemorialTrainerStanding,
 } from "@/lib/memorial-stats";
 import {
   badgeStandings,
@@ -343,53 +343,31 @@ export function SeasonStatsView({
 
       {memorial ? (
         <StatsSection section="memorial" title="Graves & wipes">
-          {memorial.totalGraves > 0 ||
-          memorial.mostPartyWipes ||
+          {memorial.heaviestMemorial.length > 0 ||
+          memorial.mostPartyWipes.length > 0 ||
+          memorial.mostDeathProne.length > 0 ||
           encounter.deadliestRoutes.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {memorial.heaviestMemorial ? (
-                <TrainerHighlightCard
+              {memorial.heaviestMemorial.length > 0 ? (
+                <TrainerTopCallout
                   label="Heaviest memorial"
-                  highlight={memorial.heaviestMemorial}
-                  valueText={`${memorial.heaviestMemorial.count} RIP`}
+                  entries={memorial.heaviestMemorial}
+                  valueLabel={(count) => `${count} RIP`}
                   trainersById={trainersById}
                 />
               ) : null}
-              {memorial.mostPartyWipes ? (
-                <TrainerHighlightCard
+              {memorial.mostPartyWipes.length > 0 ? (
+                <TrainerTopCallout
                   label="Most party wipes"
-                  highlight={memorial.mostPartyWipes}
-                  valueText={`${memorial.mostPartyWipes.count} wipe${
-                    memorial.mostPartyWipes.count === 1 ? "" : "s"
-                  }`}
+                  entries={memorial.mostPartyWipes}
+                  valueLabel={(count) =>
+                    `${count} wipe${count === 1 ? "" : "s"}`
+                  }
                   trainersById={trainersById}
                 />
               ) : null}
-              {memorial.mostDeathProne ? (
-                <div className={seasonCalloutCardClass}>
-                  <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
-                    Most death-prone Pokémon
-                    {memorial.mostDeathProne.tied ? " · tied" : ""}
-                  </p>
-                  <p className="mt-1 flex items-center gap-2.5 font-display text-sm font-bold leading-tight">
-                    <span className="relative inline-block h-12 w-12 shrink-0">
-                      <PokemonSpriteImage
-                        alt=""
-                        className="pixelated h-full w-full object-contain"
-                        height={48}
-                        pokedexId={memorial.mostDeathProne.pokedexId}
-                        species={memorial.mostDeathProne.species}
-                        width={48}
-                      />
-                    </span>
-                    <span className="min-w-0">
-                      {memorial.mostDeathProne.species}
-                      <span className="mt-0.5 block font-sans text-[11px] font-normal text-muted">
-                        {memorial.mostDeathProne.count} RIP across the season
-                      </span>
-                    </span>
-                  </p>
-                </div>
+              {memorial.mostDeathProne.length > 0 ? (
+                <DeathProneTopCallout entries={memorial.mostDeathProne} />
               ) : null}
               {encounter.deadliestRoutes.length > 0 ? (
                 <RouteTopCallout
@@ -503,49 +481,92 @@ function StandingsCard({
   );
 }
 
-function TrainerHighlightCard({
+function TrainerTopCallout({
   label,
-  highlight,
-  valueText,
+  entries,
+  valueLabel,
   trainersById,
 }: {
   label: string;
-  highlight: MemorialTrainerHighlight;
-  valueText: string;
+  entries: MemorialTrainerStanding[];
+  valueLabel: (count: number) => string;
   trainersById: Map<string, TrainerProfile>;
 }) {
-  const leaders = highlight.trainerIds
-    .map((id) => trainersById.get(id))
-    .filter((trainer): trainer is TrainerProfile => Boolean(trainer));
   return (
     <div className={seasonCalloutCardClass}>
       <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
         {label}
-        {highlight.tied ? " · tied" : ""}
       </p>
-      <div className="mt-1 flex items-center gap-2.5">
-        {leaders.length > 0 ? (
-          <div className="flex shrink-0 items-end -space-x-2">
-            {leaders.slice(0, 3).map((trainer) => (
-              <AvatarPortrait
-                key={trainer.id}
-                avatarSpriteKey={trainer.avatarSpriteKey}
-                backgroundKey={trainer.avatarBackgroundKey}
-                sizeClass="h-12 w-12"
-                width={48}
-                height={48}
+      <ol className="mt-2 space-y-1">
+        {entries.map((entry, index) => {
+          const trainer = trainersById.get(entry.trainerId) ?? null;
+          return (
+            <li key={entry.trainerId} className="flex items-center gap-2">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface/80 text-sm font-bold tabular-nums text-muted">
+                {index + 1}
+              </span>
+              {trainer ? (
+                <AvatarPortrait
+                  avatarSpriteKey={trainer.avatarSpriteKey}
+                  backgroundKey={trainer.avatarBackgroundKey}
+                  sizeClass="h-10 w-10"
+                  width={40}
+                  height={40}
+                  alt=""
+                />
+              ) : null}
+              <span className="min-w-0 flex-1 truncate font-display text-sm font-bold leading-none">
+                {entry.label}
+              </span>
+              <span className="shrink-0 text-sm font-bold tabular-nums">
+                {valueLabel(entry.count)}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+function DeathProneTopCallout({
+  entries,
+}: {
+  entries: MemorialSpeciesHighlight[];
+}) {
+  return (
+    <div className={seasonCalloutCardClass}>
+      <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
+        Most death-prone Pokémon
+      </p>
+      <ol className="mt-2 space-y-1">
+        {entries.map((entry, index) => (
+          <li
+            key={`${entry.species}-${entry.pokedexId ?? "x"}`}
+            className="flex items-center gap-2"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface/80 text-sm font-bold tabular-nums text-muted">
+              {index + 1}
+            </span>
+            <span className="relative inline-block h-10 w-10 shrink-0">
+              <PokemonSpriteImage
                 alt=""
+                className="pixelated h-full w-full object-contain"
+                height={40}
+                pokedexId={entry.pokedexId}
+                species={entry.species}
+                width={40}
               />
-            ))}
-          </div>
-        ) : null}
-        <div className="min-w-0">
-          <p className="font-display text-sm font-bold leading-tight">
-            {formatTiedLabels(highlight.labels)}
-          </p>
-          <p className="text-[11px] text-muted">{valueText}</p>
-        </div>
-      </div>
+            </span>
+            <span className="min-w-0 flex-1 truncate font-display text-sm font-bold leading-none">
+              {entry.species}
+            </span>
+            <span className="shrink-0 text-sm font-bold tabular-nums">
+              {entry.count} RIP
+            </span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
