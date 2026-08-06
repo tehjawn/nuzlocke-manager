@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
+import { BondHeart } from "@/components/BondHeart";
 import { ChampionRibbon } from "@/components/ChampionRibbon";
 import { Frame } from "@/components/Frame";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
@@ -12,9 +13,20 @@ import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
-import { SurvivalPollChip } from "@/components/SurvivalPollChip";
+import { SurvivalSentimentIcon } from "@/components/SurvivalPollChip";
 import { formatPlayTime } from "@/lib/gen3-save/playtime";
+import {
+  catchTierHasChrome,
+  ivCatchTier,
+  type CatchTier,
+} from "@/lib/iv-quality";
+import { recommendPlaystyle } from "@/lib/playstyle";
+import { isEmptySpread } from "@/lib/stats";
 import { pokemonInSlot } from "@/lib/trainer-display";
+import {
+  specimenTrainingTier,
+  type TrainingTier,
+} from "@/lib/training-quality";
 
 type TrainerCardProps = {
   challenge: Pick<
@@ -29,6 +41,142 @@ type TrainerCardProps = {
   showCompetitiveDetails?: boolean;
   viewerUserId?: string | null;
 };
+
+/** Quiet league border class — tint only, no board flash. */
+function leagueCatchBorderClass(
+  catchTier: CatchTier | null,
+): string | null {
+  if (!catchTier || !catchTierHasChrome(catchTier)) return null;
+  return `pokemon-catch-border--league pokemon-catch-border--league-${catchTier}`;
+}
+
+function leagueGrades(
+  pokemon: PokemonEntry,
+  showCompetitiveDetails: boolean,
+): { catchTier: CatchTier | null; trainingTier: TrainingTier | null } {
+  if (!showCompetitiveDetails) {
+    return { catchTier: null, trainingTier: null };
+  }
+  const ivs = isEmptySpread(pokemon.ivs) ? null : pokemon.ivs;
+  return {
+    catchTier: ivCatchTier(ivs),
+    trainingTier: specimenTrainingTier({
+      evs: pokemon.evs,
+      natureAlignment:
+        recommendPlaystyle({
+          pokedexId: pokemon.pokedexId,
+          nature: pokemon.nature,
+          ability: pokemon.ability,
+          ivs,
+        })?.natureAlignment ?? null,
+      friendship: pokemon.friendship,
+    }),
+  };
+}
+
+type PartySlotProps = {
+  pokemon: PokemonEntry;
+  layout: "grid" | "list";
+  showCompetitiveDetails: boolean;
+  onOpen: (pokemon: PokemonEntry) => void;
+};
+
+/**
+ * All-trainers party cell: quiet catch border, bond heart (BR), survival
+ * sentiment (BL). Competitive chrome only when the viewer may see IVs/EVs.
+ */
+function TrainerPartySlot({
+  pokemon,
+  layout,
+  showCompetitiveDetails,
+  onOpen,
+}: PartySlotProps) {
+  const label = pokemon.nickname || pokemon.species;
+  const { catchTier, trainingTier } = leagueGrades(
+    pokemon,
+    showCompetitiveDetails,
+  );
+  const catchBorder = leagueCatchBorderClass(catchTier);
+  const survivalPoll = pokemon.survivalPoll;
+  const showSentiment = survivalPoll != null && survivalPoll.total > 0;
+
+  const chrome = (
+    <>
+      {showSentiment ? <SurvivalSentimentIcon poll={survivalPoll} /> : null}
+      {showHeart ? (
+        <BondHeart
+          className="pokemon-bond-heart--corner-dense h-3 w-3 sm:h-3.5 sm:w-3.5"
+          tier={trainingTier}
+        />
+      ) : null}
+    </>
+  );
+
+  if (layout === "grid") {
+    return (
+      <PokemonHoverPreview
+        className="relative z-2 min-h-0"
+        pokemon={pokemon}
+      >
+        <button
+          type="button"
+          title={label}
+          aria-label={`View ${label}`}
+          className={`pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border bg-surface-2 p-1 transition hover:bg-interactive-soft/40 ${
+            catchBorder ??
+            "border-frame/50 hover:border-interactive/60"
+          }`}
+          onClick={() => onOpen(pokemon)}
+        >
+          <PokemonSpriteImage
+            alt={label}
+            className="pixelated h-full w-full max-h-14 object-contain lg:max-h-16"
+            height={96}
+            pokedexId={pokemon.pokedexId}
+            shiny={pokemon.isShiny}
+            species={pokemon.species}
+            width={96}
+          />
+          {chrome}
+        </button>
+      </PokemonHoverPreview>
+    );
+  }
+
+  return (
+    <PokemonHoverPreview
+      pokemon={pokemon}
+      className="relative z-2 min-w-0"
+    >
+      <button
+        type="button"
+        title={label}
+        aria-label={`View ${label}`}
+        className={`pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border bg-surface-2 px-1 py-1 transition hover:bg-interactive-soft/40 sm:h-24 ${
+          catchBorder ??
+          "border-frame/50 hover:border-interactive/60"
+        }`}
+        onClick={() => onOpen(pokemon)}
+      >
+        <span className="relative inline-flex shrink-0">
+          <PokemonSpriteImage
+            alt={label}
+            className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+            height={80}
+            pokedexId={pokemon.pokedexId}
+            shiny={pokemon.isShiny}
+            species={pokemon.species}
+            width={80}
+          />
+          {chrome}
+        </span>
+        <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover/slot:text-ink">
+          {label}
+        </span>
+      </button>
+    </PokemonHoverPreview>
+  );
+}
 
 export function TrainerCard({
   challenge,
@@ -222,39 +370,14 @@ export function TrainerCard({
                         </div>
                       );
                     }
-                    const label = mon.nickname || mon.species;
                     return (
-                      <PokemonHoverPreview
-                        className="relative z-2 min-h-0"
+                      <TrainerPartySlot
                         key={mon.id}
                         pokemon={mon}
-                      >
-                        <button
-                          type="button"
-                          title={label}
-                          aria-label={`View ${label}`}
-                          className="pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border border-frame/50 bg-surface-2 p-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40"
-                          onClick={() => setDetailsPokemon(mon)}
-                        >
-                          <PokemonSpriteImage
-                            alt={label}
-                            className="pixelated h-full w-full max-h-14 object-contain lg:max-h-16"
-                            height={96}
-                            pokedexId={mon.pokedexId}
-                            shiny={mon.isShiny}
-                            species={mon.species}
-                            width={96}
-                          />
-                          {mon.survivalPoll && mon.survivalPoll.total > 0 ? (
-                            <span className="pointer-events-none absolute bottom-0.5 left-0.5 right-0.5 flex justify-center">
-                              <SurvivalPollChip
-                                poll={mon.survivalPoll}
-                                compact
-                              />
-                            </span>
-                          ) : null}
-                        </button>
-                      </PokemonHoverPreview>
+                        layout="grid"
+                        showCompetitiveDetails={showCompetitiveDetails}
+                        onOpen={setDetailsPokemon}
+                      />
                     );
                   })}
                 </div>
@@ -354,42 +477,14 @@ export function TrainerCard({
                       </div>
                     );
                   }
-                  const label = mon.nickname || mon.species;
                   return (
-                    <PokemonHoverPreview
+                    <TrainerPartySlot
                       key={mon.id}
                       pokemon={mon}
-                      className="relative z-2 min-w-0"
-                    >
-                      <button
-                        type="button"
-                        title={label}
-                        aria-label={`View ${label}`}
-                        className="pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
-                        onClick={() => setDetailsPokemon(mon)}
-                      >
-                        <PokemonSpriteImage
-                          alt={label}
-                          className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
-                          height={80}
-                          pokedexId={mon.pokedexId}
-                          shiny={mon.isShiny}
-                          species={mon.species}
-                          width={80}
-                        />
-                        <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover/slot:text-ink">
-                          {label}
-                        </span>
-                        {mon.survivalPoll && mon.survivalPoll.total > 0 ? (
-                          <span className="pointer-events-none absolute bottom-0.5 left-0.5 right-0.5 flex justify-center">
-                            <SurvivalPollChip
-                              poll={mon.survivalPoll}
-                              compact
-                            />
-                          </span>
-                        ) : null}
-                      </button>
-                    </PokemonHoverPreview>
+                      layout="list"
+                      showCompetitiveDetails={showCompetitiveDetails}
+                      onOpen={setDetailsPokemon}
+                    />
                   );
                 })}
               </div>
