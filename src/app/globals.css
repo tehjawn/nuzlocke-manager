@@ -1295,6 +1295,99 @@ button:disabled,
   margin: -0.15rem;
 }
 
+/* All-trainers / compact sprite wells — tighter inset pair with sentiment. */
+.pokemon-bond-heart--corner-dense {
+  right: 0.1rem;
+  bottom: 0.1rem;
+  z-index: 2;
+  padding: 0.12rem;
+  margin: -0.12rem;
+}
+
+/*
+ * Survival sentiment glyph — same stroke-weight / corner language as the
+ * bond heart, mirrored to bottom-left. Tint is semantic (live / die / split)
+ * but stays in the soft chrome family rather than chip-loud accents.
+ */
+.pokemon-survival-sentiment {
+  --survival-tint: color-mix(in srgb, var(--muted) 72%, transparent);
+
+  display: inline-flex;
+  color: var(--survival-tint);
+  cursor: help;
+}
+
+.pokemon-survival-sentiment__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.pokemon-survival-sentiment--survive {
+  --survival-tint: color-mix(in srgb, var(--accent-deep) 82%, #6ad4a0);
+}
+
+.pokemon-survival-sentiment--die {
+  --survival-tint: color-mix(in srgb, var(--danger) 88%, #ff9a9a);
+}
+
+.pokemon-survival-sentiment--split {
+  --survival-tint: color-mix(in srgb, var(--muted) 70%, #c4b5fd);
+  opacity: 0.9;
+}
+
+.pokemon-survival-sentiment--corner {
+  position: absolute;
+  left: 0.45rem;
+  bottom: 0.4rem;
+  z-index: 2;
+  padding: 0.15rem;
+  margin: -0.15rem;
+}
+
+.pokemon-survival-sentiment--corner-dense {
+  left: 0.1rem;
+  bottom: 0.1rem;
+  z-index: 2;
+  padding: 0.12rem;
+  margin: -0.12rem;
+}
+
+/*
+ * League (all-trainers) catch cue — border tint only.
+ * No radial wash, inset glow, or animated ring from board chrome.
+ */
+.pokemon-catch-border--league {
+  border-width: 1px;
+  border-style: solid;
+}
+
+.pokemon-catch-border--league-shit {
+  border-style: dotted;
+  border-color: color-mix(in srgb, var(--muted) 44%, var(--frame));
+}
+
+.pokemon-catch-border--league-good {
+  border-color: color-mix(in srgb, var(--interactive) 34%, var(--frame));
+}
+
+.pokemon-catch-border--league-great {
+  border-color: color-mix(in srgb, #a78bfa 40%, var(--frame));
+}
+
+.pokemon-catch-border--league-cracked {
+  border-color: color-mix(in srgb, #e0b04a 46%, var(--frame));
+}
+
+.pokemon-catch-border--league-god {
+  border-color: color-mix(in srgb, #c77dff 40%, var(--frame));
+}
+
+.pokemon-catch-border--league:hover {
+  filter: brightness(1.04);
+}
+
 .gba-frame-menu::before,
 .gba-frame:not([data-card-bg])::before {
   content: none;
