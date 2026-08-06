@@ -549,6 +549,12 @@ export function TrainerCard({
         showCompetitiveDetails={showCompetitiveDetails}
         survivalMarketsEnabled={challenge.survivalMarketsEnabled ?? true}
         viewerUserId={viewerUserId}
+        trainer={{
+          id: trainer.id,
+          handle: trainer.handle,
+          avatarSpriteKey: trainer.avatarSpriteKey,
+          avatarBackgroundKey: trainer.avatarBackgroundKey,
+        }}
         onClose={() => setDetailsPokemon(null)}
       />
     </div>

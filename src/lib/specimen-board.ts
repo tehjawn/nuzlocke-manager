@@ -45,6 +45,8 @@ export type SpecimenRow = {
   trainerHandle: string;
   /** Trainer board order, for the "by trainer" sort. */
   trainerSortOrder: number;
+  avatarSpriteKey: string;
+  avatarBackgroundKey: string | null;
   species: string;
   nickname: string | null;
   /** Resolved dex id — null only when the species can't be identified at all. */
@@ -115,6 +117,8 @@ export function seasonSpecimenBoard(
         trainerId: trainer.id,
         trainerHandle: trainer.handle,
         trainerSortOrder: trainer.sortOrder,
+        avatarSpriteKey: trainer.avatarSpriteKey,
+        avatarBackgroundKey: trainer.avatarBackgroundKey,
         species: pokemon.species,
         nickname: pokemon.nickname,
         pokedexId,

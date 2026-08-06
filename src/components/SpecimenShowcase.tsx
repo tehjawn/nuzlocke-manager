@@ -317,6 +317,16 @@ export function SpecimenShowcase({
           openRow !== null && competitiveTrainerIds.includes(openRow.trainerId)
         }
         slug={slug}
+        trainer={
+          openRow
+            ? {
+                id: openRow.trainerId,
+                handle: openRow.trainerHandle,
+                avatarSpriteKey: openRow.avatarSpriteKey,
+                avatarBackgroundKey: openRow.avatarBackgroundKey,
+              }
+            : null
+        }
       />
     </div>
   );

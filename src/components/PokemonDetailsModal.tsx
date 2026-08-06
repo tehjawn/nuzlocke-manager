@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BondHeart, TrainingTierCaption } from "@/components/BondHeart";
 import { CatchTierCaption } from "@/components/CatchTierIcon";
 import { EvolutionPath } from "@/components/EvolutionPath";
@@ -22,7 +23,8 @@ import {
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
-import type { PokemonEntry } from "@/lib/challenge-types";
+import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import { trainerBoardPath } from "@/lib/team-export";
 import {
   catchTierHasChrome,
   summarizeBattleStats,
@@ -63,6 +65,12 @@ const ModernEmeraldLearnset = dynamic(
   },
 );
 
+/** Owner chip under held item — sprite + handle linking to their board. */
+export type PokemonDetailsTrainer = Pick<
+  TrainerProfile,
+  "id" | "handle" | "avatarSpriteKey" | "avatarBackgroundKey"
+>;
+
 type PokemonDetailsModalProps = {
   open: boolean;
   pokemon: PokemonEntry | null;
@@ -80,6 +88,8 @@ type PokemonDetailsModalProps = {
   survivalMarketsEnabled?: boolean;
   /** Highlight the viewer on the resolved callers roster. */
   viewerUserId?: string | null;
+  /** Trainer who owns this mon — shown under held item when slug is set. */
+  trainer?: PokemonDetailsTrainer | null;
 };
 
 function MetaChip({ label, value }: { label: string; value: ReactNode }) {
@@ -108,6 +118,7 @@ export function PokemonDetailsModal({
   showCompetitiveDetails = true,
   survivalMarketsEnabled = true,
   viewerUserId = null,
+  trainer = null,
 }: PokemonDetailsModalProps) {
   if (!open || !pokemon) return null;
 
@@ -246,6 +257,29 @@ export function PokemonDetailsModal({
       ? {
           label: "Item",
           value: <HeldItemLabel name={pokemon.heldItem} iconSize={18} />,
+        }
+      : null,
+    slug && trainer
+      ? {
+          label: "Trainer",
+          value: (
+            <Link
+              href={trainerBoardPath(slug, trainer.id)}
+              className="inline-flex max-w-full items-center gap-1.5 text-accent-deep underline-offset-2 hover:underline"
+              onClick={onClose}
+              aria-label={`${trainer.handle}'s board`}
+            >
+              <AvatarPortrait
+                avatarSpriteKey={trainer.avatarSpriteKey}
+                backgroundKey={trainer.avatarBackgroundKey}
+                sizeClass="h-6 w-6"
+                width={24}
+                height={24}
+                alt=""
+              />
+              <span className="truncate">{trainer.handle}</span>
+            </Link>
+          ),
         }
       : null,
   ].filter(Boolean) as Array<{ label: string; value: ReactNode }>;
