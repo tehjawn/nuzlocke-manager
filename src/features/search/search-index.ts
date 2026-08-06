@@ -540,7 +540,7 @@ export function querySearchIndex(
  * Fuse is for short lookup keys (handles, species, pages). Natural-language
  * questions thrash Bitap and almost never produce useful hits.
  */
-function shouldSkipFuzzySearch(query: string): boolean {
+export function shouldSkipFuzzySearch(query: string): boolean {
   if (query.length >= 40) return true;
   if (query.split(/\s+/).filter(Boolean).length >= 6) return true;
   // "who is …" / "what are …" — Ask owns these; Fuse returns noise or nothing.

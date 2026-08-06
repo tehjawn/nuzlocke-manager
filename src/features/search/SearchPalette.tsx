@@ -25,6 +25,7 @@ import {
   recordSearchUse,
   saveRecentSearch,
   querySearchIndex,
+  shouldSkipFuzzySearch,
 } from "@/features/search/search-index";
 import { evaluateAskQuery } from "@/lib/ai/ask-guard";
 import { useSearch } from "@/features/search/SearchProvider";
@@ -228,14 +229,17 @@ export function SearchPalette() {
 
   const trimmedQuery = query.trim();
   const deferredTrimmed = deferredQuery.trim();
+  /** Live Ask-shaped queries drop fuzzy immediately so deferred hits don't flash. */
+  const skipFuzzyLive = shouldSkipFuzzySearch(trimmedQuery);
 
   const entityHints = useMemo(() => askEntityHints(season), [season]);
-  // Guard against the deferred query so typing stays off the hot path — the
-  // Ask row only appears once Fuse/deferred settle anyway.
-  const askGuard = useMemo(
-    () => evaluateAskQuery(deferredTrimmed, { entityHints }),
-    [deferredTrimmed, entityHints],
-  );
+  // Guard against the deferred query for fuzzy typing; NL asks use the live
+  // query (isQuestionLike short-circuits — no hint scan) so the Ask row doesn't
+  // wait a deferred frame and then pop in.
+  const askGuard = useMemo(() => {
+    const q = skipFuzzyLive ? trimmedQuery : deferredTrimmed;
+    return evaluateAskQuery(q, { entityHints });
+  }, [skipFuzzyLive, trimmedQuery, deferredTrimmed, entityHints]);
 
   /**
    * Ask is a fallback, never the default: only when the query clears the Ask
@@ -275,10 +279,16 @@ export function SearchPalette() {
    *  stacking under Suggestions when the box is cleared mid-defer. */
   const hasLiveQuery = Boolean(trimmedQuery);
   const showHitList = hasLiveQuery && !showingAssist;
-  const hitsSettled = showHitList && !searchPending;
-  const showAskLeading = hitsSettled && canAsk && hits.length === 0;
-  const showAskTrailing = hitsSettled && canAsk && hits.length > 0;
-  const showEmpty = hitsSettled && hits.length === 0;
+  // NL asks: ignore deferred Fuse leftovers so the list doesn't flash trainers
+  // then snap to Ask. Fuzzy typing still uses deferred hits (stable while pending).
+  const displayHits = skipFuzzyLive ? ([] as SearchFuseHit[]) : hits;
+  const displayGroupedHits = skipFuzzyLive ? [] : groupedHits;
+  // Do NOT gate Ask/empty on searchPending — hiding them every deferred lag
+  // frame collapses the list and rubber-bands the panel while typing.
+  const showAskLeading = showHitList && canAsk && displayHits.length === 0;
+  const showAskTrailing = showHitList && canAsk && displayHits.length > 0;
+  const showEmpty = showHitList && displayHits.length === 0;
+  const askIsPrimary = showAskLeading;
   const askSubtitle = season
     ? "Answered from this season’s board"
     : "Open a challenge for season context";
@@ -329,8 +339,10 @@ export function SearchPalette() {
         </div>
 
         <Command.List
-          className={`relative z-[1] max-h-[min(52vh,420px)] overflow-y-auto p-2 transition-opacity duration-100 ${
-            showHitList && searchPending ? "opacity-60" : "opacity-100"
+          className={`relative z-[1] min-h-[min(40vh,280px)] max-h-[min(52vh,420px)] overflow-y-auto p-2 transition-opacity duration-100 ${
+            showHitList && searchPending && !skipFuzzyLive
+              ? "opacity-60"
+              : "opacity-100"
           }`}
         >
           {showingAssist ? (
@@ -423,7 +435,7 @@ export function SearchPalette() {
           ) : null}
 
           {showHitList
-            ? groupedHits.map((group) => (
+            ? displayGroupedHits.map((group) => (
                 <Command.Group
                   key={group.category}
                   heading={CATEGORY_LABEL[group.category]}
@@ -478,17 +490,13 @@ export function SearchPalette() {
                 </span>
                 <span
                   className={
-                    canAsk && hitsSettled && hits.length === 0
-                      ? "inline"
-                      : "hidden sm:inline"
+                    askIsPrimary ? "inline" : "hidden sm:inline"
                   }
                 >
                   <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
                     ↵
                   </kbd>{" "}
-                  {canAsk && hitsSettled && hits.length === 0
-                    ? "ask"
-                    : "open"}
+                  {askIsPrimary ? "ask" : "open"}
                 </span>
               </>
             )}
