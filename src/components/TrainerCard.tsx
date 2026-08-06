@@ -99,6 +99,9 @@ function TrainerPartySlot({
   const catchBorder = leagueCatchBorderClass(catchTier);
   const survivalPoll = pokemon.survivalPoll;
   const showSentiment = survivalPoll != null && survivalPoll.total > 0;
+  // Heart only when competitive details are visible (own board / GM lens);
+  // leagueGrades returns a tier (including "raw") in that case.
+  const showHeart = trainingTier != null;
 
   const chrome = (
     <>
