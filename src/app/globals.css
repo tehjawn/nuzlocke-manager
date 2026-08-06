@@ -1107,6 +1107,7 @@ button:disabled,
 .pokemon-bond-heart {
   --bond-fill: 0%;
   --bond-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
+
   display: inline-flex;
   color: var(--bond-tint);
   cursor: help;
@@ -1121,13 +1122,13 @@ button:disabled,
 
 .pokemon-bond-heart__outline {
   fill: none;
-  stroke: currentColor;
+  stroke: currentcolor;
   stroke-width: 1.75;
   opacity: 0.9;
 }
 
 .pokemon-bond-heart__fill {
-  fill: currentColor;
+  fill: currentcolor;
   stroke: none;
   clip-path: inset(calc(100% - var(--bond-fill)) 0 0 0);
 }

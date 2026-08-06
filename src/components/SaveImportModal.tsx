@@ -27,7 +27,7 @@ export type SaveImportDraft = {
   moves: string[];
   ivs: ParsedSavePokemon["ivs"];
   evs: ParsedSavePokemon["evs"];
-  friendship: number;
+  friendship: number | null;
   slot: PokemonSlot;
   include: boolean;
 };

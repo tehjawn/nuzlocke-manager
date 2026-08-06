@@ -87,6 +87,7 @@ export function BondHeart({
       ref={wrapRef}
       aria-describedby={open ? tipId : undefined}
       aria-label={label}
+      role="img"
       className={`pokemon-bond-heart pokemon-bond-heart--${tier} ${className}`}
       style={style}
       onMouseEnter={show}

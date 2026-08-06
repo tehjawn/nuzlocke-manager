@@ -101,8 +101,8 @@ export type ParsedSavePokemon = {
   moves: string[];
   ivs: StatSpread;
   evs: StatSpread;
-  /** Gen 3 growth friendship (0–255). */
-  friendship: number;
+  /** Gen 3 growth friendship (0–255); null when unknown (e.g. Pokédex-only stubs). */
+  friendship: number | null;
   category: SaveMonCategory;
 };
 
@@ -1537,7 +1537,7 @@ function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedS
     moves: [],
     ivs: { ...EMPTY_IVS },
     evs: { ...EMPTY_EVS },
-    friendship: 0,
+    friendship: null,
     category: "encountered",
   };
 }
