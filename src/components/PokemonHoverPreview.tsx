@@ -10,7 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { BondHeart } from "@/components/BondHeart";
+import { BondHeart, TrainingTierCaption } from "@/components/BondHeart";
+import { CatchTierCaption } from "@/components/CatchTierIcon";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import {
   SurvivalSentimentCaption,
@@ -21,7 +22,6 @@ import type { PokemonEntry } from "@/lib/challenge-types";
 import {
   catchTierHasChrome,
   catchTierLabel,
-  catchTierToneClass,
   type CatchTier,
 } from "@/lib/iv-quality";
 import {
@@ -33,7 +33,6 @@ import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 import type { SurvivalPollTally } from "@/lib/survival-market-types";
 import {
   trainingTierLabel,
-  trainingTierToneClass,
   type TrainingTier,
 } from "@/lib/training-quality";
 
@@ -341,39 +340,36 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
                       {model.detail}
                     </p>
                   ) : null}
+                  {model.types.length > 0 ? (
+                    <div className="mt-1.5 flex flex-wrap justify-center gap-1">
+                      {model.types.map((t) => (
+                        <TypeBadge key={t} type={t} />
+                      ))}
+                    </div>
+                  ) : null}
                   {hasGradeLines ? (
-                    <div className="mt-1.5 flex flex-col items-center gap-0.5">
+                    <div className="mt-1.5 flex w-full gap-1">
                       {model.catchTier !== null && catchLabel ? (
-                        <p
-                          className={`text-[11px] font-semibold tracking-tight ${catchTierToneClass(model.catchTier)}`}
-                        >
-                          {catchLabel}
-                        </p>
-                      ) : null}
-                      {model.trainingTier !== null && bondLabel ? (
-                        <p
-                          className={`text-[11px] font-semibold tracking-tight ${trainingTierToneClass(model.trainingTier)}`}
-                        >
-                          {bondLabel}
-                        </p>
+                        <CatchTierCaption
+                          tier={model.catchTier}
+                          variant="tile"
+                        />
                       ) : null}
                       {showSurvival && model.survivalPoll ? (
                         <SurvivalSentimentCaption
-                          className="text-[11px] font-semibold tracking-tight"
-                          iconClassName="h-3 w-3"
                           poll={model.survivalPoll}
+                          variant="tile"
+                        />
+                      ) : null}
+                      {model.trainingTier !== null && bondLabel ? (
+                        <TrainingTierCaption
+                          tier={model.trainingTier}
+                          variant="tile"
                         />
                       ) : null}
                     </div>
                   ) : null}
                 </div>
-                {model.types.length > 0 ? (
-                  <div className="flex flex-wrap justify-center gap-1">
-                    {model.types.map((t) => (
-                      <TypeBadge key={t} type={t} />
-                    ))}
-                  </div>
-                ) : null}
               </div>
             </div>,
             document.body,

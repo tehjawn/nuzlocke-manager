@@ -3,7 +3,10 @@ import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
-import { SurvivalPollChip } from "@/components/SurvivalPollChip";
+import {
+  SurvivalSentimentCaption,
+  SurvivalSentimentIcon,
+} from "@/components/SurvivalPollChip";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
@@ -179,7 +182,7 @@ export function PokemonSlotCard({
           memorial ? "opacity-90" : ""
         } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
       >
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
           <PokemonSpriteImage
             alt=""
             className="pixelated h-10 w-10 object-contain"
@@ -189,6 +192,18 @@ export function PokemonSlotCard({
             species={pokemon.species}
             width={48}
           />
+          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+            <SurvivalSentimentIcon
+              className="pokemon-survival-sentiment--corner-dense h-3 w-3"
+              poll={pokemon.survivalPoll}
+            />
+          ) : null}
+          {trainingTier !== null ? (
+            <BondHeart
+              className="pokemon-bond-heart--corner-dense h-3 w-3"
+              tier={trainingTier}
+            />
+          ) : null}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold leading-tight">
@@ -204,11 +219,6 @@ export function PokemonSlotCard({
             {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
             {selectHint ? ` · ${selectHint}` : ""}
           </p>
-          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
-            <div className="mt-1">
-              <SurvivalPollChip poll={pokemon.survivalPoll} compact />
-            </div>
-          ) : null}
         </div>
       </div>
     );
@@ -256,6 +266,12 @@ export function PokemonSlotCard({
             species={pokemon.species}
             width={96}
           />
+          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+            <SurvivalSentimentIcon
+              className="pokemon-survival-sentiment--corner h-3.5 w-3.5"
+              poll={pokemon.survivalPoll}
+            />
+          ) : null}
           {trainingTier !== null ? (
             <BondHeart
               className="pokemon-bond-heart--corner h-3.5 w-3.5"
@@ -285,7 +301,10 @@ export function PokemonSlotCard({
             ))}
           </div>
           {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
-            <SurvivalPollChip poll={pokemon.survivalPoll} />
+            <SurvivalSentimentCaption
+              className="justify-start text-left text-[11px] font-semibold tracking-tight"
+              poll={pokemon.survivalPoll}
+            />
           ) : null}
         </div>
       </div>

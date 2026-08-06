@@ -166,15 +166,19 @@ export function SurvivalSentimentIcon({
 }
 
 /**
- * Icon + meaning for details / hover preview — arrow / tilde beside the
- * Survive/Die % line. Renders nothing when there are no votes (or void).
+ * Icon + meaning for details / hover preview.
+ * - `inline` — icon left of text (slot cards)
+ * - `chip` — bordered row for the details modal
+ * - `tile` — icon over text for the hover grade strip
  */
 export function SurvivalSentimentCaption({
   poll,
-  className = "text-center text-[11px] font-semibold tracking-tight sm:text-left",
-  iconClassName = "h-3.5 w-3.5 shrink-0",
+  variant = "inline",
+  className = "",
+  iconClassName,
 }: {
   poll: SurvivalPollTally;
+  variant?: "inline" | "chip" | "tile";
   className?: string;
   iconClassName?: string;
 }) {
@@ -184,19 +188,62 @@ export function SurvivalSentimentCaption({
 
   const Icon = SENTIMENT_ICON[sentiment];
   const title = sentimentTitle(poll, sentiment);
+  const tone = survivalSentimentToneClass(sentiment);
+  const iconSize =
+    iconClassName ??
+    (variant === "tile" ? "h-4 w-4 shrink-0" : "h-3.5 w-3.5 shrink-0");
+
+  const icon = (
+    <span
+      aria-hidden
+      className={`pokemon-survival-sentiment pokemon-survival-sentiment--${sentiment} inline-flex shrink-0 ${iconSize}`}
+    >
+      <Icon className="h-full w-full" />
+    </span>
+  );
+  const text = (
+    <span
+      className={`min-w-0 ${
+        variant === "tile"
+          ? "text-center text-[10px] font-semibold leading-tight tracking-tight"
+          : "truncate text-[11px] font-semibold tracking-tight"
+      } ${tone}`}
+    >
+      {label}
+    </span>
+  );
+
+  if (variant === "tile") {
+    return (
+      <div
+        className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md border border-frame/45 bg-surface-2/90 px-1 py-1.5 ${className}`}
+        title={title}
+      >
+        {icon}
+        {text}
+      </div>
+    );
+  }
+
+  if (variant === "chip") {
+    return (
+      <p
+        className={`inline-flex w-full max-w-full items-center gap-1.5 rounded-md border border-frame/45 bg-surface-2/90 px-2 py-1.5 ${className}`}
+        title={title}
+      >
+        {icon}
+        {text}
+      </p>
+    );
+  }
 
   return (
     <p
-      className={`inline-flex max-w-full items-center justify-center gap-1 sm:justify-start ${survivalSentimentToneClass(sentiment)} ${className}`}
+      className={`inline-flex max-w-full items-center justify-center gap-1 sm:justify-start ${className}`}
       title={title}
     >
-      <span
-        aria-hidden
-        className={`pokemon-survival-sentiment pokemon-survival-sentiment--${sentiment} inline-flex`}
-      >
-        <Icon className={iconClassName} />
-      </span>
-      <span className="min-w-0 truncate">{label}</span>
+      {icon}
+      {text}
     </p>
   );
 }

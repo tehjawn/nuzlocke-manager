@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { BondHeart } from "@/components/BondHeart";
+import { BondHeart, TrainingTierCaption } from "@/components/BondHeart";
+import { CatchTierCaption } from "@/components/CatchTierIcon";
 import { EvolutionPath } from "@/components/EvolutionPath";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
@@ -23,8 +24,6 @@ import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import {
   catchTierHasChrome,
-  catchTierLabel,
-  catchTierToneClass,
   summarizeBattleStats,
   summarizeEvs,
   summarizeIvs,
@@ -50,10 +49,6 @@ import {
   STAT_LABELS,
 } from "@/lib/stats";
 import { toolsHref } from "@/lib/tools-routes";
-import {
-  trainingTierLabel,
-  trainingTierToneClass,
-} from "@/lib/training-quality";
 
 const ModernEmeraldLearnset = dynamic(
   () =>
@@ -173,9 +168,6 @@ export function PokemonDetailsModal({
   const catchTier = resolveCatchTier(pokemon);
   const trainingTier = resolveTrainingTier(pokemon);
   const hasCatchChrome = catchTier !== null && catchTierHasChrome(catchTier);
-  const catchLabel = catchTier !== null ? catchTierLabel(catchTier) : null;
-  const bondLabel =
-    trainingTier !== null ? trainingTierLabel(trainingTier) : null;
 
   // Species-level ranks (Pokédex) — separate from specimen CatchTier under the sprite.
   const baseStats = baseStatsForSpecies(pokemon.pokedexId);
@@ -313,23 +305,24 @@ export function PokemonDetailsModal({
                 ) : null}
               </div>
             </div>
-            {catchTier !== null && catchLabel ? (
-              <p
-                className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${catchTierToneClass(catchTier)}`}
-              >
-                {catchLabel}
-              </p>
-            ) : null}
-            {trainingTier !== null && bondLabel ? (
-              <p
-                className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${trainingTierToneClass(trainingTier)}`}
-              >
-                {bondLabel}
-              </p>
-            ) : null}
-            {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
-              <SurvivalSentimentCaption poll={pokemon.survivalPoll} />
-            ) : null}
+            {(catchTier !== null ||
+              (pokemon.survivalPoll && pokemon.survivalPoll.total > 0) ||
+              trainingTier !== null) && (
+              <div className="flex w-full flex-col gap-1">
+                {catchTier !== null ? (
+                  <CatchTierCaption tier={catchTier} variant="chip" />
+                ) : null}
+                {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+                  <SurvivalSentimentCaption
+                    poll={pokemon.survivalPoll}
+                    variant="chip"
+                  />
+                ) : null}
+                {trainingTier !== null ? (
+                  <TrainingTierCaption tier={trainingTier} variant="chip" />
+                ) : null}
+              </div>
+            )}
             {pokemon.types.length > 0 ? (
               <div className="flex flex-wrap justify-center gap-1 sm:justify-start">
                 {pokemon.types.map((t) => (

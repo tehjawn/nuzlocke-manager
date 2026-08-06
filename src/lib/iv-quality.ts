@@ -37,7 +37,8 @@ const BATTLE_PERFECT = 0.95;
 const BATTLE_STRONG = 0.82;
 const BATTLE_DUMP = 0.45;
 
-/** Dump IVs needed (with no strong/perfect) to call a catch "shit". */
+/** Dump IVs needed (with no strong/perfect) to call a catch "big oof" (`shit`). */
+
 const SHIT_DUMP_MIN = 4;
 /** Perfect or near-perfect (≥28) IVs needed for "god". */
 const GOD_NEAR_PERFECT_MIN = 3;
@@ -261,7 +262,7 @@ export function summarizeBattleStats(
 /**
  * Randomizer catch quality for board-card chrome + details labels.
  *
- * - shit: mostly dump IVs, nothing redeeming
+ * - shit (label: Big oof): mostly dump IVs, nothing redeeming
  * - oof: below average / nothing notable (no chrome)
  * - good / great / cracked: existing randomizer bars
  * - god: absurd wild IV luck (3+ perfect or near-perfect)
@@ -284,7 +285,7 @@ export function catchTierRank(tier: CatchTier): number {
 }
 
 const CATCH_TIER_LABEL: Record<CatchTier, string | null> = {
-  shit: "Shit catch",
+  shit: "Big oof catch",
   oof: "Oof catch",
   good: "Good catch",
   great: "Great catch",
@@ -295,6 +296,26 @@ const CATCH_TIER_LABEL: Record<CatchTier, string | null> = {
 /** Beginner-facing label; null only when tier chrome should stay silent. */
 export function catchTierLabel(tier: CatchTier): string | null {
   return CATCH_TIER_LABEL[tier];
+}
+
+/** Hover tip body for the catch glyph — short name + vibe, no IV jargon. */
+export function catchTierTip(tier: CatchTier): string {
+  if (tier === "shit") {
+    return "Big oof: I'm so sorry…";
+  }
+  if (tier === "oof") {
+    return "Oof: Not even mid.";
+  }
+  if (tier === "good") {
+    return "Good: Not all bad!";
+  }
+  if (tier === "great") {
+    return "Great: Pretty decent!";
+  }
+  if (tier === "cracked") {
+    return "Cracked: A rare find.";
+  }
+  return "God: Born under a lucky star~";
 }
 
 /** Board / modal ring + sprite wash — oof stays plain. */
