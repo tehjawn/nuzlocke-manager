@@ -223,17 +223,35 @@ function matchTrainerHandles(
   q: string,
   ctx: SearchSeasonContext,
 ): string[] {
+  // Normalize curly/smart apostrophes so CoolRice's / CoolRice's both match.
+  const normalized = q.replace(/[\u2018\u2019\u02BC]/g, "'");
   const matched: string[] = [];
+  const seen = new Set<string>();
+
   for (const t of ctx.trainers) {
     const handle = t.handle.trim();
     if (handle.length < 2) continue;
-    const h = handle.toLowerCase();
-    // Word-boundary-ish: avoid matching "al" inside "total".
-    const re = new RegExp(
-      `(^|[^a-z0-9_])${escapeRegExp(h)}([^a-z0-9_]|$)`,
-      "i",
-    );
-    if (re.test(q)) matched.push(handle);
+
+    const aliases = [
+      handle,
+      t.discordUsername?.trim(),
+      t.discordDisplayName?.trim(),
+    ].filter((a): a is string => Boolean(a && a.length >= 2));
+
+    for (const alias of aliases) {
+      const a = alias.toLowerCase();
+      // Word-boundary-ish: avoid matching "al" inside "total".
+      const re = new RegExp(
+        `(^|[^a-z0-9_])${escapeRegExp(a)}([^a-z0-9_]|$)`,
+        "i",
+      );
+      if (!re.test(normalized)) continue;
+      const key = handle.toLowerCase();
+      if (seen.has(key)) break;
+      seen.add(key);
+      matched.push(handle);
+      break;
+    }
   }
   return matched;
 }
@@ -497,6 +515,12 @@ export function buildSeasonDigestFromPlan(
         ? "TRAINERS — handle | badges | living | fallen"
         : "TRAINERS — handle | badges | living | fallen (counts only)";
     pushLine(pack, "");
+    if (plan.includeMons) {
+      pushLine(
+        pack,
+        "ROSTER FACTS: answer strongest/weakest from team: levels below (higher level = stronger unless asked about BST).",
+      );
+    }
     pushLine(pack, header);
 
     const trainers = sortTrainersForPlan(ctx, plan);
