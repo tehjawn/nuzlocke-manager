@@ -16,7 +16,7 @@ import { readGmLensOn } from "@/lib/gm-lens.server";
 import { gravesPokemonByTrainerId } from "@/lib/memorial-backfill";
 import { memorialSeasonHighlights } from "@/lib/memorial-stats";
 import { getAccessForChallenge } from "@/lib/permissions";
-import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
+import { toPublicTrainerPokemon } from "@/lib/pokemon-privacy";
 import { isSeasonReadOnly } from "@/lib/season-status";
 import {
   godCatchBoard,
@@ -64,7 +64,7 @@ export default async function SeasonStatsPage({ params }: PageProps) {
     if (canViewCompetitiveDetails(access, trainer.userId, gmLensOn)) {
       return trainer;
     }
-    return redactTrainerCompetitiveDetails(trainer);
+    return toPublicTrainerPokemon(trainer);
   });
 
   const gravesByTrainerId = await getSeasonMemorialGraves(

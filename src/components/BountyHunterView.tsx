@@ -32,7 +32,10 @@ type BountyHunterViewProps = {
   slug: string;
   trainers: TrainerProfile[];
   myTrainerId?: string | null;
-  /** Trainers whose IVs survived redaction — Showcase grades only these. */
+  /**
+   * Trainers whose IVs / EVs survived redaction. Gates the numbers in the
+   * Showcase details modal only — tier chrome is public season-wide.
+   */
   competitiveTrainerIds?: string[];
   initialMode?: BountyMode | null;
 };
@@ -127,7 +130,7 @@ export function BountyHunterView({
   slug,
   trainers,
   myTrainerId = null,
-  competitiveTrainerIds,
+  competitiveTrainerIds = [],
   initialMode = "tracker",
 }: BountyHunterViewProps) {
   const [mode, setMode] = useState<BountyMode>(parseBountyMode(initialMode));
@@ -142,10 +145,7 @@ export function BountyHunterView({
 
   const board = useMemo(() => speciesOwnershipBoard(trainers), [trainers]);
   const exclusives = useMemo(() => exclusiveOwnedSpecies(trainers), [trainers]);
-  const specimens = useMemo(
-    () => seasonSpecimenBoard(trainers, { competitiveTrainerIds }),
-    [trainers, competitiveTrainerIds],
-  );
+  const specimens = useMemo(() => seasonSpecimenBoard(trainers), [trainers]);
 
   function selectMode(next: BountyMode) {
     setMode(next);
@@ -356,8 +356,7 @@ export function BountyHunterView({
         </>
       ) : mode === "showcase" ? (
         <SpecimenShowcase
-          myTrainerId={myTrainerId}
-          onScopeToMyTrainer={() => setViewerId(myTrainerId ?? "")}
+          competitiveTrainerIds={competitiveTrainerIds}
           query={q}
           rows={specimens}
           slug={slug}

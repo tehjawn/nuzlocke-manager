@@ -8,24 +8,19 @@ import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
-import {
-  catchTierHasChrome,
-  ivCatchTier,
-  type CatchTier,
-} from "@/lib/iv-quality";
+import { catchTierHasChrome } from "@/lib/iv-quality";
 import { moveTypeWashStyle } from "@/lib/move-meta";
 import { resolveMoveName } from "@/lib/move-names";
-import { recommendPlaystyle } from "@/lib/playstyle";
+import {
+  resolveCatchTier,
+  resolveTrainingTier,
+} from "@/lib/pokemon-grades";
 import {
   calcBattleStats,
   calcMaxBattleStats,
   isEmptySpread,
   natureEffectDescription,
 } from "@/lib/stats";
-import {
-  specimenTrainingTier,
-  type TrainingTier,
-} from "@/lib/training-quality";
 
 type PokemonSlotCardProps = {
   pokemon?: PokemonEntry | null;
@@ -118,25 +113,12 @@ export function PokemonSlotCard({
       ? pokemon.moves.map((m) => m.trim()).filter(Boolean)
       : [];
   const showStatColumn = Boolean(battle || ivFallback);
-  const catchTier: CatchTier =
-    showCompetitiveDetails && !speciesOnly
-      ? ivCatchTier(isEmptySpread(pokemon.ivs) ? null : pokemon.ivs)
-      : "oof";
-  const trainingTier: TrainingTier =
-    showCompetitiveDetails && !speciesOnly
-      ? specimenTrainingTier({
-          evs: pokemon.evs,
-          natureAlignment:
-            recommendPlaystyle({
-              pokedexId: pokemon.pokedexId,
-              nature: pokemon.nature,
-              ability: pokemon.ability,
-              ivs: isEmptySpread(pokemon.ivs) ? null : pokemon.ivs,
-            })?.natureAlignment ?? null,
-          friendship: pokemon.friendship,
-        })
-      : "raw";
-  const tierRing = catchTierHasChrome(catchTier)
+  // Tier chrome is public — it survives redaction on the entry itself, so it
+  // does not ride on `showCompetitiveDetails` (which gates the numbers).
+  const catchTier = speciesOnly ? null : resolveCatchTier(pokemon);
+  const trainingTier = speciesOnly ? null : resolveTrainingTier(pokemon);
+  const hasCatchChrome = catchTier !== null && catchTierHasChrome(catchTier);
+  const tierRing = hasCatchChrome
     ? `pokemon-catch-ring pokemon-catch-ring--${catchTier}`
     : null;
 
@@ -260,7 +242,7 @@ export function PokemonSlotCard({
       <div className="flex shrink-0 items-start gap-3">
         <div
           className={`relative flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border bg-surface-2 ${
-            catchTierHasChrome(catchTier)
+            hasCatchChrome
               ? `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
               : "border-frame"
           }`}
@@ -274,7 +256,7 @@ export function PokemonSlotCard({
             species={pokemon.species}
             width={96}
           />
-          {showCompetitiveDetails ? (
+          {trainingTier !== null ? (
             <BondHeart
               className="pokemon-bond-heart--corner h-3.5 w-3.5"
               tier={trainingTier}

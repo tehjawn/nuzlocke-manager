@@ -259,17 +259,6 @@ export function summarizeBattleStats(
 }
 
 /**
- * True when IVs look unusually strong (cracked / god catch chrome).
- * Training quality is separate — see `specimenTrainingTier`.
- */
-export function specimenIsCracked(input: {
-  ivs?: StatSpread | null;
-}): boolean {
-  const tier = ivCatchTier(input.ivs);
-  return tier === "cracked" || tier === "god";
-}
-
-/**
  * Randomizer catch quality for board-card chrome + details labels.
  *
  * - shit: mostly dump IVs, nothing redeeming
@@ -318,9 +307,14 @@ export function catchTierToneClass(tier: CatchTier): string {
   return `pokemon-catch-label--${tier}`;
 }
 
-/** IV-only tier (primary signal for randomizer catches). */
-export function ivCatchTier(ivs: StatSpread | null | undefined): CatchTier {
-  if (!ivs) return "oof";
+/**
+ * IV-only tier (primary signal for randomizer catches).
+ *
+ * Takes a present spread on purpose: a missing spread is "not graded", not a
+ * bad grade, and the tier is public season-wide. Callers go through
+ * `catchTierFor`, which owns that null.
+ */
+export function ivCatchTier(ivs: StatSpread): CatchTier {
   let perfect = 0;
   let strong = 0;
   let dump = 0;
@@ -347,20 +341,4 @@ export function ivCatchTier(ivs: StatSpread | null | undefined): CatchTier {
   if (perfect >= 1 || strong >= 1) return "good";
   if (dump >= SHIT_DUMP_MIN) return "shit";
   return "oof";
-}
-
-/**
- * Board catch tier — IV luck only.
- *
- * Training / bond chrome lives in `specimenTrainingTier` (EVs, nature fit,
- * friendship). Extra fields on `input` are ignored for API compatibility with
- * older call sites.
- */
-export function specimenCatchTier(input: {
-  ivs?: StatSpread | null;
-  evs?: StatSpread | null;
-  battle?: StatSpread | null;
-  battleMax?: StatSpread | null;
-}): CatchTier {
-  return ivCatchTier(input.ivs);
 }

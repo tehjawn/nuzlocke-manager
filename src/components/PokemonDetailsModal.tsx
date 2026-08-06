@@ -22,13 +22,15 @@ import {
   catchTierHasChrome,
   catchTierLabel,
   catchTierToneClass,
-  ivCatchTier,
   summarizeBattleStats,
   summarizeEvs,
   summarizeIvs,
-  type CatchTier,
 } from "@/lib/iv-quality";
 import { recommendPlaystyle } from "@/lib/playstyle";
+import {
+  resolveCatchTier,
+  resolveTrainingTier,
+} from "@/lib/pokemon-grades";
 import {
   baseStatRanksFor,
   statRankHint,
@@ -46,10 +48,8 @@ import {
 } from "@/lib/stats";
 import { toolsHref } from "@/lib/tools-routes";
 import {
-  specimenTrainingTier,
   trainingTierLabel,
   trainingTierToneClass,
-  type TrainingTier,
 } from "@/lib/training-quality";
 
 const ModernEmeraldLearnset = dynamic(
@@ -165,21 +165,14 @@ export function PokemonDetailsModal({
         ivs: showIvs ? ivs : null,
       })
     : null;
-  const catchTier: CatchTier = showCompetitiveDetails
-    ? ivCatchTier(showIvs ? ivs : null)
-    : "oof";
-  const catchLabel =
-    showCompetitiveDetails && (showIvs || catchTierHasChrome(catchTier))
-      ? catchTierLabel(catchTier)
-      : null;
-  const trainingTier: TrainingTier = showCompetitiveDetails
-    ? specimenTrainingTier({
-        evs: showEvs ? evs : null,
-        natureAlignment: playstyle?.natureAlignment ?? null,
-        friendship: pokemon.friendship,
-      })
-    : "raw";
-  const bondLabel = trainingTierLabel(trainingTier);
+  // Tier chrome is public — it rides on the entry (stamped at redaction) and
+  // not on `showCompetitiveDetails`, which gates the spreads themselves.
+  const catchTier = resolveCatchTier(pokemon);
+  const trainingTier = resolveTrainingTier(pokemon);
+  const hasCatchChrome = catchTier !== null && catchTierHasChrome(catchTier);
+  const catchLabel = catchTier !== null ? catchTierLabel(catchTier) : null;
+  const bondLabel =
+    trainingTier !== null ? trainingTierLabel(trainingTier) : null;
 
   // Species-level ranks (Pokédex) — separate from specimen CatchTier under the sprite.
   const baseStats = baseStatsForSpecies(pokemon.pokedexId);
@@ -282,14 +275,14 @@ export function PokemonDetailsModal({
           <div className="flex flex-col items-center gap-2 sm:items-stretch">
             <div
               className={
-                catchTierHasChrome(catchTier)
+                hasCatchChrome
                   ? `pokemon-catch-ring pokemon-catch-ring--emphasis pokemon-catch-ring--${catchTier} w-full max-w-[9.5rem] sm:max-w-none`
                   : undefined
               }
             >
               <div
                 className={`relative mx-auto flex h-36 w-36 items-center justify-center rounded-lg border sm:mx-0 sm:h-auto sm:w-full sm:aspect-square ${
-                  catchTierHasChrome(catchTier)
+                  hasCatchChrome
                     ? `pokemon-catch-sprite pokemon-catch-sprite--emphasis pokemon-catch-sprite--${catchTier}`
                     : "border-frame bg-surface-2"
                 }`}
@@ -309,7 +302,7 @@ export function PokemonDetailsModal({
                     poll={pokemon.survivalPoll}
                   />
                 ) : null}
-                {showCompetitiveDetails ? (
+                {trainingTier !== null ? (
                   <BondHeart
                     className="pokemon-bond-heart--corner h-4 w-4"
                     tier={trainingTier}
@@ -317,14 +310,14 @@ export function PokemonDetailsModal({
                 ) : null}
               </div>
             </div>
-            {catchLabel ? (
+            {catchTier !== null && catchLabel ? (
               <p
                 className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${catchTierToneClass(catchTier)}`}
               >
                 {catchLabel}
               </p>
             ) : null}
-            {bondLabel ? (
+            {trainingTier !== null && bondLabel ? (
               <p
                 className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${trainingTierToneClass(trainingTier)}`}
               >

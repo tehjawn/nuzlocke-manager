@@ -116,7 +116,7 @@ export type GodCatchBoard = {
  * Season-wide god-tier IV leaderboard (`summarizeIvs().god` — 3+ IVs at 28+).
  *
  * Must run server-side on unredacted boards: IV spreads are competitive
- * details nulled by `redactTrainerCompetitiveDetails` for rival viewers.
+ * details nulled by `toPublicPokemonEntry` for rival viewers.
  * Only trainer-level counts leave this function, so raw spreads — and even
  * which specific Pokémon is the god catch — stay gated behind
  * `canViewCompetitiveDetails`.

@@ -19,7 +19,7 @@ import {
 } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getWelcomeReadAt } from "@/lib/notifications";
-import { redactTrainerCompetitiveDetails } from "@/lib/pokemon-privacy";
+import { toPublicTrainerPokemon } from "@/lib/pokemon-privacy";
 import { displayName } from "@/lib/trainer-display";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { isSeasonReadOnly } from "@/lib/season-status";
@@ -106,7 +106,7 @@ export default async function TrainerBoardPage({ params }: PageProps) {
 
   const boardTrainer = canViewCompetitive
     ? trainer
-    : redactTrainerCompetitiveDetails(trainer);
+    : toPublicTrainerPokemon(trainer);
   const isDemo = !trainer.userId;
   // Header only needs a truthy id to show “My Trainer” → /me
   const myTrainerId =

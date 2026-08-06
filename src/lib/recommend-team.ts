@@ -8,9 +8,9 @@ import { competitiveTierFor } from "@/lib/competitive-tiers";
 import {
   catchTierLabel,
   catchTierRank,
-  ivCatchTier,
   type CatchTier,
 } from "@/lib/iv-quality";
+import { resolveCatchTier } from "@/lib/pokemon-grades";
 import {
   STAT_RANKS,
   baseStatRanksFor,
@@ -118,7 +118,9 @@ export function monQualityScore(
   entry: PokemonEntry,
   weights: RecommendTeamWeights = DEFAULT_WEIGHTS,
 ): { score: number; quality: RecommendTeamPickQuality } {
-  const catchTier = ivCatchTier(entry.ivs);
+  // Scoring treats "no IVs on file" as the floor rather than a missing value —
+  // an unknown mon shouldn't outrank a measured bad one.
+  const catchTier = resolveCatchTier(entry) ?? "oof";
   const catchRank = catchTierRank(catchTier);
   const ranks = baseStatRanksFor(entry.pokedexId);
   const bstPct = ranks?.bst.percentile ?? null;

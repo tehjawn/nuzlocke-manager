@@ -15,18 +15,12 @@ import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
 import { SurvivalSentimentIcon } from "@/components/SurvivalPollChip";
 import { formatPlayTime } from "@/lib/gen3-save/playtime";
+import { catchTierHasChrome, type CatchTier } from "@/lib/iv-quality";
 import {
-  catchTierHasChrome,
-  ivCatchTier,
-  type CatchTier,
-} from "@/lib/iv-quality";
-import { recommendPlaystyle } from "@/lib/playstyle";
-import { isEmptySpread } from "@/lib/stats";
+  resolveCatchTier,
+  resolveTrainingTier,
+} from "@/lib/pokemon-grades";
 import { pokemonInSlot } from "@/lib/trainer-display";
-import {
-  specimenTrainingTier,
-  type TrainingTier,
-} from "@/lib/training-quality";
 
 type TrainerCardProps = {
   challenge: Pick<
@@ -50,57 +44,29 @@ function leagueCatchBorderClass(
   return `pokemon-catch-border--league pokemon-catch-border--league-${catchTier}`;
 }
 
-function leagueGrades(
-  pokemon: PokemonEntry,
-  showCompetitiveDetails: boolean,
-): { catchTier: CatchTier | null; trainingTier: TrainingTier | null } {
-  if (!showCompetitiveDetails) {
-    return { catchTier: null, trainingTier: null };
-  }
-  const ivs = isEmptySpread(pokemon.ivs) ? null : pokemon.ivs;
-  return {
-    catchTier: ivCatchTier(ivs),
-    trainingTier: specimenTrainingTier({
-      evs: pokemon.evs,
-      natureAlignment:
-        recommendPlaystyle({
-          pokedexId: pokemon.pokedexId,
-          nature: pokemon.nature,
-          ability: pokemon.ability,
-          ivs,
-        })?.natureAlignment ?? null,
-      friendship: pokemon.friendship,
-    }),
-  };
-}
-
 type PartySlotProps = {
   pokemon: PokemonEntry;
   layout: "grid" | "list";
-  showCompetitiveDetails: boolean;
   onOpen: (pokemon: PokemonEntry) => void;
 };
 
 /**
  * All-trainers party cell: quiet catch border, bond heart (BR), survival
- * sentiment (BL). Competitive chrome only when the viewer may see IVs/EVs.
+ * sentiment (BL). Tier chrome is public for the whole pack — the spreads
+ * behind it are not, and those live in the details modal.
  */
 function TrainerPartySlot({
   pokemon,
   layout,
-  showCompetitiveDetails,
   onOpen,
 }: PartySlotProps) {
   const label = pokemon.nickname || pokemon.species;
-  const { catchTier, trainingTier } = leagueGrades(
-    pokemon,
-    showCompetitiveDetails,
-  );
+  const catchTier = resolveCatchTier(pokemon);
+  const trainingTier = resolveTrainingTier(pokemon);
   const catchBorder = leagueCatchBorderClass(catchTier);
   const survivalPoll = pokemon.survivalPoll;
   const showSentiment = survivalPoll != null && survivalPoll.total > 0;
-  // Heart only when competitive details are visible (own board / GM lens);
-  // leagueGrades returns a tier (including "raw") in that case.
+  // Null means nothing on file to grade — "raw" still earns an empty heart.
   const showHeart = trainingTier != null;
   // Grid cells are too tight for corner chrome — list only.
   const showCornerChrome = layout === "list";
@@ -382,7 +348,6 @@ export function TrainerCard({
                         key={mon.id}
                         pokemon={mon}
                         layout="grid"
-                        showCompetitiveDetails={showCompetitiveDetails}
                         onOpen={setDetailsPokemon}
                       />
                     );
@@ -489,7 +454,6 @@ export function TrainerCard({
                       key={mon.id}
                       pokemon={mon}
                       layout="list"
-                      showCompetitiveDetails={showCompetitiveDetails}
                       onOpen={setDetailsPokemon}
                     />
                   );

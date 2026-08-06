@@ -1,6 +1,8 @@
+import type { CatchTier } from "@/lib/iv-quality";
 import type { PokemonType } from "@/lib/pokemon-types";
 import type { StatSpread } from "@/lib/stats";
 import type { SurvivalPollTally } from "@/lib/survival-market-types";
+import type { TrainingTier } from "@/lib/training-quality";
 
 export type ChallengeStatus = "DRAFT" | "ACTIVE" | "TOURNAMENT" | "ARCHIVED";
 export type ChallengeVisibility = "INVITE" | "UNLISTED" | "PUBLIC";
@@ -43,6 +45,15 @@ export type PokemonEntry = {
   runId: string | null;
   /** Survive/Die poll tally when votes exist (board chips / details). */
   survivalPoll?: SurvivalPollTally | null;
+  /**
+   * Catch / bond grades precomputed by `toPublicPokemonEntry` so they survive
+   * redaction — the grades are public, the spreads behind them are not.
+   * Absent on unredacted entries, which still carry the inputs and are graded
+   * on demand. Always read these via `resolveCatchTier` / `resolveTrainingTier`
+   * rather than branching on them directly.
+   */
+  catchTier?: CatchTier | null;
+  trainingTier?: TrainingTier | null;
 };
 
 export type TrainerProfile = {
