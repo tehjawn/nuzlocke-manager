@@ -207,15 +207,16 @@ export function BadgeCase({
       );
     }
 
+    const stripIconPx = dense ? 16 : 22;
     return (
       <div
         className={`badge-case badge-case--strip flex min-w-0 max-w-full flex-wrap items-center gap-2 ${
-          hideCount ? "justify-center" : ""
+          hideCount ? "justify-start" : ""
         } ${completeClass} ${className}`}
       >
         {hideCount ? null : (
           <p
-            className={`font-display text-xs font-semibold tracking-tight ${
+            className={`min-w-0 truncate font-display text-xs font-semibold tracking-tight ${
               complete ? "text-accent-2" : "text-muted"
             }`}
           >
@@ -226,9 +227,15 @@ export function BadgeCase({
         )}
         {/* Frosted chip lifts badges off the card background so they stay
             legible regardless of which preset wash is active. */}
-        <div className="badge-case__shell min-w-0 max-w-full rounded-lg bg-surface/70 px-2 py-1.5 shadow-sm backdrop-blur-sm">
+        <div
+          className={`badge-case__shell min-w-0 max-w-full rounded-lg bg-surface/70 shadow-sm backdrop-blur-sm ${
+            dense ? "px-1.5 py-1" : "px-2 py-1.5"
+          }`}
+        >
           <ul
-            className="flex min-w-0 max-w-full flex-wrap gap-1"
+            className={`flex min-w-0 max-w-full flex-wrap ${
+              dense ? "gap-0.5" : "gap-1"
+            }`}
             aria-label={ariaProgress}
           >
             {badges.map((badge) => {
@@ -244,19 +251,21 @@ export function BadgeCase({
                     <img
                       src={meta.badgeSprite}
                       alt=""
-                      width={22}
-                      height={22}
-                      className={`badge-case__icon h-[22px] w-[22px] object-contain ${
+                      width={stripIconPx}
+                      height={stripIconPx}
+                      className={`badge-case__icon object-contain ${
                         on
                           ? "badge-case__icon--earned"
                           : "grayscale opacity-35"
                       }`}
+                      style={{ width: stripIconPx, height: stripIconPx }}
                     />
                   ) : (
                     <span
-                      className={`inline-block h-[22px] w-[22px] rounded border border-frame/60 ${
+                      className={`inline-block rounded border border-frame/60 ${
                         on ? "bg-accent-2/40" : "bg-surface-2/80"
                       }`}
+                      style={{ width: stripIconPx, height: stripIconPx }}
                     />
                   )}
                   <span className="sr-only">
