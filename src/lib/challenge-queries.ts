@@ -3,6 +3,11 @@
  * unless a route truly needs the full graph.
  */
 
+import {
+  HEADLINE_ACTIVITY_TYPES,
+  HEADLINE_LIMIT,
+} from "@/lib/activity-headlines";
+
 export const pokemonSummarySelect = {
   id: true,
   slot: true,
@@ -57,9 +62,14 @@ export const trainerRelationInclude = {
   badges: { include: { badge: { select: { key: true } } } },
 } as const;
 
+/**
+ * Board payload activity slice — headline allowlist only (#322).
+ * Full feed loads via `listChallengeActivities` / `/activity`.
+ */
 export const activityPreviewInclude = {
+  where: { type: { in: [...HEADLINE_ACTIVITY_TYPES] } },
   orderBy: { createdAt: "desc" as const },
-  take: 20,
+  take: HEADLINE_LIMIT,
   include: {
     trainer: { select: { id: true, handle: true, avatarSpriteKey: true } },
     actor: { select: { image: true } },

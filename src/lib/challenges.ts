@@ -28,9 +28,20 @@ import {
 } from "@/lib/memorial-backfill";
 import { currentRunNumber } from "@/lib/wipe-memorial";
 import { pokemonInSlot } from "@/lib/trainer-display";
+import {
+  HEADLINE_ACTIVITY_TYPES,
+  HEADLINE_CANDIDATE_LIMIT,
+  HEADLINE_LIMIT,
+  headlineBlurb,
+  isHeadlineActivityType,
+  selectHeadlineItems,
+  type HeadlineItem,
+} from "@/lib/activity-headlines";
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { mapDbChallenge, resolveActivityAvatarSrc } from "@/lib/mappers";
+import { parseAvatarBackgroundKey } from "@/data/avatar-backgrounds";
+import { parseCardBackgroundKey } from "@/data/card-backgrounds";
 import { loadSurvivalPollTallies } from "@/lib/survival-markets";
 
 export type { ActivityPage };
@@ -519,6 +530,63 @@ export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
   return coalesceActivityItems(challenge?.activities ?? []);
 }
 
+/**
+ * Latest high-signal Pack moments for the left-rail Headline Moments carousel.
+ * Ranks by achievement weight (champion > wipe > named badge > digest) so a
+ * coalesced "earned N badges" row can't bury a Championship clear.
+ */
+export async function listHeadlineActivities(
+  slug: string,
+  viewerUserId?: string | null,
+  limit: number = HEADLINE_LIMIT,
+): Promise<HeadlineItem[]> {
+  const take = Math.min(Math.max(limit, 1), HEADLINE_LIMIT);
+
+  if (isDatabaseConfigured()) {
+    try {
+      const prisma = getPrisma();
+      const challenge = await prisma.challenge.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+      if (!challenge) return [];
+
+      const rows = await prisma.activityEvent.findMany({
+        where: {
+          challengeId: challenge.id,
+          type: { in: [...HEADLINE_ACTIVITY_TYPES] },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: HEADLINE_CANDIDATE_LIMIT,
+        include: {
+          trainer: {
+            select: {
+              id: true,
+              handle: true,
+              avatarSpriteKey: true,
+              cardBackgroundKey: true,
+              avatarBackgroundKey: true,
+            },
+          },
+          actor: { select: { image: true } },
+          reactions: { select: { emoji: true, userId: true } },
+        },
+      });
+
+      const mapped = mapHeadlineRows(rows, viewerUserId);
+      return selectHeadlineItems(mapped, take);
+    } catch {
+      // fall through
+    }
+  }
+
+  const seedItems = await getRecentActivity(slug);
+  const mapped = seedItems
+    .filter((item) => isHeadlineActivityType(item.type))
+    .map((item) => toHeadlineItem(item));
+  return selectHeadlineItems(mapped, take);
+}
+
 type ActivityRow = {
   id: string;
   type: string;
@@ -528,6 +596,22 @@ type ActivityRow = {
     id: string;
     handle: string;
     avatarSpriteKey: string | null;
+  } | null;
+  actor: { image: string | null } | null;
+  reactions: Array<{ emoji: string; userId: string }>;
+};
+
+type HeadlineRow = {
+  id: string;
+  type: string;
+  message: string;
+  createdAt: Date;
+  trainer: {
+    id: string;
+    handle: string;
+    avatarSpriteKey: string | null;
+    cardBackgroundKey: string | null;
+    avatarBackgroundKey: string | null;
   } | null;
   actor: { image: string | null } | null;
   reactions: Array<{ emoji: string; userId: string }>;
@@ -568,6 +652,34 @@ function mapActivityRows(
       })),
     };
   });
+}
+
+function mapHeadlineRows(
+  rows: HeadlineRow[],
+  viewerUserId?: string | null,
+): HeadlineItem[] {
+  return rows.map((a) => {
+    const base = mapActivityRows([a], viewerUserId)[0]!;
+    return {
+      ...base,
+      avatarSpriteKey: a.trainer?.avatarSpriteKey ?? null,
+      cardBackgroundKey: parseCardBackgroundKey(a.trainer?.cardBackgroundKey),
+      avatarBackgroundKey: parseAvatarBackgroundKey(
+        a.trainer?.avatarBackgroundKey,
+      ),
+      blurb: headlineBlurb(base),
+    };
+  });
+}
+
+function toHeadlineItem(item: ActivityItem): HeadlineItem {
+  return {
+    ...item,
+    avatarSpriteKey: null,
+    cardBackgroundKey: null,
+    avatarBackgroundKey: null,
+    blurb: headlineBlurb(item),
+  };
 }
 
 /** Lean activity feed fetch for client polling / infinite scroll. */

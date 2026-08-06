@@ -14,6 +14,10 @@ import EmojiPicker, {
   Theme,
   type EmojiClickData,
 } from "emoji-picker-react";
+import {
+  mergeReaction,
+  postActivityReaction,
+} from "@/components/ActivityReactions";
 import { Frame } from "@/components/Frame";
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import type {
@@ -25,8 +29,6 @@ import type {
 const APP_MARK = "/nuzlocke-mark.png";
 const QUICK_EMOJIS = ["🔥", "💀", "👏", "😮", "❤️", "🎉"] as const;
 const PAGE_SIZE = 30;
-
-type ReactionResult = { ok: true } | { ok: false; error?: string };
 
 async function fetchActivityPage(
   slug: string,
@@ -44,45 +46,6 @@ async function fetchActivityPage(
     throw new Error(`Activity page failed (${res.status})`);
   }
   return (await res.json()) as ActivityPage;
-}
-
-async function postActivityReaction(
-  activityId: string,
-  emoji: string,
-): Promise<ReactionResult> {
-  const res = await fetch(
-    `/api/activities/${encodeURIComponent(activityId)}/reactions`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emoji }),
-      cache: "no-store",
-    },
-  );
-  try {
-    return (await res.json()) as ReactionResult;
-  } catch {
-    return { ok: false, error: "Reaction failed" };
-  }
-}
-
-function mergeReaction(
-  reactions: ActivityReactionSummary[],
-  emoji: string,
-): ActivityReactionSummary[] {
-  const next = reactions.map((r) => ({ ...r }));
-  const hit = next.find((r) => r.emoji === emoji);
-  if (hit) {
-    if (hit.reactedByMe) {
-      hit.count -= 1;
-      hit.reactedByMe = false;
-      return next.filter((r) => r.count > 0);
-    }
-    hit.count += 1;
-    hit.reactedByMe = true;
-    return next;
-  }
-  return [...next, { emoji, count: 1, reactedByMe: true }];
 }
 
 function activitiesKey(items: ActivityItem[]) {
