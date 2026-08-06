@@ -76,15 +76,15 @@ export function trainingTierLabel(tier: TrainingTier): string | null {
 /** Hover tip body for the bond heart — casual, no EV/friendship jargon. */
 export function trainingTierTip(tier: TrainingTier): string {
   if (tier === "growing") {
-    return "Acquaintances — putting some miles in together.";
+    return "Acquaintances: putting some miles in together.";
   }
   if (tier === "trained") {
-    return "Friends — a trusted teammate through thick and thin.";
+    return "Friends: a trusted teammate through thick and thin.";
   }
   if (tier === "bonded") {
-    return "Best friends — fully bonded, this one's family.";
+    return "Best friends: fully bonded, this one's family.";
   }
-  return "Strangers — haven't trained together much yet.";
+  return "Strangers: haven't trained together much yet.";
 }
 
 /** Heart fill 0–1 for CSS `--bond-fill`. */
