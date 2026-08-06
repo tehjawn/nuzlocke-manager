@@ -2,10 +2,12 @@ import { cache } from "react";
 import { CHALLENGES } from "@/data/trash-pack-2026";
 import type {
   ActivityItem,
+  ActivityPage,
   Challenge,
   PokemonSlot,
   TrainerProfile,
 } from "@/lib/challenge-types";
+
 import {
   fetchChallengeBoardRow,
   fetchChallengeBoardSummaryRow,
@@ -35,6 +37,8 @@ import {
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { mapDbChallenge, resolveActivityAvatarSrc } from "@/lib/mappers";
+
+export type { ActivityPage };
 
 const DEFAULT_ACTIVITY_PAGE_SIZE = 30;
 const MAX_ACTIVITY_PAGE_SIZE = 50;
@@ -508,14 +512,6 @@ export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
   const challenge = await getChallenge(slug);
   return coalesceActivityItems(challenge?.activities ?? []);
 }
-
-export type ActivityPage = {
-  items: ActivityItem[];
-  nextCursor: string | null;
-  /** Latest activity watermark for poll short-circuit. */
-  head?: string | null;
-  unchanged?: boolean;
-};
 
 type ActivityRow = {
   id: string;
