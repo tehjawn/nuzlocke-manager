@@ -14,7 +14,6 @@ import { gmResetAllTrainerBoardsAction } from "@/app/actions/challenge";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { useSearch } from "@/features/search/SearchProvider";
 import { writeGmLensOnClient } from "@/lib/gm-lens";
-import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 type GmToolsLauncherProps = {
@@ -35,8 +34,7 @@ export function GmToolsLauncher({
 }: GmToolsLauncherProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { openAsk } = useSearch();
-  const aiDrawer = useFeatureFlag("ai-drawer");
+  const { openAsk, aiDrawer } = useSearch();
   const [open, setOpen] = useState(false);
   const [on, setOn] = useState(initialOn);
   const [seenInitialOn, setSeenInitialOn] = useState(initialOn);

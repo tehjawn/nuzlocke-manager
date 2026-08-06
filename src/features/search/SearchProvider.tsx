@@ -41,6 +41,8 @@ type SearchContextValue = {
   /** Open Ask drawer; optional seed question submits once on open. */
   openAsk: (query?: string) => void;
   closeAsk: () => void;
+  /** Server-evaluated `ai-drawer` flag (Vercel Flags). */
+  aiDrawer: boolean;
 };
 
 const SearchContext = createContext<SearchContextValue | null>(null);
@@ -70,10 +72,13 @@ function seasonSearchFingerprint(season: SearchSeasonContext): string {
 export function SearchProvider({
   children,
   defaultSeason = null,
+  aiDrawer = false,
 }: {
   children: ReactNode;
   /** Active season index for global pages (home, about, login, …). */
   defaultSeason?: SearchSeasonContext | null;
+  /** Server-evaluated `ai-drawer` Vercel Flag. */
+  aiDrawer?: boolean;
 }) {
   const [open, setOpenState] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
@@ -187,6 +192,7 @@ export function SearchProvider({
       askQuery,
       openAsk,
       closeAsk,
+      aiDrawer,
     }),
     [
       open,
@@ -201,6 +207,7 @@ export function SearchProvider({
       askQuery,
       openAsk,
       closeAsk,
+      aiDrawer,
     ],
   );
 

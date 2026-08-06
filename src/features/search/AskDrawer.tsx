@@ -87,19 +87,20 @@ function AskHost() {
   const [seenOpen, setSeenOpen] = useState(askOpen);
   const [desktop, setDesktop] = useState(false);
   const [includePageContext, setIncludePageContext] = useState(true);
+  const [seenPagePref, setSeenPagePref] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastSubmittedRef = useRef<string | null>(null);
-  const includePageContextRef = useRef(includePageContext);
-  includePageContextRef.current = includePageContext;
 
   if (askOpen !== seenOpen) {
     setSeenOpen(askOpen);
     if (askOpen) setDraft(askQuery ?? "");
   }
 
-  useEffect(() => {
+  // Hydrate page-context pref once on the client (avoid SSR mismatch).
+  if (!seenPagePref && typeof window !== "undefined") {
+    setSeenPagePref(true);
     setIncludePageContext(readIncludePageContextPref(true));
-  }, []);
+  }
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -144,7 +145,7 @@ function AskHost() {
       : null;
     const pathname =
       typeof window !== "undefined" ? window.location.pathname : "";
-    const snapshot = includePageContextRef.current
+    const snapshot = includePageContext
       ? prependPageContext(digest, buildPageContext(pathname, season))
       : digest;
 

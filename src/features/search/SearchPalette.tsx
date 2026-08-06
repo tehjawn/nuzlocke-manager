@@ -41,7 +41,6 @@ import {
   useJumpAssist,
   type AssistState,
 } from "@/features/search/use-jump-assist";
-import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { pokemonSpriteUrl } from "@/lib/sprites";
 import { getAppliedTheme, toggleTheme } from "@/lib/theme";
 
@@ -125,8 +124,8 @@ function ResultIcon({ item }: { item: SearchResult }) {
 }
 
 export function SearchPalette() {
-  const { open, setOpen, results, index, season, openAsk } = useSearch();
-  const aiDrawer = useFeatureFlag("ai-drawer");
+  const { open, setOpen, results, index, season, openAsk, aiDrawer } =
+    useSearch();
   const router = useRouter();
   /**
    * Captured on open rather than via `usePathname`: under cacheComponents that
@@ -179,10 +178,6 @@ export function SearchPalette() {
       fuseTimerRef.current = null;
     }
     const ms = fuseDebounceMs(query);
-    if (ms === 0) {
-      setFuseQuery(query);
-      return;
-    }
     fuseTimerRef.current = setTimeout(() => {
       fuseTimerRef.current = null;
       setFuseQuery(query);
