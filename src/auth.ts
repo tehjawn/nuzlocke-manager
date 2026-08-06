@@ -158,7 +158,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = typeof token.userId === "string" ? token.userId : "";
+        // Empty string when token.userId is missing — AuthButtons skips DB work.
+        // Stale cuids after a local DB reset are handled fail-soft in notifications
+        // (P2003); Discord sign-in rewrites token.userId via the jwt path above.
+        session.user.id =
+          typeof token.userId === "string" && token.userId ? token.userId : "";
         session.user.discordId =
           typeof token.discordId === "string" ? token.discordId : null;
         if (typeof token.displayName === "string") {

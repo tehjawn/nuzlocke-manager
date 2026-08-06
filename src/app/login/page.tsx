@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 const DEFAULT_AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
 
 type PageProps = {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; reason?: string }>;
 };
 
 /** Only allow same-origin relative paths (no protocol / open redirects). */
@@ -35,8 +35,9 @@ async function discordSignIn(formData: FormData) {
 }
 
 export default async function LoginPage({ searchParams }: PageProps) {
-  const { callbackUrl: rawCallback } = await searchParams;
+  const { callbackUrl: rawCallback, reason } = await searchParams;
   const afterLogin = safeCallbackUrl(rawCallback);
+  const sessionExpired = reason === "session-expired";
 
   const session = await auth();
   if (session?.user?.id) {
@@ -59,6 +60,16 @@ export default async function LoginPage({ searchParams }: PageProps) {
             Discord login joins you to Season 2026, then walks you through your
             trainer board, the league, and how to get started.
           </p>
+
+          {sessionExpired ? (
+            <p
+              className="mt-4 rounded-md border border-frame/70 bg-surface-2/80 px-3 py-2.5 text-sm text-ink"
+              role="status"
+            >
+              Your session no longer matches this database — usually after a
+              local DB reset. Sign in with Discord again to continue.
+            </p>
+          ) : null}
 
           <div className="mt-8 space-y-4">
             <Frame title="Discord">

@@ -3,6 +3,11 @@ import { auth, signIn, signOut } from "@/auth";
 import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
 import { FeedbackIcon, PreferencesIcon } from "@/components/nav-icons";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
+import { isDatabaseConfigured } from "@/lib/db";
+import {
+  resolveSessionUser,
+  SESSION_EXPIRED_LOGIN,
+} from "@/lib/session-user";
 
 const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
 
@@ -20,6 +25,20 @@ export async function MobileMenuAuth({
   const session = await auth();
 
   if (session?.user) {
+    if (isDatabaseConfigured()) {
+      const resolution = await resolveSessionUser({
+        userId: session.user.id,
+        discordId: session.user.discordId,
+      });
+      if (resolution.status === "orphan") {
+        console.warn(
+          "[MobileMenuAuth] orphan session — signing out (re-login required)",
+          { userId: session.user.id, discordId: session.user.discordId },
+        );
+        await signOut({ redirectTo: SESSION_EXPIRED_LOGIN });
+      }
+    }
+
     return (
       <div className="flex flex-col gap-1">
         <Link
