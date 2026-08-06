@@ -7,16 +7,12 @@ import { MemorialCauseEditor } from "@/components/MemorialCauseEditor";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { typeBadgeSoftStyle } from "@/components/TypeBadge";
 import { POKEMON_GENERATIONS } from "@/data/pokemon-index";
-import type { Challenge, PokemonEntry } from "@/lib/challenge-types";
-import {
-  gravesPokemonByTrainerId,
-  type CrossRunGravesResult,
-  type MemorialGrave,
+import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import type {
+  CrossRunGravesResult,
+  MemorialGrave,
 } from "@/lib/memorial-backfill";
-import {
-  memorialPokemonMatchesFilters,
-  memorialSeasonHighlights,
-} from "@/lib/memorial-stats";
+import { memorialPokemonMatchesFilters } from "@/lib/memorial-stats";
 import {
   POKEMON_TYPES,
   TYPE_COLORS,
@@ -25,16 +21,12 @@ import {
 import { displayName } from "@/lib/trainer-display";
 
 type MemorialBoardProps = {
-  challenge: Challenge;
+  slug: string;
+  trainers: TrainerProfile[];
   /** Trainer IDs the viewer may edit causes for (owner / GM with lens). */
   editableTrainerIds?: string[];
   /** Cross-run graves per trainer: live rows + graves recovered from history. */
   gravesByTrainerId: Record<string, CrossRunGravesResult>;
-  /**
-   * When true, render only the filterable grave browser — Season Stats owns
-   * the page chrome and memorial highlight cards (#288).
-   */
-  embedded?: boolean;
 };
 
 /** Newest attempt first — matches the trainer history accordion. */
@@ -52,11 +44,15 @@ function groupByRun(
     .map(([runNumber, runGraves]) => ({ runNumber, graves: runGraves }));
 }
 
+/**
+ * Filterable cross-run grave browser. Season Stats owns the page chrome and
+ * memorial highlight cards (#288) — this is the list under Graves & wipes.
+ */
 export function MemorialBoard({
-  challenge,
+  slug,
+  trainers,
   editableTrainerIds = [],
   gravesByTrainerId,
-  embedded = false,
 }: MemorialBoardProps) {
   const editable = new Set(editableTrainerIds);
   const [typeFilter, setTypeFilter] = useState<PokemonType | null>(null);
@@ -65,7 +61,7 @@ export function MemorialBoard({
   const filters = { type: typeFilter, generation: generationFilter };
   const filtering = typeFilter != null || generationFilter != null;
 
-  const allByTrainer = challenge.trainers.map((trainer) => ({
+  const allByTrainer = trainers.map((trainer) => ({
     trainer,
     all: gravesByTrainerId[trainer.id]?.graves ?? [],
     recovered: gravesByTrainerId[trainer.id]?.recoveredCount ?? 0,
@@ -84,59 +80,34 @@ export function MemorialBoard({
     (sum, row) => sum + row.graves.length,
     0,
   );
+  const totalGraves = allByTrainer.reduce(
+    (sum, row) => sum + row.all.length,
+    0,
+  );
+  const trainersWithLosses = allByTrainer.filter(
+    (row) => row.all.length > 0,
+  ).length;
   const recoveredCount = allByTrainer.reduce(
     (sum, row) => sum + row.recovered,
     0,
   );
-
-  const highlights = memorialSeasonHighlights(
-    challenge.trainers,
-    gravesPokemonByTrainerId(gravesByTrainerId),
-  );
-
-  const hasAnyGraves = highlights.totalGraves > 0;
+  const hasAnyGraves = totalGraves > 0;
 
   return (
     <div className="space-y-5">
-      {embedded ? (
-        <div className="space-y-1">
-          <h4 className="text-sm font-bold tracking-tight">Grave browser</h4>
-          <p className="text-xs text-muted">
-            {filtering
-              ? `${filteredGraveCount} shown · ${highlights.totalGraves} memorialized`
-              : `${highlights.totalGraves} memorialized`}{" "}
-            · {highlights.trainersWithLosses} trainers with losses
-            {recoveredCount > 0
-              ? ` · ${recoveredCount} recovered from board history`
-              : ""}
-            . Nicknames first; causes when known.
-          </p>
-        </div>
-      ) : (
-        <header className="space-y-1.5">
-          <p className="text-xs font-semibold tracking-tight text-accent-deep">
-            Across every wipe
-          </p>
-          <h2 className="text-2xl font-bold tracking-tight">Memorial</h2>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted">
-            Every fallen partner from {challenge.name}
-            {challenge.status === "ARCHIVED"
-              ? " — season archived and read-only"
-              : ""}
-            , including losses carried through run restarts. Nicknames first;
-            causes when known.
-          </p>
-          <p className="text-xs text-muted">
-            {filtering
-              ? `${filteredGraveCount} shown · ${highlights.totalGraves} memorialized`
-              : `${highlights.totalGraves} memorialized`}{" "}
-            · {highlights.trainersWithLosses} trainers with losses
-            {recoveredCount > 0
-              ? ` · ${recoveredCount} recovered from board history`
-              : ""}
-          </p>
-        </header>
-      )}
+      <div className="space-y-1">
+        <h4 className="text-sm font-bold tracking-tight">Grave browser</h4>
+        <p className="text-xs text-muted">
+          {filtering
+            ? `${filteredGraveCount} shown · ${totalGraves} memorialized`
+            : `${totalGraves} memorialized`}{" "}
+          · {trainersWithLosses} trainers with losses
+          {recoveredCount > 0
+            ? ` · ${recoveredCount} recovered from board history`
+            : ""}
+          . Nicknames first; causes when known.
+        </p>
+      </div>
 
       {hasAnyGraves ? (
         <div className="space-y-3">
@@ -249,7 +220,7 @@ export function MemorialBoard({
                         : ""}
                     </span>
                     <Link
-                      href={`/challenges/${challenge.slug}/trainers/${trainer.id}`}
+                      href={`/challenges/${slug}/trainers/${trainer.id}`}
                       className="text-xs font-bold text-white/90 underline-offset-2 hover:underline"
                     >
                       Board

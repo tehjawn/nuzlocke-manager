@@ -8,6 +8,7 @@ import { SeasonStatsView } from "@/components/SeasonStatsView";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import {
   getChallenge,
+  getChallengeMeta,
   getSeasonMemorialGraves,
 } from "@/lib/challenges";
 import { canEditTrainerBoard, canViewCompetitiveDetails } from "@/lib/gm-lens";
@@ -33,7 +34,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   if (!challenge) return { title: "Season Stats" };
   return { title: `Season Stats · ${challenge.name}` };
 }
@@ -57,6 +58,8 @@ export default async function SeasonStatsPage({ params }: PageProps) {
     : false;
   const seasonReadOnly = isSeasonReadOnly(challenge.status);
 
+  // Display trainers are redacted; god-catch / shiny boards stay server-side
+  // on the unredacted payload so raw IVs never reach the client.
   const trainers = challenge.trainers.map((trainer) => {
     if (canViewCompetitiveDetails(access, trainer.userId, gmLensOn)) {
       return trainer;
@@ -126,10 +129,10 @@ export default async function SeasonStatsPage({ params }: PageProps) {
             seasonStats={seasonStats}
             memorialBrowser={
               <MemorialBoard
-                challenge={challenge}
+                slug={challenge.slug}
+                trainers={trainers}
                 editableTrainerIds={editableTrainerIds}
                 gravesByTrainerId={gravesByTrainerId}
-                embedded
               />
             }
           />
