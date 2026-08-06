@@ -1338,8 +1338,8 @@ button:disabled,
 }
 
 .pokemon-survival-sentiment--split {
-  --survival-tint: color-mix(in srgb, var(--muted) 70%, #c4b5fd);
-  opacity: 0.9;
+  /* Yellow, borrowed from the cracked-catch tint rather than a new hue. */
+  --survival-tint: color-mix(in srgb, var(--warn) 55%, #f0c14a);
 }
 
 .pokemon-survival-sentiment--corner {
