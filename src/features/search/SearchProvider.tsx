@@ -36,9 +36,10 @@ type SearchContextValue = {
   unregisterSeason: (ownerId: number) => void;
   /** Ask drawer open (#300) — independent of Jump palette. */
   askOpen: boolean;
-  /** Seed / last handed-off question for Ask. */
+  /** Seed / last handed-off question for Ask (null = open empty composer). */
   askQuery: string | null;
-  openAsk: (query: string) => void;
+  /** Open Ask drawer; optional seed question submits once on open. */
+  openAsk: (query?: string) => void;
   closeAsk: () => void;
 };
 
@@ -127,11 +128,10 @@ export function SearchProvider({
     setAskQuery(null);
   }, []);
 
-  const openAsk = useCallback((query: string) => {
-    const trimmed = query.trim();
-    if (!trimmed) return;
+  const openAsk = useCallback((query?: string) => {
+    const trimmed = query?.trim() ?? "";
     setOpenState(false);
-    setAskQuery(trimmed);
+    setAskQuery(trimmed.length ? trimmed : null);
     setAskOpen(true);
   }, []);
 

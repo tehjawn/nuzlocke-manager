@@ -12,7 +12,9 @@ import {
 import { createPortal } from "react-dom";
 import { gmResetAllTrainerBoardsAction } from "@/app/actions/challenge";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { useSearch } from "@/features/search/SearchProvider";
 import { writeGmLensOnClient } from "@/lib/gm-lens";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 type GmToolsLauncherProps = {
@@ -33,6 +35,8 @@ export function GmToolsLauncher({
 }: GmToolsLauncherProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { openAsk } = useSearch();
+  const aiDrawer = useFeatureFlag("ai-drawer");
   const [open, setOpen] = useState(false);
   const [on, setOn] = useState(initialOn);
   const [seenInitialOn, setSeenInitialOn] = useState(initialOn);
@@ -194,6 +198,19 @@ export function GmToolsLauncher({
         ) : null}
         {resetError ? (
           <p className="text-xs font-semibold text-danger">{resetError}</p>
+        ) : null}
+
+        {aiDrawer ? (
+          <button
+            type="button"
+            onClick={() => {
+              openAsk();
+              closePanel();
+            }}
+            className="gm-tools-panel__console"
+          >
+            Open AI Drawer
+          </button>
         ) : null}
 
         <Link href={gmConsoleHref} className="gm-tools-panel__console">

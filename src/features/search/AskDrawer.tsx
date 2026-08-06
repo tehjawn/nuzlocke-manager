@@ -14,6 +14,12 @@ import { useRouter } from "next/navigation";
 import { AskAnswerView } from "@/features/search/AskAnswerView";
 import { askEntityHints } from "@/features/search/ask-hints";
 import { matchCannedAskIntent } from "@/features/search/ask-canned";
+import {
+  buildPageContext,
+  prependPageContext,
+  readIncludePageContextPref,
+  writeIncludePageContextPref,
+} from "@/features/search/ask-page-context";
 import { wantsPokemonRanking } from "@/features/search/ask-ranking";
 import {
   buildSeasonDigestFromPlan,
@@ -80,13 +86,20 @@ function AskHost() {
   const [draft, setDraft] = useState("");
   const [seenOpen, setSeenOpen] = useState(askOpen);
   const [desktop, setDesktop] = useState(false);
+  const [includePageContext, setIncludePageContext] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastSubmittedRef = useRef<string | null>(null);
+  const includePageContextRef = useRef(includePageContext);
+  includePageContextRef.current = includePageContext;
 
   if (askOpen !== seenOpen) {
     setSeenOpen(askOpen);
     if (askOpen) setDraft(askQuery ?? "");
   }
+
+  useEffect(() => {
+    setIncludePageContext(readIncludePageContextPref(true));
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -126,11 +139,16 @@ function AskHost() {
       };
     }
 
-    void askRemote(
-      trimmed,
-      season ? buildSeasonDigestFromPlan(season, plan) : null,
-      { preferRanking },
-    );
+    const digest = season
+      ? buildSeasonDigestFromPlan(season, plan)
+      : null;
+    const pathname =
+      typeof window !== "undefined" ? window.location.pathname : "";
+    const snapshot = includePageContextRef.current
+      ? prependPageContext(digest, buildPageContext(pathname, season))
+      : digest;
+
+    void askRemote(trimmed, snapshot, { preferRanking });
   };
 
   const onSeedAsk = useEffectEvent((q: string) => {
@@ -201,7 +219,9 @@ function AskHost() {
   );
 
   const questionLabel =
-    assist.status === "idle" ? draft.trim() || "Ask" : assist.question;
+    assist.status === "idle"
+      ? draft.trim() || null
+      : assist.question.trim() || null;
 
   const panel = (
     <AskPanelFrame
@@ -211,6 +231,11 @@ function AskHost() {
       setDraft={setDraft}
       inputRef={inputRef}
       assistStatus={assist.status}
+      includePageContext={includePageContext}
+      onIncludePageContextChange={(next) => {
+        setIncludePageContext(next);
+        writeIncludePageContextPref(next);
+      }}
       onSubmit={() => {
         const q = draft.trim();
         if (!q || assist.status === "loading") return;
@@ -244,7 +269,7 @@ function AskHost() {
           data-ask-rail-panel=""
           role="dialog"
           aria-modal="false"
-          aria-label="Ask"
+          aria-label="Ask Gomi AI"
           className="fixed inset-y-0 right-0 z-30 hidden flex-col border-l border-frame bg-surface shadow-[-8px_0_24px_-12px_var(--shadow-md)] motion-safe:animate-[ask-rail-in_200ms_cubic-bezier(0.22,1,0.36,1)] md:flex"
           style={{ width: ASK_RAIL_WIDTH }}
         >
@@ -264,7 +289,7 @@ function AskHost() {
               <div
                 role="dialog"
                 aria-modal="true"
-                aria-label="Ask"
+                aria-label="Ask Gomi AI"
                 className="absolute inset-0 flex flex-col overflow-hidden bg-surface motion-safe:animate-[ask-sheet-in_220ms_cubic-bezier(0.22,1,0.36,1)] gba-frame"
               >
                 {panel}
@@ -284,29 +309,38 @@ function AskPanelFrame({
   setDraft,
   inputRef,
   assistStatus,
+  includePageContext,
+  onIncludePageContextChange,
   onSubmit,
   desktop,
   children,
 }: {
-  questionLabel: string;
+  questionLabel: string | null;
   onClose: () => void;
   draft: string;
   setDraft: (value: string) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
   assistStatus: string;
+  includePageContext: boolean;
+  onIncludePageContextChange: (next: boolean) => void;
   onSubmit: () => void;
   desktop: boolean;
   children: ReactNode;
 }) {
+  const pageContextId = "ask-include-page-context";
+
   return (
     <div className="flex h-full min-h-0 flex-col outline-none">
       <header className="flex shrink-0 items-start gap-2 border-b border-frame/70 px-3 py-2.5 sm:px-4">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-frame/70 bg-surface-2 text-ink">
+          <SparkGlyph className="h-4 w-4" />
+        </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-            Ask
-          </p>
-          <p className="mt-0.5 truncate text-sm font-semibold tracking-tight text-ink">
-            {questionLabel}
+          <h2 className="truncate text-sm font-semibold tracking-tight text-ink">
+            Ask Gomi AI
+          </h2>
+          <p className="mt-0.5 truncate text-[11px] font-medium text-muted">
+            {questionLabel ?? "League questions, tips, and jumps"}
           </p>
         </div>
         <button
@@ -328,6 +362,34 @@ function AskPanelFrame({
         }}
         className="shrink-0 border-t border-frame/60 bg-surface-2/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       >
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <label
+            htmlFor={pageContextId}
+            className="min-w-0 cursor-pointer text-[11px] font-medium leading-snug text-muted"
+          >
+            Include current page context
+          </label>
+          <button
+            id={pageContextId}
+            type="button"
+            role="switch"
+            aria-checked={includePageContext}
+            aria-label="Include current page context"
+            onClick={() => onIncludePageContextChange(!includePageContext)}
+            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
+              includePageContext
+                ? "border-interactive/50 bg-interactive-soft"
+                : "border-frame/80 bg-surface"
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`absolute h-3.5 w-3.5 rounded-full bg-ink shadow-sm transition-transform ${
+                includePageContext ? "translate-x-[1.125rem]" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
         <div className="flex items-center gap-2 rounded-md border border-frame/70 bg-surface px-2.5 py-2 focus-within:border-interactive/45">
           <SparkGlyph className="h-4 w-4 shrink-0 text-muted" />
           <input
