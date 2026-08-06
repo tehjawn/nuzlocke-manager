@@ -541,10 +541,11 @@ export function querySearchIndex(
  * questions thrash Bitap and almost never produce useful hits.
  */
 export function shouldSkipFuzzySearch(query: string): boolean {
-  if (query.length >= 40) return true;
-  if (query.split(/\s+/).filter(Boolean).length >= 6) return true;
+  // Bitap cost grows fast with length — bail earlier than "full sentence".
+  if (query.length >= 24) return true;
+  if (query.split(/\s+/).filter(Boolean).length >= 4) return true;
   // "who is …" / "what are …" — Ask owns these; Fuse returns noise or nothing.
-  if (query.length >= 12 && /^(who|what|which|when|where|why|how)\b/i.test(query)) {
+  if (query.length >= 10 && /^(who|what|which|when|where|why|how)\b/i.test(query)) {
     return true;
   }
   return false;

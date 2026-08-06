@@ -135,6 +135,7 @@ export function SearchPalette() {
   const [query, setQuery] = useState("");
   /** Fuse runs against the deferred query so keystrokes stay responsive. */
   const deferredQuery = useDeferredValue(query);
+  const searchPending = deferredQuery !== query;
   const [recents, setRecents] = useState<string[]>([]);
   const [seenOpen, setSeenOpen] = useState(open);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -168,12 +169,22 @@ export function SearchPalette() {
     [results, pathname],
   );
 
+  const trimmedQuery = query.trim();
+  const deferredTrimmed = deferredQuery.trim();
+  /** Live Ask-shaped / long queries drop fuzzy immediately. */
+  const skipFuzzyLive = shouldSkipFuzzySearch(trimmedQuery);
+
   // Derive from the live index so hits refresh when season registration lands
   // after hydration (stale hits were empty forever in prod until retyping).
+  // Also skip when the *live* query already looks like Ask/long NL so a lagging
+  // deferred value can't still schedule an expensive Bitap search.
   const hits = useMemo(() => {
-    if (!deferredQuery.trim()) return [] as SearchFuseHit[];
+    if (!deferredTrimmed) return [] as SearchFuseHit[];
+    if (skipFuzzyLive || shouldSkipFuzzySearch(deferredTrimmed)) {
+      return [] as SearchFuseHit[];
+    }
     return querySearchIndex(index, deferredQuery);
-  }, [index, deferredQuery]);
+  }, [index, deferredQuery, deferredTrimmed, skipFuzzyLive]);
 
   const groupedHits = useMemo(() => {
     const groups = new Map<SearchCategory, SearchFuseHit[]>();
@@ -226,11 +237,6 @@ export function SearchPalette() {
     [close, router],
   );
 
-  const trimmedQuery = query.trim();
-  const deferredTrimmed = deferredQuery.trim();
-  /** Live Ask-shaped queries drop fuzzy immediately so deferred hits don't flash. */
-  const skipFuzzyLive = shouldSkipFuzzySearch(trimmedQuery);
-
   const entityHints = useMemo(() => askEntityHints(season), [season]);
   // Guard against the deferred query for fuzzy typing; NL asks use the live
   // query (isQuestionLike short-circuits — no hint scan) so the Ask row doesn't
@@ -278,14 +284,17 @@ export function SearchPalette() {
    *  stacking under Suggestions when the box is cleared mid-defer. */
   const hasLiveQuery = Boolean(trimmedQuery);
   const showHitList = hasLiveQuery && !showingAssist;
-  // NL asks: ignore deferred Fuse leftovers so the list doesn't flash trainers
-  // then snap to Ask. Fuzzy typing keeps deferred hits on screen (no skeleton
-  // swap — remounting placeholders felt slower than stale-while-revalidate).
+  // NL / long asks: ignore deferred Fuse leftovers. Short fuzzy typing shows
+  // skeletons while deferred Fuse catches up ( steadier than remounting hits).
   const displayHits = skipFuzzyLive ? ([] as SearchFuseHit[]) : hits;
   const displayGroupedHits = skipFuzzyLive ? [] : groupedHits;
-  const showAskLeading = showHitList && canAsk && displayHits.length === 0;
-  const showAskTrailing = showHitList && canAsk && displayHits.length > 0;
-  const showEmpty = showHitList && displayHits.length === 0;
+  const showSearchPending = showHitList && searchPending && !skipFuzzyLive;
+  const showAskLeading =
+    showHitList && !showSearchPending && canAsk && displayHits.length === 0;
+  const showAskTrailing =
+    showHitList && !showSearchPending && canAsk && displayHits.length > 0;
+  const showEmpty =
+    showHitList && !showSearchPending && displayHits.length === 0;
   const askIsPrimary = showAskLeading;
   const askSubtitle = season
     ? "Answered from this season’s board"
@@ -346,6 +355,8 @@ export function SearchPalette() {
               onPickRelated={runResult}
             />
           ) : null}
+
+          {showSearchPending ? <SearchPendingPlaceholder /> : null}
 
           {/* Empty results: Ask first so Enter asks. With hits, Ask trails so
               fuzzy stays the default selection (cmdk picks DOM order). */}
@@ -426,7 +437,7 @@ export function SearchPalette() {
             </div>
           ) : null}
 
-          {showHitList
+          {showHitList && !showSearchPending
             ? displayGroupedHits.map((group) => (
                 <Command.Group
                   key={group.category}
@@ -459,7 +470,9 @@ export function SearchPalette() {
               ? assist.status === "loading"
                 ? "Asking…"
                 : "Ask"
-              : "Search"}
+              : showSearchPending
+                ? "Searching…"
+                : "Search"}
           </span>
           <span className="flex items-center gap-2 font-mono">
             {showingAssist ? (
@@ -497,6 +510,37 @@ export function SearchPalette() {
       </Command>
     </div>,
     document.body,
+  );
+}
+
+function SearchPendingPlaceholder() {
+  return (
+    <div className="px-1.5 py-1" aria-live="polite" aria-busy="true">
+      <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+        Searching…
+      </p>
+      <ul className="space-y-1.5" aria-hidden>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <li
+            key={i}
+            className="flex items-center gap-2.5 rounded-[calc(var(--radius-sm)-1px)] px-2 py-2"
+          >
+            <span className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-frame/20" />
+            <span className="min-w-0 flex-1 space-y-1.5">
+              <span
+                className="block h-3.5 animate-pulse rounded bg-frame/20"
+                style={{ width: `${58 - i * 6}%` }}
+              />
+              <span
+                className="block h-2.5 animate-pulse rounded bg-frame/10"
+                style={{ width: `${42 - i * 4}%` }}
+              />
+            </span>
+            <span className="h-2.5 w-10 shrink-0 animate-pulse rounded bg-frame/10" />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
