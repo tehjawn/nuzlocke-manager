@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -30,11 +31,34 @@ import type { SearchResult } from "@/features/search/search-types";
 import { useJumpAssist } from "@/features/search/use-jump-assist";
 import { evaluateAskQuery } from "@/lib/ai/ask-guard";
 
+/** Desktop Ask rail width — content column shrinks by this amount. */
+export const ASK_RAIL_WIDTH = "min(26rem, 38vw)";
+
 /**
- * Conversational Ask shell (#300) — right drawer on desktop, full-screen on
- * mobile. Jump stays the centered palette; choosing Ask opens this instead.
+ * App chrome for Ask (#300): desktop = PostHog-style right rail that pushes
+ * the page left; mobile = full-screen sheet over a scrim.
  */
-export function AskDrawer() {
+export function AskChrome({ children }: { children: ReactNode }) {
+  const { askOpen } = useSearch();
+
+  useEffect(() => {
+    if (!askOpen) {
+      document.body.removeAttribute("data-ask-rail");
+      return;
+    }
+    document.body.setAttribute("data-ask-rail", "");
+    return () => document.body.removeAttribute("data-ask-rail");
+  }, [askOpen]);
+
+  return (
+    <div className="flex w-full flex-1 flex-col md:flex-row md:items-start">
+      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      <AskHost />
+    </div>
+  );
+}
+
+function AskHost() {
   const {
     askOpen,
     askQuery,
@@ -48,7 +72,7 @@ export function AskDrawer() {
     useJumpAssist();
   const [draft, setDraft] = useState("");
   const [seenOpen, setSeenOpen] = useState(askOpen);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [desktop, setDesktop] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastSubmittedRef = useRef<string | null>(null);
 
@@ -56,6 +80,14 @@ export function AskDrawer() {
     setSeenOpen(askOpen);
     if (askOpen) setDraft(askQuery ?? "");
   }
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const sync = () => setDesktop(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const submitAsk = (raw: string) => {
     const trimmed = raw.trim().slice(0, MAX_SEARCH_QUERY_CHARS);
@@ -98,7 +130,6 @@ export function AskDrawer() {
     submitAsk(q);
   });
 
-  // Jump handoff: submit the seeded query once per open.
   useEffect(() => {
     if (!askOpen) {
       reset();
@@ -111,22 +142,17 @@ export function AskDrawer() {
     onSeedAsk(q);
   }, [askOpen, askQuery, reset]);
 
-  // While open: focus, Esc, and mobile scroll lock.
   useEffect(() => {
     if (!askOpen) return;
 
-    const focusId = requestAnimationFrame(() => {
-      // Prefer the composer after open so follow-ups are one tap away.
-      inputRef.current?.focus();
-    });
+    const focusId = requestAnimationFrame(() => inputRef.current?.focus());
 
-    const mq = window.matchMedia("(max-width: 767px)");
-    const syncLock = () => {
-      if (mq.matches) document.body.setAttribute("data-ask-scroll-lock", "");
-      else document.body.removeAttribute("data-ask-scroll-lock");
-    };
-    syncLock();
-    mq.addEventListener("change", syncLock);
+    // Mobile sheet only — desktop rail leaves body scroll with the page.
+    if (!desktop) {
+      document.body.setAttribute("data-ask-scroll-lock", "");
+    } else {
+      document.body.removeAttribute("data-ask-scroll-lock");
+    }
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
@@ -140,10 +166,9 @@ export function AskDrawer() {
     return () => {
       cancelAnimationFrame(focusId);
       document.body.removeAttribute("data-ask-scroll-lock");
-      mq.removeEventListener("change", syncLock);
       document.removeEventListener("keydown", onKey, true);
     };
-  }, [askOpen, jumpOpen, closeAsk]);
+  }, [askOpen, desktop, jumpOpen, closeAsk]);
 
   const relatedResults = useMemo(() => {
     if (assist.status !== "answered") return [];
@@ -167,105 +192,178 @@ export function AskDrawer() {
     [router],
   );
 
-  if (!askOpen || typeof document === "undefined") return null;
-
   const questionLabel =
     assist.status === "idle" ? draft.trim() || "Ask" : assist.question;
 
-  return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-[180]">
-      <button
-        type="button"
-        aria-label="Close Ask"
-        onClick={closeAsk}
-        className="pointer-events-auto absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px] motion-safe:animate-[drawer-scrim-in_200ms_ease-out] md:hidden"
+  const panel = (
+    <AskPanelFrame
+      questionLabel={questionLabel}
+      onClose={closeAsk}
+      draft={draft}
+      setDraft={setDraft}
+      inputRef={inputRef}
+      assistStatus={assist.status}
+      onSubmit={() => {
+        const q = draft.trim();
+        if (!q || assist.status === "loading") return;
+        lastSubmittedRef.current = q;
+        submitAsk(q);
+      }}
+      desktop={desktop}
+    >
+      <AskAnswerView
+        state={assist}
+        related={relatedResults}
+        season={season}
+        results={results}
+        onRetry={() => {
+          const q =
+            assist.status === "idle" ? draft.trim() : assist.question;
+          if (q) submitAsk(q);
+        }}
+        onNavigate={navigate}
       />
+    </AskPanelFrame>
+  );
 
-      <div
-        ref={panelRef}
-        role="dialog"
-        // Mobile is a true modal sheet; desktop leaves the board interactive.
-        aria-modal="true"
-        aria-label="Ask"
-        tabIndex={-1}
-        className="pointer-events-auto absolute inset-0 flex flex-col overflow-hidden bg-surface outline-none motion-safe:animate-[ask-sheet-in_220ms_cubic-bezier(0.22,1,0.36,1)] md:inset-y-3 md:right-3 md:left-auto md:w-[min(100%-1.5rem,26rem)] md:rounded-xl md:border md:border-frame md:shadow-[0_16px_48px_var(--shadow-md)] md:motion-safe:animate-[ask-drawer-in_220ms_cubic-bezier(0.22,1,0.36,1)] gba-frame"
+  // Desktop: in-flow right rail (pushes main column). Width animates open/closed.
+  // Mobile: portal sheet — never mount both or the composer ref double-binds.
+  return (
+    <>
+      <aside
+        className={[
+          "sticky top-0 z-30 hidden h-dvh shrink-0 flex-col overflow-hidden bg-surface md:flex",
+          "transition-[width,border-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          askOpen && desktop
+            ? "border-l border-frame"
+            : "w-0 border-l-0 border-transparent",
+        ].join(" ")}
+        style={
+          askOpen && desktop ? { width: ASK_RAIL_WIDTH } : { width: 0 }
+        }
+        aria-hidden={!askOpen || !desktop}
       >
-        <header className="flex shrink-0 items-start gap-2 border-b border-frame/70 px-3 py-2.5 sm:px-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-              Ask
-            </p>
-            <p className="mt-0.5 truncate text-sm font-semibold tracking-tight text-ink">
-              {questionLabel}
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label="Close Ask"
-            onClick={closeAsk}
-            className="pressable inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-interactive/35 bg-interactive-soft text-ink"
+        {askOpen && desktop ? (
+          <div
+            className="flex h-full flex-col"
+            style={{ width: ASK_RAIL_WIDTH, minWidth: ASK_RAIL_WIDTH }}
           >
-            <CloseIcon />
-          </button>
-        </header>
-
-        <AskAnswerView
-          state={assist}
-          related={relatedResults}
-          season={season}
-          results={results}
-          onRetry={() => {
-            const q =
-              assist.status === "idle" ? draft.trim() : assist.question;
-            if (q) submitAsk(q);
-          }}
-          onNavigate={navigate}
-        />
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const q = draft.trim();
-            if (!q || assist.status === "loading") return;
-            lastSubmittedRef.current = q;
-            submitAsk(q);
-          }}
-          className="shrink-0 border-t border-frame/60 bg-surface-2/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-        >
-          <div className="flex items-center gap-2 rounded-md border border-frame/70 bg-surface px-2.5 py-2 focus-within:border-interactive/45">
-            <SparkGlyph className="h-4 w-4 shrink-0 text-muted" />
-            <input
-              ref={inputRef}
-              value={draft}
-              onChange={(e) =>
-                setDraft(e.target.value.slice(0, MAX_SEARCH_QUERY_CHARS))
-              }
-              maxLength={MAX_SEARCH_QUERY_CHARS}
-              placeholder="Ask another question…"
-              enterKeyHint="send"
-              className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ink outline-none placeholder:text-muted/80"
-            />
-            <button
-              type="submit"
-              disabled={!draft.trim() || assist.status === "loading"}
-              className="pressable shrink-0 rounded-md border border-interactive/35 bg-interactive-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink disabled:opacity-40"
-            >
-              Ask
-            </button>
+            {panel}
           </div>
-          <p className="mt-1.5 text-[10px] text-muted">
-            <span className="md:hidden">Tap outside or ✕ to close</span>
-            <span className="hidden md:inline">
+        ) : null}
+      </aside>
+
+      {askOpen && !desktop && typeof document !== "undefined"
+        ? createPortal(
+            <div className="fixed inset-0 z-[180] md:hidden">
+              <button
+                type="button"
+                aria-label="Close Ask"
+                onClick={closeAsk}
+                className="absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px] motion-safe:animate-[drawer-scrim-in_200ms_ease-out]"
+              />
+              <div className="absolute inset-0 flex flex-col overflow-hidden bg-surface motion-safe:animate-[ask-sheet-in_220ms_cubic-bezier(0.22,1,0.36,1)] gba-frame">
+                {panel}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+function AskPanelFrame({
+  questionLabel,
+  onClose,
+  draft,
+  setDraft,
+  inputRef,
+  assistStatus,
+  onSubmit,
+  desktop,
+  children,
+}: {
+  questionLabel: string;
+  onClose: () => void;
+  draft: string;
+  setDraft: (value: string) => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  assistStatus: string;
+  onSubmit: () => void;
+  desktop: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal={!desktop}
+      aria-label="Ask"
+      className="flex h-full min-h-0 flex-col outline-none"
+    >
+      <header className="flex shrink-0 items-start gap-2 border-b border-frame/70 px-3 py-2.5 sm:px-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Ask
+          </p>
+          <p className="mt-0.5 truncate text-sm font-semibold tracking-tight text-ink">
+            {questionLabel}
+          </p>
+        </div>
+        <button
+          type="button"
+          aria-label="Close Ask"
+          onClick={onClose}
+          className="pressable inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-interactive/35 bg-interactive-soft text-ink"
+        >
+          <CloseIcon />
+        </button>
+      </header>
+
+      {children}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+        className="shrink-0 border-t border-frame/60 bg-surface-2/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      >
+        <div className="flex items-center gap-2 rounded-md border border-frame/70 bg-surface px-2.5 py-2 focus-within:border-interactive/45">
+          <SparkGlyph className="h-4 w-4 shrink-0 text-muted" />
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) =>
+              setDraft(e.target.value.slice(0, MAX_SEARCH_QUERY_CHARS))
+            }
+            maxLength={MAX_SEARCH_QUERY_CHARS}
+            placeholder="Ask another question…"
+            enterKeyHint="send"
+            className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ink outline-none placeholder:text-muted/80"
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim() || assistStatus === "loading"}
+            className="pressable shrink-0 rounded-md border border-interactive/35 bg-interactive-soft px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink disabled:opacity-40"
+          >
+            Ask
+          </button>
+        </div>
+        <p className="mt-1.5 text-[10px] text-muted">
+          {desktop ? (
+            <>
               <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5 font-mono">
                 esc
               </kbd>{" "}
-              closes · links keep Ask open
-            </span>
-          </p>
-        </form>
-      </div>
-    </div>,
-    document.body,
+              closes · page stays usable · links keep Ask open
+            </>
+          ) : (
+            <>Tap outside or ✕ to close</>
+          )}
+        </p>
+      </form>
+    </div>
   );
 }
 

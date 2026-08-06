@@ -1,12 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { AskDrawer } from "@/features/search/AskDrawer";
+import { AskChrome } from "@/features/search/AskDrawer";
 import { SearchPalette } from "@/features/search/SearchPalette";
 import { SearchProvider } from "@/features/search/SearchProvider";
 import type { SearchSeasonContext } from "@/features/search/search-types";
 
-/** Root mount: provider + Jump palette + Ask drawer above the whole app. */
+/** Root mount: provider + push-layout Ask chrome + Jump palette. */
 export function SearchHost({
   children,
   defaultSeason = null,
@@ -16,9 +16,8 @@ export function SearchHost({
 }) {
   return (
     <SearchProvider defaultSeason={defaultSeason}>
-      {children}
+      <AskChrome>{children}</AskChrome>
       <SearchPalette />
-      <AskDrawer />
     </SearchProvider>
   );
 }

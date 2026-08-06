@@ -216,6 +216,14 @@ body[data-ask-scroll-lock] {
   overscroll-behavior: none;
 }
 
+/* Ask push-rail (#300): keep fixed FABs clear of the right panel on desktop */
+@media (min-width: 768px) {
+  body[data-ask-rail] [data-gm-tools-anchor] {
+    right: calc(min(26rem, 38vw) + max(1rem, env(safe-area-inset-right, 0px)));
+    transition: right 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
 /* Minimal macOS/iOS-like scrollbars (thin thumb, invisible track). */
 * {
   scrollbar-width: thin;
@@ -3980,18 +3988,7 @@ button:disabled,
   }
 }
 
-/* Ask drawer (#300) — desktop slides from right; mobile rises as a sheet */
-@keyframes ask-drawer-in {
-  from {
-    opacity: 0;
-    transform: translateX(18px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
+/* Ask (#300) — mobile sheet entrance; desktop uses width transition on the rail */
 @keyframes ask-sheet-in {
   from {
     opacity: 0;

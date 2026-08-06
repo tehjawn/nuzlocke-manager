@@ -210,6 +210,7 @@ export function GmToolsLauncher({
   return (
     <>
       <div
+        data-gm-tools-anchor=""
         className="pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[max(5rem,calc(1.25rem+env(safe-area-inset-bottom,0px)))] z-40 sm:bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
       >
         <div className="pointer-events-auto relative">
