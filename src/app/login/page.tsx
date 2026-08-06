@@ -1,12 +1,16 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { auth, signIn } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { isDatabaseConfigured } from "@/lib/db";
+import {
+  resolveSessionUser,
+  SESSION_EXPIRED_LOGIN,
+} from "@/lib/session-user";
 
 export const metadata: Metadata = {
   title: "Login",
@@ -41,6 +45,17 @@ export default async function LoginPage({ searchParams }: PageProps) {
 
   const session = await auth();
   if (session?.user?.id) {
+    // Orphan JWTs (DB reset) would otherwise bounce to /me and flash chrome
+    // before AuthButtons signs them out — resolve here so the banner can show.
+    if (isDatabaseConfigured()) {
+      const resolution = await resolveSessionUser({
+        userId: session.user.id,
+        discordId: session.user.discordId,
+      });
+      if (resolution.status === "orphan") {
+        await signOut({ redirectTo: SESSION_EXPIRED_LOGIN });
+      }
+    }
     redirect(afterLogin);
   }
 

@@ -61,15 +61,8 @@ const CATEGORY_LABEL: Record<SearchCategory, string> = {
   action: "Actions",
 };
 
-function ResultIcon({
-  item,
-  deferMedia,
-}: {
-  item: SearchResult;
-  /** Skip sprites/avatars while a deferred Fuse query is catching up. */
-  deferMedia?: boolean;
-}) {
-  if (!deferMedia && item.pokemonSprite) {
+function ResultIcon({ item }: { item: SearchResult }) {
+  if (item.pokemonSprite) {
     return (
       <PokemonSpriteImage
         alt=""
@@ -83,7 +76,7 @@ function ResultIcon({
     );
   }
 
-  if (!deferMedia && item.imageUrl) {
+  if (item.imageUrl) {
     // Plain img: Search icons come from Showdown / PokeAPI / Blob and must not
     // depend on next/image remotePatterns (custom avatars break search in prod).
     return (
@@ -190,7 +183,10 @@ export function SearchPalette() {
 
   const onQueryChange = useCallback(
     (value: string) => {
-      setQuery(value);
+      // cmdk can emit a non-string in some clear/IME paths — coerce so the
+      // controlled input never renders the literal "undefined".
+      const next = typeof value === "string" ? value : "";
+      setQuery(next);
       // A new query means the previous answer is stale — drop it immediately
       // so the palette never shows an answer to a question you edited away.
       if (assist.status !== "idle") resetAssist();
@@ -261,6 +257,17 @@ export function SearchPalette() {
   }, [assist, results, season]);
 
   const showingAssist = assist.status !== "idle";
+  /** Live query drives layout; deferred query drives Fuse — avoids stale hits
+   *  stacking under Suggestions when the box is cleared mid-defer. */
+  const hasLiveQuery = Boolean(trimmedQuery);
+  const showHitList = hasLiveQuery && !showingAssist;
+  const hitsSettled = showHitList && !searchPending;
+  const showAskLeading = hitsSettled && canAsk && hits.length === 0;
+  const showAskTrailing = hitsSettled && canAsk && hits.length > 0;
+  const showEmpty = hitsSettled && hits.length === 0;
+  const askSubtitle = season
+    ? "Answered from this season’s board"
+    : "Open a challenge for season context";
 
   if (!open || typeof document === "undefined") return null;
 
@@ -309,7 +316,7 @@ export function SearchPalette() {
 
         <Command.List
           className={`relative z-[1] max-h-[min(52vh,420px)] overflow-y-auto p-2 transition-opacity duration-100 ${
-            searchPending ? "opacity-60" : "opacity-100"
+            showHitList && searchPending ? "opacity-60" : "opacity-100"
           }`}
         >
           {showingAssist ? (
@@ -324,14 +331,15 @@ export function SearchPalette() {
 
           {/* Empty results: Ask first so Enter asks. With hits, Ask trails so
               fuzzy stays the default selection (cmdk picks DOM order). */}
-          {!showingAssist &&
-          canAsk &&
-          !searchPending &&
-          hits.length === 0 ? (
-            <AskCommandGroup query={trimmedQuery} onAsk={runAsk} />
+          {showAskLeading ? (
+            <AskCommandGroup
+              query={trimmedQuery}
+              subtitle={askSubtitle}
+              onAsk={runAsk}
+            />
           ) : null}
 
-          {!showingAssist && !query.trim() ? (
+          {!showingAssist && !hasLiveQuery ? (
             <>
               {recents.length > 0 ? (
                 <div className="mb-2 px-1.5">
@@ -380,63 +388,93 @@ export function SearchPalette() {
             </>
           ) : null}
 
-          {!showingAssist &&
-          trimmedQuery &&
-          !searchPending &&
-          hits.length === 0 ? (
-            <div className="px-3 py-8 text-center text-sm text-muted">
-              No matches for “{trimmedQuery}”
-              {canAsk ? (
-                <span className="mt-1 block text-xs">
-                  Press <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5 font-mono">↵</kbd>{" "}
-                  to ask instead
-                </span>
-              ) : null}
+          {showEmpty ? (
+            <div
+              className={`px-3 text-center text-sm text-muted ${
+                showAskLeading ? "pb-3 pt-1 text-xs" : "py-8"
+              }`}
+            >
+              {showAskLeading ? (
+                <>
+                  No fuzzy matches — press{" "}
+                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5 font-mono">
+                    ↵
+                  </kbd>{" "}
+                  to ask
+                </>
+              ) : (
+                <>No matches for “{trimmedQuery}”</>
+              )}
             </div>
           ) : null}
 
-          {!showingAssist && groupedHits.map((group) => (
-            <Command.Group
-              key={group.category}
-              heading={CATEGORY_LABEL[group.category]}
-              className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
-            >
-              {group.items.map((hit) => (
-                <SearchItem
-                  key={hit.item.id}
-                  item={hit.item}
-                  deferMedia={searchPending}
-                  onSelect={() => runResult(hit.item)}
-                />
-              ))}
-            </Command.Group>
-          ))}
+          {showHitList
+            ? groupedHits.map((group) => (
+                <Command.Group
+                  key={group.category}
+                  heading={CATEGORY_LABEL[group.category]}
+                  className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
+                >
+                  {group.items.map((hit) => (
+                    <SearchItem
+                      key={hit.item.id}
+                      item={hit.item}
+                      onSelect={() => runResult(hit.item)}
+                    />
+                  ))}
+                </Command.Group>
+              ))
+            : null}
 
-          {!showingAssist && canAsk && !searchPending && hits.length > 0 ? (
-            <AskCommandGroup query={trimmedQuery} onAsk={runAsk} />
+          {showAskTrailing ? (
+            <AskCommandGroup
+              query={trimmedQuery}
+              subtitle={askSubtitle}
+              onAsk={runAsk}
+            />
           ) : null}
         </Command.List>
 
         <footer className="relative z-[1] flex items-center justify-between gap-3 border-t border-frame/60 bg-surface-2/80 px-3 py-2 text-[11px] text-muted sm:px-4">
           <span className="font-medium tracking-tight">
-            {showingAssist ? "Ask" : "Search"}
+            {showingAssist
+              ? assist.status === "loading"
+                ? "Asking…"
+                : "Ask"
+              : "Search"}
           </span>
           <span className="flex items-center gap-2 font-mono">
             {showingAssist ? (
               <span>
-                <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">esc</kbd>{" "}
-                back to results
+                <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                  esc
+                </kbd>{" "}
+                {assist.status === "loading" ? "cancel" : "back to results"}
               </span>
             ) : (
               <>
                 <span>
-                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">↑</kbd>{" "}
-                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">↓</kbd>{" "}
+                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                    ↑
+                  </kbd>{" "}
+                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                    ↓
+                  </kbd>{" "}
                   move
                 </span>
-                <span className="hidden sm:inline">
-                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">↵</kbd>{" "}
-                  open
+                <span
+                  className={
+                    canAsk && hitsSettled && hits.length === 0
+                      ? "inline"
+                      : "hidden sm:inline"
+                  }
+                >
+                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                    ↵
+                  </kbd>{" "}
+                  {canAsk && hitsSettled && hits.length === 0
+                    ? "ask"
+                    : "open"}
                 </span>
               </>
             )}
@@ -450,9 +488,11 @@ export function SearchPalette() {
 
 function AskCommandGroup({
   query,
+  subtitle,
   onAsk,
 }: {
   query: string;
+  subtitle: string;
   onAsk: () => void;
 }) {
   return (
@@ -470,9 +510,7 @@ function AskCommandGroup({
           <p className="truncate font-semibold tracking-tight text-ink">
             Ask about “{query}”
           </p>
-          <p className="truncate text-xs text-muted">
-            Answered from this season’s board
-          </p>
+          <p className="truncate text-xs text-muted">{subtitle}</p>
         </div>
         <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Ask
@@ -513,7 +551,10 @@ function AssistPanel({
       </div>
 
       {state.status === "loading" ? (
-        <div className="flex items-center gap-2 rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3 text-sm text-muted">
+        <div
+          className="flex items-center gap-2 rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3 text-sm text-muted"
+          role="status"
+        >
           <span className="flex gap-1" aria-hidden>
             {[0, 1, 2].map((i) => (
               <span
@@ -538,7 +579,10 @@ function AssistPanel({
       ) : null}
 
       {state.status === "error" ? (
-        <div className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm text-ink">
+        <div
+          className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm text-ink"
+          role="alert"
+        >
           <p>{state.error}</p>
           {state.signIn ? (
             <a
@@ -559,7 +603,7 @@ function AssistPanel({
         </div>
       ) : null}
 
-      {related.length ? (
+      {state.status === "answered" && related.length ? (
         <div className="mt-2">
           <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
             Jump to
@@ -571,6 +615,7 @@ function AssistPanel({
                 type="button"
                 onClick={() => onPickRelated(item)}
                 className="pressable rounded-md border border-frame/70 bg-surface-2 px-2 py-1 text-xs font-medium text-ink hover:border-interactive/45"
+                title={item.subtitle || undefined}
               >
                 {item.title}
               </button>
@@ -609,11 +654,9 @@ function SparkGlyph({ className }: { className?: string }) {
 function SearchItem({
   item,
   onSelect,
-  deferMedia,
 }: {
   item: SearchResult;
   onSelect: () => void;
-  deferMedia?: boolean;
 }) {
   return (
     <Command.Item
@@ -621,7 +664,7 @@ function SearchItem({
       onSelect={onSelect}
       className="flex cursor-pointer items-center gap-2.5 rounded-[calc(var(--radius-sm)-1px)] border border-transparent px-2 py-2 text-sm aria-selected:border-interactive/35 aria-selected:bg-interactive-soft"
     >
-      <ResultIcon item={item} deferMedia={deferMedia} />
+      <ResultIcon item={item} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold tracking-tight text-ink">
           {item.title}

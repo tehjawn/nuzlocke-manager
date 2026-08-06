@@ -226,7 +226,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
       badgeCount ? `${badgeCount} badge${badgeCount === 1 ? "" : "s"}` : null,
       monCount ? `${monCount} Pokémon` : null,
       fallenCount
-        ? `${fallenCount} RIP`
+        ? `${fallenCount} fallen`
         : null,
       t.statusText?.trim() || null,
     ].filter(Boolean);

@@ -47,6 +47,7 @@ export async function AuthButtons({
           { userId: session.user.id, discordId: session.user.discordId },
         );
         await signOut({ redirectTo: SESSION_EXPIRED_LOGIN });
+        return null;
       }
 
       if (resolution.status === "ok") {
