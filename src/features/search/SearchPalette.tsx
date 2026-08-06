@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { askEntityHints } from "@/features/search/ask-hints";
 import {
   buildSeasonDigestFromPlan,
@@ -39,6 +38,7 @@ import {
   useJumpAssist,
   type AssistState,
 } from "@/features/search/use-jump-assist";
+import { pokemonSpriteUrl } from "@/lib/sprites";
 import { getAppliedTheme, toggleTheme } from "@/lib/theme";
 
 const CATEGORY_ORDER: SearchCategory[] = [
@@ -62,15 +62,21 @@ const CATEGORY_LABEL: Record<SearchCategory, string> = {
 };
 
 function ResultIcon({ item }: { item: SearchResult }) {
+  // Always still PNGs here — animated GIFs in a keystroke-updating list stall
+  // the tab after a few searches (decoder + frame cost stacks up).
   if (item.pokemonSprite) {
     return (
-      <PokemonSpriteImage
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
         alt=""
         className="pixelated h-7 w-7 shrink-0 object-contain"
+        decoding="async"
         height={28}
-        pokedexId={item.pokemonSprite.pokedexId}
-        shiny={item.pokemonSprite.shiny}
-        species={item.pokemonSprite.species}
+        loading="lazy"
+        src={pokemonSpriteUrl(item.pokemonSprite.species, {
+          pokedexId: item.pokemonSprite.pokedexId,
+          shiny: item.pokemonSprite.shiny,
+        })}
         width={28}
       />
     );
@@ -86,6 +92,8 @@ function ResultIcon({ item }: { item: SearchResult }) {
         alt=""
         width={28}
         height={28}
+        decoding="async"
+        loading="lazy"
         className="pixelated h-7 w-7 shrink-0 object-contain"
       />
     );
@@ -219,9 +227,15 @@ export function SearchPalette() {
   );
 
   const trimmedQuery = query.trim();
+  const deferredTrimmed = deferredQuery.trim();
 
   const entityHints = useMemo(() => askEntityHints(season), [season]);
-  const askGuard = evaluateAskQuery(trimmedQuery, { entityHints });
+  // Guard against the deferred query so typing stays off the hot path — the
+  // Ask row only appears once Fuse/deferred settle anyway.
+  const askGuard = useMemo(
+    () => evaluateAskQuery(deferredTrimmed, { entityHints }),
+    [deferredTrimmed, entityHints],
+  );
 
   /**
    * Ask is a fallback, never the default: only when the query clears the Ask

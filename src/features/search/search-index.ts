@@ -509,6 +509,10 @@ export function querySearchIndex(
   const trimmed = query.trim();
   if (!trimmed) return [];
 
+  // Bitap + ignoreLocation scales badly with query length. Long NL asks are for
+  // Jump Ask — running Fuse for them just stalls keystrokes for empty hits.
+  if (shouldSkipFuzzySearch(trimmed)) return [];
+
   const usage = getUsageStats();
   // `Date.now()` in a Client Component is a prerender error under
   // cacheComponents, so only reach for the clock once we know there is
@@ -516,8 +520,9 @@ export function querySearchIndex(
   const hasUsage = Object.keys(usage).length > 0;
   const now = hasUsage ? Date.now() : 0;
 
+  // Cap Fuse work early; we only ever show ≤ MAX_RESULTS after usage re-rank.
   return index
-    .search(trimmed)
+    .search(trimmed, { limit: MAX_RESULTS * 2 })
     .map((hit) => {
       const base = hit.score ?? 1;
       return {
@@ -529,6 +534,20 @@ export function querySearchIndex(
     .sort((a, b) => a.ranked - b.ranked)
     .slice(0, MAX_RESULTS)
     .map(({ hit }) => ({ item: hit.item }));
+}
+
+/**
+ * Fuse is for short lookup keys (handles, species, pages). Natural-language
+ * questions thrash Bitap and almost never produce useful hits.
+ */
+function shouldSkipFuzzySearch(query: string): boolean {
+  if (query.length >= 40) return true;
+  if (query.split(/\s+/).filter(Boolean).length >= 6) return true;
+  // "who is …" / "what are …" — Ask owns these; Fuse returns noise or nothing.
+  if (query.length >= 12 && /^(who|what|which|when|where|why|how)\b/i.test(query)) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -606,13 +625,23 @@ export function defaultSuggestions(
 type UsageEntry = { n: number; t: number };
 type UsageStats = Record<string, UsageEntry>;
 
+/** In-memory mirror of USAGE_KEY so Fuse ranking doesn't JSON.parse every keystroke. */
+let usageCache: UsageStats | null = null;
+
 function getUsageStats(): UsageStats {
   if (typeof window === "undefined") return {};
+  if (usageCache) return usageCache;
   try {
     const raw = localStorage.getItem(USAGE_KEY);
-    if (!raw) return {};
+    if (!raw) {
+      usageCache = {};
+      return usageCache;
+    }
     const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      usageCache = {};
+      return usageCache;
+    }
     const clean: UsageStats = {};
     for (const [id, entry] of Object.entries(
       parsed as Record<string, unknown>,
@@ -622,9 +651,20 @@ function getUsageStats(): UsageStats {
       if (!Number.isFinite(n) || !Number.isFinite(t)) continue;
       clean[id] = { n: n as number, t: t as number };
     }
-    return clean;
+    usageCache = clean;
+    return usageCache;
   } catch {
-    return {};
+    usageCache = {};
+    return usageCache;
+  }
+}
+
+function persistUsageStats(stats: UsageStats) {
+  usageCache = stats;
+  try {
+    localStorage.setItem(USAGE_KEY, JSON.stringify(stats));
+  } catch {
+    // Quota / private mode — ranking just won't persist.
   }
 }
 
@@ -632,7 +672,7 @@ function getUsageStats(): UsageStats {
 export function recordSearchUse(id: string) {
   if (typeof window === "undefined" || !id) return;
   try {
-    const stats = getUsageStats();
+    const stats = { ...getUsageStats() };
     const prev = stats[id];
     stats[id] = { n: (prev?.n ?? 0) + 1, t: Date.now() };
 
@@ -645,11 +685,11 @@ export function recordSearchUse(id: string) {
         .slice(0, MAX_USAGE_ENTRIES);
       const trimmed: UsageStats = {};
       for (const key of keep) trimmed[key] = stats[key];
-      localStorage.setItem(USAGE_KEY, JSON.stringify(trimmed));
+      persistUsageStats(trimmed);
       return;
     }
 
-    localStorage.setItem(USAGE_KEY, JSON.stringify(stats));
+    persistUsageStats(stats);
   } catch {
     // private mode / blocked storage
   }
@@ -703,6 +743,7 @@ export function clearRecentSearches() {
     localStorage.removeItem(RECENT_KEY);
     localStorage.removeItem(LEGACY_RECENT_KEY);
     localStorage.removeItem(USAGE_KEY);
+    usageCache = {};
   } catch {
     // ignore
   }
