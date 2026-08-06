@@ -29,12 +29,14 @@ export const pokemonFullSelect = {
   moves: true,
   ivs: true,
   evs: true,
+  friendship: true,
 } as const;
 
 /**
  * Tools page: identity + moves for Pokédex tips / bounty / planner, plus the
  * competitive columns Pokémon Ownership's Showcase needs — catch tier is
- * IV/EV-derived, so a tier is uncomputable without them.
+ * IV-derived and training tier needs EVs / friendship, so both are
+ * uncomputable without them.
  *
  * Flight weight is still bounded: `redactTrainerCompetitiveDetails` runs at the
  * page boundary, so the payload only carries spreads the viewer already owns

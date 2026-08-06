@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { BondHeart } from "@/components/BondHeart";
 import { EvolutionPath } from "@/components/EvolutionPath";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
@@ -19,7 +20,7 @@ import {
   catchTierHasChrome,
   catchTierLabel,
   catchTierToneClass,
-  specimenCatchTier,
+  ivCatchTier,
   summarizeBattleStats,
   summarizeEvs,
   summarizeIvs,
@@ -42,6 +43,14 @@ import {
   STAT_LABELS,
 } from "@/lib/stats";
 import { toolsHref } from "@/lib/tools-routes";
+import {
+  specimenTrainingTier,
+  trainingTierFill,
+  trainingTierHasHeart,
+  trainingTierLabel,
+  trainingTierToneClass,
+  type TrainingTier,
+} from "@/lib/training-quality";
 
 const ModernEmeraldLearnset = dynamic(
   () =>
@@ -151,17 +160,22 @@ export function PokemonDetailsModal({
       })
     : null;
   const catchTier: CatchTier = showCompetitiveDetails
-    ? specimenCatchTier({
-        ivs: showIvs ? ivs : null,
-        evs: showEvs ? evs : null,
-        battle,
-        battleMax,
-      })
+    ? ivCatchTier(showIvs ? ivs : null)
     : "oof";
   const catchLabel =
     showCompetitiveDetails && (showIvs || catchTierHasChrome(catchTier))
       ? catchTierLabel(catchTier)
       : null;
+  const trainingTier: TrainingTier = showCompetitiveDetails
+    ? specimenTrainingTier({
+        evs: showEvs ? evs : null,
+        natureAlignment: playstyle?.natureAlignment ?? null,
+        friendship: pokemon.friendship,
+      })
+    : "raw";
+  const bondLabel = trainingTierHasHeart(trainingTier)
+    ? trainingTierLabel(trainingTier)
+    : null;
 
   // Species-level ranks (Pokédex) — separate from specimen CatchTier under the sprite.
   const baseStats = baseStatsForSpecies(pokemon.pokedexId);
@@ -270,7 +284,7 @@ export function PokemonDetailsModal({
               }
             >
               <div
-                className={`mx-auto flex h-36 w-36 items-center justify-center rounded-lg border sm:mx-0 sm:h-auto sm:w-full sm:aspect-square ${
+                className={`relative mx-auto flex h-36 w-36 items-center justify-center rounded-lg border sm:mx-0 sm:h-auto sm:w-full sm:aspect-square ${
                   catchTierHasChrome(catchTier)
                     ? `pokemon-catch-sprite pokemon-catch-sprite--emphasis pokemon-catch-sprite--${catchTier}`
                     : "border-frame bg-surface-2"
@@ -285,6 +299,13 @@ export function PokemonDetailsModal({
                   species={pokemon.species}
                   width={144}
                 />
+                {bondLabel ? (
+                  <BondHeart
+                    className={`pokemon-bond-heart--corner pokemon-bond-heart--${trainingTier} h-4 w-4`}
+                    fill={trainingTierFill(trainingTier)}
+                    label={bondLabel}
+                  />
+                ) : null}
               </div>
             </div>
             {catchLabel ? (
@@ -292,6 +313,13 @@ export function PokemonDetailsModal({
                 className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${catchTierToneClass(catchTier)}`}
               >
                 {catchLabel}
+              </p>
+            ) : null}
+            {bondLabel ? (
+              <p
+                className={`text-center text-[11px] font-semibold tracking-tight sm:text-left ${trainingTierToneClass(trainingTier)}`}
+              >
+                {bondLabel}
               </p>
             ) : null}
             {pokemon.types.length > 0 ? (

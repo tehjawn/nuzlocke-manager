@@ -376,6 +376,8 @@ model PokemonEntry {
   ivs          Json?
   /// { hp, atk, def, spa, spd, spe } — each 0–255
   evs          Json?
+  /// Gen 3 growth friendship (0–255); null when unknown / pre-import rows.
+  friendship   Int?
   causeOfDeath String?
   /// 1-based run attempt when this mon entered GRAVEYARD (wipeCount + 1 at death).
   diedOnRun    Int?

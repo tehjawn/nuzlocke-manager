@@ -89,6 +89,7 @@ type DbChallenge = {
       moves?: string[];
       ivs?: unknown;
       evs?: unknown;
+      friendship?: number | null;
       causeOfDeath: string | null;
       diedOnRun: number | null;
       runId: string | null;
@@ -278,6 +279,13 @@ export function mapDbTrainer(
         );
       })(),
       evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
+      friendship:
+        typeof p.friendship === "number" &&
+        Number.isInteger(p.friendship) &&
+        p.friendship >= 0 &&
+        p.friendship <= 255
+          ? p.friendship
+          : null,
       causeOfDeath: p.causeOfDeath,
       diedOnRun: p.diedOnRun ?? null,
       runId: p.runId ?? null,

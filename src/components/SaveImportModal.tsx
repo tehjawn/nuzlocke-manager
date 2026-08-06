@@ -27,6 +27,7 @@ export type SaveImportDraft = {
   moves: string[];
   ivs: ParsedSavePokemon["ivs"];
   evs: ParsedSavePokemon["evs"];
+  friendship: number;
   slot: PokemonSlot;
   include: boolean;
 };
@@ -80,6 +81,7 @@ function categoryToDrafts(
     moves: mon.moves,
     ivs: mon.ivs,
     evs: mon.evs,
+    friendship: mon.friendship,
     slot,
     include: true,
   }));

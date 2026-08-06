@@ -1103,6 +1103,70 @@ button:disabled,
   color: transparent;
 }
 
+/*
+ * Bond heart — training / care chrome (orthogonal to catch ring).
+ * Tint family matches catch good → great → cracked; no shit / god prismatic.
+ */
+.pokemon-bond-heart {
+  --bond-fill: 0%;
+  --bond-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
+  display: inline-flex;
+  color: var(--bond-tint);
+  pointer-events: none;
+}
+
+.pokemon-bond-heart__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.pokemon-bond-heart__outline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  opacity: 0.9;
+}
+
+.pokemon-bond-heart__fill {
+  fill: currentColor;
+  stroke: none;
+  clip-path: inset(calc(100% - var(--bond-fill)) 0 0 0);
+}
+
+.pokemon-bond-heart--growing {
+  --bond-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
+}
+
+.pokemon-bond-heart--trained {
+  --bond-tint: #b794f6;
+}
+
+.pokemon-bond-heart--bonded {
+  --bond-tint: #f0c14a;
+}
+
+.pokemon-bond-label--growing {
+  color: color-mix(in srgb, var(--interactive) 88%, #9ad0ef);
+}
+
+.pokemon-bond-label--trained {
+  color: #c4b5fd;
+}
+
+.pokemon-bond-label--bonded {
+  color: #f0c14a;
+}
+
+/* Absolute placement inside a relative sprite well */
+.pokemon-bond-heart--corner {
+  position: absolute;
+  left: 0.2rem;
+  bottom: 0.15rem;
+  z-index: 2;
+}
+
 .gba-frame-menu::before,
 .gba-frame:not([data-card-bg])::before {
   content: none;

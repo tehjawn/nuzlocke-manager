@@ -1,3 +1,4 @@
+import { BondHeart } from "@/components/BondHeart";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -8,17 +9,25 @@ import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry } from "@/lib/challenge-types";
 import {
   catchTierHasChrome,
-  specimenCatchTier,
+  ivCatchTier,
   type CatchTier,
 } from "@/lib/iv-quality";
 import { moveTypeWashStyle } from "@/lib/move-meta";
 import { resolveMoveName } from "@/lib/move-names";
+import { recommendPlaystyle } from "@/lib/playstyle";
 import {
   calcBattleStats,
   calcMaxBattleStats,
   isEmptySpread,
   natureEffectDescription,
 } from "@/lib/stats";
+import {
+  specimenTrainingTier,
+  trainingTierFill,
+  trainingTierHasHeart,
+  trainingTierLabel,
+  type TrainingTier,
+} from "@/lib/training-quality";
 
 type PokemonSlotCardProps = {
   pokemon?: PokemonEntry | null;
@@ -113,13 +122,23 @@ export function PokemonSlotCard({
   const showStatColumn = Boolean(battle || ivFallback);
   const catchTier: CatchTier =
     showCompetitiveDetails && !speciesOnly
-      ? specimenCatchTier({
-          ivs: pokemon.ivs,
-          evs: isEmptySpread(pokemon.evs) ? null : pokemon.evs,
-          battle,
-          battleMax,
-        })
+      ? ivCatchTier(isEmptySpread(pokemon.ivs) ? null : pokemon.ivs)
       : "oof";
+  const trainingTier: TrainingTier =
+    showCompetitiveDetails && !speciesOnly
+      ? specimenTrainingTier({
+          evs: pokemon.evs,
+          natureAlignment:
+            recommendPlaystyle({
+              pokedexId: pokemon.pokedexId,
+              nature: pokemon.nature,
+              ability: pokemon.ability,
+              ivs: isEmptySpread(pokemon.ivs) ? null : pokemon.ivs,
+            })?.natureAlignment ?? null,
+          friendship: pokemon.friendship,
+        })
+      : "raw";
+  const bondLabel = trainingTierLabel(trainingTier);
   const tierRing = catchTierHasChrome(catchTier)
     ? `pokemon-catch-ring pokemon-catch-ring--${catchTier}`
     : null;
@@ -238,7 +257,7 @@ export function PokemonSlotCard({
       >
       <div className="flex shrink-0 items-start gap-3">
         <div
-          className={`flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border bg-surface-2 ${
+          className={`relative flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border bg-surface-2 ${
             catchTierHasChrome(catchTier)
               ? `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
               : "border-frame"
@@ -253,6 +272,13 @@ export function PokemonSlotCard({
             species={pokemon.species}
             width={96}
           />
+          {trainingTierHasHeart(trainingTier) && bondLabel ? (
+            <BondHeart
+              className={`pokemon-bond-heart--corner pokemon-bond-heart--${trainingTier} h-3.5 w-3.5`}
+              fill={trainingTierFill(trainingTier)}
+              label={bondLabel}
+            />
+          ) : null}
         </div>
         <div className="min-w-0 flex-1 space-y-1.5">
           <div>

@@ -11,6 +11,7 @@ export function redactCompetitivePokemonDetails(
     moves: [],
     ivs: null,
     evs: null,
+    friendship: null,
   };
 }
 

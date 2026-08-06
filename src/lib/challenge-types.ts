@@ -33,6 +33,8 @@ export type PokemonEntry = {
   moves: string[];
   ivs: StatSpread | null;
   evs: StatSpread | null;
+  /** Gen 3 growth friendship (0–255); null when unknown / not imported. */
+  friendship: number | null;
   causeOfDeath: string | null;
   /** 1-based run attempt when memorialized; null when unknown (legacy graves). */
   diedOnRun: number | null;

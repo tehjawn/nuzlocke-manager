@@ -54,6 +54,8 @@ export type PokemonFormState = {
   move4: string;
   ivs: StatSpread;
   evs: StatSpread;
+  /** Passthrough — set from save import; not edited in the form UI. */
+  friendship: number | null;
   causeOfDeath: string;
 };
 
@@ -76,6 +78,7 @@ export const EMPTY_POKEMON_FORM: PokemonFormState = {
   move4: "",
   ivs: { ...EMPTY_IVS },
   evs: { ...EMPTY_EVS },
+  friendship: null,
   causeOfDeath: "",
 };
 
@@ -104,6 +107,7 @@ export function pokemonEntryToForm(mon: PokemonEntry): PokemonFormState {
     move4: resolveMoveName(mon.moves[3] ?? ""),
     ivs: clampIvs(mon.ivs ?? undefined),
     evs: clampEvs(mon.evs ?? undefined),
+    friendship: mon.friendship,
     causeOfDeath: mon.causeOfDeath ?? "",
   };
 }
@@ -136,6 +140,7 @@ export function pokemonFormToEntry(form: PokemonFormState): PokemonEntry {
     moves,
     ivs: isEmptySpread(form.ivs) ? null : form.ivs,
     evs: isEmptySpread(form.evs) ? null : form.evs,
+    friendship: form.friendship,
     causeOfDeath: form.causeOfDeath.trim() || null,
     diedOnRun: null,
     runId: null,
