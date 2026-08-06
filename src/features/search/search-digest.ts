@@ -3,16 +3,13 @@ import type { SearchSeasonContext } from "@/features/search/search-types";
 /**
  * Compact plain-text snapshot of the season for Jump's Ask mode (#184).
  *
- * Built from context the browser already holds, so asking a question costs no
- * extra DB read. Deliberately terse — this is prompt input, not display copy,
- * and every line is tokens we pay for.
+ * Two-phase client path (no LLM on pass 1):
+ *   1. `detectAskPlan(question)` — shopping list of which slices matter
+ *   2. `buildSeasonDigest(ctx, question)` — pack only those slices into ≤8k
  *
- * Intent-scoped: the question steers which slices we include so a ROM/rules
- * ask doesn't ship every trainer's party, and a standings ask skips FAQ bodies.
- *
- * Identity minimization: handles only. Real names, Discord usernames, and
- * display names are all in `SearchSeasonContext` and all omitted — they never
- * change the answer to "who's ahead in badges", so they don't leave the browser.
+ * Built from context the browser already holds, so asking costs no extra DB
+ * read. Identity minimization: handles only — real names / Discord never leave
+ * the browser.
  */
 
 const MAX_TRAINERS = 30;
@@ -23,31 +20,185 @@ const MAX_FAQS = 12;
 const RULE_BODY_CHARS = 160;
 const FAQ_ANSWER_CHARS = 160;
 /** Hard ceiling (~2k tokens) so one huge season can't blow up a request. */
-const MAX_DIGEST_CHARS = 8_000;
+export const MAX_DIGEST_CHARS = 8_000;
 
 const FALLEN_SLOT = "GRAVEYARD";
 
-export type DigestFocus = "league" | "roster" | "full";
+/** Which season slices to pack for a question. */
+export type AskFocus =
+  | "meta"
+  | "league"
+  | "standings"
+  | "roster"
+  | "full";
+
+export type AskPlan = {
+  focus: AskFocus;
+  /** Handles mentioned in the question (matched against season trainers). */
+  trainerHandles: string[];
+  includeMons: boolean;
+  includeFallenDetail: boolean;
+  includeRules: boolean;
+  /** Full rule bodies vs titles-only. */
+  includeRuleBodies: boolean;
+  includeFaqs: boolean;
+  /**
+   * Species + level only (no nickname / route / status). False when the
+   * question asks about nicknames, routes, or shinies.
+   */
+  leanMons: boolean;
+};
+
+/** @deprecated Use AskFocus — kept for any external imports. */
+export type DigestFocus = AskFocus;
 
 /**
- * Cheap client-side topic guess — no LLM. Biases the digest toward the slices
- * that can answer the question so we spend fewer input tokens.
+ * Pass 1: cheap client-side plan — no LLM. Decides which digest slices to
+ * include so pass 2 never ships a 30-trainer party dump for a meta ask.
  */
-export function detectDigestFocus(question: string): DigestFocus {
-  const q = question.toLowerCase();
+export function detectAskPlan(
+  question: string,
+  ctx?: SearchSeasonContext | null,
+): AskPlan {
+  const q = question.toLowerCase().replace(/\s+/g, " ").trim();
+
+  const trainerHandles = ctx ? matchTrainerHandles(q, ctx) : [];
+
+  const wantsDetail =
+    /\b(nickname|nicknames|route|caught|shiny|shinies|status)\b/.test(q);
+  const leanMons = !wantsDetail;
+
+  const meta =
+    /\b(strongest|weakest|best|worst|bst|base\s*stat|tier|ou\b|uber|meta|competitive|type\s*chart|effectiveness|evol(?:ve|ution)|learnset|movepool|pokedex|pok[eé]dex)\b/.test(
+      q,
+    ) ||
+    /\b(what|which)\s+(are\s+)?(the\s+)?(strongest|best|weakest|worst)\b/.test(
+      q,
+    );
 
   const league =
     /\b(rom|hack|download|modern\s*emerald|emerald\s*modern|what\s+game|which\s+game|what\s+rom|rule|rules|faq|level\s*cap|gen(?:eration)?\s*\d|wipe|revive\s*token|save\s*scum|breeding|consumable|potion|shiny\s*toggle|end\s*goal|tournament|guide|how\s+do\s+i\s+play)\b/.test(
       q,
     );
+
+  const standingsOnly =
+    /\b(who('s| is)?\s+ahead|who('s| is)?\s+behind|standings|leaderboard|badge\s*count|most\s+badges|fewest\s+badges|how\s+many\s+badges)\b/.test(
+      q,
+    ) && !/\b(team|party|squad|fallen|living|dead|memorial|grave)\b/.test(q);
+
   const roster =
+    trainerHandles.length > 0 ||
     /\b(who|whose|ahead|behind|badge|badges|team|teams|party|fallen|living|dead|deaths?|memorial|grave|trainer|trainers|standings|leaderboard|box|squad|nickname|caught|route)\b/.test(
       q,
     );
 
-  if (league && !roster) return "league";
-  if (roster && !league) return "roster";
-  return "full";
+  // Named trainer → always pull their roster detail.
+  if (trainerHandles.length > 0) {
+    return {
+      focus: "roster",
+      trainerHandles,
+      includeMons: true,
+      includeFallenDetail: /\b(fallen|dead|death|deaths|memorial|grave|rip)\b/.test(
+        q,
+      ),
+      includeRules: false,
+      includeRuleBodies: false,
+      includeFaqs: false,
+      leanMons,
+    };
+  }
+
+  if (meta && !league && !roster) {
+    return {
+      focus: "meta",
+      trainerHandles: [],
+      includeMons: false,
+      includeFallenDetail: false,
+      includeRules: false,
+      includeRuleBodies: false,
+      includeFaqs: false,
+      leanMons: true,
+    };
+  }
+
+  if (league && !roster) {
+    return {
+      focus: "league",
+      trainerHandles: [],
+      includeMons: false,
+      includeFallenDetail: false,
+      includeRules: true,
+      includeRuleBodies: true,
+      includeFaqs: true,
+      leanMons: true,
+    };
+  }
+
+  if (standingsOnly) {
+    return {
+      focus: "standings",
+      trainerHandles: [],
+      includeMons: false,
+      includeFallenDetail: false,
+      includeRules: false,
+      includeRuleBodies: false,
+      includeFaqs: false,
+      leanMons: true,
+    };
+  }
+
+  if (roster && !league) {
+    return {
+      focus: "roster",
+      trainerHandles: [],
+      includeMons: true,
+      includeFallenDetail: true,
+      includeRules: true,
+      includeRuleBodies: false,
+      includeFaqs: false,
+      leanMons,
+    };
+  }
+
+  // Mixed / unclear — pack everything, but lean mon labels and budget-stop.
+  return {
+    focus: "full",
+    trainerHandles: [],
+    includeMons: true,
+    includeFallenDetail: true,
+    includeRules: true,
+    includeRuleBodies: true,
+    includeFaqs: true,
+    leanMons,
+  };
+}
+
+/** Back-compat wrapper — prefer `detectAskPlan`. */
+export function detectDigestFocus(question: string): AskFocus {
+  return detectAskPlan(question).focus;
+}
+
+function matchTrainerHandles(
+  q: string,
+  ctx: SearchSeasonContext,
+): string[] {
+  const matched: string[] = [];
+  for (const t of ctx.trainers) {
+    const handle = t.handle.trim();
+    if (handle.length < 2) continue;
+    const h = handle.toLowerCase();
+    // Word-boundary-ish: avoid matching "al" inside "total".
+    const re = new RegExp(
+      `(^|[^a-z0-9_])${escapeRegExp(h)}([^a-z0-9_]|$)`,
+      "i",
+    );
+    if (re.test(q)) matched.push(handle);
+  }
+  return matched;
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function short(text: string, max: number): string {
@@ -56,13 +207,21 @@ function short(text: string, max: number): string {
   return `${clean.slice(0, max - 1)}…`;
 }
 
-function monLabel(mon: {
-  species: string;
-  nickname: string | null;
-  level: number | null;
-  isShiny: boolean;
-  catchRoute: string | null;
-}): string {
+function monLabel(
+  mon: {
+    species: string;
+    nickname: string | null;
+    level: number | null;
+    isShiny: boolean;
+    catchRoute: string | null;
+  },
+  lean: boolean,
+): string {
+  if (lean) {
+    const lv = mon.level != null ? `@L${mon.level}` : "";
+    const shiny = mon.isShiny ? "*" : "";
+    return `${mon.species}${shiny}${lv}`;
+  }
   const name = mon.nickname?.trim()
     ? `${mon.nickname.trim()} (${mon.species})`
     : mon.species;
@@ -84,82 +243,149 @@ function gameLine(game: string | null | undefined): string | null {
   return `GAME: ${g}`;
 }
 
-function appendRules(lines: string[], ctx: SearchSeasonContext, bodyChars: number) {
-  if (!ctx.rules.length) return;
-  lines.push("", "LEAGUE RULES:");
+type Pack = {
+  lines: string[];
+  used: number;
+  budget: number;
+};
+
+function createPack(budget: number): Pack {
+  return { lines: [], used: 0, budget };
+}
+
+/** Try to append a block; skip entirely if it won't fit (no mid-line chops). */
+function pushBlock(pack: Pack, block: string[]): boolean {
+  if (!block.length) return true;
+  const chunk = (pack.lines.length ? "\n" : "") + block.join("\n");
+  if (pack.used + chunk.length > pack.budget) return false;
+  pack.lines.push(...block);
+  pack.used += chunk.length;
+  return true;
+}
+
+function pushLine(pack: Pack, line: string): boolean {
+  return pushBlock(pack, [line]);
+}
+
+function rulesBlock(
+  ctx: SearchSeasonContext,
+  bodies: boolean,
+  bodyChars: number,
+): string[] {
+  if (!ctx.rules.length) return [];
+  if (!bodies) {
+    return [
+      "",
+      `RULE TITLES: ${ctx.rules
+        .slice(0, MAX_RULES)
+        .map((r) => r.title?.trim() || "Rule")
+        .join("; ")}`,
+    ];
+  }
+  const out = ["", "LEAGUE RULES:"];
   for (const r of ctx.rules.slice(0, MAX_RULES)) {
     const title = r.title?.trim() || "Rule";
     const body = r.body?.trim();
-    lines.push(body ? `- ${title}: ${short(body, bodyChars)}` : `- ${title}`);
+    out.push(body ? `- ${title}: ${short(body, bodyChars)}` : `- ${title}`);
   }
+  return out;
 }
 
-function appendFaqs(lines: string[], ctx: SearchSeasonContext, answerChars: number) {
-  if (!ctx.faqs.length) return;
-  lines.push("", "FAQ:");
+function faqsBlock(ctx: SearchSeasonContext, answerChars: number): string[] {
+  if (!ctx.faqs.length) return [];
+  const out = ["", "FAQ:"];
   for (const f of ctx.faqs.slice(0, MAX_FAQS)) {
-    lines.push(
+    out.push(
       `- Q: ${short(f.question, 100)} A: ${short(f.answer, answerChars)}`,
     );
   }
+  return out;
 }
 
-function appendTrainers(
-  lines: string[],
+function sortTrainersForPlan(
   ctx: SearchSeasonContext,
-  opts: { includeMons: boolean },
-) {
-  if (!ctx.trainers.length) return;
-
-  lines.push(
-    "",
-    opts.includeMons
-      ? "TRAINERS — handle | badges earned | living mons | fallen mons | status"
-      : "TRAINERS — handle | badges earned | living | fallen",
+  plan: AskPlan,
+): SearchSeasonContext["trainers"] {
+  const preferred = new Set(
+    plan.trainerHandles.map((h) => h.toLowerCase()),
   );
+  const list = [...ctx.trainers];
 
-  const trainers = ctx.trainers.slice(0, MAX_TRAINERS);
-  for (const t of trainers) {
-    const mons = t.pokemon ?? [];
-    const fallen = mons.filter((m) => m.slot === FALLEN_SLOT);
-    const living = mons.filter((m) => m.slot !== FALLEN_SLOT);
-    const status =
-      opts.includeMons && t.statusText?.trim()
-        ? ` | "${short(t.statusText, 80)}"`
-        : "";
-
-    lines.push(
-      `${t.handle} | ${t.earnedBadgeKeys?.length ?? 0} badges | ${living.length} living | ${fallen.length} fallen${status}`,
-    );
-
-    if (!opts.includeMons) continue;
-
-    if (living.length) {
-      lines.push(
-        `  team: ${living.slice(0, MAX_PARTY_PER_TRAINER).map(monLabel).join("; ")}`,
-      );
-    }
-    if (fallen.length) {
-      lines.push(
-        `  fallen: ${fallen.slice(0, MAX_FALLEN_PER_TRAINER).map(monLabel).join("; ")}`,
-      );
-    }
+  // Named in the question → only those trainers (plus nothing else).
+  if (preferred.size > 0) {
+    const named = list.filter((t) => preferred.has(t.handle.toLowerCase()));
+    if (named.length) return named;
   }
 
-  if (ctx.trainers.length > MAX_TRAINERS) {
-    lines.push(
-      `(… ${ctx.trainers.length - MAX_TRAINERS} more trainers not listed)`,
-    );
-  }
+  list.sort((a, b) => {
+    const badgeDelta =
+      (b.earnedBadgeKeys?.length ?? 0) - (a.earnedBadgeKeys?.length ?? 0);
+    if (badgeDelta !== 0) return badgeDelta;
+    return a.handle.localeCompare(b.handle);
+  });
+  return list.slice(0, MAX_TRAINERS);
 }
+
+function trainerHeaderLine(
+  t: SearchSeasonContext["trainers"][number],
+  includeStatus: boolean,
+): string {
+  const mons = t.pokemon ?? [];
+  const fallen = mons.filter((m) => m.slot === FALLEN_SLOT);
+  const living = mons.filter((m) => m.slot !== FALLEN_SLOT);
+  const status =
+    includeStatus && t.statusText?.trim()
+      ? ` | "${short(t.statusText, 80)}"`
+      : "";
+  return `${t.handle} | ${t.earnedBadgeKeys?.length ?? 0} badges | ${living.length} living | ${fallen.length} fallen${status}`;
+}
+
+function trainerMonLines(
+  t: SearchSeasonContext["trainers"][number],
+  plan: AskPlan,
+): string[] {
+  if (!plan.includeMons) return [];
+  const mons = t.pokemon ?? [];
+  const fallen = mons.filter((m) => m.slot === FALLEN_SLOT);
+  const living = mons.filter((m) => m.slot !== FALLEN_SLOT);
+  const out: string[] = [];
+  if (living.length) {
+    out.push(
+      `  team: ${living
+        .slice(0, MAX_PARTY_PER_TRAINER)
+        .map((m) => monLabel(m, plan.leanMons))
+        .join("; ")}`,
+    );
+  }
+  if (plan.includeFallenDetail && fallen.length) {
+    out.push(
+      `  fallen: ${fallen
+        .slice(0, MAX_FALLEN_PER_TRAINER)
+        .map((m) => monLabel(m, plan.leanMons))
+        .join("; ")}`,
+    );
+  }
+  return out;
+}
+
+const FULL_PLAN: AskPlan = {
+  focus: "full",
+  trainerHandles: [],
+  includeMons: true,
+  includeFallenDetail: true,
+  includeRules: true,
+  includeRuleBodies: true,
+  includeFaqs: true,
+  leanMons: true,
+};
 
 /**
- * Returns null when there is nothing worth asking about (no game, rules, FAQ,
- * badges, or trainers — e.g. an empty identity stub).
+ * Pass 2: pack plan-selected slices under MAX_DIGEST_CHARS.
+ * Prefer `detectAskPlan` then this; `buildSeasonDigest` combines both.
  */
-export function buildSeasonDigest(
+export function buildSeasonDigestFromPlan(
   ctx: SearchSeasonContext,
-  question?: string,
+  plan: AskPlan,
 ): string | null {
   const hasLeagueBits =
     Boolean(ctx.game?.trim()) ||
@@ -170,16 +396,27 @@ export function buildSeasonDigest(
 
   if (!hasLeagueBits) return null;
 
-  const focus = question?.trim()
-    ? detectDigestFocus(question)
-    : ("full" as DigestFocus);
+  // Meta asks (strongest / BST / tier) don't need boards — season + game only
+  // so the model still knows the ROM; APP CONTEXT covers the rest.
+  if (plan.focus === "meta") {
+    const lines = [
+      `SEASON: ${ctx.name} | year ${ctx.year} | status ${ctx.status}`,
+      `ASK FOCUS: meta (no trainer rosters — answer from general Pokémon knowledge for this game)`,
+    ];
+    const game = gameLine(ctx.game);
+    if (game) lines.push(game);
+    return lines.join("\n");
+  }
 
-  const lines: string[] = [
-    `SEASON: ${ctx.name} | year ${ctx.year} | status ${ctx.status}`,
-  ];
+  const pack = createPack(MAX_DIGEST_CHARS);
+
+  pushLine(
+    pack,
+    `SEASON: ${ctx.name} | year ${ctx.year} | status ${ctx.status} | focus ${plan.focus}`,
+  );
 
   const game = gameLine(ctx.game);
-  if (game) lines.push(game);
+  if (game) pushLine(pack, game);
 
   if (ctx.badges.length) {
     const badgeList = ctx.badges
@@ -187,32 +424,81 @@ export function buildSeasonDigest(
         b.leaderName?.trim() ? `${b.label} (${b.leaderName.trim()})` : b.label,
       )
       .join(", ");
-    lines.push(`BADGES IN SEASON: ${badgeList}`);
+    pushLine(pack, `BADGES IN SEASON: ${badgeList}`);
   }
 
-  if (focus === "league") {
-    // Rules + FAQ only — skip party lists (largest token cost).
-    appendRules(lines, ctx, 200);
-    appendFaqs(lines, ctx, 200);
-  } else if (focus === "roster") {
-    // Standings / teams — skip FAQ/rule bodies; titles alone are enough if mixed.
-    appendTrainers(lines, ctx, { includeMons: true });
-    if (ctx.rules.length) {
-      lines.push(
-        "",
-        `RULE TITLES: ${ctx.rules
-          .slice(0, MAX_RULES)
-          .map((r) => r.title?.trim() || "Rule")
-          .join("; ")}`,
+  const wantTrainers =
+    plan.focus === "standings" ||
+    plan.focus === "roster" ||
+    plan.focus === "full";
+
+  if (wantTrainers && ctx.trainers.length) {
+    const header =
+      plan.includeMons
+        ? "TRAINERS — handle | badges | living | fallen"
+        : "TRAINERS — handle | badges | living | fallen (counts only)";
+    pushLine(pack, "");
+    pushLine(pack, header);
+
+    const trainers = sortTrainersForPlan(ctx, plan);
+    let packed = 0;
+    for (const t of trainers) {
+      const block = [
+        trainerHeaderLine(t, !plan.leanMons && plan.includeMons),
+        ...trainerMonLines(t, plan),
+      ];
+      if (!pushBlock(pack, block)) {
+        pushLine(
+          pack,
+          `(… ${trainers.length - packed} more trainers omitted for size)`,
+        );
+        break;
+      }
+      packed += 1;
+    }
+
+    if (
+      packed === trainers.length &&
+      ctx.trainers.length > MAX_TRAINERS
+    ) {
+      pushLine(
+        pack,
+        `(… ${ctx.trainers.length - MAX_TRAINERS} more trainers not listed)`,
       );
     }
-  } else {
-    appendTrainers(lines, ctx, { includeMons: true });
-    appendRules(lines, ctx, RULE_BODY_CHARS);
-    appendFaqs(lines, ctx, FAQ_ANSWER_CHARS);
   }
 
-  const digest = lines.join("\n");
-  if (digest.length <= MAX_DIGEST_CHARS) return digest;
-  return `${digest.slice(0, MAX_DIGEST_CHARS)}\n(… snapshot truncated)`;
+  if (plan.includeRules) {
+    const block = rulesBlock(
+      ctx,
+      plan.includeRuleBodies,
+      plan.focus === "league" ? 200 : RULE_BODY_CHARS,
+    );
+    if (!pushBlock(pack, block) && block.length) {
+      pushLine(pack, "(… rules omitted for size)");
+    }
+  }
+
+  if (plan.includeFaqs) {
+    const block = faqsBlock(
+      ctx,
+      plan.focus === "league" ? 200 : FAQ_ANSWER_CHARS,
+    );
+    if (!pushBlock(pack, block) && block.length) {
+      pushLine(pack, "(… FAQ omitted for size)");
+    }
+  }
+
+  return pack.lines.join("\n");
+}
+
+/** Pass 1 + 2: detect plan from the question, then pack the digest. */
+export function buildSeasonDigest(
+  ctx: SearchSeasonContext,
+  question?: string,
+): string | null {
+  const plan = question?.trim()
+    ? detectAskPlan(question, ctx)
+    : FULL_PLAN;
+  return buildSeasonDigestFromPlan(ctx, plan);
 }

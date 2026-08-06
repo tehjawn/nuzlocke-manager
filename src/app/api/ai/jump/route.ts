@@ -22,10 +22,21 @@ import { checkAiRateLimit } from "@/lib/ai/rate-limit";
  * 501 when the key is unset so callers can degrade to fuzzy search silently.
  */
 
+const MAX_SNAPSHOT_CHARS = 8_000;
+
 const askSchema = z.object({
   question: z.string().trim().min(1).max(300),
-  /** Compact league snapshot built client-side; absent on global pages. */
-  snapshot: z.string().max(8_000).nullish(),
+  /**
+   * Compact league snapshot built client-side; absent on global pages.
+   * Oversized payloads are truncated (not rejected) so a digest that grew past
+   * the ceiling — e.g. truncation suffix past the old hard max — still answers.
+   */
+  snapshot: z
+    .string()
+    .nullish()
+    .transform((value) =>
+      typeof value === "string" ? value.slice(0, MAX_SNAPSHOT_CHARS) : value,
+    ),
 });
 
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
@@ -59,8 +70,16 @@ export async function POST(request: Request) {
 
   const parsed = askSchema.safeParse(body);
   if (!parsed.success) {
+    const questionIssue = parsed.error.issues.find((i) =>
+      i.path.includes("question"),
+    );
     return Response.json(
-      { ok: false, error: "question is required (1–300 characters)" },
+      {
+        ok: false,
+        error: questionIssue
+          ? "question is required (1–300 characters)"
+          : "Invalid ask payload",
+      },
       { status: 400, headers: NO_STORE },
     );
   }

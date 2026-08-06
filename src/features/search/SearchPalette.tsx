@@ -12,7 +12,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { buildSeasonDigest } from "@/features/search/search-digest";
+import {
+  buildSeasonDigestFromPlan,
+  detectAskPlan,
+} from "@/features/search/search-digest";
 import {
   clearRecentSearches,
   defaultSuggestions,
@@ -255,8 +258,14 @@ export function SearchPalette() {
 
   const runAsk = useCallback(() => {
     if (!trimmedQuery) return;
-    // Built on demand so browsing the palette costs nothing.
-    const snapshot = season ? buildSeasonDigest(season, trimmedQuery) : null;
+    // Pass 1 (instant): which slices the question needs.
+    // Pass 2 (still sync): pack only those into ≤8k — then the network Ask.
+    const snapshot = season
+      ? buildSeasonDigestFromPlan(
+          season,
+          detectAskPlan(trimmedQuery, season),
+        )
+      : null;
     void ask(trimmedQuery, snapshot);
   }, [ask, season, trimmedQuery]);
 
