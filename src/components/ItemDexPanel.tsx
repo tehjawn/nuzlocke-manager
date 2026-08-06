@@ -361,7 +361,7 @@ function EvolutionUses({
           >
             <Link
               href={toolsHref(slug, "pokedex", { id: use.fromId })}
-              className="pressable flex min-w-0 items-center gap-1.5"
+              className="flex min-w-0 items-center gap-1.5 underline-offset-2 hover:underline"
             >
               <PokemonSpriteImage
                 alt=""
@@ -381,7 +381,7 @@ function EvolutionUses({
             </span>
             <Link
               href={toolsHref(slug, "pokedex", { id: use.intoId })}
-              className="pressable flex min-w-0 items-center gap-1.5"
+              className="flex min-w-0 items-center gap-1.5 underline-offset-2 hover:underline"
             >
               <PokemonSpriteImage
                 alt=""
