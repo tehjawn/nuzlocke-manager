@@ -1,23 +1,22 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { ActivityReactions } from "@/components/ActivityReactions";
+import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { Frame } from "@/components/Frame";
-import type { ActivityItem } from "@/lib/challenge-types";
+import type { HeadlineItem } from "@/lib/activity-headlines";
 
-const APP_MARK = "/nuzlocke-mark.png";
-const AUTO_ADVANCE_MS = 7000;
+const AUTO_ADVANCE_MS = 6500;
 
 type HeadlineMomentsProps = {
   slug: string;
-  items: ActivityItem[];
+  items: HeadlineItem[];
   canReact?: boolean;
 };
 
 /**
- * Left-rail highlight reel — latest big Pack moments only (#322).
+ * Left-rail highlight reel — trainer-card chrome + shouty blurbs (#322).
  * Full feed stays on `/activity`.
  */
 export function HeadlineMoments({
@@ -33,6 +32,7 @@ export function HeadlineMoments({
   const count = items.length;
   const safeIndex = count === 0 ? 0 : Math.min(index, count - 1);
   const active = count > 0 ? items[safeIndex]! : null;
+  const activityHref = `/challenges/${slug}/activity`;
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -50,127 +50,96 @@ export function HeadlineMoments({
     return () => window.clearInterval(id);
   }, [count, paused, reduceMotion]);
 
-  const activityHref = `/challenges/${slug}/activity`;
-
   if (count === 0) {
     return (
-      <Frame
-        title="Headlines"
-        dense
-        actions={
-          <Link
-            href={activityHref}
-            className="text-xs font-semibold text-accent-deep underline-offset-2 hover:underline"
-          >
-            Activity
-          </Link>
-        }
-      >
-        <p className="text-xs leading-relaxed text-muted">
-          No big moments yet. Badges, championships, and wipes show up here.
-        </p>
-      </Frame>
+      <div className="space-y-2">
+        <HeadlineRailHeader href={activityHref} />
+        <Frame dense>
+          <p className="text-xs leading-relaxed text-muted">
+            No big moments yet. Badges, championships, and wipes land here.
+          </p>
+        </Frame>
+      </div>
     );
   }
 
-  function go(delta: number) {
-    setIndex((i) => {
-      const base = Math.min(i, count - 1);
-      return (base + delta + count) % count;
-    });
-  }
-
   return (
-    <Frame
-      title="Headlines"
-      dense
-      actions={
-        <Link
-          href={activityHref}
-          className="text-xs font-semibold text-accent-deep underline-offset-2 hover:underline"
-        >
-          View all
-        </Link>
-      }
+    <div
+      role="region"
+      aria-roledescription="carousel"
+      aria-labelledby={labelId}
+      className="space-y-2 outline-none"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setPaused(false);
+        }
+      }}
     >
-      <div
-        role="region"
-        aria-roledescription="carousel"
-        aria-labelledby={labelId}
-        className="outline-none"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocusCapture={() => setPaused(true)}
-        onBlurCapture={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-            setPaused(false);
-          }
-        }}
+      <HeadlineRailHeader href={activityHref} />
+      <p id={labelId} className="sr-only">
+        Season headline moments
+      </p>
+      <p className="sr-only" aria-live="polite">
+        {active
+          ? `Headline ${safeIndex + 1} of ${count}: ${active.blurb}`
+          : null}
+      </p>
+
+      {active ? (
+        <HeadlineSlide
+          key={active.id}
+          slug={slug}
+          item={active}
+          canReact={canReact}
+        />
+      ) : null}
+
+      {count > 1 ? (
+        <div
+          className="flex items-center justify-center gap-2"
+          role="tablist"
+          aria-label="Headlines"
+        >
+          {items.map((item, i) => {
+            const selected = i === safeIndex;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-label={`Show: ${item.blurb}`}
+                className={`h-2 rounded-full transition-[width,background-color,opacity] pressable ${
+                  selected
+                    ? "w-5 bg-accent-deep"
+                    : "w-2 bg-frame/60 opacity-80 hover:bg-frame hover:opacity-100"
+                }`}
+                onClick={() => setIndex(i)}
+              />
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function HeadlineRailHeader({ href }: { href: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 px-0.5">
+      <h2 className="text-xs font-bold tracking-tight text-muted uppercase">
+        Headlines
+      </h2>
+      <Link
+        href={href}
+        className="text-[11px] font-semibold text-accent-deep underline-offset-2 hover:underline"
       >
-        <p id={labelId} className="sr-only">
-          Season headline moments
-        </p>
-        <p className="sr-only" aria-live="polite">
-          {active
-            ? `Headline ${safeIndex + 1} of ${count}: ${active.message}`
-            : null}
-        </p>
-
-        {active ? (
-          <HeadlineSlide
-            key={active.id}
-            slug={slug}
-            item={active}
-            canReact={canReact}
-          />
-        ) : null}
-
-        {count > 1 ? (
-          <div className="mt-2.5 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              aria-label="Previous headline"
-              className="rounded-lg border border-frame/40 bg-surface-2 px-2 py-0.5 text-xs font-bold text-muted pressable hover:bg-accent/10 hover:text-ink"
-              onClick={() => go(-1)}
-            >
-              ‹
-            </button>
-            <div
-              className="flex items-center gap-1.5"
-              role="tablist"
-              aria-label="Headlines"
-            >
-              {items.map((item, i) => {
-                const selected = i === safeIndex;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    aria-label={`Headline ${i + 1}`}
-                    className={`h-1.5 rounded-full transition-[width,background-color] ${
-                      selected
-                        ? "w-4 bg-accent-deep"
-                        : "w-1.5 bg-frame/50 hover:bg-frame"
-                    }`}
-                    onClick={() => setIndex(i)}
-                  />
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              aria-label="Next headline"
-              className="rounded-lg border border-frame/40 bg-surface-2 px-2 py-0.5 text-xs font-bold text-muted pressable hover:bg-accent/10 hover:text-ink"
-              onClick={() => go(1)}
-            >
-              ›
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </Frame>
+        View all
+      </Link>
+    </div>
   );
 }
 
@@ -180,129 +149,90 @@ function HeadlineSlide({
   canReact,
 }: {
   slug: string;
-  item: ActivityItem;
+  item: HeadlineItem;
   canReact: boolean;
 }) {
-  const avatarSrc = item.avatarSrc ?? APP_MARK;
-  const avatarLabel = item.trainerHandle
-    ? `${item.trainerHandle}'s avatar`
-    : "Nuzlocke Manager";
-  const isSpriteAvatar = Boolean(
-    item.avatarSrc &&
-      !item.avatarSrc.includes("discord") &&
-      !item.avatarSrc.includes("blob.vercel-storage.com") &&
-      item.avatarSrc !== APP_MARK,
-  );
   const trainerHref =
     item.trainerId != null
       ? `/challenges/${slug}/trainers/${item.trainerId}`
       : null;
+  const spriteKey = item.avatarSpriteKey?.trim() || "brendan";
+  const isChampion = item.type === "RUN_COMPLETED";
+  const isWipe = item.type === "WIPE";
 
-  const avatar = (
-    <span
-      className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-surface-2 ${
-        trainerHref
-          ? "border-frame group-hover/avatar:border-accent-deep"
-          : "border-frame"
-      }`}
-      title={avatarLabel}
-    >
-      <Image
-        src={avatarSrc}
-        alt=""
-        width={36}
-        height={36}
-        className={
-          isSpriteAvatar
-            ? "pixelated h-full w-full object-cover object-[center_15%]"
-            : "h-full w-full object-cover"
-        }
-        unoptimized
-      />
-    </span>
-  );
-
-  return (
-    <div>
-      <div className="flex items-start gap-2.5">
-        {trainerHref ? (
-          <Link
-            href={trainerHref}
-            className="group/avatar inline-flex shrink-0 rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-interactive"
-            aria-label={`${item.trainerHandle ?? "Trainer"} profile`}
-          >
-            {avatar}
-          </Link>
-        ) : (
-          avatar
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium leading-snug line-clamp-2">
-            <HeadlineMessage
-              message={item.message}
-              trainerHandle={item.trainerHandle}
-              trainerHref={trainerHref}
-            />
-          </p>
-          <p className="mt-1 text-[11px] tracking-tight text-muted">
-            {formatHeadlineWhen(item.createdAt)}
-            {item.trainerHandle ? (
-              <>
-                {" · "}
-                {trainerHref ? (
-                  <Link
-                    href={trainerHref}
-                    className="underline-offset-2 hover:text-accent-deep hover:underline"
-                  >
-                    {item.trainerHandle}
-                  </Link>
-                ) : (
-                  item.trainerHandle
-                )}
-              </>
-            ) : null}
-          </p>
-        </div>
+  const body = (
+    <div className="headline-moment-body relative z-[2] grid min-h-[7.5rem] grid-cols-[5.25rem_minmax(0,1fr)] items-center gap-2.5">
+      <div className="relative flex h-[7.25rem] items-end justify-center overflow-visible">
+        <AvatarPortrait
+          avatarSpriteKey={spriteKey}
+          backgroundKey={item.avatarBackgroundKey}
+          sizeClass="relative z-1 h-[6.5rem] w-[5.25rem]"
+          width={96}
+          height={112}
+          imgClassName={`drop-shadow-[0_8px_16px_var(--shadow-md)] ${
+            isChampion
+              ? "headline-portrait--champ"
+              : isWipe
+                ? "headline-portrait--wipe"
+                : ""
+          }`}
+          alt=""
+        />
       </div>
-      <ActivityReactions
-        activityId={item.id}
-        reactions={item.reactions}
-        canReact={canReact}
-      />
+      <div className="headline-moment-copy relative flex min-w-0 flex-col justify-center pr-0.5">
+        <p
+          className={`font-display text-[0.95rem] font-bold leading-snug tracking-tight text-balance line-clamp-3 ${
+            isChampion
+              ? "text-accent-deep"
+              : isWipe
+                ? "text-danger"
+                : "text-ink"
+          }`}
+        >
+          {item.blurb}
+        </p>
+        <p className="mt-1.5 text-[11px] font-medium tracking-tight text-muted">
+          {formatHeadlineWhen(item.createdAt)}
+          {item.trainerHandle ? (
+            <>
+              {" · "}
+              <span className="text-ink/80">{item.trainerHandle}</span>
+            </>
+          ) : null}
+        </p>
+      </div>
     </div>
   );
-}
-
-function HeadlineMessage({
-  message,
-  trainerHandle,
-  trainerHref,
-}: {
-  message: string;
-  trainerHandle: string | null;
-  trainerHref: string | null;
-}) {
-  if (!trainerHref || !trainerHandle) return message;
-
-  const parts = message.split(trainerHandle);
-  if (parts.length < 2) return message;
 
   return (
-    <>
-      {parts.map((part, index) => (
-        <span key={`${index}-${part.slice(0, 12)}`}>
-          {index > 0 ? (
-            <Link
-              href={trainerHref}
-              className="underline-offset-2 hover:text-accent-deep hover:underline"
-            >
-              {trainerHandle}
-            </Link>
-          ) : null}
-          {part}
-        </span>
-      ))}
-    </>
+    <Frame
+      cardBackgroundKey={item.cardBackgroundKey}
+      dense
+      className="headline-moment-card overflow-hidden shadow-[0_10px_28px_var(--shadow-md)]"
+      overlay={<div className="headline-moment-wash" aria-hidden />}
+    >
+      {trainerHref ? (
+        <Link
+          href={trainerHref}
+          className="relative z-[2] block rounded-[calc(var(--radius)-2px)] outline-offset-2 focus-visible:outline-2 focus-visible:outline-interactive"
+          aria-label={`${item.trainerHandle ?? "Trainer"} — ${item.blurb}`}
+        >
+          {body}
+        </Link>
+      ) : (
+        body
+      )}
+      {(canReact || item.reactions.some((r) => r.count > 0)) ? (
+        <div className="relative z-[2] mt-1.5">
+          <ActivityReactions
+            activityId={item.id}
+            reactions={item.reactions}
+            canReact={canReact}
+            className="mt-0"
+          />
+        </div>
+      ) : null}
+    </Frame>
   );
 }
 

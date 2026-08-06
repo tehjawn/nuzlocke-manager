@@ -30,12 +30,18 @@ import { currentRunNumber } from "@/lib/wipe-memorial";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import {
   HEADLINE_ACTIVITY_TYPES,
+  HEADLINE_CANDIDATE_LIMIT,
   HEADLINE_LIMIT,
+  headlineBlurb,
   isHeadlineActivityType,
+  selectHeadlineItems,
+  type HeadlineItem,
 } from "@/lib/activity-headlines";
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { mapDbChallenge, resolveActivityAvatarSrc } from "@/lib/mappers";
+import { parseAvatarBackgroundKey } from "@/data/avatar-backgrounds";
+import { parseCardBackgroundKey } from "@/data/card-backgrounds";
 import { loadSurvivalPollTallies } from "@/lib/survival-markets";
 
 export type { ActivityPage };
@@ -526,13 +532,14 @@ export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
 
 /**
  * Latest high-signal Pack moments for the left-rail Headline Moments carousel.
- * Does not coalesce — each badge / wipe / champion row stays its own slide.
+ * Ranks by achievement weight (champion > wipe > named badge > digest) so a
+ * coalesced "earned N badges" row can't bury a Championship clear.
  */
 export async function listHeadlineActivities(
   slug: string,
   viewerUserId?: string | null,
   limit: number = HEADLINE_LIMIT,
-): Promise<ActivityItem[]> {
+): Promise<HeadlineItem[]> {
   const take = Math.min(Math.max(limit, 1), HEADLINE_LIMIT);
 
   if (isDatabaseConfigured()) {
@@ -550,26 +557,34 @@ export async function listHeadlineActivities(
           type: { in: [...HEADLINE_ACTIVITY_TYPES] },
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take,
+        take: HEADLINE_CANDIDATE_LIMIT,
         include: {
           trainer: {
-            select: { id: true, handle: true, avatarSpriteKey: true },
+            select: {
+              id: true,
+              handle: true,
+              avatarSpriteKey: true,
+              cardBackgroundKey: true,
+              avatarBackgroundKey: true,
+            },
           },
           actor: { select: { image: true } },
           reactions: { select: { emoji: true, userId: true } },
         },
       });
 
-      return mapActivityRows(rows, viewerUserId);
+      const mapped = mapHeadlineRows(rows, viewerUserId);
+      return selectHeadlineItems(mapped, take);
     } catch {
       // fall through
     }
   }
 
   const seedItems = await getRecentActivity(slug);
-  return seedItems
+  const mapped = seedItems
     .filter((item) => isHeadlineActivityType(item.type))
-    .slice(0, take);
+    .map((item) => toHeadlineItem(item));
+  return selectHeadlineItems(mapped, take);
 }
 
 type ActivityRow = {
@@ -581,6 +596,22 @@ type ActivityRow = {
     id: string;
     handle: string;
     avatarSpriteKey: string | null;
+  } | null;
+  actor: { image: string | null } | null;
+  reactions: Array<{ emoji: string; userId: string }>;
+};
+
+type HeadlineRow = {
+  id: string;
+  type: string;
+  message: string;
+  createdAt: Date;
+  trainer: {
+    id: string;
+    handle: string;
+    avatarSpriteKey: string | null;
+    cardBackgroundKey: string | null;
+    avatarBackgroundKey: string | null;
   } | null;
   actor: { image: string | null } | null;
   reactions: Array<{ emoji: string; userId: string }>;
@@ -621,6 +652,34 @@ function mapActivityRows(
       })),
     };
   });
+}
+
+function mapHeadlineRows(
+  rows: HeadlineRow[],
+  viewerUserId?: string | null,
+): HeadlineItem[] {
+  return rows.map((a) => {
+    const base = mapActivityRows([a], viewerUserId)[0]!;
+    return {
+      ...base,
+      avatarSpriteKey: a.trainer?.avatarSpriteKey ?? null,
+      cardBackgroundKey: parseCardBackgroundKey(a.trainer?.cardBackgroundKey),
+      avatarBackgroundKey: parseAvatarBackgroundKey(
+        a.trainer?.avatarBackgroundKey,
+      ),
+      blurb: headlineBlurb(base),
+    };
+  });
+}
+
+function toHeadlineItem(item: ActivityItem): HeadlineItem {
+  return {
+    ...item,
+    avatarSpriteKey: null,
+    cardBackgroundKey: null,
+    avatarBackgroundKey: null,
+    blurb: headlineBlurb(item),
+  };
 }
 
 /** Lean activity feed fetch for client polling / infinite scroll. */

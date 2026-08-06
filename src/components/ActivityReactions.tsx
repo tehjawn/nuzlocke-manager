@@ -61,6 +61,7 @@ type ActivityReactionsProps = {
   activityId: string;
   reactions: ActivityReactionSummary[];
   canReact?: boolean;
+  className?: string;
 };
 
 /** Compact Pack emoji reactions for Headline Moments (rail carousel). */
@@ -68,6 +69,7 @@ export function ActivityReactions({
   activityId,
   reactions: propReactions,
   canReact = false,
+  className = "",
 }: ActivityReactionsProps) {
   const [pending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -119,29 +121,33 @@ export function ActivityReactions({
   }
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-      {visibleReactions.map((summary) => (
-        <button
-          key={summary.emoji}
-          type="button"
-          disabled={!canReact || pending}
-          title={canReact ? "Toggle reaction" : undefined}
-          className={`rounded-lg border px-1.5 py-0.5 text-sm ${
-            summary.reactedByMe
-              ? "border-accent bg-accent/15"
-              : "border-frame/40 bg-surface-2"
-          } ${canReact ? "pressable hover:bg-accent/10" : "cursor-default"}`}
-          onClick={() => react(summary.emoji)}
-        >
-          <span aria-hidden>{summary.emoji}</span>
-          <span className="ml-1 text-[11px] font-bold text-muted">
-            {summary.count}
-          </span>
-        </button>
-      ))}
+    <div
+      className={`flex items-center gap-1.5 ${className || "mt-2"}`}
+    >
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+        {visibleReactions.map((summary) => (
+          <button
+            key={summary.emoji}
+            type="button"
+            disabled={!canReact || pending}
+            title={canReact ? "Toggle reaction" : undefined}
+            className={`rounded-lg border px-1.5 py-0.5 text-sm ${
+              summary.reactedByMe
+                ? "border-accent bg-accent/15"
+                : "border-frame/40 bg-surface-2"
+            } ${canReact ? "pressable hover:bg-accent/10" : "cursor-default"}`}
+            onClick={() => react(summary.emoji)}
+          >
+            <span aria-hidden>{summary.emoji}</span>
+            <span className="ml-1 text-[11px] font-bold text-muted">
+              {summary.count}
+            </span>
+          </button>
+        ))}
+      </div>
 
       {canReact ? (
-        <div className="relative shrink-0">
+        <div className="relative ml-auto shrink-0">
           <button
             type="button"
             disabled={pending}
@@ -169,7 +175,7 @@ export function ActivityReactions({
               <div
                 role="dialog"
                 aria-label="Emoji reactions"
-                className="absolute bottom-full left-0 z-20 mb-1 max-w-[min(100vw-2rem,20rem)] rounded-lg border border-frame bg-surface p-1.5 shadow-lg"
+                className="absolute right-0 bottom-full z-20 mb-1 max-w-[min(100vw-2rem,20rem)] rounded-lg border border-frame bg-surface p-1.5 shadow-lg"
               >
                 <div className="flex flex-wrap items-center gap-0.5 pr-0.5">
                   {QUICK_EMOJIS.map((emoji) => {

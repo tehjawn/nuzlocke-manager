@@ -311,10 +311,10 @@ function NavGroup({
         aria-controls={listId}
         onClick={() => setOpen((v) => !v)}
         data-tour={dataTour}
-        className={`flex w-full items-center gap-2 rounded-[calc(var(--radius-sm)-2px)] border px-2 py-1.5 text-left text-sm font-semibold transition-colors ${
+        className={`flex w-full items-center gap-2 rounded-[calc(var(--radius-sm)-2px)] px-2 py-1.5 text-left text-sm font-semibold transition-colors ${
           emphasized
-            ? "border-frame bg-surface text-ink shadow-sm"
-            : "border-transparent text-ink hover:bg-surface/80"
+            ? "bg-surface text-ink"
+            : "text-ink hover:bg-surface/80"
         }`}
       >
         <span
@@ -362,14 +362,14 @@ function NavChild({
         href={href}
         prefetch={false}
         aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-2 rounded-[calc(var(--radius-sm)-2px)] border px-2 text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2 rounded-[calc(var(--radius-sm)-2px)] px-2 text-sm font-medium transition-colors ${
           dense ? "py-1" : "py-1.5"
         } ${
           active
-            ? "border-frame bg-surface text-ink shadow-sm"
+            ? "bg-surface text-ink"
             : muted
-              ? "border-transparent text-muted hover:border-frame/50 hover:bg-surface hover:text-ink"
-              : "border-transparent text-ink hover:border-frame/50 hover:bg-surface"
+              ? "text-muted hover:bg-surface hover:text-ink"
+              : "text-ink hover:bg-surface"
         }`}
       >
         {icon ? (
@@ -402,10 +402,10 @@ function NavLeaf({
       href={href}
       prefetch={false}
       aria-current={active ? "page" : undefined}
-      className={`flex items-center gap-2 rounded-[calc(var(--radius-sm)-2px)] border px-2 py-1.5 text-sm font-semibold transition-colors ${
+      className={`flex items-center gap-2 rounded-[calc(var(--radius-sm)-2px)] px-2 py-1.5 text-sm font-semibold transition-colors ${
         active
-          ? "border-frame bg-surface text-ink shadow-sm"
-          : "border-transparent text-ink hover:bg-surface/80"
+          ? "bg-surface text-ink"
+          : "text-ink hover:bg-surface/80"
       }`}
     >
       <span

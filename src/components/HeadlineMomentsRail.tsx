@@ -25,10 +25,11 @@ export function HeadlineMomentsRail({ slug }: HeadlineMomentsRailProps) {
 
 function HeadlineMomentsFallback() {
   return (
-    <div
-      aria-hidden
-      className="h-28 animate-pulse rounded-[var(--radius)] border border-frame/50 bg-surface-2/50"
-    />
+    <div className="space-y-2" aria-hidden>
+      <div className="h-3 w-20 rounded bg-frame/20" />
+      <div className="h-36 animate-pulse rounded-[var(--radius)] border border-frame/50 bg-surface-2/50" />
+      <div className="mx-auto h-2 w-12 rounded-full bg-frame/20" />
+    </div>
   );
 }
 
