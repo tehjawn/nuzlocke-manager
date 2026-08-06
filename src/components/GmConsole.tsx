@@ -367,6 +367,8 @@ export function GmConsole({
                         welcomeVideoUrl: String(fd.get("welcomeVideoUrl") ?? ""),
                         welcomeVideoPublishAt,
                         romUrl: String(fd.get("romUrl") ?? ""),
+                        survivalMarketsEnabled:
+                          fd.get("survivalMarketsEnabled") === "on",
                       }),
                     );
                   });
@@ -454,6 +456,23 @@ export function GmConsole({
                   <span className="gm-console__hint">
                     Posts deaths, badges earned, and revive uses. Leave blank to
                     disable.
+                  </span>
+                </label>
+                <label className="gm-console__field sm:col-span-2 flex items-start gap-3">
+                  <input
+                    name="survivalMarketsEnabled"
+                    type="checkbox"
+                    defaultChecked={challenge.survivalMarketsEnabled ?? true}
+                    className="mt-1 h-4 w-4 rounded border-frame"
+                  />
+                  <span>
+                    <span className="gm-console__label">
+                      Survive / Die polls
+                    </span>
+                    <span className="gm-console__hint block">
+                      Members can vote whether living party and box Pokémon
+                      make it. Off hides the UI for this season.
+                    </span>
                   </span>
                 </label>
                 <label className="gm-console__field sm:col-span-2">

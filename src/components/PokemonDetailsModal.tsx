@@ -12,6 +12,7 @@ import { MoveLabel } from "@/components/MoveLabel";
 import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid, type StatRankChip } from "@/components/StatGrid";
+import { SurvivalPollSection } from "@/components/SurvivalPollSection";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
@@ -75,6 +76,10 @@ type PokemonDetailsModalProps = {
    * (public viewers and league peek for other trainers).
    */
   showCompetitiveDetails?: boolean;
+  /** Survive/Die polls — omit section when challenge flag is off. */
+  survivalMarketsEnabled?: boolean;
+  /** Highlight the viewer on the resolved callers roster. */
+  viewerUserId?: string | null;
 };
 
 function MetaChip({ label, value }: { label: string; value: ReactNode }) {
@@ -101,6 +106,8 @@ export function PokemonDetailsModal({
   slug,
   onEdit,
   showCompetitiveDetails = true,
+  survivalMarketsEnabled = true,
+  viewerUserId = null,
 }: PokemonDetailsModalProps) {
   if (!open || !pokemon) return null;
 
@@ -543,6 +550,13 @@ export function PokemonDetailsModal({
             ) : null}
           </div>
         </div>
+
+        <SurvivalPollSection
+          key={pokemon.id}
+          pokemonId={pokemon.id}
+          enabled={survivalMarketsEnabled}
+          viewerUserId={viewerUserId}
+        />
 
         {pokemon.causeOfDeath ? (
           <div className="border-t border-frame/20 pt-3">

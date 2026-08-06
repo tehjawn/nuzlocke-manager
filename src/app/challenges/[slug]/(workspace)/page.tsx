@@ -70,10 +70,15 @@ export default async function LeagueBoardPage({ params }: PageProps) {
       </div>
 
       <TrainersSection
-        challenge={{ slug: challenge.slug, badges: challenge.badges }}
+        challenge={{
+          slug: challenge.slug,
+          badges: challenge.badges,
+          survivalMarketsEnabled: challenge.survivalMarketsEnabled,
+        }}
         trainers={trainers}
         myTrainerId={myTrainerId}
         competitiveTrainerIds={competitiveTrainerIds}
+        viewerUserId={access?.userId ?? null}
       />
     </>
   );

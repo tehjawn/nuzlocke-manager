@@ -24,6 +24,7 @@ type DbChallenge = {
   welcomeVideoUrl: string | null;
   welcomeVideoPublishAt: Date | null;
   romUrl: string | null;
+  survivalMarketsEnabled?: boolean;
   badges: Array<{
     id: string;
     key: string;
@@ -145,6 +146,7 @@ export function mapDbChallenge(
     welcomeVideoUrl: row.welcomeVideoUrl,
     welcomeVideoPublishAt: row.welcomeVideoPublishAt?.toISOString() ?? null,
     romUrl: row.romUrl,
+    survivalMarketsEnabled: row.survivalMarketsEnabled ?? true,
     source: "database",
     badges: row.badges
       .slice()
