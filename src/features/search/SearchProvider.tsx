@@ -24,6 +24,8 @@ type SearchContextValue = {
   toggle: () => void;
   results: SearchResult[];
   index: Fuse<SearchResult>;
+  /** Resolved season behind the index — source for Ask mode's snapshot (#184). */
+  season: SearchSeasonContext | null;
   /** Route-level season overlay; returns an owner id for safe unregister. */
   registerSeason: (ctx: SearchSeasonContext) => number;
   /** Clear route overlay only if this owner still owns it. */
@@ -94,10 +96,11 @@ export function SearchProvider({
       toggle,
       results,
       index,
+      season,
       registerSeason,
       unregisterSeason,
     }),
-    [open, toggle, results, index, registerSeason, unregisterSeason],
+    [open, toggle, results, index, season, registerSeason, unregisterSeason],
   );
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;

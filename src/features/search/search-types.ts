@@ -32,6 +32,8 @@ export type SearchSeasonContext = {
   name: string;
   year: number;
   status: string;
+  /** Season ROM / game label (e.g. Pokémon Modern Emerald). */
+  game?: string | null;
   showGm: boolean;
   myTrainerId: string | null;
   /** First-run funnel (#183): limit Search to Setup + My Trainer. */

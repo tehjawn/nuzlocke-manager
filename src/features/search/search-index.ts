@@ -11,21 +11,31 @@ import { toolsHref, seasonStatsHref } from "@/lib/tools-routes";
 
 const FUSE_OPTIONS: IFuseOptions<SearchResult> = {
   keys: [
-    { name: "title", weight: 0.5 },
-    { name: "subtitle", weight: 0.25 },
-    { name: "tags", weight: 0.25 },
+    // Title carries most of the intent; tags now outrank subtitle because
+    // subtitle is mostly descriptive filler ("Season 2026 · League board")
+    // while tags hold handles, species, and route names people actually type.
+    { name: "title", weight: 0.6 },
+    { name: "tags", weight: 0.28 },
+    { name: "subtitle", weight: 0.12 },
   ],
-  threshold: 0.4,
+  // Tighter than the old 0.4: at 0.4 three-letter queries pulled in most of the
+  // index, which is what made results feel arbitrary.
+  threshold: 0.34,
   ignoreLocation: true,
   includeMatches: true,
-  minMatchCharLength: 1,
+  includeScore: true,
+  // 1 matched a single character anywhere — pure noise on a large index.
+  minMatchCharLength: 2,
 };
 
 const RECENT_KEY = "nuzlocke-search-recents";
 /** Pre-rename key — read once, then migrate to RECENT_KEY. */
 const LEGACY_RECENT_KEY = "nuzlocke-jump-recents";
+/** id → { n: times chosen, t: last chosen epoch ms } for result ranking. */
+const USAGE_KEY = "nuzlocke-search-usage";
 const MAX_RECENTS = 6;
 const MAX_RESULTS = 24;
+const MAX_USAGE_ENTRIES = 60;
 
 const SLOT_LABEL: Record<string, string> = {
   MAIN: "Party",
@@ -415,44 +425,185 @@ export function createSearchIndex(results: SearchResult[]) {
   return new Fuse(results, FUSE_OPTIONS);
 }
 
+/** Fuse scores are 0 (perfect) → 1 (worst); shave up to 40% off for familiarity. */
+const MAX_USAGE_BOOST = 0.4;
+const USAGE_HALF_LIFE_MS = 14 * 24 * 60 * 60 * 1000;
+
+function usageBoost(entry: UsageEntry | undefined, now: number): number {
+  if (!entry) return 0;
+  // Frequency saturates fast — the 6th pick shouldn't outweigh a better match.
+  const frequency = Math.min(entry.n, 6) / 6;
+  // Recency decays smoothly so last month's habits stop dominating.
+  const age = Math.max(0, now - entry.t);
+  const recency = Math.pow(0.5, age / USAGE_HALF_LIFE_MS);
+  return MAX_USAGE_BOOST * (0.6 * frequency + 0.4 * recency);
+}
+
 export function querySearchIndex(
   index: Fuse<SearchResult>,
   query: string,
 ): SearchFuseHit[] {
   const trimmed = query.trim();
   if (!trimmed) return [];
-  return index.search(trimmed).slice(0, MAX_RESULTS).map((hit) => ({
-    item: hit.item,
-    matches: hit.matches,
-  }));
+
+  const usage = getUsageStats();
+  // `Date.now()` in a Client Component is a prerender error under
+  // cacheComponents, so only reach for the clock once we know there is
+  // usage history to rank against (always empty during SSR).
+  const hasUsage = Object.keys(usage).length > 0;
+  const now = hasUsage ? Date.now() : 0;
+
+  return index
+    .search(trimmed)
+    .map((hit) => {
+      const base = hit.score ?? 1;
+      return {
+        hit,
+        // Lower is better, so a boost subtracts from the score.
+        ranked: base * (1 - usageBoost(usage[hit.item.id], now)),
+      };
+    })
+    .sort((a, b) => a.ranked - b.ranked)
+    .slice(0, MAX_RESULTS)
+    .map(({ hit }) => ({
+      item: hit.item,
+      matches: hit.matches,
+    }));
 }
 
-export function defaultSuggestions(results: SearchResult[]): SearchResult[] {
-  const preferredIds = [
-    results.find((r) => r.id.startsWith("nav-me-"))?.id,
-    results.find((r) => r.title === "Season Stats")?.id,
-    results.find((r) => r.title === "Encounters")?.id,
-    results.find((r) => r.title === "Trainers" || r.subtitle.includes("League board"))
-      ?.id,
-    results.find((r) => r.category === "trainer")?.id,
-    results.find((r) => r.id === "action-theme")?.id,
-  ].filter(Boolean) as string[];
+/**
+ * Queries the fuzzy index can't answer well — the ones #184 wants to hand to
+ * the LLM. Deliberately conservative: a false positive costs a wasted row,
+ * so this only fires on shapes that read unmistakably as a question.
+ */
+const QUESTION_STARTERS =
+  /^(who|what|which|when|where|why|how|is|are|does|do|did|can|should|has|have)\b/i;
+const COMPARATIVE = /\b(most|least|best|worst|ahead|behind|top|highest|lowest|compare|ranked|leading|fewest)\b/i;
 
+export function isQuestionLike(query: string): boolean {
+  const trimmed = query.trim();
+  if (trimmed.length < 6) return false;
+  if (trimmed.includes("?")) return true;
+  // A bare comparative like "most badges" reads as a question in a palette.
+  return QUESTION_STARTERS.test(trimmed) || COMPARATIVE.test(trimmed);
+}
+
+/**
+ * Titles worth surfacing first, by where the player currently is. Opening the
+ * palette on the GM console and being offered "Toggle theme" is the kind of
+ * thing that makes a palette feel generic (#184).
+ */
+function contextualTitles(pathname: string): string[] {
+  if (/\/gm(\/|$)/.test(pathname)) {
+    return ["GM Console", "Trainers", "Encounters", "Season Stats"];
+  }
+  if (/\/setup(\/|$)/.test(pathname)) {
+    return ["Setup", "My Trainer", "Rules / FAQ", "Game Guide"];
+  }
+  if (/\/(me|trainers)(\/|$)/.test(pathname)) {
+    return ["My Trainer", "Encounters", "Team Planner", "Pokémon Ownership"];
+  }
+  if (/\/tools(\/|$)/.test(pathname)) {
+    return ["Team Planner", "Pokémon Ownership", "Game Guide", "Season Stats"];
+  }
+  if (/\/(rules|about)(\/|$)/.test(pathname)) {
+    return ["Rules / FAQ", "FAQ", "Game Guide", "Trainers"];
+  }
+  if (/\/memorial(\/|$)/.test(pathname)) {
+    return ["Season Stats", "Trainers", "Encounters"];
+  }
+  return ["My Trainer", "Season Stats", "Encounters", "Trainers"];
+}
+
+export function defaultSuggestions(
+  results: SearchResult[],
+  pathname = "",
+): SearchResult[] {
   const picked: SearchResult[] = [];
-  for (const id of preferredIds) {
-    const hit = results.find((r) => r.id === id);
-    if (hit && !picked.some((p) => p.id === hit.id)) picked.push(hit);
-    if (picked.length >= 6) break;
+  const push = (hit: SearchResult | undefined) => {
+    if (!hit || picked.length >= 6) return;
+    if (picked.some((p) => p.id === hit.id)) return;
+    picked.push(hit);
+  };
+
+  // "My Trainer" stays first wherever it exists — it's the most-wanted jump.
+  push(results.find((r) => r.id.startsWith("nav-me-")));
+
+  for (const title of contextualTitles(pathname)) {
+    push(results.find((r) => r.title === title));
+  }
+
+  // Then whatever the player has actually been choosing lately. Guarded so the
+  // clock is never read during prerender (see `querySearchIndex`).
+  const usage = getUsageStats();
+  if (Object.keys(usage).length) {
+    const now = Date.now();
+    const byUsage = Object.entries(usage)
+      .sort(([, a], [, b]) => usageBoost(b, now) - usageBoost(a, now))
+      .map(([id]) => id);
+    for (const id of byUsage) {
+      push(results.find((r) => r.id === id));
+    }
   }
 
   for (const r of results) {
     if (picked.length >= 6) break;
-    if (r.category === "navigate" && !picked.some((p) => p.id === r.id)) {
-      picked.push(r);
-    }
+    if (r.category === "navigate") push(r);
   }
 
   return picked;
+}
+
+type UsageEntry = { n: number; t: number };
+type UsageStats = Record<string, UsageEntry>;
+
+function getUsageStats(): UsageStats {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(USAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const clean: UsageStats = {};
+    for (const [id, entry] of Object.entries(
+      parsed as Record<string, unknown>,
+    )) {
+      if (!entry || typeof entry !== "object") continue;
+      const { n, t } = entry as { n?: unknown; t?: unknown };
+      if (!Number.isFinite(n) || !Number.isFinite(t)) continue;
+      clean[id] = { n: n as number, t: t as number };
+    }
+    return clean;
+  } catch {
+    return {};
+  }
+}
+
+/** Called when a result is actually chosen — powers ranking and suggestions. */
+export function recordSearchUse(id: string) {
+  if (typeof window === "undefined" || !id) return;
+  try {
+    const stats = getUsageStats();
+    const prev = stats[id];
+    stats[id] = { n: (prev?.n ?? 0) + 1, t: Date.now() };
+
+    // Bound the store: drop the least useful entries once it grows.
+    const keys = Object.keys(stats);
+    if (keys.length > MAX_USAGE_ENTRIES) {
+      const now = Date.now();
+      const keep = keys
+        .sort((a, b) => usageBoost(stats[b], now) - usageBoost(stats[a], now))
+        .slice(0, MAX_USAGE_ENTRIES);
+      const trimmed: UsageStats = {};
+      for (const key of keep) trimmed[key] = stats[key];
+      localStorage.setItem(USAGE_KEY, JSON.stringify(trimmed));
+      return;
+    }
+
+    localStorage.setItem(USAGE_KEY, JSON.stringify(stats));
+  } catch {
+    // private mode / blocked storage
+  }
 }
 
 function readRecentRaw(): string | null {
@@ -502,6 +653,7 @@ export function clearRecentSearches() {
   try {
     localStorage.removeItem(RECENT_KEY);
     localStorage.removeItem(LEGACY_RECENT_KEY);
+    localStorage.removeItem(USAGE_KEY);
   } catch {
     // ignore
   }

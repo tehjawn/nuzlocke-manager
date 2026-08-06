@@ -46,35 +46,44 @@ export async function SiteHeader({
   let seasonYear = challengeYear ?? null;
   let seasonName = challengeName ?? null;
   let seasonStatus: Challenge["status"] | null = null;
+  let seasonGame: string | null = null;
 
   if (seasonSlug == null && seasonYear == null) {
     const defaults = await getDefaultSearchChallenge();
     seasonSlug = defaults?.slug ?? null;
     seasonYear = defaults?.year ?? null;
     seasonStatus = defaults?.status ?? null;
+    seasonGame = defaults?.game ?? null;
     if (seasonName == null) seasonName = defaults?.name ?? null;
   } else if (seasonSlug != null && seasonYear == null) {
     const challenge = await getChallenge(seasonSlug);
     seasonYear = challenge?.year ?? null;
     seasonStatus = challenge?.status ?? null;
+    seasonGame = challenge?.game ?? null;
     if (seasonName == null) seasonName = challenge?.name ?? null;
   } else if (seasonSlug == null && seasonYear != null) {
     const defaults = await getDefaultSearchChallenge();
     if (defaults?.year === seasonYear) {
       seasonSlug = defaults.slug;
       seasonStatus = defaults.status;
+      seasonGame = defaults.game ?? null;
       if (seasonName == null) seasonName = defaults.name ?? null;
     }
   } else if (seasonSlug != null && seasonName == null) {
     const challenge = await getChallenge(seasonSlug);
     seasonName = challenge?.name ?? null;
     seasonStatus = challenge?.status ?? null;
+    seasonGame = challenge?.game ?? null;
   }
 
   // Status is only needed for the global-page Search GM registrar.
   if (!challengeSlug && seasonSlug != null && seasonStatus == null) {
     const challenge = await getChallenge(seasonSlug);
     seasonStatus = challenge?.status ?? null;
+    if (seasonGame == null) seasonGame = challenge?.game ?? null;
+  } else if (!challengeSlug && seasonSlug != null && seasonGame == null) {
+    const challenge = await getChallenge(seasonSlug);
+    seasonGame = challenge?.game ?? null;
   }
 
   return (
@@ -163,6 +172,7 @@ export async function SiteHeader({
               seasonYear={seasonYear}
               seasonName={seasonName}
               seasonStatus={seasonStatus}
+              seasonGame={seasonGame}
               challengeSlug={challengeSlug}
               showGm={showGm}
               myTrainerId={myTrainerId}

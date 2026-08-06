@@ -1,19 +1,31 @@
 import { z } from "zod";
 import { auth } from "@/auth";
-import { askGemini, isGeminiConfigured } from "@/lib/ai/gemini";
+import {
+  getCachedJumpAnswer,
+  jumpAskCacheKey,
+  setCachedJumpAnswer,
+} from "@/lib/ai/answer-cache";
+import { isGeminiConfigured } from "@/lib/ai/gemini";
+import { answerJumpQuestion } from "@/lib/ai/jump-assist";
 import { checkAiRateLimit } from "@/lib/ai/rate-limit";
 
 /**
- * Authenticated server-only entrypoint for the Jump LLM assist (#184).
+ * Authenticated server-only entrypoint for Jump's Ask mode (#184).
  *
- * Infra only for now: nothing in the palette calls this yet. It exists so the
- * Gemini path can be smoke-tested end to end before any UX is designed.
+ * The client posts a question plus a compact season snapshot it already holds
+ * in memory, so answering costs no extra DB read. Fuzzy search stays the
+ * default path — this only fires on an explicit Ask.
+ *
+ * Cached answers (same question + snapshot) skip Gemini and the AI rate limit
+ * so repeats don't burn free-tier quota.
  *
  * 501 when the key is unset so callers can degrade to fuzzy search silently.
  */
 
 const askSchema = z.object({
-  prompt: z.string().trim().min(1).max(500),
+  question: z.string().trim().min(1).max(300),
+  /** Compact league snapshot built client-side; absent on global pages. */
+  snapshot: z.string().max(8_000).nullish(),
 });
 
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
@@ -48,8 +60,19 @@ export async function POST(request: Request) {
   const parsed = askSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(
-      { ok: false, error: "prompt is required (1–500 characters)" },
+      { ok: false, error: "question is required (1–300 characters)" },
       { status: 400, headers: NO_STORE },
+    );
+  }
+
+  const { question, snapshot } = parsed.data;
+  const cacheKey = jumpAskCacheKey(question, snapshot);
+
+  const cached = await getCachedJumpAnswer(cacheKey);
+  if (cached) {
+    return Response.json(
+      { ok: true, text: cached.text, model: cached.model, cached: true },
+      { status: 200, headers: NO_STORE },
     );
   }
 
@@ -74,8 +97,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await askGemini({
-    prompt: parsed.data.prompt,
+  const result = await answerJumpQuestion({
+    question,
+    snapshot,
     signal: request.signal,
   });
 
@@ -85,6 +109,11 @@ export async function POST(request: Request) {
       headers: NO_STORE,
     });
   }
+
+  await setCachedJumpAnswer(cacheKey, {
+    text: result.text,
+    model: result.model,
+  });
 
   return Response.json(
     { ok: true, text: result.text, model: result.model },
