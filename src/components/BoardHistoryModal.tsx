@@ -32,6 +32,8 @@ type TrainerHistoryModalProps = {
   onClose: () => void;
   trainerId: string;
   trainerHandle: string;
+  trainerAvatarSpriteKey?: string;
+  trainerAvatarBackgroundKey?: string | null;
   /** Challenge context for the past-board team export. */
   challengeSlug: string;
   challengeName: string;
@@ -137,6 +139,8 @@ function TrainerHistoryBody({
   onClose,
   trainerId,
   trainerHandle,
+  trainerAvatarSpriteKey = "brendan",
+  trainerAvatarBackgroundKey = null,
   challengeSlug,
   challengeName,
   challengeGame,
@@ -680,6 +684,12 @@ function TrainerHistoryBody({
           slug={challengeSlug}
           pokemon={detailsPokemon}
           showCompetitiveDetails={showCompetitiveDetails}
+          trainer={{
+            id: trainerId,
+            handle: trainerHandle,
+            avatarSpriteKey: trainerAvatarSpriteKey,
+            avatarBackgroundKey: trainerAvatarBackgroundKey,
+          }}
           onClose={() => setDetailsPokemon(null)}
         />
       ) : null}
@@ -723,6 +733,8 @@ export function TrainerHistoryModal({
   onClose,
   trainerId,
   trainerHandle,
+  trainerAvatarSpriteKey,
+  trainerAvatarBackgroundKey,
   challengeSlug,
   challengeName,
   challengeGame,
@@ -740,6 +752,8 @@ export function TrainerHistoryModal({
       onClose={onClose}
       trainerId={trainerId}
       trainerHandle={trainerHandle}
+      trainerAvatarSpriteKey={trainerAvatarSpriteKey}
+      trainerAvatarBackgroundKey={trainerAvatarBackgroundKey}
       challengeSlug={challengeSlug}
       challengeName={challengeName}
       challengeGame={challengeGame}
