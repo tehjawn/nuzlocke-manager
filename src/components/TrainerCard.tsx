@@ -12,7 +12,7 @@ import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
-import { SurvivalPollChip } from "@/components/SurvivalPollChip";
+import { SurvivalSentimentIcon } from "@/components/SurvivalPollChip";
 import { formatPlayTime } from "@/lib/gen3-save/playtime";
 import { pokemonInSlot } from "@/lib/trainer-display";
 
@@ -246,11 +246,8 @@ export function TrainerCard({
                             width={96}
                           />
                           {mon.survivalPoll && mon.survivalPoll.total > 0 ? (
-                            <span className="pointer-events-none absolute bottom-0.5 left-0.5 right-0.5 flex justify-center">
-                              <SurvivalPollChip
-                                poll={mon.survivalPoll}
-                                compact
-                              />
+                            <span className="pointer-events-auto absolute bottom-0.5 left-0.5 z-1">
+                              <SurvivalSentimentIcon poll={mon.survivalPoll} />
                             </span>
                           ) : null}
                         </button>
@@ -368,26 +365,25 @@ export function TrainerCard({
                         className="pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-frame/50 bg-surface-2 px-1 py-1 transition hover:border-interactive/60 hover:bg-interactive-soft/40 sm:h-24"
                         onClick={() => setDetailsPokemon(mon)}
                       >
-                        <PokemonSpriteImage
-                          alt={label}
-                          className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
-                          height={80}
-                          pokedexId={mon.pokedexId}
-                          shiny={mon.isShiny}
-                          species={mon.species}
-                          width={80}
-                        />
+                        <span className="relative inline-flex shrink-0">
+                          <PokemonSpriteImage
+                            alt={label}
+                            className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+                            height={80}
+                            pokedexId={mon.pokedexId}
+                            shiny={mon.isShiny}
+                            species={mon.species}
+                            width={80}
+                          />
+                          {mon.survivalPoll && mon.survivalPoll.total > 0 ? (
+                            <span className="pointer-events-auto absolute -bottom-0.5 -left-0.5 z-1">
+                              <SurvivalSentimentIcon poll={mon.survivalPoll} />
+                            </span>
+                          ) : null}
+                        </span>
                         <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover/slot:text-ink">
                           {label}
                         </span>
-                        {mon.survivalPoll && mon.survivalPoll.total > 0 ? (
-                          <span className="pointer-events-none absolute bottom-0.5 left-0.5 right-0.5 flex justify-center">
-                            <SurvivalPollChip
-                              poll={mon.survivalPoll}
-                              compact
-                            />
-                          </span>
-                        ) : null}
                       </button>
                     </PokemonHoverPreview>
                   );
