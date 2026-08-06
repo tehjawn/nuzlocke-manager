@@ -28,6 +28,11 @@ import {
 } from "@/lib/memorial-backfill";
 import { currentRunNumber } from "@/lib/wipe-memorial";
 import { pokemonInSlot } from "@/lib/trainer-display";
+import {
+  HEADLINE_ACTIVITY_TYPES,
+  HEADLINE_LIMIT,
+  isHeadlineActivityType,
+} from "@/lib/activity-headlines";
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { mapDbChallenge, resolveActivityAvatarSrc } from "@/lib/mappers";
@@ -517,6 +522,54 @@ export async function getChallengeAccessFields(slug: string): Promise<{
 export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
   const challenge = await getChallenge(slug);
   return coalesceActivityItems(challenge?.activities ?? []);
+}
+
+/**
+ * Latest high-signal Pack moments for the left-rail Headline Moments carousel.
+ * Does not coalesce — each badge / wipe / champion row stays its own slide.
+ */
+export async function listHeadlineActivities(
+  slug: string,
+  viewerUserId?: string | null,
+  limit: number = HEADLINE_LIMIT,
+): Promise<ActivityItem[]> {
+  const take = Math.min(Math.max(limit, 1), HEADLINE_LIMIT);
+
+  if (isDatabaseConfigured()) {
+    try {
+      const prisma = getPrisma();
+      const challenge = await prisma.challenge.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+      if (!challenge) return [];
+
+      const rows = await prisma.activityEvent.findMany({
+        where: {
+          challengeId: challenge.id,
+          type: { in: [...HEADLINE_ACTIVITY_TYPES] },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take,
+        include: {
+          trainer: {
+            select: { id: true, handle: true, avatarSpriteKey: true },
+          },
+          actor: { select: { image: true } },
+          reactions: { select: { emoji: true, userId: true } },
+        },
+      });
+
+      return mapActivityRows(rows, viewerUserId);
+    } catch {
+      // fall through
+    }
+  }
+
+  const seedItems = await getRecentActivity(slug);
+  return seedItems
+    .filter((item) => isHeadlineActivityType(item.type))
+    .slice(0, take);
 }
 
 type ActivityRow = {

@@ -25,7 +25,7 @@ type LayoutProps = {
 };
 
 /**
- * Shared season chrome (header, info, tabs, feed).
+ * Shared season chrome (header, info, tabs, headline moments).
  * Soft-navigating between season tabs keeps this layout mounted — only the
  * right-pane page segment swaps.
  *

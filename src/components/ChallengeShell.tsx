@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
 import { Frame } from "@/components/Frame";
+import { HeadlineMomentsRail } from "@/components/HeadlineMomentsRail";
 import { MobileWorkspace } from "@/components/MobileWorkspace";
 import { ScrollFadeRail } from "@/components/ScrollFadeRail";
 import { SeasonTabs } from "@/components/SeasonTabs";
@@ -152,6 +153,7 @@ export function ChallengeShell({
               myTrainerId={myTrainerId}
             />
           </Suspense>
+          <HeadlineMomentsRail slug={slug} />
         </ScrollFadeRail>
 
         {/*
