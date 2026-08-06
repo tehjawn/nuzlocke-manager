@@ -109,17 +109,12 @@ export function MemorialBoard({
   );
   const hasAnyGraves = totalGraves > 0;
 
+  // When filters hide the open trainer’s graves, selectedRow is null and the
+  // modal stays closed without a setState sync effect.
   const selectedRow =
     selectedTrainerId == null
       ? null
       : (byTrainer.find((row) => row.trainer.id === selectedTrainerId) ?? null);
-
-  // Drop the modal if filters hide the open trainer’s remaining graves.
-  useEffect(() => {
-    if (selectedTrainerId != null && selectedRow == null) {
-      setSelectedTrainerId(null);
-    }
-  }, [selectedTrainerId, selectedRow]);
 
   function clearFilters() {
     setTypeFilter([]);

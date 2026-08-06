@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  useCallback,
   useDeferredValue,
   useEffect,
   useLayoutEffect,
@@ -1237,7 +1238,6 @@ function useDexVirtualList<T>(
   const totalRef = useRef(items.length);
   const prevFocusRef = useRef(focusIndex);
   const prevResetRef = useRef(resetKey);
-  totalRef.current = items.length;
 
   const [startIndex, setStartIndex] = useState(0);
   const [endIndex, setEndIndex] = useState(PAGE_SIZE);
@@ -1245,6 +1245,10 @@ function useDexVirtualList<T>(
   const [scrollEpoch, setScrollEpoch] = useState(0);
 
   const total = items.length;
+
+  useLayoutEffect(() => {
+    totalRef.current = total;
+  }, [total]);
 
   const syncFromDom = () => {
     const root = scrollRef.current;
@@ -1280,13 +1284,13 @@ function useDexVirtualList<T>(
     });
   };
 
-  const setScrollRef = useRef((node: HTMLDivElement | null) => {
+  const setScrollRef = useCallback((node: HTMLDivElement | null) => {
     const prev = scrollRef.current;
     scrollRef.current = node;
     if (prev === node) return;
     // Remount (e.g. Directory ↔ tiers): force a layout sync on the new node.
     if (node) setScrollEpoch((n) => n + 1);
-  }).current;
+  }, []);
 
   // Focus jump + resize + sync when list/focus changes or the scrollport remounts.
   useLayoutEffect(() => {
@@ -1298,11 +1302,8 @@ function useDexVirtualList<T>(
 
     if (!root) return;
 
-    if (total === 0) {
-      setStartIndex(0);
-      setEndIndex(0);
-      return;
-    }
+    // Empty list: clamp via derived start/end below; skip setState here.
+    if (total === 0) return;
 
     if (focusIndex < 0) {
       if (resetChanged) root.scrollTop = 0;
@@ -1337,8 +1338,8 @@ function useDexVirtualList<T>(
     };
   }, [focusIndex, resetKey, total, scrollEpoch]);
 
-  const start = Math.min(startIndex, Math.max(0, total));
-  const end = Math.min(Math.max(endIndex, start), total);
+  const start = total === 0 ? 0 : Math.min(startIndex, Math.max(0, total));
+  const end = total === 0 ? 0 : Math.min(Math.max(endIndex, start), total);
 
   return {
     visible: items.slice(start, end),
