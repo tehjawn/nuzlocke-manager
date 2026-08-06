@@ -5,6 +5,7 @@ import { BondHeart } from "@/components/BondHeart";
 import { GodPrismRays } from "@/components/GodPrismRays";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { SurvivalSentimentIcon } from "@/components/SurvivalPollChip";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { POKEMON_GENERATIONS } from "@/data/pokemon-index";
@@ -386,6 +387,13 @@ function SpecimenCard({
               species={row.species}
               width={96}
             />
+            {row.pokemon.survivalPoll &&
+            row.pokemon.survivalPoll.total > 0 ? (
+              <SurvivalSentimentIcon
+                className="pokemon-survival-sentiment--corner h-3.5 w-3.5"
+                poll={row.pokemon.survivalPoll}
+              />
+            ) : null}
             {row.trainingTier !== null ? (
               <BondHeart
                 className="pokemon-bond-heart--corner h-3.5 w-3.5"

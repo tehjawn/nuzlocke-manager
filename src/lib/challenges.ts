@@ -389,7 +389,10 @@ export async function getChallengeToolsSummary(
     try {
       const row = await fetchChallengeToolsSummaryRow(slug);
       if (row) {
-        return mapDbChallenge({ ...row, activities: [] }, viewerUserId);
+        return withSurvivalPollTallies(
+          mapDbChallenge({ ...row, activities: [] }, viewerUserId),
+          viewerUserId,
+        );
       }
     } catch {
       return null;
