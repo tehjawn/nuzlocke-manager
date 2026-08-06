@@ -210,7 +210,8 @@ body::before {
   opacity: calc(var(--grain-opacity) + 0.04);
 }
 
-body:has([data-modal-open]) {
+body:has([data-modal-open]),
+body[data-ask-scroll-lock] {
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -3977,6 +3978,65 @@ button:disabled,
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Ask drawer (#300) — desktop slides from right; mobile rises as a sheet */
+@keyframes ask-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ask-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Compact markdown inside Ask answers — tighter than Rules/FAQ pages */
+.ask-markdown > :first-child {
+  margin-top: 0;
+}
+
+.ask-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.ask-markdown p,
+.ask-markdown ul,
+.ask-markdown ol {
+  margin: 0.5em 0;
+}
+
+.ask-markdown ul,
+.ask-markdown ol {
+  padding-left: 1.15em;
+}
+
+.ask-markdown ul {
+  list-style: disc;
+}
+
+.ask-markdown ol {
+  list-style: decimal;
+}
+
+.ask-markdown li + li {
+  margin-top: 0.25em;
+}
+
+.ask-markdown strong {
+  font-weight: 650;
 }
 
 .emoji-picker-shell .EmojiPickerReact {

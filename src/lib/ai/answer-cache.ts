@@ -2,9 +2,10 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { getRedis } from "@/lib/redis";
+import type { AskAnswer } from "@/features/search/ask-types";
 
 /**
- * Shared answer cache for Jump Ask (#184).
+ * Shared answer cache for Jump Ask (#184 / #300).
  *
  * Same normalized question + same snapshot → same answer. Hits skip Gemini
  * entirely (tokens + latency + free-tier quota). Fail-open: Redis blips fall
@@ -20,11 +21,12 @@ import { getRedis } from "@/lib/redis";
 const MEMORY_TTL_MS = 15 * 60 * 1000;
 const REDIS_TTL_SECONDS = 15 * 60;
 const MAX_MEMORY_ENTRIES = 200;
-const REDIS_KEY_PREFIX = "jump-ask:v2:";
+const REDIS_KEY_PREFIX = "jump-ask:v3:";
 
 type CachedAnswer = {
   text: string;
   model: string;
+  answer: AskAnswer;
 };
 
 type MemoryEntry = CachedAnswer & { expiresAt: number };
@@ -38,8 +40,9 @@ function normalizeQuestion(question: string): string {
 export function jumpAskCacheKey(
   question: string,
   snapshot: string | null | undefined,
+  mode = "prose",
 ): string {
-  const payload = `${normalizeQuestion(question)}\n---\n${snapshot?.trim() ?? ""}`;
+  const payload = `${normalizeQuestion(question)}\n---\n${mode}\n---\n${snapshot?.trim() ?? ""}`;
   return createHash("sha256").update(payload).digest("hex");
 }
 
@@ -47,6 +50,21 @@ function sweep(now: number): void {
   for (const [key, entry] of memory) {
     if (now >= entry.expiresAt) memory.delete(key);
   }
+}
+
+function coerceCached(raw: unknown): CachedAnswer | null {
+  if (!raw || typeof raw !== "object") return null;
+  const parsed = raw as {
+    text?: string;
+    model?: string;
+    answer?: AskAnswer;
+  };
+  if (!parsed.text || !parsed.model) return null;
+  const answer: AskAnswer =
+    parsed.answer && typeof parsed.answer === "object" && "kind" in parsed.answer
+      ? parsed.answer
+      : { kind: "prose", markdown: parsed.text };
+  return { text: parsed.text, model: parsed.model, answer };
 }
 
 function memoryGet(key: string, now: number): CachedAnswer | null {
@@ -59,7 +77,11 @@ function memoryGet(key: string, now: number): CachedAnswer | null {
   // Refresh LRU order.
   memory.delete(key);
   memory.set(key, entry);
-  return { text: entry.text, model: entry.model };
+  return {
+    text: entry.text,
+    model: entry.model,
+    answer: entry.answer,
+  };
 }
 
 function memorySet(key: string, value: CachedAnswer, now: number): void {
@@ -86,9 +108,11 @@ export async function getCachedJumpAnswer(
   try {
     const raw = await redis.get<CachedAnswer | string>(`${REDIS_KEY_PREFIX}${key}`);
     if (!raw) return null;
-    const parsed: CachedAnswer =
-      typeof raw === "string" ? (JSON.parse(raw) as CachedAnswer) : raw;
-    if (!parsed?.text || !parsed?.model) return null;
+    const parsed =
+      typeof raw === "string"
+        ? coerceCached(JSON.parse(raw) as unknown)
+        : coerceCached(raw);
+    if (!parsed) return null;
     memorySet(key, parsed, now);
     return parsed;
   } catch {
