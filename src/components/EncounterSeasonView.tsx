@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { EncounterLedger } from "@/components/EncounterLedger";
+import { EncounterRouteMap } from "@/components/EncounterRouteMap";
 import { ModeTabs } from "@/components/ModeTabs";
 import { PersonalRoutesView } from "@/components/PersonalRoutesView";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -30,7 +31,7 @@ type EncounterSeasonViewProps = {
   slug: string;
 };
 
-type EncounterView = "claims" | "missing" | "routes";
+type EncounterView = "claims" | "map" | "missing" | "routes";
 
 export function EncounterSeasonView({
   groups,
@@ -136,6 +137,7 @@ export function EncounterSeasonView({
             label: myTrainerId ? "My routes" : "Open routes",
             "data-testid": "encounter-view-routes",
           },
+          { id: "map", label: "Map", "data-testid": "encounter-view-map" },
           { id: "missing", label: "Missing dex", "data-testid": "encounter-view-missing" },
         ] satisfies ReadonlyArray<{
           id: EncounterView;
@@ -158,6 +160,15 @@ export function EncounterSeasonView({
         {view === "claims" ? (
           <EncounterLedger groups={groups} slug={slug} />
         ) : null}
+        {view === "map" ? (
+          <EncounterRouteMap
+            groups={groups}
+            myTrainerId={myTrainerId}
+            onJumpToClaims={() => setView("claims")}
+            routeStatuses={routeStatuses}
+            slug={slug}
+          />
+        ) : null}
         {view === "routes" ? (
           <PersonalRoutesView
             myTrainerId={myTrainerId}
@@ -165,7 +176,8 @@ export function EncounterSeasonView({
             slug={slug}
           />
         ) : null}
-      </ModeTabs>    </div>
+      </ModeTabs>
+    </div>
   );
 }
 
