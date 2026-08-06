@@ -31,12 +31,14 @@ import type { SearchResult } from "@/features/search/search-types";
 import { useJumpAssist } from "@/features/search/use-jump-assist";
 import { evaluateAskQuery } from "@/lib/ai/ask-guard";
 
-/** Desktop Ask rail width — content column shrinks by this amount. */
+/** Desktop Ask rail width — page gets matching right padding. */
 export const ASK_RAIL_WIDTH = "min(26rem, 38vw)";
 
 /**
- * App chrome for Ask (#300): desktop = PostHog-style right rail that pushes
- * the page left; mobile = full-screen sheet over a scrim.
+ * App chrome for Ask (#300).
+ *
+ * Desktop: full-viewport-height right rail (`| page | drawer |`); the page
+ * column gets right padding so content shifts left. Mobile: full-screen sheet.
  */
 export function AskChrome({ children }: { children: ReactNode }) {
   const { askOpen } = useSearch();
@@ -51,10 +53,15 @@ export function AskChrome({ children }: { children: ReactNode }) {
   }, [askOpen]);
 
   return (
-    <div className="flex w-full flex-1 flex-col md:flex-row md:items-start">
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+    <>
+      <div
+        data-ask-page=""
+        className="flex w-full min-w-0 flex-1 flex-col"
+      >
+        {children}
+      </div>
       <AskHost />
-    </div>
+    </>
   );
 }
 
@@ -226,32 +233,22 @@ function AskHost() {
     </AskPanelFrame>
   );
 
-  // Desktop: in-flow right rail (pushes main column). Width animates open/closed.
+  // Desktop: fixed full-viewport rail on the right; page padding via CSS.
   // Mobile: portal sheet — never mount both or the composer ref double-binds.
   return (
     <>
-      <aside
-        className={[
-          "sticky top-0 z-30 hidden h-dvh shrink-0 flex-col overflow-hidden bg-surface md:flex",
-          "transition-[width,border-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          askOpen && desktop
-            ? "border-l border-frame"
-            : "w-0 border-l-0 border-transparent",
-        ].join(" ")}
-        style={
-          askOpen && desktop ? { width: ASK_RAIL_WIDTH } : { width: 0 }
-        }
-        aria-hidden={!askOpen || !desktop}
-      >
-        {askOpen && desktop ? (
-          <div
-            className="flex h-full flex-col"
-            style={{ width: ASK_RAIL_WIDTH, minWidth: ASK_RAIL_WIDTH }}
-          >
-            {panel}
-          </div>
-        ) : null}
-      </aside>
+      {askOpen && desktop ? (
+        <aside
+          data-ask-rail-panel=""
+          role="dialog"
+          aria-modal="false"
+          aria-label="Ask"
+          className="fixed inset-y-0 right-0 z-30 hidden flex-col border-l border-frame bg-surface shadow-[-8px_0_24px_-12px_var(--shadow-md)] motion-safe:animate-[ask-rail-in_200ms_cubic-bezier(0.22,1,0.36,1)] md:flex"
+          style={{ width: ASK_RAIL_WIDTH }}
+        >
+          {panel}
+        </aside>
+      ) : null}
 
       {askOpen && !desktop && typeof document !== "undefined"
         ? createPortal(
@@ -262,7 +259,12 @@ function AskHost() {
                 onClick={closeAsk}
                 className="absolute inset-0 cursor-pointer bg-[var(--scrim)] backdrop-blur-[2px] motion-safe:animate-[drawer-scrim-in_200ms_ease-out]"
               />
-              <div className="absolute inset-0 flex flex-col overflow-hidden bg-surface motion-safe:animate-[ask-sheet-in_220ms_cubic-bezier(0.22,1,0.36,1)] gba-frame">
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Ask"
+                className="absolute inset-0 flex flex-col overflow-hidden bg-surface motion-safe:animate-[ask-sheet-in_220ms_cubic-bezier(0.22,1,0.36,1)] gba-frame"
+              >
                 {panel}
               </div>
             </div>,
@@ -295,12 +297,7 @@ function AskPanelFrame({
   children: ReactNode;
 }) {
   return (
-    <div
-      role="dialog"
-      aria-modal={!desktop}
-      aria-label="Ask"
-      className="flex h-full min-h-0 flex-col outline-none"
-    >
+    <div className="flex h-full min-h-0 flex-col outline-none">
       <header className="flex shrink-0 items-start gap-2 border-b border-frame/70 px-3 py-2.5 sm:px-4">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
