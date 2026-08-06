@@ -15,6 +15,9 @@ const MAX_RELATED = 4;
 export function hasWordMatch(haystack: string, needle: string): boolean {
   const n = needle.trim().toLowerCase();
   if (n.length < 3) return false;
+  const h = haystack.toLowerCase();
+  // Most titles miss — avoid compiling a RegExp per candidate.
+  if (!h.includes(n)) return false;
   const re = new RegExp(
     `(^|[^a-z0-9])${escapeRegExp(n)}([^a-z0-9]|$)`,
     "i",

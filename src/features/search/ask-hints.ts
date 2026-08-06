@@ -1,6 +1,10 @@
 import type { SearchSeasonContext } from "@/features/search/search-types";
 
-/** Handles / species / nicknames the Ask guard can treat as season anchors. */
+/**
+ * Season anchors for the Ask guard — handles + species only.
+ * Nicknames were omitted on purpose: hundreds of memorial nicknames made
+ * `evaluateAskQuery` O(n) regex work on every keystroke.
+ */
 export function askEntityHints(
   season: SearchSeasonContext | null | undefined,
 ): string[] {
@@ -21,7 +25,6 @@ export function askEntityHints(
     add(t.handle);
     for (const mon of t.pokemon ?? []) {
       add(mon.species);
-      add(mon.nickname);
     }
   }
 

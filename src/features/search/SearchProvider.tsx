@@ -16,12 +16,16 @@ import {
   buildSeasonResults,
   createSearchIndex,
 } from "@/features/search/search-index";
-import type { SearchResult, SearchSeasonContext } from "@/features/search/search-types";
+import type {
+  SearchResult,
+  SearchSeasonContext,
+} from "@/features/search/search-types";
 
 type SearchContextValue = {
   open: boolean;
   setOpen: (open: boolean) => void;
   toggle: () => void;
+  /** Fuse-facing results (living party Pokémon only — no memorial). */
   results: SearchResult[];
   index: Fuse<SearchResult>;
   /** Resolved season behind the index — source for Ask mode's snapshot (#184). */
@@ -103,7 +107,9 @@ export function SearchProvider({
     [open, toggle, results, index, season, registerSeason, unregisterSeason],
   );
 
-  return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
+  return (
+    <SearchContext.Provider value={value}>{children}</SearchContext.Provider>
+  );
 }
 
 export function useSearch() {

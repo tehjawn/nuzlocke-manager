@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -19,6 +19,7 @@ import {
 } from "@/features/search/search-digest";
 import { pickRelatedSearchResults } from "@/features/search/search-related";
 import {
+  buildSeasonMemorialResults,
   clearRecentSearches,
   defaultSuggestions,
   getRecentSearches,
@@ -60,46 +61,15 @@ const CATEGORY_LABEL: Record<SearchCategory, string> = {
   action: "Actions",
 };
 
-function HighlightedText({
-  text,
-  indices,
+function ResultIcon({
+  item,
+  deferMedia,
 }: {
-  text: string;
-  indices: ReadonlyArray<readonly [number, number]> | undefined;
+  item: SearchResult;
+  /** Skip sprites/avatars while a deferred Fuse query is catching up. */
+  deferMedia?: boolean;
 }) {
-  if (!indices?.length) return <>{text}</>;
-
-  const parts: ReactNode[] = [];
-  let last = 0;
-  indices.forEach(([start, end], i) => {
-    if (start > last) {
-      parts.push(<span key={`t-${i}`}>{text.slice(last, start)}</span>);
-    }
-    parts.push(
-      <mark
-        key={`m-${i}`}
-        className="rounded-[2px] bg-interactive-soft font-medium text-ink"
-      >
-        {text.slice(start, end + 1)}
-      </mark>,
-    );
-    last = end + 1;
-  });
-  if (last < text.length) {
-    parts.push(<span key="t-end">{text.slice(last)}</span>);
-  }
-  return <>{parts}</>;
-}
-
-function matchIndices(
-  matches: SearchFuseHit["matches"],
-  key: "title" | "subtitle",
-) {
-  return matches?.find((m) => m.key === key)?.indices;
-}
-
-function ResultIcon({ item }: { item: SearchResult }) {
-  if (item.pokemonSprite) {
+  if (!deferMedia && item.pokemonSprite) {
     return (
       <PokemonSpriteImage
         alt=""
@@ -113,7 +83,7 @@ function ResultIcon({ item }: { item: SearchResult }) {
     );
   }
 
-  if (item.imageUrl) {
+  if (!deferMedia && item.imageUrl) {
     // Plain img: Search icons come from Showdown / PokeAPI / Blob and must not
     // depend on next/image remotePatterns (custom avatars break search in prod).
     return (
@@ -135,7 +105,9 @@ function ResultIcon({ item }: { item: SearchResult }) {
         ? "◆"
         : item.category === "rules"
           ? "?"
-          : "→";
+          : item.category === "pokemon"
+            ? "◆"
+            : "→";
 
   return (
     <span
@@ -159,6 +131,9 @@ export function SearchPalette() {
    */
   const [pathname, setPathname] = useState("");
   const [query, setQuery] = useState("");
+  /** Fuse runs against the deferred query so keystrokes stay responsive. */
+  const deferredQuery = useDeferredValue(query);
+  const searchPending = deferredQuery !== query;
   const [recents, setRecents] = useState<string[]>([]);
   const [seenOpen, setSeenOpen] = useState(open);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -195,9 +170,9 @@ export function SearchPalette() {
   // Derive from the live index so hits refresh when season registration lands
   // after hydration (stale hits were empty forever in prod until retyping).
   const hits = useMemo(() => {
-    if (!query.trim()) return [] as SearchFuseHit[];
-    return querySearchIndex(index, query);
-  }, [index, query]);
+    if (!deferredQuery.trim()) return [] as SearchFuseHit[];
+    return querySearchIndex(index, deferredQuery);
+  }, [index, deferredQuery]);
 
   const groupedHits = useMemo(() => {
     const groups = new Map<SearchCategory, SearchFuseHit[]>();
@@ -250,10 +225,7 @@ export function SearchPalette() {
   const trimmedQuery = query.trim();
 
   const entityHints = useMemo(() => askEntityHints(season), [season]);
-  const askGuard = useMemo(
-    () => evaluateAskQuery(trimmedQuery, { entityHints }),
-    [trimmedQuery, entityHints],
-  );
+  const askGuard = evaluateAskQuery(trimmedQuery, { entityHints });
 
   /**
    * Ask is a fallback, never the default: only when the query clears the Ask
@@ -264,9 +236,7 @@ export function SearchPalette() {
 
   const runAsk = useCallback(() => {
     if (!trimmedQuery) return;
-    const guard = evaluateAskQuery(trimmedQuery, {
-      entityHints: askEntityHints(season),
-    });
+    const guard = evaluateAskQuery(trimmedQuery, { entityHints });
     if (!guard.ok) return;
     // Pass 1 (instant): which slices the question needs.
     // Pass 2 (still sync): pack only those into ≤8k — then the network Ask.
@@ -277,18 +247,18 @@ export function SearchPalette() {
         )
       : null;
     void ask(trimmedQuery, snapshot);
-  }, [ask, season, trimmedQuery]);
+  }, [ask, entityHints, season, trimmedQuery]);
 
   // Trainers / Pokémon the answer names, matched client-side so the model never
-  // chooses a destination — it only produces text we look words up in.
+  // chooses a destination. Memorial rows are built only after an answer so Fuse
+  // stays living-party-only while typing.
   const relatedResults = useMemo(() => {
     if (assist.status !== "answered") return [];
-    return pickRelatedSearchResults(
-      results,
-      assist.answer,
-      assist.question,
-    );
-  }, [assist, results]);
+    const pool = season
+      ? [...results, ...buildSeasonMemorialResults(season)]
+      : results;
+    return pickRelatedSearchResults(pool, assist.answer, assist.question);
+  }, [assist, results, season]);
 
   const showingAssist = assist.status !== "idle";
 
@@ -337,7 +307,11 @@ export function SearchPalette() {
           </kbd>
         </div>
 
-        <Command.List className="relative z-[1] max-h-[min(52vh,420px)] overflow-y-auto p-2">
+        <Command.List
+          className={`relative z-[1] max-h-[min(52vh,420px)] overflow-y-auto p-2 transition-opacity duration-100 ${
+            searchPending ? "opacity-60" : "opacity-100"
+          }`}
+        >
           {showingAssist ? (
             <AssistPanel
               state={assist}
@@ -350,7 +324,10 @@ export function SearchPalette() {
 
           {/* Empty results: Ask first so Enter asks. With hits, Ask trails so
               fuzzy stays the default selection (cmdk picks DOM order). */}
-          {!showingAssist && canAsk && hits.length === 0 ? (
+          {!showingAssist &&
+          canAsk &&
+          !searchPending &&
+          hits.length === 0 ? (
             <AskCommandGroup query={trimmedQuery} onAsk={runAsk} />
           ) : null}
 
@@ -403,7 +380,10 @@ export function SearchPalette() {
             </>
           ) : null}
 
-          {!showingAssist && trimmedQuery && hits.length === 0 ? (
+          {!showingAssist &&
+          trimmedQuery &&
+          !searchPending &&
+          hits.length === 0 ? (
             <div className="px-3 py-8 text-center text-sm text-muted">
               No matches for “{trimmedQuery}”
               {canAsk ? (
@@ -425,15 +405,14 @@ export function SearchPalette() {
                 <SearchItem
                   key={hit.item.id}
                   item={hit.item}
-                  titleIndices={matchIndices(hit.matches, "title")}
-                  subtitleIndices={matchIndices(hit.matches, "subtitle")}
+                  deferMedia={searchPending}
                   onSelect={() => runResult(hit.item)}
                 />
               ))}
             </Command.Group>
           ))}
 
-          {!showingAssist && canAsk && hits.length > 0 ? (
+          {!showingAssist && canAsk && !searchPending && hits.length > 0 ? (
             <AskCommandGroup query={trimmedQuery} onAsk={runAsk} />
           ) : null}
         </Command.List>
@@ -630,13 +609,11 @@ function SparkGlyph({ className }: { className?: string }) {
 function SearchItem({
   item,
   onSelect,
-  titleIndices,
-  subtitleIndices,
+  deferMedia,
 }: {
   item: SearchResult;
   onSelect: () => void;
-  titleIndices?: ReadonlyArray<readonly [number, number]>;
-  subtitleIndices?: ReadonlyArray<readonly [number, number]>;
+  deferMedia?: boolean;
 }) {
   return (
     <Command.Item
@@ -644,15 +621,13 @@ function SearchItem({
       onSelect={onSelect}
       className="flex cursor-pointer items-center gap-2.5 rounded-[calc(var(--radius-sm)-1px)] border border-transparent px-2 py-2 text-sm aria-selected:border-interactive/35 aria-selected:bg-interactive-soft"
     >
-      <ResultIcon item={item} />
+      <ResultIcon item={item} deferMedia={deferMedia} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold tracking-tight text-ink">
-          <HighlightedText text={item.title} indices={titleIndices} />
+          {item.title}
         </p>
         {item.subtitle ? (
-          <p className="truncate text-xs text-muted">
-            <HighlightedText text={item.subtitle} indices={subtitleIndices} />
-          </p>
+          <p className="truncate text-xs text-muted">{item.subtitle}</p>
         ) : null}
       </div>
       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted">

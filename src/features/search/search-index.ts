@@ -22,7 +22,8 @@ const FUSE_OPTIONS: IFuseOptions<SearchResult> = {
   // index, which is what made results feel arbitrary.
   threshold: 0.34,
   ignoreLocation: true,
-  includeMatches: true,
+  // Match indices are expensive on large indexes; Jump highlights are nice-to-have.
+  includeMatches: false,
   includeScore: true,
   // 1 matched a single character anywhere — pure noise on a large index.
   minMatchCharLength: 2,
@@ -215,12 +216,18 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
   const trainers: SearchResult[] = ctx.trainers.map((t) => {
     const badges = t.earnedBadgeKeys ?? [];
     const mons = t.pokemon ?? [];
+    const living = mons.filter((m) => m.slot !== "GRAVEYARD");
+    const fallen = mons.filter((m) => m.slot === "GRAVEYARD");
     const badgeCount = badges.length;
-    const monCount = mons.length;
+    const monCount = living.length;
+    const fallenCount = fallen.length;
     const subtitleParts = [
       t.realName?.trim() || t.discordDisplayName?.trim() || null,
       badgeCount ? `${badgeCount} badge${badgeCount === 1 ? "" : "s"}` : null,
       monCount ? `${monCount} Pokémon` : null,
+      fallenCount
+        ? `${fallenCount} RIP`
+        : null,
       t.statusText?.trim() || null,
     ].filter(Boolean);
 
@@ -237,13 +244,19 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
         t.discordDisplayName ?? "",
         "trainer",
         "player",
+        fallenCount ? "rip" : "",
+        fallenCount ? "memorial" : "",
+        fallenCount ? "fallen" : "",
       ].filter(Boolean),
       imageUrl: avatarImageUrl(t.avatarSpriteKey),
     };
   });
 
-  const pokemon: SearchResult[] = ctx.trainers.flatMap((t) =>
-    (t.pokemon ?? []).map((mon) => {
+  // Living party only in the Fuse index. GRAVEYARD stays on `season` for Jump
+  // Ask digests; related chips build memorial rows lazily after an answer.
+  const pokemon: SearchResult[] = ctx.trainers.flatMap((t) => {
+    const living = (t.pokemon ?? []).filter((m) => m.slot !== "GRAVEYARD");
+    return living.map((mon) => {
       const label = mon.nickname?.trim() || mon.species;
       const slot = SLOT_LABEL[mon.slot] ?? mon.slot;
       const bits = [
@@ -276,8 +289,8 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
           species: mon.species,
         },
       };
-    }),
-  );
+    });
+  });
 
   const badges: SearchResult[] = ctx.badges.map((b) => ({
     id: `badge-${b.key}`,
@@ -421,6 +434,56 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
   ];
 }
 
+/**
+ * Memorial (GRAVEYARD) Pokémon for Ask-related chips only — not Fuse-indexed.
+ * Keeps Jump Ask "jump to BigHead" working without bloating fuzzy search.
+ */
+export function buildSeasonMemorialResults(
+  ctx: SearchSeasonContext,
+): SearchResult[] {
+  if (ctx.firstRun) return [];
+  const base = `/challenges/${ctx.slug}`;
+  return ctx.trainers.flatMap((t) =>
+    (t.pokemon ?? [])
+      .filter((mon) => mon.slot === "GRAVEYARD")
+      .map((mon) => {
+        const label = mon.nickname?.trim() || mon.species;
+        const bits = [
+          mon.nickname?.trim() ? mon.species : null,
+          "Memorial",
+          mon.catchRoute?.trim() || null,
+          mon.level != null ? `Lv ${mon.level}` : null,
+          t.handle,
+        ].filter(Boolean);
+
+        return {
+          id: `pokemon-${mon.id}`,
+          title: label,
+          subtitle: bits.join(" · "),
+          href: `${base}/trainers/${t.id}?pokemon=${encodeURIComponent(mon.id)}`,
+          category: "pokemon" as const,
+          tags: [
+            mon.species,
+            mon.nickname ?? "",
+            mon.catchRoute ?? "",
+            t.handle,
+            "Memorial",
+            "rip",
+            "fallen",
+            mon.isShiny ? "shiny" : "",
+            "pokemon",
+            "mon",
+          ].filter(Boolean),
+          pokemonSprite: {
+            pokedexId: mon.pokedexId,
+            shiny: mon.isShiny,
+            species: mon.species,
+          },
+        };
+      }),
+  );
+}
+
 export function createSearchIndex(results: SearchResult[]) {
   return new Fuse(results, FUSE_OPTIONS);
 }
@@ -465,10 +528,7 @@ export function querySearchIndex(
     })
     .sort((a, b) => a.ranked - b.ranked)
     .slice(0, MAX_RESULTS)
-    .map(({ hit }) => ({
-      item: hit.item,
-      matches: hit.matches,
-    }));
+    .map(({ hit }) => ({ item: hit.item }));
 }
 
 /**

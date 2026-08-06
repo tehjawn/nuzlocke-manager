@@ -80,7 +80,7 @@ async function userExists(userId: string): Promise<boolean> {
 export async function getWelcomeReadAt(
   userId: string,
 ): Promise<string | null> {
-  if (!(await userExists(userId))) return null;
+  if (!userId) return null;
   const prisma = getPrisma();
   const row = await prisma.notification.findUnique({
     where: {
@@ -99,7 +99,7 @@ export async function getWelcomeReadAt(
 export async function markWelcomeNotificationRead(
   userId: string,
 ): Promise<NotificationItem | null> {
-  if (!(await userExists(userId))) return null;
+  if (!userId) return null;
   const prisma = getPrisma();
   const row = await prisma.notification.findUnique({
     where: {
@@ -157,18 +157,13 @@ export async function listNotificationsForUser(
   limit = 20,
 ): Promise<NotificationItem[]> {
   if (!userId) return [];
-  if (!(await userExists(userId))) {
-    console.warn(
-      "[notifications] list skipped — session userId missing from DB (re-login after DB reset?)",
-      userId,
-    );
-    return [];
-  }
 
   const prisma = getPrisma();
   // Happy path is read-only. Backfill welcome only when the row is missing
   // (failed sign-in upsert) — not on every header render. Welcome is always
   // shown (not dismissable); clear a stale archive if one was set earlier.
+  // No upfront userExists(): AuthButtons already resolved the session; missing
+  // users just yield empty rows and ensureWelcome returns null.
   const rows = await prisma.notification.findMany({
     where: {
       userId,
@@ -213,7 +208,7 @@ export async function listNotificationsForUser(
 }
 
 export async function countUnreadNotifications(userId: string): Promise<number> {
-  if (!(await userExists(userId))) return 0;
+  if (!userId) return 0;
   const prisma = getPrisma();
   return prisma.notification.count({
     where: { userId, readAt: null, archivedAt: null },

@@ -242,8 +242,8 @@ export async function getSeasonMemorialGraves(
 }
 
 /**
- * Workspace layout chrome — MAIN summary, no box payloads or activity feed.
- * Enough for Search trainers and myTrainerId.
+ * Workspace layout chrome — MAIN + GRAVEYARD summary (no box / encounters /
+ * activity). Enough for Search, Jump Ask memorial questions, and myTrainerId.
  */
 export async function getChallengeShell(
   slug: string,
@@ -264,7 +264,9 @@ export async function getChallengeShell(
     ...full,
     trainers: full.trainers.map((t) => ({
       ...t,
-      pokemon: t.pokemon.filter((p) => p.slot === "MAIN"),
+      pokemon: t.pokemon.filter(
+        (p) => p.slot === "MAIN" || p.slot === "GRAVEYARD",
+      ),
     })),
   };
 }

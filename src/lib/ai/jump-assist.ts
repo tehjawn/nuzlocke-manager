@@ -42,6 +42,8 @@ const SYSTEM_PROMPT = [
   "- When SNAPSHOT has a YOU: line, 'my/me/mine/my team' means that trainer's",
   "  roster in SNAPSHOT. Prefer level for 'strongest/weakest on my team' unless",
   "  asked about base stats / BST. Same level rule for a named handle's team.",
+  "- SNAPSHOT 'fallen:' lines are the memorial (RIP). Use nickname + species +",
+  "  level there when ranking weakest/strongest fallen Pokémon.",
   "- Never invent trainers, badge counts, or party members. If SNAPSHOT lacks",
   "  a league fact you need, say so in one sentence.",
   "- Be brief: 1–3 sentences, or a short list for rankings. No preamble,",

@@ -70,8 +70,4 @@ export type SearchSeasonContext = {
 
 export type SearchFuseHit = {
   item: SearchResult;
-  matches?: ReadonlyArray<{
-    key?: string;
-    indices: ReadonlyArray<readonly [number, number]>;
-  }>;
 };

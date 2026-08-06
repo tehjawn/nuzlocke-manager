@@ -114,9 +114,9 @@ export function detectAskPlan(
       focus: "roster",
       trainerHandles,
       includeMons: true,
-      includeFallenDetail: /\b(fallen|dead|death|deaths|memorial|grave|rip)\b/.test(
-        q,
-      ),
+      includeFallenDetail:
+        /\b(fallen|dead|death|deaths|memorial|grave|rip)\b/.test(q) ||
+        /\b(weakest|strongest|lowest|highest)\b/.test(q),
       includeRules: false,
       includeRuleBodies: false,
       includeFaqs: false,
@@ -275,21 +275,23 @@ function monLabel(
     catchRoute: string | null;
   },
   lean: boolean,
+  /** Memorial rows keep nicknames — that's how players remember fallen partners. */
+  fallen = false,
 ): string {
-  if (lean) {
-    const lv = mon.level != null ? `@L${mon.level}` : "";
-    const shiny = mon.isShiny ? "*" : "";
-    return `${mon.species}${shiny}${lv}`;
+  const lv = mon.level != null ? (lean && !fallen ? `@L${mon.level}` : `L${mon.level}`) : null;
+  const shiny = mon.isShiny ? (lean && !fallen ? "*" : "shiny") : null;
+
+  if (fallen || !lean) {
+    const name = mon.nickname?.trim()
+      ? `${mon.nickname.trim()} (${mon.species})`
+      : mon.species;
+    const bits = [lv, shiny, !lean ? mon.catchRoute?.trim() || null : null].filter(
+      Boolean,
+    );
+    return bits.length ? `${name} [${bits.join(", ")}]` : name;
   }
-  const name = mon.nickname?.trim()
-    ? `${mon.nickname.trim()} (${mon.species})`
-    : mon.species;
-  const bits = [
-    mon.level != null ? `L${mon.level}` : null,
-    mon.isShiny ? "shiny" : null,
-    mon.catchRoute?.trim() || null,
-  ].filter(Boolean);
-  return bits.length ? `${name} [${bits.join(", ")}]` : name;
+
+  return `${mon.species}${shiny ?? ""}${lv ?? ""}`;
 }
 
 /** Canonical GAME line — aligns Emerald Modern / Modern Emerald naming. */
@@ -417,7 +419,7 @@ function trainerMonLines(
     out.push(
       `  team: ${living
         .slice(0, MAX_PARTY_PER_TRAINER)
-        .map((m) => monLabel(m, plan.leanMons))
+        .map((m) => monLabel(m, plan.leanMons, false))
         .join("; ")}`,
     );
   }
@@ -425,7 +427,7 @@ function trainerMonLines(
     out.push(
       `  fallen: ${fallen
         .slice(0, MAX_FALLEN_PER_TRAINER)
-        .map((m) => monLabel(m, plan.leanMons))
+        .map((m) => monLabel(m, plan.leanMons, true))
         .join("; ")}`,
     );
   }
@@ -518,7 +520,7 @@ export function buildSeasonDigestFromPlan(
     if (plan.includeMons) {
       pushLine(
         pack,
-        "ROSTER FACTS: answer strongest/weakest from team: levels below (higher level = stronger unless asked about BST).",
+        "ROSTER FACTS: answer strongest/weakest from team:/fallen: levels below (higher level = stronger unless asked about BST). fallen: is the memorial (RIP).",
       );
     }
     pushLine(pack, header);

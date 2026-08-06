@@ -110,7 +110,13 @@ export function evaluateAskQuery(
   }
 
   const hints = opts?.entityHints ?? [];
-  const hit = hints.some((h) => hasSoftWord(trimmed, h));
+  // Cheap substring prefilter — most hints miss; avoid a RegExp per hint.
+  const lower = trimmed.toLowerCase();
+  const hit = hints.some((h) => {
+    const n = h.trim().toLowerCase();
+    if (n.length < 2 || !lower.includes(n)) return false;
+    return hasSoftWord(trimmed, h);
+  });
   if (hit && (ROSTER_WORDS.test(trimmed) || COMPARATIVE.test(trimmed))) {
     return { ok: true };
   }
