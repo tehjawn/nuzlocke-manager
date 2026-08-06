@@ -16,6 +16,7 @@ import {
   buildSeasonDigestFromPlan,
   detectAskPlan,
 } from "@/features/search/search-digest";
+import { pickRelatedSearchResults } from "@/features/search/search-related";
 import {
   clearRecentSearches,
   defaultSuggestions,
@@ -273,19 +274,11 @@ export function SearchPalette() {
   // chooses a destination — it only produces text we look words up in.
   const relatedResults = useMemo(() => {
     if (assist.status !== "answered") return [];
-    const haystack = assist.answer.toLowerCase();
-    const seen = new Set<string>();
-    const picked: SearchResult[] = [];
-    for (const r of results) {
-      if (picked.length >= 4) break;
-      if (r.category !== "trainer" && r.category !== "pokemon") continue;
-      const title = r.title.trim().toLowerCase();
-      if (title.length < 3 || seen.has(title)) continue;
-      if (!haystack.includes(title)) continue;
-      seen.add(title);
-      picked.push(r);
-    }
-    return picked;
+    return pickRelatedSearchResults(
+      results,
+      assist.answer,
+      assist.question,
+    );
   }, [assist, results]);
 
   const showingAssist = assist.status !== "idle";
