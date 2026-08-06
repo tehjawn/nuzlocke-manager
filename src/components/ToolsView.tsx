@@ -6,6 +6,7 @@ import { BountyHunterView } from "@/components/BountyHunterView";
 import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
 import { PokedexPanel } from "@/components/PokedexPanel";
+import { SurvivalMarketsPanel } from "@/components/SurvivalMarketsPanel";
 import { TeamPlannerView } from "@/components/TeamPlannerView";
 import { ToolChip, TOOL_TONE_CHIP, toolsTone } from "@/components/tool-icons";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
@@ -33,6 +34,9 @@ type ToolsViewProps = {
    */
   competitiveTrainerIds?: string[];
   signedIn?: boolean;
+  /** Survive/Die season flag — Tools markets panel respects it. */
+  survivalMarketsEnabled?: boolean;
+  viewerUserId?: string | null;
   /** When null, show the Tools directory hub. */
   initialTool?: ToolsId | null;
   initialDexId?: number | null;
@@ -48,6 +52,8 @@ export function ToolsView({
   myTrainerId = null,
   competitiveTrainerIds,
   signedIn = false,
+  survivalMarketsEnabled = true,
+  viewerUserId = null,
   initialTool = null,
   initialDexId = null,
   initialBountyMode = null,
@@ -75,6 +81,8 @@ export function ToolsView({
       myTrainerId={myTrainerId}
       competitiveTrainerIds={competitiveTrainerIds}
       signedIn={signedIn}
+      survivalMarketsEnabled={survivalMarketsEnabled}
+      viewerUserId={viewerUserId}
       initialDexId={initialDexId}
       initialBountyMode={initialBountyMode}
       initialPlannerMode={initialPlannerMode}
@@ -152,6 +160,8 @@ const TOOL_BLURBS: Record<WorkspaceTool, (challengeName: string) => string> = {
     `Look up species for ${name} — role, F→S BST ranks, competitive viability, matchups, and who's already caught it.`,
   bounty: (name) =>
     `Who owns, who's seen, who's cornered a whole line — and every Pokémon on a board — in ${name}.`,
+  markets: (name) =>
+    `Crowd Survive / Die takes across living party and box mons in ${name} — then who called it when they fall or clear.`,
   planner: (name) =>
     `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${name}.`,
   chart: () =>
@@ -166,6 +176,8 @@ function ToolWorkspace({
   myTrainerId,
   competitiveTrainerIds,
   signedIn,
+  survivalMarketsEnabled,
+  viewerUserId,
   initialDexId,
   initialBountyMode,
   initialPlannerMode,
@@ -178,6 +190,8 @@ function ToolWorkspace({
   myTrainerId?: string | null;
   competitiveTrainerIds?: string[];
   signedIn?: boolean;
+  survivalMarketsEnabled?: boolean;
+  viewerUserId?: string | null;
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
@@ -254,6 +268,15 @@ function ToolWorkspace({
           myTrainerId={myTrainerId}
           competitiveTrainerIds={competitiveTrainerIds}
           initialMode={initialBountyMode}
+        />
+      ) : null}
+
+      {tool === "markets" ? (
+        <SurvivalMarketsPanel
+          slug={slug}
+          trainers={trainers}
+          enabled={survivalMarketsEnabled !== false}
+          viewerUserId={viewerUserId}
         />
       ) : null}
 

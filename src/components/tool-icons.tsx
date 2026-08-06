@@ -17,6 +17,7 @@ type IconProps = { className?: string };
 export const TOOL_TONE_CHIP: Record<ToolsTone, string> = {
   accent: "border-accent/40 bg-accent/15 text-accent-deep",
   "accent-2": "border-accent-2/50 bg-accent-2/20 text-ink",
+  warn: "border-warn/50 bg-warn/15 text-warn",
   interactive: "border-interactive/45 bg-interactive-soft text-interactive",
   danger: "border-danger/40 bg-danger/12 text-danger",
   discord: "border-discord/40 bg-discord/15 text-discord",
@@ -67,6 +68,8 @@ export function ToolIcon({
       return <PokedexToolIcon className={className} />;
     case "bounty":
       return <OwnershipToolIcon className={className} />;
+    case "markets":
+      return <SurviveDieToolIcon className={className} />;
     case "planner":
       return <PlannerToolIcon className={className} />;
     case "stats":
@@ -107,6 +110,22 @@ export function OwnershipToolIcon({ className = "h-5 w-5" }: IconProps) {
       <circle cx="12" cy="12" r="3" />
       <path
         d="M12 2.75v2.5M12 18.75v2.5M2.75 12h2.5M18.75 12h2.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Flame — Survive/Die crowd takes. */
+export function SurviveDieToolIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path
+        d="M12 3c1.2 2.4 0 4.2-1.4 5.6C9.2 10 8 11.2 8 13.4c0 2.4 1.8 4.1 4 4.1s4-1.7 4-4.1c0-2.6-1.8-3.8-2.8-5.6C12.5 6.5 12.2 4.8 12 3z"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 17.5c1.1 0 2-.8 2-2 0-1.1-.9-1.8-2-2.8"
         strokeLinecap="round"
       />
     </svg>

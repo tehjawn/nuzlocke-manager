@@ -2,6 +2,7 @@ export type ToolsId =
   | "guide"
   | "pokedex"
   | "bounty"
+  | "markets"
   | "planner"
   | "stats"
   | "chart";
@@ -14,6 +15,7 @@ export type ToolsId =
 export type ToolsTone =
   | "accent"
   | "accent-2"
+  | "warn"
   | "interactive"
   | "danger"
   | "discord"
@@ -59,6 +61,14 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
     tone: "accent-2",
     blurb:
       "Every Modern Emerald species — who's owned it, who's just seen it, who's cornered a line.",
+  },
+  {
+    id: "markets",
+    title: "Survive / Die",
+    navLabel: "Crowd takes",
+    tone: "warn",
+    blurb:
+      "Season-wide survival polls — weigh in on living party and box mons, then see who called it when they fall or clear.",
   },
   {
     id: "chart",
@@ -139,6 +149,7 @@ export function parseToolsId(
     raw === "guide" ||
     raw === "pokedex" ||
     raw === "bounty" ||
+    raw === "markets" ||
     raw === "planner" ||
     raw === "stats" ||
     raw === "chart"
