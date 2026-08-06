@@ -3,6 +3,9 @@ import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import type { PokemonType } from "@/lib/pokemon-types";
 import { displayName } from "@/lib/trainer-display";
 
+/** How many rows memorial callout lists show (matches encounter top-N). */
+export const MEMORIAL_STATS_TOP_N = 3;
+
 export type MemorialTrainerHighlight = {
   trainerIds: string[];
   labels: string[];
@@ -10,19 +13,25 @@ export type MemorialTrainerHighlight = {
   tied: boolean;
 };
 
+/** Ranked trainer row for heaviest memorial / wipe callouts. */
+export type MemorialTrainerStanding = {
+  trainerId: string;
+  label: string;
+  count: number;
+};
+
 export type MemorialSpeciesHighlight = {
   species: string;
   pokedexId: number | null;
   count: number;
-  tied: boolean;
 };
 
 export type MemorialSeasonHighlights = {
   totalGraves: number;
   trainersWithLosses: number;
-  heaviestMemorial: MemorialTrainerHighlight | null;
-  mostPartyWipes: MemorialTrainerHighlight | null;
-  mostDeathProne: MemorialSpeciesHighlight | null;
+  heaviestMemorial: MemorialTrainerStanding[];
+  mostPartyWipes: MemorialTrainerStanding[];
+  mostDeathProne: MemorialSpeciesHighlight[];
   /** Highest last-imported Pokédollars (issue 146). */
   richest: MemorialTrainerHighlight | null;
 };
@@ -46,9 +55,27 @@ function trainerHighlight(
   };
 }
 
+function topTrainerStandings(
+  rows: Array<{ trainer: TrainerProfile; count: number }>,
+  limit = MEMORIAL_STATS_TOP_N,
+): MemorialTrainerStanding[] {
+  return [...rows]
+    .filter((row) => row.count > 0)
+    .sort(
+      (a, b) =>
+        b.count - a.count || a.trainer.sortOrder - b.trainer.sortOrder,
+    )
+    .slice(0, limit)
+    .map((row) => ({
+      trainerId: row.trainer.id,
+      label: displayName(row.trainer),
+      count: row.count,
+    }));
+}
+
 /**
  * Season-wide memorial callouts from cross-run graves + wipe counts.
- * Ties keep every leader (callouts can truncate in UI).
+ * Heaviest memorial, wipe, and death-prone callouts return top N rows.
  *
  * Graves are passed in rather than read off `trainer.pokemon`: a wipe clears
  * the live board, so past-run graves only exist in board history.
@@ -66,25 +93,16 @@ export function memorialSeasonHighlights(
 
   const totalGraves = rows.reduce((sum, row) => sum + row.graves.length, 0);
 
-  let heaviestMemorial: MemorialTrainerHighlight | null = null;
-  if (rows.length > 0) {
-    const max = Math.max(...rows.map((row) => row.graves.length));
-    const leaders = rows
-      .filter((row) => row.graves.length === max)
-      .map((row) => row.trainer)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    heaviestMemorial = trainerHighlight(leaders, max);
-  }
+  const heaviestMemorial = topTrainerStandings(
+    rows.map((row) => ({ trainer: row.trainer, count: row.graves.length })),
+  );
 
-  let mostPartyWipes: MemorialTrainerHighlight | null = null;
-  const wipeLeaders = trainers.filter((trainer) => (trainer.wipeCount ?? 0) > 0);
-  if (wipeLeaders.length > 0) {
-    const max = Math.max(...wipeLeaders.map((trainer) => trainer.wipeCount ?? 0));
-    const leaders = wipeLeaders
-      .filter((trainer) => (trainer.wipeCount ?? 0) === max)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    mostPartyWipes = trainerHighlight(leaders, max);
-  }
+  const mostPartyWipes = topTrainerStandings(
+    trainers.map((trainer) => ({
+      trainer,
+      count: trainer.wipeCount ?? 0,
+    })),
+  );
 
   const speciesCounts = new Map<
     string,
@@ -109,21 +127,17 @@ export function memorialSeasonHighlights(
     }
   }
 
-  let mostDeathProne: MemorialSpeciesHighlight | null = null;
-  if (speciesCounts.size > 0) {
-    const ranked = [...speciesCounts.values()].sort((a, b) => {
+  const mostDeathProne = [...speciesCounts.values()]
+    .sort((a, b) => {
       if (b.count !== a.count) return b.count - a.count;
       return a.species.localeCompare(b.species);
-    });
-    const top = ranked[0]!;
-    const tied = ranked.filter((entry) => entry.count === top.count).length > 1;
-    mostDeathProne = {
-      species: top.species,
-      pokedexId: top.pokedexId,
-      count: top.count,
-      tied,
-    };
-  }
+    })
+    .slice(0, MEMORIAL_STATS_TOP_N)
+    .map((entry) => ({
+      species: entry.species,
+      pokedexId: entry.pokedexId,
+      count: entry.count,
+    }));
 
   let richest: MemorialTrainerHighlight | null = null;
   const moneyLeaders = trainers.filter(
@@ -148,8 +162,10 @@ export function memorialSeasonHighlights(
 }
 
 export type MemorialPokemonFilters = {
-  type: PokemonType | null;
-  generation: number | null;
+  /** Empty = all types. Match if the mon has any selected type. */
+  types: PokemonType[];
+  /** Empty = all generations. Match if National Dex gen is selected. */
+  generations: number[];
 };
 
 /** True when the grave matches optional type and/or National Dex generation filters. */
@@ -157,13 +173,18 @@ export function memorialPokemonMatchesFilters(
   pokemon: Pick<PokemonEntry, "types" | "pokedexId">,
   filters: MemorialPokemonFilters,
 ): boolean {
-  if (filters.type && !pokemon.types.includes(filters.type)) return false;
-  if (filters.generation != null) {
+  if (
+    filters.types.length > 0 &&
+    !filters.types.some((type) => pokemon.types.includes(type))
+  ) {
+    return false;
+  }
+  if (filters.generations.length > 0) {
     const gen =
       pokemon.pokedexId != null
         ? (findPokemonById(pokemon.pokedexId)?.generation ?? null)
         : null;
-    if (gen !== filters.generation) return false;
+    if (gen == null || !filters.generations.includes(gen)) return false;
   }
   return true;
 }
