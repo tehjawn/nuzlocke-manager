@@ -59,10 +59,31 @@ function boardMainPartyTrainers(
   };
 }
 
+/**
+ * Workspace Search / Jump Ask shell: living party + memorial.
+ * GRAVEYARD is required so Ask can answer RIP / fallen questions without an
+ * extra DB round-trip; RESERVE / ENCOUNTERED stay out to keep Flight light.
+ */
+function boardShellTrainers() {
+  return {
+    include: {
+      ...trainerRelationInclude,
+      pokemon: {
+        where: { slot: { in: ["MAIN", "GRAVEYARD"] as PokemonSlot[] } },
+        select: pokemonSummarySelect,
+        orderBy: [
+          { slot: "asc" as const },
+          { partyIndex: "asc" as const },
+        ],
+      },
+    },
+  };
+}
+
 function boardShellInclude() {
   return {
     ...challengeMetaInclude,
-    trainers: boardMainPartyTrainers(pokemonSummarySelect),
+    trainers: boardShellTrainers(),
   };
 }
 
@@ -128,8 +149,8 @@ export async function fetchChallengeSlotRow(
 }
 
 /**
- * Workspace chrome: meta + MAIN summary for Search / myTrainerId.
- * Avoids shipping RESERVE / GRAVEYARD / ENCOUNTERED (+ competitive columns).
+ * Workspace chrome: meta + MAIN + GRAVEYARD summary for Search / Jump Ask /
+ * myTrainerId. Avoids RESERVE / ENCOUNTERED (+ competitive columns).
  */
 export async function fetchChallengeShellRow(slug: string) {
   "use cache";

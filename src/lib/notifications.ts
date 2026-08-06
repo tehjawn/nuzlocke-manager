@@ -62,10 +62,25 @@ const notificationListSelect = {
   createdAt: true,
 } as const;
 
+/**
+ * JWT sessions can outlive a local DB reset / branch switch. Never create
+ * Notification rows for a userId that isn't in User — that throws P2003 and
+ * takes down AuthButtons on every page.
+ */
+async function userExists(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  const row = await getPrisma().user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  return row != null;
+}
+
 /** Lightweight welcome readAt for first-run chrome gating (issue #183). */
 export async function getWelcomeReadAt(
   userId: string,
 ): Promise<string | null> {
+  if (!userId) return null;
   const prisma = getPrisma();
   const row = await prisma.notification.findUnique({
     where: {
@@ -84,6 +99,7 @@ export async function getWelcomeReadAt(
 export async function markWelcomeNotificationRead(
   userId: string,
 ): Promise<NotificationItem | null> {
+  if (!userId) return null;
   const prisma = getPrisma();
   const row = await prisma.notification.findUnique({
     where: {
@@ -95,12 +111,24 @@ export async function markWelcomeNotificationRead(
     },
     select: { id: true },
   });
-  const id = row?.id ?? (await ensureWelcomeNotification(userId)).id;
+  const ensured = row?.id ? null : await ensureWelcomeNotification(userId);
+  const id = row?.id ?? ensured?.id;
+  if (!id) return null;
   return markNotificationRead(userId, id);
 }
 
-/** First-login welcome for Trash Pack 2026 — idempotent per user. */
+/**
+ * First-login welcome for Trash Pack 2026 — idempotent per user.
+ * Returns null when userId is missing from User (stale JWT after DB reset).
+ */
 export async function ensureWelcomeNotification(userId: string) {
+  if (!(await userExists(userId))) {
+    console.warn(
+      "[notifications] ensureWelcome skipped — no User for id (re-login after DB reset?)",
+      userId,
+    );
+    return null;
+  }
   const prisma = getPrisma();
   return prisma.notification.upsert({
     where: {
@@ -128,10 +156,14 @@ export async function listNotificationsForUser(
   userId: string,
   limit = 20,
 ): Promise<NotificationItem[]> {
+  if (!userId) return [];
+
   const prisma = getPrisma();
   // Happy path is read-only. Backfill welcome only when the row is missing
   // (failed sign-in upsert) — not on every header render. Welcome is always
   // shown (not dismissable); clear a stale archive if one was set earlier.
+  // No upfront userExists(): AuthButtons already resolved the session; missing
+  // users just yield empty rows and ensureWelcome returns null.
   const rows = await prisma.notification.findMany({
     where: {
       userId,
@@ -161,10 +193,9 @@ export async function listNotificationsForUser(
 
   let welcomeRow = welcome;
   if (!welcomeRow) {
-    welcomeRow = {
-      ...(await ensureWelcomeNotification(userId)),
-      archivedAt: null,
-    };
+    const created = await ensureWelcomeNotification(userId);
+    if (!created) return rows.map(toItem);
+    welcomeRow = { ...created, archivedAt: null };
   } else if (welcomeRow.archivedAt != null) {
     welcomeRow = await prisma.notification.update({
       where: { id: welcomeRow.id },
@@ -177,6 +208,7 @@ export async function listNotificationsForUser(
 }
 
 export async function countUnreadNotifications(userId: string): Promise<number> {
+  if (!userId) return 0;
   const prisma = getPrisma();
   return prisma.notification.count({
     where: { userId, readAt: null, archivedAt: null },

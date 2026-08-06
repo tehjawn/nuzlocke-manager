@@ -8,23 +8,27 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { askEntityHints } from "@/features/search/ask-hints";
 import {
   buildSeasonDigestFromPlan,
   detectAskPlan,
 } from "@/features/search/search-digest";
+import { pickRelatedSearchResults } from "@/features/search/search-related";
 import {
+  buildSeasonMemorialResults,
   clearRecentSearches,
   defaultSuggestions,
+  fuseDebounceMs,
   getRecentSearches,
-  isQuestionLike,
+  MAX_SEARCH_QUERY_CHARS,
   recordSearchUse,
   saveRecentSearch,
   querySearchIndex,
+  shouldSkipFuzzySearch,
 } from "@/features/search/search-index";
+import { evaluateAskQuery } from "@/lib/ai/ask-guard";
 import { useSearch } from "@/features/search/SearchProvider";
 import type {
   SearchCategory,
@@ -36,6 +40,7 @@ import {
   useJumpAssist,
   type AssistState,
 } from "@/features/search/use-jump-assist";
+import { pokemonSpriteUrl } from "@/lib/sprites";
 import { getAppliedTheme, toggleTheme } from "@/lib/theme";
 
 const CATEGORY_ORDER: SearchCategory[] = [
@@ -58,54 +63,22 @@ const CATEGORY_LABEL: Record<SearchCategory, string> = {
   action: "Actions",
 };
 
-function HighlightedText({
-  text,
-  indices,
-}: {
-  text: string;
-  indices: ReadonlyArray<readonly [number, number]> | undefined;
-}) {
-  if (!indices?.length) return <>{text}</>;
-
-  const parts: ReactNode[] = [];
-  let last = 0;
-  indices.forEach(([start, end], i) => {
-    if (start > last) {
-      parts.push(<span key={`t-${i}`}>{text.slice(last, start)}</span>);
-    }
-    parts.push(
-      <mark
-        key={`m-${i}`}
-        className="rounded-[2px] bg-interactive-soft font-medium text-ink"
-      >
-        {text.slice(start, end + 1)}
-      </mark>,
-    );
-    last = end + 1;
-  });
-  if (last < text.length) {
-    parts.push(<span key="t-end">{text.slice(last)}</span>);
-  }
-  return <>{parts}</>;
-}
-
-function matchIndices(
-  matches: SearchFuseHit["matches"],
-  key: "title" | "subtitle",
-) {
-  return matches?.find((m) => m.key === key)?.indices;
-}
-
 function ResultIcon({ item }: { item: SearchResult }) {
+  // Always still PNGs here — animated GIFs in a keystroke-updating list stall
+  // the tab after a few searches (decoder + frame cost stacks up).
   if (item.pokemonSprite) {
     return (
-      <PokemonSpriteImage
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
         alt=""
         className="pixelated h-7 w-7 shrink-0 object-contain"
+        decoding="async"
         height={28}
-        pokedexId={item.pokemonSprite.pokedexId}
-        shiny={item.pokemonSprite.shiny}
-        species={item.pokemonSprite.species}
+        loading="lazy"
+        src={pokemonSpriteUrl(item.pokemonSprite.species, {
+          pokedexId: item.pokemonSprite.pokedexId,
+          shiny: item.pokemonSprite.shiny,
+        })}
         width={28}
       />
     );
@@ -121,6 +94,8 @@ function ResultIcon({ item }: { item: SearchResult }) {
         alt=""
         width={28}
         height={28}
+        decoding="async"
+        loading="lazy"
         className="pixelated h-7 w-7 shrink-0 object-contain"
       />
     );
@@ -133,7 +108,9 @@ function ResultIcon({ item }: { item: SearchResult }) {
         ? "◆"
         : item.category === "rules"
           ? "?"
-          : "→";
+          : item.category === "pokemon"
+            ? "◆"
+            : "→";
 
   return (
     <span
@@ -157,6 +134,13 @@ export function SearchPalette() {
    */
   const [pathname, setPathname] = useState("");
   const [query, setQuery] = useState("");
+  /**
+   * Fuse input — length-scaled debounce so short lookups stay snappy and longer
+   * strings don't schedule Bitap on every keystroke. Ask-shaped queries sync
+   * immediately (Fuse is skipped anyway).
+   */
+  const [fuseQuery, setFuseQuery] = useState("");
+  const fuseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [recents, setRecents] = useState<string[]>([]);
   const [seenOpen, setSeenOpen] = useState(open);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -167,6 +151,7 @@ export function SearchPalette() {
     setSeenOpen(open);
     if (open) {
       setQuery("");
+      setFuseQuery("");
       setRecents(getRecentSearches());
       // Only reached when `open` flips true, which is always a client
       // interaction — prerender never runs this branch.
@@ -185,17 +170,49 @@ export function SearchPalette() {
     if (!open) resetAssist();
   }, [open, resetAssist]);
 
+  useEffect(() => {
+    if (fuseTimerRef.current) {
+      clearTimeout(fuseTimerRef.current);
+      fuseTimerRef.current = null;
+    }
+    const ms = fuseDebounceMs(query);
+    if (ms === 0) {
+      setFuseQuery(query);
+      return;
+    }
+    fuseTimerRef.current = setTimeout(() => {
+      fuseTimerRef.current = null;
+      setFuseQuery(query);
+    }, ms);
+    return () => {
+      if (fuseTimerRef.current) {
+        clearTimeout(fuseTimerRef.current);
+        fuseTimerRef.current = null;
+      }
+    };
+  }, [query]);
+
   const suggestions = useMemo(
     () => defaultSuggestions(results, pathname),
     [results, pathname],
   );
 
+  const trimmedQuery = query.trim();
+  const fuseTrimmed = fuseQuery.trim();
+  /** Live Ask-shaped / long queries drop fuzzy immediately. */
+  const skipFuzzyLive = shouldSkipFuzzySearch(trimmedQuery);
+  const searchPending = !skipFuzzyLive && fuseQuery !== query;
+
   // Derive from the live index so hits refresh when season registration lands
   // after hydration (stale hits were empty forever in prod until retyping).
+  // Skip when live OR fuse query looks Ask/long so Bitap never runs there.
   const hits = useMemo(() => {
-    if (!query.trim()) return [] as SearchFuseHit[];
-    return querySearchIndex(index, query);
-  }, [index, query]);
+    if (!fuseTrimmed) return [] as SearchFuseHit[];
+    if (skipFuzzyLive || shouldSkipFuzzySearch(fuseTrimmed)) {
+      return [] as SearchFuseHit[];
+    }
+    return querySearchIndex(index, fuseQuery);
+  }, [index, fuseQuery, fuseTrimmed, skipFuzzyLive]);
 
   const groupedHits = useMemo(() => {
     const groups = new Map<SearchCategory, SearchFuseHit[]>();
@@ -213,7 +230,11 @@ export function SearchPalette() {
 
   const onQueryChange = useCallback(
     (value: string) => {
-      setQuery(value);
+      // cmdk can emit a non-string in some clear/IME paths — coerce so the
+      // controlled input never renders the literal "undefined".
+      const raw = typeof value === "string" ? value : "";
+      const next = raw.slice(0, MAX_SEARCH_QUERY_CHARS);
+      setQuery(next);
       // A new query means the previous answer is stale — drop it immediately
       // so the palette never shows an answer to a question you edited away.
       if (assist.status !== "idle") resetAssist();
@@ -224,6 +245,7 @@ export function SearchPalette() {
   const close = useCallback(() => {
     setOpen(false);
     setQuery("");
+    setFuseQuery("");
   }, [setOpen]);
 
   const runResult = useCallback(
@@ -245,19 +267,26 @@ export function SearchPalette() {
     [close, router],
   );
 
-  const trimmedQuery = query.trim();
+  const entityHints = useMemo(() => askEntityHints(season), [season]);
+  // Guard against the debounced fuse query for fuzzy typing; NL asks use the
+  // live query (isQuestionLike short-circuits — no hint scan) so the Ask row
+  // doesn't wait on the debounce timer.
+  const askGuard = useMemo(() => {
+    const q = skipFuzzyLive ? trimmedQuery : fuseTrimmed;
+    return evaluateAskQuery(q, { entityHints });
+  }, [skipFuzzyLive, trimmedQuery, fuseTrimmed, entityHints]);
 
   /**
-   * Ask is a fallback, never the default: it only appears once fuzzy search has
-   * had its shot and either found nothing or the query reads as a question.
+   * Ask is a fallback, never the default: only when the query clears the Ask
+   * guard (question-like / season-anchored, not gibberish). Empty fuzzy hits
+   * alone no longer unlock Ask — keyboard mash used to slip through.
    */
-  const canAsk =
-    !isAssistUnavailable() &&
-    trimmedQuery.length >= 3 &&
-    (hits.length === 0 || isQuestionLike(trimmedQuery));
+  const canAsk = !isAssistUnavailable() && askGuard.ok;
 
   const runAsk = useCallback(() => {
     if (!trimmedQuery) return;
+    const guard = evaluateAskQuery(trimmedQuery, { entityHints });
+    if (!guard.ok) return;
     // Pass 1 (instant): which slices the question needs.
     // Pass 2 (still sync): pack only those into ≤8k — then the network Ask.
     const snapshot = season
@@ -267,28 +296,39 @@ export function SearchPalette() {
         )
       : null;
     void ask(trimmedQuery, snapshot);
-  }, [ask, season, trimmedQuery]);
+  }, [ask, entityHints, season, trimmedQuery]);
 
   // Trainers / Pokémon the answer names, matched client-side so the model never
-  // chooses a destination — it only produces text we look words up in.
+  // chooses a destination. Memorial rows are built only after an answer so Fuse
+  // stays living-party-only while typing.
   const relatedResults = useMemo(() => {
     if (assist.status !== "answered") return [];
-    const haystack = assist.answer.toLowerCase();
-    const seen = new Set<string>();
-    const picked: SearchResult[] = [];
-    for (const r of results) {
-      if (picked.length >= 4) break;
-      if (r.category !== "trainer" && r.category !== "pokemon") continue;
-      const title = r.title.trim().toLowerCase();
-      if (title.length < 3 || seen.has(title)) continue;
-      if (!haystack.includes(title)) continue;
-      seen.add(title);
-      picked.push(r);
-    }
-    return picked;
-  }, [assist, results]);
+    const pool = season
+      ? [...results, ...buildSeasonMemorialResults(season)]
+      : results;
+    return pickRelatedSearchResults(pool, assist.answer, assist.question);
+  }, [assist, results, season]);
 
   const showingAssist = assist.status !== "idle";
+  /** Live query drives layout; deferred query drives Fuse — avoids stale hits
+   *  stacking under Suggestions when the box is cleared mid-defer. */
+  const hasLiveQuery = Boolean(trimmedQuery);
+  const showHitList = hasLiveQuery && !showingAssist;
+  // NL / long asks: ignore deferred Fuse leftovers. Short fuzzy typing shows
+  // skeletons while deferred Fuse catches up ( steadier than remounting hits).
+  const displayHits = skipFuzzyLive ? ([] as SearchFuseHit[]) : hits;
+  const displayGroupedHits = skipFuzzyLive ? [] : groupedHits;
+  const showSearchPending = showHitList && searchPending && !skipFuzzyLive;
+  const showAskLeading =
+    showHitList && !showSearchPending && canAsk && displayHits.length === 0;
+  const showAskTrailing =
+    showHitList && !showSearchPending && canAsk && displayHits.length > 0;
+  const showEmpty =
+    showHitList && !showSearchPending && displayHits.length === 0;
+  const askIsPrimary = showAskLeading;
+  const askSubtitle = season
+    ? "Answered from this season’s board"
+    : "Open a challenge for season context";
 
   if (!open || typeof document === "undefined") return null;
 
@@ -327,15 +367,28 @@ export function SearchPalette() {
             ref={inputRef}
             value={query}
             onValueChange={onQueryChange}
+            maxLength={MAX_SEARCH_QUERY_CHARS}
             placeholder="Search trainers, Pokémon, pages…"
             className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ink outline-none placeholder:text-muted/80"
           />
+          {query.length >= 240 ? (
+            <span
+              className={`shrink-0 font-mono text-[10px] tabular-nums ${
+                query.length >= MAX_SEARCH_QUERY_CHARS
+                  ? "font-semibold text-ink"
+                  : "text-muted"
+              }`}
+              aria-live="polite"
+            >
+              {query.length}/{MAX_SEARCH_QUERY_CHARS}
+            </span>
+          ) : null}
           <kbd className="hidden shrink-0 rounded border border-frame/80 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-muted sm:inline">
             esc
           </kbd>
         </div>
 
-        <Command.List className="relative z-[1] max-h-[min(52vh,420px)] overflow-y-auto p-2">
+        <Command.List className="relative z-[1] min-h-[min(40vh,280px)] max-h-[min(52vh,420px)] overflow-y-auto p-2">
           {showingAssist ? (
             <AssistPanel
               state={assist}
@@ -346,13 +399,19 @@ export function SearchPalette() {
             />
           ) : null}
 
+          {showSearchPending ? <SearchPendingPlaceholder /> : null}
+
           {/* Empty results: Ask first so Enter asks. With hits, Ask trails so
               fuzzy stays the default selection (cmdk picks DOM order). */}
-          {!showingAssist && canAsk && hits.length === 0 ? (
-            <AskCommandGroup query={trimmedQuery} onAsk={runAsk} />
+          {showAskLeading ? (
+            <AskCommandGroup
+              query={trimmedQuery}
+              subtitle={askSubtitle}
+              onAsk={runAsk}
+            />
           ) : null}
 
-          {!showingAssist && !query.trim() ? (
+          {!showingAssist && !hasLiveQuery ? (
             <>
               {recents.length > 0 ? (
                 <div className="mb-2 px-1.5">
@@ -401,61 +460,91 @@ export function SearchPalette() {
             </>
           ) : null}
 
-          {!showingAssist && trimmedQuery && hits.length === 0 ? (
-            <div className="px-3 py-8 text-center text-sm text-muted">
-              No matches for “{trimmedQuery}”
-              {canAsk ? (
-                <span className="mt-1 block text-xs">
-                  Press <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5 font-mono">↵</kbd>{" "}
-                  to ask instead
-                </span>
-              ) : null}
+          {showEmpty ? (
+            <div
+              className={`px-3 text-center text-sm text-muted ${
+                showAskLeading ? "pb-3 pt-1 text-xs" : "py-8"
+              }`}
+            >
+              {showAskLeading ? (
+                <>
+                  No fuzzy matches — press{" "}
+                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5 font-mono">
+                    ↵
+                  </kbd>{" "}
+                  to ask
+                </>
+              ) : (
+                <>No matches for “{trimmedQuery}”</>
+              )}
             </div>
           ) : null}
 
-          {!showingAssist && groupedHits.map((group) => (
-            <Command.Group
-              key={group.category}
-              heading={CATEGORY_LABEL[group.category]}
-              className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
-            >
-              {group.items.map((hit) => (
-                <SearchItem
-                  key={hit.item.id}
-                  item={hit.item}
-                  titleIndices={matchIndices(hit.matches, "title")}
-                  subtitleIndices={matchIndices(hit.matches, "subtitle")}
-                  onSelect={() => runResult(hit.item)}
-                />
-              ))}
-            </Command.Group>
-          ))}
+          {showHitList && !showSearchPending
+            ? displayGroupedHits.map((group) => (
+                <Command.Group
+                  key={group.category}
+                  heading={CATEGORY_LABEL[group.category]}
+                  className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
+                >
+                  {group.items.map((hit) => (
+                    <SearchItem
+                      key={hit.item.id}
+                      item={hit.item}
+                      onSelect={() => runResult(hit.item)}
+                    />
+                  ))}
+                </Command.Group>
+              ))
+            : null}
 
-          {!showingAssist && canAsk && hits.length > 0 ? (
-            <AskCommandGroup query={trimmedQuery} onAsk={runAsk} />
+          {showAskTrailing ? (
+            <AskCommandGroup
+              query={trimmedQuery}
+              subtitle={askSubtitle}
+              onAsk={runAsk}
+            />
           ) : null}
         </Command.List>
 
         <footer className="relative z-[1] flex items-center justify-between gap-3 border-t border-frame/60 bg-surface-2/80 px-3 py-2 text-[11px] text-muted sm:px-4">
           <span className="font-medium tracking-tight">
-            {showingAssist ? "Ask" : "Search"}
+            {showingAssist
+              ? assist.status === "loading"
+                ? "Asking…"
+                : "Ask"
+              : showSearchPending
+                ? "Searching…"
+                : "Search"}
           </span>
           <span className="flex items-center gap-2 font-mono">
             {showingAssist ? (
               <span>
-                <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">esc</kbd>{" "}
-                back to results
+                <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                  esc
+                </kbd>{" "}
+                {assist.status === "loading" ? "cancel" : "back to results"}
               </span>
             ) : (
               <>
                 <span>
-                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">↑</kbd>{" "}
-                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">↓</kbd>{" "}
+                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                    ↑
+                  </kbd>{" "}
+                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                    ↓
+                  </kbd>{" "}
                   move
                 </span>
-                <span className="hidden sm:inline">
-                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">↵</kbd>{" "}
-                  open
+                <span
+                  className={
+                    askIsPrimary ? "inline" : "hidden sm:inline"
+                  }
+                >
+                  <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                    ↵
+                  </kbd>{" "}
+                  {askIsPrimary ? "ask" : "open"}
                 </span>
               </>
             )}
@@ -467,11 +556,44 @@ export function SearchPalette() {
   );
 }
 
+function SearchPendingPlaceholder() {
+  return (
+    <div className="px-1.5 py-1" aria-live="polite" aria-busy="true">
+      <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+        Searching…
+      </p>
+      <ul className="space-y-1.5" aria-hidden>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <li
+            key={i}
+            className="flex items-center gap-2.5 rounded-[calc(var(--radius-sm)-1px)] px-2 py-2"
+          >
+            <span className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-frame/20" />
+            <span className="min-w-0 flex-1 space-y-1.5">
+              <span
+                className="block h-3.5 animate-pulse rounded bg-frame/20"
+                style={{ width: `${58 - i * 6}%` }}
+              />
+              <span
+                className="block h-2.5 animate-pulse rounded bg-frame/10"
+                style={{ width: `${42 - i * 4}%` }}
+              />
+            </span>
+            <span className="h-2.5 w-10 shrink-0 animate-pulse rounded bg-frame/10" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function AskCommandGroup({
   query,
+  subtitle,
   onAsk,
 }: {
   query: string;
+  subtitle: string;
   onAsk: () => void;
 }) {
   return (
@@ -489,9 +611,7 @@ function AskCommandGroup({
           <p className="truncate font-semibold tracking-tight text-ink">
             Ask about “{query}”
           </p>
-          <p className="truncate text-xs text-muted">
-            Answered from this season’s board
-          </p>
+          <p className="truncate text-xs text-muted">{subtitle}</p>
         </div>
         <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Ask
@@ -532,7 +652,10 @@ function AssistPanel({
       </div>
 
       {state.status === "loading" ? (
-        <div className="flex items-center gap-2 rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3 text-sm text-muted">
+        <div
+          className="flex items-center gap-2 rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3 text-sm text-muted"
+          role="status"
+        >
           <span className="flex gap-1" aria-hidden>
             {[0, 1, 2].map((i) => (
               <span
@@ -557,7 +680,10 @@ function AssistPanel({
       ) : null}
 
       {state.status === "error" ? (
-        <div className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm text-ink">
+        <div
+          className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm text-ink"
+          role="alert"
+        >
           <p>{state.error}</p>
           {state.signIn ? (
             <a
@@ -578,7 +704,7 @@ function AssistPanel({
         </div>
       ) : null}
 
-      {related.length ? (
+      {state.status === "answered" && related.length ? (
         <div className="mt-2">
           <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
             Jump to
@@ -590,6 +716,7 @@ function AssistPanel({
                 type="button"
                 onClick={() => onPickRelated(item)}
                 className="pressable rounded-md border border-frame/70 bg-surface-2 px-2 py-1 text-xs font-medium text-ink hover:border-interactive/45"
+                title={item.subtitle || undefined}
               >
                 {item.title}
               </button>
@@ -628,13 +755,9 @@ function SparkGlyph({ className }: { className?: string }) {
 function SearchItem({
   item,
   onSelect,
-  titleIndices,
-  subtitleIndices,
 }: {
   item: SearchResult;
   onSelect: () => void;
-  titleIndices?: ReadonlyArray<readonly [number, number]>;
-  subtitleIndices?: ReadonlyArray<readonly [number, number]>;
 }) {
   return (
     <Command.Item
@@ -645,12 +768,10 @@ function SearchItem({
       <ResultIcon item={item} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold tracking-tight text-ink">
-          <HighlightedText text={item.title} indices={titleIndices} />
+          {item.title}
         </p>
         {item.subtitle ? (
-          <p className="truncate text-xs text-muted">
-            <HighlightedText text={item.subtitle} indices={subtitleIndices} />
-          </p>
+          <p className="truncate text-xs text-muted">{item.subtitle}</p>
         ) : null}
       </div>
       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted">

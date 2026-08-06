@@ -12,12 +12,15 @@ import { getRedis } from "@/lib/redis";
  *
  * Keyed without userId so league-wide facts (ROM, rules) amortize across the
  * isolate / KV. Snapshot already embeds season state, so standings stay coherent.
+ *
+ * Bump REDIS_KEY_PREFIX when prompt/digest semantics change so stale refusals
+ * (same question + snapshot, worse answer) are not served for the TTL window.
  */
 
 const MEMORY_TTL_MS = 15 * 60 * 1000;
 const REDIS_TTL_SECONDS = 15 * 60;
 const MAX_MEMORY_ENTRIES = 200;
-const REDIS_KEY_PREFIX = "jump-ask:v1:";
+const REDIS_KEY_PREFIX = "jump-ask:v2:";
 
 type CachedAnswer = {
   text: string;

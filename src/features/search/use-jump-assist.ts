@@ -30,7 +30,11 @@ type AssistResponse = {
  */
 let assistUnavailable = false;
 
-/** Tab-lifetime answers keyed by normalized question + snapshot (skip network). */
+/**
+ * Tab-lifetime answers. Keys are question + a short snapshot digest — never the
+ * raw 8k snapshot (that ballooned Map memory after a few Asks and made later
+ * lookups / GC hitch while typing).
+ */
 const sessionAnswerCache = new Map<string, string>();
 const SESSION_CACHE_MAX = 24;
 
@@ -39,6 +43,21 @@ export function isAssistUnavailable(): boolean {
 }
 
 const GENERIC_ERROR = "Ask couldn’t reach the assistant. Try again.";
+
+/** Cheap non-crypto digest so cache keys stay small. */
+function snapshotDigest(snapshot: string | null): string {
+  if (!snapshot) return "";
+  let hash = 2166136261;
+  for (let i = 0; i < snapshot.length; i++) {
+    hash ^= snapshot.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${snapshot.length.toString(36)}:${(hash >>> 0).toString(36)}`;
+}
+
+function cacheKey(question: string, snapshot: string | null): string {
+  return `${question.toLowerCase().replace(/\s+/g, " ")}\n${snapshotDigest(snapshot)}`;
+}
 
 export function useJumpAssist() {
   const [state, setState] = useState<AssistState>({ status: "idle" });
@@ -58,8 +77,8 @@ export function useJumpAssist() {
     const trimmed = question.trim();
     if (!trimmed) return;
 
-    const cacheKey = `${trimmed.toLowerCase().replace(/\s+/g, " ")}\n${snapshot ?? ""}`;
-    const cached = sessionAnswerCache.get(cacheKey);
+    const key = cacheKey(trimmed, snapshot);
+    const cached = sessionAnswerCache.get(key);
     if (cached) {
       setState({ status: "answered", question: trimmed, answer: cached });
       return;
@@ -122,7 +141,7 @@ export function useJumpAssist() {
         const oldest = sessionAnswerCache.keys().next().value;
         if (oldest) sessionAnswerCache.delete(oldest);
       }
-      sessionAnswerCache.set(cacheKey, payload.text);
+      sessionAnswerCache.set(key, payload.text);
 
       setState({ status: "answered", question: trimmed, answer: payload.text });
     } catch (error) {

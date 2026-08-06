@@ -20,6 +20,8 @@ export async function MobileMenuAuth({
   const session = await auth();
 
   if (session?.user) {
+    // Orphan JWT sign-out lives in AuthButtons (always mounted in the header)
+    // so we don't double-hit Neon from this drawer sibling.
     return (
       <div className="flex flex-col gap-1">
         <Link

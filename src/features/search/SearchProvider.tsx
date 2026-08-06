@@ -16,12 +16,16 @@ import {
   buildSeasonResults,
   createSearchIndex,
 } from "@/features/search/search-index";
-import type { SearchResult, SearchSeasonContext } from "@/features/search/search-types";
+import type {
+  SearchResult,
+  SearchSeasonContext,
+} from "@/features/search/search-types";
 
 type SearchContextValue = {
   open: boolean;
   setOpen: (open: boolean) => void;
   toggle: () => void;
+  /** Fuse-facing results (living party Pokémon only — no memorial). */
   results: SearchResult[];
   index: Fuse<SearchResult>;
   /** Resolved season behind the index — source for Ask mode's snapshot (#184). */
@@ -33,6 +37,28 @@ type SearchContextValue = {
 };
 
 const SearchContext = createContext<SearchContextValue | null>(null);
+
+/** Skip Fuse rebuilds when RSC soft-refreshes with the same season payload. */
+function seasonSearchFingerprint(season: SearchSeasonContext): string {
+  let monCount = 0;
+  let badgeBits = 0;
+  for (const t of season.trainers) {
+    monCount += t.pokemon?.length ?? 0;
+    badgeBits += t.earnedBadgeKeys?.length ?? 0;
+  }
+  return [
+    season.slug,
+    season.myTrainerId ?? "",
+    season.showGm ? "1" : "0",
+    season.firstRun ? "1" : "0",
+    String(season.trainers.length),
+    String(monCount),
+    String(badgeBits),
+    String(season.rules.length),
+    String(season.faqs.length),
+    String(season.badges.length),
+  ].join("|");
+}
 
 export function SearchProvider({
   children,
@@ -48,6 +74,7 @@ export function SearchProvider({
   );
   const generationRef = useRef(0);
   const activeOwnerRef = useRef<number | null>(null);
+  const routeFingerprintRef = useRef("");
 
   // In-season pages overlay richer context (GM / my board); elsewhere fall back
   // to the active season so Search still finds trainers from the homepage.
@@ -64,6 +91,13 @@ export function SearchProvider({
   const registerSeason = useCallback((ctx: SearchSeasonContext) => {
     const ownerId = ++generationRef.current;
     activeOwnerRef.current = ownerId;
+    const fingerprint = seasonSearchFingerprint(ctx);
+    // Identical payload (common after soft navigation / RSC refresh) — keep the
+    // existing Fuse index instead of rebuilding mid-typing.
+    if (fingerprint === routeFingerprintRef.current) {
+      return ownerId;
+    }
+    routeFingerprintRef.current = fingerprint;
     setRouteSeason(ctx);
     return ownerId;
   }, []);
@@ -71,7 +105,13 @@ export function SearchProvider({
   const unregisterSeason = useCallback((ownerId: number) => {
     if (activeOwnerRef.current !== ownerId) return;
     activeOwnerRef.current = null;
-    setRouteSeason(null);
+    // Defer clear so a same-tick re-register (RSC soft refresh) can reclaim the
+    // index without tearing it down and rebuilding Fuse.
+    queueMicrotask(() => {
+      if (activeOwnerRef.current != null) return;
+      routeFingerprintRef.current = "";
+      setRouteSeason(null);
+    });
   }, []);
 
   const toggle = useCallback(() => {
@@ -103,7 +143,9 @@ export function SearchProvider({
     [open, toggle, results, index, season, registerSeason, unregisterSeason],
   );
 
-  return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
+  return (
+    <SearchContext.Provider value={value}>{children}</SearchContext.Provider>
+  );
 }
 
 export function useSearch() {

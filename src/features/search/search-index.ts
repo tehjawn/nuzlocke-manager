@@ -22,7 +22,8 @@ const FUSE_OPTIONS: IFuseOptions<SearchResult> = {
   // index, which is what made results feel arbitrary.
   threshold: 0.34,
   ignoreLocation: true,
-  includeMatches: true,
+  // Match indices are expensive on large indexes; Jump highlights are nice-to-have.
+  includeMatches: false,
   includeScore: true,
   // 1 matched a single character anywhere — pure noise on a large index.
   minMatchCharLength: 2,
@@ -215,12 +216,18 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
   const trainers: SearchResult[] = ctx.trainers.map((t) => {
     const badges = t.earnedBadgeKeys ?? [];
     const mons = t.pokemon ?? [];
+    const living = mons.filter((m) => m.slot !== "GRAVEYARD");
+    const fallen = mons.filter((m) => m.slot === "GRAVEYARD");
     const badgeCount = badges.length;
-    const monCount = mons.length;
+    const monCount = living.length;
+    const fallenCount = fallen.length;
     const subtitleParts = [
       t.realName?.trim() || t.discordDisplayName?.trim() || null,
       badgeCount ? `${badgeCount} badge${badgeCount === 1 ? "" : "s"}` : null,
       monCount ? `${monCount} Pokémon` : null,
+      fallenCount
+        ? `${fallenCount} fallen`
+        : null,
       t.statusText?.trim() || null,
     ].filter(Boolean);
 
@@ -237,13 +244,19 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
         t.discordDisplayName ?? "",
         "trainer",
         "player",
+        fallenCount ? "rip" : "",
+        fallenCount ? "memorial" : "",
+        fallenCount ? "fallen" : "",
       ].filter(Boolean),
       imageUrl: avatarImageUrl(t.avatarSpriteKey),
     };
   });
 
-  const pokemon: SearchResult[] = ctx.trainers.flatMap((t) =>
-    (t.pokemon ?? []).map((mon) => {
+  // Living party only in the Fuse index. GRAVEYARD stays on `season` for Jump
+  // Ask digests; related chips build memorial rows lazily after an answer.
+  const pokemon: SearchResult[] = ctx.trainers.flatMap((t) => {
+    const living = (t.pokemon ?? []).filter((m) => m.slot !== "GRAVEYARD");
+    return living.map((mon) => {
       const label = mon.nickname?.trim() || mon.species;
       const slot = SLOT_LABEL[mon.slot] ?? mon.slot;
       const bits = [
@@ -276,8 +289,8 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
           species: mon.species,
         },
       };
-    }),
-  );
+    });
+  });
 
   const badges: SearchResult[] = ctx.badges.map((b) => ({
     id: `badge-${b.key}`,
@@ -421,6 +434,56 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
   ];
 }
 
+/**
+ * Memorial (GRAVEYARD) Pokémon for Ask-related chips only — not Fuse-indexed.
+ * Keeps Jump Ask "jump to BigHead" working without bloating fuzzy search.
+ */
+export function buildSeasonMemorialResults(
+  ctx: SearchSeasonContext,
+): SearchResult[] {
+  if (ctx.firstRun) return [];
+  const base = `/challenges/${ctx.slug}`;
+  return ctx.trainers.flatMap((t) =>
+    (t.pokemon ?? [])
+      .filter((mon) => mon.slot === "GRAVEYARD")
+      .map((mon) => {
+        const label = mon.nickname?.trim() || mon.species;
+        const bits = [
+          mon.nickname?.trim() ? mon.species : null,
+          "Memorial",
+          mon.catchRoute?.trim() || null,
+          mon.level != null ? `Lv ${mon.level}` : null,
+          t.handle,
+        ].filter(Boolean);
+
+        return {
+          id: `pokemon-${mon.id}`,
+          title: label,
+          subtitle: bits.join(" · "),
+          href: `${base}/trainers/${t.id}?pokemon=${encodeURIComponent(mon.id)}`,
+          category: "pokemon" as const,
+          tags: [
+            mon.species,
+            mon.nickname ?? "",
+            mon.catchRoute ?? "",
+            t.handle,
+            "Memorial",
+            "rip",
+            "fallen",
+            mon.isShiny ? "shiny" : "",
+            "pokemon",
+            "mon",
+          ].filter(Boolean),
+          pokemonSprite: {
+            pokedexId: mon.pokedexId,
+            shiny: mon.isShiny,
+            species: mon.species,
+          },
+        };
+      }),
+  );
+}
+
 export function createSearchIndex(results: SearchResult[]) {
   return new Fuse(results, FUSE_OPTIONS);
 }
@@ -446,6 +509,10 @@ export function querySearchIndex(
   const trimmed = query.trim();
   if (!trimmed) return [];
 
+  // Bitap + ignoreLocation scales badly with query length. Long NL asks are for
+  // Jump Ask — running Fuse for them just stalls keystrokes for empty hits.
+  if (shouldSkipFuzzySearch(trimmed)) return [];
+
   const usage = getUsageStats();
   // `Date.now()` in a Client Component is a prerender error under
   // cacheComponents, so only reach for the clock once we know there is
@@ -453,8 +520,9 @@ export function querySearchIndex(
   const hasUsage = Object.keys(usage).length > 0;
   const now = hasUsage ? Date.now() : 0;
 
+  // Cap Fuse work early; we only ever show ≤ MAX_RESULTS after usage re-rank.
   return index
-    .search(trimmed)
+    .search(trimmed, { limit: MAX_RESULTS * 2 })
     .map((hit) => {
       const base = hit.score ?? 1;
       return {
@@ -465,28 +533,44 @@ export function querySearchIndex(
     })
     .sort((a, b) => a.ranked - b.ranked)
     .slice(0, MAX_RESULTS)
-    .map(({ hit }) => ({
-      item: hit.item,
-      matches: hit.matches,
-    }));
+    .map(({ hit }) => ({ item: hit.item }));
+}
+
+/**
+ * Fuse is for short lookup keys (handles, species, pages). Natural-language
+ * questions thrash Bitap and almost never produce useful hits.
+ */
+export function shouldSkipFuzzySearch(query: string): boolean {
+  // Bitap cost grows fast with length — bail earlier than "full sentence".
+  if (query.length >= 24) return true;
+  if (query.split(/\s+/).filter(Boolean).length >= 4) return true;
+  // "who is …" / "what are …" — Ask owns these; Fuse returns noise or nothing.
+  if (query.length >= 10 && /^(who|what|which|when|where|why|how)\b/i.test(query)) {
+    return true;
+  }
+  return false;
+}
+
+/** Matches `/api/ai/jump` question `.max(300)`. */
+export const MAX_SEARCH_QUERY_CHARS = 300;
+
+/**
+ * How long to wait after the last keystroke before running Fuse.
+ * Longer queries wait longer; Ask-shaped / skipped queries return 0 (no Fuse).
+ */
+export function fuseDebounceMs(query: string): number {
+  const trimmed = query.trim();
+  if (!trimmed || shouldSkipFuzzySearch(trimmed)) return 0;
+  if (trimmed.length <= 8) return 50;
+  if (trimmed.length <= 16) return 120;
+  return 180;
 }
 
 /**
  * Queries the fuzzy index can't answer well — the ones #184 wants to hand to
- * the LLM. Deliberately conservative: a false positive costs a wasted row,
- * so this only fires on shapes that read unmistakably as a question.
+ * the LLM. Implementation lives in `@/lib/ai/ask-guard` so the API can share it.
  */
-const QUESTION_STARTERS =
-  /^(who|what|which|when|where|why|how|is|are|does|do|did|can|should|has|have)\b/i;
-const COMPARATIVE = /\b(most|least|best|worst|ahead|behind|top|highest|lowest|compare|ranked|leading|fewest)\b/i;
-
-export function isQuestionLike(query: string): boolean {
-  const trimmed = query.trim();
-  if (trimmed.length < 6) return false;
-  if (trimmed.includes("?")) return true;
-  // A bare comparative like "most badges" reads as a question in a palette.
-  return QUESTION_STARTERS.test(trimmed) || COMPARATIVE.test(trimmed);
-}
+export { isQuestionLike } from "@/lib/ai/ask-guard";
 
 /**
  * Titles worth surfacing first, by where the player currently is. Opening the
@@ -557,13 +641,23 @@ export function defaultSuggestions(
 type UsageEntry = { n: number; t: number };
 type UsageStats = Record<string, UsageEntry>;
 
+/** In-memory mirror of USAGE_KEY so Fuse ranking doesn't JSON.parse every keystroke. */
+let usageCache: UsageStats | null = null;
+
 function getUsageStats(): UsageStats {
   if (typeof window === "undefined") return {};
+  if (usageCache) return usageCache;
   try {
     const raw = localStorage.getItem(USAGE_KEY);
-    if (!raw) return {};
+    if (!raw) {
+      usageCache = {};
+      return usageCache;
+    }
     const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      usageCache = {};
+      return usageCache;
+    }
     const clean: UsageStats = {};
     for (const [id, entry] of Object.entries(
       parsed as Record<string, unknown>,
@@ -573,9 +667,20 @@ function getUsageStats(): UsageStats {
       if (!Number.isFinite(n) || !Number.isFinite(t)) continue;
       clean[id] = { n: n as number, t: t as number };
     }
-    return clean;
+    usageCache = clean;
+    return usageCache;
   } catch {
-    return {};
+    usageCache = {};
+    return usageCache;
+  }
+}
+
+function persistUsageStats(stats: UsageStats) {
+  usageCache = stats;
+  try {
+    localStorage.setItem(USAGE_KEY, JSON.stringify(stats));
+  } catch {
+    // Quota / private mode — ranking just won't persist.
   }
 }
 
@@ -583,7 +688,7 @@ function getUsageStats(): UsageStats {
 export function recordSearchUse(id: string) {
   if (typeof window === "undefined" || !id) return;
   try {
-    const stats = getUsageStats();
+    const stats = { ...getUsageStats() };
     const prev = stats[id];
     stats[id] = { n: (prev?.n ?? 0) + 1, t: Date.now() };
 
@@ -596,11 +701,11 @@ export function recordSearchUse(id: string) {
         .slice(0, MAX_USAGE_ENTRIES);
       const trimmed: UsageStats = {};
       for (const key of keep) trimmed[key] = stats[key];
-      localStorage.setItem(USAGE_KEY, JSON.stringify(trimmed));
+      persistUsageStats(trimmed);
       return;
     }
 
-    localStorage.setItem(USAGE_KEY, JSON.stringify(stats));
+    persistUsageStats(stats);
   } catch {
     // private mode / blocked storage
   }
@@ -654,6 +759,7 @@ export function clearRecentSearches() {
     localStorage.removeItem(RECENT_KEY);
     localStorage.removeItem(LEGACY_RECENT_KEY);
     localStorage.removeItem(USAGE_KEY);
+    usageCache = {};
   } catch {
     // ignore
   }

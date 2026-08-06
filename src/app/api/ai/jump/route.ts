@@ -5,6 +5,7 @@ import {
   jumpAskCacheKey,
   setCachedJumpAnswer,
 } from "@/lib/ai/answer-cache";
+import { evaluateAskQuery } from "@/lib/ai/ask-guard";
 import { isGeminiConfigured } from "@/lib/ai/gemini";
 import { answerJumpQuestion } from "@/lib/ai/jump-assist";
 import { checkAiRateLimit } from "@/lib/ai/rate-limit";
@@ -16,8 +17,8 @@ import { checkAiRateLimit } from "@/lib/ai/rate-limit";
  * in memory, so answering costs no extra DB read. Fuzzy search stays the
  * default path — this only fires on an explicit Ask.
  *
- * Cached answers (same question + snapshot) skip Gemini and the AI rate limit
- * so repeats don't burn free-tier quota.
+ * Order matters for free-tier spend: Ask-guard → answer cache → rate limit →
+ * Gemini. Gibberish and repeats never touch the RPM/RPD budget.
  *
  * 501 when the key is unset so callers can degrade to fuzzy search silently.
  */
@@ -85,6 +86,15 @@ export async function POST(request: Request) {
   }
 
   const { question, snapshot } = parsed.data;
+
+  const guard = evaluateAskQuery(question, { allowMultiWord: true });
+  if (!guard.ok) {
+    return Response.json(
+      { ok: false, error: guard.error, code: guard.code },
+      { status: 400, headers: NO_STORE },
+    );
+  }
+
   const cacheKey = jumpAskCacheKey(question, snapshot);
 
   const cached = await getCachedJumpAnswer(cacheKey);
@@ -95,7 +105,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const limit = checkAiRateLimit(userId);
+  const limit = await checkAiRateLimit(userId);
   if (!limit.allowed) {
     return Response.json(
       {

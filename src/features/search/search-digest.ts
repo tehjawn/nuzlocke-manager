@@ -36,6 +36,11 @@ export type AskPlan = {
   focus: AskFocus;
   /** Handles mentioned in the question (matched against season trainers). */
   trainerHandles: string[];
+  /**
+   * "My team" ask but viewer has no board — do not fall back to packing the
+   * whole league roster (that contradicts the YOU: none line).
+   */
+  unresolvedPersonalRoster?: boolean;
   includeMons: boolean;
   includeFallenDetail: boolean;
   includeRules: boolean;
@@ -62,7 +67,22 @@ export function detectAskPlan(
 ): AskPlan {
   const q = question.toLowerCase().replace(/\s+/g, " ").trim();
 
-  const trainerHandles = ctx ? matchTrainerHandles(q, ctx) : [];
+  const selfHandle = resolveSelfHandle(ctx);
+  const refersToSelf = /\b(my|mine|i'm|im|i am)\b/.test(q);
+  // "me" alone is too noisy ("tell me the rules"); require team-ish context.
+  const personalRoster =
+    (refersToSelf || /\b(me|myself)\b/.test(q)) &&
+    /\b(team|party|squad|box|roster|mons?|pok[eé]mon|fallen|living|badges?|board|run)\b/.test(
+      q,
+    );
+
+  let trainerHandles = ctx ? matchTrainerHandles(q, ctx) : [];
+  if (personalRoster && selfHandle) {
+    const lower = selfHandle.toLowerCase();
+    if (!trainerHandles.some((h) => h.toLowerCase() === lower)) {
+      trainerHandles = [selfHandle, ...trainerHandles];
+    }
+  }
 
   const wantsDetail =
     /\b(nickname|nicknames|route|caught|shiny|shinies|status)\b/.test(q);
@@ -88,19 +108,20 @@ export function detectAskPlan(
 
   const roster =
     trainerHandles.length > 0 ||
+    personalRoster ||
     /\b(who|whose|ahead|behind|badge|badges|team|teams|party|fallen|living|dead|deaths?|memorial|grave|trainer|trainers|standings|leaderboard|box|squad|nickname|caught|route)\b/.test(
       q,
     );
 
-  // Named trainer → always pull their roster detail.
+  // "my team" / named handle → that trainer's roster only (never league-wide meta).
   if (trainerHandles.length > 0) {
     return {
       focus: "roster",
       trainerHandles,
       includeMons: true,
-      includeFallenDetail: /\b(fallen|dead|death|deaths|memorial|grave|rip)\b/.test(
-        q,
-      ),
+      includeFallenDetail:
+        /\b(fallen|dead|death|deaths|memorial|grave|rip)\b/.test(q) ||
+        /\b(weakest|strongest|lowest|highest)\b/.test(q),
       includeRules: false,
       includeRuleBodies: false,
       includeFaqs: false,
@@ -108,6 +129,24 @@ export function detectAskPlan(
     };
   }
 
+  // Personal ask but viewer has no board in this season — still roster-shaped
+  // so we don't answer with empty meta / Game Guide deflection. Mark unresolved
+  // so pass 2 does not pack every other trainer as a stand-in for "my team".
+  if (personalRoster) {
+    return {
+      focus: "roster",
+      trainerHandles: selfHandle ? [selfHandle] : [],
+      unresolvedPersonalRoster: !selfHandle,
+      includeMons: true,
+      includeFallenDetail: true,
+      includeRules: false,
+      includeRuleBodies: false,
+      includeFaqs: false,
+      leanMons,
+    };
+  }
+
+  // League-wide meta only — "strongest pokemon" with no "my team".
   if (meta && !league && !roster) {
     return {
       focus: "meta",
@@ -173,6 +212,15 @@ export function detectAskPlan(
   };
 }
 
+function resolveSelfHandle(
+  ctx?: SearchSeasonContext | null,
+): string | null {
+  if (!ctx?.myTrainerId) return null;
+  const mine = ctx.trainers.find((t) => t.id === ctx.myTrainerId);
+  const handle = mine?.handle?.trim();
+  return handle || null;
+}
+
 /** Back-compat wrapper — prefer `detectAskPlan`. */
 export function detectDigestFocus(question: string): AskFocus {
   return detectAskPlan(question).focus;
@@ -182,17 +230,37 @@ function matchTrainerHandles(
   q: string,
   ctx: SearchSeasonContext,
 ): string[] {
+  // Normalize curly/smart apostrophes so CoolRice's / CoolRice's both match.
+  const normalized = q.replace(/[\u2018\u2019\u02BC]/g, "'");
   const matched: string[] = [];
+  const seen = new Set<string>();
+
   for (const t of ctx.trainers) {
     const handle = t.handle.trim();
     if (handle.length < 2) continue;
-    const h = handle.toLowerCase();
-    // Word-boundary-ish: avoid matching "al" inside "total".
-    const re = new RegExp(
-      `(^|[^a-z0-9_])${escapeRegExp(h)}([^a-z0-9_]|$)`,
-      "i",
-    );
-    if (re.test(q)) matched.push(handle);
+
+    const aliases = [
+      handle,
+      t.discordUsername?.trim(),
+      t.discordDisplayName?.trim(),
+    ].filter((a): a is string => Boolean(a && a.length >= 2));
+
+    for (const alias of aliases) {
+      const a = alias
+        .replace(/[\u2018\u2019\u02BC]/g, "'")
+        .toLowerCase();
+      // Word-boundary-ish: avoid matching "al" inside "total".
+      const re = new RegExp(
+        `(^|[^a-z0-9_])${escapeRegExp(a)}([^a-z0-9_]|$)`,
+        "i",
+      );
+      if (!re.test(normalized)) continue;
+      const key = handle.toLowerCase();
+      if (seen.has(key)) break;
+      seen.add(key);
+      matched.push(handle);
+      break;
+    }
   }
   return matched;
 }
@@ -216,21 +284,23 @@ function monLabel(
     catchRoute: string | null;
   },
   lean: boolean,
+  /** Memorial rows keep nicknames — that's how players remember fallen partners. */
+  fallen = false,
 ): string {
-  if (lean) {
-    const lv = mon.level != null ? `@L${mon.level}` : "";
-    const shiny = mon.isShiny ? "*" : "";
-    return `${mon.species}${shiny}${lv}`;
+  const lv = mon.level != null ? (lean && !fallen ? `@L${mon.level}` : `L${mon.level}`) : null;
+  const shiny = mon.isShiny ? (lean && !fallen ? "*" : "shiny") : null;
+
+  if (fallen || !lean) {
+    const name = mon.nickname?.trim()
+      ? `${mon.nickname.trim()} (${mon.species})`
+      : mon.species;
+    const bits = [lv, shiny, !lean ? mon.catchRoute?.trim() || null : null].filter(
+      Boolean,
+    );
+    return bits.length ? `${name} [${bits.join(", ")}]` : name;
   }
-  const name = mon.nickname?.trim()
-    ? `${mon.nickname.trim()} (${mon.species})`
-    : mon.species;
-  const bits = [
-    mon.level != null ? `L${mon.level}` : null,
-    mon.isShiny ? "shiny" : null,
-    mon.catchRoute?.trim() || null,
-  ].filter(Boolean);
-  return bits.length ? `${name} [${bits.join(", ")}]` : name;
+
+  return `${mon.species}${shiny ?? ""}${lv ?? ""}`;
 }
 
 /** Canonical GAME line — aligns Emerald Modern / Modern Emerald naming. */
@@ -306,18 +376,25 @@ function sortTrainersForPlan(
   ctx: SearchSeasonContext,
   plan: AskPlan,
 ): SearchSeasonContext["trainers"] {
+  if (plan.unresolvedPersonalRoster) return [];
+
   const preferred = new Set(
     plan.trainerHandles.map((h) => h.toLowerCase()),
   );
   const list = [...ctx.trainers];
 
-  // Named in the question → only those trainers (plus nothing else).
+  // Named / "my" in the question → only those trainers.
   if (preferred.size > 0) {
     const named = list.filter((t) => preferred.has(t.handle.toLowerCase()));
     if (named.length) return named;
   }
 
+  // League-wide roster/full: keep the viewer first so budget cuts don't drop "my" team.
   list.sort((a, b) => {
+    if (ctx.myTrainerId) {
+      if (a.id === ctx.myTrainerId) return -1;
+      if (b.id === ctx.myTrainerId) return 1;
+    }
     const badgeDelta =
       (b.earnedBadgeKeys?.length ?? 0) - (a.earnedBadgeKeys?.length ?? 0);
     if (badgeDelta !== 0) return badgeDelta;
@@ -353,7 +430,7 @@ function trainerMonLines(
     out.push(
       `  team: ${living
         .slice(0, MAX_PARTY_PER_TRAINER)
-        .map((m) => monLabel(m, plan.leanMons))
+        .map((m) => monLabel(m, plan.leanMons, false))
         .join("; ")}`,
     );
   }
@@ -361,7 +438,7 @@ function trainerMonLines(
     out.push(
       `  fallen: ${fallen
         .slice(0, MAX_FALLEN_PER_TRAINER)
-        .map((m) => monLabel(m, plan.leanMons))
+        .map((m) => monLabel(m, plan.leanMons, true))
         .join("; ")}`,
     );
   }
@@ -415,6 +492,19 @@ export function buildSeasonDigestFromPlan(
     `SEASON: ${ctx.name} | year ${ctx.year} | status ${ctx.status} | focus ${plan.focus}`,
   );
 
+  const selfHandle = resolveSelfHandle(ctx);
+  if (selfHandle) {
+    pushLine(
+      pack,
+      `YOU: ${selfHandle} (the signed-in trainer — "my/me/mine" in the question means this handle)`,
+    );
+  } else if (plan.focus === "roster" && plan.includeMons) {
+    pushLine(
+      pack,
+      `YOU: (none — viewer has no trainer board in this season; cannot resolve "my team")`,
+    );
+  }
+
   const game = gameLine(ctx.game);
   if (game) pushLine(pack, game);
 
@@ -432,12 +522,22 @@ export function buildSeasonDigestFromPlan(
     plan.focus === "roster" ||
     plan.focus === "full";
 
-  if (wantTrainers && ctx.trainers.length) {
+  if (
+    wantTrainers &&
+    !plan.unresolvedPersonalRoster &&
+    ctx.trainers.length
+  ) {
     const header =
       plan.includeMons
         ? "TRAINERS — handle | badges | living | fallen"
         : "TRAINERS — handle | badges | living | fallen (counts only)";
     pushLine(pack, "");
+    if (plan.includeMons) {
+      pushLine(
+        pack,
+        "ROSTER FACTS: answer strongest/weakest from team:/fallen: levels below (higher level = stronger unless asked about BST). fallen: is the memorial (RIP).",
+      );
+    }
     pushLine(pack, header);
 
     const trainers = sortTrainersForPlan(ctx, plan);

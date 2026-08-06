@@ -5,6 +5,10 @@ import { LoggedInChrome } from "@/components/LoggedInChrome";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { isDatabaseConfigured } from "@/lib/db";
 import { listNotificationsForUser } from "@/lib/notifications";
+import {
+  resolveSessionUser,
+  SESSION_EXPIRED_LOGIN,
+} from "@/lib/session-user";
 
 const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
 
@@ -27,11 +31,33 @@ export async function AuthButtons({
     const name = session.user.name ?? "Account";
     const image =
       typeof session.user.image === "string" ? session.user.image : null;
-    const userId = session.user.id;
-    const notifications =
-      userId && isDatabaseConfigured()
-        ? await listNotificationsForUser(userId)
-        : [];
+
+    let notifications: Awaited<ReturnType<typeof listNotificationsForUser>> =
+      [];
+
+    if (isDatabaseConfigured()) {
+      const resolution = await resolveSessionUser({
+        userId: session.user.id,
+        discordId: session.user.discordId,
+      });
+
+      if (resolution.status === "orphan") {
+        console.warn(
+          "[AuthButtons] orphan session — signing out (re-login required)",
+          { userId: session.user.id, discordId: session.user.discordId },
+        );
+        await signOut({ redirectTo: SESSION_EXPIRED_LOGIN });
+        return null;
+      }
+
+      if (resolution.status === "ok") {
+        try {
+          notifications = await listNotificationsForUser(resolution.userId);
+        } catch (err) {
+          console.warn("[AuthButtons] notifications unavailable", err);
+        }
+      }
+    }
 
     return (
       <div className="flex items-center gap-2">
