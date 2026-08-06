@@ -1132,6 +1132,15 @@ button:disabled,
   clip-path: inset(calc(100% - var(--bond-fill)) 0 0 0);
 }
 
+.pokemon-bond-heart--raw {
+  --bond-tint: color-mix(in srgb, var(--muted) 55%, transparent);
+  opacity: 0.55;
+}
+
+.pokemon-bond-heart--raw .pokemon-bond-heart__outline {
+  opacity: 0.85;
+}
+
 .pokemon-bond-heart--growing {
   --bond-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
 }

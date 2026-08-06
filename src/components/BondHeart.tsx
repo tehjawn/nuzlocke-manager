@@ -33,8 +33,8 @@ export function BondHeart({
   tier,
   className = "h-3.5 w-3.5",
 }: BondHeartProps) {
-  const label = trainingTierLabel(tier);
   const tip = trainingTierTip(tier);
+  const label = trainingTierLabel(tier) ?? "Raw";
   const tipId = useId();
   const wrapRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
@@ -57,10 +57,9 @@ export function BondHeart({
   }, []);
 
   const show = useCallback(() => {
-    if (!tip) return;
     place();
     setOpen(true);
-  }, [place, tip]);
+  }, [place]);
 
   const hide = useCallback(() => setOpen(false), []);
 
@@ -79,8 +78,6 @@ export function BondHeart({
       window.removeEventListener("resize", onResize);
     };
   }, [open, place]);
-
-  if (!label || !tip) return null;
 
   const fill = trainingTierFill(tier);
   const style = { "--bond-fill": `${fill * 100}%` } as CSSProperties;

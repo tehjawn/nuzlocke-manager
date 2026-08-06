@@ -30,9 +30,6 @@ import {
   type SpecimenSlotScope,
   type SpecimenSort,
 } from "@/lib/specimen-board";
-import {
-  trainingTierHasHeart,
-} from "@/lib/training-quality";
 
 type SpecimenShowcaseProps = {
   /** Enables the "just mine" nudge when catch tier is the sort. */
@@ -419,9 +416,7 @@ function SpecimenCard({
               species={row.species}
               width={96}
             />
-            {row.trainingTier &&
-            trainingTierHasHeart(row.trainingTier) &&
-            !row.trainingTierHidden ? (
+            {row.trainingTier !== null && !row.trainingTierHidden ? (
               <BondHeart
                 className="pokemon-bond-heart--corner h-3.5 w-3.5"
                 tier={row.trainingTier}

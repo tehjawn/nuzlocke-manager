@@ -45,7 +45,6 @@ import {
 import { toolsHref } from "@/lib/tools-routes";
 import {
   specimenTrainingTier,
-  trainingTierHasHeart,
   trainingTierLabel,
   trainingTierToneClass,
   type TrainingTier,
@@ -172,9 +171,7 @@ export function PokemonDetailsModal({
         friendship: pokemon.friendship,
       })
     : "raw";
-  const bondLabel = trainingTierHasHeart(trainingTier)
-    ? trainingTierLabel(trainingTier)
-    : null;
+  const bondLabel = trainingTierLabel(trainingTier);
 
   // Species-level ranks (Pokédex) — separate from specimen CatchTier under the sprite.
   const baseStats = baseStatsForSpecies(pokemon.pokedexId);
@@ -298,7 +295,7 @@ export function PokemonDetailsModal({
                   species={pokemon.species}
                   width={144}
                 />
-                {bondLabel ? (
+                {showCompetitiveDetails ? (
                   <BondHeart
                     className="pokemon-bond-heart--corner h-4 w-4"
                     tier={trainingTier}

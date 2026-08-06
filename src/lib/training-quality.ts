@@ -49,7 +49,7 @@ const TRAINED_EV_TOTAL = 252;
  */
 const BONDED_EV_TOTAL = 450;
 
-/** Fill fraction for the bond heart glyph (raw has no heart). */
+/** Fill fraction for the bond heart glyph (raw = empty outline). */
 const TRAINING_TIER_FILL: Record<TrainingTier, number> = {
   raw: 0,
   growing: 0.4,
@@ -58,6 +58,7 @@ const TRAINING_TIER_FILL: Record<TrainingTier, number> = {
 };
 
 const TRAINING_TIER_LABEL: Record<TrainingTier, string | null> = {
+  /** Silent under the sprite — empty outline + tip carry the signal. */
   raw: null,
   growing: "Growing",
   trained: "Trained",
@@ -68,13 +69,13 @@ export function trainingTierRank(tier: TrainingTier): number {
   return TRAINING_TIERS.indexOf(tier);
 }
 
-/** Beginner-facing label; null when the heart should stay silent. */
+/** Beginner-facing label under the sprite; null for raw (outline only). */
 export function trainingTierLabel(tier: TrainingTier): string | null {
   return TRAINING_TIER_LABEL[tier];
 }
 
 /** Hover tip body for the bond heart — one short line per band. */
-export function trainingTierTip(tier: TrainingTier): string | null {
+export function trainingTierTip(tier: TrainingTier): string {
   if (tier === "growing") {
     return "Growing — some EV investment from training.";
   }
@@ -84,7 +85,7 @@ export function trainingTierTip(tier: TrainingTier): string | null {
   if (tier === "bonded") {
     return "Bonded — heavily trained and cared for (near-capped EVs and/or high friendship).";
   }
-  return null;
+  return "Raw — no meaningful EV investment on file yet.";
 }
 
 /** Heart fill 0–1 for CSS `--bond-fill`. */
@@ -92,9 +93,9 @@ export function trainingTierFill(tier: TrainingTier): number {
   return TRAINING_TIER_FILL[tier];
 }
 
-/** True when a bond heart should render (any investment on file). */
-export function trainingTierHasHeart(tier: TrainingTier): boolean {
-  return tier !== "raw";
+/** True when a bond heart glyph should render (including the empty raw outline). */
+export function trainingTierHasHeart(_tier: TrainingTier): boolean {
+  return true;
 }
 
 /** Label tone class — mirrors catch-label brightness via bond modifiers. */

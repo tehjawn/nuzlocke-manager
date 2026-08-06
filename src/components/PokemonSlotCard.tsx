@@ -23,9 +23,6 @@ import {
 } from "@/lib/stats";
 import {
   specimenTrainingTier,
-  trainingTierHasHeart,
-  trainingTierLabel,
-  trainingTierToneClass,
   type TrainingTier,
 } from "@/lib/training-quality";
 
@@ -138,7 +135,6 @@ export function PokemonSlotCard({
           friendship: pokemon.friendship,
         })
       : "raw";
-  const bondLabel = trainingTierLabel(trainingTier);
   const tierRing = catchTierHasChrome(catchTier)
     ? `pokemon-catch-ring pokemon-catch-ring--${catchTier}`
     : null;
@@ -272,7 +268,7 @@ export function PokemonSlotCard({
             species={pokemon.species}
             width={96}
           />
-          {trainingTierHasHeart(trainingTier) && bondLabel ? (
+          {showCompetitiveDetails ? (
             <BondHeart
               className="pokemon-bond-heart--corner h-3.5 w-3.5"
               tier={trainingTier}
