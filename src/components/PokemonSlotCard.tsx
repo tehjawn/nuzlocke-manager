@@ -182,7 +182,13 @@ export function PokemonSlotCard({
           memorial ? "opacity-90" : ""
         } ${looksInteractive ? "cursor-pointer transition hover:border-interactive/60 hover:bg-interactive-soft/30" : ""}`}
       >
-        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
+        <div
+          className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border ${
+            hasCatchChrome
+              ? `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
+              : "border-frame/50 bg-surface-2"
+          }`}
+        >
           <PokemonSpriteImage
             alt=""
             className="pixelated h-10 w-10 object-contain"

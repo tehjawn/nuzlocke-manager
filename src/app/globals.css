@@ -1432,6 +1432,7 @@ button:disabled,
 .pressable.pokemon-catch-border--league {
   --league-catch-tint: transparent;
   --league-catch-peak: 10%;
+
   border-width: 1px;
   border-style: solid;
   border-color: color-mix(in srgb, var(--league-catch-tint) 42%, var(--frame));
@@ -1456,6 +1457,7 @@ button:disabled,
 .pressable.pokemon-catch-border--league-shit {
   --league-catch-tint: var(--muted);
   --league-catch-peak: 6%;
+
   border-style: dotted;
   border-color: color-mix(in srgb, var(--muted) 48%, var(--frame));
   filter: saturate(0.78);
@@ -1464,18 +1466,21 @@ button:disabled,
 .pressable.pokemon-catch-border--league-good {
   --league-catch-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
   --league-catch-peak: 11%;
+
   border-color: color-mix(in srgb, var(--interactive) 44%, var(--frame));
 }
 
 .pressable.pokemon-catch-border--league-great {
   --league-catch-tint: #b794f6;
   --league-catch-peak: 14%;
+
   border-color: color-mix(in srgb, #a78bfa 48%, var(--frame));
 }
 
 .pressable.pokemon-catch-border--league-cracked {
   --league-catch-tint: #f0c14a;
   --league-catch-peak: 17%;
+
   border-color: color-mix(in srgb, #e0b04a 52%, var(--frame));
 }
 
@@ -1486,6 +1491,7 @@ button:disabled,
  */
 .pressable.pokemon-catch-border--league-god {
   --league-catch-tint: #c77dff;
+
   border: none;
   padding: 1.5px;
   background-color: transparent;
