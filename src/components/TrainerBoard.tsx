@@ -31,7 +31,7 @@ import { PartyBoardDnd } from "@/components/PartyBoardDnd";
 import { PartyStrip } from "@/components/PartyStrip";
 import { PlayerCustomizationEditor } from "@/components/PlayerCustomizationEditor";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
-import { ReviveControl } from "@/components/ReviveControl";
+import { ReviveToken } from "@/components/ReviveToken";
 import { SaveImportModal } from "@/components/SaveImportModal";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
 import { StatusLine } from "@/components/StatusLine";
@@ -69,7 +69,12 @@ import {
 } from "@/lib/pokemon-board-dnd";
 import { isEmptySpread } from "@/lib/stats";
 import {
-  TRAINER_BOARD_ACTION_ORDER,
+  TrainerBoardActionsMenu,
+  type TrainerBoardMenuItem,
+} from "@/components/TrainerBoardActionsMenu";
+import {
+  TRAINER_BOARD_OVERFLOW_ACTIONS,
+  TRAINER_BOARD_PRIMARY_ACTIONS,
   type TrainerBoardActionKey,
 } from "@/lib/trainer-board-actions";
 import { trainerBoardPath } from "@/lib/team-export";
@@ -475,28 +480,6 @@ function ShortcutActionTile({
   );
 }
 
-function ShortcutStatusTile({
-  label,
-  icon,
-  tone = "neutral",
-}: {
-  label: string;
-  icon: ReactNode;
-  tone?: "accent" | "danger" | "import" | "neutral";
-}) {
-  return (
-    <div
-      role="status"
-      className={`${shortcutActionRowBase} ${shortcutActionToneClass(tone)} cursor-default opacity-90`}
-    >
-      <span className="shrink-0" aria-hidden>
-        {icon}
-      </span>
-      <span className="min-w-0 truncate">{label}</span>
-    </div>
-  );
-}
-
 function SaveIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
     <svg
@@ -750,10 +733,6 @@ export function TrainerBoard({
   const reserves = pokemonInSlot(boardTrainer, "RESERVE");
   const graveyard = pokemonInSlot(boardTrainer, "GRAVEYARD");
   const encountered = pokemonInSlot(boardTrainer, "ENCOUNTERED");
-  const wipeButtonClass =
-    "pressable inline-flex h-9 items-center justify-center gap-1.5 border-danger/25 bg-danger/10 px-3 text-xs font-semibold tracking-tight text-danger disabled:opacity-60";
-  const endRunButtonClass =
-    "pressable inline-flex h-9 items-center justify-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60";
   const wiping =
     wipeSave.status.kind === "saving" || resetSave.status.kind === "saving";
   const seasonLinkTiles = [
@@ -1160,83 +1139,56 @@ export function TrainerBoard({
   const showMobileSaveBar =
     canEdit &&
     (editingPlayer || mobileSaveStatus.kind !== "idle");
+  // Primary strip + Shortcuts: Import only. Revive is status on R.I.P.; mark /
+  // GM reset live in More. Everything else is overflow so mobile stays calm (#325).
   const boardActionSlots: Record<
     TrainerBoardActionKey,
-    { shortcut: ReactNode; toolbar: ReactNode }
+    {
+      shortcut: ReactNode;
+      toolbar: ReactNode;
+      menu: TrainerBoardMenuItem | null;
+    }
   > = {
     copy: {
-      shortcut: (
-        <ShortcutActionTile
-          disabled={pending || wiping}
-          icon={<CopyLinkIcon className="h-4 w-4" />}
-          label="Copy board link"
-          onClick={() => {
-            void copyBoardLink();
-          }}
-          title="Copy shareable trainer board URL"
-          tone="neutral"
-        />
-      ),
-      toolbar: (
-        <button
-          className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
-          disabled={pending || wiping}
-          onClick={() => {
-            void copyBoardLink();
-          }}
-          title="Copy shareable board link"
-          type="button"
-        >
-          <CopyLinkIcon />
-          Copy link
-        </button>
-      ),
+      shortcut: null,
+      toolbar: null,
+      menu: {
+        key: "copy",
+        label: "Copy link",
+        icon: <CopyLinkIcon className="h-4 w-4" />,
+        disabled: pending || wiping,
+        title: "Copy shareable board link",
+        onClick: () => {
+          void copyBoardLink();
+        },
+      },
     },
     export: {
-      shortcut: (
-        <ShortcutActionTile
-          disabled={pending || wiping}
-          icon={<ExportTeamIcon className="h-4 w-4" />}
-          label="Export team"
-          onClick={() => setTeamExportOpen(true)}
-          title="Copy living roster for LLM / notes"
-          tone="neutral"
-        />
-      ),
-      toolbar: (
-        <button
-          className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
-          disabled={pending || wiping}
-          onClick={() => setTeamExportOpen(true)}
-          type="button"
-        >
-          <ExportTeamIcon />
-          Export team
-        </button>
-      ),
+      shortcut: null,
+      toolbar: null,
+      menu: {
+        key: "export",
+        label: "Export team",
+        icon: <ExportTeamIcon className="h-4 w-4" />,
+        disabled: pending || wiping,
+        title: "Copy living roster for LLM / notes",
+        onClick: () => setTeamExportOpen(true),
+      },
     },
     history: {
-      shortcut: !isDemo && (isGm || showCompetitiveDetails) && (
-        <ShortcutActionTile
-          disabled={pending || wiping}
-          icon={<BoardHistoryIcon className="h-4 w-4" />}
-          label="Trainer history"
-          onClick={() => setBoardHistoryOpen(true)}
-          title="Runs, badge archives, and board snapshots"
-          tone="neutral"
-        />
-      ),
-      toolbar: !isDemo && (isGm || showCompetitiveDetails) && (
-        <button
-          className="pressable inline-flex h-9 items-center gap-1.5 border-frame bg-surface px-3 text-xs font-semibold tracking-tight text-ink disabled:opacity-60"
-          disabled={pending || wiping}
-          onClick={() => setBoardHistoryOpen(true)}
-          type="button"
-        >
-          <BoardHistoryIcon />
-          Trainer history
-        </button>
-      ),
+      shortcut: null,
+      toolbar: null,
+      menu:
+        !isDemo && (isGm || showCompetitiveDetails)
+          ? {
+              key: "history",
+              label: "Trainer history",
+              icon: <BoardHistoryIcon className="h-4 w-4" />,
+              disabled: pending || wiping,
+              title: "Runs, badge archives, and board snapshots",
+              onClick: () => setBoardHistoryOpen(true),
+            }
+          : null,
     },
     import: {
       shortcut: canEdit && (
@@ -1263,120 +1215,94 @@ export function TrainerBoard({
           <span>Import save</span>
         </button>
       ),
+      menu: null,
     },
     reset: {
-      shortcut: isGm && !isDemo && (
-        <ShortcutActionTile
-          disabled={pending || wiping}
-          icon={<ResetBoardIcon className="h-4 w-4" />}
-          label="Reset board"
-          onClick={() => {
-            void resetTrainerBoard();
-          }}
-          title="GM hard reset — zeros wipe count"
-          tone="danger"
-        />
-      ),
-      toolbar: isGm && !isDemo && (
-        <button
-          className={wipeButtonClass}
-          disabled={pending || wiping}
-          onClick={() => {
-            void resetTrainerBoard();
-          }}
-          type="button"
-        >
-          <ResetBoardIcon />
-          Reset board
-        </button>
-      ),
+      shortcut: null,
+      toolbar: null,
+      menu:
+        isGm && !isDemo
+          ? {
+              key: "reset",
+              label: "Reset board",
+              icon: <ResetBoardIcon className="h-4 w-4" />,
+              disabled: pending || wiping,
+              title: "GM hard reset — zeros wipe count",
+              tone: "danger",
+              onClick: () => {
+                void resetTrainerBoard();
+              },
+            }
+          : null,
     },
+    // Owners normally sync revive via Import save. Manual mark + GM reset stay
+    // in More as escape hatches — not top-strip CTAs.
     revive: {
-      shortcut:
-        canEdit && !isDemo && !reviveUsed && !runEnded ? (
-          <ShortcutActionTile
-            disabled={pending || wiping}
-            icon={<ReviveShortcutIcon className="h-4 w-4" />}
-            label="Use Revive Token"
-            onClick={() => {
-              void spendReviveToken();
-            }}
-            tone="accent"
-          />
-        ) : isGm && !isDemo && reviveUsed ? (
-          <ShortcutActionTile
-            disabled={pending || wiping}
-            icon={<ReviveShortcutIcon className="h-4 w-4" />}
-            label="Reset revive"
-            onClick={() => {
-              void resetReviveToken();
-            }}
-            title="Reset revive token"
-            tone="danger"
-          />
-        ) : canEdit && !isDemo && reviveUsed && !isGm ? (
-          <ShortcutStatusTile
-            icon={<ReviveShortcutIcon className="h-4 w-4" />}
-            label="Revive used"
-            tone="danger"
-          />
-        ) : null,
-      toolbar: !isDemo && (
-        <ReviveControl
-          canReset={isGm}
-          // A finished run has no attempt left to revive into, and its token is
-          // already archived on the closed run.
-          canUse={canEdit && !runEnded}
-          disabled={pending}
-          onReset={resetReviveToken}
-          onUse={spendReviveToken}
-          status={
-            canEdit || isGm ? (
-              <SaveStatus status={reviveSave.status} />
-            ) : null
-          }
-          used={reviveUsed}
-        />
-      ),
+      shortcut: null,
+      toolbar: null,
+      menu:
+        canEdit && !isDemo && !reviveUsed && !runEnded
+          ? {
+              key: "revive",
+              label: "Mark revive used",
+              icon: <ReviveShortcutIcon className="h-4 w-4" />,
+              disabled: pending || wiping,
+              title: "Manual escape hatch — prefer syncing via Import save",
+              onClick: () => {
+                void spendReviveToken();
+              },
+            }
+          : isGm && !isDemo && reviveUsed
+            ? {
+                key: "revive",
+                label: "Reset revive",
+                icon: <ReviveShortcutIcon className="h-4 w-4" />,
+                disabled: pending || wiping,
+                title: "Reset revive token",
+                tone: "danger",
+                onClick: () => {
+                  void resetReviveToken();
+                },
+              }
+            : null,
     },
     // One control, two states: a run in progress ends here; a run that already
     // ended only has one thing left to do. "End run" opens a modal and destroys
     // nothing, so the danger tone is saved for the restart that does.
     endRun: {
-      shortcut: canEdit && (
-        <ShortcutActionTile
-          disabled={pending || wiping}
-          icon={
-            runEnded ? (
+      shortcut: null,
+      toolbar: null,
+      menu: canEdit
+        ? {
+            key: "endRun",
+            label: runEnded ? "Start new run" : "End run",
+            icon: runEnded ? (
               <WipeIcon className="h-4 w-4" />
             ) : (
               <EndRunIcon className="h-4 w-4" />
-            )
+            ),
+            disabled: pending || wiping,
+            tone: runEnded ? "danger" : "neutral",
+            onClick: () => {
+              if (runEnded) void startNewRun();
+              else setEndRunOpen(true);
+            },
           }
-          label={runEnded ? "Start new run" : "End run"}
-          onClick={() => {
-            if (runEnded) void startNewRun();
-            else setEndRunOpen(true);
-          }}
-          tone={runEnded ? "danger" : "neutral"}
-        />
-      ),
-      toolbar: canEdit && (
-        <button
-          className={runEnded ? wipeButtonClass : endRunButtonClass}
-          disabled={pending || wiping}
-          onClick={() => {
-            if (runEnded) void startNewRun();
-            else setEndRunOpen(true);
-          }}
-          type="button"
-        >
-          {runEnded ? <WipeIcon /> : <EndRunIcon />}
-          {runEnded ? "Start new run" : "End run"}
-        </button>
-      ),
+        : null,
     },
   };
+
+  const overflowMenuItems = TRAINER_BOARD_OVERFLOW_ACTIONS.map(
+    (action) => boardActionSlots[action].menu,
+  ).filter((item): item is TrainerBoardMenuItem => item != null);
+
+  const primaryShortcutTiles = TRAINER_BOARD_PRIMARY_ACTIONS.map(
+    (action) => boardActionSlots[action].shortcut,
+  ).filter(Boolean);
+
+  const ripReviveStatus = !isDemo ? (
+    <ReviveToken used={reviveUsed} size="sm" />
+  ) : null;
 
   return (
     <div className={`space-y-4 ${showMobileSaveBar ? "pb-20 sm:pb-0" : ""}`}>
@@ -1388,12 +1314,13 @@ export function TrainerBoard({
           <span aria-hidden>←</span>
           {leagueBoardLabel}
         </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          {TRAINER_BOARD_ACTION_ORDER.map((action) => (
+        <div className="flex flex-nowrap items-center gap-2">
+          {TRAINER_BOARD_PRIMARY_ACTIONS.map((action) => (
             <Fragment key={action}>
               {boardActionSlots[action].toolbar}
             </Fragment>
           ))}
+          <TrainerBoardActionsMenu items={overflowMenuItems} />
         </div>
       </div>
 
@@ -1425,7 +1352,7 @@ export function TrainerBoard({
         <div className="space-y-6">
           <Frame
             data-tour="player"
-            title="Player"
+            title="Trainer"
             cardBackgroundKey={
               editingPlayer ? null : committed.cardBackgroundKey
             }
@@ -1450,7 +1377,7 @@ export function TrainerBoard({
                   <>
                     <SaveStatus status={playerSave.status} onAccent />
                     <HeaderButton
-                      aria-label="Customize player profile"
+                      aria-label="Customize trainer profile"
                       onClick={startEditingPlayer}
                     >
                       <PencilIcon />
@@ -1640,6 +1567,7 @@ export function TrainerBoard({
                   + Add
                 </button>
               }
+              graveyardHeaderActions={ripReviveStatus}
             />
           ) : (
             <>
@@ -1672,6 +1600,7 @@ export function TrainerBoard({
               <Frame
                 title={frameCountTitle("R.I.P.", graveyard.length)}
                 tone="rip"
+                actions={ripReviveStatus}
               >
                 {graveyard.length > 0 ? (
                   <PartyStrip
@@ -1694,30 +1623,24 @@ export function TrainerBoard({
             title={frameCountTitle("Encountered", encountered.length)}
             collapsible
             defaultOpen={false}
-            actions={
-              canEdit ? (
-                <button
-                  type="button"
-                  disabled={wiping}
-                  className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight disabled:opacity-60"
-                  onClick={(event) => {
-                    // Keep disclosure from toggling when using the header action.
-                    event.preventDefault();
-                    openAddPokemon("ENCOUNTERED");
-                  }}
-                >
-                  + Add
-                </button>
-              ) : undefined
-            }
           >
             {canEdit ? (
               <div className="space-y-3">
-                <p className="text-xs text-muted">
-                  {encountered.length === 0
-                    ? "No extra encounters logged."
-                    : "Caught / seen outside the active party."}
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-muted">
+                    {encountered.length === 0
+                      ? "No extra encounters logged."
+                      : "Caught / seen outside the active party."}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={wiping}
+                    className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight disabled:opacity-60"
+                    onClick={() => openAddPokemon("ENCOUNTERED")}
+                  >
+                    + Add
+                  </button>
+                </div>
                 {encountered.length > 0 ? (
                   <PartyStrip
                     pokemon={encountered}
@@ -1799,13 +1722,15 @@ export function TrainerBoard({
             ))}
           </div>
 
-          <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(10rem,1fr))]">
-            {TRAINER_BOARD_ACTION_ORDER.map((action) => (
-              <Fragment key={action}>
-                {boardActionSlots[action].shortcut}
-              </Fragment>
-            ))}
-          </div>
+          {primaryShortcutTiles.length > 0 ? (
+            <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(10rem,1fr))]">
+              {TRAINER_BOARD_PRIMARY_ACTIONS.map((action) => (
+                <Fragment key={action}>
+                  {boardActionSlots[action].shortcut}
+                </Fragment>
+              ))}
+            </div>
+          ) : null}
         </div>
       </Frame>
 

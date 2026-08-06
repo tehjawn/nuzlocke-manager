@@ -63,6 +63,8 @@ type PartyBoardDndProps = {
   mainActions?: ReactNode;
   reservesActions?: ReactNode;
   graveyardActions?: ReactNode;
+  /** Status / chrome in the R.I.P. frame header (e.g. revive token). */
+  graveyardHeaderActions?: ReactNode;
 };
 
 function normalizeMainItems(ids: string[]): string[] {
@@ -369,6 +371,7 @@ export function PartyBoardDnd({
   mainActions,
   reservesActions,
   graveyardActions,
+  graveyardHeaderActions,
 }: PartyBoardDndProps) {
   // dnd-kit otherwise assigns its accessibility ID from a module-level counter,
   // which can differ between SSR and client hydration.
@@ -645,7 +648,11 @@ export function PartyBoardDnd({
           </SlotSectionDroppable>
         </Frame>
 
-        <Frame title={frameCountTitle("R.I.P.", graveyardCount)} tone="rip">
+        <Frame
+          title={frameCountTitle("R.I.P.", graveyardCount)}
+          tone="rip"
+          actions={graveyardHeaderActions}
+        >
           <SlotSectionDroppable id="GRAVEYARD" disabled={rearrangeDisabled}>
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
