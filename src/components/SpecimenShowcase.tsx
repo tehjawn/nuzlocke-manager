@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { BondHeart } from "@/components/BondHeart";
+import { GodPrismRays } from "@/components/GodPrismRays";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
@@ -375,6 +376,7 @@ function SpecimenCard({
                 : "border-frame"
             }`}
           >
+            {tier === "god" ? <GodPrismRays /> : null}
             <PokemonSpriteImage
               alt=""
               className="pixelated h-[88%] w-[88%] object-contain"

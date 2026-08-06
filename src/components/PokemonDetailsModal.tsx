@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BondHeart, TrainingTierCaption } from "@/components/BondHeart";
 import { CatchTierCaption } from "@/components/CatchTierIcon";
 import { EvolutionPath } from "@/components/EvolutionPath";
+import { GodPrismRays } from "@/components/GodPrismRays";
 import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { Modal } from "@/components/Modal";
@@ -282,6 +283,7 @@ export function PokemonDetailsModal({
                     : "border-frame bg-surface-2"
                 }`}
               >
+                {catchTier === "god" ? <GodPrismRays /> : null}
                 <PokemonSpriteImage
                   alt=""
                   className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"

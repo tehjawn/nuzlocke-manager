@@ -12,6 +12,7 @@ import {
 import { createPortal } from "react-dom";
 import { BondHeart, TrainingTierCaption } from "@/components/BondHeart";
 import { CatchTierCaption } from "@/components/CatchTierIcon";
+import { GodPrismRays } from "@/components/GodPrismRays";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import {
   SurvivalSentimentCaption,
@@ -283,6 +284,7 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
                         : "border-frame/50 bg-surface-2"
                     }`}
                   >
+                    {model.catchTier === "god" ? <GodPrismRays /> : null}
                     <PokemonSpriteImage
                       alt=""
                       className="pixelated h-20 w-20 object-contain"

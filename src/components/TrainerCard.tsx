@@ -69,12 +69,23 @@ function TrainerPartySlot({
   // Null means nothing on file to grade — "raw" still earns an empty heart.
   const showHeart = trainingTier != null;
   const showCornerChrome = layout === "list";
+  const isGodCatch = catchTier === "god";
   // Graded slots own their hover via league CSS — don't let the interactive
   // soft wash flatten the radial catch tint.
-  const hoverWash = catchBorder ? "" : "hover:bg-interactive-soft/40 hover:border-interactive/60";
+  const hoverWash =
+    catchBorder || isGodCatch
+      ? ""
+      : "hover:bg-interactive-soft/40 hover:border-interactive/60";
   const slotSurface = catchBorder
     ? catchBorder
     : "border-frame/50 bg-surface-2";
+  // God: rainbow padding-ring on the button; soft radial lives on the face.
+  const godShell = isGodCatch
+    ? "pokemon-catch-border--league pokemon-catch-border--league-god border-0"
+    : "";
+  const godFace = isGodCatch
+    ? "pokemon-catch-border--league-god__face"
+    : "";
 
   const chrome =
     showCornerChrome && (showSentiment || showHeart) ? (
@@ -104,18 +115,38 @@ function TrainerPartySlot({
           type="button"
           title={label}
           aria-label={`View ${label}`}
-          className={`pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border p-1 transition ${hoverWash} ${slotSurface}`}
+          className={`pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg transition ${
+            isGodCatch
+              ? godShell
+              : `border p-1 ${hoverWash} ${slotSurface}`
+          }`}
           onClick={() => onOpen(pokemon)}
         >
-          <PokemonSpriteImage
-            alt={label}
-            className="pixelated h-full w-full max-h-14 object-contain lg:max-h-16"
-            height={96}
-            pokedexId={pokemon.pokedexId}
-            shiny={pokemon.isShiny}
-            species={pokemon.species}
-            width={96}
-          />
+          {isGodCatch ? (
+            <span
+              className={`${godFace} flex items-center justify-center p-1`}
+            >
+              <PokemonSpriteImage
+                alt={label}
+                className="pixelated h-full w-full max-h-14 object-contain lg:max-h-16"
+                height={96}
+                pokedexId={pokemon.pokedexId}
+                shiny={pokemon.isShiny}
+                species={pokemon.species}
+                width={96}
+              />
+            </span>
+          ) : (
+            <PokemonSpriteImage
+              alt={label}
+              className="pixelated h-full w-full max-h-14 object-contain lg:max-h-16"
+              height={96}
+              pokedexId={pokemon.pokedexId}
+              shiny={pokemon.isShiny}
+              species={pokemon.species}
+              width={96}
+            />
+          )}
         </button>
       </PokemonHoverPreview>
     );
@@ -130,24 +161,52 @@ function TrainerPartySlot({
         type="button"
         title={label}
         aria-label={`View ${label}`}
-        className={`pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1 transition sm:h-24 ${hoverWash} ${slotSurface}`}
+        className={`pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center rounded-lg transition sm:h-24 ${
+          isGodCatch
+            ? godShell
+            : `border px-1 py-1 gap-0.5 ${hoverWash} ${slotSurface}`
+        }`}
         onClick={() => onOpen(pokemon)}
       >
-        <span className="relative inline-flex shrink-0">
-          <PokemonSpriteImage
-            alt={label}
-            className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
-            height={80}
-            pokedexId={pokemon.pokedexId}
-            shiny={pokemon.isShiny}
-            species={pokemon.species}
-            width={80}
-          />
-          {chrome}
-        </span>
-        <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover/slot:text-ink">
-          {label}
-        </span>
+        {isGodCatch ? (
+          <span
+            className={`${godFace} flex flex-col items-center justify-center gap-0.5 px-1 py-1`}
+          >
+            <span className="relative inline-flex shrink-0">
+              <PokemonSpriteImage
+                alt={label}
+                className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+                height={80}
+                pokedexId={pokemon.pokedexId}
+                shiny={pokemon.isShiny}
+                species={pokemon.species}
+                width={80}
+              />
+              {chrome}
+            </span>
+            <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover/slot:text-ink">
+              {label}
+            </span>
+          </span>
+        ) : (
+          <>
+            <span className="relative inline-flex shrink-0">
+              <PokemonSpriteImage
+                alt={label}
+                className="pixelated h-12 w-12 object-contain sm:h-14 sm:w-14"
+                height={80}
+                pokedexId={pokemon.pokedexId}
+                shiny={pokemon.isShiny}
+                species={pokemon.species}
+                width={80}
+              />
+              {chrome}
+            </span>
+            <span className="max-w-full truncate px-0.5 text-[10px] font-semibold leading-tight text-muted group-hover/slot:text-ink">
+              {label}
+            </span>
+          </>
+        )}
       </button>
     </PokemonHoverPreview>
   );
