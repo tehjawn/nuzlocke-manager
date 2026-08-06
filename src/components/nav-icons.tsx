@@ -52,6 +52,37 @@ export function MyTrainerIcon({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+/** Two trainers — header Trainers menu + season rail board tab. */
+export function TrainersIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="9" cy="8" r="2.75" />
+      <circle cx="16.5" cy="9" r="2.25" />
+      <path
+        d="M3.5 18.5c.9-2.6 2.8-4 5.5-4s4.6 1.4 5.5 4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M14 18.5c.5-1.5 1.6-2.5 3.5-2.5 1.4 0 2.4.6 3 1.7"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function FaqIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path
+        d="M9.75 9.25a2.25 2.25 0 114.1 1.3c-.55.9-1.6 1.2-1.85 2.2"
+        strokeLinecap="round"
+      />
+      <path d="M12 16.25v.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function PreferencesIcon({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg {...base} className={className}>
