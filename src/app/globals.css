@@ -3955,6 +3955,19 @@ button:disabled,
   }
 }
 
+/* Jump Ask thinking indicator (#184) */
+@keyframes assist-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
 @keyframes search-panel-in {
   from {
     opacity: 0;
