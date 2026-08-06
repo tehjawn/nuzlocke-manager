@@ -131,6 +131,22 @@ The app is tuned to keep Neon transfer low:
 
 Upstash is optional. Leave `KV_*` unset locally and on Vercel until you want the watermark; the feed still works without it.
 
+## AI assist (optional)
+
+Jump's LLM assist (#184) calls Google AI Studio (Gemini Flash-Lite) through the Vercel AI SDK, server-side only. It is **infra only** today — nothing in the palette calls it yet.
+
+1. Create a key at <https://aistudio.google.com/apikey>
+2. Put it in `.env.local` as `GOOGLE_GENERATIVE_AI_API_KEY` (never commit it)
+3. On Vercel, add the same var to **Production + Preview**, then redeploy
+
+Smoke check (requires a signed-in session cookie):
+
+```bash
+curl -X POST http://localhost:3000/api/ai/jump -H 'Content-Type: application/json' -d '{"prompt":"what is a Nuzlocke run?"}'
+```
+
+Unauthenticated returns `401`. Signed in with no key set returns `501` — the assist path is fail-open, so the rest of the app is unaffected when the key is absent. Per-user limits are in-memory (5/min, 50/day); move to Upstash/KV if this becomes more than an experiment.
+
 ## Scripts
 
 | Script | Purpose |
