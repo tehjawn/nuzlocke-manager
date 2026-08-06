@@ -1153,6 +1153,10 @@ button:disabled,
   --bond-tint: #f0c14a;
 }
 
+.pokemon-bond-label--raw {
+  color: color-mix(in srgb, var(--muted) 78%, transparent);
+}
+
 .pokemon-bond-label--growing {
   color: color-mix(in srgb, var(--interactive) 88%, #9ad0ef);
 }

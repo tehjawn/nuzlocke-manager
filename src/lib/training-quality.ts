@@ -58,34 +58,33 @@ const TRAINING_TIER_FILL: Record<TrainingTier, number> = {
 };
 
 const TRAINING_TIER_LABEL: Record<TrainingTier, string | null> = {
-  /** Silent under the sprite — empty outline + tip carry the signal. */
-  raw: null,
-  growing: "Growing",
-  trained: "Trained",
-  bonded: "Bonded",
+  raw: "Strangers",
+  growing: "Acquaintances",
+  trained: "Friends",
+  bonded: "Best friends",
 };
 
 export function trainingTierRank(tier: TrainingTier): number {
   return TRAINING_TIERS.indexOf(tier);
 }
 
-/** Beginner-facing label under the sprite; null for raw (outline only). */
+/** Beginner-facing label under the sprite / in tips. */
 export function trainingTierLabel(tier: TrainingTier): string | null {
   return TRAINING_TIER_LABEL[tier];
 }
 
-/** Hover tip body for the bond heart — one short line per band. */
+/** Hover tip body for the bond heart — casual, no EV/friendship jargon. */
 export function trainingTierTip(tier: TrainingTier): string {
   if (tier === "growing") {
-    return "Growing — some EV investment from training.";
+    return "Acquaintances — putting some miles in together.";
   }
   if (tier === "trained") {
-    return "Trained — clear EV investment on this Pokémon.";
+    return "Friends — a trusted teammate through thick and thin.";
   }
   if (tier === "bonded") {
-    return "Bonded — heavily trained and cared for (near-capped EVs and/or high friendship).";
+    return "Best friends — fully bonded, this one's family.";
   }
-  return "Raw — no meaningful EV investment on file yet.";
+  return "Strangers — haven't trained together much yet.";
 }
 
 /** Heart fill 0–1 for CSS `--bond-fill`. */

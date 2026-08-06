@@ -34,7 +34,7 @@ export function BondHeart({
   className = "h-3.5 w-3.5",
 }: BondHeartProps) {
   const tip = trainingTierTip(tier);
-  const label = trainingTierLabel(tier) ?? "Raw";
+  const label = trainingTierLabel(tier) ?? "Strangers";
   const tipId = useId();
   const wrapRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);

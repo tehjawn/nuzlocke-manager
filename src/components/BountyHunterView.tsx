@@ -70,7 +70,7 @@ const MODE_SORTS: Record<
     { id: "dex", label: "Dex order" },
     { id: "level", label: "Level (high → low)" },
     { id: "catch", label: "Catch tier (best first)" },
-    { id: "training", label: "Training (best first)" },
+    { id: "training", label: "Bond (closest first)" },
     { id: "bst", label: "BST score (best first)" },
     { id: "competitive", label: "Comp score (best first)" },
     { id: "trainer", label: "Trainer" },
