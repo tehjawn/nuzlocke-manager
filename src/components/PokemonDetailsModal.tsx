@@ -13,7 +13,10 @@ import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid, type StatRankChip } from "@/components/StatGrid";
 import { SurvivalPollSection } from "@/components/SurvivalPollSection";
-import { SurvivalSentimentIcon } from "@/components/SurvivalPollChip";
+import {
+  SurvivalSentimentCaption,
+  SurvivalSentimentIcon,
+} from "@/components/SurvivalPollChip";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
@@ -323,6 +326,9 @@ export function PokemonDetailsModal({
               >
                 {bondLabel}
               </p>
+            ) : null}
+            {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+              <SurvivalSentimentCaption poll={pokemon.survivalPoll} />
             ) : null}
             {pokemon.types.length > 0 ? (
               <div className="flex flex-wrap justify-center gap-1 sm:justify-start">

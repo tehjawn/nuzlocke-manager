@@ -51,9 +51,9 @@ type PartySlotProps = {
 };
 
 /**
- * All-trainers party cell: quiet catch border, bond heart (BR), survival
- * sentiment (BL). Tier chrome is public for the whole pack — the spreads
- * behind it are not, and those live in the details modal.
+ * All-trainers party cell: quiet catch wash + border, bond heart (BR),
+ * survival sentiment (BL). Same tier language as My Trainer / details, at
+ * roster-safe intensity — no revolving ring or glow.
  */
 function TrainerPartySlot({
   pokemon,
@@ -68,11 +68,13 @@ function TrainerPartySlot({
   const showSentiment = survivalPoll != null && survivalPoll.total > 0;
   // Null means nothing on file to grade — "raw" still earns an empty heart.
   const showHeart = trainingTier != null;
-  // Grid cells are too tight for corner chrome — list only.
   const showCornerChrome = layout === "list";
+  // Graded slots own their hover via league CSS — don't let the interactive
+  // soft wash flatten the radial catch tint.
+  const hoverWash = catchBorder ? "" : "hover:bg-interactive-soft/40 hover:border-interactive/60";
   const slotSurface = catchBorder
     ? catchBorder
-    : "border-frame/50 bg-surface-2 hover:border-interactive/60";
+    : "border-frame/50 bg-surface-2";
 
   const chrome =
     showCornerChrome && (showSentiment || showHeart) ? (
@@ -102,7 +104,7 @@ function TrainerPartySlot({
           type="button"
           title={label}
           aria-label={`View ${label}`}
-          className={`pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border p-1 transition hover:bg-interactive-soft/40 ${slotSurface}`}
+          className={`pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border p-1 transition ${hoverWash} ${slotSurface}`}
           onClick={() => onOpen(pokemon)}
         >
           <PokemonSpriteImage
@@ -128,7 +130,7 @@ function TrainerPartySlot({
         type="button"
         title={label}
         aria-label={`View ${label}`}
-        className={`pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1 transition hover:bg-interactive-soft/40 sm:h-24 ${slotSurface}`}
+        className={`pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1 transition sm:h-24 ${hoverWash} ${slotSurface}`}
         onClick={() => onOpen(pokemon)}
       >
         <span className="relative inline-flex shrink-0">

@@ -104,6 +104,37 @@ const SENTIMENT_LABEL: Record<SurvivalSentiment, string> = {
 };
 
 /**
+ * Beginner-facing Survive/Die line under the sprite — % + lean, matching the
+ * catch / bond label rows. Null when there is nothing to show.
+ */
+export function survivalSentimentLabel(
+  poll: SurvivalPollTally,
+): string | null {
+  const sentiment = survivalSentimentFromPoll(poll);
+  if (!sentiment) return null;
+
+  const survivePct = Math.round((poll.survive / poll.total) * 100);
+  const diePct = 100 - survivePct;
+
+  if (poll.status === "RESOLVED_SURVIVE") {
+    return `Lived · ${survivePct}% called Survive`;
+  }
+  if (poll.status === "RESOLVED_DIE") {
+    return `Died · ${diePct}% called Die`;
+  }
+  if (sentiment === "survive") return `${survivePct}% Survive`;
+  if (sentiment === "die") return `${diePct}% Die`;
+  return `Split · ${survivePct}% / ${diePct}%`;
+}
+
+/** Label tone class — same tint family as the corner glyph. */
+export function survivalSentimentToneClass(
+  sentiment: SurvivalSentiment,
+): string {
+  return `pokemon-survival-label--${sentiment}`;
+}
+
+/**
  * Corner mark for all-trainers party slots — green ↑ / yellow ~ / red ↓ by vote
  * lean. Paired visually with {@link BondHeart} (mirrored bottom-left).
  * Renders nothing when there are no votes (or the poll was voided).
@@ -131,6 +162,42 @@ export function SurvivalSentimentIcon({
       <Icon className="h-full w-full" />
       <span className="sr-only">{SENTIMENT_LABEL[sentiment]}</span>
     </span>
+  );
+}
+
+/**
+ * Icon + meaning for details / hover preview — arrow / tilde beside the
+ * Survive/Die % line. Renders nothing when there are no votes (or void).
+ */
+export function SurvivalSentimentCaption({
+  poll,
+  className = "text-center text-[11px] font-semibold tracking-tight sm:text-left",
+  iconClassName = "h-3.5 w-3.5 shrink-0",
+}: {
+  poll: SurvivalPollTally;
+  className?: string;
+  iconClassName?: string;
+}) {
+  const sentiment = survivalSentimentFromPoll(poll);
+  const label = survivalSentimentLabel(poll);
+  if (!sentiment || !label) return null;
+
+  const Icon = SENTIMENT_ICON[sentiment];
+  const title = sentimentTitle(poll, sentiment);
+
+  return (
+    <p
+      className={`inline-flex max-w-full items-center justify-center gap-1 sm:justify-start ${survivalSentimentToneClass(sentiment)} ${className}`}
+      title={title}
+    >
+      <span
+        aria-hidden
+        className={`pokemon-survival-sentiment pokemon-survival-sentiment--${sentiment} inline-flex`}
+      >
+        <Icon className={iconClassName} />
+      </span>
+      <span className="min-w-0 truncate">{label}</span>
+    </p>
   );
 }
 

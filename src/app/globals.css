@@ -1342,6 +1342,19 @@ button:disabled,
   --survival-tint: color-mix(in srgb, var(--warn) 55%, #f0c14a);
 }
 
+/* Details / hover caption — same tints as the corner glyph. */
+.pokemon-survival-label--survive {
+  color: color-mix(in srgb, var(--accent-deep) 82%, #6ad4a0);
+}
+
+.pokemon-survival-label--die {
+  color: color-mix(in srgb, var(--danger) 88%, #ff9a9a);
+}
+
+.pokemon-survival-label--split {
+  color: color-mix(in srgb, var(--warn) 55%, #f0c14a);
+}
+
 .pokemon-survival-sentiment--corner {
   position: absolute;
   left: 0.45rem;
@@ -1361,50 +1374,97 @@ button:disabled,
 }
 
 /*
- * League (all-trainers) catch cue — quiet border + wash.
- * Soft enough to scan past on the roster; no board ring / glow / animation.
+ * League (all-trainers) catch cue — quiet cousin of board/modal chrome.
+ * Same tier hues as `.pokemon-catch-sprite`, but:
+ *   - radial wash at ~half vignette strength (scan-friendly on a dense roster)
+ *   - 1px tinted border, no glow / conic ring / animation
+ * God is prismatic (static), not the great-adjacent purple solid.
  */
 .pokemon-catch-border--league {
   --league-catch-tint: transparent;
+  --league-catch-peak: 10%;
   border-width: 1px;
   border-style: solid;
-  border-color: color-mix(in srgb, var(--league-catch-tint) 32%, var(--frame));
-  background-color: color-mix(
-    in srgb,
-    var(--league-catch-tint) 9%,
-    var(--surface-2)
+  border-color: color-mix(in srgb, var(--league-catch-tint) 34%, var(--frame));
+  background-color: var(--surface-2);
+  background-image: radial-gradient(
+    circle at 50% 46%,
+    color-mix(
+      in srgb,
+      var(--league-catch-tint) var(--league-catch-peak),
+      transparent
+    ) 0%,
+    color-mix(in srgb, var(--league-catch-tint) 5%, transparent) 48%,
+    var(--surface-2) 78%
   );
+  transition:
+    filter 160ms ease,
+    border-color 160ms ease;
 }
 
 .pokemon-catch-border--league-shit {
   --league-catch-tint: var(--muted);
+  --league-catch-peak: 6%;
   border-style: dotted;
-  border-color: color-mix(in srgb, var(--muted) 40%, var(--frame));
-  background-color: color-mix(in srgb, var(--muted) 6%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--muted) 42%, var(--frame));
+  filter: saturate(0.78);
 }
 
 .pokemon-catch-border--league-good {
   --league-catch-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
+  --league-catch-peak: 11%;
+  border-color: color-mix(in srgb, var(--interactive) 28%, var(--frame));
 }
 
 .pokemon-catch-border--league-great {
   --league-catch-tint: #b794f6;
+  --league-catch-peak: 14%;
+  border-color: color-mix(in srgb, #a78bfa 36%, var(--frame));
 }
 
 .pokemon-catch-border--league-cracked {
   --league-catch-tint: #f0c14a;
-  border-color: color-mix(in srgb, #e0b04a 38%, var(--frame));
-  background-color: color-mix(in srgb, #f0c14a 11%, var(--surface-2));
+  --league-catch-peak: 17%;
+  border-color: color-mix(in srgb, #e0b04a 40%, var(--frame));
 }
 
+/* Prismatic peak — static rainbow wash + border; no spin on the roster. */
 .pokemon-catch-border--league-god {
   --league-catch-tint: #c77dff;
-  border-color: color-mix(in srgb, #c77dff 36%, var(--frame));
-  background-color: color-mix(in srgb, #c77dff 10%, var(--surface-2));
+  border-color: transparent;
+  background-color: var(--surface-2);
+  background-image:
+    radial-gradient(
+      circle at 50% 44%,
+      color-mix(in srgb, #ffb020 16%, transparent) 0%,
+      color-mix(in srgb, #4ec4ff 12%, transparent) 34%,
+      color-mix(in srgb, #ff6ec7 10%, transparent) 58%,
+      var(--surface-2) 80%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, #ff5a5a 55%, var(--frame)),
+      color-mix(in srgb, #ffb020 50%, var(--frame)),
+      color-mix(in srgb, #5ee08a 48%, var(--frame)),
+      color-mix(in srgb, #4ec4ff 52%, var(--frame)),
+      color-mix(in srgb, #c77dff 50%, var(--frame)),
+      color-mix(in srgb, #ff6ec7 48%, var(--frame)),
+      color-mix(in srgb, #ff5a5a 55%, var(--frame))
+    );
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
 }
 
 .pokemon-catch-border--league:hover {
-  filter: brightness(1.03);
+  filter: brightness(1.04) saturate(1.06);
+}
+
+.pokemon-catch-border--league-shit:hover {
+  filter: brightness(1.03) saturate(0.86);
+}
+
+.pokemon-catch-border--league-god:hover {
+  filter: brightness(1.05) saturate(1.1);
 }
 
 .gba-frame-menu::before,

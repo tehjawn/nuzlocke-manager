@@ -10,11 +10,32 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { BondHeart } from "@/components/BondHeart";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import {
+  SurvivalSentimentCaption,
+  SurvivalSentimentIcon,
+} from "@/components/SurvivalPollChip";
 import { TypeBadge } from "@/components/TypeBadge";
 import type { PokemonEntry } from "@/lib/challenge-types";
+import {
+  catchTierHasChrome,
+  catchTierLabel,
+  catchTierToneClass,
+  type CatchTier,
+} from "@/lib/iv-quality";
+import {
+  resolveCatchTier,
+  resolveTrainingTier,
+} from "@/lib/pokemon-grades";
 import type { PokemonType } from "@/lib/pokemon-types";
 import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
+import type { SurvivalPollTally } from "@/lib/survival-market-types";
+import {
+  trainingTierLabel,
+  trainingTierToneClass,
+  type TrainingTier,
+} from "@/lib/training-quality";
 
 type SpeciesPreview = {
   species: string;
@@ -45,6 +66,9 @@ type HoverModel = {
   types: PokemonType[];
   subtitle: string | null;
   detail: string | null;
+  catchTier: CatchTier | null;
+  trainingTier: TrainingTier | null;
+  survivalPoll: SurvivalPollTally | null;
 };
 
 function modelFromPokemon(pokemon: PokemonEntry): HoverModel {
@@ -57,6 +81,9 @@ function modelFromPokemon(pokemon: PokemonEntry): HoverModel {
     types: pokemon.types,
     subtitle: null,
     detail: null,
+    catchTier: resolveCatchTier(pokemon),
+    trainingTier: resolveTrainingTier(pokemon),
+    survivalPoll: pokemon.survivalPoll ?? null,
   };
 }
 
@@ -74,11 +101,15 @@ function modelFromSpecies(preview: SpeciesPreview): HoverModel {
     types,
     subtitle: preview.subtitle?.trim() || null,
     detail: preview.detail?.trim() || null,
+    catchTier: null,
+    trainingTier: null,
+    survivalPoll: null,
   };
 }
 
 /**
  * Desktop hover glance: larger sprite + nickname / species / level / types.
+ * Live board entries also surface public catch / bond / Survive-Die grades.
  * Touch devices keep the child click behavior (no sticky popover).
  *
  * Accepts a live board `pokemon` entry, or a catalog `speciesPreview` (e.g.
@@ -100,6 +131,23 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<PreviewPos | null>(null);
 
+  const catchLabel =
+    model.catchTier !== null ? catchTierLabel(model.catchTier) : null;
+  const bondLabel =
+    model.trainingTier !== null
+      ? trainingTierLabel(model.trainingTier)
+      : null;
+  const hasCatchChrome =
+    model.catchTier !== null && catchTierHasChrome(model.catchTier);
+  const showSurvival =
+    model.survivalPoll != null && model.survivalPoll.total > 0;
+  const hasGradeLines =
+    Boolean(catchLabel) ||
+    (model.trainingTier !== null && Boolean(bondLabel)) ||
+    showSurvival;
+  // Grades need a bit more width than the plain species glance.
+  const widePanel = Boolean(model.detail) || hasGradeLines;
+
   const clearTimers = useCallback(() => {
     if (showTimer.current) {
       clearTimeout(showTimer.current);
@@ -115,14 +163,14 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
     const el = wrapRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    // Wider when a placement reason / detail line needs room to wrap.
-    const width = model.detail ? 240 : 176;
+    // Wider when a placement reason / grade stack needs room.
+    const width = widePanel ? 240 : 176;
     const gap = 8;
     let left = rect.left + rect.width / 2 - width / 2;
     left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
     // Provisional — useLayoutEffect measures the panel and flips/clamps.
     setPos({ top: rect.bottom + gap, left });
-  }, [model.detail]);
+  }, [widePanel]);
 
   const scheduleShow = useCallback(() => {
     // Touch / coarse pointers keep click→details; no sticky popover.
@@ -166,8 +214,9 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
     };
   }, [open, place]);
 
-  // Comp-tier detail makes the panel tall; a fixed "flip above at 200px"
-  // heuristic clips under the viewport (and modal chrome) on early list rows.
+  // Comp-tier detail / grade stack makes the panel tall; a fixed "flip above
+  // at 200px" heuristic clips under the viewport (and modal chrome) on early
+  // list rows.
   useLayoutEffect(() => {
     if (!open || !pos) return;
     const panel = panelRef.current;
@@ -213,7 +262,7 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
               id={panelId}
               role="tooltip"
               className={`pokemon-hover-preview pointer-events-none fixed z-[110] rounded-lg border border-frame bg-surface p-2.5 shadow-lg ${
-                model.detail ? "w-60" : "w-44"
+                widePanel ? "w-60" : "w-44"
               }`}
               style={{
                 top: pos.top,
@@ -221,16 +270,42 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
               }}
             >
               <div className="flex flex-col items-center gap-1.5 text-center">
-                <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-frame/50 bg-surface-2">
-                  <PokemonSpriteImage
-                    alt=""
-                    className="pixelated h-20 w-20 object-contain"
-                    height={96}
-                    pokedexId={model.pokedexId}
-                    shiny={model.isShiny}
-                    species={model.species}
-                    width={96}
-                  />
+                <div
+                  className={
+                    hasCatchChrome
+                      ? `pokemon-catch-ring pokemon-catch-ring--${model.catchTier}`
+                      : undefined
+                  }
+                >
+                  <div
+                    className={`relative flex h-24 w-24 items-center justify-center rounded-lg border ${
+                      hasCatchChrome
+                        ? `pokemon-catch-sprite pokemon-catch-sprite--${model.catchTier}`
+                        : "border-frame/50 bg-surface-2"
+                    }`}
+                  >
+                    <PokemonSpriteImage
+                      alt=""
+                      className="pixelated h-20 w-20 object-contain"
+                      height={96}
+                      pokedexId={model.pokedexId}
+                      shiny={model.isShiny}
+                      species={model.species}
+                      width={96}
+                    />
+                    {showSurvival && model.survivalPoll ? (
+                      <SurvivalSentimentIcon
+                        className="pokemon-survival-sentiment--corner h-3.5 w-3.5"
+                        poll={model.survivalPoll}
+                      />
+                    ) : null}
+                    {model.trainingTier !== null ? (
+                      <BondHeart
+                        className="pokemon-bond-heart--corner h-3.5 w-3.5"
+                        tier={model.trainingTier}
+                      />
+                    ) : null}
+                  </div>
                 </div>
                 <div className="min-w-0 w-full">
                   <p className="truncate text-sm font-bold leading-tight tracking-tight">
@@ -265,6 +340,31 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
                     <p className="mt-1 text-left text-[11px] leading-snug text-muted">
                       {model.detail}
                     </p>
+                  ) : null}
+                  {hasGradeLines ? (
+                    <div className="mt-1.5 flex flex-col items-center gap-0.5">
+                      {model.catchTier !== null && catchLabel ? (
+                        <p
+                          className={`text-[11px] font-semibold tracking-tight ${catchTierToneClass(model.catchTier)}`}
+                        >
+                          {catchLabel}
+                        </p>
+                      ) : null}
+                      {model.trainingTier !== null && bondLabel ? (
+                        <p
+                          className={`text-[11px] font-semibold tracking-tight ${trainingTierToneClass(model.trainingTier)}`}
+                        >
+                          {bondLabel}
+                        </p>
+                      ) : null}
+                      {showSurvival && model.survivalPoll ? (
+                        <SurvivalSentimentCaption
+                          className="text-[11px] font-semibold tracking-tight"
+                          iconClassName="h-3 w-3"
+                          poll={model.survivalPoll}
+                        />
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
                 {model.types.length > 0 ? (
