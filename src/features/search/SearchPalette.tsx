@@ -337,30 +337,10 @@ export function SearchPalette() {
             />
           ) : null}
 
-          {!showingAssist && canAsk ? (
-            <Command.Group
-              heading="Ask"
-              className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
-            >
-              <Command.Item
-                value="__ask__"
-                onSelect={runAsk}
-                className="flex cursor-pointer items-center gap-2.5 rounded-[calc(var(--radius-sm)-1px)] border border-transparent px-2 py-2 text-sm aria-selected:border-interactive/35 aria-selected:bg-interactive-soft"
-              >
-                <SparkGlyph className="h-7 w-7 shrink-0 rounded-md border border-frame/70 bg-surface-2 p-1.5 text-muted" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold tracking-tight text-ink">
-                    Ask about “{trimmedQuery}”
-                  </p>
-                  <p className="truncate text-xs text-muted">
-                    Answered from this season’s board
-                  </p>
-                </div>
-                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted">
-                  Ask
-                </span>
-              </Command.Item>
-            </Command.Group>
+          {/* Empty results: Ask first so Enter asks. With hits, Ask trails so
+              fuzzy stays the default selection (cmdk picks DOM order). */}
+          {!showingAssist && canAsk && hits.length === 0 ? (
+            <AskCommandGroup query={trimmedQuery} onAsk={runAsk} />
           ) : null}
 
           {!showingAssist && !query.trim() ? (
@@ -413,7 +393,7 @@ export function SearchPalette() {
           ) : null}
 
           {!showingAssist && trimmedQuery && hits.length === 0 ? (
-            <Command.Empty className="px-3 py-8 text-center text-sm text-muted">
+            <div className="px-3 py-8 text-center text-sm text-muted">
               No matches for “{trimmedQuery}”
               {canAsk ? (
                 <span className="mt-1 block text-xs">
@@ -421,7 +401,7 @@ export function SearchPalette() {
                   to ask instead
                 </span>
               ) : null}
-            </Command.Empty>
+            </div>
           ) : null}
 
           {!showingAssist && groupedHits.map((group) => (
@@ -441,6 +421,10 @@ export function SearchPalette() {
               ))}
             </Command.Group>
           ))}
+
+          {!showingAssist && canAsk && hits.length > 0 ? (
+            <AskCommandGroup query={trimmedQuery} onAsk={runAsk} />
+          ) : null}
         </Command.List>
 
         <footer className="relative z-[1] flex items-center justify-between gap-3 border-t border-frame/60 bg-surface-2/80 px-3 py-2 text-[11px] text-muted sm:px-4">
@@ -474,6 +458,40 @@ export function SearchPalette() {
   );
 }
 
+function AskCommandGroup({
+  query,
+  onAsk,
+}: {
+  query: string;
+  onAsk: () => void;
+}) {
+  return (
+    <Command.Group
+      heading="Ask"
+      className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
+    >
+      <Command.Item
+        value="__ask__"
+        onSelect={onAsk}
+        className="flex cursor-pointer items-center gap-2.5 rounded-[calc(var(--radius-sm)-1px)] border border-transparent px-2 py-2 text-sm aria-selected:border-interactive/35 aria-selected:bg-interactive-soft"
+      >
+        <SparkGlyph className="h-7 w-7 shrink-0 rounded-md border border-frame/70 bg-surface-2 p-1.5 text-muted" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold tracking-tight text-ink">
+            Ask about “{query}”
+          </p>
+          <p className="truncate text-xs text-muted">
+            Answered from this season’s board
+          </p>
+        </div>
+        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted">
+          Ask
+        </span>
+      </Command.Item>
+    </Command.Group>
+  );
+}
+
 function AssistPanel({
   state,
   related,
@@ -490,7 +508,7 @@ function AssistPanel({
   if (state.status === "idle") return null;
 
   return (
-    <div className="px-1.5 py-1">
+    <div className="px-1.5 py-1" aria-live="polite">
       <div className="mb-2 flex items-start justify-between gap-3">
         <p className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
           {state.question}
@@ -505,10 +523,7 @@ function AssistPanel({
       </div>
 
       {state.status === "loading" ? (
-        <div
-          aria-live="polite"
-          className="flex items-center gap-2 rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3 text-sm text-muted"
-        >
+        <div className="flex items-center gap-2 rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3 text-sm text-muted">
           <span className="flex gap-1" aria-hidden>
             {[0, 1, 2].map((i) => (
               <span
@@ -523,10 +538,7 @@ function AssistPanel({
       ) : null}
 
       {state.status === "answered" ? (
-        <div
-          aria-live="polite"
-          className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm leading-relaxed text-ink motion-safe:animate-[search-panel-in_180ms_cubic-bezier(0.22,1,0.36,1)]"
-        >
+        <div className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm leading-relaxed text-ink motion-safe:animate-[search-panel-in_180ms_cubic-bezier(0.22,1,0.36,1)]">
           {state.answer.split(/\n+/).map((para, i) => (
             <p key={i} className={i > 0 ? "mt-2" : undefined}>
               {para}

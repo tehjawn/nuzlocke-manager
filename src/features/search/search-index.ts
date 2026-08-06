@@ -564,7 +564,16 @@ function getUsageStats(): UsageStats {
     if (!raw) return {};
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return parsed as UsageStats;
+    const clean: UsageStats = {};
+    for (const [id, entry] of Object.entries(
+      parsed as Record<string, unknown>,
+    )) {
+      if (!entry || typeof entry !== "object") continue;
+      const { n, t } = entry as { n?: unknown; t?: unknown };
+      if (!Number.isFinite(n) || !Number.isFinite(t)) continue;
+      clean[id] = { n: n as number, t: t as number };
+    }
+    return clean;
   } catch {
     return {};
   }

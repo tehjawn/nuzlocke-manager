@@ -85,6 +85,9 @@ export function useJumpAssist() {
         // Non-JSON error page — fall through to the generic message.
       }
 
+      // Superseded / cancelled request must not write state.
+      if (controller.signal.aborted) return;
+
       if (res.status === 401) {
         assistUnavailable = true;
         setState({
