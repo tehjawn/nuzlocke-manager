@@ -29,7 +29,7 @@ import {
   summarizeEvs,
   summarizeIvs,
 } from "@/lib/iv-quality";
-import { recommendPlaystyle } from "@/lib/playstyle";
+import { keyStatsForSpecies, recommendPlaystyle } from "@/lib/playstyle";
 import {
   resolveCatchTier,
   resolveTrainingTier,
@@ -152,10 +152,6 @@ export function PokemonDetailsModal({
   const evs = showCompetitiveDetails ? pokemon.evs : null;
   const showIvs = !isEmptySpread(ivs);
   const showEvs = !isEmptySpread(evs);
-  const ivSummary = showIvs ? summarizeIvs(ivs) : null;
-  const evSummary = showEvs ? summarizeEvs(evs) : null;
-  const battleSummary =
-    battle && battleMax ? summarizeBattleStats(battle, battleMax) : null;
   const playstyle = showCompetitiveDetails
     ? recommendPlaystyle({
         pokedexId: pokemon.pokedexId,
@@ -164,6 +160,14 @@ export function PokemonDetailsModal({
         ivs: showIvs ? ivs : null,
       })
     : null;
+  const ivSummary = showIvs
+    ? summarizeIvs(ivs, {
+        keyStats: keyStatsForSpecies(pokemon.pokedexId),
+      })
+    : null;
+  const evSummary = showEvs ? summarizeEvs(evs) : null;
+  const battleSummary =
+    battle && battleMax ? summarizeBattleStats(battle, battleMax) : null;
   // Tier chrome is public — it rides on the entry (stamped at redaction) and
   // not on `showCompetitiveDetails`, which gates the spreads themselves.
   const catchTier = resolveCatchTier(pokemon);

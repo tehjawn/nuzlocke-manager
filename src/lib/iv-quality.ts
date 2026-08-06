@@ -30,6 +30,9 @@ const IV_NEAR_PERFECT = 28;
 const IV_STRONG = 25;
 const IV_DUMP = 5;
 
+/** Neutral floor for filler dumps in effective-mean (walls want dump Atk/SpA). */
+const FILLER_DUMP_FLOOR = 20;
+
 const EV_PERFECT = 252;
 const EV_STRONG = 200;
 
@@ -38,10 +41,18 @@ const BATTLE_STRONG = 0.82;
 const BATTLE_DUMP = 0.45;
 
 /** Dump IVs needed (with no strong/perfect) to call a catch "big oof" (`shit`). */
-
 const SHIT_DUMP_MIN = 4;
-/** Perfect or near-perfect (≥28) IVs needed for "god". */
-const GOD_NEAR_PERFECT_MIN = 3;
+
+/** Legacy god bar when no role keys are available (unknown species). */
+const LEGACY_GOD_NEAR_PERFECT_MIN = 3;
+
+/** Effective-mean floors for top tiers (filler dumps floored, not punished). */
+const GOD_EFFECTIVE_MEAN_MIN = 22;
+const GOD_SINGLE_KEY_MEAN_MIN = 20;
+const CRACKED_EFFECTIVE_MEAN_MIN = 19;
+/** Balanced (all-six) god needs a higher bar — 6× near-perfect is brutal. */
+const BALANCED_GOD_NEAR_PERFECT_MIN = 4;
+const BALANCED_GOD_MEAN_MIN = 24;
 
 export function classifyIv(value: number): StatQualityBand {
   if (value >= IV_PERFECT) return "perfect";
@@ -130,17 +141,13 @@ function isCrackedSpread(
   return false;
 }
 
-function isGodIvSpread(nearPerfectCount: number): boolean {
-  return nearPerfectCount >= GOD_NEAR_PERFECT_MIN;
-}
-
 function summarizeBands(
   perfect: StatKey[],
   strong: StatKey[],
   dump: StatKey[],
   kind: SummaryKind,
   crackedRule: CrackedRule,
-  nearPerfectCount = 0,
+  flags: { god?: boolean; cracked?: boolean } = {},
 ): StatQualitySummary {
   if (perfect.length === 0 && strong.length === 0 && dump.length === 0) {
     return {
@@ -153,9 +160,12 @@ function summarizeBands(
     };
   }
 
-  const god = kind === "iv" && isGodIvSpread(nearPerfectCount);
+  const god = kind === "iv" && Boolean(flags.god);
   const cracked =
-    god || isCrackedSpread(perfect.length, strong.length, crackedRule);
+    god ||
+    (flags.cracked !== undefined
+      ? flags.cracked
+      : isCrackedSpread(perfect.length, strong.length, crackedRule));
 
   const parts: string[] = [];
   if (perfect.length > 0) parts.push(perfectPhrase(perfect, kind));
@@ -173,31 +183,53 @@ function summarizeBands(
   return { perfect, strong, dump, headline, cracked, god };
 }
 
+export type SummarizeIvsOptions = {
+  /**
+   * Role-critical stats from playstyle. Pass {@link SpeciesKeyStats} when
+   * known; omit / null for legacy count-based god/cracked flags.
+   */
+  keyStats?: SpeciesKeyStatsInput | null;
+};
+
 /**
  * Summarize which IVs stand out on a specimen.
  * Pure / render-time — does not persist.
  *
- * Cracked bar is tuned for randomizer Nuzlockes (no breeding): a single 31
- * plus two strong IVs (like Snoop) counts, not only multi-perfect spreads.
- * God is reserved for absurd wild spreads (3+ perfect / near-perfect).
+ * When `keyStats` is provided, god/cracked flags match {@link ivCatchTier}
+ * so the details headline agrees with board chrome.
  */
 export function summarizeIvs(
   ivs: StatSpread | null | undefined,
+  options?: SummarizeIvsOptions,
 ): StatQualitySummary | null {
   if (!ivs) return null;
 
   const perfect: StatKey[] = [];
   const strong: StatKey[] = [];
   const dump: StatKey[] = [];
-  let nearPerfect = 0;
 
   for (const key of STAT_KEYS) {
     const value = ivs[key] ?? 0;
-    if (value >= IV_NEAR_PERFECT) nearPerfect += 1;
     const band = classifyIv(value);
     if (band === "perfect") perfect.push(key);
     else if (band === "strong") strong.push(key);
     else if (band === "dump") dump.push(key);
+  }
+
+  const keyStats = options?.keyStats;
+  let flags: { god?: boolean; cracked?: boolean } = {};
+  if (keyStats !== undefined) {
+    const tier = ivCatchTier(ivs, { keyStats });
+    flags = {
+      god: tier === "god",
+      cracked: catchTierRank(tier) >= catchTierRank("cracked"),
+    };
+  } else {
+    let nearPerfect = 0;
+    for (const key of STAT_KEYS) {
+      if ((ivs[key] ?? 0) >= IV_NEAR_PERFECT) nearPerfect += 1;
+    }
+    flags = { god: nearPerfect >= LEGACY_GOD_NEAR_PERFECT_MIN };
   }
 
   return summarizeBands(
@@ -210,7 +242,7 @@ export function summarizeIvs(
       combo: { perfect: 1, strong: 2 },
       strongAlone: 3,
     },
-    nearPerfect,
+    flags,
   );
 }
 
@@ -262,10 +294,11 @@ export function summarizeBattleStats(
 /**
  * Randomizer catch quality for board-card chrome + details labels.
  *
- * - shit (label: Big oof): mostly dump IVs, nothing redeeming
+ * Role-aware when key stats are supplied (see {@link ivCatchTier}):
+ * - shit (label: Big oof): mostly dump IVs / key-stat dumps
  * - oof: below average / nothing notable (no chrome)
- * - good / great / cracked: existing randomizer bars
- * - god: absurd wild IV luck (3+ perfect or near-perfect)
+ * - good / great: something useful where it matters (or mild off-role luck)
+ * - cracked / god: key stats excellent + respectable effective spread
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -328,14 +361,29 @@ export function catchTierToneClass(tier: CatchTier): string {
   return `pokemon-catch-label--${tier}`;
 }
 
-/**
- * IV-only tier (primary signal for randomizer catches).
- *
- * Takes a present spread on purpose: a missing spread is "not graded", not a
- * bad grade, and the tier is public season-wide. Callers go through
- * `catchTierFor`, which owns that null.
- */
-export function ivCatchTier(ivs: StatSpread): CatchTier {
+export type IvCatchTierOptions = {
+  /**
+   * Role-critical stats from {@link keyStatsForSpecies} in playstyle.ts.
+   * - Object with primary (/ secondary): role-weighted grading.
+   * - Omit / null: legacy species-blind count ladder (unknown dex).
+   */
+  keyStats?: SpeciesKeyStatsInput | null;
+};
+
+/** Primary (+ optional secondary) key axes — mirrors playstyle.SpeciesKeyStats. */
+export type SpeciesKeyStatsInput = {
+  primary: StatKey[];
+  secondary?: StatKey[];
+};
+
+type IvBands = {
+  perfect: number;
+  strong: number;
+  dump: number;
+  nearPerfect: number;
+};
+
+function countIvBands(ivs: StatSpread): IvBands {
   let perfect = 0;
   let strong = 0;
   let dump = 0;
@@ -348,7 +396,13 @@ export function ivCatchTier(ivs: StatSpread): CatchTier {
     else if (band === "strong") strong += 1;
     else if (band === "dump") dump += 1;
   }
-  if (isGodIvSpread(nearPerfect)) return "god";
+  return { perfect, strong, dump, nearPerfect };
+}
+
+/** Species-blind fallback when playstyle keys are unavailable. */
+function legacyIvCatchTier(ivs: StatSpread): CatchTier {
+  const { perfect, strong, dump, nearPerfect } = countIvBands(ivs);
+  if (nearPerfect >= LEGACY_GOD_NEAR_PERFECT_MIN) return "god";
   if (
     isCrackedSpread(perfect, strong, {
       perfectAlone: 2,
@@ -362,4 +416,164 @@ export function ivCatchTier(ivs: StatSpread): CatchTier {
   if (perfect >= 1 || strong >= 1) return "good";
   if (dump >= SHIT_DUMP_MIN) return "shit";
   return "oof";
+}
+
+/**
+ * Role-weighted catch tier.
+ *
+ * Worked feel-checks (see #342):
+ * - Skarmory wall, 31 HP / 31 Def / 28 SpD / dump Atk·SpA → god (filler dumps OK)
+ * - Skarmory wall, 31 Atk / 31 SpA / 31 Spe / dump Def → not god (primary key dump)
+ * - Special attacker + glass secondary, dump Atk / 31 SpA·Spe → still cracked/god OK
+ * - Physical attacker, lone 31 Atk + mid rest → great, not god (needs breadth)
+ * - Physical attacker, 31 Atk + two other ≥28 + solid rest → god
+ */
+function roleIvCatchTier(
+  ivs: StatSpread,
+  keyStats: SpeciesKeyStatsInput,
+): CatchTier {
+  const balanced = keyStats.primary.length === 0;
+  const primaryKeys = balanced ? [...STAT_KEYS] : keyStats.primary;
+  const secondaryKeys = balanced ? [] : (keyStats.secondary ?? []);
+  const primarySet = new Set<StatKey>(primaryKeys);
+  const secondarySet = new Set<StatKey>(
+    secondaryKeys.filter((k) => !primarySet.has(k)),
+  );
+  const keyCount = primaryKeys.length;
+
+  let keyNear = 0;
+  let keyStrong = 0;
+  let keyDump = 0;
+  let perfect = 0;
+  let strong = 0;
+  let dump = 0;
+  let nearPerfect = 0;
+  let usefulNear = 0;
+  let usefulStrong = 0;
+  let effectiveSum = 0;
+
+  for (const key of STAT_KEYS) {
+    const value = ivs[key] ?? 0;
+    const band = classifyIv(value);
+    if (value >= IV_NEAR_PERFECT) nearPerfect += 1;
+    if (band === "perfect") perfect += 1;
+    else if (band === "strong") strong += 1;
+    else if (band === "dump") dump += 1;
+
+    if (primarySet.has(key)) {
+      if (value >= IV_NEAR_PERFECT) keyNear += 1;
+      if (value >= IV_STRONG) keyStrong += 1;
+      if (band === "dump") keyDump += 1;
+      effectiveSum += value;
+    } else if (secondarySet.has(key)) {
+      if (value >= IV_NEAR_PERFECT) usefulNear += 1;
+      if (value >= IV_STRONG) usefulStrong += 1;
+      // Dump secondary (e.g. Atk on a special attacker) shouldn't sink the mean.
+      effectiveSum += band === "dump" ? FILLER_DUMP_FLOOR : value;
+    } else {
+      // Dump offenses on a wall are correct — don't sink the mean.
+      effectiveSum += band === "dump" ? FILLER_DUMP_FLOOR : value;
+    }
+  }
+
+  const effectiveMean = effectiveSum / STAT_KEYS.length;
+  const allKeysNear = keyNear === keyCount;
+  const allKeysStrong = keyStrong === keyCount;
+  const breadthNear = nearPerfect;
+  const breadthStrong = perfect + strong;
+
+  // --- God -----------------------------------------------------------------
+  if (keyDump === 0) {
+    if (balanced) {
+      if (
+        nearPerfect >= BALANCED_GOD_NEAR_PERFECT_MIN &&
+        dump === 0 &&
+        effectiveMean >= BALANCED_GOD_MEAN_MIN
+      ) {
+        return "god";
+      }
+    } else if (allKeysNear) {
+      // Multi-key roles: excellent keys + respectable effective mean.
+      if (keyCount >= 2 && effectiveMean >= GOD_EFFECTIVE_MEAN_MIN) {
+        return "god";
+      }
+      // Single-key roles need a useful secondary or raw breadth so one
+      // perfect Attack with mid garbage isn't auto-god.
+      if (
+        keyCount === 1 &&
+        effectiveMean >= GOD_SINGLE_KEY_MEAN_MIN &&
+        (usefulNear >= 1 ||
+          breadthNear >= 3 ||
+          (keyNear >= 1 && breadthStrong >= 3))
+      ) {
+        return "god";
+      }
+    }
+  }
+
+  // --- Cracked -------------------------------------------------------------
+  if (keyDump === 0) {
+    if (balanced) {
+      if (
+        isCrackedSpread(perfect, strong, {
+          perfectAlone: 2,
+          combo: { perfect: 1, strong: 2 },
+          strongAlone: 3,
+        }) &&
+        effectiveMean >= CRACKED_EFFECTIVE_MEAN_MIN
+      ) {
+        return "cracked";
+      }
+    } else if (allKeysStrong && effectiveMean >= CRACKED_EFFECTIVE_MEAN_MIN) {
+      if (
+        keyCount >= 2 ||
+        (keyNear >= 1 && breadthStrong >= 2) ||
+        (keyNear >= 1 && usefulStrong >= 1)
+      ) {
+        return "cracked";
+      }
+    } else if (
+      keyNear >= Math.ceil(keyCount * 0.67) &&
+      allKeysStrong &&
+      effectiveMean >= CRACKED_EFFECTIVE_MEAN_MIN - 1
+    ) {
+      return "cracked";
+    }
+  }
+
+  // Primary key dump caps the ceiling — off-role 31s are consolation only.
+  if (keyDump > 0) {
+    if (keyNear >= 1 || keyStrong >= 1) return "good";
+    if (perfect >= 1 || strong >= 1) return "good";
+    if (keyDump >= Math.ceil(keyCount / 2) || dump >= SHIT_DUMP_MIN) {
+      return "shit";
+    }
+    return "oof";
+  }
+
+  // --- Great / good --------------------------------------------------------
+  if (keyNear >= 1 || (keyStrong >= Math.ceil(keyCount / 2) && keyCount > 0)) {
+    return "great";
+  }
+  if ((perfect >= 1 && strong >= 1) || strong >= 2) return "great";
+  if (keyStrong >= 1 || perfect >= 1 || strong >= 1) return "good";
+
+  if (dump >= SHIT_DUMP_MIN) return "shit";
+  return "oof";
+}
+
+/**
+ * IV catch tier (primary signal for randomizer catches).
+ *
+ * Takes a present spread on purpose: a missing spread is "not graded", not a
+ * bad grade, and the tier is public season-wide. Callers go through
+ * `catchTierFor`, which owns that null and supplies role key stats.
+ */
+export function ivCatchTier(
+  ivs: StatSpread,
+  options?: IvCatchTierOptions,
+): CatchTier {
+  const keyStats = options?.keyStats;
+  if (keyStats == null) return legacyIvCatchTier(ivs);
+  return roleIvCatchTier(ivs, keyStats);
 }

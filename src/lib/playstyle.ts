@@ -47,7 +47,8 @@ const ABILITY_NUDGES: Record<string, string> = {
   "wonder guard": "Wonder Guard is fragile but only takes super-effective hits.",
 };
 
-const TAG_KEY_STATS: Record<PlaystyleTag, StatKey[]> = {
+/** Stats that make or break a playstyle — shared with catch-tier weighting. */
+export const TAG_KEY_STATS: Record<PlaystyleTag, StatKey[]> = {
   "Physical attacker": ["atk"],
   "Special attacker": ["spa"],
   "Mixed attacker": ["atk", "spa"],
@@ -59,6 +60,40 @@ const TAG_KEY_STATS: Record<PlaystyleTag, StatKey[]> = {
   Slow: ["hp", "def", "spd"],
   Balanced: [],
 };
+
+export type SpeciesKeyStats = {
+  /** Primary playstyle axes — dump here blocks god/cracked. */
+  primary: StatKey[];
+  /** Secondary axes — help the score, but dumps do not veto top tiers. */
+  secondary: StatKey[];
+};
+
+/**
+ * Role-critical IV axes for a species, from base-stat playstyle shape.
+ *
+ * - `primary` empty + `secondary` empty: Balanced — every IV equal.
+ * - `null`: unknown species (no base stats) — caller keeps a legacy fallback.
+ *
+ * Only the **primary** tag’s stats are hard gates. A Special attacker with a
+ * Glass cannon secondary should not treat dump Attack as a god veto.
+ */
+export function keyStatsForSpecies(
+  pokedexId: number | null | undefined,
+): SpeciesKeyStats | null {
+  const base = baseStatsForSpecies(pokedexId);
+  if (!base) return null;
+
+  const { primary, secondary } = pickTags(scoreShape(base));
+  const primaryKeys = [...TAG_KEY_STATS[primary]];
+  const primarySet = new Set(primaryKeys);
+  const secondaryKeys: StatKey[] = [];
+  if (secondary) {
+    for (const k of TAG_KEY_STATS[secondary]) {
+      if (!primarySet.has(k)) secondaryKeys.push(k);
+    }
+  }
+  return { primary: primaryKeys, secondary: secondaryKeys };
+}
 
 const TIPS: Record<PlaystyleTag, string> = {
   "Physical attacker":
