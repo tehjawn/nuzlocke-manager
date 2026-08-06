@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/check-turbopack-cache.mjs",
     "dev": "AUTH_URL=http://localhost:3000 NEXT_PUBLIC_APP_URL=http://localhost:3000 next dev --port 3000",
+    "dev:fresh": "rm -rf .next && npm run dev",
     "build": "prisma generate && next build",
     "vercel-build": "prisma generate && if [ \"$VERCEL_ENV\" = \"production\" ]; then DATABASE_URL=\"${DATABASE_URL_UNPOOLED:-$DATABASE_URL}\" prisma migrate deploy; fi && next build",
     "start": "AUTH_URL=http://localhost:3000 NEXT_PUBLIC_APP_URL=http://localhost:3000 next start --port 3000",
