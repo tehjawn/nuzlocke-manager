@@ -17,6 +17,8 @@ import {
   toolsHref,
   toolsHubHref,
   type BountyMode,
+  type MarketsMode,
+  type MarketsSort,
   type PlannerMode,
   type PokedexMode,
   type ToolsId,
@@ -43,6 +45,8 @@ type ToolsViewProps = {
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
   initialPokedexMode?: PokedexMode | null;
+  initialMarketsMode?: MarketsMode | null;
+  initialMarketsSort?: MarketsSort | null;
 };
 
 export function ToolsView({
@@ -59,6 +63,8 @@ export function ToolsView({
   initialBountyMode = null,
   initialPlannerMode = null,
   initialPokedexMode = null,
+  initialMarketsMode = null,
+  initialMarketsSort = null,
 }: ToolsViewProps) {
   const searchParams = useSearchParams();
   const tool =
@@ -87,6 +93,8 @@ export function ToolsView({
       initialBountyMode={initialBountyMode}
       initialPlannerMode={initialPlannerMode}
       initialPokedexMode={initialPokedexMode}
+      initialMarketsMode={initialMarketsMode}
+      initialMarketsSort={initialMarketsSort}
     />
   );
 }
@@ -161,7 +169,7 @@ const TOOL_BLURBS: Record<WorkspaceTool, (challengeName: string) => string> = {
   bounty: (name) =>
     `Who owns, who's seen, who's cornered a whole line — and every Pokémon on a board — in ${name}.`,
   markets: (name) =>
-    `Crowd Survive / Die takes across living party and box mons in ${name} — then who called it when they fall or clear.`,
+    `Will they make it in ${name}? Weigh in on active-run mons, then see who called it when they fall or clear.`,
   planner: (name) =>
     `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${name}.`,
   chart: () =>
@@ -182,6 +190,8 @@ function ToolWorkspace({
   initialBountyMode,
   initialPlannerMode,
   initialPokedexMode,
+  initialMarketsMode,
+  initialMarketsSort,
 }: {
   slug: string;
   challengeName: string;
@@ -196,10 +206,33 @@ function ToolWorkspace({
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
   initialPokedexMode?: PokedexMode | null;
+  initialMarketsMode?: MarketsMode | null;
+  initialMarketsSort?: MarketsSort | null;
 }) {
   const meta = TOOLS_CATALOG.find((t) => t.id === tool)!;
   const hubHref = toolsHubHref(slug);
   const tone = toolsTone(tool);
+
+  // Survive/Die owns its header so Vote now can sit opposite the title.
+  if (tool === "markets") {
+    return (
+      <SurvivalMarketsPanel
+        slug={slug}
+        trainers={trainers}
+        enabled={survivalMarketsEnabled !== false}
+        viewerUserId={viewerUserId}
+        initialMode={initialMarketsMode}
+        initialSort={initialMarketsSort}
+        pageHeader={{
+          hubHref,
+          title: meta.title,
+          navLabel: meta.navLabel,
+          tone,
+        }}
+      />
+    );
+  }
+
   const blurb = TOOL_BLURBS[tool](challengeName);
 
   return (
@@ -220,7 +253,9 @@ function ToolWorkspace({
               iconClassName="h-[1.125rem] w-[1.125rem]"
             />
             <div className="min-w-0">
-              <h2 className="text-2xl font-bold tracking-tight">{meta.title}</h2>
+              <h2 className="text-2xl font-bold tracking-tight">
+                {meta.title}
+              </h2>
               <p
                 className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[11px] font-semibold tracking-tight ${TOOL_TONE_CHIP[tone]}`}
               >
@@ -268,15 +303,6 @@ function ToolWorkspace({
           myTrainerId={myTrainerId}
           competitiveTrainerIds={competitiveTrainerIds}
           initialMode={initialBountyMode}
-        />
-      ) : null}
-
-      {tool === "markets" ? (
-        <SurvivalMarketsPanel
-          slug={slug}
-          trainers={trainers}
-          enabled={survivalMarketsEnabled !== false}
-          viewerUserId={viewerUserId}
         />
       ) : null}
 
