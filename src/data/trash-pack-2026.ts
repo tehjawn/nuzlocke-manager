@@ -57,6 +57,13 @@ const rules = [
 
 const faqs = [
   {
+    id: "f0",
+    sortOrder: 0,
+    question: "What Pokémon ROM hack are we using?",
+    answer:
+      "Pokémon Modern Emerald (an Emerald ROM hack; also labeled Emerald Modern). Download it from Get Started. Use the Game Guide in Jump for progression notes that differ from vanilla Emerald.",
+  },
+  {
     id: "f1",
     sortOrder: 1,
     question: "What's the end goal?",
@@ -124,7 +131,7 @@ export const trashPack2026: SeedChallenge = {
   slug: "2026-trash-pack",
   name: "Pokémon Emerald Modern",
   year: 2026,
-  game: "Pokémon Emerald Modern",
+  game: "Pokémon Modern Emerald",
   description:
     "Trash Pack's 2026 Nuzlocke! Sign in with Discord to join and import your game save file!",
   status: "ACTIVE",

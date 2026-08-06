@@ -321,6 +321,7 @@ export async function fetchDefaultSearchBrief() {
           name: seed.name,
           year: seed.year,
           status: seed.status,
+          game: seed.game,
         }
       : null;
   }
@@ -329,7 +330,7 @@ export async function fetchDefaultSearchBrief() {
     const active = await prisma.challenge.findFirst({
       where: { status: "ACTIVE" },
       orderBy: { year: "desc" },
-      select: { slug: true, name: true, year: true, status: true },
+      select: { slug: true, name: true, year: true, status: true, game: true },
     });
     // Awaited, not returned as a promise: a rejection has to surface inside
     // this try, and inside the "use cache" boundary, to be contained at all.
@@ -337,7 +338,13 @@ export async function fetchDefaultSearchBrief() {
       active ??
       (await prisma.challenge.findFirst({
         orderBy: { year: "desc" },
-        select: { slug: true, name: true, year: true, status: true },
+        select: {
+          slug: true,
+          name: true,
+          year: true,
+          status: true,
+          game: true,
+        },
       }));
     cacheLife("hours");
     return brief;

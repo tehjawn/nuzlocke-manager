@@ -256,7 +256,7 @@ export function SearchPalette() {
   const runAsk = useCallback(() => {
     if (!trimmedQuery) return;
     // Built on demand so browsing the palette costs nothing.
-    const snapshot = season ? buildSeasonDigest(season) : null;
+    const snapshot = season ? buildSeasonDigest(season, trimmedQuery) : null;
     void ask(trimmedQuery, snapshot);
   }, [ask, season, trimmedQuery]);
 

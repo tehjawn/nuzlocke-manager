@@ -18,6 +18,7 @@ type SiteHeaderSessionProps = {
   seasonYear: number | null;
   seasonName: string | null;
   seasonStatus: Challenge["status"] | null;
+  seasonGame?: string | null;
   challengeSlug?: string;
   showGm?: boolean;
   myTrainerId?: string | null;
@@ -33,6 +34,7 @@ export async function SiteHeaderSession({
   seasonYear,
   seasonName,
   seasonStatus,
+  seasonGame = null,
   challengeSlug,
   showGm = false,
   myTrainerId = null,
@@ -61,6 +63,7 @@ export async function SiteHeaderSession({
               name: seasonName ?? seasonSlug,
               year: seasonYear,
               status: seasonStatus,
+              game: seasonGame,
             },
             { showGm: true },
           )}

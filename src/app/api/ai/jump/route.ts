@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { auth } from "@/auth";
+import {
+  getCachedJumpAnswer,
+  jumpAskCacheKey,
+  setCachedJumpAnswer,
+} from "@/lib/ai/answer-cache";
 import { isGeminiConfigured } from "@/lib/ai/gemini";
 import { answerJumpQuestion } from "@/lib/ai/jump-assist";
 import { checkAiRateLimit } from "@/lib/ai/rate-limit";
@@ -10,6 +15,9 @@ import { checkAiRateLimit } from "@/lib/ai/rate-limit";
  * The client posts a question plus a compact season snapshot it already holds
  * in memory, so answering costs no extra DB read. Fuzzy search stays the
  * default path — this only fires on an explicit Ask.
+ *
+ * Cached answers (same question + snapshot) skip Gemini and the AI rate limit
+ * so repeats don't burn free-tier quota.
  *
  * 501 when the key is unset so callers can degrade to fuzzy search silently.
  */
@@ -57,6 +65,17 @@ export async function POST(request: Request) {
     );
   }
 
+  const { question, snapshot } = parsed.data;
+  const cacheKey = jumpAskCacheKey(question, snapshot);
+
+  const cached = await getCachedJumpAnswer(cacheKey);
+  if (cached) {
+    return Response.json(
+      { ok: true, text: cached.text, model: cached.model, cached: true },
+      { status: 200, headers: NO_STORE },
+    );
+  }
+
   const limit = checkAiRateLimit(userId);
   if (!limit.allowed) {
     return Response.json(
@@ -79,8 +98,8 @@ export async function POST(request: Request) {
   }
 
   const result = await answerJumpQuestion({
-    question: parsed.data.question,
-    snapshot: parsed.data.snapshot,
+    question,
+    snapshot,
     signal: request.signal,
   });
 
@@ -90,6 +109,11 @@ export async function POST(request: Request) {
       headers: NO_STORE,
     });
   }
+
+  await setCachedJumpAnswer(cacheKey, {
+    text: result.text,
+    model: result.model,
+  });
 
   return Response.json(
     { ok: true, text: result.text, model: result.model },

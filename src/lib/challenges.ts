@@ -461,6 +461,7 @@ export type SearchSeasonBrief = {
   name: string;
   year: number;
   status: Challenge["status"];
+  game?: string | null;
 };
 
 /**

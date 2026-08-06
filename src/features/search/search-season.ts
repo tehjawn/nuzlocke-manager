@@ -19,6 +19,7 @@ export function challengeToSearchSeasonContext(
     name: challenge.name,
     year: challenge.year,
     status: challenge.status,
+    game: challenge.game,
     showGm: Boolean(options?.showGm),
     myTrainerId: options?.myTrainerId ?? null,
     firstRun: Boolean(options?.firstRun),
@@ -68,6 +69,7 @@ export function briefToSearchSeasonContext(
     name: string;
     year: number;
     status: Challenge["status"];
+    game?: string | null;
   },
   options?: {
     showGm?: boolean;
@@ -80,6 +82,7 @@ export function briefToSearchSeasonContext(
     name: brief.name,
     year: brief.year,
     status: brief.status,
+    game: brief.game ?? null,
     showGm: Boolean(options?.showGm),
     myTrainerId: options?.myTrainerId ?? null,
     firstRun: Boolean(options?.firstRun),

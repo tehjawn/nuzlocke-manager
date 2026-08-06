@@ -30,6 +30,10 @@ type AssistResponse = {
  */
 let assistUnavailable = false;
 
+/** Tab-lifetime answers keyed by normalized question + snapshot (skip network). */
+const sessionAnswerCache = new Map<string, string>();
+const SESSION_CACHE_MAX = 24;
+
 export function isAssistUnavailable(): boolean {
   return assistUnavailable;
 }
@@ -53,6 +57,13 @@ export function useJumpAssist() {
   const ask = useCallback(async (question: string, snapshot: string | null) => {
     const trimmed = question.trim();
     if (!trimmed) return;
+
+    const cacheKey = `${trimmed.toLowerCase().replace(/\s+/g, " ")}\n${snapshot ?? ""}`;
+    const cached = sessionAnswerCache.get(cacheKey);
+    if (cached) {
+      setState({ status: "answered", question: trimmed, answer: cached });
+      return;
+    }
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -103,6 +114,12 @@ export function useJumpAssist() {
         });
         return;
       }
+
+      if (sessionAnswerCache.size >= SESSION_CACHE_MAX) {
+        const oldest = sessionAnswerCache.keys().next().value;
+        if (oldest) sessionAnswerCache.delete(oldest);
+      }
+      sessionAnswerCache.set(cacheKey, payload.text);
 
       setState({ status: "answered", question: trimmed, answer: payload.text });
     } catch (error) {
