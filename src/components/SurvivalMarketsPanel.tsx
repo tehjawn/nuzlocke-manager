@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { listSurvivalMarketsAction } from "@/app/actions/survival";
+import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { ModeTabs } from "@/components/ModeTabs";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -11,16 +13,20 @@ import {
   survivalSentimentFromPoll,
 } from "@/components/SurvivalPollChip";
 import { SurvivalPollSection } from "@/components/SurvivalPollSection";
+import { ToolChip, TOOL_TONE_CHIP } from "@/components/tool-icons";
+import { UnvotedBallotModal } from "@/components/UnvotedBallotModal";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import type { SurvivalMarketListItem } from "@/lib/survival-market-types";
 import {
   buildMarketsBoard,
   buildQuietRows,
+  buildUnvotedBallot,
   computeMarketsPulse,
   isContested,
   isLongshot,
   isOpenMarket,
   isResolvedMarket,
+  isTrainerOpenForPolls,
   isUpset,
   monLabel,
   sortsForMode,
@@ -29,6 +35,7 @@ import {
   type MarketsBoardRow,
   type QuietMarketRow,
 } from "@/lib/survival-market-board";
+import type { ToolsTone } from "@/lib/tools-routes";
 import {
   parseMarketsMode,
   parseMarketsSort,
@@ -43,12 +50,19 @@ type SurvivalMarketsPanelProps = {
   viewerUserId?: string | null;
   initialMode?: MarketsMode | null;
   initialSort?: MarketsSort | null;
+  /** Owned by this panel so the Vote now CTA can sit opposite the title. */
+  pageHeader: {
+    hubHref: string;
+    title: string;
+    navLabel: string;
+    tone: ToolsTone;
+  };
 };
 
 const MODE_TABS: ReadonlyArray<{ id: MarketsMode; label: string }> = [
-  { id: "floor", label: "Floor" },
+  { id: "floor", label: "Open" },
   { id: "settled", label: "Settled" },
-  { id: "book", label: "My book" },
+  { id: "book", label: "My takes" },
 ];
 
 function writeMarketsUrl(mode: MarketsMode, sort: MarketsSort) {
@@ -128,7 +142,7 @@ function emptyCopy(mode: MarketsMode, sort: MarketsSort): string {
     return "No resolved polls yet — they land here when a mon dies or clears the run.";
   }
   if (mode === "book") {
-    return "Nothing in your book yet — cast a Survive/Die take on the Floor.";
+    return "Nothing in your takes yet — cast Survive or Die from Open or Vote now.";
   }
   if (sort === "fresh") {
     return "Every living Main and Reserve already has votes — check Hottest.";
@@ -149,6 +163,7 @@ export function SurvivalMarketsPanel({
   viewerUserId = null,
   initialMode = null,
   initialSort = null,
+  pageHeader,
 }: SurvivalMarketsPanelProps) {
   const [mode, setMode] = useState<MarketsMode>(() =>
     parseMarketsMode(initialMode),
@@ -169,6 +184,7 @@ export function SurvivalMarketsPanel({
   const [contestedOnly, setContestedOnly] = useState(false);
   const [minVotes, setMinVotes] = useState<0 | 1 | 3 | 5>(0);
   const [slot, setSlot] = useState<MarketsBoardFilters["slot"]>("all");
+  const [ballotOpen, setBallotOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,6 +211,14 @@ export function SurvivalMarketsPanel({
     return map;
   }, [trainers]);
 
+  const trainersById = useMemo(() => {
+    const map = new Map<string, TrainerProfile>();
+    for (const trainer of trainers) {
+      map.set(trainer.id, trainer);
+    }
+    return map;
+  }, [trainers]);
+
   const marketByPokemonId = useMemo(() => {
     const map = new Map<string, SurvivalMarketListItem>();
     for (const market of markets ?? []) {
@@ -202,6 +226,14 @@ export function SurvivalMarketsPanel({
     }
     return map;
   }, [markets]);
+
+  const pollableTrainerIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const trainer of trainers) {
+      if (isTrainerOpenForPolls(trainer)) ids.add(trainer.id);
+    }
+    return ids;
+  }, [trainers]);
 
   const quiet = useMemo(
     () =>
@@ -231,13 +263,35 @@ export function SurvivalMarketsPanel({
       pokemonById,
       filters,
       viewerUserId,
+      pollableTrainerIds,
     });
-  }, [filters, markets, mode, pokemonById, quiet, sort, viewerUserId]);
+  }, [
+    filters,
+    markets,
+    mode,
+    pokemonById,
+    pollableTrainerIds,
+    quiet,
+    sort,
+    viewerUserId,
+  ]);
 
   const pulse = useMemo(
-    () => (markets ? computeMarketsPulse(markets, viewerUserId) : null),
-    [markets, viewerUserId],
+    () =>
+      markets
+        ? computeMarketsPulse(markets, viewerUserId, pollableTrainerIds)
+        : null,
+    [markets, pollableTrainerIds, viewerUserId],
   );
+
+  const unvotedTotal = useMemo(() => {
+    if (!markets || !viewerUserId) return 0;
+    return buildUnvotedBallot({
+      trainers,
+      markets,
+      slot: "all",
+    }).total;
+  }, [markets, trainers, viewerUserId]);
 
   const selectMode = (next: MarketsMode) => {
     const nextSort = parseMarketsSort(sort, next);
@@ -255,15 +309,46 @@ export function SurvivalMarketsPanel({
 
   if (!enabled) {
     return (
-      <p className="rounded-xl border border-frame/40 bg-surface-2/50 px-4 py-5 text-sm text-muted">
-        Survive / Die polls are turned off for this season. A Game Master can
-        re-enable them in the GM console.
-      </p>
+      <div className="space-y-6">
+        <MarketsPageHeader
+          pageHeader={pageHeader}
+          ballotCta={null}
+        />
+        <p className="rounded-xl border border-frame/40 bg-surface-2/50 px-4 py-5 text-sm text-muted">
+          Survive / Die polls are turned off for this season. A Game Master can
+          re-enable them in the GM console.
+        </p>
+      </div>
     );
   }
 
+  const ballotCta = viewerUserId ? (
+    <button
+      type="button"
+      onClick={() => setBallotOpen(true)}
+      disabled={markets === null}
+      className="pressable inline-flex items-center gap-2 rounded-lg border border-warn/50 bg-warn/15 px-3.5 py-2.5 text-sm font-bold text-warn shadow-sm disabled:cursor-wait disabled:opacity-70"
+    >
+      <span>Vote now</span>
+      <span
+        className={`rounded border px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
+          unvotedTotal > 0
+            ? "border-warn/45 bg-warn/20"
+            : "border-frame/40 bg-surface/80 text-muted"
+        }`}
+      >
+        {markets === null ? "…" : unvotedTotal}
+      </span>
+    </button>
+  ) : null;
+
   if (markets === null) {
-    return <p className="text-sm text-muted">Loading survival polls…</p>;
+    return (
+      <div className="space-y-6">
+        <MarketsPageHeader pageHeader={pageHeader} ballotCta={ballotCta} />
+        <p className="text-sm text-muted">Loading survival polls…</p>
+      </div>
+    );
   }
 
   const recordPct =
@@ -272,7 +357,10 @@ export function SurvivalMarketsPanel({
       : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <MarketsPageHeader pageHeader={pageHeader} ballotCta={ballotCta} />
+
+      <div className="space-y-4">
       {pulse ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <StatBlock
@@ -353,17 +441,17 @@ export function SurvivalMarketsPanel({
             label="Your record"
             hint={
               pulse.record && recordPct != null
-                ? `${recordPct}% called · My book`
+                ? `${recordPct}% called · My takes`
                 : viewerUserId
                   ? "No settled takes yet"
-                  : "Sign in to keep a book"
+                  : "Sign in to keep a record"
             }
           />
         </div>
       ) : null}
 
       <ModeTabs
-        aria-label="Survive / Die lenses"
+        aria-label="Survive / Die views"
         idPrefix="markets"
         value={mode}
         tabs={MODE_TABS}
@@ -372,8 +460,9 @@ export function SurvivalMarketsPanel({
         panelClassName="space-y-4"
       >
         <p className="text-xs text-muted">
-          Crowd Survive / Die takes — no stakes, just volume, contested races,
-          and who called it when they fall or clear.
+          Will they make it? Weigh in on living party and box mons still on an
+          active run — then see who called it when they fall or clear the
+          Championship.
         </p>
 
         <div className="flex flex-wrap items-end gap-3">
@@ -395,11 +484,26 @@ export function SurvivalMarketsPanel({
               className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
             >
               <option value="">All trainers</option>
-              {trainers.map((trainer) => (
+            {trainers
+              .filter((trainer) => isTrainerOpenForPolls(trainer))
+              .map((trainer) => (
                 <option key={trainer.id} value={trainer.id}>
                   {trainer.handle}
                 </option>
               ))}
+            {trainers.some(
+              (trainer) => !isTrainerOpenForPolls(trainer),
+            ) ? (
+              <optgroup label="Cleared Championship">
+                {trainers
+                  .filter((trainer) => !isTrainerOpenForPolls(trainer))
+                  .map((trainer) => (
+                    <option key={trainer.id} value={trainer.id}>
+                      {trainer.handle} (cleared)
+                    </option>
+                  ))}
+              </optgroup>
+            ) : null}
             </select>
           </label>
           <label className="min-w-[9rem] space-y-1 text-xs font-semibold text-muted">
@@ -498,6 +602,7 @@ export function SurvivalMarketsPanel({
                   <li key={row.key} className="min-w-0">
                     <QuietMarketTile
                       pokemon={row.pokemon}
+                      trainer={trainersById.get(row.trainer.id) ?? null}
                       trainerHandle={row.trainer.handle}
                       expanded={expanded}
                       onToggle={() =>
@@ -515,6 +620,7 @@ export function SurvivalMarketsPanel({
                   <MarketTile
                     market={row.market}
                     pokemon={row.pokemon}
+                    trainer={trainersById.get(row.market.trainer.id) ?? null}
                     expanded={expanded}
                     onToggle={() =>
                       setExpandedKey(expanded ? null : expandId)
@@ -533,6 +639,7 @@ export function SurvivalMarketsPanel({
           </ul>
         )}
       </ModeTabs>
+      </div>
 
       <PokemonDetailsModal
         open={detailsPokemon !== null}
@@ -543,13 +650,117 @@ export function SurvivalMarketsPanel({
         survivalMarketsEnabled={enabled}
         viewerUserId={viewerUserId}
       />
+
+      {viewerUserId && markets ? (
+        <UnvotedBallotModal
+          open={ballotOpen}
+          onClose={() => setBallotOpen(false)}
+          trainers={trainers}
+          markets={markets}
+          onVoted={refreshMarkets}
+          onOpenDetails={(pokemonId) => {
+            const mon = pokemonById.get(pokemonId) ?? null;
+            if (mon) setDetailsPokemon(mon);
+          }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function MarketsPageHeader({
+  pageHeader,
+  ballotCta,
+}: {
+  pageHeader: SurvivalMarketsPanelProps["pageHeader"];
+  ballotCta: ReactNode;
+}) {
+  return (
+    <header className="space-y-3">
+      <Link
+        href={pageHeader.hubHref}
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
+      >
+        <span aria-hidden>←</span>
+        All tools
+      </Link>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <ToolChip
+            id="markets"
+            className="h-9 w-9"
+            iconClassName="h-[1.125rem] w-[1.125rem]"
+          />
+          <div className="min-w-0">
+            <h2 className="text-2xl font-bold tracking-tight">
+              {pageHeader.title}
+            </h2>
+            <p
+              className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[11px] font-semibold tracking-tight ${TOOL_TONE_CHIP[pageHeader.tone]}`}
+            >
+              {pageHeader.navLabel}
+            </p>
+          </div>
+        </div>
+        {ballotCta ? (
+          <div className="shrink-0 self-start pt-0.5">{ballotCta}</div>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
+/** Pokémon up front, trainer avatar tucked behind — owner is scannable at a glance. */
+function MonTrainerSpriteStack({
+  species,
+  pokedexId,
+  shiny,
+  trainer,
+  faded = false,
+}: {
+  species: string;
+  pokedexId: number | null;
+  shiny: boolean;
+  trainer: Pick<
+    TrainerProfile,
+    "avatarSpriteKey" | "avatarBackgroundKey" | "handle"
+  > | null;
+  faded?: boolean;
+}) {
+  return (
+    <span
+      className={`relative inline-block h-11 w-[3.35rem] shrink-0 ${faded ? "opacity-90" : ""}`}
+      title={trainer ? trainer.handle : undefined}
+    >
+      {trainer ? (
+        <span className="absolute bottom-0 left-0 z-0">
+          <AvatarPortrait
+            avatarSpriteKey={trainer.avatarSpriteKey}
+            backgroundKey={trainer.avatarBackgroundKey}
+            sizeClass="h-7 w-7"
+            width={28}
+            height={28}
+            alt=""
+          />
+        </span>
+      ) : null}
+      <PokemonSpriteImage
+        species={species}
+        pokedexId={pokedexId}
+        shiny={shiny}
+        alt=""
+        width={44}
+        height={44}
+        className={`absolute top-0 z-[1] h-11 w-11 ${trainer ? "right-0" : "left-0"}`}
+      />
+    </span>
   );
 }
 
 function MarketTile({
   market,
   pokemon,
+  trainer,
   expanded,
   onToggle,
   onOpenDetails,
@@ -558,6 +769,7 @@ function MarketTile({
 }: {
   market: SurvivalMarketListItem;
   pokemon: PokemonEntry | null;
+  trainer: TrainerProfile | null;
   expanded: boolean;
   onToggle: () => void;
   onOpenDetails?: () => void;
@@ -606,14 +818,11 @@ function MarketTile({
           aria-expanded={canExpand ? expanded : undefined}
         >
           <span className="flex items-start gap-2.5">
-            <PokemonSpriteImage
+            <MonTrainerSpriteStack
               species={market.species}
               pokedexId={market.pokedexId}
               shiny={market.isShiny}
-              alt=""
-              width={44}
-              height={44}
-              className="h-11 w-11 shrink-0"
+              trainer={trainer}
             />
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-1.5">
@@ -750,6 +959,7 @@ function MarketTile({
 
 function QuietMarketTile({
   pokemon,
+  trainer,
   trainerHandle,
   expanded,
   onToggle,
@@ -758,6 +968,7 @@ function QuietMarketTile({
   viewerUserId,
 }: {
   pokemon: PokemonEntry;
+  trainer: TrainerProfile | null;
   trainerHandle: string;
   expanded: boolean;
   onToggle: () => void;
@@ -777,14 +988,12 @@ function QuietMarketTile({
         aria-expanded={expanded}
       >
         <span className="flex items-start gap-2.5">
-          <PokemonSpriteImage
+          <MonTrainerSpriteStack
             species={pokemon.species}
             pokedexId={pokemon.pokedexId}
             shiny={pokemon.isShiny}
-            alt=""
-            width={44}
-            height={44}
-            className="h-11 w-11 shrink-0 opacity-90"
+            trainer={trainer}
+            faded
           />
           <span className="min-w-0 flex-1">
             <span className="truncate text-sm font-bold leading-tight">

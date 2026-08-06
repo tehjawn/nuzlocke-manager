@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
+import { hasBeatenChampionship } from "@/lib/championship";
 import { getPrisma } from "@/lib/db";
 import type {
   SurvivalMarketListItem,
@@ -35,6 +36,28 @@ const voteUserSelect = {
   name: true,
   image: true,
 } as const;
+
+const trainerPollEligibilitySelect = {
+  runEndedAt: true,
+  activeRun: { select: { id: true, status: true } },
+  badges: {
+    where: { earned: true },
+    select: { badge: { select: { key: true } } },
+  },
+} as const;
+
+function trainerClearedChampionship(trainer: {
+  runEndedAt: Date | null;
+  activeRun: { status: string } | null;
+  badges: Array<{ badge: { key: string } }>;
+}): boolean {
+  if (trainer.runEndedAt != null) return true;
+  if (trainer.activeRun?.status !== "ACTIVE") return true;
+  return hasBeatenChampionship(trainer.badges.map((b) => b.badge.key));
+}
+
+const LOCKED_AT_CHAMPIONSHIP =
+  "This run cleared the Championship — Survive/Die is locked";
 
 function displayNameFor(user: VoteRow["user"]): string {
   return user.displayName?.trim() || user.name?.trim() || "Trainer";
@@ -274,6 +297,7 @@ export async function getSurvivalMarketForPokemon(input: {
       trainer: {
         select: {
           challengeId: true,
+          ...trainerPollEligibilitySelect,
           challenge: {
             select: {
               survivalMarketsEnabled: true,
@@ -296,6 +320,8 @@ export async function getSurvivalMarketForPokemon(input: {
   const enabled = mon.trainer.challenge.survivalMarketsEnabled;
   if (!enabled && !mon.survivalMarket) return null;
 
+  const cleared = trainerClearedChampionship(mon.trainer);
+
   if (mon.survivalMarket) {
     const open = mon.survivalMarket.status === "OPEN";
     const archived = mon.trainer.challenge.status === "ARCHIVED";
@@ -311,6 +337,8 @@ export async function getSurvivalMarketForPokemon(input: {
       voteBlockedReason = "This season is archived";
     } else if (!open) {
       voteBlockedReason = "This poll is closed";
+    } else if (cleared) {
+      voteBlockedReason = LOCKED_AT_CHAMPIONSHIP;
     } else if (mon.slot !== "MAIN" && mon.slot !== "RESERVE") {
       voteBlockedReason = "Only living party and box mons can be polled";
     } else {
@@ -327,7 +355,8 @@ export async function getSurvivalMarketForPokemon(input: {
   if (
     !enabled ||
     (mon.slot !== "MAIN" && mon.slot !== "RESERVE") ||
-    mon.trainer.challenge.status === "ARCHIVED"
+    mon.trainer.challenge.status === "ARCHIVED" ||
+    cleared
   ) {
     return null;
   }
@@ -381,13 +410,13 @@ async function getOrOpenMarketForPokemon(
       trainer: {
         select: {
           challengeId: true,
+          ...trainerPollEligibilitySelect,
           challenge: {
             select: {
               survivalMarketsEnabled: true,
               status: true,
             },
           },
-          activeRun: { select: { id: true, status: true } },
         },
       },
       survivalMarket: { select: { id: true, status: true } },
@@ -403,8 +432,8 @@ async function getOrOpenMarketForPokemon(
   if (mon.slot !== "MAIN" && mon.slot !== "RESERVE") {
     return { error: "Only living party and box mons can be polled" };
   }
-  if (mon.trainer.activeRun?.status !== "ACTIVE") {
-    return { error: "This run is finished — polls are closed" };
+  if (trainerClearedChampionship(mon.trainer)) {
+    return { error: LOCKED_AT_CHAMPIONSHIP };
   }
   if (mon.survivalMarket) {
     if (mon.survivalMarket.status !== "OPEN") {

@@ -68,7 +68,7 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
     navLabel: "Crowd takes",
     tone: "warn",
     blurb:
-      "Prediction-market floor — contested races, your book, and who called it when they fall or clear.",
+      "Will they make it? Weigh in on living mons still on an active run — then see who called it when they fall or clear.",
   },
   {
     id: "chart",
@@ -215,8 +215,8 @@ export function parsePokedexMode(
 }
 
 /**
- * Survive/Die Tools lenses (#344). Floor = open drama; Settled = resolution
- * payoff; Book = viewer’s open takes + record.
+ * Survive/Die Tools lenses (#344). Open = active-run drama; Settled = outcomes;
+ * Book (My takes) = viewer’s votes + record.
  */
 export type MarketsMode = "floor" | "settled" | "book";
 

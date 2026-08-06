@@ -4,6 +4,7 @@
  */
 
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import { hasBeatenChampionship } from "@/lib/championship";
 import type { SurvivalMarketListItem } from "@/lib/survival-market-types";
 import type { MarketsMode, MarketsSort } from "@/lib/tools-routes";
 
@@ -38,6 +39,19 @@ export type MarketsPulse = {
   hottest: SurvivalMarketListItem | null;
   record: { correct: number; scored: number } | null;
 };
+
+/**
+ * Survive/Die open takes only apply while a run can still fail.
+ * Championship clear (full E4 + Champ badges) or a recorded finish locks polls —
+ * those mons already made it; Vote now / Open must not list them.
+ */
+export function isTrainerOpenForPolls(
+  trainer: Pick<TrainerProfile, "runEnded" | "earnedBadgeKeys">,
+): boolean {
+  if (trainer.runEnded) return false;
+  if (hasBeatenChampionship(trainer.earnedBadgeKeys)) return false;
+  return true;
+}
 
 export function isOpenMarket(status: SurvivalMarketListItem["status"]): boolean {
   return status === "OPEN";
@@ -95,6 +109,7 @@ export function buildQuietRows(
 ): QuietMarketRow[] {
   const quiet: QuietMarketRow[] = [];
   for (const trainer of trainers) {
+    if (!isTrainerOpenForPolls(trainer)) continue;
     for (const mon of trainer.pokemon) {
       if (mon.slot !== "MAIN" && mon.slot !== "RESERVE") continue;
       if (marketByPokemonId.has(mon.id)) continue;
@@ -127,10 +142,15 @@ export function computeViewerRecord(
 export function computeMarketsPulse(
   markets: SurvivalMarketListItem[],
   viewerUserId: string | null,
+  pollableTrainerIds?: Set<string>,
 ): MarketsPulse {
-  const openWithVotes = markets.filter(
-    (m) => isOpenMarket(m.status) && m.total >= 1,
-  );
+  const openWithVotes = markets.filter((m) => {
+    if (!isOpenMarket(m.status) || m.total < 1) return false;
+    if (pollableTrainerIds && !pollableTrainerIds.has(m.trainer.id)) {
+      return false;
+    }
+    return true;
+  });
   let closest: SurvivalMarketListItem | null = null;
   let hottest: SurvivalMarketListItem | null = null;
   for (const market of openWithVotes) {
@@ -306,9 +326,19 @@ export function buildMarketsBoard(input: {
   pokemonById: Map<string, PokemonEntry>;
   filters: MarketsBoardFilters;
   viewerUserId: string | null;
+  /** Trainers still on an active run — finished Championship clears leave Floor. */
+  pollableTrainerIds: Set<string>;
 }): MarketsBoardRow[] {
-  const { mode, sort, markets, quiet, pokemonById, filters, viewerUserId } =
-    input;
+  const {
+    mode,
+    sort,
+    markets,
+    quiet,
+    pokemonById,
+    filters,
+    viewerUserId,
+    pollableTrainerIds,
+  } = input;
 
   const asMarketRow = (market: SurvivalMarketListItem): ActiveMarketRow => ({
     kind: "market",
@@ -323,7 +353,10 @@ export function buildMarketsBoard(input: {
   let includeQuiet = false;
 
   if (mode === "floor") {
-    marketPool = markets.filter((m) => isOpenMarket(m.status));
+    marketPool = markets.filter(
+      (m) =>
+        isOpenMarket(m.status) && pollableTrainerIds.has(m.trainer.id),
+    );
     if (sort === "fresh") {
       // Zero-vote opens + quiet living mons; hide races with volume.
       marketPool = marketPool.filter((m) => m.total === 0);
@@ -351,7 +384,7 @@ export function buildMarketsBoard(input: {
       // Prefer upsets but still show the rest below via sort key.
     }
   } else {
-    // My book — anything I voted on.
+    // My takes — anything I voted on.
     marketPool = markets.filter((m) => m.myPrediction != null);
     if (sort === "hits") {
       marketPool = marketPool.filter((m) => viewerCalledIt(m) === true);
@@ -360,8 +393,11 @@ export function buildMarketsBoard(input: {
     } else if (sort === "resolved") {
       marketPool = marketPool.filter((m) => isResolvedMarket(m.status));
     } else if (sort === "hottest") {
-      // Open positions first (via sort below), then settled by volume.
-      marketPool = marketPool.filter((m) => isOpenMarket(m.status));
+      // Still-open takes only on active runs; finished runs should be Settled.
+      marketPool = marketPool.filter(
+        (m) =>
+          isOpenMarket(m.status) && pollableTrainerIds.has(m.trainer.id),
+      );
     }
   }
 
@@ -433,3 +469,87 @@ export function sortsForMode(
   if (mode === "book") return BOOK_SORTS;
   return FLOOR_SORTS;
 }
+
+/** One living mon the viewer still needs to weigh in on. */
+export type UnvotedBallotItem = {
+  pokemonId: string;
+  pokemon: PokemonEntry;
+  market: SurvivalMarketListItem | null;
+};
+
+export type UnvotedBallotTrainerGroup = {
+  trainer: TrainerProfile;
+  badgeCount: number;
+  items: UnvotedBallotItem[];
+};
+
+export type UnvotedBallotSlotFilter = "MAIN" | "all";
+
+/**
+ * Vote-now list: living MAIN/RESERVE on **active** runs without the viewer's
+ * prediction (including quiet). Finished Championship runs are excluded —
+ * those mons already cleared the finish line. Trainers ordered by badge depth;
+ * within a trainer Main before Reserve, then crowd volume, then name.
+ */
+export function buildUnvotedBallot(input: {
+  trainers: TrainerProfile[];
+  markets: SurvivalMarketListItem[];
+  slot: UnvotedBallotSlotFilter;
+}): { groups: UnvotedBallotTrainerGroup[]; total: number } {
+  const marketByPokemonId = new Map<string, SurvivalMarketListItem>();
+  for (const market of input.markets) {
+    if (market.pokemonId) marketByPokemonId.set(market.pokemonId, market);
+  }
+
+  const groups: UnvotedBallotTrainerGroup[] = [];
+  let total = 0;
+
+  for (const trainer of input.trainers) {
+    if (!isTrainerOpenForPolls(trainer)) continue;
+    const items: UnvotedBallotItem[] = [];
+    for (const pokemon of trainer.pokemon) {
+      if (pokemon.slot !== "MAIN" && pokemon.slot !== "RESERVE") continue;
+      if (input.slot === "MAIN" && pokemon.slot !== "MAIN") continue;
+      const market = marketByPokemonId.get(pokemon.id) ?? null;
+      if (market) {
+        if (!isOpenMarket(market.status)) continue;
+        if (market.myPrediction) continue;
+      }
+      items.push({ pokemonId: pokemon.id, pokemon, market });
+    }
+    if (items.length === 0) continue;
+
+    items.sort((a, b) => {
+      const aMain = a.pokemon.slot === "MAIN" ? 0 : 1;
+      const bMain = b.pokemon.slot === "MAIN" ? 0 : 1;
+      if (aMain !== bMain) return aMain - bMain;
+      const aVotes = a.market?.total ?? 0;
+      const bVotes = b.market?.total ?? 0;
+      if (bVotes !== aVotes) return bVotes - aVotes;
+      if (a.market && b.market) {
+        const aDist = contestDistance(a.market);
+        const bDist = contestDistance(b.market);
+        if (aDist !== bDist) return aDist - bDist;
+      }
+      return monLabel(a.pokemon.species, a.pokemon.nickname).localeCompare(
+        monLabel(b.pokemon.species, b.pokemon.nickname),
+      );
+    });
+
+    total += items.length;
+    groups.push({
+      trainer,
+      badgeCount: trainer.earnedBadgeKeys.length,
+      items,
+    });
+  }
+
+  groups.sort((a, b) => {
+    if (b.badgeCount !== a.badgeCount) return b.badgeCount - a.badgeCount;
+    if (b.items.length !== a.items.length) return b.items.length - a.items.length;
+    return a.trainer.handle.localeCompare(b.trainer.handle);
+  });
+
+  return { groups, total };
+}
+
