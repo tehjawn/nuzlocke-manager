@@ -259,16 +259,13 @@ export function summarizeBattleStats(
 }
 
 /**
- * True when IVs, EVs, or battle stats vs max look unusually strong.
- * Used for board-card chrome (e.g. cracked / god revolving border).
+ * True when IVs look unusually strong (cracked / god catch chrome).
+ * Training quality is separate — see `specimenTrainingTier`.
  */
 export function specimenIsCracked(input: {
   ivs?: StatSpread | null;
-  evs?: StatSpread | null;
-  battle?: StatSpread | null;
-  battleMax?: StatSpread | null;
 }): boolean {
-  const tier = specimenCatchTier(input);
+  const tier = ivCatchTier(input.ivs);
   return tier === "cracked" || tier === "god";
 }
 
@@ -305,10 +302,6 @@ const CATCH_TIER_LABEL: Record<CatchTier, string | null> = {
   cracked: "Cracked catch",
   god: "God catch",
 };
-
-function maxCatchTier(a: CatchTier, b: CatchTier): CatchTier {
-  return catchTierRank(a) >= catchTierRank(b) ? a : b;
-}
 
 /** Beginner-facing label; null only when tier chrome should stay silent. */
 export function catchTierLabel(tier: CatchTier): string | null {
@@ -357,8 +350,11 @@ export function ivCatchTier(ivs: StatSpread | null | undefined): CatchTier {
 }
 
 /**
- * Board catch tier: IVs drive the ladder through God; cracked EVs or
- * near-max battle spreads can promote up to Cracked only (not God).
+ * Board catch tier — IV luck only.
+ *
+ * Training / bond chrome lives in `specimenTrainingTier` (EVs, nature fit,
+ * friendship). Extra fields on `input` are ignored for API compatibility with
+ * older call sites.
  */
 export function specimenCatchTier(input: {
   ivs?: StatSpread | null;
@@ -366,12 +362,5 @@ export function specimenCatchTier(input: {
   battle?: StatSpread | null;
   battleMax?: StatSpread | null;
 }): CatchTier {
-  let tier = ivCatchTier(input.ivs);
-  if (
-    summarizeEvs(input.evs)?.cracked ||
-    summarizeBattleStats(input.battle, input.battleMax)?.cracked
-  ) {
-    tier = maxCatchTier(tier, "cracked");
-  }
-  return tier;
+  return ivCatchTier(input.ivs);
 }

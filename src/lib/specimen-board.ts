@@ -2,10 +2,11 @@
  * Season-wide **specimen** board — one row per actual Pokémon on any trainer's
  * board, as opposed to `speciesOwnershipBoard`'s one row per dex entry.
  *
- * Every grade here is borrowed, never re-derived: catch tier comes from
- * `specimenCatchTier`, BST tier from `baseStatRanksFor`. Pokémon Ownership's
- * Showcase renders it; Season Stats (#178) should aggregate the same rows
- * rather than recomputing a second, drifting ladder.
+ * Every grade here is borrowed, never re-derived: catch tier from
+ * `ivCatchTier`, training tier from `specimenTrainingTier`, BST tier from
+ * `baseStatRanksFor`. Pokémon Ownership's Showcase renders it; Season Stats
+ * (#178) should aggregate the same rows rather than recomputing a second,
+ * drifting ladder.
  */
 
 import { findPokemonById } from "@/data/pokemon-index";
@@ -17,14 +18,20 @@ import type {
 import { resolvePokedexId } from "@/lib/encounter-stats";
 import {
   catchTierRank,
-  specimenCatchTier,
+  ivCatchTier,
   type CatchTier,
 } from "@/lib/iv-quality";
 import type { PokemonType } from "@/lib/pokemon-types";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import { competitiveTierFor } from "@/lib/competitive-tiers";
+import { recommendPlaystyle } from "@/lib/playstyle";
 import { baseStatRanksFor, STAT_RANKS, type StatRank } from "@/lib/species-ranks";
-import { calcBattleStats, calcMaxBattleStats, isEmptySpread } from "@/lib/stats";
+import { isEmptySpread } from "@/lib/stats";
+import {
+  specimenTrainingTier,
+  trainingTierRank,
+  type TrainingTier,
+} from "@/lib/training-quality";
 
 /** Slots that represent a Pokémon still in play (i.e. not memorialized). */
 export const LIVING_SLOTS: ReadonlySet<PokemonSlot> = new Set([
@@ -72,6 +79,13 @@ export type SpecimenRow = {
   catchTier: CatchTier | null;
   /** True when this trainer's IVs are redacted for the viewer. */
   catchTierHidden: boolean;
+  /**
+   * Training / bond tier, or null when withheld. `raw` means graded with no
+   * meaningful investment — heart stays off.
+   */
+  trainingTier: TrainingTier | null;
+  /** Same privacy gate as catch tier (IVs/EVs/friendship redacted together). */
+  trainingTierHidden: boolean;
   /** Lowercased haystack for the search box (species, nickname, handle, dex, route). */
   searchText: string;
 };
@@ -86,34 +100,32 @@ function rankFor(cache: RankCache, pokedexId: number | null) {
 }
 
 /**
- * Grade one specimen exactly the way `PokemonDetailsModal` does, so a row and
- * the modal it opens never disagree: an all-zero spread counts as "no data"
- * rather than six dump IVs, and battle stats promote only when derivable.
- *
- * Returns null when there is nothing to grade — the caller decides whether
- * that reads as "hidden" or "not recorded".
- *
- * Deliberately reads `pokemon.pokedexId` rather than the row's name-resolved
- * id: the modal grades off the raw column, and a row that disagreed with the
- * card it opens would be worse than a legacy row grading one notch low.
+ * Grade catch chrome from IVs only — matches board / details after #237.
+ * Empty / all-zero spreads count as "no data" rather than six dump IVs.
  */
 function gradeCatchTier(pokemon: PokemonEntry): CatchTier | null {
   const ivs = isEmptySpread(pokemon.ivs) ? null : pokemon.ivs;
-  const evs = isEmptySpread(pokemon.evs) ? null : pokemon.evs;
-  if (!ivs && !evs) return null;
+  if (!ivs) return null;
+  return ivCatchTier(ivs);
+}
 
-  const battle = calcBattleStats({
+/**
+ * Grade training / bond from EVs + nature fit + friendship.
+ * Always returns a band when the viewer can see competitive columns; `raw`
+ * means no heart. Never inferred from a redacted payload.
+ */
+function gradeTrainingTier(pokemon: PokemonEntry): TrainingTier {
+  const playstyle = recommendPlaystyle({
     pokedexId: pokemon.pokedexId,
-    level: pokemon.level,
-    ivs: pokemon.ivs,
-    evs: pokemon.evs,
     nature: pokemon.nature,
+    ability: pokemon.ability,
+    ivs: isEmptySpread(pokemon.ivs) ? null : pokemon.ivs,
   });
-  const battleMax = calcMaxBattleStats({
-    pokedexId: pokemon.pokedexId,
-    level: pokemon.level,
+  return specimenTrainingTier({
+    evs: pokemon.evs,
+    natureAlignment: playstyle?.natureAlignment ?? null,
+    friendship: pokemon.friendship,
   });
-  return specimenCatchTier({ ivs, evs, battle, battleMax });
 }
 
 /**
@@ -140,6 +152,7 @@ export function seasonSpecimenBoard(
       const competitive =
         pokedexId != null ? competitiveTierFor(pokedexId) : null;
       const catchTier = graded ? gradeCatchTier(pokemon) : null;
+      const trainingTier = graded ? gradeTrainingTier(pokemon) : null;
 
       rows.push({
         id: pokemon.id,
@@ -168,6 +181,8 @@ export function seasonSpecimenBoard(
         competitiveReason: competitive?.reason ?? null,
         catchTier,
         catchTierHidden: !graded,
+        trainingTier,
+        trainingTierHidden: !graded,
         searchText: [
           pokemon.species,
           pokemon.nickname ?? "",
@@ -199,6 +214,8 @@ export type SpecimenFilters = {
   slot: SpecimenSlotScope;
   shinyOnly: boolean;
   catchTier: CatchTier | null;
+  /** Optional; Showcase filter UI can land with #252. */
+  trainingTier?: TrainingTier | null;
   bstRank: StatRank | null;
   competitiveRank: StatRank | null;
   /** Already lowercased and trimmed. */
@@ -227,6 +244,9 @@ export function specimenMatchesFilters(
   if (filters.shinyOnly && !row.isShiny) return false;
   // A hidden or ungraded row can't satisfy a tier filter — it has no tier.
   if (filters.catchTier && row.catchTier !== filters.catchTier) return false;
+  if (filters.trainingTier && row.trainingTier !== filters.trainingTier) {
+    return false;
+  }
   if (filters.bstRank && row.bstRank !== filters.bstRank) return false;
   if (
     filters.competitiveRank &&
@@ -242,6 +262,7 @@ export type SpecimenSort =
   | "dex"
   | "level"
   | "catch"
+  | "training"
   | "bst"
   | "competitive"
   | "trainer"
@@ -300,6 +321,12 @@ export function compareSpecimenRows(
     primary = compareNullable(
       a.catchTier ? catchTierRank(a.catchTier) : null,
       b.catchTier ? catchTierRank(b.catchTier) : null,
+      "desc",
+    );
+  } else if (sort === "training") {
+    primary = compareNullable(
+      a.trainingTier ? trainingTierRank(a.trainingTier) : null,
+      b.trainingTier ? trainingTierRank(b.trainingTier) : null,
       "desc",
     );
   } else if (sort === "bst") {

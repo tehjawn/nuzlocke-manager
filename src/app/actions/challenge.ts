@@ -1349,6 +1349,7 @@ function mapPokemonSummaryRow(row: {
     moves: [],
     ivs: null,
     evs: null,
+    friendship: null,
     causeOfDeath: row.causeOfDeath,
     diedOnRun: row.diedOnRun,
     runId: row.runId,
@@ -1986,6 +1987,8 @@ async function prismaMemorialBackfillCreate(
       moves: mon.moves,
       ivs: jsonStatOrNull(mon.ivs),
       evs: jsonStatOrNull(mon.evs),
+      friendship:
+        typeof mon.friendship === "number" ? mon.friendship : null,
       causeOfDeath: c.causeOfDeath,
       diedOnRun: c.diedOnRun,
       runId: c.runId,
@@ -2229,6 +2232,10 @@ export async function upsertPokemonAction(
       moves: data.moves,
       ivs: jsonStatOrNull(data.ivs ?? null),
       evs: jsonStatOrNull(data.evs ?? null),
+      friendship:
+        data.friendship == null
+          ? null
+          : Math.max(0, Math.min(255, Math.trunc(data.friendship))),
       causeOfDeath: data.causeOfDeath ?? null,
       notes: data.notes ?? null,
     };
@@ -2571,6 +2578,7 @@ const SaveImportMonSchema = z.object({
   moves: z.array(z.string().max(64)).max(4).default([]),
   ivs: IvsSchema.optional().nullable(),
   evs: StatSpreadSchema.optional().nullable(),
+  friendship: z.number().int().min(0).max(255).optional().nullable(),
   slot: PokemonSlotSchema,
 });
 
@@ -2680,6 +2688,10 @@ export async function importFromSaveAction(
         moves: mon.moves ?? [],
         ivs: jsonStatOrNull(mon.ivs ?? null),
         evs: jsonStatOrNull(mon.evs ?? null),
+        friendship:
+          mon.friendship == null
+            ? null
+            : Math.max(0, Math.min(255, Math.trunc(mon.friendship))),
         causeOfDeath:
           mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null,
         diedOnRun:

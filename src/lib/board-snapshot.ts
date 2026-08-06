@@ -52,6 +52,7 @@ type DbPokemonRow = {
   moves: string[];
   ivs: unknown;
   evs: unknown;
+  friendship?: number | null;
   causeOfDeath: string | null;
   diedOnRun: number | null;
   runId: string | null;
@@ -85,6 +86,13 @@ function mapPokemonRow(p: DbPokemonRow): PokemonEntry {
       );
     })(),
     evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
+    friendship:
+      typeof p.friendship === "number" &&
+      Number.isInteger(p.friendship) &&
+      p.friendship >= 0 &&
+      p.friendship <= 255
+        ? p.friendship
+        : null,
     causeOfDeath: p.causeOfDeath,
     diedOnRun: p.diedOnRun ?? null,
     runId: p.runId ?? null,
@@ -291,6 +299,13 @@ function parseSnapshotPokemonRow(
       );
     })(),
     evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
+    friendship:
+      typeof p.friendship === "number" &&
+      Number.isInteger(p.friendship) &&
+      p.friendship >= 0 &&
+      p.friendship <= 255
+        ? p.friendship
+        : null,
     causeOfDeath: typeof p.causeOfDeath === "string" ? p.causeOfDeath : null,
     diedOnRun: typeof p.diedOnRun === "number" ? p.diedOnRun : null,
     runId: typeof p.runId === "string" ? p.runId : null,
@@ -360,6 +375,7 @@ export function parseSnapshotGraves(
       moves: [],
       ivs: null,
       evs: null,
+      friendship: null,
     });
   }
 

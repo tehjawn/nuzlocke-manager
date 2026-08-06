@@ -101,6 +101,8 @@ export type ParsedSavePokemon = {
   moves: string[];
   ivs: StatSpread;
   evs: StatSpread;
+  /** Gen 3 growth friendship (0–255); null when unknown (e.g. Pokédex-only stubs). */
+  friendship: number | null;
   category: SaveMonCategory;
 };
 
@@ -570,6 +572,8 @@ type RawMon = {
   ivs: StatSpread;
   evs: StatSpread;
   nuzlockeRibbon: boolean;
+  /** Growth friendship (u8 at offset 9). */
+  friendship: number;
   /** Modern Emerald growth.box_hp (0 on party; PC uses 0 for fainted). */
   boxHp: number | null;
   /** Growth experience (u32) — used to derive level for box / daycare forms. */
@@ -636,6 +640,8 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
   const itemId = growthView.getUint16(2, true);
   const heldItem = gen3ItemName(itemId);
   const experience = growthView.getUint32(4, true);
+  // growth+8 = ppBonuses; growth+9 = friendship (vanilla + Modern Emerald).
+  const friendship = growthView.getUint8(9);
 
   const moveIds: number[] = [];
   for (let i = 0; i < 4; i++) {
@@ -710,6 +716,7 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
     ivs,
     evs,
     nuzlockeRibbon,
+    friendship,
     boxHp: maxHp > 0 ? null : boxHp, // only meaningful for BoxPokemon
     experience,
     offset,
@@ -762,6 +769,7 @@ function toParsed(
       .filter((name): name is string => Boolean(name)),
     ivs: mon.ivs ?? { ...EMPTY_IVS },
     evs: mon.evs ?? { ...EMPTY_EVS },
+    friendship: mon.friendship,
     category,
   };
 }
@@ -1529,6 +1537,7 @@ function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedS
     moves: [],
     ivs: { ...EMPTY_IVS },
     evs: { ...EMPTY_EVS },
+    friendship: null,
     category: "encountered",
   };
 }

@@ -61,6 +61,7 @@ export const PokemonEntryInputSchema = z.object({
   moves: z.array(z.string().max(64)).max(4).default([]),
   ivs: IvsSchema.optional().nullable(),
   evs: StatSpreadSchema.optional().nullable(),
+  friendship: z.number().int().min(0).max(255).optional().nullable(),
   causeOfDeath: z.string().max(500).optional().nullable(),
   notes: z.string().max(1000).optional().nullable(),
 });

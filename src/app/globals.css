@@ -1103,6 +1103,84 @@ button:disabled,
   color: transparent;
 }
 
+/* Bond heart — training chrome; corner sits bottom-right of the sprite well. */
+.pokemon-bond-heart {
+  --bond-fill: 0%;
+  --bond-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
+
+  display: inline-flex;
+  color: var(--bond-tint);
+  cursor: help;
+}
+
+.pokemon-bond-heart__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.pokemon-bond-heart__outline {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.75;
+  opacity: 0.9;
+}
+
+.pokemon-bond-heart__fill {
+  fill: currentcolor;
+  stroke: none;
+  clip-path: inset(calc(100% - var(--bond-fill)) 0 0 0);
+}
+
+.pokemon-bond-heart--raw {
+  --bond-tint: color-mix(in srgb, var(--muted) 55%, transparent);
+  opacity: 0.55;
+}
+
+.pokemon-bond-heart--raw .pokemon-bond-heart__outline {
+  opacity: 0.85;
+}
+
+.pokemon-bond-heart--growing {
+  --bond-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
+}
+
+.pokemon-bond-heart--trained {
+  --bond-tint: #b794f6;
+}
+
+.pokemon-bond-heart--bonded {
+  --bond-tint: #f0c14a;
+}
+
+.pokemon-bond-label--raw {
+  color: color-mix(in srgb, var(--muted) 78%, transparent);
+}
+
+.pokemon-bond-label--growing {
+  color: color-mix(in srgb, var(--interactive) 88%, #9ad0ef);
+}
+
+.pokemon-bond-label--trained {
+  color: #c4b5fd;
+}
+
+.pokemon-bond-label--bonded {
+  color: #f0c14a;
+}
+
+.pokemon-bond-heart--corner {
+  position: absolute;
+  /* Clear inset — avoids the awkward “kissing the border” gap. */
+  right: 0.45rem;
+  bottom: 0.4rem;
+  z-index: 2;
+  /* Slightly larger hit target for hover tip without growing the glyph. */
+  padding: 0.15rem;
+  margin: -0.15rem;
+}
+
 .gba-frame-menu::before,
 .gba-frame:not([data-card-bg])::before {
   content: none;

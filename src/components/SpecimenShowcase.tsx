@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { BondHeart } from "@/components/BondHeart";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
@@ -138,7 +139,9 @@ export function SpecimenShowcase({
   // vanish mid-read if the scope changes underneath it.
   const openRow = rows.find((row) => row.id === openRowId) ?? null;
   const showScopeNudge =
-    (sort === "catch" || catchTier !== null) &&
+    (sort === "catch" ||
+      sort === "training" ||
+      catchTier !== null) &&
     myTrainerId !== null &&
     trainerId !== myTrainerId &&
     gradedCount > 0;
@@ -398,7 +401,7 @@ function SpecimenCard({
           } ${row.slot === "GRAVEYARD" ? "opacity-90" : ""}`}
         >
           <div
-            className={`mx-auto flex aspect-square w-full max-w-[5.5rem] items-center justify-center rounded-lg border bg-surface-2 sm:max-w-[6.5rem] ${
+            className={`relative mx-auto flex aspect-square w-full max-w-[5.5rem] items-center justify-center rounded-lg border bg-surface-2 sm:max-w-[6.5rem] ${
               hasChrome
                 ? `pokemon-catch-sprite pokemon-catch-sprite--${tier}`
                 : "border-frame"
@@ -413,6 +416,12 @@ function SpecimenCard({
               species={row.species}
               width={96}
             />
+            {row.trainingTier !== null && !row.trainingTierHidden ? (
+              <BondHeart
+                className="pokemon-bond-heart--corner h-3.5 w-3.5"
+                tier={row.trainingTier}
+              />
+            ) : null}
           </div>
 
           <div className="min-w-0 space-y-0.5 text-center">

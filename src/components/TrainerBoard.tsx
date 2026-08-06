@@ -1856,6 +1856,7 @@ export function TrainerBoard({
                 moves,
                 ivs: isEmptySpread(form.ivs) ? null : form.ivs,
                 evs: isEmptySpread(form.evs) ? null : form.evs,
+                friendship: form.friendship,
                 causeOfDeath: form.causeOfDeath || null,
               });
               if (result.ok) {
@@ -1929,6 +1930,7 @@ export function TrainerBoard({
                   moves: m.moves,
                   ivs: m.ivs,
                   evs: m.evs,
+                  friendship: m.friendship,
                   slot: m.slot,
                 })),
                 trainerName: payload.trainerName,
