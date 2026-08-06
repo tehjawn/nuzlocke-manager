@@ -4,9 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { AboutIcon, RulesIcon, ToolsIcon } from "@/components/nav-icons";
-import { SeasonStatsToolIcon } from "@/components/tool-icons";
 import type { ChallengeStatus } from "@/lib/challenge-types";
-import { seasonStatsHref } from "@/lib/tools-routes";
 
 type SeasonTabsProps = {
   slug: string;
@@ -55,12 +53,6 @@ export function getSeasonTabs(
       label: "Tools",
       match: "prefix",
       icon: <ToolsIcon />,
-    },
-    {
-      href: seasonStatsHref(slug),
-      label: "Season Stats",
-      match: "prefix",
-      icon: <SeasonStatsToolIcon />,
     },
   ];
 

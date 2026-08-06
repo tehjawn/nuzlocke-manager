@@ -158,8 +158,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
               "badges",
               "god",
               "shiny",
-              "section",
-              "tab",
+              "tools",
             ]
           : [tab.label.toLowerCase(), "section", "tab"],
     })),

@@ -6,7 +6,7 @@
  * players (welcome read, or any party mon) and GMs keep full chrome.
  *
  * First-run still shows About / Rules / Trainers tabs; Encounters, Tools,
- * Season Stats, and Tournament stay hidden until welcome is done.
+ * and Tournament stay hidden until welcome is done.
  * Brand-new players hit /new-trainer before their board.
  *
  * Season CTAs (home Open League, join) use `playerSeasonEntryPath` so create
