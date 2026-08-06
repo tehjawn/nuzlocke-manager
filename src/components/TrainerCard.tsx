@@ -102,18 +102,29 @@ function TrainerPartySlot({
   // Heart only when competitive details are visible (own board / GM lens);
   // leagueGrades returns a tier (including "raw") in that case.
   const showHeart = trainingTier != null;
+  // Grid cells are too tight for corner chrome — list only.
+  const showCornerChrome = layout === "list";
+  const slotSurface = catchBorder
+    ? catchBorder
+    : "border-frame/50 bg-surface-2 hover:border-interactive/60";
 
-  const chrome = (
-    <>
-      {showSentiment ? <SurvivalSentimentIcon poll={survivalPoll} /> : null}
-      {showHeart ? (
-        <BondHeart
-          className="pokemon-bond-heart--corner-dense h-3 w-3 sm:h-3.5 sm:w-3.5"
-          tier={trainingTier}
-        />
-      ) : null}
-    </>
-  );
+  const chrome =
+    showCornerChrome && (showSentiment || showHeart) ? (
+      <>
+        {showSentiment ? (
+          <SurvivalSentimentIcon
+            className="pokemon-survival-sentiment--corner-dense h-3 w-3 sm:h-3.5 sm:w-3.5"
+            poll={survivalPoll}
+          />
+        ) : null}
+        {showHeart ? (
+          <BondHeart
+            className="pokemon-bond-heart--corner-dense h-3 w-3 sm:h-3.5 sm:w-3.5"
+            tier={trainingTier}
+          />
+        ) : null}
+      </>
+    ) : null;
 
   if (layout === "grid") {
     return (
@@ -125,10 +136,7 @@ function TrainerPartySlot({
           type="button"
           title={label}
           aria-label={`View ${label}`}
-          className={`pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border bg-surface-2 p-1 transition hover:bg-interactive-soft/40 ${
-            catchBorder ??
-            "border-frame/50 hover:border-interactive/60"
-          }`}
+          className={`pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg border p-1 transition hover:bg-interactive-soft/40 ${slotSurface}`}
           onClick={() => onOpen(pokemon)}
         >
           <PokemonSpriteImage
@@ -140,7 +148,6 @@ function TrainerPartySlot({
             species={pokemon.species}
             width={96}
           />
-          {chrome}
         </button>
       </PokemonHoverPreview>
     );
@@ -155,10 +162,7 @@ function TrainerPartySlot({
         type="button"
         title={label}
         aria-label={`View ${label}`}
-        className={`pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border bg-surface-2 px-1 py-1 transition hover:bg-interactive-soft/40 sm:h-24 ${
-          catchBorder ??
-          "border-frame/50 hover:border-interactive/60"
-        }`}
+        className={`pressable group/slot relative flex h-[5.25rem] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1 transition hover:bg-interactive-soft/40 sm:h-24 ${slotSurface}`}
         onClick={() => onOpen(pokemon)}
       >
         <span className="relative inline-flex shrink-0">

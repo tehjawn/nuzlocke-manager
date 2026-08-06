@@ -1297,6 +1297,7 @@ button:disabled,
 
 /* All-trainers / compact sprite wells — tighter inset pair with sentiment. */
 .pokemon-bond-heart--corner-dense {
+  position: absolute;
   right: 0.1rem;
   bottom: 0.1rem;
   z-index: 2;
@@ -1347,6 +1348,7 @@ button:disabled,
 }
 
 .pokemon-survival-sentiment--corner-dense {
+  position: absolute;
   left: 0.1rem;
   bottom: 0.1rem;
   z-index: 2;
@@ -1355,37 +1357,50 @@ button:disabled,
 }
 
 /*
- * League (all-trainers) catch cue — border tint only.
- * No radial wash, inset glow, or animated ring from board chrome.
+ * League (all-trainers) catch cue — quiet border + wash.
+ * Soft enough to scan past on the roster; no board ring / glow / animation.
  */
 .pokemon-catch-border--league {
+  --league-catch-tint: transparent;
   border-width: 1px;
   border-style: solid;
+  border-color: color-mix(in srgb, var(--league-catch-tint) 32%, var(--frame));
+  background-color: color-mix(
+    in srgb,
+    var(--league-catch-tint) 9%,
+    var(--surface-2)
+  );
 }
 
 .pokemon-catch-border--league-shit {
+  --league-catch-tint: var(--muted);
   border-style: dotted;
-  border-color: color-mix(in srgb, var(--muted) 44%, var(--frame));
+  border-color: color-mix(in srgb, var(--muted) 40%, var(--frame));
+  background-color: color-mix(in srgb, var(--muted) 6%, var(--surface-2));
 }
 
 .pokemon-catch-border--league-good {
-  border-color: color-mix(in srgb, var(--interactive) 34%, var(--frame));
+  --league-catch-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
 }
 
 .pokemon-catch-border--league-great {
-  border-color: color-mix(in srgb, #a78bfa 40%, var(--frame));
+  --league-catch-tint: #b794f6;
 }
 
 .pokemon-catch-border--league-cracked {
-  border-color: color-mix(in srgb, #e0b04a 46%, var(--frame));
+  --league-catch-tint: #f0c14a;
+  border-color: color-mix(in srgb, #e0b04a 38%, var(--frame));
+  background-color: color-mix(in srgb, #f0c14a 11%, var(--surface-2));
 }
 
 .pokemon-catch-border--league-god {
-  border-color: color-mix(in srgb, #c77dff 40%, var(--frame));
+  --league-catch-tint: #c77dff;
+  border-color: color-mix(in srgb, #c77dff 36%, var(--frame));
+  background-color: color-mix(in srgb, #c77dff 10%, var(--surface-2));
 }
 
 .pokemon-catch-border--league:hover {
-  filter: brightness(1.04);
+  filter: brightness(1.03);
 }
 
 .gba-frame-menu::before,
