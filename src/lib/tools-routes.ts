@@ -61,6 +61,14 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
       "Every Modern Emerald species — who's owned it, who's just seen it, who's cornered a line.",
   },
   {
+    id: "chart",
+    title: "Type Chart",
+    navLabel: "Matchup table",
+    tone: "discord",
+    blurb:
+      "Modern 18-type attack × defense multipliers — overlay a trainer's Main Squad coverage.",
+  },
+  {
     id: "planner",
     title: "Team Planner",
     navLabel: "Coverage & prep",
@@ -75,14 +83,6 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
     tone: "rip",
     blurb:
       "Hall of fame — badge race, graves & wipes, god catches, shinies, and every season-wide leaderboard.",
-  },
-  {
-    id: "chart",
-    title: "Type Chart",
-    navLabel: "Matchup table",
-    tone: "discord",
-    blurb:
-      "Modern 18-type attack × defense multipliers — overlay a trainer's Main Squad coverage.",
   },
 ];
 
