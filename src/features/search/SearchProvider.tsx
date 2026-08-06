@@ -43,6 +43,8 @@ type SearchContextValue = {
   closeAsk: () => void;
   /** Server-evaluated `ai-drawer` flag (Vercel Flags). */
   aiDrawer: boolean;
+  /** Set by AiDrawerFlagSync once the Suspense-deferred flag resolves (#313). */
+  setAiDrawer: (enabled: boolean) => void;
 };
 
 const SearchContext = createContext<SearchContextValue | null>(null);
@@ -72,14 +74,15 @@ function seasonSearchFingerprint(season: SearchSeasonContext): string {
 export function SearchProvider({
   children,
   defaultSeason = null,
-  aiDrawer = false,
 }: {
   children: ReactNode;
   /** Active season index for global pages (home, about, login, …). */
   defaultSeason?: SearchSeasonContext | null;
-  /** Server-evaluated `ai-drawer` Vercel Flag. */
-  aiDrawer?: boolean;
 }) {
+  // `ai-drawer` starts off and is switched on by AiDrawerFlagSync when the
+  // Suspense-deferred server evaluation streams in. Awaiting the flag in the
+  // root layout instead made every route non-prerenderable (#313).
+  const [aiDrawer, setAiDrawer] = useState(false);
   const [open, setOpenState] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
   const [askQuery, setAskQuery] = useState<string | null>(null);
@@ -193,6 +196,7 @@ export function SearchProvider({
       openAsk,
       closeAsk,
       aiDrawer,
+      setAiDrawer,
     }),
     [
       open,

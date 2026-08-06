@@ -119,6 +119,7 @@ import {
 import {
   buildSnapshotSummaryLine,
   captureTrainerBoardSnapshotInTx,
+  captureTrainerBoardSnapshotsInTx,
   parseSnapshotPayload,
   snapshotTriggerLabel,
   type BoardSnapshotTrigger,
@@ -1143,6 +1144,48 @@ async function hardResetTrainerInTx(
   });
 }
 
+/**
+ * Set-wide hard reset. Same effect as running hardResetTrainerInTx per trainer,
+ * but the clears are single set-wide statements instead of four per board — the
+ * per-trainer loop made a season reset scale its round-trips with roster size
+ * inside one interactive transaction (#313).
+ *
+ * Run creation stays per-trainer: `createMany` cannot return the generated ids
+ * that have to land back on `TrainerProfile.activeRunId`.
+ */
+async function hardResetTrainersInTx(
+  tx: TxClient,
+  trainerIds: string[],
+): Promise<void> {
+  if (trainerIds.length === 0) return;
+  const where = { trainerId: { in: trainerIds } };
+
+  // Drop the FK pointer before deleting runs so the delete has nothing to
+  // SetNull against, exactly as the single-trainer path does.
+  await tx.trainerProfile.updateMany({
+    where: { id: { in: trainerIds } },
+    data: { activeRunId: null },
+  });
+  await tx.pokemonEntry.deleteMany({ where });
+  await tx.trainerRun.deleteMany({ where });
+  await tx.badgeProgress.updateMany({
+    where,
+    data: { earned: false, earnedAt: null },
+  });
+  await tx.trainerProfile.updateMany({
+    where: { id: { in: trainerIds } },
+    data: {
+      reviveUsed: false,
+      mainSquadLocked: false,
+      completionCount: 0,
+      runEndedAt: null,
+    },
+  });
+  for (const trainerId of trainerIds) {
+    await createInitialActiveRunInTx(tx, trainerId);
+  }
+}
+
 /** GM-only: hard-reset one trainer board to a pre-challenge blank slate. */
 export async function gmResetTrainerBoardAction(input: {
   trainerId: string;
@@ -1221,26 +1264,30 @@ export async function gmResetAllTrainerBoardsAction(input: {
 
     const { userId } = await requireGm(challenge.id);
 
-    const count = challenge.trainers.length;
-    await prisma.$transaction(async (tx) => {
-      for (const trainer of challenge.trainers) {
-        await captureTrainerBoardSnapshotInTx(tx, {
+    const trainerIds = challenge.trainers.map((t) => t.id);
+    const count = trainerIds.length;
+    await prisma.$transaction(
+      async (tx) => {
+        await captureTrainerBoardSnapshotsInTx(tx, {
           challengeId: challenge.id,
-          trainerId: trainer.id,
+          trainerIds,
           actorId: userId,
           trigger: "GM_RESET",
         });
-        await hardResetTrainerInTx(tx, trainer.id);
-      }
-      await tx.activityEvent.create({
-        data: {
-          challengeId: challenge.id,
-          actorId: userId,
-          type: "NOTE",
-          message: `GM reset all ${count} trainer board${count === 1 ? "" : "s"} for an official season start`,
-        },
-      });
-    });
+        await hardResetTrainersInTx(tx, trainerIds);
+        await tx.activityEvent.create({
+          data: {
+            challengeId: challenge.id,
+            actorId: userId,
+            type: "NOTE",
+            message: `GM reset all ${count} trainer board${count === 1 ? "" : "s"} for an official season start`,
+          },
+        });
+      },
+      // Was ~13 statements per trainer; now a fixed handful plus two per new
+      // run. The explicit budget still beats the 5s default on a cold pooler.
+      { timeout: 30_000, maxWait: 10_000 },
+    );
 
     revalidateChallenge(challenge.slug);
     return {
@@ -2844,10 +2891,25 @@ export async function importFromSaveAction(
 
       if (data.applyBadges) {
         const defs = await tx.badgeDefinition.findMany({
-          where: { challengeId: trainer.challengeId },
+          where: { challengeId: trainer.challengeId, key: { startsWith: "gym-" } },
+          select: { id: true, key: true },
         });
-        for (const def of defs) {
-          if (!def.key.startsWith("gym-")) continue;
+        // Only touch rows whose earned state actually changes — this used to
+        // upsert every gym badge on every import (#313).
+        const existing = await tx.badgeProgress.findMany({
+          where: { trainerId: trainer.id, badgeId: { in: defs.map((d) => d.id) } },
+          select: { badgeId: true, earned: true },
+        });
+        const earnedByBadgeId = new Map(
+          existing.map((row) => [row.badgeId, row.earned]),
+        );
+        const now = new Date();
+        const changed = defs.filter((def) => {
+          // A missing progress row is an unearned badge — leave it missing.
+          const before = earnedByBadgeId.get(def.id) ?? false;
+          return before !== data.badgeKeys.includes(def.key);
+        });
+        for (const def of changed) {
           const earned = data.badgeKeys.includes(def.key);
           await tx.badgeProgress.upsert({
             where: {
@@ -2860,11 +2922,11 @@ export async function importFromSaveAction(
               trainerId: trainer.id,
               badgeId: def.id,
               earned,
-              earnedAt: earned ? new Date() : null,
+              earnedAt: earned ? now : null,
             },
             update: {
               earned,
-              earnedAt: earned ? new Date() : null,
+              earnedAt: earned ? now : null,
             },
           });
         }

@@ -6,20 +6,27 @@ import { SearchPalette } from "@/features/search/SearchPalette";
 import { SearchProvider } from "@/features/search/SearchProvider";
 import type { SearchSeasonContext } from "@/features/search/search-types";
 
-/** Root mount: provider + Jump palette; Ask drawer only when `ai-drawer` is on. */
+/**
+ * Root mount: provider + Jump palette + Ask chrome.
+ *
+ * `flagGate` carries the Suspense-wrapped server evaluation of `ai-drawer` as a
+ * slot, so a client component can host it without the root layout awaiting the
+ * flag itself (#313).
+ */
 export function SearchHost({
   children,
   defaultSeason = null,
-  aiDrawer = false,
+  flagGate = null,
 }: {
   children: ReactNode;
   defaultSeason?: SearchSeasonContext | null;
-  /** Server-evaluated Vercel Flags value for `ai-drawer`. */
-  aiDrawer?: boolean;
+  /** <Suspense><AiDrawerFlagGate /></Suspense> from the root layout. */
+  flagGate?: ReactNode;
 }) {
   return (
-    <SearchProvider defaultSeason={defaultSeason} aiDrawer={aiDrawer}>
-      {aiDrawer ? <AskChrome>{children}</AskChrome> : children}
+    <SearchProvider defaultSeason={defaultSeason}>
+      {flagGate}
+      <AskChrome>{children}</AskChrome>
       <SearchPalette />
     </SearchProvider>
   );

@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
+import { ChampionRibbon } from "@/components/ChampionRibbon";
 import { Frame } from "@/components/Frame";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
@@ -60,9 +61,27 @@ export function TrainerCard({
   const statusTitle = [trainer.statusEmoji, statusTrimmed]
     .filter(Boolean)
     .join(" ");
-  const boardLabel = `Open ${trainer.handle}'s board${isYou ? " (you)" : ""}`;
+  const completionCount = trainer.completionCount ?? 0;
+  const isChampion = completionCount > 0;
+  const boardLabel = [
+    `Open ${trainer.handle}'s board`,
+    isYou ? "(you)" : null,
+    isChampion
+      ? completionCount === 1
+        ? "— Champion"
+        : `— Champion · ${completionCount} completions`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const cardBg = trainer.cardBackgroundKey;
   const avatarBg = trainer.avatarBackgroundKey;
+  const championOverlay = isChampion ? (
+    <ChampionRibbon completionCount={completionCount} />
+  ) : null;
+  const championOverlayDense = isChampion ? (
+    <ChampionRibbon completionCount={completionCount} dense />
+  ) : null;
 
   return (
     <div
@@ -87,6 +106,7 @@ export function TrainerCard({
               cardBackgroundKey={cardBg}
               className="h-full transition-[border-color,box-shadow] duration-200 group-hover:border-interactive/45"
               dense
+              overlay={championOverlayDense}
             >
               <div className="flex h-full flex-col items-center text-center">
                 <div className="relative flex h-28 w-full items-end justify-center overflow-visible">
@@ -127,6 +147,7 @@ export function TrainerCard({
           <Frame
             cardBackgroundKey={cardBg}
             className="group hidden h-full transition-[border-color,box-shadow] duration-200 hover:border-interactive/45 md:block"
+            overlay={championOverlay}
           >
             <Link
               aria-label={boardLabel}
@@ -225,7 +246,9 @@ export function TrainerCard({
         <Frame
           className="group transition-[border-color,box-shadow] duration-200 hover:border-interactive/45"
           cardBackgroundKey={cardBg}
-        >          {/*
+          overlay={championOverlay}
+        >
+          {/*
             List layout:
             - <sm: identity + badges on one row, squad/stats/revive below
               (avoids clipping the 3×2 grid on narrow phones)
@@ -350,8 +373,8 @@ export function TrainerCard({
                 <p className="min-w-0 truncate text-xs text-muted">
                   {caughtCount} caught • {encounteredCount} encountered •{" "}
                   {ripCount} R.I.P. • Run {trainer.activeRunNumber}
-                  {trainer.completionCount > 0
-                    ? ` • ${trainer.completionCount} completion${trainer.completionCount === 1 ? "" : "s"}`
+                  {completionCount > 0
+                    ? ` • ${completionCount} completion${completionCount === 1 ? "" : "s"}`
                     : ""}
                   {trainer.money != null
                     ? ` • $${trainer.money.toLocaleString("en-US")}`

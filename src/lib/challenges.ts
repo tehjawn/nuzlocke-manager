@@ -28,12 +28,6 @@ import {
 } from "@/lib/memorial-backfill";
 import { currentRunNumber } from "@/lib/wipe-memorial";
 import { pokemonInSlot } from "@/lib/trainer-display";
-import {
-  activityPreviewInclude,
-  challengeMetaInclude,
-  pokemonSummarySelect,
-  trainerRelationInclude,
-} from "@/lib/challenge-queries";
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { mapDbChallenge, resolveActivityAvatarSrc } from "@/lib/mappers";
@@ -114,22 +108,6 @@ async function withSurvivalPollTallies(
   } catch {
     return challenge;
   }
-}
-
-function summaryBoardInclude() {
-  return {
-    ...challengeMetaInclude,
-    trainers: {
-      include: {
-        ...trainerRelationInclude,
-        pokemon: {
-          select: pokemonSummarySelect,
-          orderBy: [{ slot: "asc" as const }, { partyIndex: "asc" as const }],
-        },
-      },
-    },
-    activities: activityPreviewInclude,
-  };
 }
 
 /**
@@ -446,27 +424,6 @@ export async function listSeasonIndex(): Promise<SeasonIndexItem[]> {
     source: "seed" as const,
     trainerCount: c.trainers.length,
   }));
-}
-
-/**
- * @deprecated Prefer listSeasonIndex + getHomeCarouselChallenge.
- * Kept for callers that still expect Challenge[].
- */
-export async function listChallenges(): Promise<Challenge[]> {
-  if (isDatabaseConfigured()) {
-    try {
-      const rows = await getPrisma().challenge.findMany({
-        include: summaryBoardInclude(),
-        orderBy: [{ year: "desc" }, { name: "asc" }],
-      });
-      if (rows.length > 0) {
-        return rows.map((row) => mapDbChallenge(row));
-      }
-    } catch {
-      // fall through to seed
-    }
-  }
-  return CHALLENGES.map(seedAsChallenge);
 }
 
 /** Home carousel: one season, MAIN lead only, summary columns. */
