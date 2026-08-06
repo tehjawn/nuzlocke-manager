@@ -13,6 +13,7 @@ import {
 } from "@/lib/activity-watermark";
 import { failAction } from "@/lib/action-error";
 import { getPrisma } from "@/lib/db";
+import { parsePokemonSaveAsync } from "@/lib/gen3-save";
 import { MAX_PLAY_TIME_SECONDS } from "@/lib/gen3-save/playtime";
 import {
   MAIN_PARTY_SIZE,
@@ -2632,6 +2633,16 @@ const SaveImportMonSchema = z.object({
   slot: PokemonSlotSchema,
 });
 
+/**
+ * Raw save proof for server-side money/playtime re-parse. Flash .sav/.srm and
+ * compressed states fit easily; cap under the server-action body limit so a
+ * forged client integer cannot overwrite a reliable profile value.
+ */
+const MAX_IMPORT_SAVE_PROOF_BYTES = 3 * 1024 * 1024;
+const MAX_IMPORT_SAVE_PROOF_BASE64_CHARS = Math.ceil(
+  (MAX_IMPORT_SAVE_PROOF_BYTES * 4) / 3,
+);
+
 const ImportFromSaveSchema = z.object({
   trainerId: z.string().min(1),
   // Party + box + R.I.P. + wild buffer + Pokédex-seen stubs (capped in parser
@@ -2643,8 +2654,10 @@ const ImportFromSaveSchema = z.object({
   applyBadges: z.boolean().default(false),
   reviveUsed: z.boolean().optional().nullable(),
   applyRevive: z.boolean().default(false),
+  /** Client echo only — never written; money comes from saveBytesBase64. */
   money: z.number().int().min(0).max(999_999).optional().nullable(),
   applyMoney: z.boolean().default(false),
+  /** Client echo only — never written; playtime comes from saveBytesBase64. */
   playTimeSeconds: z
     .number()
     .int()
@@ -2653,6 +2666,16 @@ const ImportFromSaveSchema = z.object({
     .optional()
     .nullable(),
   applyPlayTime: z.boolean().default(false),
+  /**
+   * Base64 of the uploaded save. Required to actually apply money/playtime:
+   * the server re-parses and only writes when the parse marks those fields
+   * reliable. Absent / unreliable proof → preserve existing profile values.
+   */
+  saveBytesBase64: z
+    .string()
+    .max(MAX_IMPORT_SAVE_PROOF_BASE64_CHARS)
+    .optional()
+    .nullable(),
   safariZoneAreas: z.array(z.string().max(64)).max(6).optional().nullable(),
   /**
    * Which living / Encountered slots to overwrite from this import.
@@ -2661,6 +2684,36 @@ const ImportFromSaveSchema = z.object({
    */
   replaceSlots: z.array(PokemonSlotSchema).default(DEFAULT_IMPORT_REPLACE_SLOTS),
 });
+
+function decodeImportSaveProof(base64: string): Uint8Array | null {
+  try {
+    const buf = Buffer.from(base64, "base64");
+    if (buf.length === 0 || buf.length > MAX_IMPORT_SAVE_PROOF_BYTES) {
+      return null;
+    }
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  } catch {
+    return null;
+  }
+}
+
+/** Re-parse save proof; return only reliable money / playtime (else null). */
+async function verifiedEconomyFromSaveProof(
+  saveBytesBase64: string | null | undefined,
+): Promise<{ money: number | null; playTimeSeconds: number | null }> {
+  const empty = { money: null, playTimeSeconds: null };
+  if (!saveBytesBase64) return empty;
+  const bytes = decodeImportSaveProof(saveBytesBase64);
+  if (!bytes) return empty;
+  const parsed = await parsePokemonSaveAsync(bytes);
+  if (!parsed.ok) return empty;
+  return {
+    money: parsed.money.reliable ? parsed.money.amount : null,
+    playTimeSeconds: parsed.playTime.reliable
+      ? parsed.playTime.totalSeconds
+      : null,
+  };
+}
 
 /** Apply categorized save import (party/box/rip/encounters + optional name/badges). */
 export async function importFromSaveAction(
@@ -2671,6 +2724,11 @@ export async function importFromSaveAction(
     const { trainer, userId, access } = await requireTrainerEditAccess(
       data.trainerId,
     );
+
+    const verifiedEconomy =
+      data.applyMoney || data.applyPlayTime
+        ? await verifiedEconomyFromSaveProof(data.saveBytesBase64)
+        : { money: null, playTimeSeconds: null };
 
     if (
       trainer.mainSquadLocked &&
@@ -2918,17 +2976,19 @@ export async function importFromSaveAction(
         };
       }
 
-      if (data.applyMoney && data.money != null) {
+      // Money / playtime: only write values re-parsed from saveBytesBase64 with
+      // a reliable parse. Client-supplied integers are ignored (issue #286).
+      if (data.applyMoney && verifiedEconomy.money != null) {
         await tx.trainerProfile.update({
           where: { id: trainer.id },
-          data: { money: data.money },
+          data: { money: verifiedEconomy.money },
         });
       }
 
-      if (data.applyPlayTime && data.playTimeSeconds != null) {
+      if (data.applyPlayTime && verifiedEconomy.playTimeSeconds != null) {
         await tx.trainerProfile.update({
           where: { id: trainer.id },
-          data: { playTimeSeconds: data.playTimeSeconds },
+          data: { playTimeSeconds: verifiedEconomy.playTimeSeconds },
         });
       }
 
