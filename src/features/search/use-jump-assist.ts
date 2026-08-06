@@ -226,5 +226,12 @@ export function useJumpAssist() {
     [],
   );
 
-  return { state, reset, answerLocal, askRemote, fail };
+  /** Legacy Jump-modal entrypoint — prose path, no ranking cards. */
+  const ask = useCallback(
+    (question: string, snapshot: string | null) =>
+      askRemote(question, snapshot, { preferRanking: false }),
+    [askRemote],
+  );
+
+  return { state, reset, answerLocal, askRemote, ask, fail };
 }
