@@ -473,20 +473,9 @@ export function querySearchIndex(
 
 /**
  * Queries the fuzzy index can't answer well — the ones #184 wants to hand to
- * the LLM. Deliberately conservative: a false positive costs a wasted row,
- * so this only fires on shapes that read unmistakably as a question.
+ * the LLM. Implementation lives in `@/lib/ai/ask-guard` so the API can share it.
  */
-const QUESTION_STARTERS =
-  /^(who|what|which|when|where|why|how|is|are|does|do|did|can|should|has|have)\b/i;
-const COMPARATIVE = /\b(most|least|best|worst|ahead|behind|top|highest|lowest|compare|ranked|leading|fewest)\b/i;
-
-export function isQuestionLike(query: string): boolean {
-  const trimmed = query.trim();
-  if (trimmed.length < 6) return false;
-  if (trimmed.includes("?")) return true;
-  // A bare comparative like "most badges" reads as a question in a palette.
-  return QUESTION_STARTERS.test(trimmed) || COMPARATIVE.test(trimmed);
-}
+export { isQuestionLike } from "@/lib/ai/ask-guard";
 
 /**
  * Titles worth surfacing first, by where the player currently is. Opening the

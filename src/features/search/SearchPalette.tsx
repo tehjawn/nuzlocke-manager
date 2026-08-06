@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { askEntityHints } from "@/features/search/ask-hints";
 import {
   buildSeasonDigestFromPlan,
   detectAskPlan,
@@ -21,11 +22,11 @@ import {
   clearRecentSearches,
   defaultSuggestions,
   getRecentSearches,
-  isQuestionLike,
   recordSearchUse,
   saveRecentSearch,
   querySearchIndex,
 } from "@/features/search/search-index";
+import { evaluateAskQuery } from "@/lib/ai/ask-guard";
 import { useSearch } from "@/features/search/SearchProvider";
 import type {
   SearchCategory,
@@ -248,17 +249,25 @@ export function SearchPalette() {
 
   const trimmedQuery = query.trim();
 
+  const entityHints = useMemo(() => askEntityHints(season), [season]);
+  const askGuard = useMemo(
+    () => evaluateAskQuery(trimmedQuery, { entityHints }),
+    [trimmedQuery, entityHints],
+  );
+
   /**
-   * Ask is a fallback, never the default: it only appears once fuzzy search has
-   * had its shot and either found nothing or the query reads as a question.
+   * Ask is a fallback, never the default: only when the query clears the Ask
+   * guard (question-like / season-anchored, not gibberish). Empty fuzzy hits
+   * alone no longer unlock Ask — keyboard mash used to slip through.
    */
-  const canAsk =
-    !isAssistUnavailable() &&
-    trimmedQuery.length >= 3 &&
-    (hits.length === 0 || isQuestionLike(trimmedQuery));
+  const canAsk = !isAssistUnavailable() && askGuard.ok;
 
   const runAsk = useCallback(() => {
     if (!trimmedQuery) return;
+    const guard = evaluateAskQuery(trimmedQuery, {
+      entityHints: askEntityHints(season),
+    });
+    if (!guard.ok) return;
     // Pass 1 (instant): which slices the question needs.
     // Pass 2 (still sync): pack only those into ≤8k — then the network Ask.
     const snapshot = season
