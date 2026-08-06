@@ -12,6 +12,7 @@ import {
 import { createPortal } from "react-dom";
 import { gmResetAllTrainerBoardsAction } from "@/app/actions/challenge";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { useSearch } from "@/features/search/SearchProvider";
 import { writeGmLensOnClient } from "@/lib/gm-lens";
 import { useMediaQuery } from "@/lib/use-media-query";
 
@@ -33,6 +34,7 @@ export function GmToolsLauncher({
 }: GmToolsLauncherProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { openAsk, aiDrawer } = useSearch();
   const [open, setOpen] = useState(false);
   const [on, setOn] = useState(initialOn);
   const [seenInitialOn, setSeenInitialOn] = useState(initialOn);
@@ -196,6 +198,19 @@ export function GmToolsLauncher({
           <p className="text-xs font-semibold text-danger">{resetError}</p>
         ) : null}
 
+        {aiDrawer ? (
+          <button
+            type="button"
+            onClick={() => {
+              openAsk();
+              closePanel();
+            }}
+            className="gm-tools-panel__console"
+          >
+            Open AI Drawer
+          </button>
+        ) : null}
+
         <Link href={gmConsoleHref} className="gm-tools-panel__console">
           <GmConsoleLinkLabel />
         </Link>
@@ -210,6 +225,7 @@ export function GmToolsLauncher({
   return (
     <>
       <div
+        data-gm-tools-anchor=""
         className="pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[max(5rem,calc(1.25rem+env(safe-area-inset-bottom,0px)))] z-40 sm:bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
       >
         <div className="pointer-events-auto relative">

@@ -11,7 +11,7 @@ import { answerJumpQuestion } from "@/lib/ai/jump-assist";
 import { checkAiRateLimit } from "@/lib/ai/rate-limit";
 
 /**
- * Authenticated server-only entrypoint for Jump's Ask mode (#184).
+ * Authenticated server-only entrypoint for Jump's Ask mode (#184 / #300).
  *
  * The client posts a question plus a compact season snapshot it already holds
  * in memory, so answering costs no extra DB read. Fuzzy search stays the
@@ -38,6 +38,8 @@ const askSchema = z.object({
     .transform((value) =>
       typeof value === "string" ? value.slice(0, MAX_SNAPSHOT_CHARS) : value,
     ),
+  /** Client detected a board ranking — prefer structured pokemon_ranking. */
+  preferRanking: z.boolean().optional(),
 });
 
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { question, snapshot } = parsed.data;
+  const { question, snapshot, preferRanking } = parsed.data;
 
   const guard = evaluateAskQuery(question, { allowMultiWord: true });
   if (!guard.ok) {
@@ -95,12 +97,22 @@ export async function POST(request: Request) {
     );
   }
 
-  const cacheKey = jumpAskCacheKey(question, snapshot);
+  const cacheKey = jumpAskCacheKey(
+    question,
+    snapshot,
+    preferRanking ? "rank" : "prose",
+  );
 
   const cached = await getCachedJumpAnswer(cacheKey);
   if (cached) {
     return Response.json(
-      { ok: true, text: cached.text, model: cached.model, cached: true },
+      {
+        ok: true,
+        text: cached.text,
+        answer: cached.answer,
+        model: cached.model,
+        cached: true,
+      },
       { status: 200, headers: NO_STORE },
     );
   }
@@ -129,6 +141,7 @@ export async function POST(request: Request) {
   const result = await answerJumpQuestion({
     question,
     snapshot,
+    preferRanking: Boolean(preferRanking),
     signal: request.signal,
   });
 
@@ -141,11 +154,17 @@ export async function POST(request: Request) {
 
   await setCachedJumpAnswer(cacheKey, {
     text: result.text,
+    answer: result.answer,
     model: result.model,
   });
 
   return Response.json(
-    { ok: true, text: result.text, model: result.model },
+    {
+      ok: true,
+      text: result.text,
+      answer: result.answer,
+      model: result.model,
+    },
     { status: 200, headers: NO_STORE },
   );
 }

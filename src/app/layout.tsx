@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { VercelToolbar } from "@vercel/toolbar/next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { Suspense } from "react";
@@ -10,6 +11,7 @@ import { CelebrationHost } from "@/features/fx/CelebrationHost";
 import { SearchHost } from "@/features/search/SearchHost";
 import { briefToSearchSeasonContext } from "@/features/search/search-season";
 import { PokemonSpritePreferenceProvider } from "@/features/preferences/PokemonSpritePreferenceProvider";
+import { aiDrawerFlag } from "@/flags";
 import { getDefaultSearchChallenge } from "@/lib/challenges";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -81,6 +83,8 @@ export default async function RootLayout({
   const defaultSeason = defaultChallenge
     ? briefToSearchSeasonContext(defaultChallenge)
     : null;
+  const aiDrawer = await aiDrawerFlag();
+  const shouldInjectToolbar = process.env.NODE_ENV === "development";
 
   return (
     <html
@@ -97,7 +101,7 @@ export default async function RootLayout({
           <NavigationProgress />
         </Suspense>
         <PokemonSpritePreferenceProvider>
-          <SearchHost defaultSeason={defaultSeason}>
+          <SearchHost defaultSeason={defaultSeason} aiDrawer={aiDrawer}>
             {children}
             <SiteFooter />
             <SnackbarHost />
@@ -105,6 +109,7 @@ export default async function RootLayout({
           </SearchHost>
         </PokemonSpritePreferenceProvider>
         <Analytics />
+        {shouldInjectToolbar ? <VercelToolbar /> : null}
       </body>
     </html>
   );

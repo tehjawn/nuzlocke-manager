@@ -34,6 +34,15 @@ type SearchContextValue = {
   registerSeason: (ctx: SearchSeasonContext) => number;
   /** Clear route overlay only if this owner still owns it. */
   unregisterSeason: (ownerId: number) => void;
+  /** Ask drawer open (#300) — independent of Jump palette. */
+  askOpen: boolean;
+  /** Seed / last handed-off question for Ask (null = open empty composer). */
+  askQuery: string | null;
+  /** Open Ask drawer; optional seed question submits once on open. */
+  openAsk: (query?: string) => void;
+  closeAsk: () => void;
+  /** Server-evaluated `ai-drawer` flag (Vercel Flags). */
+  aiDrawer: boolean;
 };
 
 const SearchContext = createContext<SearchContextValue | null>(null);
@@ -63,12 +72,17 @@ function seasonSearchFingerprint(season: SearchSeasonContext): string {
 export function SearchProvider({
   children,
   defaultSeason = null,
+  aiDrawer = false,
 }: {
   children: ReactNode;
   /** Active season index for global pages (home, about, login, …). */
   defaultSeason?: SearchSeasonContext | null;
+  /** Server-evaluated `ai-drawer` Vercel Flag. */
+  aiDrawer?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
+  const [askQuery, setAskQuery] = useState<string | null>(null);
   const [routeSeason, setRouteSeason] = useState<SearchSeasonContext | null>(
     null,
   );
@@ -114,8 +128,36 @@ export function SearchProvider({
     });
   }, []);
 
+  const closeAsk = useCallback(() => {
+    setAskOpen(false);
+    setAskQuery(null);
+  }, []);
+
+  const openAsk = useCallback((query?: string) => {
+    const trimmed = query?.trim() ?? "";
+    setOpenState(false);
+    setAskQuery(trimmed.length ? trimmed : null);
+    setAskOpen(true);
+  }, []);
+
+  const setOpen = useCallback((next: boolean) => {
+    setOpenState(next);
+    // Jump and Ask are mutually exclusive shells — opening Jump dismisses Ask.
+    if (next) {
+      setAskOpen(false);
+      setAskQuery(null);
+    }
+  }, []);
+
   const toggle = useCallback(() => {
-    setOpen((prev) => !prev);
+    setOpenState((prev) => {
+      const next = !prev;
+      if (next) {
+        setAskOpen(false);
+        setAskQuery(null);
+      }
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -123,7 +165,14 @@ export function SearchProvider({
       if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey)) return;
       if (e.isComposing) return;
       e.preventDefault();
-      setOpen((prev) => !prev);
+      setOpenState((prev) => {
+        const next = !prev;
+        if (next) {
+          setAskOpen(false);
+          setAskQuery(null);
+        }
+        return next;
+      });
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -139,8 +188,27 @@ export function SearchProvider({
       season,
       registerSeason,
       unregisterSeason,
+      askOpen,
+      askQuery,
+      openAsk,
+      closeAsk,
+      aiDrawer,
     }),
-    [open, toggle, results, index, season, registerSeason, unregisterSeason],
+    [
+      open,
+      setOpen,
+      toggle,
+      results,
+      index,
+      season,
+      registerSeason,
+      unregisterSeason,
+      askOpen,
+      askQuery,
+      openAsk,
+      closeAsk,
+      aiDrawer,
+    ],
   );
 
   return (

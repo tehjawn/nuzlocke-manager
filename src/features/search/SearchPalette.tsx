@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { isCannedAskQuestion } from "@/features/search/ask-canned";
 import { askEntityHints } from "@/features/search/ask-hints";
 import {
   buildSeasonDigestFromPlan,
@@ -123,7 +124,8 @@ function ResultIcon({ item }: { item: SearchResult }) {
 }
 
 export function SearchPalette() {
-  const { open, setOpen, results, index, season } = useSearch();
+  const { open, setOpen, results, index, season, openAsk, aiDrawer } =
+    useSearch();
   const router = useRouter();
   /**
    * Captured on open rather than via `usePathname`: under cacheComponents that
@@ -165,10 +167,10 @@ export function SearchPalette() {
     return () => cancelAnimationFrame(id);
   }, [open]);
 
-  // Closing mid-request should abort it, not leave an answer waiting behind.
+  // In-palette Ask only — drawer mode owns its own assist lifecycle.
   useEffect(() => {
-    if (!open) resetAssist();
-  }, [open, resetAssist]);
+    if (!aiDrawer && !open) resetAssist();
+  }, [aiDrawer, open, resetAssist]);
 
   useEffect(() => {
     if (fuseTimerRef.current) {
@@ -176,10 +178,6 @@ export function SearchPalette() {
       fuseTimerRef.current = null;
     }
     const ms = fuseDebounceMs(query);
-    if (ms === 0) {
-      setFuseQuery(query);
-      return;
-    }
     fuseTimerRef.current = setTimeout(() => {
       fuseTimerRef.current = null;
       setFuseQuery(query);
@@ -233,13 +231,10 @@ export function SearchPalette() {
       // cmdk can emit a non-string in some clear/IME paths — coerce so the
       // controlled input never renders the literal "undefined".
       const raw = typeof value === "string" ? value : "";
-      const next = raw.slice(0, MAX_SEARCH_QUERY_CHARS);
-      setQuery(next);
-      // A new query means the previous answer is stale — drop it immediately
-      // so the palette never shows an answer to a question you edited away.
-      if (assist.status !== "idle") resetAssist();
+      setQuery(raw.slice(0, MAX_SEARCH_QUERY_CHARS));
+      if (!aiDrawer && assist.status !== "idle") resetAssist();
     },
-    [assist.status, resetAssist],
+    [aiDrawer, assist.status, resetAssist],
   );
 
   const close = useCallback(() => {
@@ -276,19 +271,29 @@ export function SearchPalette() {
     return evaluateAskQuery(q, { entityHints });
   }, [skipFuzzyLive, trimmedQuery, fuseTrimmed, entityHints]);
 
+  const cannedAsk = aiDrawer && isCannedAskQuestion(trimmedQuery);
+
   /**
    * Ask is a fallback, never the default: only when the query clears the Ask
    * guard (question-like / season-anchored, not gibberish). Empty fuzzy hits
    * alone no longer unlock Ask — keyboard mash used to slip through.
+   * Canned orientation (drawer flag only) stays available when Gemini is down.
    */
-  const canAsk = !isAssistUnavailable() && askGuard.ok;
+  const canAsk =
+    cannedAsk || (!isAssistUnavailable() && askGuard.ok);
 
   const runAsk = useCallback(() => {
-    if (!trimmedQuery) return;
+    if (!trimmedQuery || !canAsk) return;
+
+    // Feature flag `ai-drawer`: hand off to the side rail and close Jump.
+    if (aiDrawer) {
+      openAsk(trimmedQuery);
+      return;
+    }
+
+    // Legacy: answer inside the centered Jump modal.
     const guard = evaluateAskQuery(trimmedQuery, { entityHints });
     if (!guard.ok) return;
-    // Pass 1 (instant): which slices the question needs.
-    // Pass 2 (still sync): pack only those into ≤8k — then the network Ask.
     const snapshot = season
       ? buildSeasonDigestFromPlan(
           season,
@@ -296,20 +301,25 @@ export function SearchPalette() {
         )
       : null;
     void ask(trimmedQuery, snapshot);
-  }, [ask, entityHints, season, trimmedQuery]);
+  }, [
+    aiDrawer,
+    ask,
+    canAsk,
+    entityHints,
+    openAsk,
+    season,
+    trimmedQuery,
+  ]);
 
-  // Trainers / Pokémon the answer names, matched client-side so the model never
-  // chooses a destination. Memorial rows are built only after an answer so Fuse
-  // stays living-party-only while typing.
   const relatedResults = useMemo(() => {
-    if (assist.status !== "answered") return [];
+    if (aiDrawer || assist.status !== "answered") return [];
     const pool = season
       ? [...results, ...buildSeasonMemorialResults(season)]
       : results;
-    return pickRelatedSearchResults(pool, assist.answer, assist.question);
-  }, [assist, results, season]);
+    return pickRelatedSearchResults(pool, assist.text, assist.question);
+  }, [aiDrawer, assist, results, season]);
 
-  const showingAssist = assist.status !== "idle";
+  const showingAssist = !aiDrawer && assist.status !== "idle";
   /** Live query drives layout; deferred query drives Fuse — avoids stale hits
    *  stacking under Suggestions when the box is cleared mid-defer. */
   const hasLiveQuery = Boolean(trimmedQuery);
@@ -326,9 +336,11 @@ export function SearchPalette() {
   const showEmpty =
     showHitList && !showSearchPending && displayHits.length === 0;
   const askIsPrimary = showAskLeading;
-  const askSubtitle = season
-    ? "Answered from this season’s board"
-    : "Open a challenge for season context";
+  const askSubtitle = cannedAsk
+    ? "Quick guide to this app"
+    : season
+      ? "Answered from this season’s board"
+      : "Open a challenge for season context";
 
   if (!open || typeof document === "undefined") return null;
 
@@ -339,8 +351,7 @@ export function SearchPalette() {
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.stopPropagation();
-          // Escape backs out of an answer first, so one stray Esc doesn't throw
-          // away the query you just asked about.
+          // Escape backs out of an in-palette answer first (legacy modal path).
           if (showingAssist) {
             resetAssist();
             return;
@@ -537,9 +548,7 @@ export function SearchPalette() {
                   move
                 </span>
                 <span
-                  className={
-                    askIsPrimary ? "inline" : "hidden sm:inline"
-                  }
+                  className={askIsPrimary ? "inline" : "hidden sm:inline"}
                 >
                   <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
                     ↵
@@ -553,6 +562,120 @@ export function SearchPalette() {
       </Command>
     </div>,
     document.body,
+  );
+}
+
+/** In-palette Ask answers (legacy path when `ai-drawer` is off). */
+function AssistPanel({
+  state,
+  related,
+  onBack,
+  onRetry,
+  onPickRelated,
+}: {
+  state: AssistState;
+  related: SearchResult[];
+  onBack: () => void;
+  onRetry: () => void;
+  onPickRelated: (item: SearchResult) => void;
+}) {
+  if (state.status === "idle") return null;
+
+  return (
+    <div className="px-1.5 py-1" aria-live="polite">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <p className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          {state.question}
+        </p>
+        <button
+          type="button"
+          onClick={onBack}
+          className="shrink-0 text-[11px] font-medium text-muted hover:text-ink"
+        >
+          Back
+        </button>
+      </div>
+
+      {state.status === "loading" ? (
+        <div
+          className="flex items-center gap-2 rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3 text-sm text-muted"
+          role="status"
+        >
+          <span className="flex gap-1" aria-hidden>
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="h-1.5 w-1.5 rounded-full bg-muted motion-safe:animate-[assist-dot_1s_ease-in-out_infinite]"
+                style={{ animationDelay: `${i * 0.16}s` }}
+              />
+            ))}
+          </span>
+          Reading the season board…
+        </div>
+      ) : null}
+
+      {state.status === "answered" ? (
+        <div className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm leading-relaxed text-ink motion-safe:animate-[search-panel-in_180ms_cubic-bezier(0.22,1,0.36,1)]">
+          {state.text.split(/\n+/).map((para, i) => (
+            <p key={i} className={i > 0 ? "mt-2" : undefined}>
+              {para}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {state.status === "error" ? (
+        <div
+          className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm text-ink"
+          role="alert"
+        >
+          <p>{state.error}</p>
+          {state.signIn ? (
+            <a
+              href="/login"
+              className="mt-1.5 inline-block text-xs font-semibold text-interactive hover:underline"
+            >
+              Go to sign in →
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-1.5 text-xs font-semibold text-interactive hover:underline"
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      ) : null}
+
+      {state.status === "answered" && related.length ? (
+        <div className="mt-2">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Jump to
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {related.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onPickRelated(item)}
+                className="pressable rounded-md border border-frame/70 bg-surface-2 px-2 py-1 text-xs font-medium text-ink hover:border-interactive/45"
+                title={item.subtitle || undefined}
+              >
+                {item.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {state.status === "answered" ? (
+        <p className="mt-2 text-[11px] leading-snug text-muted">
+          Generated from this season’s board — double-check anything that matters.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -618,119 +741,6 @@ function AskCommandGroup({
         </span>
       </Command.Item>
     </Command.Group>
-  );
-}
-
-function AssistPanel({
-  state,
-  related,
-  onBack,
-  onRetry,
-  onPickRelated,
-}: {
-  state: AssistState;
-  related: SearchResult[];
-  onBack: () => void;
-  onRetry: () => void;
-  onPickRelated: (item: SearchResult) => void;
-}) {
-  if (state.status === "idle") return null;
-
-  return (
-    <div className="px-1.5 py-1" aria-live="polite">
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <p className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
-          {state.question}
-        </p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="shrink-0 text-[11px] font-medium text-muted hover:text-ink"
-        >
-          Back
-        </button>
-      </div>
-
-      {state.status === "loading" ? (
-        <div
-          className="flex items-center gap-2 rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3 text-sm text-muted"
-          role="status"
-        >
-          <span className="flex gap-1" aria-hidden>
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="h-1.5 w-1.5 rounded-full bg-muted motion-safe:animate-[assist-dot_1s_ease-in-out_infinite]"
-                style={{ animationDelay: `${i * 0.16}s` }}
-              />
-            ))}
-          </span>
-          Reading the season board…
-        </div>
-      ) : null}
-
-      {state.status === "answered" ? (
-        <div className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm leading-relaxed text-ink motion-safe:animate-[search-panel-in_180ms_cubic-bezier(0.22,1,0.36,1)]">
-          {state.answer.split(/\n+/).map((para, i) => (
-            <p key={i} className={i > 0 ? "mt-2" : undefined}>
-              {para}
-            </p>
-          ))}
-        </div>
-      ) : null}
-
-      {state.status === "error" ? (
-        <div
-          className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm text-ink"
-          role="alert"
-        >
-          <p>{state.error}</p>
-          {state.signIn ? (
-            <a
-              href="/login"
-              className="mt-1.5 inline-block text-xs font-semibold text-interactive hover:underline"
-            >
-              Go to sign in →
-            </a>
-          ) : (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="mt-1.5 text-xs font-semibold text-interactive hover:underline"
-            >
-              Try again
-            </button>
-          )}
-        </div>
-      ) : null}
-
-      {state.status === "answered" && related.length ? (
-        <div className="mt-2">
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
-            Jump to
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {related.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onPickRelated(item)}
-                className="pressable rounded-md border border-frame/70 bg-surface-2 px-2 py-1 text-xs font-medium text-ink hover:border-interactive/45"
-                title={item.subtitle || undefined}
-              >
-                {item.title}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {state.status === "answered" ? (
-        <p className="mt-2 text-[11px] leading-snug text-muted">
-          Generated from this season’s board — double-check anything that matters.
-        </p>
-      ) : null}
-    </div>
   );
 }
 
