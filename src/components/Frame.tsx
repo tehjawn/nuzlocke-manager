@@ -32,6 +32,11 @@ type FrameProps = {
   onOpenChange?: (open: boolean) => void;
   /** Curated or custom TrainerCard background; omit / null = default frame fill. */
   cardBackgroundKey?: string | null;
+  /**
+   * Absolute chrome pinned to the frame shell (e.g. corner ribbon), outside
+   * the padded body so it sits flush with the rounded border.
+   */
+  overlay?: ReactNode;
   /** Spotlight target for the first-run onboarding tour. */
   "data-tour"?: string;
 };
@@ -58,6 +63,7 @@ export function Frame({
   open: openControlled,
   onOpenChange,
   cardBackgroundKey = null,
+  overlay = null,
   "data-tour": dataTour,
 }: FrameProps) {
   // React 19 DOM types no longer include defaultOpen on <details>; keep an
@@ -112,6 +118,7 @@ export function Frame({
         open={open}
         onToggle={handleToggle}
       >
+        {overlay}
         <summary className="gba-frame-title relative z-[1] flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base [&::-webkit-details-marker]:hidden">
           <span className="flex min-w-0 items-center gap-2">
             <span
@@ -137,6 +144,7 @@ export function Frame({
       style={style}
       className={shellClass}
     >
+      {overlay}
       {title ? (
         <header className="gba-frame-title relative z-[1] flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base">
           {/* min-w-0 without truncate: ReactNode titles (e.g. count suffixes) shouldn't ellipsis mid-number */}
