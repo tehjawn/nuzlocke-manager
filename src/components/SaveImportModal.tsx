@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import {
@@ -13,6 +13,11 @@ import { formatPlayTime } from "@/lib/gen3-save/playtime";
 import { displayActionError } from "@/lib/action-error-display";
 import type { PokemonSlot } from "@/lib/challenge-types";
 import { resolveMoveNames } from "@/lib/move-names";
+
+/** Cap matches server import proof limit (under server-action body size). */
+const MAX_SAVE_PROOF_BYTES = 3 * 1024 * 1024;
+/** Parse ceiling — party/box still work from large emulator dumps. */
+const MAX_SAVE_PARSE_BYTES = 32 * 1024 * 1024;
 
 export type SaveImportDraft = {
   pid: number;
@@ -45,8 +50,19 @@ export type SaveImportPayload = {
   applyMoney: boolean;
   playTimeSeconds: number | null;
   applyPlayTime: boolean;
+  /** Base64 of the parsed save — server re-parses for money/playtime. */
+  saveBytesBase64: string | null;
   safariZoneAreas: string[] | null;
 };
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  const chunk = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 type SaveImportModalProps = {
   open: boolean;
@@ -96,6 +112,7 @@ export function SaveImportModal({
   onClose,
   onApply,
 }: SaveImportModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [format, setFormat] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -117,10 +134,9 @@ export function SaveImportModal({
   const [playTimeSeconds, setPlayTimeSeconds] = useState<number | null>(null);
   const [applyPlayTime, setApplyPlayTime] = useState(false);
   const [playTimeReliable, setPlayTimeReliable] = useState(false);
+  const [saveBytes, setSaveBytes] = useState<Uint8Array | null>(null);
   const [safariZoneAreas, setSafariZoneAreas] = useState<string[] | null>(null);
   const [parsing, setParsing] = useState(false);
-
-  if (!open) return null;
 
   function reset() {
     setError(null);
@@ -141,15 +157,32 @@ export function SaveImportModal({
     setPlayTimeSeconds(null);
     setApplyPlayTime(false);
     setPlayTimeReliable(false);
+    setSaveBytes(null);
     setSafariZoneAreas(null);
     setParsing(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
+
+  // Modal stays mounted while closed; clear stale parse so reopen can't
+  // resubmit the previous save / playtime (issue #286).
+  useEffect(() => {
+    if (!open) reset();
+  }, [open]);
+
+  if (!open) return null;
 
   async function onFile(file: File | null) {
     if (!file) return;
+    if (file.size > MAX_SAVE_PARSE_BYTES) {
+      setError(
+        "That file is too large to be a Gen 3 save or emulator state. Expected under 32 MB.",
+      );
+      return;
+    }
     setParsing(true);
     setError(null);
     setSections(null);
+    setSaveBytes(null);
     try {
       const buf = new Uint8Array(await file.arrayBuffer());
       const result = await parsePokemonSaveAsync(buf);
@@ -157,6 +190,9 @@ export function SaveImportModal({
         setError(displayActionError(result.error));
         return;
       }
+      // Only keep bytes the server can re-accept for money/playtime proof.
+      const proofOk = buf.length <= MAX_SAVE_PROOF_BYTES;
+      setSaveBytes(proofOk ? buf : null);
       setFormat(result.format);
       setWarnings(result.warnings);
       setTrainerName(result.trainer?.name ?? null);
@@ -166,14 +202,14 @@ export function SaveImportModal({
       setReviveUsed(result.revive.reliable ? result.revive.used : null);
       setReviveReliable(result.revive.reliable);
       setApplyRevive(result.revive.reliable);
-      setMoney(result.money.reliable ? result.money.amount : null);
-      setMoneyReliable(result.money.reliable);
-      setApplyMoney(result.money.reliable);
-      setPlayTimeSeconds(
-        result.playTime.reliable ? result.playTime.totalSeconds : null,
-      );
-      setPlayTimeReliable(result.playTime.reliable);
-      setApplyPlayTime(result.playTime.reliable);
+      const moneyOk = proofOk && result.money.reliable;
+      setMoney(moneyOk ? result.money.amount : null);
+      setMoneyReliable(moneyOk);
+      setApplyMoney(moneyOk);
+      const playTimeOk = proofOk && result.playTime.reliable;
+      setPlayTimeSeconds(playTimeOk ? result.playTime.totalSeconds : null);
+      setPlayTimeReliable(playTimeOk);
+      setApplyPlayTime(playTimeOk);
       setSafariZoneAreas(
         result.safariZoneAreas.reliable ? result.safariZoneAreas.areas : null,
       );
@@ -250,7 +286,14 @@ export function SaveImportModal({
               !sections
             }
             className="pressable rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[var(--on-accent)] disabled:opacity-50"
-            onClick={() =>
+            onClick={() => {
+              const needsEconomyProof =
+                Boolean(applyMoney && moneyReliable && money != null) ||
+                Boolean(
+                  applyPlayTime &&
+                    playTimeReliable &&
+                    playTimeSeconds != null,
+                );
               onApply({
                 pokemon: included,
                 trainerName,
@@ -271,9 +314,13 @@ export function SaveImportModal({
                     playTimeReliable &&
                     playTimeSeconds != null,
                 ),
+                saveBytesBase64:
+                  needsEconomyProof && saveBytes
+                    ? uint8ToBase64(saveBytes)
+                    : null,
                 safariZoneAreas,
-              })
-            }
+              });
+            }}
           >
             {pending
               ? "Saving…"
@@ -312,6 +359,7 @@ export function SaveImportModal({
             Save file
           </span>
           <input
+            ref={fileInputRef}
             type="file"
             accept=".state,.sav,.srm,.ss0,.ss1,.ss2,.ss3,.ss4,.ss5,.ss6,.ss7,.ss8,.ss9,.s0,.s1,.s2,.s3,.s4,.s5,.s6,.s7,.s8,.s9,.sr0,.sr1,.sr2,.sr3,.sr4,.sr5,.sr6,.sr7,.sr8,.sr9,application/octet-stream"
             disabled={parsing || pending}

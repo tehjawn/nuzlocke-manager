@@ -1938,6 +1938,7 @@ export function TrainerBoard({
                 applyMoney: payload.applyMoney,
                 playTimeSeconds: payload.playTimeSeconds,
                 applyPlayTime: payload.applyPlayTime,
+                saveBytesBase64: payload.saveBytesBase64,
                 safariZoneAreas: payload.safariZoneAreas,
                 // Living + Encountered mirror this save. Memorial is season-wide:
                 // imported R.I.P. appends (deduped); prior graves are kept.
