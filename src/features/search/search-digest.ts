@@ -36,6 +36,11 @@ export type AskPlan = {
   focus: AskFocus;
   /** Handles mentioned in the question (matched against season trainers). */
   trainerHandles: string[];
+  /**
+   * "My team" ask but viewer has no board — do not fall back to packing the
+   * whole league roster (that contradicts the YOU: none line).
+   */
+  unresolvedPersonalRoster?: boolean;
   includeMons: boolean;
   includeFallenDetail: boolean;
   includeRules: boolean;
@@ -125,11 +130,13 @@ export function detectAskPlan(
   }
 
   // Personal ask but viewer has no board in this season — still roster-shaped
-  // so we don't answer with empty meta / Game Guide deflection.
+  // so we don't answer with empty meta / Game Guide deflection. Mark unresolved
+  // so pass 2 does not pack every other trainer as a stand-in for "my team".
   if (personalRoster) {
     return {
       focus: "roster",
       trainerHandles: selfHandle ? [selfHandle] : [],
+      unresolvedPersonalRoster: !selfHandle,
       includeMons: true,
       includeFallenDetail: true,
       includeRules: false,
@@ -239,7 +246,9 @@ function matchTrainerHandles(
     ].filter((a): a is string => Boolean(a && a.length >= 2));
 
     for (const alias of aliases) {
-      const a = alias.toLowerCase();
+      const a = alias
+        .replace(/[\u2018\u2019\u02BC]/g, "'")
+        .toLowerCase();
       // Word-boundary-ish: avoid matching "al" inside "total".
       const re = new RegExp(
         `(^|[^a-z0-9_])${escapeRegExp(a)}([^a-z0-9_]|$)`,
@@ -367,6 +376,8 @@ function sortTrainersForPlan(
   ctx: SearchSeasonContext,
   plan: AskPlan,
 ): SearchSeasonContext["trainers"] {
+  if (plan.unresolvedPersonalRoster) return [];
+
   const preferred = new Set(
     plan.trainerHandles.map((h) => h.toLowerCase()),
   );
@@ -511,7 +522,11 @@ export function buildSeasonDigestFromPlan(
     plan.focus === "roster" ||
     plan.focus === "full";
 
-  if (wantTrainers && ctx.trainers.length) {
+  if (
+    wantTrainers &&
+    !plan.unresolvedPersonalRoster &&
+    ctx.trainers.length
+  ) {
     const header =
       plan.includeMons
         ? "TRAINERS — handle | badges | living | fallen"
