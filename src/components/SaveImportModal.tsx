@@ -9,6 +9,7 @@ import {
   type SaveMonCategory,
 } from "@/lib/gen3-save";
 import { formatPokedollars } from "@/lib/gen3-save/money";
+import { formatPlayTime } from "@/lib/gen3-save/playtime";
 import { displayActionError } from "@/lib/action-error-display";
 import type { PokemonSlot } from "@/lib/challenge-types";
 import { resolveMoveNames } from "@/lib/move-names";
@@ -42,6 +43,8 @@ export type SaveImportPayload = {
   applyRevive: boolean;
   money: number | null;
   applyMoney: boolean;
+  playTimeSeconds: number | null;
+  applyPlayTime: boolean;
   safariZoneAreas: string[] | null;
 };
 
@@ -111,6 +114,9 @@ export function SaveImportModal({
   const [money, setMoney] = useState<number | null>(null);
   const [applyMoney, setApplyMoney] = useState(false);
   const [moneyReliable, setMoneyReliable] = useState(false);
+  const [playTimeSeconds, setPlayTimeSeconds] = useState<number | null>(null);
+  const [applyPlayTime, setApplyPlayTime] = useState(false);
+  const [playTimeReliable, setPlayTimeReliable] = useState(false);
   const [safariZoneAreas, setSafariZoneAreas] = useState<string[] | null>(null);
   const [parsing, setParsing] = useState(false);
 
@@ -132,6 +138,9 @@ export function SaveImportModal({
     setMoney(null);
     setApplyMoney(false);
     setMoneyReliable(false);
+    setPlayTimeSeconds(null);
+    setApplyPlayTime(false);
+    setPlayTimeReliable(false);
     setSafariZoneAreas(null);
     setParsing(false);
   }
@@ -160,6 +169,11 @@ export function SaveImportModal({
       setMoney(result.money.reliable ? result.money.amount : null);
       setMoneyReliable(result.money.reliable);
       setApplyMoney(result.money.reliable);
+      setPlayTimeSeconds(
+        result.playTime.reliable ? result.playTime.totalSeconds : null,
+      );
+      setPlayTimeReliable(result.playTime.reliable);
+      setApplyPlayTime(result.playTime.reliable);
       setSafariZoneAreas(
         result.safariZoneAreas.reliable ? result.safariZoneAreas.areas : null,
       );
@@ -229,7 +243,8 @@ export function SaveImportModal({
                 !applyTrainerName &&
                 !applyBadges &&
                 !applyRevive &&
-                !applyMoney) ||
+                !applyMoney &&
+                !applyPlayTime) ||
               pending ||
               parsing ||
               !sections
@@ -250,6 +265,12 @@ export function SaveImportModal({
                 applyMoney: Boolean(
                   applyMoney && moneyReliable && money != null,
                 ),
+                playTimeSeconds,
+                applyPlayTime: Boolean(
+                  applyPlayTime &&
+                    playTimeReliable &&
+                    playTimeSeconds != null,
+                ),
                 safariZoneAreas,
               })
             }
@@ -266,7 +287,7 @@ export function SaveImportModal({
           Upload a Modern Emerald save. Prefer Afterplay’s in-game export (
           <code className="text-ink">.sav</code> /{" "}
           <code className="text-ink">.srm</code>) — that’s the most stable
-          source for badges, revive, money, Day Care, and Pokédex encounters.
+          source for badges, revive, money, playtime, Day Care, and Pokédex encounters.
           Emulator states (
           <code className="text-ink">.state</code>,{" "}
           <code className="text-ink">.ss0</code>–
@@ -276,7 +297,7 @@ export function SaveImportModal({
           <code className="text-ink">.sr0</code>–
           <code className="text-ink">.sr9</code>
           ) still work for party/box/R.I.P. and usually encounters, but badges,
-          revive, and money may be unavailable. Party, box (including Day
+          revive, money, and playtime may be unavailable. Party, box (including Day
           Care), R.I.P., and Encountered are detected separately — uncheck
           anything you want to skip. Box Pokémon levels are derived from
           experience. Nature, ability, moves, IVs, and EVs are imported when
@@ -376,6 +397,20 @@ export function SaveImportModal({
                   Sync money
                   {moneyReliable && money != null
                     ? ` (${formatPokedollars(money)})`
+                    : " (unavailable — try a .sav/.srm export)"}
+                </span>
+              </label>
+              <label className="flex flex-wrap items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={applyPlayTime && playTimeReliable}
+                  disabled={!playTimeReliable || playTimeSeconds == null}
+                  onChange={(e) => setApplyPlayTime(e.target.checked)}
+                />
+                <span>
+                  Sync playtime
+                  {playTimeReliable && playTimeSeconds != null
+                    ? ` (${formatPlayTime(playTimeSeconds)})`
                     : " (unavailable — try a .sav/.srm export)"}
                 </span>
               </label>

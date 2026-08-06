@@ -125,7 +125,7 @@ export function EndRunModal({
         <ChoiceCard
           tone="danger"
           title="Start a new run"
-          body={`Ends this attempt and begins run ${runNumber + 1}. Clears Main Squad, Reserves, Encountered, and R.I.P. from the live board, resets badges and money, and refreshes your revive token. A history snapshot is saved first.`}
+          body={`Ends this attempt and begins run ${runNumber + 1}. Clears Main Squad, Reserves, Encountered, and R.I.P. from the live board, resets badges, money, and playtime, and refreshes your revive token. A history snapshot is saved first.`}
           action={
             <button
               type="button"

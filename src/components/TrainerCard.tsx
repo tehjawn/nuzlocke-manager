@@ -11,6 +11,7 @@ import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { ReviveToken } from "@/components/ReviveToken";
 import { StatusLine } from "@/components/StatusLine";
+import { formatPlayTime } from "@/lib/gen3-save/playtime";
 import { pokemonInSlot } from "@/lib/trainer-display";
 
 type TrainerCardProps = {
@@ -328,6 +329,9 @@ export function TrainerCard({
                     : ""}
                   {trainer.money != null
                     ? ` • $${trainer.money.toLocaleString("en-US")}`
+                    : ""}
+                  {trainer.playTimeSeconds != null
+                    ? ` • ${formatPlayTime(trainer.playTimeSeconds)}`
                     : ""}
                 </p>
                 <ReviveToken

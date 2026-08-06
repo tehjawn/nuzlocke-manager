@@ -13,6 +13,7 @@ import {
 } from "@/lib/activity-watermark";
 import { failAction } from "@/lib/action-error";
 import { getPrisma } from "@/lib/db";
+import { MAX_PLAY_TIME_SECONDS } from "@/lib/gen3-save/playtime";
 import {
   MAIN_PARTY_SIZE,
   firstOpenMainPartyIndex,
@@ -1045,7 +1046,8 @@ export async function startNewRunAction(input: {
       }
 
       // Clear the live board (party, box, encountered, R.I.P.). The state
-      // being replaced is already in board history; money resets with the run.
+      // being replaced is already in board history; money + playtime reset with
+      // the run.
       await tx.pokemonEntry.deleteMany({ where: { trainerId: trainer.id } });
       await tx.badgeProgress.updateMany({
         where: { trainerId: trainer.id },
@@ -1062,6 +1064,7 @@ export async function startNewRunAction(input: {
           reviveUsed: false,
           runEndedAt: null,
           money: 0,
+          playTimeSeconds: 0,
         },
       });
       await tx.activityEvent.create({
@@ -2595,6 +2598,14 @@ const ImportFromSaveSchema = z.object({
   applyRevive: z.boolean().default(false),
   money: z.number().int().min(0).max(999_999).optional().nullable(),
   applyMoney: z.boolean().default(false),
+  playTimeSeconds: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_PLAY_TIME_SECONDS)
+    .optional()
+    .nullable(),
+  applyPlayTime: z.boolean().default(false),
   safariZoneAreas: z.array(z.string().max(64)).max(6).optional().nullable(),
   /**
    * Which living / Encountered slots to overwrite from this import.
@@ -2849,6 +2860,13 @@ export async function importFromSaveAction(
         await tx.trainerProfile.update({
           where: { id: trainer.id },
           data: { money: data.money },
+        });
+      }
+
+      if (data.applyPlayTime && data.playTimeSeconds != null) {
+        await tx.trainerProfile.update({
+          where: { id: trainer.id },
+          data: { playTimeSeconds: data.playTimeSeconds },
         });
       }
 
