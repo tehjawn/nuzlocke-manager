@@ -10,7 +10,7 @@ import {
   challengeToSearchSeasonContext,
 } from "@/features/search";
 import { isInviteOnly } from "@/lib/challenge-access";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeMeta } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
 
 
@@ -23,7 +23,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   return { title: challenge ? `Join · ${challenge.name}` : "Join" };
 }
 
@@ -31,7 +31,7 @@ export default async function JoinPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const { gm } = await searchParams;
   const session = await auth();
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   if (!challenge) redirect("/challenges");
 
   const access = challenge.id

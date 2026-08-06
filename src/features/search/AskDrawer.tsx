@@ -47,7 +47,7 @@ export const ASK_RAIL_WIDTH = "min(26rem, 38vw)";
  * column gets right padding so content shifts left. Mobile: full-screen sheet.
  */
 export function AskChrome({ children }: { children: ReactNode }) {
-  const { askOpen } = useSearch();
+  const { askOpen, aiDrawer } = useSearch();
 
   useEffect(() => {
     if (!askOpen) {
@@ -58,6 +58,11 @@ export function AskChrome({ children }: { children: ReactNode }) {
     return () => document.body.removeAttribute("data-ask-rail");
   }, [askOpen]);
 
+  // The page column is unconditional so the root layout never has to know the
+  // flag: `ai-drawer` is resolved per-request, and gating the wrapper on it
+  // would drag the whole page tree out of the prerender (#313). The wrapper is
+  // inert on its own — padding only lands under `body[data-ask-rail]`, which
+  // only AskHost sets.
   return (
     <>
       <div
@@ -66,7 +71,7 @@ export function AskChrome({ children }: { children: ReactNode }) {
       >
         {children}
       </div>
-      <AskHost />
+      {aiDrawer ? <AskHost /> : null}
     </>
   );
 }

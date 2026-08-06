@@ -86,7 +86,39 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 }
 
-export async function HEAD(request: Request, context: RouteContext) {
-  const res = await GET(request, context);
-  return new Response(null, { status: res.status, headers: res.headers });
+export async function HEAD(_request: Request, context: RouteContext) {
+  const { path } = await context.params;
+  const parsed = parseShowdownSpritePath(path ?? []);
+  if (!parsed) {
+    return new Response(null, { status: 404 });
+  }
+
+  // Delegating to GET streamed the whole upstream image and then dropped the
+  // body on the floor. Ask upstream for headers only.
+  try {
+    const upstream = await fetch(parsed.upstreamUrl, {
+      method: "HEAD",
+      headers: UPSTREAM_HEADERS,
+      next: { revalidate: 604800 },
+    });
+    if (!upstream.ok) {
+      return new Response(null, {
+        status: upstream.status === 404 ? 404 : 502,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+    return new Response(null, {
+      status: 200,
+      headers: {
+        "Content-Type": upstream.headers.get("content-type") ?? "image/png",
+        "Cache-Control": CACHE_CONTROL,
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch {
+    return new Response(null, {
+      status: 502,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
 }

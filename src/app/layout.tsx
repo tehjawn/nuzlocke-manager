@@ -8,10 +8,10 @@ import { NavigationProgress } from "@/components/NavigationProgress";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SnackbarHost } from "@/components/Snackbar";
 import { CelebrationHost } from "@/features/fx/CelebrationHost";
+import { AiDrawerFlagGate } from "@/features/search/AiDrawerFlagGate";
 import { SearchHost } from "@/features/search/SearchHost";
 import { briefToSearchSeasonContext } from "@/features/search/search-season";
 import { PokemonSpritePreferenceProvider } from "@/features/preferences/PokemonSpritePreferenceProvider";
-import { aiDrawerFlag } from "@/flags";
 import { getDefaultSearchChallenge } from "@/lib/challenges";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -83,7 +83,6 @@ export default async function RootLayout({
   const defaultSeason = defaultChallenge
     ? briefToSearchSeasonContext(defaultChallenge)
     : null;
-  const aiDrawer = await aiDrawerFlag();
   const shouldInjectToolbar = process.env.NODE_ENV === "development";
 
   return (
@@ -101,7 +100,14 @@ export default async function RootLayout({
           <NavigationProgress />
         </Suspense>
         <PokemonSpritePreferenceProvider>
-          <SearchHost defaultSeason={defaultSeason} aiDrawer={aiDrawer}>
+          <SearchHost
+            defaultSeason={defaultSeason}
+            flagGate={
+              <Suspense fallback={null}>
+                <AiDrawerFlagGate />
+              </Suspense>
+            }
+          >
             {children}
             <SiteFooter />
             <SnackbarHost />

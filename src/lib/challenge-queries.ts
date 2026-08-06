@@ -67,10 +67,11 @@ export const activityPreviewInclude = {
   },
 };
 
+/** All three carry `sortOrder` and an index for it — order explicitly. */
 export const challengeMetaInclude = {
-  badges: true,
-  rules: true,
-  faqs: true,
+  badges: { orderBy: { sortOrder: "asc" } },
+  rules: { orderBy: { sortOrder: "asc" } },
+  faqs: { orderBy: { sortOrder: "asc" } },
 } as const;
 
 export type PokemonSlotFilter =
