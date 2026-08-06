@@ -123,13 +123,19 @@ function isUltraBond(input: {
   friendship: number | null | undefined;
   evTotal: number;
 }): boolean {
+  // Need both Best-friends floors, plus a true max on at least one axis.
+  // No friendship on file → cannot be ultra (gold can still use the EV stand-in).
   if (
-    input.friendship != null &&
-    input.friendship >= ULTRA_FRIENDSHIP_MIN
+    input.friendship == null ||
+    input.friendship < BONDED_FRIENDSHIP_MIN ||
+    input.evTotal < BONDED_EV_TOTAL
   ) {
-    return true;
+    return false;
   }
-  return input.evTotal >= ULTRA_EV_TOTAL;
+  return (
+    input.friendship >= ULTRA_FRIENDSHIP_MIN ||
+    input.evTotal >= ULTRA_EV_TOTAL
+  );
 }
 
 function isBonded(input: {
@@ -144,8 +150,9 @@ function isBonded(input: {
   ) {
     return true;
   }
-  // No friendship column (or below the gold bar) — near-max organic pool
-  // (or nature-helping cracked EVs) stands in for endgame care.
+  // No friendship column — near-max organic pool (or nature-helping cracked
+  // EVs) stands in for endgame care. Below the gold friendship bar with EVs
+  // on file stays trained unless ultra already fired.
   if (input.friendship == null) {
     return input.evTotal >= BONDED_EV_TOTAL || (input.natureHelps && input.cracked);
   }
@@ -156,12 +163,14 @@ function isBonded(input: {
  * Grade training / bond from EVs + nature fit + optional friendship.
  *
  * Top of the ladder:
- * - **ultra** (prismatic): friendship ≥ {@link ULTRA_FRIENDSHIP_MIN} **or**
- *   EV total ≥ {@link ULTRA_EV_TOTAL}
+ * - **ultra** (prismatic): both Best-friends floors (friendship ≥
+ *   {@link BONDED_FRIENDSHIP_MIN} **and** EV ≥ {@link BONDED_EV_TOTAL}), plus
+ *   a true max on at least one axis (friendship ≥ {@link ULTRA_FRIENDSHIP_MIN}
+ *   **or** EV ≥ {@link ULTRA_EV_TOTAL}). Requires friendship on file.
  * - **bonded** (gold): friendship ≥ {@link BONDED_FRIENDSHIP_MIN}, or (when
  *   friendship is missing) EV total ≥ {@link BONDED_EV_TOTAL} / nature+cracked
  *
- * Friendship-only rows (no EV spread) can still reach bonded / ultra.
+ * Friendship-only rows can reach bonded, but not ultra (no EV floor).
  */
 export function specimenTrainingTier(input: {
   evs?: StatSpread | null;
