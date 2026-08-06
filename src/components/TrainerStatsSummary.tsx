@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { formatPokedollars } from "@/lib/gen3-save/money";
+import { formatPlayTime } from "@/lib/gen3-save/playtime";
 
 type TrainerStatsSummaryProps = {
   caught: number;
@@ -13,6 +14,8 @@ type TrainerStatsSummaryProps = {
   /** Championship finishes this season. */
   completions: number;
   money: number | null;
+  /** Gen 3 playtime in whole seconds; null when never imported. */
+  playTimeSeconds: number | null;
   updatedAt: string | null;
 };
 
@@ -108,6 +111,15 @@ function MoneyIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
+function PlayTimeIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="M12 7.5v5l3 1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function UpdatedIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
@@ -127,6 +139,7 @@ export function TrainerStatsSummary({
   runEnded = false,
   completions,
   money,
+  playTimeSeconds,
   updatedAt,
 }: TrainerStatsSummaryProps) {
   const badgesComplete = badgesTotal > 0 && badgesEarned === badgesTotal;
@@ -168,6 +181,12 @@ export function TrainerStatsSummary({
       label: "Money",
       value: money != null ? formatPokedollars(money) : "—",
       icon: <MoneyIcon />,
+    },
+    {
+      label: "Playtime",
+      value:
+        playTimeSeconds != null ? formatPlayTime(playTimeSeconds) : "—",
+      icon: <PlayTimeIcon />,
     },
     {
       label: "Updated",

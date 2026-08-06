@@ -68,6 +68,8 @@ export type TrainerProfile = {
   runEnded: boolean;
   /** Last imported Pokédollars; null when never imported / unknown. */
   money: number | null;
+  /** Last imported Gen 3 playtime in whole seconds; null when never imported / unknown. */
+  playTimeSeconds: number | null;
   mainSquadLocked: boolean;
   sortOrder: number;
   userId: string | null;

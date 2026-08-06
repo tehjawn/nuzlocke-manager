@@ -31,6 +31,7 @@ import { EMPTY_EVS, EMPTY_IVS } from "@/lib/stats";
 import { levelFromExperienceForSpecies } from "./experience";
 import { looksLikeFlashSave, parseFlashSave } from "./flash";
 import { decryptGen3Money } from "./money";
+import { playTimeToSeconds } from "./playtime";
 import { decodeGen3Name, isValidGen3TrainerName } from "./text";
 import {
   BOX_MON_SIZE,
@@ -43,6 +44,7 @@ import {
   DAYCARE_MON_STRIDE,
   FLAG_BADGE01,
   FLAGS_AFTER_PARTY as MODERN_FLAGS_AFTER_PARTY,
+  MAX_PLAY_TIME_HOURS,
   MODERN_DEX_FLAG_BYTES,
   MODERN_NUM_SPECIES,
   MODERN_REVIVES_TOTAL,
@@ -65,6 +67,10 @@ import {
   SB1_REVIVES_USED_BYTE,
   SB1_SEEN1,
   SB1_TX_SETTINGS,
+  SB2_PLAY_TIME_HOURS,
+  SB2_PLAY_TIME_MINUTES,
+  SB2_PLAY_TIME_SECONDS,
+  SB2_PLAY_TIME_VBLANKS,
   SB2_TRAINER_ID,
   TX_RANDOM_CHAOS_BIT,
   TX_RANDOM_INCLUDE_LEGENDARIES_BIT,
@@ -133,6 +139,16 @@ export type ParsedSaveMoney = {
   reliable: boolean;
 };
 
+/** Wall-clock playtime from SaveBlock2 (pret playTimeHours…vBlanks). */
+export type ParsedSavePlayTime = {
+  /** Whole seconds: hours×3600 + minutes×60 + seconds (vBlanks ignored). */
+  totalSeconds: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  reliable: boolean;
+};
+
 /** Modern Emerald Safari-area claims from the Nuzlocke encounter flagset. */
 export type ParsedSaveSafariZoneAreas = {
   areas: string[];
@@ -187,6 +203,7 @@ export type ParseSaveResult =
       badges: ParsedSaveBadges;
       revive: ParsedSaveRevive;
       money: ParsedSaveMoney;
+      playTime: ParsedSavePlayTime;
       safariZoneAreas: ParsedSaveSafariZoneAreas;
       randomizer: ParsedSaveRandomizer;
       encounterFlags: ParsedSaveEncounterFlags;
@@ -198,6 +215,13 @@ export type ParseSaveResult =
   | { ok: false; error: string };
 
 const EMPTY_MONEY: ParsedSaveMoney = { amount: 0, reliable: false };
+const EMPTY_PLAY_TIME: ParsedSavePlayTime = {
+  totalSeconds: 0,
+  hours: 0,
+  minutes: 0,
+  seconds: 0,
+  reliable: false,
+};
 const EMPTY_SAFARI_ZONE_AREAS: ParsedSaveSafariZoneAreas = {
   areas: [],
   reliable: false,
@@ -1604,6 +1628,52 @@ function readMoney(
 }
 
 /**
+ * Read pret SaveBlock2 playtime fields. Requires a coherent SB2 head (name +
+ * gender) so ghost scans don't invent clocks from random EWRAM.
+ */
+function readPlayTime(sb2: Uint8Array): ParsedSavePlayTime {
+  if (sb2.length < SB2_PLAY_TIME_VBLANKS + 1) return EMPTY_PLAY_TIME;
+  const name = decodeGen3Name(sb2.subarray(0, 8));
+  if (!name || !isValidGen3TrainerName(name)) return EMPTY_PLAY_TIME;
+  const genderByte = sb2[8] ?? 0xff;
+  if (genderByte > 1) return EMPTY_PLAY_TIME;
+
+  const hours = new DataView(
+    sb2.buffer,
+    sb2.byteOffset + SB2_PLAY_TIME_HOURS,
+    2,
+  ).getUint16(0, true);
+  const minutes = sb2[SB2_PLAY_TIME_MINUTES] ?? 0xff;
+  const seconds = sb2[SB2_PLAY_TIME_SECONDS] ?? 0xff;
+  const vblanks = sb2[SB2_PLAY_TIME_VBLANKS] ?? 0xff;
+  if (
+    hours > MAX_PLAY_TIME_HOURS ||
+    minutes >= 60 ||
+    seconds >= 60 ||
+    vblanks >= 60
+  ) {
+    return EMPTY_PLAY_TIME;
+  }
+  return {
+    totalSeconds: playTimeToSeconds(hours, minutes, seconds),
+    hours,
+    minutes,
+    seconds,
+    reliable: true,
+  };
+}
+
+function readPlayTimeFromEmbeddedFlash(
+  source: Uint8Array,
+): ParsedSavePlayTime {
+  const flash = extractEmbeddedFlash(source);
+  if (!flash) return EMPTY_PLAY_TIME;
+  const blocks = parseFlashSave(flash);
+  if (!blocks) return EMPTY_PLAY_TIME;
+  return readPlayTime(blocks.saveBlock2);
+}
+
+/**
  * Locate SaveBlock2 candidates for money decryption. ASLR .state dumps contain
  * multiple trainer-name ghosts — callers must try each key against SB1.money.
  */
@@ -1653,29 +1723,67 @@ function readMoneyFromEwram(
   trainerName?: string | null,
   mode: SpeciesIdMode = "modern",
 ): ParsedSaveMoney {
-  if (sb1Base + SB1_MONEY + 4 > bytes.length) return EMPTY_MONEY;
+  const hit = findEwramMoneyHit(bytes, sb1Base, trainerName, mode);
+  return hit ? { amount: hit.amount, reliable: true } : EMPTY_MONEY;
+}
+
+/**
+ * Locate the EWRAM SaveBlock2 whose encryption key decrypts SB1.money into
+ * range. Shared by money + playtime so both fields come from the same live
+ * block (name-only SB2 ghosts are common in ASLR dumps).
+ */
+function findEwramMoneyHit(
+  bytes: Uint8Array,
+  sb1Base: number,
+  trainerName?: string | null,
+  mode: SpeciesIdMode = "modern",
+): { amount: number; sb2Base: number } | null {
+  if (sb1Base + SB1_MONEY + 4 > bytes.length) return null;
   const enc = new DataView(
     bytes.buffer,
     bytes.byteOffset + sb1Base + SB1_MONEY,
     4,
   ).getUint32(0, true);
-  const sb2Bases = findSaveBlock2Offsets(bytes, trainerName, mode);
+  const tryBases = (bases: number[]) => {
+    for (const sb2Base of bases) {
+      for (const keyOff of encryptionKeyOffsets(mode)) {
+        if (sb2Base + keyOff + 4 > bytes.length) continue;
+        const key = new DataView(
+          bytes.buffer,
+          bytes.byteOffset + sb2Base + keyOff,
+          4,
+        ).getUint32(0, true);
+        if (key === 0) continue;
+        const amount = decryptGen3Money(enc, key);
+        if (amount != null) return { amount, sb2Base };
+      }
+    }
+    return null;
+  };
   // A wrong SB2 key almost always decrypts outside 0…MAX_MONEY; the matching
   // live/flash pair is typically unique for a given SB1.money word.
-  for (const sb2Base of sb2Bases) {
-    for (const keyOff of encryptionKeyOffsets(mode)) {
-      if (sb2Base + keyOff + 4 > bytes.length) continue;
-      const key = new DataView(
-        bytes.buffer,
-        bytes.byteOffset + sb2Base + keyOff,
-        4,
-      ).getUint32(0, true);
-      if (key === 0) continue;
-      const amount = decryptGen3Money(enc, key);
-      if (amount != null) return { amount, reliable: true };
-    }
+  return (
+    tryBases(findSaveBlock2Offsets(bytes, trainerName, mode)) ??
+    (trainerName ? tryBases(findSaveBlock2Offsets(bytes, null, mode)) : null)
+  );
+}
+
+/**
+ * Playtime from the same EWRAM SB2 that decrypts money — not the first
+ * name-matching ghost (those are often zeroed stubs).
+ */
+function readPlayTimeFromEwram(
+  bytes: Uint8Array,
+  sb1Base: number,
+  trainerName?: string | null,
+  mode: SpeciesIdMode = "modern",
+): ParsedSavePlayTime {
+  const hit = findEwramMoneyHit(bytes, sb1Base, trainerName, mode);
+  if (!hit) return EMPTY_PLAY_TIME;
+  if (hit.sb2Base + SB2_PLAY_TIME_VBLANKS + 1 > bytes.length) {
+    return EMPTY_PLAY_TIME;
   }
-  return EMPTY_MONEY;
+  return readPlayTime(bytes.subarray(hit.sb2Base));
 }
 
 /**
@@ -1779,6 +1887,7 @@ function classifyEwram(
         badges: { earnedKeys: [], reliable: false },
         revive: EMPTY_REVIVE,
         money: EMPTY_MONEY,
+        playTime: EMPTY_PLAY_TIME,
         safariZoneAreas: EMPTY_SAFARI_ZONE_AREAS,
         randomizer: EMPTY_RANDOMIZER,
         encounterFlags: EMPTY_ENCOUNTER_FLAGS,
@@ -1898,6 +2007,7 @@ function classifyEwram(
       ? readReviveToken(bytes, partyBase, speciesMode)
       : EMPTY_REVIVE;
   let money = EMPTY_MONEY;
+  let playTime = EMPTY_PLAY_TIME;
   let safariZoneAreas =
     speciesMode === "modern"
       ? readSafariZoneAreas(bytes, partyBase, speciesMode)
@@ -1923,6 +2033,12 @@ function classifyEwram(
         );
         encounterFlags = readEncounterFlagsAbsolute(bytes, meta.sb1);
         money = readMoneyFromEwram(
+          bytes,
+          meta.sb1,
+          trainer?.name ?? null,
+          speciesMode,
+        );
+        playTime = readPlayTimeFromEwram(
           bytes,
           meta.sb1,
           trainer?.name ?? null,
@@ -2009,6 +2125,14 @@ function classifyEwram(
     }
   }
 
+  if (!playTime.reliable) {
+    const fromFlash = readPlayTimeFromEmbeddedFlash(flashSource ?? bytes);
+    if (fromFlash.reliable) {
+      playTime = fromFlash;
+      warnings.push("Playtime read from embedded flash sectors in save state.");
+    }
+  }
+
   if (!badges.reliable) {
     warnings.push("Could not reliably read gym badge flags from this save.");
   } else if (badges.earnedKeys.length === 0) {
@@ -2088,6 +2212,7 @@ function classifyEwram(
     badges,
     revive,
     money,
+    playTime,
     safariZoneAreas,
     randomizer,
     encounterFlags,
@@ -2241,6 +2366,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
       ? readEncounterFlagsAbsolute(sb1, 0)
       : EMPTY_ENCOUNTER_FLAGS;
   const money = readMoney(sb1, sb2, speciesMode);
+  const playTime = readPlayTime(sb2);
 
   const partyParsed = partyLiving.map((m) => toParsed(m, "party", speciesMode));
   const boxParsed = box.map((m) => toParsed(m, "box", speciesMode));
@@ -2297,6 +2423,7 @@ function classifyFlash(buf: Uint8Array): ParseSaveResult | null {
     badges,
     revive,
     money,
+    playTime,
     safariZoneAreas,
     randomizer,
     encounterFlags,

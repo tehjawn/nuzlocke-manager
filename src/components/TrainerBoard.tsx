@@ -601,7 +601,7 @@ export function TrainerBoard({
   const [runEndedOverride, setRunEndedOverride] = useState<boolean | null>(null);
 
   // Include slot/partyIndex — wipe/reset clear or rewrite the board.
-  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.completionCount}|${trainer.runEnded}|${trainer.mainSquadLocked}|${trainer.money ?? ""}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}|${encourageImportSave ? 1 : 0}`;
+  const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.completionCount}|${trainer.runEnded}|${trainer.mainSquadLocked}|${trainer.money ?? ""}|${trainer.playTimeSeconds ?? ""}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}|${encourageImportSave ? 1 : 0}`;
   const [seenStamp, setSeenStamp] = useState(serverStamp);
 
   /** Optimistic board after wipe/reset until RSC refresh lands. */
@@ -611,6 +611,7 @@ export function TrainerBoard({
     pokemon: PokemonEntry[];
     mainSquadLocked: boolean;
     money: number | null;
+    playTimeSeconds: number | null;
   } | null>(null);
   /** Remount badge editor to drop pending debounced writes before wipe. */
   const [badgeEditorKey, setBadgeEditorKey] = useState(0);
@@ -683,15 +684,16 @@ export function TrainerBoard({
 
     // Keep wipe/reset optimism until the RSC payload reflects the operation.
     // Both clear the live board (including R.I.P.). Wipe also bumps wipeCount
-    // and zeros money. Avoid wipeCount !== so a server count ahead of optimism
-    // cannot pin a stale override.
+    // and zeros money + playtime. Avoid wipeCount !== so a server count ahead of
+    // optimism cannot pin a stale override.
     const wipeOrResetInFlight =
       boardOverride != null &&
       (boardOverride.kind === "reset"
         ? trainer.pokemon.length > 0
         : trainer.wipeCount < boardOverride.wipeCount ||
           trainer.pokemon.length > 0 ||
-          (trainer.money ?? 0) !== 0);
+          (trainer.money ?? 0) !== 0 ||
+          (trainer.playTimeSeconds ?? 0) !== 0);
 
     setCommitted({
       handle: trainer.handle,
@@ -735,12 +737,17 @@ export function TrainerBoard({
     (runEndedOverride === true || trainer.mainSquadLocked);
   const boardMoney =
     boardOverride != null ? boardOverride.money : trainer.money;
+  const boardPlayTimeSeconds =
+    boardOverride != null
+      ? boardOverride.playTimeSeconds
+      : trainer.playTimeSeconds;
   const boardTrainer = {
     ...trainer,
     pokemon: boardPokemon,
     wipeCount,
     mainSquadLocked,
     money: boardMoney,
+    playTimeSeconds: boardPlayTimeSeconds,
   };
 
   const championshipEarned = hasBeatenChampionship(earnedBadgeKeys);
@@ -976,7 +983,7 @@ export function TrainerBoard({
       description: (
         <>
           Clears Main Squad, Reserves, Encountered, and R.I.P. on this board,
-          resets badges and money to 0, and refreshes your revive token for the
+          resets badges, money, and playtime to 0, and refreshes your revive token for the
           next run. Profile (name, avatar, backdrops, status) stays. Locked Main
           Squad unlocks so you can rebuild.{" "}
           {runEnded
@@ -1001,6 +1008,7 @@ export function TrainerBoard({
       pokemon: runEnded ? [] : memorialPokemonAfterWipe(boardPokemon, nextWipe),
       mainSquadLocked: false,
       money: 0,
+      playTimeSeconds: 0,
     });
     setRunEndedOverride(false);
     setReviveUsed(false);
@@ -1054,6 +1062,7 @@ export function TrainerBoard({
       pokemon: [],
       mainSquadLocked: false,
       money: trainer.money,
+      playTimeSeconds: trainer.playTimeSeconds,
     });
     setCommitted((prev) => ({
       ...prev,
@@ -1749,6 +1758,7 @@ export function TrainerBoard({
               runEnded={runEnded}
               completions={completionCount}
               money={boardTrainer.money}
+              playTimeSeconds={boardTrainer.playTimeSeconds}
               updatedAt={trainer.updatedAt}
             />
           </Frame>
@@ -1941,6 +1951,8 @@ export function TrainerBoard({
                 applyRevive: payload.applyRevive,
                 money: payload.money,
                 applyMoney: payload.applyMoney,
+                playTimeSeconds: payload.playTimeSeconds,
+                applyPlayTime: payload.applyPlayTime,
                 safariZoneAreas: payload.safariZoneAreas,
                 // Living + Encountered mirror this save. Memorial is season-wide:
                 // imported R.I.P. appends (deduped); prior graves are kept.

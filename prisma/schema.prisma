@@ -262,6 +262,8 @@ model TrainerProfile {
   runEndedAt      DateTime?
   /// Last imported Pokédollars from Gen 3 save (null = unknown / never imported).
   money           Int?
+  /// Last imported Gen 3 playtime in whole seconds (null = unknown / never imported).
+  playTimeSeconds Int?
   mainSquadLocked Boolean  @default(false)
   sortOrder       Int      @default(0)
   /// Set when the player finishes /new-trainer ("I'm ready!"). Null = still in intro.

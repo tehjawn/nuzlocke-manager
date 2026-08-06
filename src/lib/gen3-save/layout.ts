@@ -114,6 +114,16 @@ export const SB2_PLAYER_NAME = 0x00;
 export const SB2_PLAYER_GENDER = 0x08;
 export const SB2_TRAINER_ID = 0x0a;
 /**
+ * pret `SaveBlock2.playTimeHours` (u16) then minutes/seconds/vBlanks (u8 each).
+ * Head-of-block layout matches vanilla Emerald and Modern Emerald.
+ */
+export const SB2_PLAY_TIME_HOURS = 0x0e;
+export const SB2_PLAY_TIME_MINUTES = 0x10;
+export const SB2_PLAY_TIME_SECONDS = 0x11;
+export const SB2_PLAY_TIME_VBLANKS = 0x12;
+/** pret `MAX_PLAY_TIME` — hours counter soft-cap in Gen 3. */
+export const MAX_PLAY_TIME_HOURS = 999;
+/**
  * XOR key for money / coins / encrypted bag fields.
  * Vanilla/Crest pokeemerald: offsetof(SaveBlock2, encryptionKey) == 0xAC.
  * Modern Emerald inserts ~0x10 bytes before the key (confirmed on Afterplay

@@ -59,6 +59,7 @@ type DbChallenge = {
     completionCount?: number;
     runEndedAt?: Date | null;
     money?: number | null;
+    playTimeSeconds?: number | null;
     safariZoneAreas?: string[];
     safariZoneAreasReliable?: boolean;
     activeRunId: string | null;
@@ -240,6 +241,7 @@ export function mapDbTrainer(
     completionCount: trainer.completionCount ?? 0,
     runEnded: trainer.runEndedAt != null,
     money: trainer.money ?? null,
+    playTimeSeconds: trainer.playTimeSeconds ?? null,
     mainSquadLocked: trainer.mainSquadLocked,
     sortOrder: trainer.sortOrder,
     userId: trainer.userId,

@@ -7,6 +7,7 @@ export {
   type ParsedSaveRevive,
   type ParsedSaveEncounterFlags,
   type ParsedSaveMoney,
+  type ParsedSavePlayTime,
   type ParsedSaveRandomizer,
   type ParsedSaveSafariZoneAreas,
   type ParseSaveResult,
