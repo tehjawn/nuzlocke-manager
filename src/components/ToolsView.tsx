@@ -17,6 +17,8 @@ import {
   toolsHref,
   toolsHubHref,
   type BountyMode,
+  type MarketsMode,
+  type MarketsSort,
   type PlannerMode,
   type PokedexMode,
   type ToolsId,
@@ -43,6 +45,8 @@ type ToolsViewProps = {
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
   initialPokedexMode?: PokedexMode | null;
+  initialMarketsMode?: MarketsMode | null;
+  initialMarketsSort?: MarketsSort | null;
 };
 
 export function ToolsView({
@@ -59,6 +63,8 @@ export function ToolsView({
   initialBountyMode = null,
   initialPlannerMode = null,
   initialPokedexMode = null,
+  initialMarketsMode = null,
+  initialMarketsSort = null,
 }: ToolsViewProps) {
   const searchParams = useSearchParams();
   const tool =
@@ -87,6 +93,8 @@ export function ToolsView({
       initialBountyMode={initialBountyMode}
       initialPlannerMode={initialPlannerMode}
       initialPokedexMode={initialPokedexMode}
+      initialMarketsMode={initialMarketsMode}
+      initialMarketsSort={initialMarketsSort}
     />
   );
 }
@@ -161,7 +169,7 @@ const TOOL_BLURBS: Record<WorkspaceTool, (challengeName: string) => string> = {
   bounty: (name) =>
     `Who owns, who's seen, who's cornered a whole line — and every Pokémon on a board — in ${name}.`,
   markets: (name) =>
-    `Crowd Survive / Die takes across living party and box mons in ${name} — then who called it when they fall or clear.`,
+    `Crowd Survive / Die floor for ${name} — hottest races, contested splits, your book, and who called it.`,
   planner: (name) =>
     `Draft a Main of 6 and check coverage, defensive holes, and League prep for ${name}.`,
   chart: () =>
@@ -182,6 +190,8 @@ function ToolWorkspace({
   initialBountyMode,
   initialPlannerMode,
   initialPokedexMode,
+  initialMarketsMode,
+  initialMarketsSort,
 }: {
   slug: string;
   challengeName: string;
@@ -196,6 +206,8 @@ function ToolWorkspace({
   initialBountyMode?: BountyMode | null;
   initialPlannerMode?: PlannerMode | null;
   initialPokedexMode?: PokedexMode | null;
+  initialMarketsMode?: MarketsMode | null;
+  initialMarketsSort?: MarketsSort | null;
 }) {
   const meta = TOOLS_CATALOG.find((t) => t.id === tool)!;
   const hubHref = toolsHubHref(slug);
@@ -277,6 +289,8 @@ function ToolWorkspace({
           trainers={trainers}
           enabled={survivalMarketsEnabled !== false}
           viewerUserId={viewerUserId}
+          initialMode={initialMarketsMode}
+          initialSort={initialMarketsSort}
         />
       ) : null}
 

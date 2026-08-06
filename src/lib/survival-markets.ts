@@ -197,11 +197,15 @@ export async function listSurvivalMarketsForChallenge(input: {
       pokedexId: true,
       isShiny: true,
       resolvedAt: true,
+      updatedAt: true,
       votes: {
         select: {
           prediction: true,
           userId: true,
+          comment: true,
+          updatedAt: true,
         },
+        orderBy: { updatedAt: "desc" },
       },
     },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
@@ -222,6 +226,9 @@ export async function listSurvivalMarketsForChallenge(input: {
     const mine = input.viewerUserId
       ? row.votes.find((v) => v.userId === input.viewerUserId)
       : undefined;
+    const lastComment =
+      row.votes.find((v) => Boolean(v.comment?.trim()))?.comment?.trim() ??
+      null;
     return {
       id: row.id,
       status: row.status,
@@ -235,6 +242,8 @@ export async function listSurvivalMarketsForChallenge(input: {
       total: counts.total,
       survivePct: counts.survivePct,
       resolvedAt: row.resolvedAt?.toISOString() ?? null,
+      updatedAt: row.updatedAt.toISOString(),
+      lastComment,
       myPrediction: mine?.prediction ?? null,
       trainer: {
         id: row.trainerId,

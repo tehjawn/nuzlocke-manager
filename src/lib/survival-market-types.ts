@@ -71,6 +71,10 @@ export type SurvivalMarketListItem = {
   total: number;
   survivePct: number;
   resolvedAt: string | null;
+  /** Market row touch time — vote cast / resolve / open. */
+  updatedAt: string;
+  /** Latest non-empty hot take, if any — tile teaser (#344). */
+  lastComment: string | null;
   myPrediction: SurvivalPrediction | null;
   trainer: { id: string; handle: string };
 };

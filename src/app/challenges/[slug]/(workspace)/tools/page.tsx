@@ -15,6 +15,8 @@ import {
   isLegacyCompareUrl,
   legacyCompareHref,
   parseBountyMode,
+  parseMarketsMode,
+  parseMarketsSort,
   parsePlannerMode,
   parsePokedexMode,
   parseStatsSection,
@@ -34,6 +36,7 @@ type PageProps = {
     id?: string;
     chapter?: string;
     mode?: string;
+    sort?: string;
     section?: string;
   }>;
 };
@@ -69,7 +72,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     searchParams,
     auth(),
   ]);
-  const { tool, tab, a, b, id, mode, section } = sp;
+  const { tool, tab, a, b, id, mode, section, sort } = sp;
   if (isLegacyCompareUrl({ a, b, tab, tool })) {
     redirect(legacyCompareHref(slug));
   }
@@ -115,6 +118,12 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     initialTool === "planner" ? parsePlannerMode(mode) : null;
   const initialPokedexMode =
     initialTool === "pokedex" ? parsePokedexMode(mode) : null;
+  const initialMarketsMode =
+    initialTool === "markets" ? parseMarketsMode(mode) : null;
+  const initialMarketsSort =
+    initialTool === "markets"
+      ? parseMarketsSort(sort, parseMarketsMode(mode))
+      : null;
 
   return (
     <Suspense
@@ -134,6 +143,8 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         initialBountyMode={initialBountyMode}
         initialPlannerMode={initialPlannerMode}
         initialPokedexMode={initialPokedexMode}
+        initialMarketsMode={initialMarketsMode}
+        initialMarketsSort={initialMarketsSort}
       />
     </Suspense>
   );

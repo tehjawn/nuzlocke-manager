@@ -68,7 +68,7 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
     navLabel: "Crowd takes",
     tone: "warn",
     blurb:
-      "Season-wide survival polls — weigh in on living party and box mons, then see who called it when they fall or clear.",
+      "Prediction-market floor — contested races, your book, and who called it when they fall or clear.",
   },
   {
     id: "chart",
@@ -212,6 +212,65 @@ export function parsePokedexMode(
 ): PokedexMode {
   if (raw === "tiers" || raw === "competitive") return raw;
   return "briefing";
+}
+
+/**
+ * Survive/Die Tools lenses (#344). Floor = open drama; Settled = resolution
+ * payoff; Book = viewer’s open takes + record.
+ */
+export type MarketsMode = "floor" | "settled" | "book";
+
+export function parseMarketsMode(
+  raw: string | null | undefined,
+): MarketsMode {
+  if (raw === "settled" || raw === "book") return raw;
+  // Legacy Open/Resolved/All tabs + unknown → Floor.
+  return "floor";
+}
+
+/**
+ * Sort presets per markets lens. Shared string union so URL `sort=` stays one
+ * key; each mode only offers its own subset in the UI.
+ */
+export type MarketsSort =
+  | "hottest"
+  | "contested"
+  | "longshots"
+  | "fresh"
+  | "survive"
+  | "die"
+  | "trainer"
+  | "alpha"
+  | "resolved"
+  | "upsets"
+  | "voted"
+  | "hits"
+  | "misses";
+
+export function parseMarketsSort(
+  raw: string | null | undefined,
+  mode: MarketsMode = "floor",
+): MarketsSort {
+  const allowed: Record<MarketsMode, ReadonlyArray<MarketsSort>> = {
+    floor: [
+      "hottest",
+      "contested",
+      "longshots",
+      "fresh",
+      "survive",
+      "die",
+      "trainer",
+      "alpha",
+    ],
+    settled: ["resolved", "upsets", "voted", "hits", "misses", "alpha"],
+    book: ["hottest", "resolved", "hits", "misses", "alpha"],
+  };
+  if (raw && (allowed[mode] as readonly string[]).includes(raw)) {
+    return raw as MarketsSort;
+  }
+  if (mode === "settled") return "resolved";
+  if (mode === "book") return "hottest";
+  return "hottest";
 }
 
 /**
