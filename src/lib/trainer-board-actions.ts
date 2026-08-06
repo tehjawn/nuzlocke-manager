@@ -28,9 +28,3 @@ export const TRAINER_BOARD_OVERFLOW_ACTIONS: readonly TrainerBoardActionKey[] = 
   "endRun",
   "reset",
 ];
-
-/** Full catalog order (primary then overflow). Prefer the split lists above. */
-export const TRAINER_BOARD_ACTION_ORDER: readonly TrainerBoardActionKey[] = [
-  ...TRAINER_BOARD_PRIMARY_ACTIONS,
-  ...TRAINER_BOARD_OVERFLOW_ACTIONS,
-];

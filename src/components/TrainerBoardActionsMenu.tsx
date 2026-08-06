@@ -150,6 +150,7 @@ export function TrainerBoardActionsMenu({
           >
             {items.map((item, index) => {
               const danger = item.tone === "danger";
+              const itemDisabled = Boolean(item.disabled);
               return (
                 <button
                   key={item.key}
@@ -159,17 +160,24 @@ export function TrainerBoardActionsMenu({
                   type="button"
                   role="menuitem"
                   title={item.title}
-                  disabled={item.disabled}
+                  // Native `disabled` drops focus; APG menus keep items
+                  // focusable via aria-disabled so roving tabindex still works.
+                  aria-disabled={itemDisabled || undefined}
                   tabIndex={index === rovingIndex ? 0 : -1}
                   onClick={() => {
-                    if (item.disabled) return;
+                    if (itemDisabled) return;
                     dismiss();
                     item.onClick();
                   }}
-                  className={`relative z-[1] flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium focus-visible:outline-none disabled:opacity-60 ${
+                  onKeyDown={(event) => {
+                    if (!itemDisabled) return;
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                  }}
+                  className={`relative z-[1] flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium focus-visible:outline-none aria-disabled:opacity-60 ${
                     danger
-                      ? "text-danger hover:bg-danger/10 focus-visible:bg-danger/10"
-                      : "hover:bg-interactive-soft/50 focus-visible:bg-interactive-soft/50"
+                      ? "text-danger hover:bg-danger/10 focus-visible:bg-danger/10 aria-disabled:hover:bg-transparent"
+                      : "hover:bg-interactive-soft/50 focus-visible:bg-interactive-soft/50 aria-disabled:hover:bg-transparent"
                   }`}
                 >
                   <span

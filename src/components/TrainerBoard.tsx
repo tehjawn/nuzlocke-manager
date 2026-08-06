@@ -1301,7 +1301,12 @@ export function TrainerBoard({
   ).filter(Boolean);
 
   const ripReviveStatus = !isDemo ? (
-    <ReviveToken used={reviveUsed} size="sm" />
+    <>
+      {reviveSave.status.kind !== "idle" ? (
+        <SaveStatus status={reviveSave.status} />
+      ) : null}
+      <ReviveToken used={reviveUsed} size="sm" />
+    </>
   ) : null;
 
   return (
