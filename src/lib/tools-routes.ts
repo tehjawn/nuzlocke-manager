@@ -8,7 +8,8 @@ export type ToolsId =
 
 /**
  * Crest Pulse token roles used for per-tool icon chips (nav + hub). Keeps
- * scan-color identity without inventing new brand hues.
+ * scan-color identity without inventing new brand hues. Each catalog entry
+ * must use a distinct tone so the submenu / hub stay scannable.
  */
 export type ToolsTone =
   | "accent"
@@ -16,6 +17,7 @@ export type ToolsTone =
   | "interactive"
   | "danger"
   | "discord"
+  | "rip"
   | "muted";
 
 export type ToolsCatalogEntry = {
@@ -70,7 +72,7 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
     id: "stats",
     title: "Season Stats",
     navLabel: "Season leaderboards",
-    tone: "accent-2",
+    tone: "rip",
     blurb:
       "Hall of fame — badge race, graves & wipes, god catches, shinies, and every season-wide leaderboard.",
   },

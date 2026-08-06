@@ -22,7 +22,9 @@ const ITEM_COUNT = TOOLS_CATALOG.length + 1;
 /**
  * Header disclosure for the whole Tools catalog (#253). Replaces the old Game
  * Guide deep-link pill — same slot, same pixels, every tool. Rendered off
- * `TOOLS_CATALOG`, so adding a tool never needs a header edit.
+ * `TOOLS_CATALOG`, so adding a tool never needs a header edit. Season Stats
+ * (#288) still appears here as a deep link — `toolsHref(…, "stats")` points at
+ * the Season Stats season tab, not an in-Tools workspace.
  *
  * `SiteHeader` is a server component; this is the small client island it needs
  * for the open/close state. Dropdown chrome follows `UserMenu` /
@@ -49,9 +51,10 @@ export function ToolsMenu({ slug }: ToolsMenuProps) {
   const triggerId = `${id}-trigger`;
 
   // Close on navigation. Adjusting state during render (rather than in an
-  // effect) is the pattern this codebase uses for prop-derived resets. Tools
-  // share one pathname and differ only by `?tool=`, so item clicks close
-  // explicitly too — this only covers leaving the tools route entirely.
+  // effect) is the pattern this codebase uses for prop-derived resets. Most
+  // tools share `/tools` and differ only by `?tool=`, so item clicks also
+  // dismiss explicitly below. Season Stats navigates to `/memorial`, which
+  // this pathname check covers when leaving the tools route entirely.
   if (seenPath !== pathname) {
     setSeenPath(pathname);
     if (open) {

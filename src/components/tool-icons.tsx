@@ -20,6 +20,7 @@ export const TOOL_TONE_CHIP: Record<ToolsTone, string> = {
   interactive: "border-interactive/45 bg-interactive-soft text-interactive",
   danger: "border-danger/40 bg-danger/12 text-danger",
   discord: "border-discord/40 bg-discord/15 text-discord",
+  rip: "border-accent-deep/35 bg-rip text-accent-deep",
   muted: "border-frame bg-surface-2 text-muted",
 };
 
