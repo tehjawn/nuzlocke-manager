@@ -6,7 +6,9 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   AboutIcon,
+  ActivityIcon,
   FaqIcon,
+  GetStartedIcon,
   GmIcon,
   MyTrainerIcon,
   RulesIcon,
@@ -74,13 +76,13 @@ export function MobileNavDrawer({
   if (challengeSlug && !firstRun) {
     rows.push(
       { kind: "info", key: "info", slug: challengeSlug },
+      { kind: "tools", key: "tools", slug: challengeSlug },
       {
         kind: "trainers",
         key: "trainers",
         slug: challengeSlug,
         myTrainerId,
       },
-      { kind: "tools", key: "tools", slug: challengeSlug },
     );
   } else if (challengeSlug && myTrainerId) {
     // First-run + joined: keep Trainers reachable (old My Trainer pill gate).
@@ -202,10 +204,24 @@ export function MobileNavDrawer({
                           <InfoNavSection
                             key={row.key}
                             slug={row.slug}
-                            initialOpen={isUnder(
-                              pathname,
-                              `/challenges/${row.slug}/about`,
-                            ) || isUnder(pathname, `/challenges/${row.slug}/rules`)}
+                            initialOpen={
+                              isUnder(
+                                pathname,
+                                `/challenges/${row.slug}/about`,
+                              ) ||
+                              isUnder(
+                                pathname,
+                                `/challenges/${row.slug}/rules`,
+                              ) ||
+                              isUnder(
+                                pathname,
+                                `/challenges/${row.slug}/setup`,
+                              ) ||
+                              isUnder(
+                                pathname,
+                                `/challenges/${row.slug}/activity`,
+                              )
+                            }
                             onNavigate={() => setOpen(false)}
                           />
                         );
@@ -318,6 +334,18 @@ function InfoNavSection({
       {open ? (
         <ul id={listId} className="ml-5 flex flex-col gap-1 border-l border-frame/60 pl-2">
           <li>
+            <Link
+              href={`${base}/setup`}
+              onClick={onNavigate}
+              className={`${NESTED_LINK_CLASS} border-accent/25 bg-accent/12 font-semibold text-accent-deep hover:bg-accent/20`}
+            >
+              <span className="shrink-0 text-accent-deep" aria-hidden>
+                <GetStartedIcon className="h-4 w-4" />
+              </span>
+              <span className="text-sm">Get Started</span>
+            </Link>
+          </li>
+          <li>
             <Link href={`${base}/about`} onClick={onNavigate} className={NESTED_LINK_CLASS}>
               <span className="shrink-0 text-ink/70" aria-hidden>
                 <AboutIcon className="h-4 w-4" />
@@ -343,6 +371,18 @@ function InfoNavSection({
                 <FaqIcon className="h-4 w-4" />
               </span>
               <span className="text-sm font-medium">FAQ</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              href={`${base}/activity`}
+              onClick={onNavigate}
+              className={NESTED_LINK_CLASS}
+            >
+              <span className="shrink-0 text-ink/70" aria-hidden>
+                <ActivityIcon className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-medium">Activity</span>
             </Link>
           </li>
         </ul>
@@ -373,13 +413,13 @@ function TrainersNavSection({
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((v) => !v)}
-        className={`${NAV_ROW_CLASS} w-full text-left`}
+        className={`${NAV_ROW_CLASS} w-full border-accent/45 bg-accent/10 text-left text-accent-deep hover:border-accent/60 hover:bg-accent/16`}
       >
-        <span className="shrink-0 text-ink/70" aria-hidden>
+        <span className="shrink-0 text-accent-deep" aria-hidden>
           <TrainersIcon />
         </span>
         <span className="flex-1">Trainers</span>
-        <ChevronIcon open={open} />
+        <ChevronIcon open={open} className="text-accent-deep" />
       </button>
 
       {open ? (
@@ -486,12 +526,18 @@ function ToolsNavSection({
   );
 }
 
-function ChevronIcon({ open }: { open: boolean }) {
+function ChevronIcon({
+  open,
+  className = "text-muted",
+}: {
+  open: boolean;
+  className?: string;
+}) {
   return (
     <svg
       aria-hidden
       viewBox="0 0 16 16"
-      className={`h-3.5 w-3.5 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
+      className={`h-3.5 w-3.5 shrink-0 transition-transform ${className} ${open ? "rotate-180" : ""}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="2"

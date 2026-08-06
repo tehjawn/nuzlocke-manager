@@ -1,5 +1,6 @@
 import type { PokemonType } from "@/lib/pokemon-types";
 import type { StatSpread } from "@/lib/stats";
+import type { SurvivalPollTally } from "@/lib/survival-market-types";
 
 export type ChallengeStatus = "DRAFT" | "ACTIVE" | "TOURNAMENT" | "ARCHIVED";
 export type ChallengeVisibility = "INVITE" | "UNLISTED" | "PUBLIC";
@@ -40,6 +41,8 @@ export type PokemonEntry = {
   diedOnRun: number | null;
   /** TrainerRun id when known (living = active run; graves = run of death). */
   runId: string | null;
+  /** Survive/Die poll tally when votes exist (board chips / details). */
+  survivalPoll?: SurvivalPollTally | null;
 };
 
 export type TrainerProfile = {
@@ -159,6 +162,8 @@ export type Challenge = {
   welcomeVideoPublishAt?: string | null;
   /** Get Started ROM download URL. Null = built-in Trash Pack Drive link. */
   romUrl?: string | null;
+  /** Survive/Die polls on living MAIN + RESERVE (default on). */
+  survivalMarketsEnabled?: boolean;
   badges: BadgeDefinition[];
   rules: ChallengeRule[];
   faqs: FaqEntry[];

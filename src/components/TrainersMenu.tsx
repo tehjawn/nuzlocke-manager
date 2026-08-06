@@ -20,14 +20,7 @@ type TrainersMenuProps = {
  */
 export function TrainersMenu({ slug, myTrainerId = null }: TrainersMenuProps) {
   const base = `/challenges/${slug}`;
-  const items: HeaderMenuItem[] = [
-    {
-      href: base,
-      label: "All Trainers",
-      description: "League board",
-      icon: <TrainersIcon className="h-4 w-4" />,
-    },
-  ];
+  const items: HeaderMenuItem[] = [];
   if (myTrainerId) {
     items.push({
       href: `${base}/me`,
@@ -37,12 +30,21 @@ export function TrainersMenu({ slug, myTrainerId = null }: TrainersMenuProps) {
       accent: true,
     });
   }
+  items.push({
+    href: base,
+    label: "All Trainers",
+    description: "League board",
+    icon: <TrainersIcon className="h-4 w-4" />,
+  });
 
   return (
     <HeaderMenu
       label="Trainers"
       icon={<TrainersIcon className="h-4 w-4" />}
       menuClassName="w-56"
+      triggerClassName="pressable inline-flex h-9 items-center gap-2 border border-accent/55 bg-accent/10 px-3.5 font-medium text-accent-deep hover:border-accent hover:bg-accent/16"
+      iconClassName="text-accent-deep"
+      chevronClassName="text-accent-deep"
       items={items}
     />
   );

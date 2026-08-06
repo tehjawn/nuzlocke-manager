@@ -3,6 +3,7 @@ import { HeldItemLabel } from "@/components/HeldItemLabel";
 import { InfoTip } from "@/components/InfoTip";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatGrid } from "@/components/StatGrid";
+import { SurvivalPollChip } from "@/components/SurvivalPollChip";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilityDescription } from "@/data/pokemon-lookups";
@@ -221,6 +222,11 @@ export function PokemonSlotCard({
             {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
             {selectHint ? ` · ${selectHint}` : ""}
           </p>
+          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+            <div className="mt-1">
+              <SurvivalPollChip poll={pokemon.survivalPoll} compact />
+            </div>
+          ) : null}
         </div>
       </div>
     );
@@ -296,6 +302,9 @@ export function PokemonSlotCard({
               <TypeBadge key={t} type={t} />
             ))}
           </div>
+          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+            <SurvivalPollChip poll={pokemon.survivalPoll} />
+          ) : null}
         </div>
       </div>
 

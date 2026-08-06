@@ -141,14 +141,15 @@ export async function SiteHeader({
             */}
             {/*
               Info / Tools: season chrome only (hidden on first-run funnel).
-              Trainers: always when joined (incl. first-run, matching the old
-              My Trainer pill); otherwise All Trainers only outside first-run.
+              Trainers sits after Tools; always when joined (incl. first-run,
+              matching the old My Trainer pill); otherwise All Trainers only
+              outside first-run.
             */}
             {seasonSlug && !firstRun ? <InfoMenu slug={seasonSlug} /> : null}
+            {seasonSlug && !firstRun ? <ToolsMenu slug={seasonSlug} /> : null}
             {seasonSlug && (myTrainerId || !firstRun) ? (
               <TrainersMenu slug={seasonSlug} myTrainerId={myTrainerId} />
             ) : null}
-            {seasonSlug && !firstRun ? <ToolsMenu slug={seasonSlug} /> : null}
           </div>
           <Suspense
             fallback={

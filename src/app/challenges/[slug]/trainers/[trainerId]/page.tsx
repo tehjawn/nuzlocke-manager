@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
@@ -54,7 +55,8 @@ export async function generateMetadata({
 
 export default async function TrainerBoardPage({ params }: PageProps) {
   const { slug, trainerId } = await params;
-  const result = await getTrainer(slug, trainerId);
+  const session = await auth();
+  const result = await getTrainer(slug, trainerId, session?.user?.id);
   if (!result) notFound();
 
   const { challenge, trainer } = result;
@@ -209,6 +211,8 @@ export default async function TrainerBoardPage({ params }: PageProps) {
           isGm={Boolean(boardGm)}
           isDemo={isDemo}
           encourageImportSave={encourageImportSave}
+          survivalMarketsEnabled={challenge.survivalMarketsEnabled ?? true}
+          viewerUserId={access?.userId ?? null}
         />
       </main>
     </div>

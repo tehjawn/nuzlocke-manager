@@ -87,6 +87,19 @@ enum FeedbackStatus {
   RESOLVED
 }
 
+/// Crowd take on whether a living MAIN/RESERVE mon makes it.
+enum SurvivalPrediction {
+  SURVIVE
+  DIE
+}
+
+enum SurvivalMarketStatus {
+  OPEN
+  RESOLVED_SURVIVE
+  RESOLVED_DIE
+  VOID
+}
+
 model User {
   id              String   @id @default(cuid())
   email           String?  @unique
@@ -100,12 +113,13 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  memberships   ChallengeMembership[]
-  trainers      TrainerProfile[]
-  activities    ActivityEvent[]       @relation("ActivityActor")
-  feedback      FeedbackSubmission[]
-  reactions     ActivityReaction[]
-  notifications Notification[]
+  memberships     ChallengeMembership[]
+  trainers        TrainerProfile[]
+  activities      ActivityEvent[]       @relation("ActivityActor")
+  feedback        FeedbackSubmission[]
+  reactions       ActivityReaction[]
+  notifications   Notification[]
+  survivalVotes   SurvivalVote[]
 }
 
 model Notification {
@@ -149,20 +163,23 @@ model Challenge {
   welcomeVideoPublishAt DateTime?
   /// Get Started ROM download URL. Null = built-in Trash Pack Drive link.
   romUrl String?
+  /// Survive/Die polls on living MAIN + RESERVE mons (Pack engagement).
+  survivalMarketsEnabled Boolean @default(true)
   startsAt          DateTime?
   endsAt            DateTime?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
-  rules       ChallengeRule[]
-  faqs        FaqEntry[]
-  badges      BadgeDefinition[]
-  memberships ChallengeMembership[]
-  trainers    TrainerProfile[]
-  activities  ActivityEvent[]
-  snapshots   TrainerBoardSnapshot[]
-  tournament  Tournament?
-  feedback    FeedbackSubmission[]
+  rules            ChallengeRule[]
+  faqs             FaqEntry[]
+  badges           BadgeDefinition[]
+  memberships      ChallengeMembership[]
+  trainers         TrainerProfile[]
+  activities       ActivityEvent[]
+  snapshots        TrainerBoardSnapshot[]
+  tournament       Tournament?
+  feedback         FeedbackSubmission[]
+  survivalMarkets  SurvivalMarket[]
 }
 
 model FeedbackSubmission {
@@ -389,11 +406,57 @@ model PokemonEntry {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
-  run     TrainerRun?    @relation(fields: [runId], references: [id], onDelete: SetNull)
+  trainer        TrainerProfile   @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  run            TrainerRun?      @relation(fields: [runId], references: [id], onDelete: SetNull)
+  survivalMarket SurvivalMarket?
 
   @@index([trainerId, slot, partyIndex])
   @@index([runId])
+}
+
+/// Survive/Die poll for one living mon. Outlives PokemonEntry (wipe / import
+/// clears live rows; pokemonId SetNull + denormalized chrome keep history).
+model SurvivalMarket {
+  id          String               @id @default(cuid())
+  challengeId String
+  trainerId   String
+  /// Attempt this mon belonged to when the market opened.
+  runId       String?
+  /// Live link; null after row delete (wipe / import / hard delete).
+  pokemonId   String?              @unique
+  species     String
+  nickname    String?
+  pokedexId   Int?
+  isShiny     Boolean              @default(false)
+  status      SurvivalMarketStatus @default(OPEN)
+  resolvedAt  DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  challenge Challenge      @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  pokemon   PokemonEntry?  @relation(fields: [pokemonId], references: [id], onDelete: SetNull)
+  votes     SurvivalVote[]
+
+  @@index([challengeId, status])
+  @@index([trainerId, runId])
+  @@index([runId, status])
+}
+
+model SurvivalVote {
+  id         String              @id @default(cuid())
+  marketId   String
+  userId     String
+  prediction SurvivalPrediction
+  /// Optional hot take; Zod-capped + soft hourly rate limit on write.
+  comment    String?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  market SurvivalMarket @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([marketId, userId])
+  @@index([userId, createdAt])
 }
 
 model ActivityEvent {

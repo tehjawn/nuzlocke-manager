@@ -14,6 +14,7 @@ import {
 import { canViewChallenge } from "@/lib/challenge-access";
 import { getChallengeShell } from "@/lib/challenges";
 import { FORCE_FIRST_RUN_CHROME, isFirstRunChrome } from "@/lib/first-run";
+import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getWelcomeReadAt } from "@/lib/notifications";
 import { getAccessForChallenge } from "@/lib/permissions";
 
@@ -125,6 +126,8 @@ async function SeasonWorkspaceDynamic({
   // a real new-player session.
   const showGm =
     Boolean(access?.isGm) && !FORCE_FIRST_RUN_CHROME;
+  const gmViewOn =
+    showGm && (await readGmLensOn(slug));
   const firstRun = isFirstRunChrome({
     signedIn: Boolean(session?.user),
     welcomeCompleted: welcomeReadAt != null,
@@ -152,7 +155,7 @@ async function SeasonWorkspaceDynamic({
         myTrainerId={myTrainerId}
         signedIn={Boolean(session?.user)}
         firstRun={firstRun}
-        isGm={Boolean(access?.isGm)}
+        gmViewOn={gmViewOn}
       >
         {children}
       </ChallengeShell>
