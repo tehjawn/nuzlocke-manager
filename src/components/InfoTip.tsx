@@ -103,9 +103,9 @@ export function InfoTip({
   }, [open, place]);
 
   if (!text) {
-    return (
-      <span className={chipClassName || undefined}>{children}</span>
-    );
+    // Still apply chip chrome for unknown / free-typed values (no tip yet).
+    const emptyClass = [chipClassName, className].filter(Boolean).join(" ");
+    return <span className={emptyClass || undefined}>{children}</span>;
   }
 
   const triggerClass = `inline-flex max-w-full items-center gap-1 text-left ${chipClassName}`;

@@ -87,6 +87,7 @@ const files = new Set(
 const data = JSON.parse(readFileSync(path, "utf8"));
 let matchedDesc = 0;
 let matchedIcon = 0;
+let preservedDesc = 0;
 const items = data.items.map((item) => {
   let description = null;
   for (const key of itemLookupKeys(item.slug, item.name)) {
@@ -94,6 +95,12 @@ const items = data.items.map((item) => {
       description = byKey.get(key);
       break;
     }
+  }
+  // Keep hand-written tips for overworld holdables Showdown omits
+  // (Exp. Share, Lucky Egg, Everstone, etc.).
+  if (!description && item.description?.trim()) {
+    description = item.description.trim();
+    preservedDesc += 1;
   }
   if (description) matchedDesc += 1;
 
@@ -121,7 +128,9 @@ const missingDesc = items.filter((i) => !i.description).map((i) => i.name);
 const missingIcon = items.filter((i) => !i.icon).map((i) => i.slug);
 const iconOverrides = items.filter((i) => i.icon && i.icon !== i.slug);
 console.log(
-  `Descriptions: ${matchedDesc}/${items.length} (${missingDesc.length} missing).`,
+  `Descriptions: ${matchedDesc}/${items.length} (${missingDesc.length} missing${
+    preservedDesc ? `, ${preservedDesc} preserved manual` : ""
+  }).`,
 );
 console.log(
   `Icons: ${matchedIcon}/${items.length} (${missingIcon.length} missing, ${iconOverrides.length} filename overrides).`,
