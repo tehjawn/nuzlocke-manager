@@ -135,7 +135,6 @@ export function SearchPalette() {
   const [query, setQuery] = useState("");
   /** Fuse runs against the deferred query so keystrokes stay responsive. */
   const deferredQuery = useDeferredValue(query);
-  const searchPending = deferredQuery !== query;
   const [recents, setRecents] = useState<string[]>([]);
   const [seenOpen, setSeenOpen] = useState(open);
   const inputRef = useRef<HTMLInputElement>(null);
