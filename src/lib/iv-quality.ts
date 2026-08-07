@@ -61,6 +61,10 @@ const GOD_OR_ROLE_IV = 24;
 const GOD_BREADTH_MEAN = 24;
 const GOD_BREADTH_ROLE_IV = 28;
 const GOD_BREADTH_OTHER_IV = 26;
+/** OR: raw wild luck — stacked mean with three near-perfects anywhere. */
+const GOD_LUCK_MEAN = 24;
+const GOD_LUCK_NEAR_IV = 28;
+const GOD_LUCK_NEAR_HITS = 3;
 
 const CRACKED_MEAN = 20;
 const CRACKED_ROLE_IV = 26;
@@ -322,6 +326,7 @@ export function summarizeBattleStats(
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}):
  * - god: (mean ≥22 + ≥2 role ≥28) OR (mean ≥24 + ≥2 role ≥24)
  *        OR (mean ≥24 + ≥1 role ≥28 + ≥1 other IV ≥26)
+ *        OR (mean ≥24 + ≥3 IVs ≥28 anywhere)
  * - cracked: (mean ≥20 + ≥1 role ≥26) OR (mean ≥22 + ≥1 role ≥22)
  * - great: mean ≥18 + ≥1 role ≥24
  * - good: mean ≥14
@@ -416,6 +421,7 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
  * - Special glass Starmie, SpA 29 / Spe 28 / solid mean → god (primary path)
  * - Fast Weedle, Spe 30 / Atk 23 / Def 30 / SpA 28 / mean 25.5 → god
  *   (breadth OR: one role near-perfect + another hot IV)
+ * - Mean ≥24 with three IVs ≥28 anywhere → god (raw-luck OR)
  * - Mean ≥24 with two role IVs ≥24 → god (OR path)
  * - Mean ≥22 with one role IV ≥22 → cracked (OR path)
  * - Balanced Claydol, Atk 30 / Spe 31 / mean ~20 → cracked
@@ -442,6 +448,7 @@ function roleIvCatchTier(
   let roleGreat = 0;
   let roleBreadthNear = 0;
   let breadthHot = 0;
+  let nearAnywhere = 0;
   let hardDump = 0;
   let maxIv = 0;
   let effectiveSum = 0;
@@ -454,6 +461,7 @@ function roleIvCatchTier(
     rawSum += value;
 
     if (value >= GOD_BREADTH_OTHER_IV) breadthHot += 1;
+    if (value >= GOD_LUCK_NEAR_IV) nearAnywhere += 1;
 
     if (roleKeys.has(key)) {
       if (value >= GOD_ROLE_IV) roleGod += 1;
@@ -480,6 +488,8 @@ function roleIvCatchTier(
     effectiveMean >= GOD_BREADTH_MEAN &&
     roleBreadthNear >= 1 &&
     breadthHot >= 2;
+  const godLuck =
+    effectiveMean >= GOD_LUCK_MEAN && nearAnywhere >= GOD_LUCK_NEAR_HITS;
 
   // Primary key dump caps the ceiling — off-role luck is consolation only.
   if (hardDump > 0) {
@@ -488,11 +498,12 @@ function roleIvCatchTier(
     return "oof";
   }
 
-  // --- God (primary || role-OR || breadth-OR) ------------------------------
+  // --- God (primary || role-OR || breadth-OR || luck-OR) -------------------
   if (
     (effectiveMean >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
     (effectiveMean >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS) ||
-    godBreadth
+    godBreadth ||
+    godLuck
   ) {
     return "god";
   }
