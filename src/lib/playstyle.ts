@@ -164,6 +164,10 @@ export function keyStatsForSpecies(
 
   const { primary, secondary } = pickTags(scoreShape(base));
   const primaryKeys = keysForPlaystyleTag(primary, base);
+  // Balanced has no primary axes — keep secondary empty to match the contract.
+  if (primaryKeys.length === 0) {
+    return { primary: [], secondary: [] };
+  }
   const primarySet = new Set(primaryKeys);
   const secondaryKeys: StatKey[] = [];
   if (secondary) {

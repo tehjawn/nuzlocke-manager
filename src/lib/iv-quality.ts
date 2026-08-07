@@ -372,14 +372,15 @@ export function summarizeBattleStats(
  * Randomizer catch quality for board-card chrome + details labels.
  *
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}).
- * Overall floors use IV **median** (not mean). Non-balanced roles also need
- * every **primary** role IV to clear a tier floor (walls need Def/HP, attackers
- * need Atk/SpA, Fast needs Spe, etc.):
- * - god: … + primary IVs ≥25
+ * Overall floors use IV **median**. Non-balanced roles also need every
+ * **primary** role IV to clear a tier floor (walls need Def/HP, attackers need
+ * Atk/SpA, Fast needs Spe, etc.). A dump or trash (≤10) primary IV caps at good
+ * — consolation uses role-only max IV, not off-role luck. Balanced has no
+ * primary hard-gate (overall min-IV rules apply for God instead).
+ * - god: … + primary IVs ≥25 (specialists) / median ≥23 + ≥3×≥27 + min ≥12 (balanced)
  * - cracked: … + primary IVs ≥22
  * - great: … + primary IVs ≥20
- * - good: median ≥13 (also the ceiling when any primary IV is ≤10)
- * - Balanced god: median ≥23 + ≥3 IVs ≥27 + every IV ≥12 (no two-high shortcut)
+ * - good: median ≥13 (also the ceiling when any primary is dumped/trash)
  * - oof: below good, not abysmal
  * - shit (Big oof): median <9 and no IV ≥13
  */
@@ -461,7 +462,8 @@ export type SpeciesKeyStatsInput = {
 
 /** Species-blind fallback when playstyle keys are unavailable. */
 function legacyIvCatchTier(ivs: StatSpread): CatchTier {
-  return roleIvCatchTier(ivs, { primary: [...STAT_KEYS], secondary: [] });
+  // Empty primary → Balanced path: weight all six, hard-gate none.
+  return roleIvCatchTier(ivs, { primary: [], secondary: [] });
 }
 
 /**
@@ -486,9 +488,13 @@ function roleIvCatchTier(
   keyStats: SpeciesKeyStatsInput,
 ): CatchTier {
   const balanced = keyStats.primary.length === 0;
+  // Role counting uses all six when Balanced; hard-gates stay empty then.
   const primaryKeys = balanced ? [...STAT_KEYS] : keyStats.primary;
   const secondaryKeys = balanced ? [] : (keyStats.secondary ?? []);
   const primarySet = new Set<StatKey>(primaryKeys);
+  const hardGateSet = balanced
+    ? new Set<StatKey>()
+    : new Set<StatKey>(keyStats.primary);
   const roleKeys = new Set<StatKey>([
     ...primaryKeys,
     ...secondaryKeys.filter((k) => !primarySet.has(k)),
@@ -504,6 +510,7 @@ function roleIvCatchTier(
   let nearAnywhere = 0;
   let hardDump = 0;
   let maxIv = 0;
+  let maxRoleIv = 0;
   let minIv = 31;
 
   for (const key of STAT_KEYS) {
@@ -516,6 +523,7 @@ function roleIvCatchTier(
     if (value >= GOD_LUCK_NEAR_IV) nearAnywhere += 1;
 
     if (roleKeys.has(key)) {
+      if (value > maxRoleIv) maxRoleIv = value;
       if (value >= GOD_ROLE_IV) roleGod += 1;
       if (value >= GOD_OR_ROLE_IV) roleGodOr += 1;
       if (value >= CRACKED_ROLE_IV) roleCracked += 1;
@@ -524,7 +532,7 @@ function roleIvCatchTier(
       if (value >= GOD_BREADTH_ROLE_IV) roleBreadthNear += 1;
     }
 
-    if (primarySet.has(key) && band === "dump") {
+    if (hardGateSet.has(key) && band === "dump") {
       hardDump += 1;
     }
   }
@@ -537,12 +545,17 @@ function roleIvCatchTier(
     breadthHot >= 2;
   const godLuck =
     overall >= GOD_LUCK_MEAN && nearAnywhere >= GOD_LUCK_NEAR_HITS;
-  const primaryTrash = primaryRoleIsTrash(ivs, primaryKeys, balanced);
+  const primaryTrash = primaryRoleIsTrash(
+    ivs,
+    balanced ? [] : keyStats.primary,
+    balanced,
+  );
 
-  // Primary dump OR trash primary role IV → Good max (side rolls are consolation).
+  // Primary dump OR trash primary role IV → Good max.
+  // Consolation uses role-only max — off-role luck cannot promote a dumped spread.
   if (hardDump > 0 || primaryTrash) {
     if (isBigOof) return "shit";
-    if (overall >= GOOD_MEAN || maxIv >= GREAT_ROLE_IV) return "good";
+    if (overall >= GOOD_MEAN || maxRoleIv >= GREAT_ROLE_IV) return "good";
     return "oof";
   }
 
