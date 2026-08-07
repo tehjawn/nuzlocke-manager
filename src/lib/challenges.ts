@@ -18,6 +18,7 @@ import {
   fetchChallengeSlotRow,
   fetchChallengeToolsSummaryRow,
   fetchChallengeTournamentRow,
+  fetchChallengeTrainerRow,
   fetchDefaultSearchBrief,
   fetchHeadlineActivitiesPublic,
   fetchHomeCarouselRow,
@@ -545,16 +546,42 @@ export async function getHomeCarouselChallenge(
   return getChallenge(slug);
 }
 
+/**
+ * One trainer's board — full competitive columns for that trainer only.
+ * Survival tallies are scoped to their Pokémon ids; peers stay off the wire.
+ */
 export async function getTrainer(
   slug: string,
   trainerId: string,
   viewerUserId?: string | null,
 ): Promise<{ challenge: Challenge; trainer: TrainerProfile } | null> {
-  const challenge = await getChallenge(slug, viewerUserId);
-  if (!challenge) return null;
-  const trainer = challenge.trainers.find((t) => t.id === trainerId);
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeTrainerRow(slug, trainerId);
+      if (row) {
+        const trainerRow = row.trainers[0];
+        if (!trainerRow || trainerRow.id !== trainerId) return null;
+        const challenge = await withSurvivalPollTallies(
+          mapDbChallenge({ ...row, activities: [] }, viewerUserId),
+          viewerUserId,
+        );
+        const trainer = challenge.trainers.find((t) => t.id === trainerId);
+        if (!trainer) return null;
+        return { challenge, trainer };
+      }
+    } catch {
+      return null;
+    }
+  }
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  if (!seed) return null;
+  const full = seedAsChallenge(seed);
+  const trainer = full.trainers.find((t) => t.id === trainerId);
   if (!trainer) return null;
-  return { challenge, trainer };
+  return {
+    challenge: { ...full, trainers: [trainer], activities: [] },
+    trainer,
+  };
 }
 
 export type SearchSeasonBrief = {

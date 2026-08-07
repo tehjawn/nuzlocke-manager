@@ -160,6 +160,26 @@ function boardTournamentInclude() {
   };
 }
 
+/** One trainer board: full competitive columns, no peer boards / activity. */
+function boardSingleTrainerInclude(trainerId: string) {
+  return {
+    ...challengeMetaInclude,
+    trainers: {
+      where: { id: trainerId },
+      include: {
+        ...trainerRelationInclude,
+        pokemon: {
+          select: pokemonFullSelect,
+          orderBy: [
+            { slot: "asc" as const },
+            { partyIndex: "asc" as const },
+          ],
+        },
+      },
+    },
+  };
+}
+
 export async function fetchChallengeBoardRow(slug: string) {
   "use cache";
   cacheLife("minutes");
@@ -590,6 +610,24 @@ export async function fetchChallengeTournamentRow(slug: string) {
   return getPrisma().challenge.findUnique({
     where: { slug },
     include: boardTournamentInclude(),
+  });
+}
+
+/**
+ * Single trainer board — meta + that trainer's full Pokémon graph. Peers and
+ * activity preview stay out of the Flight payload (#365).
+ */
+export async function fetchChallengeTrainerRow(
+  slug: string,
+  trainerId: string,
+) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  return getPrisma().challenge.findUnique({
+    where: { slug },
+    include: boardSingleTrainerInclude(trainerId),
   });
 }
 

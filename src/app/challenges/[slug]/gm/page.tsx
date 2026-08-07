@@ -7,7 +7,7 @@ import {
   challengeToSearchSeasonContext,
 } from "@/features/search";
 import type { Challenge } from "@/lib/challenge-types";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeMeta, getChallengeTournament } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
 import { listFeedbackForGm } from "@/lib/feedback";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -18,7 +18,7 @@ type PageProps = {
   searchParams: Promise<{ tab?: string }>;
 };
 
-/** Console does not need live party rows or the activity feed — strip before Flight. */
+/** Attach privileged invite / webhook secrets; Pokémon already empty from tournament loader. */
 function toGmConsoleChallenge(
   challenge: Challenge,
   secrets: {
@@ -33,10 +33,6 @@ function toGmConsoleChallenge(
     playerInviteCode: secrets.playerInviteCode,
     gmInviteCode: secrets.gmInviteCode,
     activities: undefined,
-    trainers: challenge.trainers.map((t) => ({
-      ...t,
-      pokemon: [],
-    })),
   };
 }
 
@@ -44,13 +40,14 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   return { title: challenge ? `GM · ${challenge.name}` : "GM" };
 }
 
 export default async function GmPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  // Meta + trainer identities only — no Pokémon graph (#365).
+  const challenge = await getChallengeTournament(slug);
   if (!challenge) notFound();
 
   if (!challenge.id) {

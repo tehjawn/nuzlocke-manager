@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { GetStartedView } from "@/components/GetStartedView";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeMeta } from "@/lib/challenges";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { readGmLensOn } from "@/lib/gm-lens.server";
 import { getAccessForChallenge } from "@/lib/permissions";
@@ -22,14 +22,15 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   return { title: challenge ? `Get Started · ${challenge.name}` : "Get Started" };
 }
 
 export default async function SetupPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  // Meta only — ROM / welcome scalars; no trainer Pokémon graph (#365).
+  const challenge = await getChallengeMeta(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const access = challenge.id
