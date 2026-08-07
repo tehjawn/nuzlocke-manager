@@ -182,9 +182,10 @@ export function keyStatsForSpecies(
 /**
  * Catch-scoring archetype for a species (#356).
  *
- * Uses {@link recommendPlaystyle} primary tag, except Glass cannon (primary or
- * secondary) takes the glass weight table — phys/spec/mixed via
- * {@link glassCannonKeys}. Returns null when base stats are unknown.
+ * Primary playstyle tag picks the weight table. **Glass cannon only swaps to
+ * the glass (phys/spec/mixed) table when it is primary** — when glass is merely
+ * secondary (attacker + glass silhouette), keep the attacker table so Spe-led
+ * mid rolls don't overscore. Returns null when base stats are unknown.
  */
 export function catchArchetypeForSpecies(
   pokedexId: number | null | undefined,
@@ -192,11 +193,9 @@ export function catchArchetypeForSpecies(
   const base = baseStatsForSpecies(pokedexId);
   if (!base) return null;
 
-  const { primary, secondary } = pickTags(scoreShape(base));
-  const useGlass =
-    primary === "Glass cannon" || secondary === "Glass cannon";
+  const { primary } = pickTags(scoreShape(base));
 
-  if (useGlass) {
+  if (primary === "Glass cannon") {
     const keys = glassCannonKeys(base);
     const hasAtk = keys.includes("atk");
     const hasSpa = keys.includes("spa");
@@ -205,7 +204,6 @@ export function catchArchetypeForSpecies(
     return "Glass (physical)";
   }
 
-  // useGlass false ⇒ primary is not Glass cannon; remaining tags map 1:1.
   return primary;
 }
 

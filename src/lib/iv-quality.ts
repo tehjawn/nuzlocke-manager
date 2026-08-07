@@ -60,11 +60,6 @@ const BIG_OOF_HOT_IV = 15;
 const PERFECT_IV = 31;
 /** Flat bonus on the catch score per IV ≥31 (any stat). */
 const PERFECT_IV_BONUS = 1;
-/**
- * Glass God gate: every critical axis must clear this. Stops Spe-led scores
- * with middling offense (Sneasel Atk 23) from wearing God chrome.
- */
-const GLASS_GOD_CRITICAL_MIN = 25;
 
 /** @deprecated Kept for summarizeIvs legacy path without archetype. */
 const LEGACY_GOD_NEAR_PERFECT_MIN = 3;
@@ -103,9 +98,9 @@ export const CATCH_ARCHETYPE_WEIGHTS: Record<
   Slow: { hp: 5, atk: 2, def: 4, spa: 2, spd: 4, spe: 1 },
   Fast: { hp: 2, atk: 3, def: 2, spa: 3, spd: 2, spe: 5 },
   Balanced: { hp: 3, atk: 3, def: 3, spa: 3, spd: 3, spe: 3 },
-  "Glass (physical)": { hp: 1, atk: 5, def: 1, spa: 1, spd: 1, spe: 5 },
-  "Glass (special)": { hp: 1, atk: 1, def: 1, spa: 5, spd: 1, spe: 5 },
-  "Glass (mixed)": { hp: 1, atk: 4, def: 1, spa: 4, spd: 1, spe: 5 },
+  "Glass (physical)": { hp: 1, atk: 5, def: 1, spa: 1, spd: 1, spe: 4 },
+  "Glass (special)": { hp: 1, atk: 1, def: 1, spa: 5, spd: 1, spe: 4 },
+  "Glass (mixed)": { hp: 1, atk: 4, def: 1, spa: 4, spd: 1, spe: 4 },
 };
 
 export function classifyIv(value: number): StatQualityBand {
@@ -354,7 +349,7 @@ export function summarizeBattleStats(
  * critical axes (weight ≥4) with IV ≤10 soft-cap at Good. Score stays internal.
  *
  * Thresholds: God ≥72 · Cracked ≥55 · Great ≥45 · Good ≥33 · Oof ≥18 ·
- * Big oof <18. Glass God also needs every critical axis ≥25.
+ * Big oof <18. God is score-only (no glass median / axis soft-cap).
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -481,12 +476,14 @@ function tierFromCatchScore(score: number): CatchTier {
  * 1. Critical trash — any weight ≥4 axis with IV ≤10 → at most Good
  * 2. Big oof override — every critical axis ≤10 and no IV ≥15 → shit
  * 3. Perfect floor — any IV 31 → at least Oof
- * 4. Glass God gate — glass archetypes need every critical axis ≥25 for God
+ *
+ * Glass weight tables are only used when Glass cannon is the **primary**
+ * playstyle tag; attacker+glass secondary keeps the attacker table (#356 retune).
  *
  * Feel-checks (approx):
  * - Taco Wobbuffet Bulky `31/31/25/30/24/4` → God (~83 + 2 from two 31s)
- * - Starmie glass SpA 29 / Spe 28 → God
- * - Glass Sneasel Atk 23 / Spe 26 / SpA 30 → Cracked (not God; no perfects)
+ * - Starmie special attacker (+ glass secondary) SpA 24 / Spe 29 → God on score
+ * - Sneasel physical attacker (+ glass secondary) Atk 23 / Spe 26 → Cracked
  * - Dead wall + Perfect Spe → Oof (not Big oof; +1 on score)
  */
 export function ivCatchGrade(
@@ -531,7 +528,6 @@ function weightedIvCatchGrade(
   let hasPerfect = false;
   let criticalTrash = false;
   let allCriticalTrash = criticalKeys.length > 0;
-  let glassGodReady = true;
 
   for (const key of STAT_KEYS) {
     const iv = ivs[key] ?? 0;
@@ -542,7 +538,6 @@ function weightedIvCatchGrade(
     const iv = ivs[key] ?? 0;
     if (iv <= CRITICAL_TRASH_MAX) criticalTrash = true;
     else allCriticalTrash = false;
-    if (iv < GLASS_GOD_CRITICAL_MIN) glassGodReady = false;
   }
 
   // Big oof wins over the Good soft-cap when every critical axis is trash.
@@ -555,25 +550,9 @@ function weightedIvCatchGrade(
   if (criticalTrash && score >= CATCH_SCORE_GREAT) {
     tier = "good";
   }
-  // Glass: God requires the actual glass axes, not Spe + dump heat alone.
-  if (
-    tier === "god" &&
-    isGlassCatchArchetype(archetype) &&
-    !glassGodReady
-  ) {
-    tier = "cracked";
-  }
   // A true perfect anywhere is still a lottery ticket — never Big oof.
   if (hasPerfect && catchTierRank(tier) < catchTierRank("oof")) {
     tier = "oof";
   }
   return { tier, score };
-}
-
-function isGlassCatchArchetype(archetype: CatchArchetype): boolean {
-  return (
-    archetype === "Glass (physical)" ||
-    archetype === "Glass (special)" ||
-    archetype === "Glass (mixed)"
-  );
 }
