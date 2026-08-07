@@ -14,13 +14,16 @@ import { pickRelatedSearchResults } from "@/features/search/search-related";
 import {
   buildSeasonMemorialResults,
   clearRecentSearches,
+  ACTION_SCOPE_PREFIX,
   defaultActionSuggestions,
   defaultSuggestions,
   fuseDebounceMs,
   getRecentSearches,
   MAX_SEARCH_QUERY_CHARS,
+  parseActionScopeQuery,
   recordSearchUse,
   saveRecentSearch,
+  listActionResults,
   querySearchIndex,
   shouldSkipFuzzySearch,
 } from "@/features/search/search-index";
@@ -210,20 +213,48 @@ export function SearchPalette() {
 
   const trimmedQuery = query.trim();
   const fuseTrimmed = fuseQuery.trim();
-  /** Live Ask-shaped / long queries drop fuzzy immediately. */
-  const skipFuzzyLive = shouldSkipFuzzySearch(trimmedQuery);
+  const liveScope = useMemo(
+    () => parseActionScopeQuery(trimmedQuery),
+    [trimmedQuery],
+  );
+  const fuseScope = useMemo(
+    () => parseActionScopeQuery(fuseTrimmed),
+    [fuseTrimmed],
+  );
+  /** Live Ask-shaped / long queries drop fuzzy immediately (use scoped text). */
+  const skipFuzzyLive =
+    !liveScope.actionsOnly && shouldSkipFuzzySearch(liveScope.searchText);
   const searchPending = !skipFuzzyLive && fuseQuery !== query;
 
   // Derive from the live index so hits refresh when season registration lands
   // after hydration (stale hits were empty forever in prod until retyping).
   // Skip when live OR fuse query looks Ask/long so Bitap never runs there.
+  // `>` / `action:` scopes to verbs only — empty rest lists every action.
   const hits = useMemo(() => {
+    if (fuseScope.actionsOnly) {
+      if (!fuseScope.searchText) {
+        return listActionResults(results).map((item) => ({ item }));
+      }
+      if (shouldSkipFuzzySearch(fuseScope.searchText)) {
+        return [] as SearchFuseHit[];
+      }
+      return querySearchIndex(index, fuseScope.searchText).filter(
+        (hit) => hit.item.category === "action",
+      );
+    }
     if (!fuseTrimmed) return [] as SearchFuseHit[];
     if (skipFuzzyLive || shouldSkipFuzzySearch(fuseTrimmed)) {
       return [] as SearchFuseHit[];
     }
     return querySearchIndex(index, fuseQuery);
-  }, [index, fuseQuery, fuseTrimmed, skipFuzzyLive]);
+  }, [
+    fuseScope,
+    fuseTrimmed,
+    fuseQuery,
+    index,
+    results,
+    skipFuzzyLive,
+  ]);
 
   const groupedHits = useMemo(() => {
     const groups = new Map<SearchCategory, SearchFuseHit[]>();
@@ -232,12 +263,17 @@ export function SearchPalette() {
       list.push(hit);
       groups.set(hit.item.category, list);
     }
-    return CATEGORY_ORDER.flatMap((cat) => {
+    const order = fuseScope.actionsOnly
+      ? (["action"] as SearchCategory[])
+      : CATEGORY_ORDER;
+    return order.flatMap((cat) => {
       const list = groups.get(cat);
       if (!list?.length) return [];
-      return [{ category: cat, items: list.slice(0, 8) }];
+      // Command mode: show the full action list (small curated set).
+      const limit = fuseScope.actionsOnly ? 12 : 8;
+      return [{ category: cat, items: list.slice(0, limit) }];
     });
-  }, [hits]);
+  }, [hits, fuseScope.actionsOnly]);
 
   const onQueryChange = useCallback(
     (value: string) => {
@@ -249,6 +285,11 @@ export function SearchPalette() {
     },
     [aiDrawer, assist.status, resetAssist],
   );
+
+  const enterActionScope = useCallback(() => {
+    onQueryChange(ACTION_SCOPE_PREFIX);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [onQueryChange]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -331,13 +372,29 @@ export function SearchPalette() {
   const entityHints = useMemo(() => askEntityHints(season), [season]);
   // Guard against the debounced fuse query for fuzzy typing; NL asks use the
   // live query (isQuestionLike short-circuits — no hint scan) so the Ask row
-  // doesn't wait on the debounce timer.
+  // doesn't wait on the debounce timer. `action:` never hands off to Ask.
   const askGuard = useMemo(() => {
-    const q = skipFuzzyLive ? trimmedQuery : fuseTrimmed;
+    if (liveScope.actionsOnly) {
+      return {
+        ok: false as const,
+        code: "NOT_QUESTION" as const,
+        error: "",
+      };
+    }
+    const q = skipFuzzyLive ? liveScope.searchText : fuseScope.searchText;
     return evaluateAskQuery(q, { entityHints });
-  }, [skipFuzzyLive, trimmedQuery, fuseTrimmed, entityHints]);
+  }, [
+    liveScope.actionsOnly,
+    liveScope.searchText,
+    skipFuzzyLive,
+    fuseScope.searchText,
+    entityHints,
+  ]);
 
-  const cannedAsk = aiDrawer && isCannedAskQuestion(trimmedQuery);
+  const cannedAsk =
+    !liveScope.actionsOnly &&
+    aiDrawer &&
+    isCannedAskQuestion(trimmedQuery);
 
   /**
    * Ask is a fallback, never the default: only when the query clears the Ask
@@ -345,7 +402,9 @@ export function SearchPalette() {
    * alone no longer unlock Ask — keyboard mash used to slip through.
    * Canned orientation (drawer flag only) stays available when Gemini is down.
    */
-  const canAsk = cannedAsk || (!isAssistUnavailable() && askGuard.ok);
+  const canAsk =
+    !liveScope.actionsOnly &&
+    (cannedAsk || (!isAssistUnavailable() && askGuard.ok));
 
   const runAsk = useCallback(() => {
     if (!trimmedQuery || !canAsk) return;
@@ -433,7 +492,11 @@ export function SearchPalette() {
             value={query}
             onValueChange={onQueryChange}
             maxLength={MAX_SEARCH_QUERY_CHARS}
-            placeholder="Search trainers, Pokémon, pages…"
+            placeholder={
+              liveScope.actionsOnly
+                ? "Filter actions…"
+                : "Search trainers, Pokémon, pages…"
+            }
             className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ink outline-none placeholder:text-muted/80"
           />
           {query.length >= 240 && (
@@ -480,7 +543,25 @@ export function SearchPalette() {
             <>
               {actionSuggestions.length > 0 && (
                 <Command.Group
-                  heading="Actions"
+                  heading={
+                    <span className="flex w-full items-center justify-between gap-2">
+                      <span>Actions</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          enterActionScope();
+                        }}
+                        className="inline-flex items-center gap-1 rounded border border-frame/70 bg-surface px-1.5 py-0.5 font-mono text-[10px] font-semibold normal-case tracking-normal text-muted hover:border-interactive/45 hover:text-ink"
+                        title="Show actions only"
+                        aria-label="Filter to actions only"
+                      >
+                        <kbd className="font-mono">{ACTION_SCOPE_PREFIX}</kbd>
+                        <span className="font-sans font-medium">only</span>
+                      </button>
+                    </span>
+                  }
                   className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
                 >
                   {actionSuggestions.map((item) => (
@@ -554,6 +635,12 @@ export function SearchPalette() {
                   </kbd>{" "}
                   to ask
                 </>
+              ) : liveScope.actionsOnly ? (
+                liveScope.searchText ? (
+                  <>No actions match “{liveScope.searchText}”</>
+                ) : (
+                  <>No actions available</>
+                )
               ) : (
                 <>No matches for “{trimmedQuery}”</>
               )}
@@ -564,7 +651,11 @@ export function SearchPalette() {
             ? displayGroupedHits.map((group) => (
                 <Command.Group
                   key={group.category}
-                  heading={CATEGORY_LABEL[group.category]}
+                  heading={
+                    fuseScope.actionsOnly && group.category === "action"
+                      ? "Actions"
+                      : CATEGORY_LABEL[group.category]
+                  }
                   className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
                 >
                   {group.items.map((hit) => (
@@ -595,7 +686,9 @@ export function SearchPalette() {
                 : "Ask"
               : showSearchPending
                 ? "Searching…"
-                : "Search"}
+                : liveScope.actionsOnly
+                  ? "Actions"
+                  : "Search"}
           </span>
           <span className="flex items-center gap-2 font-mono">
             {showingAssist ? (
@@ -605,8 +698,23 @@ export function SearchPalette() {
                 </kbd>{" "}
                 {assist.status === "loading" ? "cancel" : "back to results"}
               </span>
+            ) : liveScope.actionsOnly ? (
+              <span className="hidden sm:inline">
+                <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                  {ACTION_SCOPE_PREFIX}
+                </kbd>{" "}
+                actions only
+              </span>
             ) : (
               <>
+                {!hasLiveQuery && actionSuggestions.length > 0 ? (
+                  <span className="hidden sm:inline">
+                    <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
+                      {ACTION_SCOPE_PREFIX}
+                    </kbd>{" "}
+                    actions
+                  </span>
+                ) : null}
                 <span>
                   <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
                     ↑
