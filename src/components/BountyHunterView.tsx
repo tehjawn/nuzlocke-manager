@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ModeTabs } from "@/components/ModeTabs";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { Skeleton } from "@/components/Skeleton";
 import { SpecimenShowcase } from "@/components/SpecimenShowcase";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import {
@@ -18,7 +20,6 @@ import {
   type SpeciesOwnershipStatus,
 } from "@/lib/encounter-stats";
 import { seasonSpecimenBoard, type SpecimenSort } from "@/lib/specimen-board";
-import { ModeTabs } from "@/components/ModeTabs";
 import {
   parseBountyMode,
   toolsHref,
@@ -379,7 +380,18 @@ export function BountyHunterView({
             trainerId={viewerId || null}
           />
         ) : (
-          <p className="text-sm text-muted">Loading catch grades…</p>
+          <div
+            className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8"
+            aria-busy="true"
+            aria-label="Loading catch grades"
+          >
+            {Array.from({ length: 16 }, (_, i) => (
+              <Skeleton
+                key={i}
+                className="aspect-square rounded-lg border border-frame/40 bg-surface"
+              />
+            ))}
+          </div>
         )
       ) : (
         <>

@@ -14,6 +14,7 @@ import { Modal } from "@/components/Modal";
 import { MoveLabel } from "@/components/MoveLabel";
 import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { Skeleton } from "@/components/Skeleton";
 import { StatGrid, type StatRankChip } from "@/components/StatGrid";
 import { SurvivalPollSection } from "@/components/SurvivalPollSection";
 import {
@@ -54,16 +55,29 @@ import {
 } from "@/lib/stats";
 import { toolsHref } from "@/lib/tools-routes";
 
+/** Matches collapsed ME learnset disclosures so the chunk load doesn’t grow the modal. */
+function LearnsetSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading learnset">
+      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+        <Skeleton className="h-3.5 w-16 rounded bg-frame/20" />
+        <Skeleton className="h-2.5 w-28 rounded bg-frame/10" />
+      </div>
+      <div className="space-y-1.5">
+        <Skeleton className="h-8 w-full rounded-lg border border-frame/40 bg-surface-2" />
+        <Skeleton className="h-8 w-full rounded-lg border border-frame/40 bg-surface-2" />
+        <Skeleton className="h-8 w-full rounded-lg border border-frame/40 bg-surface-2" />
+      </div>
+    </div>
+  );
+}
+
 const ModernEmeraldLearnset = dynamic(
   () =>
     import("@/components/ModernEmeraldLearnset").then(
       (module) => module.ModernEmeraldLearnset,
     ),
-  {
-    loading: () => (
-      <p className="text-[10px] text-muted">Loading Modern Emerald learnset…</p>
-    ),
-  },
+  { loading: () => <LearnsetSkeleton /> },
 );
 
 /** Owner chip under held item — sprite + handle linking to their board. */

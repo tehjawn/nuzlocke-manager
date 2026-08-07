@@ -19,6 +19,7 @@ import {
   postActivityReaction,
 } from "@/components/ActivityReactions";
 import { Frame } from "@/components/Frame";
+import { Skeleton } from "@/components/Skeleton";
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import type {
   ActivityItem,
@@ -141,7 +142,14 @@ export function ActivityFeedInfinite({
       )}
       <div ref={sentinelRef} className="h-4" aria-hidden />
       {loading && (
-        <p className="mt-2 text-center text-sm text-muted">Loading…</p>
+        <div
+          className="mt-2 space-y-2"
+          aria-busy="true"
+          aria-label="Loading more activity"
+        >
+          <Skeleton className="h-12 w-full rounded-lg border border-frame/30 bg-surface" />
+          <Skeleton className="h-12 w-full rounded-lg border border-frame/30 bg-surface" />
+        </div>
       )}
       {error && (
         <div className="mt-2 flex flex-col items-center gap-2">

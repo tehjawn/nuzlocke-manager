@@ -36,6 +36,7 @@ import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { ReviveToken } from "@/components/ReviveToken";
 import { SaveImportModal } from "@/components/SaveImportModal";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
+import { Skeleton } from "@/components/Skeleton";
 import { StatusLine } from "@/components/StatusLine";
 import { TeamExportModal } from "@/components/TeamExportModal";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
@@ -1835,7 +1836,18 @@ export function TrainerBoard({
             onOpenChange={onEncounteredOpenChange}
           >
             {encounteredLoading && encounteredPokemon == null ? (
-              <p className="text-sm text-muted">Loading encounters…</p>
+              <div
+                className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8"
+                aria-busy="true"
+                aria-label="Loading encounters"
+              >
+                {Array.from({ length: 8 }, (_, i) => (
+                  <Skeleton
+                    key={i}
+                    className="min-h-24 rounded-lg border border-frame/40 bg-surface"
+                  />
+                ))}
+              </div>
             ) : encounteredError && encounteredPokemon == null ? (
               <p className="text-sm text-muted">{encounteredError}</p>
             ) : encounteredPokemon == null ? null : canEdit ? (

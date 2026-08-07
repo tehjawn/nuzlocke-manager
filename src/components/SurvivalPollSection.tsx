@@ -5,6 +5,7 @@ import {
   castSurvivalVoteAction,
   getSurvivalMarketAction,
 } from "@/app/actions/survival";
+import { Skeleton } from "@/components/Skeleton";
 import type {
   SurvivalMarketView,
   SurvivalPrediction,
@@ -149,11 +150,24 @@ export function SurvivalPollSection({
   if (!enabled && !market) return null;
   if (!loaded) {
     return (
-      <section className="rounded-xl border border-frame/40 bg-surface-2/40 px-3 py-2.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-          Will they make it?
-        </p>
-        <p className="mt-1 text-[11px] text-muted">Loading poll…</p>
+      <section
+        className="rounded-xl border border-frame/40 bg-surface-2/40 px-3 py-2.5"
+        aria-busy="true"
+        aria-label="Loading survival poll"
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+            Will they make it?
+          </p>
+          <Skeleton className="h-2.5 w-28 rounded bg-frame/15" />
+        </div>
+        <div className="mt-2 space-y-2">
+          <div className="flex gap-2">
+            <Skeleton className="h-9 flex-1 rounded-lg border border-frame/40 bg-surface" />
+            <Skeleton className="h-9 flex-1 rounded-lg border border-frame/40 bg-surface" />
+          </div>
+          <Skeleton className="h-8 w-full rounded-lg border border-frame/40 bg-surface" />
+        </div>
       </section>
     );
   }

@@ -18,6 +18,7 @@ import { Modal } from "@/components/Modal";
 import { PartyStrip } from "@/components/PartyStrip";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import { Skeleton } from "@/components/Skeleton";
 import { TeamExportModal } from "@/components/TeamExportModal";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import type { BadgeDefinition, PokemonEntry } from "@/lib/challenge-types";
@@ -547,7 +548,21 @@ function TrainerHistoryBody({
                 " GMs can restore missing R.I.P. for the current run from those snapshots."}
             </p>
             {listLoading && (
-              <p className="text-sm text-muted">Loading history…</p>
+              <ul
+                className="space-y-2"
+                aria-busy="true"
+                aria-label="Loading history"
+              >
+                {Array.from({ length: 3 }, (_, i) => (
+                  <li
+                    key={i}
+                    className="overflow-hidden rounded-md border border-frame/40 bg-surface/50 px-3 py-2.5"
+                  >
+                    <Skeleton className="h-4 w-40 rounded bg-frame/20" />
+                    <Skeleton className="mt-1.5 h-2.5 w-52 max-w-full rounded bg-frame/10" />
+                  </li>
+                ))}
+              </ul>
             )}
             {!listLoading && runs.length === 0 && !error && (
               <p className="text-sm text-muted">
