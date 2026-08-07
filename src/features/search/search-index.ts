@@ -86,6 +86,14 @@ export function buildGlobalResults(): SearchResult[] {
       tags: ["login", "sign in", "discord", "auth"],
     },
     {
+      id: "action-open-ask",
+      title: "Open Gomi AI",
+      subtitle: "Ask about this season",
+      category: "action",
+      tags: ["ask", "gomi", "ai", "chat", "assistant", "help", "drawer"],
+      action: "open-ask",
+    },
+    {
       id: "action-theme",
       title: "Toggle theme",
       subtitle: "Switch light / dark",
@@ -94,6 +102,38 @@ export function buildGlobalResults(): SearchResult[] {
       action: "toggle-theme",
     },
   ];
+}
+
+/** Season-scoped verbs for Jump's Actions group (#308). */
+function buildSeasonActions(ctx: SearchSeasonContext): SearchResult[] {
+  if (!ctx.myTrainerId) return [];
+  const actions: SearchResult[] = [
+    {
+      id: `action-import-${ctx.slug}`,
+      title: "Import Save",
+      subtitle: "Upload a .sav to update your board",
+      category: "action",
+      tags: ["import", "save", "upload", "sav", "import save", "file"],
+      action: "import-save",
+    },
+    {
+      id: `action-export-${ctx.slug}`,
+      title: "Export team",
+      subtitle: "Copy living roster for notes / LLM",
+      category: "action",
+      tags: ["export", "team", "copy", "roster", "llm", "paste"],
+      action: "export-team",
+    },
+    {
+      id: `action-copy-link-${ctx.slug}`,
+      title: "Copy board link",
+      subtitle: "Share your trainer board URL",
+      category: "action",
+      tags: ["copy", "link", "share", "url", "board"],
+      action: "copy-board-link",
+    },
+  ];
+  return actions;
 }
 
 function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
@@ -117,8 +157,8 @@ function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
 export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
   const base = `/challenges/${ctx.slug}`;
 
-  // First-run funnel: only Setup + My Trainer (+ GM if somehow firstRun+GM —
-  // GMs are excluded from firstRun by the layout predicate).
+  // First-run funnel: only Setup + My Trainer (+ board actions). GMs are
+  // excluded from firstRun by the layout predicate.
   if (ctx.firstRun) {
     const navigate: SearchResult[] = [
       {
@@ -140,7 +180,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
         tags: ["me", "my board", "my trainer", "self"],
       });
     }
-    return navigate;
+    return [...navigate, ...buildSeasonActions(ctx)];
   }
 
   const tabs = seasonSectionTabs(ctx.slug, ctx.status, ctx.showGm);
@@ -421,6 +461,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
 
   return [
     ...navigate,
+    ...buildSeasonActions(ctx),
     ...trainers,
     ...pokemon,
     ...items,
@@ -623,6 +664,43 @@ export function shouldSkipFuzzySearch(query: string): boolean {
   return false;
 }
 
+/**
+ * Command-scope prefixes (#308) — list or filter Jump Actions only.
+ *
+ * Primary: `>` (VS Code / Cursor muscle memory — one keystroke).
+ * Alias:   `action:` (explicit; same behavior).
+ *
+ * Bare prefix lists every available verb; text after it fuzzy-filters within.
+ */
+export function parseActionScopeQuery(query: string): {
+  actionsOnly: boolean;
+  /** Text fed to Fuse (empty → list all actions when scoped). */
+  searchText: string;
+  /** Which prefix matched, for UI copy / placeholder. */
+  prefix: ">" | "action:" | null;
+} {
+  const trimmed = query.trim();
+  if (trimmed.startsWith(">")) {
+    return {
+      actionsOnly: true,
+      searchText: trimmed.slice(1).trimStart(),
+      prefix: ">",
+    };
+  }
+  const named = /^action:\s*(.*)$/i.exec(trimmed);
+  if (named) {
+    return {
+      actionsOnly: true,
+      searchText: named[1].trim(),
+      prefix: "action:",
+    };
+  }
+  return { actionsOnly: false, searchText: trimmed, prefix: null };
+}
+
+/** Prefix to insert when the player opts into Actions-only mode from the UI. */
+export const ACTION_SCOPE_PREFIX = ">";
+
 /** Matches `/api/ai/jump` question `.max(300)`. */
 export const MAX_SEARCH_QUERY_CHARS = 300;
 
@@ -631,7 +709,9 @@ export const MAX_SEARCH_QUERY_CHARS = 300;
  * Longer queries wait longer; Ask-shaped / skipped queries return 0 (no Fuse).
  */
 export function fuseDebounceMs(query: string): number {
-  const trimmed = query.trim();
+  const scope = parseActionScopeQuery(query);
+  if (scope.actionsOnly && !scope.searchText) return 0;
+  const trimmed = scope.searchText;
   if (!trimmed || shouldSkipFuzzySearch(trimmed)) return 0;
   if (trimmed.length <= 8) return 50;
   if (trimmed.length <= 16) return 120;
@@ -679,6 +759,8 @@ export function defaultSuggestions(
   const push = (hit: SearchResult | undefined) => {
     if (!hit || picked.length >= 6) return;
     if (picked.some((p) => p.id === hit.id)) return;
+    // Actions have their own empty-state group (#308).
+    if (hit.category === "action") return;
     picked.push(hit);
   };
 
@@ -708,6 +790,45 @@ export function defaultSuggestions(
   }
 
   return picked;
+}
+
+/**
+ * Empty-state Actions block (#308) — curated verbs ahead of navigate suggestions.
+ * Order: Ask → Import → Export → Theme → Copy link (whichever are indexed).
+ */
+export function listActionResults(results: SearchResult[]): SearchResult[] {
+  const actions = results.filter((r) => r.category === "action");
+  if (!actions.length) return [];
+
+  const preferred = [
+    "action-open-ask",
+    "action-import-",
+    "action-export-",
+    "action-theme",
+    "action-copy-link-",
+  ];
+  const picked: SearchResult[] = [];
+  const push = (hit: SearchResult | undefined) => {
+    if (!hit) return;
+    if (picked.some((p) => p.id === hit.id)) return;
+    picked.push(hit);
+  };
+
+  for (const key of preferred) {
+    push(
+      actions.find((r) =>
+        key.endsWith("-") ? r.id.startsWith(key) : r.id === key,
+      ),
+    );
+  }
+  for (const r of actions) push(r);
+  return picked;
+}
+
+export function defaultActionSuggestions(
+  results: SearchResult[],
+): SearchResult[] {
+  return listActionResults(results).slice(0, 5);
 }
 
 type UsageEntry = { n: number; t: number };

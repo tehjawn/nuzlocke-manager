@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Fragment, useState, useTransition, type ReactNode } from "react";
+import {
+  Fragment,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import {
   deletePokemonAction,
   gmResetTrainerBoardAction,
@@ -38,6 +43,7 @@ import { StatusLine } from "@/components/StatusLine";
 import { TeamExportModal } from "@/components/TeamExportModal";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
 import { pushSnackbar } from "@/components/Snackbar";
+import { useSearch } from "@/features/search/SearchProvider";
 import {
   isAvatarBackgroundKey,
   parseAvatarBackgroundKey,
@@ -566,6 +572,11 @@ export function TrainerBoard({
 
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const {
+    pendingBoardAction,
+    clearBoardAction,
+    season: searchSeason,
+  } = useSearch();
   const playerSave = useSaveStatus();
   const partySave = useSaveStatus();
   const reviveSave = useSaveStatus();
@@ -657,6 +668,27 @@ export function TrainerBoard({
   const [openedSearchPokemonId, setOpenedSearchPokemonId] = useState<
     string | null
   >(null);
+
+  // Jump Actions (#308): derive modal open from pending handoff so we don't
+  // need setState-in-effect. Read-only boards leave the pending action alone
+  // for My Trainer (or a GM-editable board) after soft-nav.
+  const myTrainerId = searchSeason?.myTrainerId ?? null;
+  const jumpImportOpen =
+    pendingBoardAction === "import-save" && canEdit;
+  const jumpExportOpen =
+    pendingBoardAction === "export-team" &&
+    (!myTrainerId || trainer.id === myTrainerId || canEdit);
+  const importModalOpen = saveImportOpen || jumpImportOpen;
+  const exportModalOpen = teamExportOpen || jumpExportOpen;
+
+  const closeSaveImport = () => {
+    setSaveImportOpen(false);
+    if (pendingBoardAction === "import-save") clearBoardAction();
+  };
+  const closeTeamExport = () => {
+    setTeamExportOpen(false);
+    if (pendingBoardAction === "export-team") clearBoardAction();
+  };
 
   if (serverStamp !== seenStamp) {
     setSeenStamp(serverStamp);
@@ -1848,11 +1880,11 @@ export function TrainerBoard({
         />
       )}
 
-      {canEdit && saveImportOpen && (
+      {canEdit && importModalOpen && (
         <SaveImportModal
           open
           pending={pending}
-          onClose={() => setSaveImportOpen(false)}
+          onClose={closeSaveImport}
           onApply={(payload) => {
             partySave.markSaving("Importing save…");
             startTransition(async () => {
@@ -1893,7 +1925,7 @@ export function TrainerBoard({
               if (result.ok) {
                 partySave.markSaved(result.message ?? "Save imported");
                 setImportSaveGlow(false);
-                setSaveImportOpen(false);
+                closeSaveImport();
                 // Mirror server gate: non-GMs may only spend a revive via import.
                 if (
                   payload.applyRevive &&
@@ -1912,8 +1944,8 @@ export function TrainerBoard({
       )}
 
       <TeamExportModal
-        open={teamExportOpen}
-        onClose={() => setTeamExportOpen(false)}
+        open={exportModalOpen}
+        onClose={closeTeamExport}
         challengeSlug={challengeSlug}
         challengeName={challengeName}
         challengeGame={challengeGame}

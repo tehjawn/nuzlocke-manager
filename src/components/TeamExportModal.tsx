@@ -96,9 +96,8 @@ export function TeamExportModal({
     }
   }
 
-  // Arming/disarming swaps the focused button out of the DOM, and the browser
-  // drops focus to <body> — outside Modal's panel, which is where Escape-to-close
-  // and the Tab trap live. Hand focus to whichever button replaced it.
+  // Arming/disarming swaps the focused button out of the DOM. Keep focus on the
+  // replacement control so keyboard users aren't stranded on <body>.
   const focusOnMount = useCallback((node: HTMLButtonElement | null) => {
     node?.focus();
   }, []);

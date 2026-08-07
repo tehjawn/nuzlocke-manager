@@ -24,9 +24,20 @@ export type SearchResult = {
     shiny: boolean;
     species: string;
   };
-  /** Non-navigation command key (e.g. theme toggle). */
-  action?: "toggle-theme";
+  /**
+   * Non-navigation command key. Board-bound verbs (`import-save`,
+   * `export-team`) hand off via SearchProvider → TrainerBoard (#308).
+   */
+  action?:
+    | "toggle-theme"
+    | "open-ask"
+    | "import-save"
+    | "export-team"
+    | "copy-board-link";
 };
+
+/** Jump → board modal handoff (#308). */
+export type BoardJumpAction = "import-save" | "export-team";
 
 export type SearchSeasonContext = {
   slug: string;
