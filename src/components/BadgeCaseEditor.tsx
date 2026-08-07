@@ -6,6 +6,7 @@ import { BadgeCase } from "@/components/BadgeCase";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
 import { triggerFx } from "@/features/fx";
 import type { BadgeDefinition } from "@/lib/challenge-types";
+import { withOrderedPrefixCheck } from "@/lib/ordered-prefix-check";
 
 type BadgeCaseEditorProps = {
   trainerId: string;
@@ -23,7 +24,8 @@ type BadgeCaseEditorProps = {
 /** Quiet window across the whole case — flush as one condensed feed entry. */
 const DEBOUNCE_MS = 450;
 
-function toggleKey(keys: string[], badgeKey: string, earned: boolean) {
+/** Revert a single key without prefix cascade (used for failed-write rollback). */
+function revertKey(keys: string[], badgeKey: string, earned: boolean) {
   const set = new Set(keys);
   if (earned) set.add(badgeKey);
   else set.delete(badgeKey);
@@ -55,9 +57,10 @@ export function BadgeCaseEditor({
 
   const [optimisticKeys, setOptimistic] = useOptimistic(
     earnedKeys,
-    (current, update: { badgeKey: string; earned: boolean }) =>
-      toggleKey(current, update.badgeKey, update.earned),
+    (_current, next: string[]) => next,
   );
+
+  const badgeOrder = badges.map((b) => b.key);
 
   useEffect(() => {
     latestKeysRef.current = earnedKeys;
@@ -86,18 +89,32 @@ export function BadgeCaseEditor({
 
   function onToggle(badgeKey: string, earned: boolean) {
     if (disabled) return;
-    const next = toggleKey(latestKeysRef.current, badgeKey, earned);
+    const previous = latestKeysRef.current;
+    const next = withOrderedPrefixCheck(
+      badgeOrder,
+      previous,
+      badgeKey,
+      earned,
+    );
     latestKeysRef.current = next;
 
     startTransition(() => {
-      setOptimistic({ badgeKey, earned });
+      setOptimistic(next);
     });
     onEarnedKeysChange?.(next);
 
     if (pendingRef.current.size === 0) {
       wipeSnapshotRef.current = wipeCount;
     }
-    pendingRef.current.set(badgeKey, earned);
+    if (earned) {
+      const prevSet = new Set(previous);
+      for (const key of next) {
+        if (!prevSet.has(key)) pendingRef.current.set(key, true);
+      }
+      pendingRef.current.set(badgeKey, true);
+    } else {
+      pendingRef.current.set(badgeKey, false);
+    }
 
     if (flushTimerRef.current != null) clearTimeout(flushTimerRef.current);
     markSaving("Updating badges…");
@@ -128,7 +145,7 @@ export function BadgeCaseEditor({
         if (!result.ok) {
           let rolled = latestKeysRef.current;
           for (const change of changes) {
-            rolled = toggleKey(rolled, change.badgeKey, !change.earned);
+            rolled = revertKey(rolled, change.badgeKey, !change.earned);
           }
           latestKeysRef.current = rolled;
           onEarnedKeysChange?.(rolled);
@@ -164,6 +181,11 @@ export function BadgeCaseEditor({
         layout={layout}
         onToggle={disabled ? undefined : onToggle}
       />
+      {disabled ? null : (
+        <p className="text-[11px] leading-snug text-muted">
+          Checking a later badge marks earlier ones too.
+        </p>
+      )}
       <SaveStatus status={status} />
     </div>
   );
