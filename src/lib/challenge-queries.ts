@@ -1,6 +1,8 @@
 /**
- * Page-shaped Prisma projections for challenges — avoid the fat god-include
- * unless a route truly needs the full graph.
+ * Tools Pokémon column selects + deferred hydrate shapes (#367).
+ *
+ * SSR uses summary only. Grade inputs / moves / full competitive columns load
+ * via `fetchToolsPokemonHydrateAction` when a tool that needs them mounts.
  */
 
 import {
@@ -54,15 +56,37 @@ export const pokemonSeasonStatsSelect = {
 export const pokemonEncounterSelect = pokemonSummarySelect;
 
 /**
- * Tools page: identity + moves for Pokédex tips / bounty / planner, plus the
- * competitive columns Pokémon Ownership's Showcase needs — catch tier is
- * IV-derived and training tier needs EVs / friendship, so both are
- * uncomputable without them.
- *
- * Flight weight is still bounded: `toPublicPokemonEntry` runs at the page
- * boundary, so the payload only carries spreads the viewer already owns (or has
- * the GM lens for). Everyone else's arrive nulled, with the catch / bond tiers
- * stamped on in their place.
+ * Tools SSR board (#367): identity + types + slots only. Catch/bond grades and
+ * moves hydrate after mount for tools that need them.
+ */
+export const pokemonToolsBoardSelect = pokemonSummarySelect;
+
+/**
+ * Ownership Showcase hydrate: grade inputs so the server can stamp public
+ * catch / bond tiers without shipping spreads on the default Tools Flight.
+ */
+export const pokemonToolsGradeSelect = {
+  ...pokemonSummarySelect,
+  nature: true,
+  ability: true,
+  ivs: true,
+  evs: true,
+  friendship: true,
+} as const;
+
+/**
+ * Pokédex tips / Guide gym prep / Team Planner coverage: moves + grade inputs
+ * (planner recommend chrome). Spreads are still stripped for non-entitled
+ * viewers at the action boundary.
+ */
+export const pokemonToolsMovesSelect = {
+  ...pokemonToolsGradeSelect,
+  moves: true,
+} as const;
+
+/**
+ * Ownership details / entitled competitive view: full columns. Flight still
+ * redacts via `toPublicPokemonEntry` for everyone else.
  */
 export const pokemonToolsSelect = {
   ...pokemonFullSelect,

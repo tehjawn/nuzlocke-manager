@@ -34,6 +34,12 @@ type BountyHunterViewProps = {
    * Showcase details modal only — tier chrome is public season-wide.
    */
   competitiveTrainerIds?: string[];
+  /**
+   * False while Ownership grade stamps are still hydrating (#367). Tracker /
+   * exclusives stay interactive; Showcase waits so catch/bond chrome doesn't
+   * flash empty.
+   */
+  gradesReady?: boolean;
   initialMode?: BountyMode | null;
 };
 
@@ -131,6 +137,7 @@ export function BountyHunterView({
   trainers,
   myTrainerId = null,
   competitiveTrainerIds = [],
+  gradesReady = true,
   initialMode = "tracker",
 }: BountyHunterViewProps) {
   const [mode, setMode] = useState<BountyMode>(parseBountyMode(initialMode));
@@ -362,14 +369,18 @@ export function BountyHunterView({
           />
         </>
       ) : mode === "showcase" ? (
-        <SpecimenShowcase
-          competitiveTrainerIds={competitiveTrainerIds}
-          query={q}
-          rows={specimens}
-          slug={slug}
-          sort={specimenSortFor(sort)}
-          trainerId={viewerId || null}
-        />
+        gradesReady ? (
+          <SpecimenShowcase
+            competitiveTrainerIds={competitiveTrainerIds}
+            query={q}
+            rows={specimens}
+            slug={slug}
+            sort={specimenSortFor(sort)}
+            trainerId={viewerId || null}
+          />
+        ) : (
+          <p className="text-sm text-muted">Loading catch grades…</p>
+        )
       ) : (
         <>
           <div

@@ -20,7 +20,7 @@ import {
   pokemonFullSelect,
   pokemonSeasonStatsSelect,
   pokemonSummarySelect,
-  pokemonToolsSelect,
+  pokemonToolsBoardSelect,
   trainerRelationInclude,
   type PokemonSlotFilter,
 } from "@/lib/challenge-queries";
@@ -30,7 +30,7 @@ type PokemonBoardSelect =
   | typeof pokemonSummarySelect
   | typeof pokemonSeasonStatsSelect
   | typeof pokemonFullSelect
-  | typeof pokemonToolsSelect;
+  | typeof pokemonToolsBoardSelect;
 
 function boardTrainers(
   select: PokemonBoardSelect,
@@ -110,11 +110,14 @@ function boardLeagueInclude() {
   };
 }
 
-/** Tools / bounty / planner: all slots, full columns (redacted per viewer). */
+/**
+ * Tools SSR: all slots at summary columns only (#367). Grades / moves /
+ * competitive spreads hydrate client-side when a tool that needs them mounts.
+ */
 function boardPokemonToolsInclude() {
   return {
     ...challengeMetaInclude,
-    trainers: boardTrainers(pokemonToolsSelect),
+    trainers: boardTrainers(pokemonToolsBoardSelect),
   };
 }
 
@@ -222,9 +225,9 @@ export async function fetchChallengeBoardSummaryRow(slug: string) {
 }
 
 /**
- * Tools page: all Pokémon slots with full columns. The cache is viewer-blind
- * by design — `tools/page.tsx` redacts competitive fields per trainer after
- * the hit, so IVs/EVs never reach a client that isn't entitled to them.
+ * Tools page: shared summary board for every `?tool=` (and the hub). One cache
+ * key — panels that need grades / moves / spreads call
+ * `fetchToolsPokemonHydrateAction` after mount (#367).
  */
 export async function fetchChallengeToolsSummaryRow(slug: string) {
   "use cache";

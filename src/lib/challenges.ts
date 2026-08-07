@@ -459,7 +459,8 @@ export async function getChallengeBoardSummary(
 }
 
 /**
- * Tools — all slots with summary + moves (Pokédex tips); no IV/EV/heldItem.
+ * Tools — shared summary board for every tool URL (#367). Grades / moves /
+ * competitive columns hydrate after mount via server action.
  */
 export async function getChallengeToolsSummary(
   slug: string,

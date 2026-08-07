@@ -7,10 +7,6 @@ import {
   getChallengeMeta,
   getChallengeToolsSummary,
 } from "@/lib/challenges";
-import { canViewCompetitiveDetails } from "@/lib/gm-lens";
-import { readGmLensOn } from "@/lib/gm-lens.server";
-import { getAccessForChallenge } from "@/lib/permissions";
-import { toPublicTrainerPokemon } from "@/lib/pokemon-privacy";
 import { itemDexSlug } from "@/data/item-links";
 import { parseItemLens } from "@/data/items";
 import {
@@ -81,37 +77,18 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   }
   // Season Stats lives on the former Memorial tab (#288) — keep old Tools
   // deep links working.
-  if (parseToolsId(tool, tab) === "stats") {
+  const initialTool = parseToolsId(tool, tab);
+  if (initialTool === "stats") {
     redirect(seasonStatsHref(slug, { section: parseStatsSection(section) }));
   }
 
+  // Shared summary board for every tool URL (#367). Grades / moves / spreads
+  // hydrate client-side when Ownership, Planner, Pokédex, or Guide mounts.
   const challenge = await getChallengeToolsSummary(slug, session?.user?.id);
   if (!challenge) notFound();
 
-  const access = challenge.id
-    ? await getAccessForChallenge(challenge.id)
-    : null;
-  // Speculative read — ignored when the viewer isn't a GM (avoids a second
-  // round-trip after access resolves).
-  const gmLensOn =
-    access?.isGm === true ? await readGmLensOn(challenge.slug) : false;
-
-  // One pass, two outputs: the public payload, and the ids whose competitive
-  // fields survived it. Catch / bond tiers are stamped on during redaction and
-  // stay public; the ids gate the raw spreads in the details modal.
-  const competitiveTrainerIds: string[] = [];
-  const trainers = challenge.trainers.map((trainer) => {
-    if (canViewCompetitiveDetails(access, trainer.userId, gmLensOn)) {
-      competitiveTrainerIds.push(trainer.id);
-      return trainer;
-    }
-    return toPublicTrainerPokemon(trainer);
-  });
-
   const myTrainerId =
     challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
-
-  const initialTool = parseToolsId(tool, tab);
   const dexIdRaw = id != null ? Number(id) : NaN;
   const initialDexId =
     Number.isFinite(dexIdRaw) && dexIdRaw > 0 ? dexIdRaw : null;
@@ -141,9 +118,9 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
       <ToolsView
         slug={challenge.slug}
         challengeName={challenge.name}
-        trainers={trainers}
+        trainers={challenge.trainers}
         myTrainerId={myTrainerId}
-        competitiveTrainerIds={competitiveTrainerIds}
+        competitiveTrainerIds={[]}
         signedIn={Boolean(session?.user)}
         survivalMarketsEnabled={challenge.survivalMarketsEnabled !== false}
         viewerUserId={session?.user?.id ?? null}
