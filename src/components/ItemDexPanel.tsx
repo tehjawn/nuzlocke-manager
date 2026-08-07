@@ -58,15 +58,42 @@ type ItemDexPanelProps = {
   initialLens?: ItemLens | null;
 };
 
+/**
+ * Read a query param off the live URL, or null on the server.
+ *
+ * Selecting an item `pushState`s without telling the Next router, so the
+ * router's cached RSC payload for this route keeps whichever `?item=` was last
+ * *server*-rendered. Navigate out to a species and back and Next restores that
+ * stale payload: `initialItem` says `hard-stone` while the URL correctly says
+ * `lucky-egg` — and this panel unmounted on the way out, so the picked slug is
+ * gone too. Seeding state from the URL fixes it, since the URL is the one thing
+ * the browser keeps honest across a restore.
+ *
+ * Safe during hydration: the two only ever disagree on a client-side restore,
+ * never on a real document load, where the server read the very query string
+ * the browser is showing.
+ */
+function urlParam(name: string): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("tool") !== "itemdex") return null;
+  return params.get(name);
+}
+
 export function ItemDexPanel({
   slug,
   initialItem = null,
   initialLens = null,
 }: ItemDexPanelProps) {
   const [query, setQuery] = useState("");
-  const [lens, setLens] = useState<ItemLens>(parseItemLens(initialLens));
+  // Seeded from the live URL, not just the props — see `urlParam`.
+  const [lens, setLens] = useState<ItemLens>(() =>
+    parseItemLens(urlParam("mode") ?? initialLens),
+  );
   // Null falls through to the deep link, then the default entry.
-  const [pickedSlug, setPickedSlug] = useState<string | null>(null);
+  const [pickedSlug, setPickedSlug] = useState<string | null>(() =>
+    urlParam("item"),
+  );
   const deferredQuery = useDeferredValue(query);
 
   const results = useMemo(
