@@ -62,6 +62,11 @@ export function natureFromPid(pid: number): string {
   return NATURES[pid % 25] ?? "Hardy";
 }
 
+/** Nature name for a ROM nature index (NATURE_HARDY = 0 … 24); null when out of range. */
+export function natureFromIndex(index: number): string | null {
+  return NATURES[index] ?? null;
+}
+
 export function searchNatures(query: string, limit = 25): string[] {
   const q = query.trim().toLowerCase();
   if (!q) return NATURES.slice(0, limit);

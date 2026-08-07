@@ -23,6 +23,7 @@ import {
   abilityForSpecies,
   gen3ItemName,
   gen3MetLocationName,
+  natureFromIndex,
   natureFromPid,
 } from "@/data/pokemon-lookups";
 import { gen3MoveName } from "@/lib/move-names";
@@ -586,7 +587,10 @@ type RawMon = {
   hp: number;
   maxHp: number;
   isShiny: boolean;
-  nature: string;
+  /** Nature implied by the PID — what the mon hatched / was caught with. */
+  pidNature: string;
+  /** Modern Emerald growth.hiddenNature: mint override, or HIDDEN_NATURE_NONE. */
+  hiddenNature: number;
   abilitySlot: number;
   heldItem: string | null;
   /** Raw MAPSEC byte; resolved to a name once species mode is known. */
@@ -666,6 +670,8 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
   const experience = growthView.getUint32(4, true);
   // growth+8 = ppBonuses; growth+9 = friendship (vanilla + Modern Emerald).
   const friendship = growthView.getUint8(9);
+  // Modern Emerald growth+10 = hiddenNature:5 + box_ailment:3 (vanilla: filler).
+  const hiddenNature = growthView.getUint8(10) & 0x1f;
 
   const moveIds: number[] = [];
   for (let i = 0; i < 4; i++) {
@@ -732,7 +738,8 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
     hp,
     maxHp,
     isShiny: shiny,
-    nature: natureFromPid(pid),
+    pidNature: natureFromPid(pid),
+    hiddenNature,
     abilitySlot,
     heldItem,
     metLocation,
@@ -750,6 +757,22 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
 
 function monScore(m: RawMon): number {
   return (m.level != null ? 1000 : 0) + (m.maxHp > 0 ? 100 : 0) + m.hp;
+}
+
+/** Modern Emerald HIDDEN_NATURE_NONE — growth.hiddenNature on an unminted mon. */
+const HIDDEN_NATURE_NONE = 26;
+
+/**
+ * Nature the game actually battles with. Mints write the new nature into
+ * growth.hiddenNature and leave the PID alone, so `pid % 25` keeps reporting
+ * the pre-mint nature (the ROM summary shows it as "Old (New) nature").
+ * Vanilla / Crest saves hold filler bytes there — only trust modern saves.
+ */
+function effectiveNature(mon: RawMon, mode: SpeciesIdMode): string {
+  if (mode !== "modern" || mon.hiddenNature === HIDDEN_NATURE_NONE) {
+    return mon.pidNature;
+  }
+  return natureFromIndex(mon.hiddenNature) ?? mon.pidNature;
 }
 
 function toParsed(
@@ -781,7 +804,7 @@ function toParsed(
     pokedexId,
     level,
     isShiny: mon.isShiny,
-    nature: mon.nature,
+    nature: effectiveNature(mon, mode),
     ability: abilityForSpecies(pokedexId, mon.abilitySlot),
     heldItem: mon.heldItem,
     catchRoute: gen3MetLocationName(
