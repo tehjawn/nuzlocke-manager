@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   type KeyboardEvent,
@@ -47,7 +48,6 @@ export function Modal({
   const titleId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const onCloseRef = useRef(onClose);
   const resolvedSize = size ?? (wide ? "wide" : "default");
   const widthClass =
     resolvedSize === "fullscreen"
@@ -62,9 +62,11 @@ export function Modal({
       ? "max-h-[98dvh] sm:h-[min(96dvh,56rem)]"
       : "max-h-[92dvh]";
 
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
+  // Stable Escape callback — avoids rebinding the document listener when
+  // parents pass an inline onClose.
+  const closeOnEscape = useEffectEvent(() => {
+    onClose();
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -84,7 +86,7 @@ export function Modal({
       const shells = document.querySelectorAll("[data-modal-open]");
       if (shells[shells.length - 1] !== root) return;
       e.preventDefault();
-      onCloseRef.current();
+      closeOnEscape();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
