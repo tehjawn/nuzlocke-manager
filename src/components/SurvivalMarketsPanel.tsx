@@ -219,6 +219,16 @@ export function SurvivalMarketsPanel({
     return map;
   }, [trainers]);
 
+  const trainerByPokemonId = useMemo(() => {
+    const map = new Map<string, TrainerProfile>();
+    for (const trainer of trainers) {
+      for (const mon of trainer.pokemon) {
+        map.set(mon.id, trainer);
+      }
+    }
+    return map;
+  }, [trainers]);
+
   const marketByPokemonId = useMemo(() => {
     const map = new Map<string, SurvivalMarketListItem>();
     for (const market of markets ?? []) {
@@ -355,6 +365,10 @@ export function SurvivalMarketsPanel({
     pulse?.record && pulse.record.scored > 0
       ? Math.round((pulse.record.correct / pulse.record.scored) * 100)
       : null;
+
+  const detailsOwner = detailsPokemon
+    ? (trainerByPokemonId.get(detailsPokemon.id) ?? null)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -649,6 +663,16 @@ export function SurvivalMarketsPanel({
         showCompetitiveDetails={false}
         survivalMarketsEnabled={enabled}
         viewerUserId={viewerUserId}
+        trainer={
+          detailsOwner
+            ? {
+                id: detailsOwner.id,
+                handle: detailsOwner.handle,
+                avatarSpriteKey: detailsOwner.avatarSpriteKey,
+                avatarBackgroundKey: detailsOwner.avatarBackgroundKey,
+              }
+            : null
+        }
       />
 
       {viewerUserId && markets ? (

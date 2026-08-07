@@ -1750,6 +1750,12 @@ export function TrainerBoard({
           }
           survivalMarketsEnabled={survivalMarketsEnabled}
           viewerUserId={viewerUserId}
+          trainer={{
+            id: trainer.id,
+            handle: trainer.handle,
+            avatarSpriteKey: trainer.avatarSpriteKey,
+            avatarBackgroundKey: trainer.avatarBackgroundKey,
+          }}
         />
       ) : null}
 
@@ -1929,6 +1935,8 @@ export function TrainerBoard({
           onClose={() => setBoardHistoryOpen(false)}
           trainerId={trainer.id}
           trainerHandle={trainer.handle}
+          trainerAvatarSpriteKey={trainer.avatarSpriteKey}
+          trainerAvatarBackgroundKey={trainer.avatarBackgroundKey}
           challengeSlug={challengeSlug}
           challengeName={challengeName}
           challengeGame={challengeGame}
@@ -1950,6 +1958,12 @@ export function TrainerBoard({
           showCompetitiveDetails={showCompetitiveDetails}
           survivalMarketsEnabled={survivalMarketsEnabled}
           viewerUserId={viewerUserId}
+          trainer={{
+            id: trainer.id,
+            handle: trainer.handle,
+            avatarSpriteKey: trainer.avatarSpriteKey,
+            avatarBackgroundKey: trainer.avatarBackgroundKey,
+          }}
           onClose={() => setDetailsPokemon(null)}
         />
       ) : null}
