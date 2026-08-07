@@ -15,7 +15,11 @@ type CannedContext = {
 };
 
 type AskCannedIntent = {
-  id: "app_overview" | "how_to_play";
+  id:
+    | "app_overview"
+    | "how_to_play"
+    | "self_trader"
+    | "hyper_training";
   phrases: ReadonlySet<string>;
   prose: (ctx: CannedContext) => string;
   surfaces: AskSurfaceId[];
@@ -108,6 +112,53 @@ const INTENTS: AskCannedIntent[] = [
       ].join("\n\n");
     },
     surfaces: ["setup", "game_guide", "rules", "my_trainer"],
+  },
+  {
+    id: "self_trader",
+    phrases: new Set([
+      "self trade",
+      "self trader",
+      "where do i self trade",
+      "where is the self trader",
+      "how do i self trade",
+      "how do i trade evolve",
+      "how do i evolve by trade",
+      "trade evolution",
+      "trade evolutions",
+      "where do i trade evolve",
+    ]),
+    prose: () =>
+      [
+        "Modern Emerald’s solo trade path is the Devon Corp. **Self-Trader** on **Lilycove Department Store 1F** (NPC + PC).",
+        "Pick a party mon → in-game trade scene → triggers **trade** and **held-item trade** evolutions. **10,000¥** per use, or a one-time **1,000,000¥** lifetime license.",
+        "Season Rules may still ban self-trades — check hosts. Open the **Game Guide** Lilycove chapter for the full callout.",
+      ].join("\n\n"),
+    surfaces: ["game_guide", "rules"],
+  },
+  {
+    id: "hyper_training",
+    phrases: new Set([
+      "ev train",
+      "ev training",
+      "where do i ev train",
+      "where to ev train",
+      "hyper training",
+      "hyper training gym",
+      "where is hyper training",
+      "where is the hyper training gym",
+      "ability swapper",
+      "ability tutor",
+      "where is the ability tutor",
+      "iv maximizer",
+      "ev reset",
+    ]),
+    prose: () =>
+      [
+        "Warp into the **Hyper Training Gym** from **Lilycove City** (northeast of town near the Dept Store). Battle Frontier has a twin door later.",
+        "**Anytime you can reach Lilycove:** EV Training (six stat trainers; Macho Brace ×5) and **EV Reset**.",
+        "**Post-champion only:** IV Maximizer (Lv.100), EXP Nurse, and Ability Swapper. Details are in the **Game Guide** Lilycove chapter.",
+      ].join("\n\n"),
+    surfaces: ["game_guide"],
   },
 ];
 

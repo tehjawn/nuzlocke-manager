@@ -33,8 +33,9 @@ export type ObtainabilityBuckets = {
   unobtainable: number[];
   /**
    * Reachable only by crossing an `EVO_TRADE` / `EVO_TRADE_ITEM` edge from an
-   * otherwise-obtainable pre-evo. Solo runs treat these as locked; league runs
-   * are a policy call — keep distinct from true unobtainable.
+   * otherwise-obtainable pre-evo. Modern Emerald’s Lilycove self-trader covers
+   * the ROM path; season Rules may still ban it — keep distinct from true
+   * unobtainable.
    */
   tradeEvo: number[];
   /** No wild/static slot; reachable by non-trade evolution from something obtainable. */
@@ -188,7 +189,7 @@ export function bucketHint(bucket: ObtainabilityBucket): string {
     case "unobtainable":
       return "No wild slot, catchable static, or evolution path in this seed.";
     case "tradeEvo":
-      return "Only reachable via trade evolution. Solo runs can't get these; leagues decide whether trades are allowed.";
+      return "Only reachable via trade evolution. Self-trade at Lilycove Dept Store 1F (10,000¥, or a lifetime license). Season Rules may still ban it.";
     case "evolutionOnly":
       return "No wild or static slot — only reachable by evolving an obtainable pre-evo.";
     case "singleSlot":

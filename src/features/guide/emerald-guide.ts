@@ -810,6 +810,32 @@ export const EMERALD_GUIDE: GuideDocument = {
       sortOrder: 5,
     },
     {
+      id: "mossdeep-self-trader",
+      chapterId: "mossdeep",
+      title: "Use the Dept Store self-trader",
+      summary:
+        "Lilycove Dept Store 1F — solo trade evolutions (and trade-item holds).",
+      detail:
+        "In **Lilycove City**’s **Department Store 1F**, the Devon Corp. **Self-Trader** (NPC + PC) runs an in-game trade on a party mon — enough to trigger **trade** and **held-item trade** evolutions without a second cartridge.\n\n**Cost:** **10,000¥** per use, or buy the NPC’s one-time **1,000,000¥** lifetime license. Real link-cable trading still works; this is the solo path. Season hosts may still ban self-trades in Rules/FAQ — confirm before you rely on it.\n\nSame city: **Wonder Trade** on the Pokémon Center **3F**, and the vanilla **Move Deleter** house.",
+      locations: ["Lilycove City"],
+      requiresSteps: ["mossdeep-route-121"],
+      priority: "optional",
+      sortOrder: 6,
+    },
+    {
+      id: "mossdeep-hyper-training",
+      chapterId: "mossdeep",
+      title: "Visit the Hyper Training Gym",
+      summary:
+        "Lilycove overworld warp — EV train/reset anytime; IV / EXP / ability swap post-champion.",
+      detail:
+        "From **Lilycove City**, take the overworld warp into the **Hyper Training Gym** (northeast of town near the Dept Store / cove side). Battle Frontier Outside East has a twin door into the same lounge later.\n\n**Available once you can reach Lilycove:**\n- **EV Training** — six stat trainers (HP / Atk / Def / Sp.Atk / Sp.Def / Spe). Sign tip: Macho Brace ×5 EVs\n- **EV Reset** (EV-Man) — paid wipe to zero\n\n**Post-champion only:**\n- **IV Maximizer** (IV-Man) — IVs 30/31 + Hidden Power type; needs Lv.100\n- **EXP Nurse** — party EXP farm\n- **Ability Swapper** — swap between natural abilities",
+      locations: ["Lilycove City", "Battle Frontier"],
+      requiresSteps: ["mossdeep-route-121"],
+      priority: "optional",
+      sortOrder: 7,
+    },
+    {
       id: "mossdeep-mt-pyre",
       chapterId: "mossdeep",
       title: "Climb Mt. Pyre",
