@@ -343,18 +343,31 @@ export function BountyHunterView({
 
       {mode === "tracker" ? (
         !seen.ready ? (
-          <div
-            className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8"
-            aria-busy="true"
-            aria-label="Loading encounter stubs"
-          >
-            {Array.from({ length: 24 }, (_, i) => (
-              <Skeleton
-                key={i}
-                className="aspect-square rounded-lg border border-frame/40 bg-surface"
-              />
-            ))}
-          </div>
+          seen.error ? (
+            <div className="rounded-md border border-frame/40 bg-surface/60 px-4 py-5 text-sm">
+              <p className="text-muted">{seen.error}</p>
+              <button
+                type="button"
+                className="pressable mt-3 rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                onClick={() => seen.retry()}
+              >
+                Try again
+              </button>
+            </div>
+          ) : (
+            <div
+              className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8"
+              aria-busy="true"
+              aria-label="Loading encounter stubs"
+            >
+              {Array.from({ length: 24 }, (_, i) => (
+                <Skeleton
+                  key={i}
+                  className="aspect-square rounded-lg border border-frame/40 bg-surface"
+                />
+              ))}
+            </div>
+          )
         ) : (
         <>
           <StatusLegend />
@@ -616,6 +629,7 @@ function SpeciesGrid({
         </li>
       ))}
       <InfiniteRevealFooter
+        as="li"
         hasMore={hasMore}
         remaining={remaining}
         sentinelRef={sentinelRef}

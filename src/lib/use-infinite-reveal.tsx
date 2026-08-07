@@ -37,7 +37,7 @@ export function useInfiniteReveal<T>(
   const [visibleCount, setVisibleCount] = useState(pageSize);
   const [prevKey, setPrevKey] = useState(resetKey);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLElement | null>(null);
 
   if (prevKey !== resetKey) {
     setPrevKey(resetKey);
@@ -56,8 +56,7 @@ export function useInfiniteReveal<T>(
     const sentinel = sentinelRef.current;
     if (!sentinel || !hasMore) return;
 
-    const root =
-      rootMode === "element" ? scrollRef.current : null;
+    const root = rootMode === "element" ? scrollRef.current : null;
     if (rootMode === "element" && !root) return;
 
     const observer = new IntersectionObserver(
@@ -91,22 +90,26 @@ export function InfiniteRevealFooter({
   onLoadMore,
   className,
   label,
+  as = "div",
 }: {
   hasMore: boolean;
   remaining: number;
-  sentinelRef: RefObject<HTMLDivElement | null>;
+  sentinelRef: RefObject<HTMLElement | null>;
   onLoadMore: () => void;
   className?: string;
   /** Override the “Scroll for N more…” hint. */
   label?: ReactNode;
+  /** Use `li` when the footer sits inside a `ul` grid. */
+  as?: "div" | "li";
 }) {
   if (!hasMore) return null;
+  const Tag = as;
   return (
-    <div
-      ref={sentinelRef}
+    <Tag
+      ref={sentinelRef as RefObject<HTMLDivElement & HTMLLIElement>}
       className={
         className ??
-        "col-span-full flex flex-col items-center gap-2 py-2"
+        `col-span-full flex flex-col items-center gap-2 py-2${as === "li" ? " list-none" : ""}`
       }
     >
       <span className="text-[10px] text-muted">
@@ -119,6 +122,6 @@ export function InfiniteRevealFooter({
       >
         Load more
       </button>
-    </div>
+    </Tag>
   );
 }

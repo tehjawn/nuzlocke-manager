@@ -381,6 +381,7 @@ export function SpecimenShowcase({
             </li>
           ))}
           <InfiniteRevealFooter
+            as="li"
             hasMore={hasMore}
             remaining={remaining}
             sentinelRef={sentinelRef}

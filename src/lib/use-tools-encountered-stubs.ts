@@ -17,14 +17,18 @@ type StubsCache = {
  * Deferred ENCOUNTERED stubs for Tools surfaces that need “seen” status (#382).
  * Tools SSR ships owned slots only; enable when tracker / Pokédex paints
  * encounter state. Caches per slug so toggling Ownership modes doesn’t refetch.
+ *
+ * `ready` is true only when stubs are loaded (or the surface doesn’t need them).
+ * Failures set `error` and keep `ready` false so callers don’t paint “untouched”.
  */
 export function useToolsEncounteredStubs(slug: string, enabled: boolean) {
   const [cache, setCache] = useState<StubsCache | null>(null);
-  const [failedSlug, setFailedSlug] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!enabled) return;
-    if (cache?.slug === slug || failedSlug === slug) return;
+    if (cache?.slug === slug) return;
 
     let cancelled = false;
     void (async () => {
@@ -32,23 +36,34 @@ export function useToolsEncounteredStubs(slug: string, enabled: boolean) {
       if (cancelled) return;
       if (result.ok) {
         setCache({ slug, trainers: result.trainers });
-        setFailedSlug(null);
+        setError(null);
       } else {
-        setFailedSlug(slug);
+        setError(result.error || "Could not load encounter stubs");
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [enabled, slug, cache, failedSlug]);
+  }, [enabled, slug, cache, attempt]);
 
-  const ready = !enabled || cache?.slug === slug || failedSlug === slug;
+  const ready = !enabled || cache?.slug === slug;
+  const failed = Boolean(enabled && error && cache?.slug !== slug);
+
+  function retry() {
+    setError(null);
+    setAttempt((n) => n + 1);
+  }
 
   function withStubs(owned: TrainerProfile[]): TrainerProfile[] {
     if (!cache || cache.slug !== slug) return owned;
     return mergeToolsEncounteredStubs(owned, cache.trainers);
   }
 
-  return { ready, withStubs };
+  return {
+    ready,
+    error: failed ? error : null,
+    retry,
+    withStubs,
+  };
 }
