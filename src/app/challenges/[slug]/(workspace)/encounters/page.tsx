@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { EncounterSeasonView } from "@/components/EncounterSeasonView";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeEncounters, getChallengeMeta } from "@/lib/challenges";
 import { buildEncounterLedger } from "@/lib/encounter-ledger";
 import {
   encounterSeasonHighlights,
@@ -18,7 +18,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   return {
     title: challenge ? `Encounters · ${challenge.name}` : "Encounters",
   };
@@ -27,7 +27,7 @@ export async function generateMetadata({
 export default async function EncountersPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeEncounters(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const groups = buildEncounterLedger(challenge.trainers);

@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { DataSourceBanner } from "@/components/DataSourceBanner";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import { TournamentBracket } from "@/components/TournamentBracket";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeMeta, getChallengeTournament } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { getTournamentForChallenge } from "@/lib/tournament";
 
@@ -17,7 +17,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   if (!challenge) return { title: "Tournament" };
   return { title: `Tournament · ${challenge.name}` };
 }
@@ -25,7 +25,7 @@ export async function generateMetadata({
 export default async function TournamentPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeTournament(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const access = challenge.id

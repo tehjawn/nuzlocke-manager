@@ -7,8 +7,8 @@ import { MemorialBoard } from "@/components/MemorialBoard";
 import { SeasonStatsView } from "@/components/SeasonStatsView";
 import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
 import {
-  getChallenge,
   getChallengeMeta,
+  getChallengeSeasonStats,
   getSeasonMemorialGraves,
 } from "@/lib/challenges";
 import { canEditTrainerBoard, canViewCompetitiveDetails } from "@/lib/gm-lens";
@@ -47,7 +47,7 @@ export async function generateMetadata({
 export default async function SeasonStatsPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeSeasonStats(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const access = challenge.id

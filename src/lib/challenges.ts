@@ -11,10 +11,13 @@ import type {
 import {
   fetchChallengeBoardRow,
   fetchChallengeBoardSummaryRow,
+  fetchChallengeEncountersRow,
   fetchChallengeMetaRow,
+  fetchChallengeSeasonStatsRow,
   fetchChallengeShellRow,
   fetchChallengeSlotRow,
   fetchChallengeToolsSummaryRow,
+  fetchChallengeTournamentRow,
   fetchDefaultSearchBrief,
   fetchHomeCarouselRow,
   fetchSeasonIndexRows,
@@ -204,6 +207,83 @@ export async function getChallengeWithPokemonSlots(
       ...t,
       pokemon: t.pokemon.filter((p) => slotSet.has(p.slot)),
     })),
+  };
+}
+
+/**
+ * Season Stats — all slots with summary + IVs for god-catch aggregates.
+ * Skips survival-poll side-load and activity preview (page never shows either).
+ */
+export async function getChallengeSeasonStats(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeSeasonStatsRow(slug);
+      if (row) {
+        return mapDbChallenge({ ...row, activities: [] }, viewerUserId);
+      }
+    } catch {
+      return null;
+    }
+  }
+  return getChallenge(slug, viewerUserId);
+}
+
+/**
+ * Encounters ledger — all slots at summary columns (catchRoute / species).
+ * No competitive fields; no survival polls.
+ */
+export async function getChallengeEncounters(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeEncountersRow(slug);
+      if (row) {
+        return mapDbChallenge({ ...row, activities: [] }, viewerUserId);
+      }
+    } catch {
+      return null;
+    }
+  }
+  return getChallenge(slug, viewerUserId);
+}
+
+/**
+ * Tournament — meta + trainer identities only (mainSquadLocked / handles).
+ * Zero Pokémon rows.
+ */
+export async function getChallengeTournament(
+  slug: string,
+  viewerUserId?: string | null,
+): Promise<Challenge | null> {
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeTournamentRow(slug);
+      if (row) {
+        return mapDbChallenge(
+          {
+            ...row,
+            trainers: row.trainers.map((t) => ({ ...t, pokemon: [] })),
+            activities: [],
+          },
+          viewerUserId,
+        );
+      }
+    } catch {
+      return null;
+    }
+  }
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  if (!seed) return null;
+  const full = seedAsChallenge(seed);
+  return {
+    ...full,
+    trainers: full.trainers.map((t) => ({ ...t, pokemon: [] })),
+    activities: [],
   };
 }
 

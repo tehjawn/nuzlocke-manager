@@ -38,6 +38,22 @@ export const pokemonFullSelect = {
 } as const;
 
 /**
+ * Season Stats: summary + IVs for server-side god-catch boards.
+ * Drops moves / EVs / held item / nature / ability / friendship — the page
+ * never renders those, and public Flight still redacts IVs after aggregates.
+ */
+export const pokemonSeasonStatsSelect = {
+  ...pokemonSummarySelect,
+  ivs: true,
+} as const;
+
+/**
+ * Encounters ledger: identity + catchRoute only. All slots, no competitive
+ * columns — the route map never opens a details modal.
+ */
+export const pokemonEncounterSelect = pokemonSummarySelect;
+
+/**
  * Tools page: identity + moves for Pokédex tips / bounty / planner, plus the
  * competitive columns Pokémon Ownership's Showcase needs — catch tier is
  * IV-derived and training tier needs EVs / friendship, so both are
