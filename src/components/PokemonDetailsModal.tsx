@@ -36,7 +36,7 @@ import {
   catchArchetypeForSpecies,
   recommendPlaystyle,
 } from "@/lib/playstyle";
-import { resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
+import { resolveCatchScore, resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
 import {
   baseStatRanksFor,
   statRankHint,
@@ -189,6 +189,7 @@ export function PokemonDetailsModal({
   // Tier chrome is public — it rides on the entry (stamped at redaction) and
   // not on `showCompetitiveDetails`, which gates the spreads themselves.
   const catchTier = resolveCatchTier(pokemon);
+  const catchScore = resolveCatchScore(pokemon);
   const trainingTier = resolveTrainingTier(pokemon);
   const hasCatchChrome = catchTier !== null && catchTierHasChrome(catchTier);
 
@@ -363,7 +364,11 @@ export function PokemonDetailsModal({
               trainingTier !== null) && (
               <div className="flex w-full flex-col gap-1">
                 {catchTier !== null && (
-                  <CatchTierCaption tier={catchTier} variant="chip" />
+                  <CatchTierCaption
+                    score={catchScore}
+                    tier={catchTier}
+                    variant="chip"
+                  />
                 )}
                 {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 && (
                   <SurvivalSentimentCaption

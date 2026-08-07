@@ -49,10 +49,12 @@ export type PokemonEntry = {
    * Catch / bond grades precomputed by `toPublicPokemonEntry` so they survive
    * redaction — the grades are public, the spreads behind them are not.
    * Absent on unredacted entries, which still carry the inputs and are graded
-   * on demand. Always read these via `resolveCatchTier` / `resolveTrainingTier`
-   * rather than branching on them directly.
+   * on demand. Always read these via `resolveCatchTier` / `resolveCatchScore`
+   * / `resolveTrainingTier` rather than branching on them directly.
    */
   catchTier?: CatchTier | null;
+  /** Rounded weighted catch score (0–100); public tip companion to catchTier. */
+  catchScore?: number | null;
   trainingTier?: TrainingTier | null;
 };
 

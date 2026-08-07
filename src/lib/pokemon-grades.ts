@@ -6,10 +6,10 @@
  * spreads behind them are not.** Announcing "God catch" (weighted playstyle
  * score in the top band) or an Ultra-friends heart (Best-friends
  * floors on friendship *and* EVs, plus a true max on at least one) to the whole
- * pack is deliberate — that is what the Showcase is for. Withholding the
- * spread itself is equally deliberate. Publish the tier enum and nothing
- * finer: `summarizeIvs().headline` and friends name exact stats and belong
- * behind `showCompetitiveDetails`.
+ * pack is deliberate — that is what the Showcase is for. The rounded catch
+ * **score** may ride along in hover tips (same public grade surface); the
+ * spread itself stays private. Finer breakdowns (`summarizeIvs().headline`
+ * and friends) belong behind `showCompetitiveDetails`.
  *
  * `null` means **nothing on file to grade**, never "withheld from you". An
  * un-imported encounter has no IVs, and grading it "oof" would publish a bad
@@ -17,7 +17,7 @@
  */
 
 import type { PokemonEntry } from "@/lib/challenge-types";
-import { ivCatchTier, type CatchTier } from "@/lib/iv-quality";
+import { ivCatchGrade, type CatchTier } from "@/lib/iv-quality";
 import {
   catchArchetypeForSpecies,
   recommendPlaystyle,
@@ -33,18 +33,35 @@ type GradableEntry = Pick<
   "pokedexId" | "nature" | "ability" | "ivs" | "evs" | "friendship"
 >;
 
+export type CatchGrade = {
+  tier: CatchTier;
+  /** Rounded 0–100 weighted score (tips / public stamp). */
+  score: number;
+};
+
 /**
- * IV-derived catch tier; null when the specimen has no IVs on file.
+ * IV-derived catch grade; null when the specimen has no IVs on file.
  *
  * Grades against the species' catch archetype (weighted playstyle ladder)
- * when base stats are known (see `ivCatchTier` / #356). Unknown dex falls
+ * when base stats are known (see `ivCatchGrade` / #356). Unknown dex falls
  * back to Balanced weights.
  */
-export function catchTierFor(pokemon: GradableEntry): CatchTier | null {
+export function catchGradeFor(pokemon: GradableEntry): CatchGrade | null {
   if (isEmptySpread(pokemon.ivs) || !pokemon.ivs) return null;
-  return ivCatchTier(pokemon.ivs, {
+  const { tier, score } = ivCatchGrade(pokemon.ivs, {
     archetype: catchArchetypeForSpecies(pokemon.pokedexId),
   });
+  return { tier, score: Math.round(score) };
+}
+
+/** IV-derived catch tier; null when the specimen has no IVs on file. */
+export function catchTierFor(pokemon: GradableEntry): CatchTier | null {
+  return catchGradeFor(pokemon)?.tier ?? null;
+}
+
+/** Weighted catch score; null when the specimen has no IVs on file. */
+export function catchScoreFor(pokemon: GradableEntry): number | null {
+  return catchGradeFor(pokemon)?.score ?? null;
 }
 
 /**
@@ -75,6 +92,13 @@ export function resolveCatchTier(pokemon: PokemonEntry): CatchTier | null {
   return pokemon.catchTier !== undefined
     ? pokemon.catchTier
     : catchTierFor(pokemon);
+}
+
+/** Catch score for tips — see {@link resolveCatchTier}. */
+export function resolveCatchScore(pokemon: PokemonEntry): number | null {
+  return pokemon.catchScore !== undefined
+    ? pokemon.catchScore
+    : catchScoreFor(pokemon);
 }
 
 /** Bond tier for display — see {@link resolveCatchTier}. */

@@ -385,24 +385,29 @@ export function catchTierLabel(tier: CatchTier): string | null {
   return CATCH_TIER_LABEL[tier];
 }
 
-/** Hover tip body for the catch glyph — short name + vibe, no IV jargon. */
-export function catchTierTip(tier: CatchTier): string {
+/** Hover tip body for the catch glyph — short name + vibe, optional score. */
+export function catchTierTip(
+  tier: CatchTier,
+  score?: number | null,
+): string {
+  let tip: string;
   if (tier === "shit") {
-    return "Big oof: I'm so sorry…";
+    tip = "Big oof: I'm so sorry…";
+  } else if (tier === "oof") {
+    tip = "Oof: Below average — no standouts.";
+  } else if (tier === "good") {
+    tip = "Good: Average or better overall.";
+  } else if (tier === "great") {
+    tip = "Great: Solid overall for how this mon plays.";
+  } else if (tier === "cracked") {
+    tip = "Cracked: Strong genes where they matter.";
+  } else {
+    tip = "God: Incredible genes for this playstyle.";
   }
-  if (tier === "oof") {
-    return "Oof: Below average — no standouts.";
+  if (score != null && Number.isFinite(score)) {
+    tip = `${tip} Score ${Math.round(score)}.`;
   }
-  if (tier === "good") {
-    return "Good: Average or better overall.";
-  }
-  if (tier === "great") {
-    return "Great: Solid overall for how this mon plays.";
-  }
-  if (tier === "cracked") {
-    return "Cracked: Strong genes where they matter.";
-  }
-  return "God: Incredible genes for this playstyle.";
+  return tip;
 }
 
 /** Board / modal ring + sprite wash — oof stays plain. */
@@ -464,31 +469,54 @@ function tierFromCatchScore(score: number): CatchTier {
 }
 
 /**
- * Archetype-weighted catch tier.
+ * Archetype-weighted catch grade: tier + 0–100 score.
  *
- * Soft caps:
+ * Soft caps may lower the tier without rewriting the raw score (tips show both):
  * 1. Critical trash — any weight ≥4 axis with IV ≤10 → at most Good
- *    (score treated as below the Great threshold).
- * 2. Big oof override — every critical axis ≤10 and no IV ≥15 → shit.
- * 3. Perfect floor — any IV 31 → at least Oof (lone Perfect Spe isn't Big oof).
+ * 2. Big oof override — every critical axis ≤10 and no IV ≥15 → shit
+ * 3. Perfect floor — any IV 31 → at least Oof
  * 4. Glass God gate — glass archetypes need every critical axis ≥25 for God
- *    (else Cracked max). Middling Atk + hot Spe / dump SpA can't wear God.
  *
  * Feel-checks (approx):
- * - Taco Wobbuffet Bulky `31/31/25/30/24/4` → ~83 God (SpD 24 vs 25 is Δ~0.8)
- * - Skarmory wall `31 HP / 31 Def / 28 SpD` + dump offenses → ~83 God
+ * - Taco Wobbuffet Bulky `31/31/25/30/24/4` → ~83 God
  * - Starmie glass SpA 29 / Spe 28 → God
- * - Soft SpD 22 wall → ~71 Cracked
  * - Glass Sneasel Atk 23 / Spe 26 / SpA 30 → Cracked (not God)
- * - Dump Def Skarmory + hot offenses → Good (trash critical)
- * - Spe-dump Machamp (Atk 31, Spe 4) → Good
- * - Flat mid teens → Good; all critical dumps + nothing ≥15 → Big oof
  * - Dead wall + Perfect Spe → Oof (not Big oof)
  */
-function weightedIvCatchTier(
+export function ivCatchGrade(
+  ivs: StatSpread,
+  options?: IvCatchTierOptions,
+): { tier: CatchTier; score: number } {
+  const archetype = options?.archetype ?? "Balanced";
+  return weightedIvCatchGrade(ivs, archetype);
+}
+
+/**
+ * IV catch tier (primary signal for randomizer catches).
+ *
+ * Takes a present spread on purpose: a missing spread is "not graded", not a
+ * bad grade, and the tier is public season-wide. Callers go through
+ * `catchTierFor`, which owns that null and supplies the catch archetype.
+ */
+export function ivCatchTier(
+  ivs: StatSpread,
+  options?: IvCatchTierOptions,
+): CatchTier {
+  return ivCatchGrade(ivs, options).tier;
+}
+
+/** Raw weighted catch score (0–100), before soft-cap tier clamps. */
+export function ivCatchScore(
+  ivs: StatSpread,
+  options?: IvCatchTierOptions,
+): number {
+  return ivCatchGrade(ivs, options).score;
+}
+
+function weightedIvCatchGrade(
   ivs: StatSpread,
   archetype: CatchArchetype,
-): CatchTier {
+): { tier: CatchTier; score: number } {
   const weights = CATCH_ARCHETYPE_WEIGHTS[archetype];
   const score = weightedCatchScore(ivs, weights);
 
@@ -513,7 +541,7 @@ function weightedIvCatchTier(
 
   // Big oof wins over the Good soft-cap when every critical axis is trash.
   if (allCriticalTrash && maxIv < BIG_OOF_HOT_IV) {
-    return "shit";
+    return { tier: "shit", score };
   }
 
   let tier = tierFromCatchScore(score);
@@ -533,7 +561,7 @@ function weightedIvCatchTier(
   if (hasPerfect && catchTierRank(tier) < catchTierRank("oof")) {
     tier = "oof";
   }
-  return tier;
+  return { tier, score };
 }
 
 function isGlassCatchArchetype(archetype: CatchArchetype): boolean {
@@ -542,19 +570,4 @@ function isGlassCatchArchetype(archetype: CatchArchetype): boolean {
     archetype === "Glass (special)" ||
     archetype === "Glass (mixed)"
   );
-}
-
-/**
- * IV catch tier (primary signal for randomizer catches).
- *
- * Takes a present spread on purpose: a missing spread is "not graded", not a
- * bad grade, and the tier is public season-wide. Callers go through
- * `catchTierFor`, which owns that null and supplies the catch archetype.
- */
-export function ivCatchTier(
-  ivs: StatSpread,
-  options?: IvCatchTierOptions,
-): CatchTier {
-  const archetype = options?.archetype ?? "Balanced";
-  return weightedIvCatchTier(ivs, archetype);
 }

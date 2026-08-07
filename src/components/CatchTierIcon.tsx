@@ -134,14 +134,17 @@ const CATCH_TIER_ICON: Record<
  */
 export function CatchTierIcon({
   tier,
+  score = null,
   className = "h-3.5 w-3.5",
 }: {
   tier: CatchTier;
+  /** Rounded weighted score for the tip (optional). */
+  score?: number | null;
   className?: string;
 }) {
   const gradientId = useId().replace(/:/g, "");
   const tipId = useId();
-  const tip = catchTierTip(tier);
+  const tip = catchTierTip(tier, score);
   const label = catchTierLabel(tier) ?? "Catch";
   const wrapRef = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
@@ -241,11 +244,14 @@ export function CatchTierIcon({
  */
 export function CatchTierCaption({
   tier,
+  score = null,
   variant = "inline",
   className = "",
   iconClassName,
 }: {
   tier: CatchTier;
+  /** Rounded weighted score shown in the hover tip. */
+  score?: number | null;
   variant?: "inline" | "chip" | "tile";
   className?: string;
   iconClassName?: string;
@@ -254,11 +260,18 @@ export function CatchTierCaption({
   if (!label) return null;
 
   const tone = catchTierToneClass(tier);
+  const tip = catchTierTip(tier, score);
   const iconSize =
     iconClassName ??
     (variant === "tile" ? "h-4 w-4 shrink-0" : "h-3.5 w-3.5 shrink-0");
 
-  const icon = <CatchTierIcon className={`${tone} ${iconSize}`} tier={tier} />;
+  const icon = (
+    <CatchTierIcon
+      className={`${tone} ${iconSize}`}
+      score={score}
+      tier={tier}
+    />
+  );
   const text = (
     <span
       className={`min-w-0 ${
@@ -275,7 +288,7 @@ export function CatchTierCaption({
     return (
       <div
         className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md border border-frame/45 bg-surface-2/90 px-1 py-1.5 ${className}`}
-        title={label}
+        title={tip}
       >
         {icon}
         {text}
@@ -287,7 +300,7 @@ export function CatchTierCaption({
     return (
       <p
         className={`inline-flex w-full max-w-full items-center gap-1.5 rounded-md border border-frame/45 bg-surface-2/90 px-2 py-1.5 ${className}`}
-        title={label}
+        title={tip}
       >
         {icon}
         {text}
@@ -298,7 +311,7 @@ export function CatchTierCaption({
   return (
     <p
       className={`inline-flex max-w-full items-center justify-center gap-1 sm:justify-start ${className}`}
-      title={label}
+      title={tip}
     >
       {icon}
       {text}

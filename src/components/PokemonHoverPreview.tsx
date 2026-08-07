@@ -25,7 +25,7 @@ import {
   catchTierLabel,
   type CatchTier,
 } from "@/lib/iv-quality";
-import { resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
+import { resolveCatchScore, resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
 import type { PokemonType } from "@/lib/pokemon-types";
 import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 import type { SurvivalPollTally } from "@/lib/survival-market-types";
@@ -61,6 +61,7 @@ type HoverModel = {
   subtitle: string | null;
   detail: string | null;
   catchTier: CatchTier | null;
+  catchScore: number | null;
   trainingTier: TrainingTier | null;
   survivalPoll: SurvivalPollTally | null;
 };
@@ -76,6 +77,7 @@ function modelFromPokemon(pokemon: PokemonEntry): HoverModel {
     subtitle: null,
     detail: null,
     catchTier: resolveCatchTier(pokemon),
+    catchScore: resolveCatchScore(pokemon),
     trainingTier: resolveTrainingTier(pokemon),
     survivalPoll: pokemon.survivalPoll ?? null,
   };
@@ -96,6 +98,7 @@ function modelFromSpecies(preview: SpeciesPreview): HoverModel {
     subtitle: preview.subtitle?.trim() || null,
     detail: preview.detail?.trim() || null,
     catchTier: null,
+    catchScore: null,
     trainingTier: null,
     survivalPoll: null,
   };
@@ -344,6 +347,7 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
                     <div className="mt-1.5 flex w-full gap-1">
                       {model.catchTier !== null && catchLabel && (
                         <CatchTierCaption
+                          score={model.catchScore}
                           tier={model.catchTier}
                           variant="tile"
                         />
