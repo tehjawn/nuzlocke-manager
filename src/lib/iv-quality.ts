@@ -78,11 +78,33 @@ const GOOD_MEAN = 13;
 const BIG_OOF_MEAN = 9;
 const BIG_OOF_MAX_IV = 13;
 
+/**
+ * Physical / Special / Mixed attackers cannot God without their offense IV(s)
+ * actually being high — luck/breadth ORs must not crown a SpA-6 special.
+ */
+const GOD_OFFENSE_MIN = 25;
+
 /** Median of the six IVs — dump outliers don't sink the overall floor. */
 function ivMedian(ivs: StatSpread): number {
   const values = STAT_KEYS.map((k) => ivs[k] ?? 0).sort((a, b) => a - b);
   // Six stats → average of the two middle values.
   return (values[2]! + values[3]!) / 2;
+}
+
+/**
+ * True when primary keys don't demand an offense check, or every primary
+ * offense axis (Atk / SpA) clears {@link GOD_OFFENSE_MIN}.
+ */
+function attackerOffenseAllowsGod(
+  ivs: StatSpread,
+  primaryKeys: StatKey[],
+): boolean {
+  const needsAtk = primaryKeys.includes("atk");
+  const needsSpa = primaryKeys.includes("spa");
+  if (!needsAtk && !needsSpa) return true;
+  if (needsAtk && (ivs.atk ?? 0) < GOD_OFFENSE_MIN) return false;
+  if (needsSpa && (ivs.spa ?? 0) < GOD_OFFENSE_MIN) return false;
+  return true;
 }
 
 /** @deprecated Kept for summarizeIvs legacy path without keyStats. */
@@ -428,6 +450,7 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
  * - Fast Weedle, Spe 30 / Def 30 / SpA 28 → god (breadth OR)
  * - Physical Graveler, Atk 31 / Def 29 / dump Spe·SpA → god
  *   (bulky phys soft-key Def + median ≥20 primary path)
+ * - Special Porygon, SpA 6 / cracked HP·Atk·Spe → not god (offense gate)
  * - Physical Annihilape, Atk 29 / SpD 31 / Def 7 / median 24 → god (breadth OR)
  * - Median ≥23 with three IVs ≥27 anywhere → god (raw-luck OR)
  * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
@@ -496,11 +519,13 @@ function roleIvCatchTier(
   }
 
   // --- God (primary || role-OR || breadth-OR || luck-OR) -------------------
+  // Attackers must clear their offense IV(s) — no crowning a SpA-dump special.
   if (
-    (overall >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
-    (overall >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS) ||
-    godBreadth ||
-    godLuck
+    attackerOffenseAllowsGod(ivs, primaryKeys) &&
+    ((overall >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
+      (overall >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS) ||
+      godBreadth ||
+      godLuck)
   ) {
     return "god";
   }
