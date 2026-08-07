@@ -50,6 +50,8 @@ type SurvivalMarketsPanelProps = {
   viewerUserId?: string | null;
   initialMode?: MarketsMode | null;
   initialSort?: MarketsSort | null;
+  /** SSR / cached slim markets — skip the mount remount fetch when set (#366). */
+  initialMarkets?: SurvivalMarketListItem[] | null;
   /** Owned by this panel so the Vote now CTA can sit opposite the title. */
   pageHeader: {
     hubHref: string;
@@ -155,6 +157,7 @@ export function SurvivalMarketsPanel({
   viewerUserId = null,
   initialMode = null,
   initialSort = null,
+  initialMarkets = null,
   pageHeader,
 }: SurvivalMarketsPanelProps) {
   const [mode, setMode] = useState<MarketsMode>(() =>
@@ -163,7 +166,9 @@ export function SurvivalMarketsPanel({
   const [sort, setSort] = useState<MarketsSort>(() =>
     parseMarketsSort(initialSort, parseMarketsMode(initialMode)),
   );
-  const [markets, setMarkets] = useState<SurvivalMarketListItem[] | null>(null);
+  const [markets, setMarkets] = useState<SurvivalMarketListItem[] | null>(
+    () => initialMarkets ?? null,
+  );
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
@@ -177,6 +182,7 @@ export function SurvivalMarketsPanel({
   const [ballotOpen, setBallotOpen] = useState(false);
 
   useEffect(() => {
+    if (initialMarkets) return;
     let cancelled = false;
     void listSurvivalMarketsAction({ slug }).then((rows) => {
       if (cancelled) return;
@@ -185,7 +191,7 @@ export function SurvivalMarketsPanel({
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, initialMarkets]);
 
   const refreshMarkets = () => {
     void listSurvivalMarketsAction({ slug }).then(setMarkets);

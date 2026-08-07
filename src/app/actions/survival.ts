@@ -120,7 +120,7 @@ export async function listSurvivalMarketsAction(input: {
     if (!challenge) return [];
     const access = await getAccessForChallenge(challenge.id);
     return listSurvivalMarketsForChallenge({
-      challengeId: challenge.id,
+      slug: input.slug,
       viewerUserId: access?.userId ?? null,
     });
   } catch {

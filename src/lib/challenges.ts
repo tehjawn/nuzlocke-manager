@@ -19,6 +19,7 @@ import {
   fetchChallengeToolsSummaryRow,
   fetchChallengeTournamentRow,
   fetchDefaultSearchBrief,
+  fetchHeadlineActivitiesPublic,
   fetchHomeCarouselRow,
   fetchSeasonIndexRows,
   fetchSeasonMemorialGraveRows,
@@ -32,8 +33,6 @@ import {
 import { currentRunNumber } from "@/lib/wipe-memorial";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import {
-  HEADLINE_ACTIVITY_TYPES,
-  HEADLINE_CANDIDATE_LIMIT,
   HEADLINE_LIMIT,
   headlineBlurb,
   isHeadlineActivityType,
@@ -43,8 +42,6 @@ import {
 import { coalesceActivityItems } from "@/lib/activity-messages";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { mapDbChallenge, resolveActivityAvatarSrc } from "@/lib/mappers";
-import { parseAvatarBackgroundKey } from "@/data/avatar-backgrounds";
-import { parseCardBackgroundKey } from "@/data/card-backgrounds";
 import { loadSurvivalPollTallies } from "@/lib/survival-markets";
 
 export type { ActivityPage };
@@ -107,7 +104,11 @@ async function withSurvivalPollTallies(
   );
   if (pokemonIds.length === 0) return challenge;
   try {
-    const tallies = await loadSurvivalPollTallies(pokemonIds, viewerUserId);
+    const tallies = await loadSurvivalPollTallies(
+      challenge.slug,
+      pokemonIds,
+      viewerUserId,
+    );
     if (tallies.size === 0) return challenge;
     return {
       ...challenge,
@@ -616,8 +617,7 @@ export async function getRecentActivity(slug: string): Promise<ActivityItem[]> {
 
 /**
  * Latest high-signal Pack moments for the left-rail Headline Moments carousel.
- * Ranks by achievement weight (champion > wipe > named badge > digest) so a
- * coalesced "earned N badges" row can't bury a Championship clear.
+ * Public row is `"use cache"` + `:board`; overlay `reactedByMe` after auth (#366).
  */
 export async function listHeadlineActivities(
   slug: string,
@@ -628,37 +628,11 @@ export async function listHeadlineActivities(
 
   if (isDatabaseConfigured()) {
     try {
-      const prisma = getPrisma();
-      const challenge = await prisma.challenge.findUnique({
-        where: { slug },
-        select: { id: true },
-      });
-      if (!challenge) return [];
-
-      const rows = await prisma.activityEvent.findMany({
-        where: {
-          challengeId: challenge.id,
-          type: { in: [...HEADLINE_ACTIVITY_TYPES] },
-        },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: HEADLINE_CANDIDATE_LIMIT,
-        include: {
-          trainer: {
-            select: {
-              id: true,
-              handle: true,
-              avatarSpriteKey: true,
-              cardBackgroundKey: true,
-              avatarBackgroundKey: true,
-            },
-          },
-          actor: { select: { image: true } },
-          reactions: { select: { emoji: true, userId: true } },
-        },
-      });
-
-      const mapped = mapHeadlineRows(rows, viewerUserId);
-      return selectHeadlineItems(mapped, take);
+      const cached = await fetchHeadlineActivitiesPublic(slug, take);
+      if (cached) {
+        if (!viewerUserId || cached.length === 0) return cached;
+        return overlayHeadlineReactedByMe(cached, viewerUserId);
+      }
     } catch {
       // fall through
     }
@@ -671,6 +645,39 @@ export async function listHeadlineActivities(
   return selectHeadlineItems(mapped, take);
 }
 
+async function overlayHeadlineReactedByMe(
+  items: HeadlineItem[],
+  viewerUserId: string,
+): Promise<HeadlineItem[]> {
+  const rows = await getPrisma().activityReaction.findMany({
+    where: {
+      userId: viewerUserId,
+      activityId: { in: items.map((i) => i.id) },
+    },
+    select: { activityId: true, emoji: true },
+  });
+  if (rows.length === 0) return items;
+
+  const mine = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const set = mine.get(row.activityId) ?? new Set<string>();
+    set.add(row.emoji);
+    mine.set(row.activityId, set);
+  }
+
+  return items.map((item) => {
+    const emojis = mine.get(item.id);
+    if (!emojis) return item;
+    return {
+      ...item,
+      reactions: item.reactions.map((r) => ({
+        ...r,
+        reactedByMe: emojis.has(r.emoji),
+      })),
+    };
+  });
+}
+
 type ActivityRow = {
   id: string;
   type: string;
@@ -680,22 +687,6 @@ type ActivityRow = {
     id: string;
     handle: string;
     avatarSpriteKey: string | null;
-  } | null;
-  actor: { image: string | null } | null;
-  reactions: Array<{ emoji: string; userId: string }>;
-};
-
-type HeadlineRow = {
-  id: string;
-  type: string;
-  message: string;
-  createdAt: Date;
-  trainer: {
-    id: string;
-    handle: string;
-    avatarSpriteKey: string | null;
-    cardBackgroundKey: string | null;
-    avatarBackgroundKey: string | null;
   } | null;
   actor: { image: string | null } | null;
   reactions: Array<{ emoji: string; userId: string }>;
@@ -734,24 +725,6 @@ function mapActivityRows(
         count: v.count,
         reactedByMe: v.reactedByMe,
       })),
-    };
-  });
-}
-
-function mapHeadlineRows(
-  rows: HeadlineRow[],
-  viewerUserId?: string | null,
-): HeadlineItem[] {
-  return rows.map((a) => {
-    const base = mapActivityRows([a], viewerUserId)[0]!;
-    return {
-      ...base,
-      avatarSpriteKey: a.trainer?.avatarSpriteKey ?? null,
-      cardBackgroundKey: parseCardBackgroundKey(a.trainer?.cardBackgroundKey),
-      avatarBackgroundKey: parseAvatarBackgroundKey(
-        a.trainer?.avatarBackgroundKey,
-      ),
-      blurb: headlineBlurb(base),
     };
   });
 }
