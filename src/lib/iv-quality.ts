@@ -42,16 +42,16 @@ const BATTLE_DUMP = 0.45;
  * Lower bands stay generous; God stays near the calibrated bar so middling
  * glass spreads (Atk 23 / Spe 26) don't clear it. Score is internal only.
  */
-const CATCH_SCORE_GOD = 72;
-const CATCH_SCORE_CRACKED = 60;
+const CATCH_SCORE_GOD = 75;
+const CATCH_SCORE_CRACKED = 65;
 /** Great floor — also the trash-critical clamp ceiling (`<` this → Good max). */
-const CATCH_SCORE_GREAT = 46;
-const CATCH_SCORE_GOOD = 30;
-const CATCH_SCORE_OOF = 12;
+const CATCH_SCORE_GREAT = 50;
+const CATCH_SCORE_GOOD = 35;
+const CATCH_SCORE_OOF = 15;
 
 /** Weight ≥ this is a critical axis (trash IV soft-caps the tier). */
 const CRITICAL_WEIGHT = 4;
-/** Dump-weight floor: weight ≤ this uses max(iv, DUMP_FLOOR_IV). */
+/** Dump-weight floor: weight ≤ this uses max(iv, DUMP_FLOOR_IV) — true dumps (1) and soft dumps (2). */
 const DUMP_WEIGHT_MAX = 2;
 const DUMP_FLOOR_IV = 15;
 const CRITICAL_TRASH_MAX = 10;
@@ -84,7 +84,15 @@ export type CatchArchetype =
 
 export type CatchWeightTable = Record<StatKey, number>;
 
-/** Per-archetype weights (1–5). Offense / Spe / bulk emphasis by role. */
+/**
+ * Per-archetype weights (1–5).
+ *
+ * True dumps (weight 1): unused Atk/SpA (and Spe on Slow). Soft dumps (≤2)
+ * floor at 15 so trash rolls don't drag. Offense / Fast / Glass / Balanced
+ * also get {@link bulkLiftBonus} — high HP/Def/SpD raises the score without
+ * punishing thin bulk. Walls / Bulky / Slow already lean on bulk in the table.
+ * Glass bulk stays soft (2) rather than ignored (1).
+ */
 export const CATCH_ARCHETYPE_WEIGHTS: Record<
   CatchArchetype,
   CatchWeightTable
@@ -92,16 +100,56 @@ export const CATCH_ARCHETYPE_WEIGHTS: Record<
   "Physical attacker": { hp: 2, atk: 5, def: 2, spa: 1, spd: 2, spe: 4 },
   "Special attacker": { hp: 2, atk: 1, def: 2, spa: 5, spd: 2, spe: 4 },
   "Mixed attacker": { hp: 2, atk: 5, def: 2, spa: 5, spd: 2, spe: 4 },
-  "Physical wall": { hp: 4, atk: 1, def: 5, spa: 1, spd: 4, spe: 2 },
-  "Special wall": { hp: 4, atk: 1, def: 4, spa: 1, spd: 5, spe: 2 },
-  Bulky: { hp: 5, atk: 2, def: 4, spa: 2, spd: 4, spe: 2 },
+  "Physical wall": { hp: 4, atk: 1, def: 5, spa: 1, spd: 4, spe: 3 },
+  "Special wall": { hp: 4, atk: 1, def: 4, spa: 1, spd: 5, spe: 3 },
+  Bulky: { hp: 5, atk: 2, def: 4, spa: 2, spd: 4, spe: 3 },
   Slow: { hp: 5, atk: 2, def: 4, spa: 2, spd: 4, spe: 1 },
   Fast: { hp: 2, atk: 3, def: 2, spa: 3, spd: 2, spe: 5 },
   Balanced: { hp: 3, atk: 3, def: 3, spa: 3, spd: 3, spe: 3 },
-  "Glass (physical)": { hp: 1, atk: 5, def: 1, spa: 1, spd: 1, spe: 4 },
-  "Glass (special)": { hp: 1, atk: 1, def: 1, spa: 5, spd: 1, spe: 4 },
-  "Glass (mixed)": { hp: 1, atk: 4, def: 1, spa: 4, spd: 1, spe: 4 },
+  "Glass (physical)": { hp: 2, atk: 5, def: 2, spa: 1, spd: 2, spe: 4 },
+  "Glass (special)": { hp: 2, atk: 1, def: 2, spa: 5, spd: 2, spe: 4 },
+  "Glass (mixed)": { hp: 2, atk: 4, def: 2, spa: 4, spd: 2, spe: 4 },
 };
+
+/** HP / Def / SpD — used for the offense bulk lift (not walls/TR). */
+const BULK_STAT_KEYS: readonly StatKey[] = ["hp", "def", "spd"];
+
+/**
+ * Max score points added when all three bulk IVs are 31 on lift archetypes.
+ * Scales linearly with how far each bulk IV sits above {@link DUMP_FLOOR_IV}.
+ */
+const BULK_LIFT_MAX = 8;
+
+function archetypeUsesBulkLift(archetype: CatchArchetype): boolean {
+  switch (archetype) {
+    case "Physical attacker":
+    case "Special attacker":
+    case "Mixed attacker":
+    case "Fast":
+    case "Balanced":
+    case "Glass (physical)":
+    case "Glass (special)":
+    case "Glass (mixed)":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Reward high bulk on attackers without dunking thin spreads (those stay at
+ * the dump floor in the weighted average). 0 at ≤15 mean-equivalent; up to
+ * {@link BULK_LIFT_MAX} at 31/31/31.
+ */
+function bulkLiftBonus(ivs: StatSpread): number {
+  let above = 0;
+  for (const key of BULK_STAT_KEYS) {
+    above += Math.max(0, (ivs[key] ?? 0) - DUMP_FLOOR_IV);
+  }
+  const maxAbove = BULK_STAT_KEYS.length * (PERFECT_IV - DUMP_FLOOR_IV);
+  if (maxAbove <= 0) return 0;
+  return (above / maxAbove) * BULK_LIFT_MAX;
+}
 
 export function classifyIv(value: number): StatQualityBand {
   if (value >= IV_PERFECT) return "perfect";
@@ -345,11 +393,13 @@ export function summarizeBattleStats(
  *
  * Weighted points ladder (#356) when an archetype is supplied. Each playstyle
  * weights the six IVs differently (attackers care about Spe; walls care about
- * HP/defending stat). Dump-weight stats (≤2) floor at 15 so they don't drag;
- * critical axes (weight ≥4) with IV ≤10 soft-cap at Good. Score stays internal.
+ * HP/defending stat). Unused Atk/SpA are the main dumps. Soft dumps (≤2) floor
+ * at 15 so they don't drag; offense archetypes get a bulk lift when HP/Def/SpD
+ * clear that floor. Critical axes (weight ≥4) with IV ≤10 soft-cap at Good.
+ * Score stays internal.
  *
- * Thresholds: God ≥72 · Cracked ≥60 · Great ≥46 · Good ≥30 · Oof ≥12 ·
- * Big oof <12. God is score-only (no glass median / axis soft-cap).
+ * Thresholds: God ≥75 · Cracked ≥65 · Great ≥50 · Good ≥35 · Oof ≥15 ·
+ * Big oof <15. God is score-only (no glass median / axis soft-cap).
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -434,14 +484,16 @@ function ivQuality(iv: number): number {
 }
 
 /**
- * Normalized catch score for an archetype weight table, plus +1 per perfect IV.
- * Dump-weight stats (≤2) use max(iv, 15) so low rolls don't drag; hot dump
- * rolls still count above the floor. Perfect bonus applies to every 31
- * (including dump stats) — soft caps still gate the letter tier.
+ * Normalized catch score for an archetype weight table, plus +1 per perfect IV
+ * and an optional bulk lift for offense archetypes. Dump-weight stats (≤2) use
+ * max(iv, 15) so low rolls don't drag; hot dump rolls still count above the
+ * floor. Perfect bonus applies to every 31 (including dump stats) — soft caps
+ * still gate the letter tier.
  */
 function weightedCatchScore(
   ivs: StatSpread,
   weights: CatchWeightTable,
+  options?: { bulkLift?: boolean },
 ): number {
   let weighted = 0;
   let totalWeight = 0;
@@ -455,8 +507,9 @@ function weightedCatchScore(
     weighted += weight * ivQuality(effective);
     totalWeight += weight;
   }
-  if (totalWeight <= 0) return perfects * PERFECT_IV_BONUS;
-  return (100 * weighted) / totalWeight + perfects * PERFECT_IV_BONUS;
+  const lift = options?.bulkLift ? bulkLiftBonus(ivs) : 0;
+  if (totalWeight <= 0) return perfects * PERFECT_IV_BONUS + lift;
+  return (100 * weighted) / totalWeight + perfects * PERFECT_IV_BONUS + lift;
 }
 
 function tierFromCatchScore(score: number): CatchTier {
@@ -482,8 +535,9 @@ function tierFromCatchScore(score: number): CatchTier {
  *
  * Feel-checks (approx):
  * - Taco Wobbuffet Bulky `31/31/25/30/24/4` → God (~83 + 2 from two 31s)
- * - Starmie special attacker (+ glass secondary) SpA 24 / Spe 29 → God on score
- * - Sneasel physical attacker (+ glass secondary) Atk 23 / Spe 26 → Great
+ * - Physical attacker thin bulk + hot Atk/Spe → Cracked (lift = 0); same spread
+ *   with high bulk → God via lift
+ * - Sneasel physical attacker Atk 23 / Spe 26 (thin bulk) → Great
  * - Dead wall + Perfect Spe → Oof (not Big oof; +1 on score)
  */
 export function ivCatchGrade(
@@ -521,7 +575,9 @@ function weightedIvCatchGrade(
   archetype: CatchArchetype,
 ): { tier: CatchTier; score: number } {
   const weights = CATCH_ARCHETYPE_WEIGHTS[archetype];
-  const score = weightedCatchScore(ivs, weights);
+  const score = weightedCatchScore(ivs, weights, {
+    bulkLift: archetypeUsesBulkLift(archetype),
+  });
 
   const criticalKeys = STAT_KEYS.filter((k) => weights[k] >= CRITICAL_WEIGHT);
   let maxIv = 0;
