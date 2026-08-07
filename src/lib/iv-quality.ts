@@ -41,44 +41,44 @@ const BATTLE_STRONG = 0.82;
 const BATTLE_DUMP = 0.45;
 
 /**
- * Catch-tier ladder (randomizer Nuzlocke feel).
+ * Catch-tier ladder (randomizer Nuzlocke feel) — slightly soft bars so mid-lucky
+ * wild rolls still feel good.
  *
- * Each of God / Cracked has a primary path and an OR path (higher mean, softer
- * role bar). Great stays single-path so the ladder doesn't get too generous.
- * Filler dumps are floored in the effective mean so walls aren't punished for
- * dump offenses; Big oof uses raw mean.
+ * Each of God / Cracked has a primary path and OR paths (higher mean, softer
+ * role / luck bars). Great stays single-path. Filler dumps are floored in the
+ * effective mean so walls aren't punished for dump offenses; Big oof uses raw mean.
  */
-const GOD_MEAN = 22;
-const GOD_ROLE_IV = 28;
+const GOD_MEAN = 21;
+const GOD_ROLE_IV = 27;
 const GOD_ROLE_HITS = 2;
 /** OR: stacked overall with solid (not near-perfect) role hits. */
-const GOD_OR_MEAN = 24;
-const GOD_OR_ROLE_IV = 24;
+const GOD_OR_MEAN = 23;
+const GOD_OR_ROLE_IV = 23;
 /**
  * OR: incredible overall + one near-perfect role IV + another hot IV anywhere
  * (covers Fast mons that rolled Spe + off-role heat instead of Atk/SpA).
  */
-const GOD_BREADTH_MEAN = 24;
-const GOD_BREADTH_ROLE_IV = 28;
-const GOD_BREADTH_OTHER_IV = 26;
+const GOD_BREADTH_MEAN = 23;
+const GOD_BREADTH_ROLE_IV = 27;
+const GOD_BREADTH_OTHER_IV = 25;
 /** OR: raw wild luck — stacked mean with three near-perfects anywhere. */
-const GOD_LUCK_MEAN = 24;
-const GOD_LUCK_NEAR_IV = 28;
+const GOD_LUCK_MEAN = 23;
+const GOD_LUCK_NEAR_IV = 27;
 const GOD_LUCK_NEAR_HITS = 3;
 
-const CRACKED_MEAN = 20;
-const CRACKED_ROLE_IV = 26;
+const CRACKED_MEAN = 19;
+const CRACKED_ROLE_IV = 25;
 /** OR: strong overall with one decent role hit. */
-const CRACKED_OR_MEAN = 22;
-const CRACKED_OR_ROLE_IV = 22;
+const CRACKED_OR_MEAN = 21;
+const CRACKED_OR_ROLE_IV = 21;
 
-const GREAT_MEAN = 18;
-const GREAT_ROLE_IV = 24;
+const GREAT_MEAN = 17;
+const GREAT_ROLE_IV = 23;
 
-const GOOD_MEAN = 14;
+const GOOD_MEAN = 13;
 
-const BIG_OOF_MEAN = 10;
-const BIG_OOF_MAX_IV = 14;
+const BIG_OOF_MEAN = 9;
+const BIG_OOF_MAX_IV = 13;
 
 /** @deprecated Kept for summarizeIvs legacy path without keyStats. */
 const LEGACY_GOD_NEAR_PERFECT_MIN = 3;
@@ -324,14 +324,14 @@ export function summarizeBattleStats(
  * Randomizer catch quality for board-card chrome + details labels.
  *
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}):
- * - god: (mean ≥22 + ≥2 role ≥28) OR (mean ≥24 + ≥2 role ≥24)
- *        OR (mean ≥24 + ≥1 role ≥28 + ≥1 other IV ≥26)
- *        OR (mean ≥24 + ≥3 IVs ≥28 anywhere)
- * - cracked: (mean ≥20 + ≥1 role ≥26) OR (mean ≥22 + ≥1 role ≥22)
- * - great: mean ≥18 + ≥1 role ≥24
- * - good: mean ≥14
+ * - god: (mean ≥21 + ≥2 role ≥27) OR (mean ≥23 + ≥2 role ≥23)
+ *        OR (mean ≥23 + ≥1 role ≥27 + ≥1 other IV ≥25)
+ *        OR (mean ≥23 + ≥3 IVs ≥27 anywhere)
+ * - cracked: (mean ≥19 + ≥1 role ≥25) OR (mean ≥21 + ≥1 role ≥21)
+ * - great: mean ≥17 + ≥1 role ≥23
+ * - good: mean ≥13
  * - oof: below good, not abysmal
- * - shit (Big oof): raw mean <10 and no IV ≥14
+ * - shit (Big oof): raw mean <9 and no IV ≥13
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
