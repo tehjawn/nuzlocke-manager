@@ -358,6 +358,20 @@ function readWildHeld(src) {
   }
 
   for (const [species, row] of perSpecies) {
+    // Debug / sentinel species — same skip list as generate-randomizer-tables.
+    // SPECIES_TEST holds a Master Ball in the ROM as scaffolding; it is not a
+    // wild encounter anyone can roll.
+    const bare = species.replace(/^SPECIES_/, "");
+    if (
+      bare === "NONE" ||
+      bare === "EGG" ||
+      bare === "SHINY_TAG" ||
+      bare === "TEST" ||
+      bare.startsWith("OLD_UNOWN") ||
+      bare.startsWith("UNUSED")
+    ) {
+      continue;
+    }
     // Both slots the same item is the ROM's 100%-hold idiom (`SetWildMonHeldItem`
     // short-circuits before the rarity roll), not two separate 45%/10% chances.
     if (row.common && row.common === row.rare) {

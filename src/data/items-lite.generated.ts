@@ -440,7 +440,7 @@ export const ITEM_NAME_ALIASES: ReadonlyArray<readonly [string, string]> = [
 
 /** Items worth surfacing in Jump: evolution gates and wild holds. */
 export const ITEM_SEARCH_ROWS = [
-  {"slug":"master-ball","name":"Master Ball","evolution":false,"holdOnly":false,"holders":["TEST"],"wheres":["Aqua Hideout"]},
+  {"slug":"master-ball","name":"Master Ball","evolution":false,"holdOnly":false,"holders":[],"wheres":["Aqua Hideout"]},
   {"slug":"moomoo-milk","name":"Moomoo Milk","evolution":false,"holdOnly":true,"holders":["Miltank"],"wheres":[]},
   {"slug":"sacred-ash","name":"Sacred Ash","evolution":false,"holdOnly":false,"holders":["Ho-Oh"],"wheres":["Navel Rock"]},
   {"slug":"red-shard","name":"Red Shard","evolution":false,"holdOnly":false,"holders":["Carvanha","Corsola","Sharpedo"],"wheres":["Route 124","Underwater"]},
