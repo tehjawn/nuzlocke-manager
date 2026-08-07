@@ -43,15 +43,23 @@ const BATTLE_DUMP = 0.45;
 /**
  * Catch-tier ladder (randomizer Nuzlocke feel).
  *
- * Role hit bars are independent of UI highlight bands (`IV_STRONG` / etc.).
- * Filler dumps are floored in the mean so walls aren't punished for dump offenses.
+ * Each of God / Cracked has a primary path and an OR path (higher mean, softer
+ * role bar). Great stays single-path so the ladder doesn't get too generous.
+ * Filler dumps are floored in the effective mean so walls aren't punished for
+ * dump offenses; Big oof uses raw mean.
  */
 const GOD_MEAN = 22;
 const GOD_ROLE_IV = 28;
 const GOD_ROLE_HITS = 2;
+/** OR: stacked overall with solid (not near-perfect) role hits. */
+const GOD_OR_MEAN = 24;
+const GOD_OR_ROLE_IV = 24;
 
 const CRACKED_MEAN = 20;
 const CRACKED_ROLE_IV = 26;
+/** OR: strong overall with one decent role hit. */
+const CRACKED_OR_MEAN = 22;
+const CRACKED_OR_ROLE_IV = 22;
 
 const GREAT_MEAN = 18;
 const GREAT_ROLE_IV = 24;
@@ -305,12 +313,12 @@ export function summarizeBattleStats(
  * Randomizer catch quality for board-card chrome + details labels.
  *
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}):
- * - god: mean ≥22 + ≥2 role IVs ≥28
- * - cracked: mean ≥20 + ≥1 role IV ≥26
- * - great: mean ≥18 + ≥1 role IV ≥24
+ * - god: (mean ≥22 + ≥2 role ≥28) OR (mean ≥24 + ≥2 role ≥24)
+ * - cracked: (mean ≥20 + ≥1 role ≥26) OR (mean ≥22 + ≥1 role ≥22)
+ * - great: mean ≥18 + ≥1 role ≥24
  * - good: mean ≥14
  * - oof: below good, not abysmal
- * - shit (Big oof): mean <10 and no IV ≥14
+ * - shit (Big oof): raw mean <10 and no IV ≥14
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -397,12 +405,13 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
  * Role-weighted catch tier — eval order God → Cracked → Great → Good → Big oof → Oof.
  *
  * Worked feel-checks:
- * - Special glass Starmie, SpA 29 / Spe 28 / solid mean → god
- * - Fast Weedle, Spe 30 / Atk 23 / high off-role Def·SpA → cracked (one role ≥26)
- * - Balanced Claydol, Atk 30 / Spe 31 / mean ~20 → cracked (mean misses god)
+ * - Special glass Starmie, SpA 29 / Spe 28 / solid mean → god (primary path)
+ * - Fast Weedle, Spe 30 / Atk 23 / high off-role → cracked (primary Spe ≥26)
+ * - Mean ≥24 with two role IVs ≥24 → god (OR path)
+ * - Mean ≥22 with one role IV ≥22 → cracked (OR path)
+ * - Balanced Claydol, Atk 30 / Spe 31 / mean ~20 → cracked
  * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
- * - Skarmory wall, dump Def + cracked offenses → caps at good
- * - Flat mid teens → good; mean <10 with nothing ≥14 → big oof
+ * - Flat mid teens → good; raw mean <10 with nothing ≥14 → big oof
  */
 function roleIvCatchTier(
   ivs: StatSpread,
@@ -418,7 +427,9 @@ function roleIvCatchTier(
   ]);
 
   let roleGod = 0;
+  let roleGodOr = 0;
   let roleCracked = 0;
+  let roleCrackedOr = 0;
   let roleGreat = 0;
   let hardDump = 0;
   let maxIv = 0;
@@ -433,7 +444,9 @@ function roleIvCatchTier(
 
     if (roleKeys.has(key)) {
       if (value >= GOD_ROLE_IV) roleGod += 1;
+      if (value >= GOD_OR_ROLE_IV) roleGodOr += 1;
       if (value >= CRACKED_ROLE_IV) roleCracked += 1;
+      if (value >= CRACKED_OR_ROLE_IV) roleCrackedOr += 1;
       if (value >= GREAT_ROLE_IV) roleGreat += 1;
     }
 
@@ -457,17 +470,23 @@ function roleIvCatchTier(
     return "oof";
   }
 
-  // --- God -----------------------------------------------------------------
-  if (effectiveMean >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) {
+  // --- God (primary || OR) -------------------------------------------------
+  if (
+    (effectiveMean >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
+    (effectiveMean >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS)
+  ) {
     return "god";
   }
 
-  // --- Cracked -------------------------------------------------------------
-  if (effectiveMean >= CRACKED_MEAN && roleCracked >= 1) {
+  // --- Cracked (primary || OR) ---------------------------------------------
+  if (
+    (effectiveMean >= CRACKED_MEAN && roleCracked >= 1) ||
+    (effectiveMean >= CRACKED_OR_MEAN && roleCrackedOr >= 1)
+  ) {
     return "cracked";
   }
 
-  // --- Great ---------------------------------------------------------------
+  // --- Great (single path) -------------------------------------------------
   if (effectiveMean >= GREAT_MEAN && roleGreat >= 1) {
     return "great";
   }
