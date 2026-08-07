@@ -258,8 +258,20 @@ Run it on demand from the Actions tab if a slot or branch appears stuck.
 
 #### Neon Free budget
 
-Verified 2026-08-04: **10 branches per project** (including `production`), **0.5 GB
-storage**, and **100 CU-hours/month** shared across every compute in the project.
+Verified 2026-08-07 (`free-nuzlocke-manager-1`): **10 branches per project**
+(including `production`), **0.5 GB storage**, **100 CU-hours/month**, and
+**5 GB transfer/month**. Quota resets on the 1st.
+
+**Scale to zero (production):** Free always suspends after **5 minutes** idle.
+`suspend_timeout_seconds: 0` on the endpoint means “use plan default,” not
+“never suspend” — the Free plan cannot customize or disable that interval
+(API returns “modifying the suspend interval is not permitted”). Production
+already shows regular `suspend_compute` / `start_compute` pairs when quiet.
+
+**Pooler:** Production Vercel `DATABASE_URL` must be the Neon **pooled** host
+(`…-pooler…`); `DATABASE_URL_UNPOOLED` stays direct for `prisma migrate deploy`.
+Confirmed 2026-08-07. Runtime uses `attachDatabasePool` + a short pg idle
+timeout so Fluid isolates release connections and Neon can actually idle.
 
 The deploy workflow checks the branch count before creating one and fails with
 the list of currently held preview branches rather than falling back to the
@@ -273,5 +285,8 @@ Two knock-on effects worth knowing:
   even when the branch count is fine.
 - Branches are copy-on-write, so they cost almost nothing at creation, but
   migrations and smoke-test writes accrue against the 0.5 GB limit.
+- Transfer is the tighter Free cliff at hobby traffic (~3 GB in the first ~5
+  days of this project). Scale-to-zero helps CU-hours; query/caching work is
+  what cuts transfer.
 
 When migrating Neon projects, update Production + Preview (and Development if used) together so preview deploys do not keep hitting the old database.
