@@ -32,8 +32,11 @@ import {
   SHOWDOWN_TRAINER_SPRITES_DIR,
   trainerSpriteUrl,
 } from "@/lib/sprites";
+import {
+  InfiniteRevealFooter,
+  useInfiniteReveal,
+} from "@/lib/use-infinite-reveal";
 
-const PAGE_SIZE = 96;
 const PREVIEW_SHOW_DELAY_MS = 100;
 const PREVIEW_SIZE = 160;
 const PREVIEW_PANEL_W = 176;
@@ -160,8 +163,8 @@ function TrainerSpriteBrowserInner({
   const [query, setQuery] = useState("");
   const deferred = useDeferredValue(query);
   const allResults = useMemo(() => searchTrainerSprites(deferred), [deferred]);
-  const { visible, total, hasMore, scrollRef, sentinelRef, loadMore } =
-    useInfiniteReveal(allResults, deferred);
+  const { visible, total, hasMore, remaining, scrollRef, sentinelRef, loadMore } =
+    useInfiniteReveal(allResults, deferred, { root: "element" });
   const hover = useSpriteHoverPreview(scrollRef);
   const coarse = useCoarsePointer();
   const [draft, setDraft] = useState<string | null>(selectedKey);
@@ -209,11 +212,11 @@ function TrainerSpriteBrowserInner({
             />
           );
         })}
-        <LoadMoreSentinel
+        <InfiniteRevealFooter
           hasMore={hasMore}
           sentinelRef={sentinelRef}
           onLoadMore={loadMore}
-          remaining={total - visible.length}
+          remaining={remaining}
         />
       </SpriteScrollGrid>
       <SpriteHoverPreview preview={hover.preview} />
@@ -324,8 +327,8 @@ function PokemonSpriteBrowserInner({
       }),
     [deferred, generation, formesOnly],
   );
-  const { visible, total, hasMore, scrollRef, sentinelRef, loadMore } =
-    useInfiniteReveal(allResults, resetKey);
+  const { visible, total, hasMore, remaining, scrollRef, sentinelRef, loadMore } =
+    useInfiniteReveal(allResults, resetKey, { root: "element" });
   const hover = useSpriteHoverPreview(scrollRef);
   const coarse = useCoarsePointer();
   const [draft, setDraft] = useState<PokemonIndexEntry | null>(selected);
@@ -439,11 +442,11 @@ function PokemonSpriteBrowserInner({
             />
           );
         })}
-        <LoadMoreSentinel
+        <InfiniteRevealFooter
           hasMore={hasMore}
           sentinelRef={sentinelRef}
           onLoadMore={loadMore}
-          remaining={total - visible.length}
+          remaining={remaining}
         />
       </SpriteScrollGrid>
       <SpriteHoverPreview preview={hover.preview} smooth={animated} />
@@ -835,82 +838,4 @@ function SpriteScrollGrid({
       {children}
     </div>
   );
-}
-
-function LoadMoreSentinel({
-  hasMore,
-  sentinelRef,
-  onLoadMore,
-  remaining,
-}: {
-  hasMore: boolean;
-  sentinelRef: RefObject<HTMLDivElement | null>;
-  onLoadMore: () => void;
-  remaining: number;
-}) {
-  if (!hasMore) return null;
-  return (
-    <div
-      ref={sentinelRef}
-      className="col-span-full flex flex-col items-center gap-2 py-2"
-    >
-      <span className="text-[10px] text-muted">
-        Scroll for {remaining} more…
-      </span>
-      <button
-        type="button"
-        className="pressable rounded-lg border border-frame bg-surface px-3 py-1.5 text-[11px] font-semibold tracking-tight"
-        onClick={onLoadMore}
-      >
-        Load more
-      </button>
-    </div>
-  );
-}
-
-/** Progressive reveal so dense sprite grids stay light until scrolled. */
-function useInfiniteReveal<T>(items: T[], resetKey: string) {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [prevKey, setPrevKey] = useState(resetKey);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  if (prevKey !== resetKey) {
-    setPrevKey(resetKey);
-    setVisibleCount(PAGE_SIZE);
-  }
-
-  const total = items.length;
-  const visible = items.slice(0, visibleCount);
-  const hasMore = visibleCount < total;
-
-  const loadMore = () => {
-    setVisibleCount((count) => Math.min(count + PAGE_SIZE, total));
-  };
-
-  useEffect(() => {
-    const root = scrollRef.current;
-    const sentinel = sentinelRef.current;
-    if (!root || !sentinel || !hasMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setVisibleCount((count) => Math.min(count + PAGE_SIZE, total));
-        }
-      },
-      { root, rootMargin: "160px" },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, total, visibleCount, resetKey]);
-
-  return {
-    visible,
-    total,
-    hasMore,
-    scrollRef,
-    sentinelRef,
-    loadMore,
-  };
 }

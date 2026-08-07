@@ -25,6 +25,11 @@ import {
   toolsHref,
   type BountyMode,
 } from "@/lib/tools-routes";
+import {
+  InfiniteRevealFooter,
+  useInfiniteReveal,
+} from "@/lib/use-infinite-reveal";
+import { useToolsEncounteredStubs } from "@/lib/use-tools-encountered-stubs";
 
 type BountyHunterViewProps = {
   slug: string;
@@ -135,7 +140,7 @@ const STATUS_LEGEND: ReadonlyArray<{
  */
 export function BountyHunterView({
   slug,
-  trainers,
+  trainers: ownedTrainers,
   myTrainerId = null,
   competitiveTrainerIds = [],
   gradesReady = true,
@@ -151,9 +156,18 @@ export function BountyHunterView({
   );
   const [query, setQuery] = useState("");
 
+  const seen = useToolsEncounteredStubs(slug, mode === "tracker");
+  const trainers = seen.withStubs(ownedTrainers);
+
   const board = useMemo(() => speciesOwnershipBoard(trainers), [trainers]);
-  const exclusives = useMemo(() => exclusiveOwnedSpecies(trainers), [trainers]);
-  const specimens = useMemo(() => seasonSpecimenBoard(trainers), [trainers]);
+  const exclusives = useMemo(
+    () => exclusiveOwnedSpecies(ownedTrainers),
+    [ownedTrainers],
+  );
+  const specimens = useMemo(
+    () => seasonSpecimenBoard(ownedTrainers),
+    [ownedTrainers],
+  );
 
   function selectMode(next: BountyMode) {
     setMode(next);
@@ -328,6 +342,33 @@ export function BountyHunterView({
       </div>
 
       {mode === "tracker" ? (
+        !seen.ready ? (
+          seen.error ? (
+            <div className="rounded-md border border-frame/40 bg-surface/60 px-4 py-5 text-sm">
+              <p className="text-muted">{seen.error}</p>
+              <button
+                type="button"
+                className="pressable mt-3 rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                onClick={() => seen.retry()}
+              >
+                Try again
+              </button>
+            </div>
+          ) : (
+            <div
+              className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8"
+              aria-busy="true"
+              aria-label="Loading encounter stubs"
+            >
+              {Array.from({ length: 24 }, (_, i) => (
+                <Skeleton
+                  key={i}
+                  className="aspect-square rounded-lg border border-frame/40 bg-surface"
+                />
+              ))}
+            </div>
+          )
+        ) : (
         <>
           <StatusLegend />
 
@@ -361,6 +402,7 @@ export function BountyHunterView({
           <SpeciesGrid
             slug={slug}
             rows={visibleBoard}
+            resetKey={`${statusFilter}|${sort}|${q}|${viewerId}`}
             viewerScoped={Boolean(viewerId)}
             emptyMessage={
               q || statusFilter !== "all"
@@ -369,6 +411,7 @@ export function BountyHunterView({
             }
           />
         </>
+        )
       ) : mode === "showcase" ? (
         gradesReady ? (
           <SpecimenShowcase
@@ -519,14 +562,24 @@ function statusSubtitle(row: BoardRow, viewerScoped: boolean): string {
 function SpeciesGrid({
   slug,
   rows,
+  resetKey,
   viewerScoped,
   emptyMessage,
 }: {
   slug: string;
   rows: BoardRow[];
+  resetKey: string;
   viewerScoped: boolean;
   emptyMessage: string;
 }) {
+  const {
+    visible,
+    hasMore,
+    remaining,
+    sentinelRef,
+    loadMore,
+  } = useInfiniteReveal(rows, resetKey, { pageSize: 96, root: "viewport" });
+
   if (rows.length === 0) {
     return (
       <p className="rounded-md border border-frame/40 bg-surface/60 px-4 py-5 text-sm text-muted">
@@ -537,7 +590,7 @@ function SpeciesGrid({
 
   return (
     <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
-      {rows.map((row) => (
+      {visible.map((row) => (
         <li key={row.entry.pokedexId}>
           <PokemonHoverPreview
             className="h-full"
@@ -575,6 +628,13 @@ function SpeciesGrid({
           </PokemonHoverPreview>
         </li>
       ))}
+      <InfiniteRevealFooter
+        as="li"
+        hasMore={hasMore}
+        remaining={remaining}
+        sentinelRef={sentinelRef}
+        onLoadMore={loadMore}
+      />
     </ul>
   );
 }

@@ -1,14 +1,33 @@
+"use client";
+
 import Link from "next/link";
 import { Frame } from "@/components/Frame";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
+import {
+  InfiniteRevealFooter,
+  useInfiniteReveal,
+} from "@/lib/use-infinite-reveal";
+
+/** Route frames are heavy in the DOM; reveal a page at a time (#382). */
+const ROUTE_PAGE_SIZE = 12;
 
 type EncounterLedgerProps = {
   slug: string;
   groups: EncounterRouteGroup[];
 };
 
+/**
+ * Route-claims list. Still receives the full ledger from SSR (highlights / map
+ * need the season set); this only windows DOM mount cost.
+ */
 export function EncounterLedger({ slug, groups }: EncounterLedgerProps) {
+  const { visible, hasMore, remaining, sentinelRef, loadMore } =
+    useInfiniteReveal(groups, `${slug}:${groups.length}`, {
+      pageSize: ROUTE_PAGE_SIZE,
+      root: "viewport",
+    });
+
   if (groups.length === 0) {
     return (
       <Frame title="No routes logged yet" dense>
@@ -22,7 +41,7 @@ export function EncounterLedger({ slug, groups }: EncounterLedgerProps) {
 
   return (
     <div className="space-y-2">
-      {groups.map((group) => (
+      {visible.map((group) => (
         <Frame
           key={group.route}
           title={group.route}
@@ -93,6 +112,13 @@ export function EncounterLedger({ slug, groups }: EncounterLedgerProps) {
           )}
         </Frame>
       ))}
+      <InfiniteRevealFooter
+        hasMore={hasMore}
+        remaining={remaining}
+        sentinelRef={sentinelRef}
+        onLoadMore={loadMore}
+        label={`Load ${Math.min(ROUTE_PAGE_SIZE, remaining)} more routes…`}
+      />
     </div>
   );
 }

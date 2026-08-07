@@ -60,3 +60,22 @@ export function mergeToolsPokemonHydrate(
     competitiveTrainerIds: hydrate.competitiveTrainerIds,
   };
 }
+
+/**
+ * Append ENCOUNTERED stubs onto an owned-slot Tools board (#382). Idempotent
+ * when the same ids are already present.
+ */
+export function mergeToolsEncounteredStubs(
+  base: TrainerProfile[],
+  stubs: ToolsHydrateTrainerSlice[],
+): TrainerProfile[] {
+  const byTrainer = new Map(stubs.map((t) => [t.id, t.pokemon]));
+  return base.map((trainer) => {
+    const extra = byTrainer.get(trainer.id);
+    if (!extra?.length) return trainer;
+    const have = new Set(trainer.pokemon.map((p) => p.id));
+    const add = extra.filter((p) => !have.has(p.id));
+    if (add.length === 0) return trainer;
+    return { ...trainer, pokemon: [...trainer.pokemon, ...add] };
+  });
+}

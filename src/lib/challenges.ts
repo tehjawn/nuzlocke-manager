@@ -461,8 +461,9 @@ export async function getChallengeBoardSummary(
 }
 
 /**
- * Tools — shared summary board for every tool URL (#367). Grades / moves /
- * competitive columns hydrate after mount via server action.
+ * Tools summary — owned slots only (MAIN / RESERVE / GRAVEYARD). ENCOUNTERED
+ * stubs load when Ownership tracker / Pokédex need “seen” status (#382). No
+ * competitive spreads; panels hydrate grades / moves after mount (#367).
  */
 export async function getChallengeToolsSummary(
   slug: string,
@@ -481,7 +482,15 @@ export async function getChallengeToolsSummary(
       return null;
     }
   }
-  return getChallenge(slug, viewerUserId);
+  const full = await getChallenge(slug, viewerUserId);
+  if (!full) return null;
+  return {
+    ...full,
+    trainers: full.trainers.map((t) => ({
+      ...t,
+      pokemon: t.pokemon.filter((p) => p.slot !== "ENCOUNTERED"),
+    })),
+  };
 }
 
 /** Season list for home / index — zero Pokémon. */

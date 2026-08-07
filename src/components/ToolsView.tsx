@@ -9,6 +9,7 @@ import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
 import { ItemDexPanel } from "@/components/ItemDexPanel";
 import { PokedexPanel } from "@/components/PokedexPanel";
+import { Skeleton } from "@/components/Skeleton";
 import { SurvivalMarketsPanel } from "@/components/SurvivalMarketsPanel";
 import { TeamPlannerView } from "@/components/TeamPlannerView";
 import { ToolChip, TOOL_TONE_CHIP, toolsTone } from "@/components/tool-icons";
@@ -20,6 +21,7 @@ import {
   mergeToolsPokemonHydrate,
   toolsHydrateKindFor,
 } from "@/lib/tools-pokemon-hydrate";
+import { useToolsEncounteredStubs } from "@/lib/use-tools-encountered-stubs";
 import {
   parseToolsId,
   TOOLS_CATALOG,
@@ -247,6 +249,8 @@ function ToolWorkspace({
   const [gradesReady, setGradesReady] = useState(
     () => toolsHydrateKindFor(tool) !== "grades",
   );
+  const seen = useToolsEncounteredStubs(slug, tool === "pokedex");
+  const pokedexTrainers = seen.withStubs(trainers);
 
   // Pay for grades / moves only when the open tool needs them (#367).
   // `key={tool}` remounts this workspace on tool switches, so hydrate state
@@ -340,16 +344,43 @@ function ToolWorkspace({
         </div>
       </header>
 
-      {tool === "pokedex" && (
-        <PokedexPanel
-          slug={slug}
-          trainers={trainers}
-          myTrainerId={myTrainerId}
-          signedIn={signedIn}
-          initialId={initialDexId}
-          initialMode={initialPokedexMode}
-        />
-      )}
+      {tool === "pokedex" &&
+        (!seen.ready ? (
+          seen.error ? (
+            <div className="rounded-md border border-frame/40 bg-surface/60 px-4 py-5 text-sm">
+              <p className="text-muted">{seen.error}</p>
+              <button
+                type="button"
+                className="pressable mt-3 rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs font-semibold tracking-tight"
+                onClick={() => seen.retry()}
+              >
+                Try again
+              </button>
+            </div>
+          ) : (
+            <div
+              className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8"
+              aria-busy="true"
+              aria-label="Loading encounter status"
+            >
+              {Array.from({ length: 16 }, (_, i) => (
+                <Skeleton
+                  key={i}
+                  className="aspect-square rounded-lg border border-frame/40 bg-surface"
+                />
+              ))}
+            </div>
+          )
+        ) : (
+          <PokedexPanel
+            slug={slug}
+            trainers={pokedexTrainers}
+            myTrainerId={myTrainerId}
+            signedIn={signedIn}
+            initialId={initialDexId}
+            initialMode={initialPokedexMode}
+          />
+        ))}
 
       {tool === "itemdex" && (
         <ItemDexPanel
