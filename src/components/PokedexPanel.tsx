@@ -112,6 +112,37 @@ type PokedexPanelProps = {
   initialMode?: PokedexMode | null;
 };
 
+/**
+ * Read a query param off the live URL, or null on the server.
+ *
+ * Picking a species `pushState`s without telling the Next router, so the
+ * router's cached RSC payload for this route keeps whichever `?id=` was last
+ * *server*-rendered. Navigate out to another tool and back and Next restores
+ * that stale payload: `initialId` says Bulbasaur while the URL correctly says
+ * Charizard — and this panel unmounts on the way out (ToolsView renders tools
+ * conditionally), so the picked id is gone and the stale prop wins. The URL is
+ * the one thing the browser keeps honest across a restore.
+ *
+ * Safe during hydration: the two only ever disagree on a client-side restore,
+ * never on a real document load, where the server read the very query string
+ * the browser is showing.
+ */
+function pokedexUrlParam(name: string): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  // `tab=` is the legacy spelling `parseToolsId` still accepts.
+  const tool = params.get("tool") ?? params.get("tab");
+  if (tool !== "pokedex") return null;
+  return params.get(name);
+}
+
+/** `?id=` when it names a real species — the panel's own validity rule. */
+function pokedexUrlId(): number | null {
+  const raw = pokedexUrlParam("id");
+  const id = raw != null ? Number(raw) : NaN;
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
 export function PokedexPanel({
   slug,
   trainers = [],
@@ -123,11 +154,13 @@ export function PokedexPanel({
   // Search is independent of selection — picking an entry must not rewrite the query.
   const [query, setQuery] = useState("");
   const [generation, setGeneration] = useState<number | null>(null);
-  // User / popstate pick. Null → fall through to URL prop, then remembered, then Bulbasaur.
-  const [pickedId, setPickedId] = useState<number | null>(null);
+  // User / popstate pick, seeded from the live URL — see `pokedexUrlParam`.
+  // Null → fall through to URL prop, then remembered, then Bulbasaur. A visit
+  // with no `?id=` at all still seeds null, so the remembered id survives.
+  const [pickedId, setPickedId] = useState<number | null>(() => pokedexUrlId());
   const [tipExcludeEntryIds, setTipExcludeEntryIds] = useState<string[]>([]);
-  const [mode, setMode] = useState<PokedexMode>(
-    parsePokedexMode(initialMode),
+  const [mode, setMode] = useState<PokedexMode>(() =>
+    parsePokedexMode(pokedexUrlParam("mode") ?? initialMode),
   );
   const deferred = useDeferredValue(query);
   const searching = deferred.trim().length > 0;
@@ -150,10 +183,14 @@ export function PokedexPanel({
     setTipExcludeEntryIds([]);
   }
 
-  // Remember deep-linked species without a setState hydrate.
+  // Remember deep-linked species without a setState hydrate. Prefer the
+  // URL-seeded pick: after a restore `initialId` is the stale cached payload's
+  // species, and remembering that would be wrong. Redundant writes during
+  // normal browsing are free — `writePokedexLastId` no-ops on an unchanged id.
   useEffect(() => {
-    if (initialId != null) writePokedexLastId(initialId);
-  }, [initialId]);
+    const deepLinked = pickedId ?? initialId;
+    if (deepLinked != null) writePokedexLastId(deepLinked);
+  }, [pickedId, initialId]);
 
   // Mode / species URL updates use history.pushState (not the Next router) so
   // the tools page doesn't RSC-refetch. Sync React state when the user hits
