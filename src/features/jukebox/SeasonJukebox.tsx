@@ -104,11 +104,11 @@ export function SeasonJukebox() {
 
   useEffect(() => {
     applyVolume(prefs.volume);
-  }, [prefs.volume, applyVolume]);
+  }, [prefs.volume]);
 
   useEffect(() => {
     loadTrack(track.src);
-  }, [track.src, loadTrack]);
+  }, [track.src]);
 
   function togglePlay() {
     const audio = audioRef.current;
