@@ -47,7 +47,12 @@ const ABILITY_NUDGES: Record<string, string> = {
   "wonder guard": "Wonder Guard is fragile but only takes super-effective hits.",
 };
 
-/** Stats that make or break a playstyle — shared with catch-tier weighting. */
+/**
+ * Static key-stat map per playstyle tag.
+ *
+ * Glass cannon is a shape tag — resolve it through {@link keysForPlaystyleTag}
+ * so physical vs special glass don't share the unused offense axis.
+ */
 export const TAG_KEY_STATS: Record<PlaystyleTag, StatKey[]> = {
   "Physical attacker": ["atk"],
   "Special attacker": ["spa"],
@@ -56,10 +61,42 @@ export const TAG_KEY_STATS: Record<PlaystyleTag, StatKey[]> = {
   "Physical wall": ["def", "hp"],
   "Special wall": ["spd", "hp"],
   Fast: ["spe"],
+  /** Fallback only — prefer {@link keysForPlaystyleTag} with base stats. */
   "Glass cannon": ["atk", "spa", "spe"],
   Slow: ["hp", "def", "spd"],
   Balanced: [],
 };
+
+const ATTACKER_TAGS: ReadonlySet<PlaystyleTag> = new Set([
+  "Physical attacker",
+  "Special attacker",
+  "Mixed attacker",
+]);
+
+/** Relative atk/spa gap that counts as a clear physical vs special bias. */
+const OFFENSE_BIAS_GAP = 0.12;
+
+/**
+ * Glass cannon keys lean into the leading offense + Speed.
+ * Mixed (near-even Atk/SpA) keeps both offenses.
+ */
+export function glassCannonKeys(base: StatSpread): StatKey[] {
+  const mean = meanOf(base);
+  const atk = rel(base, "atk", mean);
+  const spa = rel(base, "spa", mean);
+  if (atk - spa >= OFFENSE_BIAS_GAP) return ["atk", "spe"];
+  if (spa - atk >= OFFENSE_BIAS_GAP) return ["spa", "spe"];
+  return ["atk", "spa", "spe"];
+}
+
+/** Role axes for a playstyle tag, specialized when base stats are known. */
+export function keysForPlaystyleTag(
+  tag: PlaystyleTag,
+  base?: StatSpread | null,
+): StatKey[] {
+  if (tag === "Glass cannon" && base) return glassCannonKeys(base);
+  return [...TAG_KEY_STATS[tag]];
+}
 
 export type SpeciesKeyStats = {
   /** Primary playstyle axes — dump here blocks god/cracked. */
@@ -69,13 +106,45 @@ export type SpeciesKeyStats = {
 };
 
 /**
+ * Ensure catch-tier "2 role hits" is reachable: single-axis attackers get Spe
+ * as a soft secondary; lone Fast picks up the leading offense.
+ */
+function ensureRoleBreadth(
+  primary: StatKey[],
+  secondary: StatKey[],
+  base: StatSpread,
+): SpeciesKeyStats {
+  const role = new Set<StatKey>([...primary, ...secondary]);
+  if (role.size >= 2 || primary.length === 0) {
+    return { primary, secondary };
+  }
+
+  const nextSecondary = [...secondary];
+  const add = (key: StatKey) => {
+    if (!role.has(key) && !primary.includes(key)) {
+      nextSecondary.push(key);
+      role.add(key);
+    }
+  };
+
+  if (primary.includes("atk") || primary.includes("spa")) {
+    add("spe");
+  } else if (primary.includes("spe")) {
+    const mean = meanOf(base);
+    add(rel(base, "atk", mean) >= rel(base, "spa", mean) ? "atk" : "spa");
+  }
+
+  return { primary, secondary: nextSecondary };
+}
+
+/**
  * Role-critical IV axes for a species, from base-stat playstyle shape.
  *
  * - `primary` empty + `secondary` empty: Balanced — every IV equal.
  * - `null`: unknown species (no base stats) — caller keeps a legacy fallback.
  *
- * Only the **primary** tag’s stats are hard gates. A Special attacker with a
- * Glass cannon secondary should not treat dump Attack as a god veto.
+ * Only the **primary** tag’s stats are hard gates. Special glass uses SpA + Spe
+ * (not Attack); physical glass uses Atk + Spe.
  */
 export function keyStatsForSpecies(
   pokedexId: number | null | undefined,
@@ -84,15 +153,15 @@ export function keyStatsForSpecies(
   if (!base) return null;
 
   const { primary, secondary } = pickTags(scoreShape(base));
-  const primaryKeys = [...TAG_KEY_STATS[primary]];
+  const primaryKeys = keysForPlaystyleTag(primary, base);
   const primarySet = new Set(primaryKeys);
   const secondaryKeys: StatKey[] = [];
   if (secondary) {
-    for (const k of TAG_KEY_STATS[secondary]) {
+    for (const k of keysForPlaystyleTag(secondary, base)) {
       if (!primarySet.has(k)) secondaryKeys.push(k);
     }
   }
-  return { primary: primaryKeys, secondary: secondaryKeys };
+  return ensureRoleBreadth(primaryKeys, secondaryKeys, base);
 }
 
 const TIPS: Record<PlaystyleTag, string> = {
@@ -193,8 +262,18 @@ function pickTags(scores: Score[]): {
   primary: PlaystyleTag;
   secondary: PlaystyleTag | null;
 } {
-  const primary = scores[0]?.tag ?? "Balanced";
-  const secondaryCandidate = scores[1]?.tag ?? null;
+  let primary = scores[0]?.tag ?? "Balanced";
+  let secondaryCandidate = scores[1]?.tag ?? null;
+
+  // Prefer offense identity over glass shape when both fire — glass is the
+  // silhouette; phys/spec says which offense axis actually matters.
+  if (primary === "Glass cannon") {
+    const attacker = scores.find((s) => ATTACKER_TAGS.has(s.tag));
+    if (attacker) {
+      primary = attacker.tag;
+      secondaryCandidate = "Glass cannon";
+    }
+  }
 
   // Avoid redundant pairs (e.g. Physical wall + Bulky).
   const redundant =
@@ -204,12 +283,19 @@ function pickTags(scores: Score[]): {
     (primary === "Physical attacker" && secondaryCandidate === "Mixed attacker") ||
     (primary === "Special attacker" && secondaryCandidate === "Mixed attacker");
 
+  const primaryScore =
+    scores.find((s) => s.tag === primary)?.score ?? scores[0]?.score ?? 0;
+  const secondaryScore =
+    secondaryCandidate == null
+      ? 0
+      : (scores.find((s) => s.tag === secondaryCandidate)?.score ?? 0);
+
   if (
     !secondaryCandidate ||
     secondaryCandidate === primary ||
     redundant ||
     sameFamily ||
-    (scores[1]?.score ?? 0) < (scores[0]?.score ?? 0) * 0.55
+    secondaryScore < primaryScore * 0.55
   ) {
     return { primary, secondary: null };
   }
@@ -221,6 +307,7 @@ function pickTags(scores: Score[]): {
 function natureAlignmentFor(
   tags: PlaystyleTag[],
   nature: string | null | undefined,
+  base: StatSpread,
 ): { alignment: NatureAlignment; label: string } {
   const mod = natureStatMod(nature);
   if (!mod) {
@@ -229,7 +316,7 @@ function natureAlignmentFor(
 
   const keyStats = new Set<StatKey>();
   for (const tag of tags) {
-    for (const k of TAG_KEY_STATS[tag]) keyStats.add(k);
+    for (const k of keysForPlaystyleTag(tag, base)) keyStats.add(k);
   }
 
   // Slow: Speed drops help the role; Speed boosts fight it.
@@ -271,11 +358,12 @@ function abilityNudge(ability: string | null | undefined): string | null {
 function ivNudge(
   tags: PlaystyleTag[],
   ivs: StatSpread | null | undefined,
+  base: StatSpread,
 ): string | null {
   if (!ivs) return null;
   const keyStats = new Set<StatKey>();
   for (const tag of tags) {
-    for (const k of TAG_KEY_STATS[tag]) {
+    for (const k of keysForPlaystyleTag(tag, base)) {
       if (k !== "hp") keyStats.add(k);
     }
   }
@@ -298,6 +386,7 @@ function buildTip(
   secondary: PlaystyleTag | null,
   ability: string | null | undefined,
   ivs: StatSpread | null | undefined,
+  base: StatSpread,
 ): string {
   const parts = [TIPS[primary]];
   if (secondary && secondary !== "Balanced") {
@@ -325,6 +414,7 @@ function buildTip(
   const ivLine = ivNudge(
     [primary, secondary].filter(Boolean) as PlaystyleTag[],
     ivs,
+    base,
   );
   if (ivLine) parts.push(ivLine);
 
@@ -348,12 +438,12 @@ export function recommendPlaystyle(input: {
   const scores = scoreShape(base);
   const { primary, secondary } = pickTags(scores);
   const tags = [primary, secondary].filter(Boolean) as PlaystyleTag[];
-  const { alignment, label } = natureAlignmentFor(tags, input.nature);
+  const { alignment, label } = natureAlignmentFor(tags, input.nature, base);
 
   return {
     primary,
     secondary,
-    tip: buildTip(primary, secondary, input.ability, input.ivs),
+    tip: buildTip(primary, secondary, input.ability, input.ivs, base),
     natureAlignment: alignment,
     natureAlignmentLabel: label,
   };

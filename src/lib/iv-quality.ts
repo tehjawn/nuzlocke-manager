@@ -43,16 +43,15 @@ const BATTLE_DUMP = 0.45;
 /** Dump IVs needed (with no strong/perfect) to call a catch "big oof" (`shit`). */
 const SHIT_DUMP_MIN = 4;
 
-/** Legacy god bar when no role keys are available (unknown species). */
-const LEGACY_GOD_NEAR_PERFECT_MIN = 3;
+/**
+ * Catch-tier overall floors (filler dumps floored — walls aren't punished for
+ * dump Atk/SpA). Mid IV expectation is ~15.5.
+ */
+const ABOVE_MID_MEAN = 16;
+const AMAZING_MEAN = 22;
 
-/** Effective-mean floors for top tiers (filler dumps floored, not punished). */
-const GOD_EFFECTIVE_MEAN_MIN = 22;
-const GOD_SINGLE_KEY_MEAN_MIN = 20;
-const CRACKED_EFFECTIVE_MEAN_MIN = 19;
-/** Balanced (all-six) god needs a higher bar — 6× near-perfect is brutal. */
-const BALANCED_GOD_NEAR_PERFECT_MIN = 4;
-const BALANCED_GOD_MEAN_MIN = 24;
+/** @deprecated Kept for summarizeIvs legacy path without keyStats. */
+const LEGACY_GOD_NEAR_PERFECT_MIN = 3;
 
 export function classifyIv(value: number): StatQualityBand {
   if (value >= IV_PERFECT) return "perfect";
@@ -294,11 +293,13 @@ export function summarizeBattleStats(
 /**
  * Randomizer catch quality for board-card chrome + details labels.
  *
- * Role-aware when key stats are supplied (see {@link ivCatchTier}):
- * - shit (label: Big oof): mostly dump IVs / key-stat dumps
- * - oof: below average / nothing notable (no chrome)
- * - good / great: something useful where it matters (or mild off-role luck)
- * - cracked / god: key stats excellent + respectable effective spread
+ * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}):
+ * - shit (Big oof): mostly dump IVs / nothing redeeming
+ * - oof: all mid-or-below, nothing notable
+ * - good: overall above mid
+ * - great: above mid + ≥1 strong role IV
+ * - cracked: above mid + ≥2 strong role IVs
+ * - god: amazing overall + ≥2 near-perfect role IVs
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -340,15 +341,15 @@ export function catchTierTip(tier: CatchTier): string {
     return "Oof: Not even mid.";
   }
   if (tier === "good") {
-    return "Good: Not all bad!";
+    return "Good: Above mid — usable.";
   }
   if (tier === "great") {
-    return "Great: Pretty decent!";
+    return "Great: A strong roll where it matters.";
   }
   if (tier === "cracked") {
-    return "Cracked: A rare find.";
+    return "Cracked: Two strong rolls on-role.";
   }
-  return "God: Born under a lucky star~";
+  return "God: Amazing luck on the stats that count.";
 }
 
 /** Board / modal ring + sprite wash — oof stays plain. */
@@ -376,57 +377,23 @@ export type SpeciesKeyStatsInput = {
   secondary?: StatKey[];
 };
 
-type IvBands = {
-  perfect: number;
-  strong: number;
-  dump: number;
-  nearPerfect: number;
-};
-
-function countIvBands(ivs: StatSpread): IvBands {
-  let perfect = 0;
-  let strong = 0;
-  let dump = 0;
-  let nearPerfect = 0;
-  for (const key of STAT_KEYS) {
-    const value = ivs[key] ?? 0;
-    if (value >= IV_NEAR_PERFECT) nearPerfect += 1;
-    const band = classifyIv(value);
-    if (band === "perfect") perfect += 1;
-    else if (band === "strong") strong += 1;
-    else if (band === "dump") dump += 1;
-  }
-  return { perfect, strong, dump, nearPerfect };
-}
-
 /** Species-blind fallback when playstyle keys are unavailable. */
 function legacyIvCatchTier(ivs: StatSpread): CatchTier {
-  const { perfect, strong, dump, nearPerfect } = countIvBands(ivs);
-  if (nearPerfect >= LEGACY_GOD_NEAR_PERFECT_MIN) return "god";
-  if (
-    isCrackedSpread(perfect, strong, {
-      perfectAlone: 2,
-      combo: { perfect: 1, strong: 2 },
-      strongAlone: 3,
-    })
-  ) {
-    return "cracked";
-  }
-  if ((perfect >= 1 && strong >= 1) || strong >= 2) return "great";
-  if (perfect >= 1 || strong >= 1) return "good";
-  if (dump >= SHIT_DUMP_MIN) return "shit";
-  return "oof";
+  return roleIvCatchTier(ivs, { primary: [...STAT_KEYS], secondary: [] });
 }
 
 /**
- * Role-weighted catch tier.
+ * Role-weighted catch tier — randomizer Nuzlocke feel ladder.
  *
- * Worked feel-checks (see #342):
- * - Skarmory wall, 31 HP / 31 Def / 28 SpD / dump Atk·SpA → god (filler dumps OK)
- * - Skarmory wall, 31 Atk / 31 SpA / 31 Spe / dump Def → not god (primary key dump)
- * - Special attacker + glass secondary, dump Atk / 31 SpA·Spe → still cracked/god OK
- * - Physical attacker, lone 31 Atk + mid rest → great, not god (needs breadth)
- * - Physical attacker, 31 Atk + two other ≥28 + solid rest → god
+ * Worked feel-checks:
+ * - Special glass Starmie, SpA 29 / Spe 28 / Atk 26 mid filler → god
+ *   (Attack is not a role key for special glass)
+ * - Skarmory wall, 31 HP / 31 Def / 28 SpD / dump Atk·SpA → god
+ * - Skarmory wall, 31 Atk / 31 SpA / 31 Spe / dump Def → not god (primary dump)
+ * - Physical attacker, lone 31 Atk + mid rest → great (needs 2 role hits)
+ * - Physical attacker, 31 Atk + 29 Spe + solid rest (≥22 mean) → god
+ * - Physical attacker, 31 Atk + 29 Spe + merely good rest → cracked (not amazing)
+ * - All dumps → big oof; all mid, no strong → oof
  */
 function roleIvCatchTier(
   ivs: StatSpread,
@@ -436,129 +403,81 @@ function roleIvCatchTier(
   const primaryKeys = balanced ? [...STAT_KEYS] : keyStats.primary;
   const secondaryKeys = balanced ? [] : (keyStats.secondary ?? []);
   const primarySet = new Set<StatKey>(primaryKeys);
-  const secondarySet = new Set<StatKey>(
-    secondaryKeys.filter((k) => !primarySet.has(k)),
-  );
-  const keyCount = primaryKeys.length;
+  const roleKeys = new Set<StatKey>([
+    ...primaryKeys,
+    ...secondaryKeys.filter((k) => !primarySet.has(k)),
+  ]);
 
-  let keyNear = 0;
-  let keyStrong = 0;
-  let keyDump = 0;
+  let roleNear = 0;
+  let roleStrong = 0;
+  let hardDump = 0;
   let perfect = 0;
   let strong = 0;
   let dump = 0;
-  let nearPerfect = 0;
-  let usefulNear = 0;
-  let usefulStrong = 0;
   let effectiveSum = 0;
 
   for (const key of STAT_KEYS) {
     const value = ivs[key] ?? 0;
     const band = classifyIv(value);
-    if (value >= IV_NEAR_PERFECT) nearPerfect += 1;
     if (band === "perfect") perfect += 1;
     else if (band === "strong") strong += 1;
     else if (band === "dump") dump += 1;
 
+    if (roleKeys.has(key)) {
+      if (value >= IV_NEAR_PERFECT) roleNear += 1;
+      if (value >= IV_STRONG) roleStrong += 1;
+    }
+
     if (primarySet.has(key)) {
-      if (value >= IV_NEAR_PERFECT) keyNear += 1;
-      if (value >= IV_STRONG) keyStrong += 1;
-      if (band === "dump") keyDump += 1;
+      if (band === "dump") hardDump += 1;
       effectiveSum += value;
-    } else if (secondarySet.has(key)) {
-      if (value >= IV_NEAR_PERFECT) usefulNear += 1;
-      if (value >= IV_STRONG) usefulStrong += 1;
-      // Dump secondary (e.g. Atk on a special attacker) shouldn't sink the mean.
-      effectiveSum += band === "dump" ? FILLER_DUMP_FLOOR : value;
     } else {
-      // Dump offenses on a wall are correct — don't sink the mean.
+      // Dump filler (wall offenses, unused glass axis) shouldn't sink the mean.
       effectiveSum += band === "dump" ? FILLER_DUMP_FLOOR : value;
     }
   }
 
   const effectiveMean = effectiveSum / STAT_KEYS.length;
-  const allKeysNear = keyNear === keyCount;
-  const allKeysStrong = keyStrong === keyCount;
-  const breadthNear = nearPerfect;
-  const breadthStrong = perfect + strong;
+  const aboveMid = effectiveMean >= ABOVE_MID_MEAN;
+  const amazing = effectiveMean >= AMAZING_MEAN;
+  const anyHot = perfect + strong > 0;
+  const roleHot = roleStrong > 0 || roleNear > 0;
 
-  // --- God -----------------------------------------------------------------
-  if (keyDump === 0) {
-    if (balanced) {
-      if (
-        nearPerfect >= BALANCED_GOD_NEAR_PERFECT_MIN &&
-        dump === 0 &&
-        effectiveMean >= BALANCED_GOD_MEAN_MIN
-      ) {
-        return "god";
-      }
-    } else if (allKeysNear) {
-      // Multi-key roles: excellent keys + respectable effective mean.
-      if (keyCount >= 2 && effectiveMean >= GOD_EFFECTIVE_MEAN_MIN) {
-        return "god";
-      }
-      // Single-key roles need a useful secondary or raw breadth so one
-      // perfect Attack with mid garbage isn't auto-god.
-      if (
-        keyCount === 1 &&
-        effectiveMean >= GOD_SINGLE_KEY_MEAN_MIN &&
-        (usefulNear >= 1 ||
-          breadthNear >= 3 ||
-          (keyNear >= 1 && breadthStrong >= 3))
-      ) {
-        return "god";
-      }
-    }
+  // --- God: amazing overall + ≥2 near-perfect role IVs --------------------
+  if (hardDump === 0 && amazing && roleNear >= 2) {
+    return "god";
   }
 
-  // --- Cracked -------------------------------------------------------------
-  if (keyDump === 0) {
-    if (balanced) {
-      if (
-        isCrackedSpread(perfect, strong, {
-          perfectAlone: 2,
-          combo: { perfect: 1, strong: 2 },
-          strongAlone: 3,
-        }) &&
-        effectiveMean >= CRACKED_EFFECTIVE_MEAN_MIN
-      ) {
-        return "cracked";
-      }
-    } else if (allKeysStrong && effectiveMean >= CRACKED_EFFECTIVE_MEAN_MIN) {
-      if (
-        keyCount >= 2 ||
-        (keyNear >= 1 && breadthStrong >= 2) ||
-        (keyNear >= 1 && usefulStrong >= 1)
-      ) {
-        return "cracked";
-      }
-    } else if (
-      keyNear >= Math.ceil(keyCount * 0.67) &&
-      allKeysStrong &&
-      effectiveMean >= CRACKED_EFFECTIVE_MEAN_MIN - 1
-    ) {
-      return "cracked";
-    }
+  // --- Cracked: above mid + ≥2 strong role IVs ----------------------------
+  if (hardDump === 0 && aboveMid && roleStrong >= 2) {
+    return "cracked";
   }
 
   // Primary key dump caps the ceiling — off-role 31s are consolation only.
-  if (keyDump > 0) {
-    if (keyNear >= 1 || keyStrong >= 1) return "good";
-    if (perfect >= 1 || strong >= 1) return "good";
-    if (keyDump >= Math.ceil(keyCount / 2) || dump >= SHIT_DUMP_MIN) {
+  if (hardDump > 0) {
+    if (roleHot || anyHot) return "good";
+    if (hardDump >= Math.ceil(primaryKeys.length / 2) || dump >= SHIT_DUMP_MIN) {
       return "shit";
     }
     return "oof";
   }
 
-  // --- Great / good --------------------------------------------------------
-  if (keyNear >= 1 || (keyStrong >= Math.ceil(keyCount / 2) && keyCount > 0)) {
+  // --- Great: above mid + ≥1 strong role IV -------------------------------
+  if (aboveMid && roleStrong >= 1) {
     return "great";
   }
-  if ((perfect >= 1 && strong >= 1) || strong >= 2) return "great";
-  if (keyStrong >= 1 || perfect >= 1 || strong >= 1) return "good";
 
-  if (dump >= SHIT_DUMP_MIN) return "shit";
+  // --- Good: overall above mid (or mild off-role luck) --------------------
+  if (aboveMid || anyHot) {
+    return "good";
+  }
+
+  // --- Big oof: mostly dumps / all very low -------------------------------
+  if (dump >= SHIT_DUMP_MIN) {
+    return "shit";
+  }
+
+  // --- Oof: all mid or below, nothing notable -----------------------------
   return "oof";
 }
 
