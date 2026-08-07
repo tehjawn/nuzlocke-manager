@@ -1,5 +1,6 @@
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import {
+  resolveCatchScore,
   resolveCatchTier,
   resolveTrainingTier,
 } from "@/lib/pokemon-grades";
@@ -21,6 +22,7 @@ export function toPublicPokemonEntry(pokemon: PokemonEntry): PokemonEntry {
   return {
     ...pokemon,
     catchTier: resolveCatchTier(pokemon),
+    catchScore: resolveCatchScore(pokemon),
     trainingTier: resolveTrainingTier(pokemon),
     nature: null,
     ability: null,

@@ -5,7 +5,7 @@ import {
   type StatKey,
   type StatSpread,
 } from "@/lib/stats";
-import { classifyIv } from "@/lib/iv-quality";
+import { classifyIv, type CatchArchetype } from "@/lib/iv-quality";
 
 /** Closed vocabulary — beginner-friendly, not Smogon jargon. */
 export const PLAYSTYLE_TAGS = [
@@ -99,9 +99,9 @@ export function keysForPlaystyleTag(
 }
 
 export type SpeciesKeyStats = {
-  /** Primary playstyle axes — dump here blocks god/cracked. */
+  /** Primary playstyle axes — historically hard-gated catch tiers. */
   primary: StatKey[];
-  /** Secondary axes — help the score, but dumps do not veto top tiers. */
+  /** Secondary axes — help scoring context without vetoing top tiers. */
   secondary: StatKey[];
 };
 
@@ -153,8 +153,9 @@ function ensureRoleBreadth(
  * - `primary` empty + `secondary` empty: Balanced — every IV equal.
  * - `null`: unknown species (no base stats) — caller keeps a legacy fallback.
  *
- * Only the **primary** tag’s stats are hard gates. Special glass uses SpA + Spe
- * (not Attack); physical glass uses Atk + Spe.
+ * Prefer {@link catchArchetypeForSpecies} for catch-tier scoring (#356).
+ * Only the **primary** tag’s stats are hard gates when using key lists.
+ * Special glass uses SpA + Spe (not Attack); physical glass uses Atk + Spe.
  */
 export function keyStatsForSpecies(
   pokedexId: number | null | undefined,
@@ -176,6 +177,34 @@ export function keyStatsForSpecies(
     }
   }
   return ensureRoleBreadth(primaryKeys, secondaryKeys, base);
+}
+
+/**
+ * Catch-scoring archetype for a species (#356).
+ *
+ * Primary playstyle tag picks the weight table. **Glass cannon only swaps to
+ * the glass (phys/spec/mixed) table when it is primary** — when glass is merely
+ * secondary (attacker + glass silhouette), keep the attacker table so Spe-led
+ * mid rolls don't overscore. Returns null when base stats are unknown.
+ */
+export function catchArchetypeForSpecies(
+  pokedexId: number | null | undefined,
+): CatchArchetype | null {
+  const base = baseStatsForSpecies(pokedexId);
+  if (!base) return null;
+
+  const { primary } = pickTags(scoreShape(base));
+
+  if (primary === "Glass cannon") {
+    const keys = glassCannonKeys(base);
+    const hasAtk = keys.includes("atk");
+    const hasSpa = keys.includes("spa");
+    if (hasAtk && hasSpa) return "Glass (mixed)";
+    if (hasSpa) return "Glass (special)";
+    return "Glass (physical)";
+  }
+
+  return primary;
 }
 
 const TIPS: Record<PlaystyleTag, string> = {

@@ -20,7 +20,11 @@ import type {
 import { resolvePokedexId } from "@/lib/encounter-stats";
 import { catchTierRank, type CatchTier } from "@/lib/iv-quality";
 import type { PokemonType } from "@/lib/pokemon-types";
-import { resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
+import {
+  resolveCatchScore,
+  resolveCatchTier,
+  resolveTrainingTier,
+} from "@/lib/pokemon-grades";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import { competitiveTierFor } from "@/lib/competitive-tiers";
 import { baseStatRanksFor, STAT_RANKS, type StatRank } from "@/lib/species-ranks";
@@ -72,6 +76,8 @@ export type SpecimenRow = {
   competitiveReason: string | null;
   /** Catch tier; null when the specimen has no IVs on file. Never withheld. */
   catchTier: CatchTier | null;
+  /** Rounded catch score for tips; null with `catchTier`. */
+  catchScore: number | null;
   /**
    * Training / bond tier; null when nothing is on file. `raw` means graded
    * with no meaningful investment — heart shows empty.
@@ -139,6 +145,7 @@ export function seasonSpecimenBoard(
         competitiveRank: competitive?.tier ?? null,
         competitiveReason: competitive?.reason ?? null,
         catchTier: resolveCatchTier(pokemon),
+        catchScore: resolveCatchScore(pokemon),
         trainingTier: resolveTrainingTier(pokemon),
         searchText: [
           pokemon.species,

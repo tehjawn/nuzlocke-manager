@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { BondHeart } from "@/components/BondHeart";
+import { CatchTierCaption } from "@/components/CatchTierIcon";
 import { GodPrismRays } from "@/components/GodPrismRays";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
@@ -13,7 +14,6 @@ import type { PokemonSlot } from "@/lib/challenge-types";
 import {
   catchTierHasChrome,
   catchTierLabel,
-  catchTierToneClass,
   CATCH_TIERS,
   type CatchTier,
 } from "@/lib/iv-quality";
@@ -442,11 +442,11 @@ function SpecimenCard({
           )}
 
           {tier !== null && (
-            <p
-              className={`truncate text-center text-[11px] font-bold leading-tight tracking-tight ${catchTierToneClass(tier)}`}
-            >
-              {catchTierLabel(tier)}
-            </p>
+            <CatchTierCaption
+              score={row.catchScore}
+              tier={tier}
+              variant="inline"
+            />
           )}
 
           <div className="mt-auto flex flex-wrap items-center justify-center gap-1 pt-0.5">
