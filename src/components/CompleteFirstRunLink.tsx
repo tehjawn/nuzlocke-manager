@@ -59,11 +59,11 @@ export function CompleteFirstRunLink({
       >
         {children}
       </Link>
-      {error ? (
+      {error && (
         <p className="text-sm font-semibold text-danger" role="alert">
           {error}
         </p>
-      ) : null}
+      )}
     </span>
   );
 }

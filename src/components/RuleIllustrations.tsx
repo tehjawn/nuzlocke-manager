@@ -4,10 +4,7 @@ import { heldItemSpriteUrl } from "@/data/pokemon-index";
 import { trainerSpriteUrl } from "@/lib/sprites";
 
 export type RuleIllustrationKind =
-  | "faint-dead"
-  | "no-dup-items"
-  | "revive-token"
-  | "honor-system";
+  "faint-dead" | "no-dup-items" | "revive-token" | "honor-system";
 
 /** Map rule titles (seed or GM-edited close variants) to illustration kinds. */
 export function ruleIllustrationKind(
@@ -164,11 +161,11 @@ function MonWithItem({
     <div className="relative flex w-20 flex-col items-center sm:w-24">
       <div className="relative mb-1 flex h-8 items-center justify-center gap-1">
         <Sprite src={item} alt="" size={28} className="h-7 w-7" />
-        {banned ? (
+        {banned && (
           <span className="text-sm font-bold tracking-wide text-danger">
             No
           </span>
-        ) : null}
+        )}
       </div>
       <PokemonSpriteImage
         alt=""

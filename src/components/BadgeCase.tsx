@@ -40,7 +40,8 @@ function trayCaption(
 ): string {
   const name = meta?.badgeName ?? badge.label;
   if (name.endsWith(" Badge")) return name.slice(0, -" Badge".length);
-  if (name.startsWith("Elite Four — ")) return name.slice("Elite Four — ".length);
+  if (name.startsWith("Elite Four — "))
+    return name.slice("Elite Four — ".length);
   if (name === "Champion") return "Champ";
   return meta?.previewLabel ?? badge.label;
 }
@@ -123,7 +124,11 @@ export function BadgeCase({
                 badge.leaderName ? ` — ${badge.leaderName}` : ""
               }${on ? " · Earned" : ""}`;
               return (
-                <li key={badge.key} title={title} className="flex justify-center">
+                <li
+                  key={badge.key}
+                  title={title}
+                  className="flex justify-center"
+                >
                   {meta ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -181,7 +186,11 @@ export function BadgeCase({
                 badge.leaderName ? ` — ${badge.leaderName}` : ""
               }`;
               return (
-                <li key={badge.key} title={title} className="flex justify-center">
+                <li
+                  key={badge.key}
+                  title={title}
+                  className="flex justify-center"
+                >
                   {meta ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -214,7 +223,7 @@ export function BadgeCase({
           hideCount ? "justify-start" : ""
         } ${completeClass} ${className}`}
       >
-        {hideCount ? null : (
+        {!hideCount && (
           <p
             className={`min-w-0 truncate font-display text-xs font-semibold tracking-tight ${
               complete ? "text-accent-2" : "text-muted"
@@ -254,9 +263,7 @@ export function BadgeCase({
                       width={stripIconPx}
                       height={stripIconPx}
                       className={`badge-case__icon object-contain ${
-                        on
-                          ? "badge-case__icon--earned"
-                          : "grayscale opacity-35"
+                        on ? "badge-case__icon--earned" : "grayscale opacity-35"
                       }`}
                       style={{ width: stripIconPx, height: stripIconPx }}
                     />
@@ -284,7 +291,7 @@ export function BadgeCase({
   if (compact) {
     return (
       <div className={`badge-case space-y-2 ${completeClass}`}>
-        {complete ? <CompleteBanner dense /> : null}
+        {complete && <CompleteBanner dense />}
         <ul className="grid grid-cols-7 gap-1.5" aria-label={ariaProgress}>
           {badges.map((badge) => {
             const on = earned.has(badge.key);
@@ -293,7 +300,7 @@ export function BadgeCase({
             const title = badgeTooltip(badge, meta, on);
             const body = (
               <>
-                {meta ? (
+                {meta && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={meta.badgeSprite}
@@ -301,12 +308,10 @@ export function BadgeCase({
                     width={28}
                     height={28}
                     className={`badge-case__icon h-7 w-7 object-contain ${
-                      on
-                        ? "badge-case__icon--earned"
-                        : "grayscale opacity-40"
+                      on ? "badge-case__icon--earned" : "grayscale opacity-40"
                     }`}
                   />
-                ) : null}
+                )}
                 <span
                   className={`mt-0.5 font-display text-[9px] font-bold tracking-wide ${
                     on ? "text-ink" : "text-muted"
@@ -362,7 +367,7 @@ export function BadgeCase({
               : `${earnedCount}/${badges.length} earned`}
           </p>
         </div>
-        {complete ? <CompleteBanner dense /> : null}
+        {complete && <CompleteBanner dense />}
         <ul className="grid grid-cols-4 gap-1.5" aria-label={ariaProgress}>
           {badges.map((badge) => {
             const on = earned.has(badge.key);
@@ -379,9 +384,7 @@ export function BadgeCase({
                     width={iconPx}
                     height={iconPx}
                     className={`badge-case__icon object-contain ${
-                      on
-                        ? "badge-case__icon--earned"
-                        : "grayscale opacity-35"
+                      on ? "badge-case__icon--earned" : "grayscale opacity-35"
                     }`}
                     style={{ width: iconPx, height: iconPx }}
                   />
@@ -404,9 +407,7 @@ export function BadgeCase({
               </>
             );
             const cellClass = `badge-case__cell flex w-full flex-col items-center justify-center rounded-lg border border-frame px-1 py-2 transition ${
-              on
-                ? "bg-accent-2/25 ring-1 ring-accent-2/45"
-                : "bg-surface-2/80"
+              on ? "bg-accent-2/25 ring-1 ring-accent-2/45" : "bg-surface-2/80"
             } ${interactive ? "hover:border-interactive/50 hover:bg-interactive-soft/30" : ""}`;
             return (
               <li key={badge.key} title={title}>
@@ -434,7 +435,7 @@ export function BadgeCase({
 
   return (
     <div className={`badge-case space-y-2 ${completeClass} ${className}`}>
-      {complete ? <CompleteBanner dense={dense} /> : null}
+      {complete && <CompleteBanner dense={dense} />}
       <ul
         className={`grid ${dense ? "gap-1.5" : "gap-2"} ${
           layout === "grid" ? "grid-cols-2" : "grid-cols-1"
@@ -461,7 +462,7 @@ export function BadgeCase({
             : "pixelated blur-[1.5px] grayscale opacity-55";
           const body = (
             <>
-              {meta ? (
+              {meta && (
                 <Image
                   src={trainerSpriteUrl(meta.leaderSpriteKey)}
                   alt=""
@@ -471,7 +472,7 @@ export function BadgeCase({
                   style={{ width: leaderPx, height: leaderPx }}
                   unoptimized
                 />
-              ) : null}
+              )}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={meta?.badgeSprite ?? "/badges/gym-1.png"}
@@ -500,9 +501,7 @@ export function BadgeCase({
                 </span>
                 <span
                   className={`mt-0.5 block text-muted ${
-                    dense
-                      ? "text-[10px] leading-snug"
-                      : "truncate text-[11px]"
+                    dense ? "text-[10px] leading-snug" : "truncate text-[11px]"
                   }`}
                 >
                   {leader}

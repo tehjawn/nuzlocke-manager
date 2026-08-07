@@ -19,11 +19,14 @@ export function StatusLine({
 
   return (
     <p className={className}>
-      {emoji ? (
-        <span className="mr-1.5 inline-block text-[1.05em] leading-none" aria-hidden>
+      {emoji && (
+        <span
+          className="mr-1.5 inline-block text-[1.05em] leading-none"
+          aria-hidden
+        >
           {emoji}
         </span>
-      ) : null}
+      )}
       {trimmed}
     </p>
   );

@@ -114,7 +114,7 @@ export async function SiteHeader({
             >
               Nuzlocke Manager
             </Link>
-            {seasonYear != null && seasonSlug ? (
+            {seasonYear != null && seasonSlug && (
               <p className="truncate text-sm text-muted">
                 <Link
                   href={`/challenges/${seasonSlug}`}
@@ -123,7 +123,7 @@ export async function SiteHeader({
                   Season {seasonYear} League
                 </Link>
               </p>
-            ) : null}
+            )}
           </div>
         </div>
         <nav className="relative flex shrink-0 items-center gap-2 text-sm">
@@ -145,17 +145,15 @@ export async function SiteHeader({
               matching the old My Trainer pill); otherwise All Trainers only
               outside first-run.
             */}
-            {seasonSlug && !firstRun ? <InfoMenu slug={seasonSlug} /> : null}
-            {seasonSlug && !firstRun ? <ToolsMenu slug={seasonSlug} /> : null}
-            {seasonSlug && (myTrainerId || !firstRun) ? (
+            {seasonSlug && !firstRun && <InfoMenu slug={seasonSlug} />}
+            {seasonSlug && !firstRun && <ToolsMenu slug={seasonSlug} />}
+            {seasonSlug && (myTrainerId || !firstRun) && (
               <TrainersMenu slug={seasonSlug} myTrainerId={myTrainerId} />
-            ) : null}
+            )}
           </div>
           <Suspense
             fallback={
-              <SiteHeaderSessionFallback
-                hideMyTrainer={Boolean(myTrainerId)}
-              />
+              <SiteHeaderSessionFallback hideMyTrainer={Boolean(myTrainerId)} />
             }
           >
             <SiteHeaderSession

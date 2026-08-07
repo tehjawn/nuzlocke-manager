@@ -484,7 +484,7 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
 
   return createPortal(
     <>
-      {bridging ? (
+      {bridging && (
         <div
           className="nuzlocke-tour-bridge"
           role="status"
@@ -509,9 +509,9 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
             </div>
           </div>
         </div>
-      ) : null}
+      )}
 
-      {showUI ? (
+      {showUI && (
         <div className="nuzlocke-tour-layer">
           <div
             className={`nuzlocke-tour-scrim ${holeActive ? "is-dim" : "is-on"}`}
@@ -526,9 +526,9 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
             }}
           />
         </div>
-      ) : null}
+      )}
 
-      {showUI ? (
+      {showUI && (
         <div
           data-tour-popover=""
           role="dialog"
@@ -568,7 +568,7 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
               {step.title}
             </h2>
             <p className="nuzlocke-tour-description">{step.description}</p>
-            {step.signature ? (
+            {step.signature && (
               <div className="nuzlocke-tour-signature">
                 <Image
                   src={step.signature.avatarUrl}
@@ -582,7 +582,7 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
                   {step.signature.label}
                 </p>
               </div>
-            ) : null}
+            )}
           </div>
 
           <footer className="nuzlocke-tour-footer">
@@ -607,7 +607,7 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
             </button>
           </footer>
         </div>
-      ) : null}
+      )}
     </>,
     document.body,
   );

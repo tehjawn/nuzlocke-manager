@@ -29,7 +29,8 @@ type MobileWorkspaceProps = {
 
 const itemBase =
   "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-[calc(var(--radius-sm)-2px)] border px-3 py-2.5 text-sm font-semibold transition-colors";
-const itemActive = "border-interactive/40 bg-interactive-soft text-ink shadow-sm";
+const itemActive =
+  "border-interactive/40 bg-interactive-soft text-ink shadow-sm";
 const itemIdle = "border-transparent text-ink hover:bg-surface";
 
 /**
@@ -62,8 +63,7 @@ export function MobileWorkspace({
   }
 
   const tabs = getSeasonTabs(slug, status, { firstRun, gmViewOn });
-  const selectInfo = () =>
-    setPanel((cur) => (cur === "info" ? null : "info"));
+  const selectInfo = () => setPanel((cur) => (cur === "info" ? null : "info"));
 
   // Handle link clicks inside this shell (panel CTAs and section tabs).
   // - Same-page link (e.g. "Get Started" while already on /setup): no navigation
@@ -143,9 +143,9 @@ export function MobileWorkspace({
             Info
           </button>
 
-          {tabs.length > 0 ? (
+          {tabs.length > 0 && (
             <span aria-hidden className="my-1 w-px shrink-0 bg-frame/60" />
-          ) : null}
+          )}
 
           {tabs.map((tab) => {
             const active = panel === null && isSeasonTabActive(tab, pathname);
@@ -186,7 +186,7 @@ export function MobileWorkspace({
       </div>
 
       {/* Info panel replaces the page content on mobile. */}
-      {panel === "info" ? <div className="lg:hidden">{generalInfo}</div> : null}
+      {panel === "info" && <div className="lg:hidden">{generalInfo}</div>}
 
       {/* Page content: hidden on mobile while Info is open; always on desktop. */}
       <div className={panel !== null ? "hidden lg:block" : undefined}>

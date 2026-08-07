@@ -126,14 +126,14 @@ export function CardBackgroundPicker({
               onClick={() => onChange(option.key)}
             >
               <span className={`card-bg-swatch-preview ${TILE_PREVIEW} block`}>
-                {selected ? (
+                {selected && (
                   <span
                     aria-hidden
                     className="absolute top-1.5 right-1.5 z-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
                   >
                     <CheckIcon />
                   </span>
-                ) : null}
+                )}
               </span>
               <span
                 className={`${TILE_LABEL} ${
@@ -147,7 +147,7 @@ export function CardBackgroundPicker({
             </button>
           );
         })}
-        {customUrl && activeCustom ? (
+        {customUrl && activeCustom && (
           <button
             type="button"
             role="radio"
@@ -166,14 +166,14 @@ export function CardBackgroundPicker({
             onClick={() => onChange(activeCustom)}
           >
             <span className={`card-bg-swatch-preview ${TILE_PREVIEW} block`}>
-              {customSelected ? (
+              {customSelected && (
                 <span
                   aria-hidden
                   className="absolute top-1.5 right-1.5 z-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
                 >
                   <CheckIcon />
                 </span>
-              ) : null}
+              )}
             </span>
             <span
               className={`${TILE_LABEL} ${
@@ -185,7 +185,7 @@ export function CardBackgroundPicker({
               Custom
             </span>
           </button>
-        ) : null}
+        )}
       </div>
       <button
         type="button"

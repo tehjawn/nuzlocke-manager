@@ -127,9 +127,7 @@ export function MemorialBoard({
     <div className="space-y-4">
       <div
         className={`grid gap-2 ${
-          recoveredCount > 0
-            ? "grid-cols-2 sm:grid-cols-3"
-            : "grid-cols-2"
+          recoveredCount > 0 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"
         }`}
       >
         <StatBlock
@@ -152,17 +150,17 @@ export function MemorialBoard({
               : "At least one RIP this season"
           }
         />
-        {recoveredCount > 0 ? (
+        {recoveredCount > 0 && (
           <StatBlock
             icon={<HistoryStatIcon />}
             value={String(recoveredCount)}
             label="From history"
             hint="Recovered from wiped board snapshots"
           />
-        ) : null}
+        )}
       </div>
 
-      {hasAnyGraves ? (
+      {hasAnyGraves && (
         <div className="relative z-20 flex flex-wrap items-end gap-2">
           <MultiSelectFilter
             label="Type"
@@ -189,7 +187,7 @@ export function MemorialBoard({
                 : values.map((g) => `Gen ${g}`).join(", ")
             }
           />
-          {filtering ? (
+          {filtering && (
             <button
               type="button"
               className="pb-2 text-xs font-semibold text-interactive underline-offset-2 hover:underline"
@@ -197,9 +195,9 @@ export function MemorialBoard({
             >
               Clear filters
             </button>
-          ) : null}
+          )}
         </div>
-      ) : null}
+      )}
 
       {!hasAnyGraves ? (
         <Frame title="R.I.P." tone="rip">
@@ -324,7 +322,7 @@ export function MemorialBoard({
         </ul>
       )}
 
-      {selectedRow ? (
+      {selectedRow && (
         <TrainerGravesModal
           slug={slug}
           row={selectedRow}
@@ -332,7 +330,7 @@ export function MemorialBoard({
           canEditTrainer={editable.has(selectedRow.trainer.id)}
           onClose={() => setSelectedTrainerId(null)}
         />
-      ) : null}
+      )}
     </div>
   );
 }
@@ -355,7 +353,9 @@ function TrainerGravesModal({
   const activeRunNumber = wipes + 1;
   const runGroups = groupByRun(graves);
   const subtitle = [
-    filtering ? `${graves.length} of ${all.length} RIP` : `${graves.length} RIP`,
+    filtering
+      ? `${graves.length} of ${all.length} RIP`
+      : `${graves.length} RIP`,
     wipes > 0 ? `${wipes} wipe${wipes === 1 ? "" : "s"}` : null,
   ]
     .filter(Boolean)
@@ -380,21 +380,19 @@ function TrainerGravesModal({
       <div className="space-y-4">
         {runGroups.map(({ runNumber, graves: runGraves }) => (
           <div key={runNumber} className="space-y-1.5">
-            {runGroups.length > 1 || runNumber > 1 ? (
+            {(runGroups.length > 1 || runNumber > 1) && (
               <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
                 Run {runNumber}
                 {runNumber === activeRunNumber ? " · Current" : ""}
               </p>
-            ) : null}
+            )}
             <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {runGraves.map((grave) => (
                 <MemorialGraveItem
                   key={grave.key}
                   trainerId={trainer.id}
                   grave={grave}
-                  canEdit={
-                    grave.source === "live" && canEditTrainer
-                  }
+                  canEdit={grave.source === "live" && canEditTrainer}
                 />
               ))}
             </ul>
@@ -440,11 +438,11 @@ function MemorialGraveItem({
       <div className="min-w-0 flex-1">
         <p className="font-display truncate text-xs font-bold leading-tight">
           {label}
-          {pokemon.isShiny ? (
+          {pokemon.isShiny && (
             <span className="ml-0.5 text-accent-2" title="Shiny">
               ✦
             </span>
-          ) : null}
+          )}
         </p>
         <p className="truncate text-[11px] leading-tight text-muted">
           {pokemon.species}
@@ -494,7 +492,8 @@ function MultiSelectFilter<T extends string | number>({
         ? selected
             .map(
               (value) =>
-                options.find((opt) => opt.value === value)?.label ?? String(value),
+                options.find((opt) => opt.value === value)?.label ??
+                String(value),
             )
             .join(", ")
         : `${selected.length} selected`);
@@ -543,7 +542,7 @@ function MultiSelectFilter<T extends string | number>({
           {open ? "▴" : "▾"}
         </span>
       </button>
-      {open ? (
+      {open && (
         <div
           id={listId}
           role="listbox"
@@ -555,7 +554,7 @@ function MultiSelectFilter<T extends string | number>({
             <span className="text-[10px] font-bold tracking-wide text-muted uppercase">
               {selected.length === 0 ? "Any" : `${selected.length} selected`}
             </span>
-            {selected.length > 0 ? (
+            {selected.length > 0 && (
               <button
                 type="button"
                 className="text-[11px] font-semibold text-interactive underline-offset-2 hover:underline"
@@ -563,7 +562,7 @@ function MultiSelectFilter<T extends string | number>({
               >
                 Clear
               </button>
-            ) : null}
+            )}
           </div>
           <ul className="py-1">
             {options.map((option) => {
@@ -584,7 +583,7 @@ function MultiSelectFilter<T extends string | number>({
             })}
           </ul>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -637,10 +636,7 @@ function HistoryStatIcon() {
       stroke="currentColor"
       strokeWidth="1.75"
     >
-      <path
-        d="M4.75 12a7.25 7.25 0 111.85 4.85"
-        strokeLinecap="round"
-      />
+      <path d="M4.75 12a7.25 7.25 0 111.85 4.85" strokeLinecap="round" />
       <path
         d="M4.75 16.5v-3.75H8.5M12 8.25V12l2.5 1.5"
         strokeLinecap="round"

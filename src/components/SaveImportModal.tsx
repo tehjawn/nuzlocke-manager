@@ -78,7 +78,11 @@ const CATEGORY_META: {
 }[] = [
   { key: "party", slot: "MAIN", title: "Party → Main Squad" },
   { key: "box", slot: "RESERVE", title: "Box → Reserves" },
-  { key: "rip", slot: "GRAVEYARD", title: "Fainted → R.I.P. (add to memorial)" },
+  {
+    key: "rip",
+    slot: "GRAVEYARD",
+    title: "Fainted → R.I.P. (add to memorial)",
+  },
   { key: "encountered", slot: "ENCOUNTERED", title: "Encountered" },
 ];
 
@@ -284,9 +288,7 @@ export function SaveImportModal({
               const needsEconomyProof =
                 Boolean(applyMoney && moneyReliable && money != null) ||
                 Boolean(
-                  applyPlayTime &&
-                    playTimeReliable &&
-                    playTimeSeconds != null,
+                  applyPlayTime && playTimeReliable && playTimeSeconds != null,
                 );
               onApply({
                 pokemon: included,
@@ -304,9 +306,7 @@ export function SaveImportModal({
                 ),
                 playTimeSeconds,
                 applyPlayTime: Boolean(
-                  applyPlayTime &&
-                    playTimeReliable &&
-                    playTimeSeconds != null,
+                  applyPlayTime && playTimeReliable && playTimeSeconds != null,
                 ),
                 saveBytesBase64:
                   needsEconomyProof && saveBytes
@@ -316,9 +316,7 @@ export function SaveImportModal({
               });
             }}
           >
-            {pending
-              ? "Saving…"
-              : `Apply import (${included.length} Pokémon)`}
+            {pending ? "Saving…" : `Apply import (${included.length} Pokémon)`}
           </button>
         </div>
       }
@@ -328,24 +326,22 @@ export function SaveImportModal({
           Upload a Modern Emerald save. Prefer Afterplay’s in-game export (
           <code className="text-ink">.sav</code> /{" "}
           <code className="text-ink">.srm</code>) — that’s the most stable
-          source for badges, revive, money, playtime, Day Care, and Pokédex encounters.
-          Emulator states (
-          <code className="text-ink">.state</code>,{" "}
+          source for badges, revive, money, playtime, Day Care, and Pokédex
+          encounters. Emulator states (<code className="text-ink">.state</code>,{" "}
           <code className="text-ink">.ss0</code>–
           <code className="text-ink">.ss9</code>,{" "}
           <code className="text-ink">.s0</code>–
           <code className="text-ink">.s9</code>,{" "}
           <code className="text-ink">.sr0</code>–
-          <code className="text-ink">.sr9</code>
-          ) still work for party/box/R.I.P. and usually encounters, but badges,
-          revive, money, and playtime may be unavailable. Party, box (including Day
-          Care), R.I.P., and Encountered are detected separately — uncheck
-          anything you want to skip. Box Pokémon levels are derived from
-          experience. Nature, ability, moves, IVs, and EVs are imported when
-          readable. Encountered is the wild buffer plus Pokédex “seen”
-          species, and replaces your current Encountered list on import.
-          Fainted → R.I.P. is added to the season memorial (duplicates
-          skipped); existing graves are kept.
+          <code className="text-ink">.sr9</code>) still work for
+          party/box/R.I.P. and usually encounters, but badges, revive, money,
+          and playtime may be unavailable. Party, box (including Day Care),
+          R.I.P., and Encountered are detected separately — uncheck anything you
+          want to skip. Box Pokémon levels are derived from experience. Nature,
+          ability, moves, IVs, and EVs are imported when readable. Encountered
+          is the wild buffer plus Pokédex “seen” species, and replaces your
+          current Encountered list on import. Fainted → R.I.P. is added to the
+          season memorial (duplicates skipped); existing graves are kept.
         </p>
 
         <label className="block">
@@ -362,20 +358,20 @@ export function SaveImportModal({
           />
         </label>
 
-        {parsing ? <p className="text-muted">Reading save…</p> : null}
-        {error ? (
+        {parsing && <p className="text-muted">Reading save…</p>}
+        {error && (
           <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-danger">
             {error}
           </p>
-        ) : null}
-        {format ? (
+        )}
+        {format && (
           <p className="text-xs text-muted">
             Detected: {format}
             {warnings.length ? ` — ${warnings.join(" ")}` : ""}
           </p>
-        ) : null}
+        )}
 
-        {sections ? (
+        {sections && (
           <>
             <div className="space-y-2 rounded-lg border border-frame bg-surface-2 p-3">
               <p className="text-xs font-semibold tracking-tight tracking-wide text-muted">
@@ -560,7 +556,9 @@ export function SaveImportModal({
                                 <option value="GRAVEYARD">R.I.P.</option>
                                 <option value="ENCOUNTERED">Encountered</option>
                               </select>
-                              <span className="text-muted">#{mon.pokedexId}</span>
+                              <span className="text-muted">
+                                #{mon.pokedexId}
+                              </span>
                             </div>
                             <p className="truncate text-[11px] text-muted">
                               {[
@@ -582,7 +580,7 @@ export function SaveImportModal({
               );
             })}
           </>
-        ) : null}
+        )}
       </div>
     </Modal>
   );

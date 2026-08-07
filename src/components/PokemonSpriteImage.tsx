@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import { usePokemonSpritePreference } from "@/features/preferences/PokemonSpritePreferenceProvider";
-import {
-  pokemonAnimatedSpriteUrl,
-  pokemonSpriteUrl,
-} from "@/lib/sprites";
+import { pokemonAnimatedSpriteUrl, pokemonSpriteUrl } from "@/lib/sprites";
 
 type PokemonSpriteImageProps = {
   alt: string;
@@ -37,14 +34,17 @@ export function PokemonSpriteImage({
   const showAnimated = preference === "animated" && failedSrc !== animatedSrc;
   const displaySrc = showAnimated ? animatedSrc : stillSrc;
   const displayClassName = showAnimated
-    ? className.replace(/\bpixelated\b/g, "").replace(/\s+/g, " ").trim()
+    ? className
+        .replace(/\bpixelated\b/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
     : className;
 
   return (
     <picture className="contents">
-      {showAnimated ? (
+      {showAnimated && (
         <source media="(prefers-reduced-motion: reduce)" srcSet={stillSrc} />
-      ) : null}
+      )}
       <img
         alt={alt}
         className={displayClassName}

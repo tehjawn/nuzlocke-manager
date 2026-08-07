@@ -144,18 +144,16 @@ export function SeasonTabs({
     under(pathname, `${base}/activity`) ||
     (gmViewOn && under(pathname, `${base}/tournament`));
   const toolsActive =
-    under(pathname, `${base}/tools`) ||
-    under(pathname, `${base}/season-stats`);
+    under(pathname, `${base}/tools`) || under(pathname, `${base}/season-stats`);
   const trainersActive =
     pathname === base ||
     under(pathname, `${base}/me`) ||
     under(pathname, `${base}/trainers`) ||
     under(pathname, `${base}/new-trainer`);
 
-  const activeTool =
-    under(pathname, `${base}/season-stats`)
-      ? "stats"
-      : parseToolsId(searchParams.get("tool"), searchParams.get("tab"));
+  const activeTool = under(pathname, `${base}/season-stats`)
+    ? "stats"
+    : parseToolsId(searchParams.get("tool"), searchParams.get("tab"));
 
   return (
     <nav
@@ -174,14 +172,14 @@ export function SeasonTabs({
           icon={<GetStartedIcon className="h-3.5 w-3.5" />}
           active={under(pathname, `${base}/setup`)}
         />
-        {gmViewOn ? (
+        {gmViewOn && (
           <NavChild
             href={`${base}/tournament`}
             label={status === "TOURNAMENT" ? "Ladder" : "Tournament"}
             icon={<TournamentIcon />}
             active={under(pathname, `${base}/tournament`)}
           />
-        ) : null}
+        )}
         <NavChild
           href={`${base}/about`}
           label="About"
@@ -206,17 +204,17 @@ export function SeasonTabs({
             searchParams.get("tab") === "faq"
           }
         />
-        {!firstRun ? (
+        {!firstRun && (
           <NavChild
             href={`${base}/activity`}
             label="Activity"
             icon={<ActivityIcon className="h-3.5 w-3.5" />}
             active={under(pathname, `${base}/activity`)}
           />
-        ) : null}
+        )}
       </NavGroup>
 
-      {!firstRun ? (
+      {!firstRun && (
         <NavGroup
           label="Tools"
           icon={<ToolsIcon className="h-4 w-4" />}
@@ -228,7 +226,13 @@ export function SeasonTabs({
               key={tool.id}
               href={toolsHref(slug, tool.id)}
               label={tool.title}
-              icon={<ToolChip id={tool.id} className="h-5 w-5" iconClassName="h-3 w-3" />}
+              icon={
+                <ToolChip
+                  id={tool.id}
+                  className="h-5 w-5"
+                  iconClassName="h-3 w-3"
+                />
+              }
               active={activeTool === tool.id}
               dense
             />
@@ -236,13 +240,11 @@ export function SeasonTabs({
           <NavChild
             href={toolsHubHref(slug)}
             label="All tools"
-            active={
-              under(pathname, `${base}/tools`) && activeTool == null
-            }
+            active={under(pathname, `${base}/tools`) && activeTool == null}
             muted
           />
         </NavGroup>
-      ) : null}
+      )}
 
       <NavGroup
         label="Trainers"
@@ -257,24 +259,24 @@ export function SeasonTabs({
           icon={<TrainersIcon className="h-3.5 w-3.5" />}
           active={pathname === base}
         />
-        {myTrainerId ? (
+        {myTrainerId && (
           <NavChild
             href={`${base}/me`}
             label="My Trainer"
             icon={<MyTrainerIcon className="h-3.5 w-3.5" />}
             active={under(pathname, `${base}/me`)}
           />
-        ) : null}
+        )}
       </NavGroup>
 
-      {!firstRun ? (
+      {!firstRun && (
         <NavLeaf
           href={`${base}/encounters`}
           label="Encounters"
           icon={<EncountersIcon />}
           active={under(pathname, `${base}/encounters`)}
         />
-      ) : null}
+      )}
     </nav>
   );
 }
@@ -316,9 +318,7 @@ function NavGroup({
         onClick={() => setOpen((v) => !v)}
         data-tour={dataTour}
         className={`flex w-full items-center gap-2 rounded-[calc(var(--radius-sm)-2px)] px-2 py-1.5 text-left text-sm font-semibold transition-colors ${
-          emphasized
-            ? "bg-surface text-ink"
-            : "text-ink hover:bg-surface/80"
+          emphasized ? "bg-surface text-ink" : "text-ink hover:bg-surface/80"
         }`}
       >
         <span
@@ -333,14 +333,14 @@ function NavGroup({
           className={emphasized ? "text-ink/70" : "text-muted"}
         />
       </button>
-      {open ? (
+      {open && (
         <ul
           id={listId}
           className="ml-2.5 flex flex-col gap-0.5 border-l border-frame/55 py-0.5 pl-1.5"
         >
           {children}
         </ul>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -376,14 +376,14 @@ function NavChild({
               : "text-ink hover:bg-surface"
         }`}
       >
-        {icon ? (
+        {icon && (
           <span
             className={`shrink-0 ${active ? "text-ink" : "text-ink/65"}`}
             aria-hidden
           >
             {icon}
           </span>
-        ) : null}
+        )}
         <span className="min-w-0 truncate">{label}</span>
       </Link>
     </li>
@@ -407,9 +407,7 @@ function NavLeaf({
       prefetch={false}
       aria-current={active ? "page" : undefined}
       className={`flex items-center gap-2 rounded-[calc(var(--radius-sm)-2px)] px-2 py-1.5 text-sm font-semibold transition-colors ${
-        active
-          ? "bg-surface text-ink"
-          : "text-ink hover:bg-surface/80"
+        active ? "bg-surface text-ink" : "text-ink hover:bg-surface/80"
       }`}
     >
       <span
@@ -468,10 +466,7 @@ function TournamentIcon() {
       stroke="currentColor"
       strokeWidth="1.75"
     >
-      <path
-        d="M7 4h10v3a5 5 0 01-5 5 5 5 0 01-5-5V4z"
-        strokeLinejoin="round"
-      />
+      <path d="M7 4h10v3a5 5 0 01-5 5 5 5 0 01-5-5V4z" strokeLinejoin="round" />
       <path d="M12 12v4" strokeLinecap="round" />
       <path d="M8 20h8" strokeLinecap="round" />
       <path d="M5 7H3.5A1.5 1.5 0 012 5.5V5" strokeLinecap="round" />

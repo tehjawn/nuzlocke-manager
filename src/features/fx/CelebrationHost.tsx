@@ -106,9 +106,7 @@ function confettiPieces(
   seed: string,
   confettiCount?: number,
 ) {
-  const count =
-    confettiCount ??
-    (kind === "guide_complete" ? 48 : 18);
+  const count = confettiCount ?? (kind === "guide_complete" ? 48 : 18);
   const pieces = [];
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) {
@@ -162,11 +160,8 @@ export function CelebrationHost() {
       aria-relevant="additions"
       data-fx-celebration={active.kind}
     >
-      {showConfetti ? (
-        <div
-          className={`fx-confetti fx-confetti--${active.kind}`}
-          aria-hidden
-        >
+      {showConfetti && (
+        <div className={`fx-confetti fx-confetti--${active.kind}`} aria-hidden>
           {pieces.map((piece, index) => (
             <span
               key={index}
@@ -184,7 +179,7 @@ export function CelebrationHost() {
             />
           ))}
         </div>
-      ) : null}
+      )}
       <div
         key={active.id}
         role="status"

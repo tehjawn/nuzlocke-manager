@@ -14,10 +14,7 @@ import type { PokemonEntry } from "@/lib/challenge-types";
 import { catchTierHasChrome } from "@/lib/iv-quality";
 import { moveTypeWashStyle } from "@/lib/move-meta";
 import { resolveMoveName } from "@/lib/move-names";
-import {
-  resolveCatchTier,
-  resolveTrainingTier,
-} from "@/lib/pokemon-grades";
+import { resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
 import {
   calcBattleStats,
   calcMaxBattleStats,
@@ -87,21 +84,23 @@ export function PokemonSlotCard({
   const label = speciesOnly
     ? pokemon.species
     : pokemon.nickname || pokemon.species;
-  const battle = showCompetitiveDetails && !speciesOnly
-    ? calcBattleStats({
-        pokedexId: pokemon.pokedexId,
-        level: pokemon.level,
-        ivs: pokemon.ivs,
-        evs: pokemon.evs,
-        nature: pokemon.nature,
-      })
-    : null;
-  const battleMax = showCompetitiveDetails && !speciesOnly
-    ? calcMaxBattleStats({
-        pokedexId: pokemon.pokedexId,
-        level: pokemon.level,
-      })
-    : null;
+  const battle =
+    showCompetitiveDetails && !speciesOnly
+      ? calcBattleStats({
+          pokedexId: pokemon.pokedexId,
+          level: pokemon.level,
+          ivs: pokemon.ivs,
+          evs: pokemon.evs,
+          nature: pokemon.nature,
+        })
+      : null;
+  const battleMax =
+    showCompetitiveDetails && !speciesOnly
+      ? calcMaxBattleStats({
+          pokedexId: pokemon.pokedexId,
+          level: pokemon.level,
+        })
+      : null;
   // Box / some memorial mons lack party level — battle formula can't run, but
   // IVs are still on the specimen and worth showing on the board card.
   const ivFallback =
@@ -144,17 +143,17 @@ export function PokemonSlotCard({
         <div className="w-full min-w-0 px-0.5">
           <p className="truncate text-[11px] font-bold leading-tight tracking-tight sm:text-xs">
             {label}
-            {pokemon.isShiny ? (
+            {pokemon.isShiny && (
               <span className="ml-0.5 text-accent-2" title="Shiny">
                 ✦
               </span>
-            ) : null}
+            )}
           </p>
-          {pokemon.pokedexId != null && pokemon.pokedexId > 0 ? (
+          {pokemon.pokedexId != null && pokemon.pokedexId > 0 && (
             <p className="truncate font-mono text-[10px] leading-tight tabular-nums text-muted">
               #{formatEncounterDexNo(pokemon.pokedexId)}
             </p>
-          ) : null}
+          )}
         </div>
       </div>
     );
@@ -198,27 +197,27 @@ export function PokemonSlotCard({
             species={pokemon.species}
             width={48}
           />
-          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 && (
             <SurvivalSentimentIcon
               className="pokemon-survival-sentiment--corner-dense h-3 w-3"
               poll={pokemon.survivalPoll}
             />
-          ) : null}
-          {trainingTier !== null ? (
+          )}
+          {trainingTier !== null && (
             <BondHeart
               className="pokemon-bond-heart--corner-dense h-3 w-3"
               tier={trainingTier}
             />
-          ) : null}
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold leading-tight">
             {label}
-            {pokemon.isShiny ? (
+            {pokemon.isShiny && (
               <span className="ml-1 text-accent-2" title="Shiny">
                 ✦
               </span>
-            ) : null}
+            )}
           </p>
           <p className="truncate text-xs text-muted">
             {pokemon.species}
@@ -255,191 +254,191 @@ export function PokemonSlotCard({
           looksInteractive ? "cursor-pointer" : ""
         }`}
       >
-      <div className="flex shrink-0 items-start gap-3">
+        <div className="flex shrink-0 items-start gap-3">
+          <div
+            className={`relative flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border bg-surface-2 ${
+              hasCatchChrome
+                ? `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
+                : "border-frame"
+            }`}
+          >
+            <PokemonSpriteImage
+              alt=""
+              className="pixelated h-20 w-20 object-contain"
+              height={96}
+              pokedexId={pokemon.pokedexId}
+              shiny={pokemon.isShiny}
+              species={pokemon.species}
+              width={96}
+            />
+            {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 && (
+              <SurvivalSentimentIcon
+                className="pokemon-survival-sentiment--corner h-3.5 w-3.5"
+                poll={pokemon.survivalPoll}
+              />
+            )}
+            {trainingTier !== null && (
+              <BondHeart
+                className="pokemon-bond-heart--corner h-3.5 w-3.5"
+                tier={trainingTier}
+              />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div>
+              <p className="truncate text-base font-bold leading-tight tracking-tight">
+                {label}
+                {pokemon.isShiny && (
+                  <span className="ml-1 text-accent-2" title="Shiny">
+                    ✦
+                  </span>
+                )}
+              </p>
+              <p className="truncate text-xs text-muted">
+                {pokemon.species}
+                {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
+                {selectHint ? ` · ${selectHint}` : ""}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {pokemon.types.map((t) => (
+                <TypeBadge key={t} type={t} />
+              ))}
+            </div>
+            {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 && (
+              <SurvivalSentimentCaption
+                className="justify-start text-left text-[11px] font-semibold tracking-tight"
+                poll={pokemon.survivalPoll}
+              />
+            )}
+          </div>
+        </div>
+
         <div
-          className={`relative flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border bg-surface-2 ${
-            hasCatchChrome
-              ? `pokemon-catch-sprite pokemon-catch-sprite--${catchTier}`
-              : "border-frame"
+          className={`shrink-0 ${
+            showStatColumn
+              ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-2.5"
+              : ""
           }`}
         >
-          <PokemonSpriteImage
-            alt=""
-            className="pixelated h-20 w-20 object-contain"
-            height={96}
-            pokedexId={pokemon.pokedexId}
-            shiny={pokemon.isShiny}
-            species={pokemon.species}
-            width={96}
-          />
-          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
-            <SurvivalSentimentIcon
-              className="pokemon-survival-sentiment--corner h-3.5 w-3.5"
-              poll={pokemon.survivalPoll}
-            />
-          ) : null}
-          {trainingTier !== null ? (
-            <BondHeart
-              className="pokemon-bond-heart--corner h-3.5 w-3.5"
-              tier={trainingTier}
-            />
-          ) : null}
-        </div>
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <div>
-            <p className="truncate text-base font-bold leading-tight tracking-tight">
-              {label}
-              {pokemon.isShiny ? (
-                <span className="ml-1 text-accent-2" title="Shiny">
-                  ✦
+          <dl className="flex min-w-0 flex-col gap-1.5">
+            {showCompetitiveDetails && pokemon.nature && (
+              <div className="min-w-0">
+                <dt className="text-[10px] font-semibold tracking-tight text-muted">
+                  Nature
+                </dt>
+                <dd className="mt-0.5">
+                  <InfoTip
+                    tip={natureEffectDescription(pokemon.nature)}
+                    embedded={looksInteractive}
+                    chipClassName="info-chip text-xs"
+                  >
+                    {pokemon.nature}
+                  </InfoTip>
+                </dd>
+              </div>
+            )}
+            {showCompetitiveDetails && pokemon.ability && (
+              <div className="min-w-0">
+                <dt className="text-[10px] font-semibold tracking-tight text-muted">
+                  Ability
+                </dt>
+                <dd className="mt-0.5">
+                  <InfoTip
+                    tip={abilityDescription(pokemon.ability) ?? ""}
+                    embedded={looksInteractive}
+                    chipClassName="info-chip max-w-full text-xs"
+                  >
+                    {pokemon.ability}
+                  </InfoTip>
+                </dd>
+              </div>
+            )}
+            {pokemon.catchRoute && (
+              <div className="min-w-0">
+                <dt className="text-[10px] font-semibold tracking-tight text-muted">
+                  Route
+                </dt>
+                <dd className="mt-0.5">
+                  <span className="info-chip max-w-full truncate text-xs">
+                    {pokemon.catchRoute}
+                  </span>
+                </dd>
+              </div>
+            )}
+            {pokemon.heldItem && (
+              <div className="min-w-0">
+                <dt className="text-[10px] font-semibold tracking-tight text-muted">
+                  Item
+                </dt>
+                <dd className="mt-0.5">
+                  <HeldItemLabel
+                    name={pokemon.heldItem}
+                    embedded
+                    className="info-chip max-w-full text-xs"
+                    iconSize={14}
+                  />
+                </dd>
+              </div>
+            )}
+          </dl>
+
+          {battle ? (
+            <div className="min-w-0">
+              <p className="mb-1 text-[10px] font-semibold tracking-tight text-muted">
+                Battle stats
+              </p>
+              <StatGrid spread={battle} maxSpread={battleMax} compact />
+            </div>
+          ) : ivFallback ? (
+            <div className="min-w-0">
+              <p className="mb-1 text-[10px] font-semibold tracking-tight text-muted">
+                IVs
+                <span className="ml-1 font-medium text-muted/80">
+                  (no level on file)
                 </span>
-              ) : null}
-            </p>
-            <p className="truncate text-xs text-muted">
-              {pokemon.species}
-              {pokemon.level != null ? ` · Lv ${pokemon.level}` : ""}
-              {selectHint ? ` · ${selectHint}` : ""}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {pokemon.types.map((t) => (
-              <TypeBadge key={t} type={t} />
-            ))}
-          </div>
-          {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
-            <SurvivalSentimentCaption
-              className="justify-start text-left text-[11px] font-semibold tracking-tight"
-              poll={pokemon.survivalPoll}
-            />
+              </p>
+              <StatGrid spread={ivFallback} tone="iv" compact />
+            </div>
           ) : null}
         </div>
-      </div>
 
-      <div
-        className={`shrink-0 ${
-          showStatColumn
-            ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-2.5"
-            : ""
-        }`}
-      >
-        <dl className="flex min-w-0 flex-col gap-1.5">
-          {showCompetitiveDetails && pokemon.nature ? (
-            <div className="min-w-0">
-              <dt className="text-[10px] font-semibold tracking-tight text-muted">
-                Nature
-              </dt>
-              <dd className="mt-0.5">
-                <InfoTip
-                  tip={natureEffectDescription(pokemon.nature)}
-                  embedded={looksInteractive}
-                  chipClassName="info-chip text-xs"
-                >
-                  {pokemon.nature}
-                </InfoTip>
-              </dd>
-            </div>
-          ) : null}
-          {showCompetitiveDetails && pokemon.ability ? (
-            <div className="min-w-0">
-              <dt className="text-[10px] font-semibold tracking-tight text-muted">
-                Ability
-              </dt>
-              <dd className="mt-0.5">
-                <InfoTip
-                  tip={abilityDescription(pokemon.ability) ?? ""}
-                  embedded={looksInteractive}
-                  chipClassName="info-chip max-w-full text-xs"
-                >
-                  {pokemon.ability}
-                </InfoTip>
-              </dd>
-            </div>
-          ) : null}
-          {pokemon.catchRoute ? (
-            <div className="min-w-0">
-              <dt className="text-[10px] font-semibold tracking-tight text-muted">
-                Route
-              </dt>
-              <dd className="mt-0.5">
-                <span className="info-chip max-w-full truncate text-xs">
-                  {pokemon.catchRoute}
-                </span>
-              </dd>
-            </div>
-          ) : null}
-          {pokemon.heldItem ? (
-            <div className="min-w-0">
-              <dt className="text-[10px] font-semibold tracking-tight text-muted">
-                Item
-              </dt>
-              <dd className="mt-0.5">
-                <HeldItemLabel
-                  name={pokemon.heldItem}
-                  embedded
-                  className="info-chip max-w-full text-xs"
-                  iconSize={14}
-                />
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-
-        {battle ? (
-          <div className="min-w-0">
-            <p className="mb-1 text-[10px] font-semibold tracking-tight text-muted">
-              Battle stats
+        {moves.length > 0 ? (
+          <div className="mt-auto shrink-0">
+            <p className="mb-1.5 text-[10px] font-semibold tracking-tight text-muted">
+              Moves
             </p>
-            <StatGrid spread={battle} maxSpread={battleMax} compact />
+            <ul className="grid grid-cols-2 gap-1.5">
+              {moves.map((move, index) => {
+                const name = resolveMoveName(move) || move;
+                return (
+                  <li
+                    key={`${index}-${move}`}
+                    className="truncate rounded-lg border border-frame/40 bg-info px-2 py-1.5 text-[11px] text-info-ink"
+                    style={moveTypeWashStyle(move)}
+                    title={name}
+                  >
+                    {name}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-        ) : ivFallback ? (
-          <div className="min-w-0">
-            <p className="mb-1 text-[10px] font-semibold tracking-tight text-muted">
-              IVs
-              <span className="ml-1 font-medium text-muted/80">
-                (no level on file)
-              </span>
+        ) : (
+          <div className="mt-auto" aria-hidden />
+        )}
+
+        {memorial && pokemon.causeOfDeath && (
+          <div className="shrink-0 border-t border-frame/20 pt-2">
+            <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+              <TombstoneIcon className="h-2.5 w-2.5 shrink-0" />
+              Cause of death
             </p>
-            <StatGrid spread={ivFallback} tone="iv" compact />
+            <p className="mt-0.5 text-xs leading-relaxed text-muted italic">
+              {pokemon.causeOfDeath}
+            </p>
           </div>
-        ) : null}
-      </div>
-
-      {moves.length > 0 ? (
-        <div className="mt-auto shrink-0">
-          <p className="mb-1.5 text-[10px] font-semibold tracking-tight text-muted">
-            Moves
-          </p>
-          <ul className="grid grid-cols-2 gap-1.5">
-            {moves.map((move, index) => {
-              const name = resolveMoveName(move) || move;
-              return (
-                <li
-                  key={`${index}-${move}`}
-                  className="truncate rounded-lg border border-frame/40 bg-info px-2 py-1.5 text-[11px] text-info-ink"
-                  style={moveTypeWashStyle(move)}
-                  title={name}
-                >
-                  {name}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : (
-        <div className="mt-auto" aria-hidden />
-      )}
-
-      {memorial && pokemon.causeOfDeath ? (
-        <div className="shrink-0 border-t border-frame/20 pt-2">
-          <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
-            <TombstoneIcon className="h-2.5 w-2.5 shrink-0" />
-            Cause of death
-          </p>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted italic">
-            {pokemon.causeOfDeath}
-          </p>
-        </div>
-      ) : null}
+        )}
       </div>
     </div>
   );

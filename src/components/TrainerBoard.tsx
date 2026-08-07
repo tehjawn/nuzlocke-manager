@@ -182,11 +182,7 @@ function EndRunIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
-      <path
-        d="M3.5 6.25h9M8 3.25v6"
-        stroke="currentColor"
-        strokeWidth="1.25"
-      />
+      <path d="M3.5 6.25h9M8 3.25v6" stroke="currentColor" strokeWidth="1.25" />
     </svg>
   );
 }
@@ -244,7 +240,11 @@ function ResetBoardIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   );
 }
 
-function BoardHistoryIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+function BoardHistoryIcon({
+  className = "h-3.5 w-3.5",
+}: {
+  className?: string;
+}) {
   return (
     <svg
       className={className}
@@ -383,7 +383,11 @@ function ToolsShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
   );
 }
 
-function EncountersShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
+function EncountersShortcutIcon({
+  className = "h-6 w-6",
+}: {
+  className?: string;
+}) {
   return (
     <svg
       className={className}
@@ -572,7 +576,9 @@ export function TrainerBoard({
 
   const [endRunOpen, setEndRunOpen] = useState(false);
   /** Optimistic "run is over" until the RSC refresh carries runEnded. */
-  const [runEndedOverride, setRunEndedOverride] = useState<boolean | null>(null);
+  const [runEndedOverride, setRunEndedOverride] = useState<boolean | null>(
+    null,
+  );
 
   // Include slot/partyIndex — wipe/reset clear or rewrite the board.
   const serverStamp = `${trainer.updatedAt ?? ""}|${trainer.handle}|${trainer.statusText ?? ""}|${trainer.statusEmoji ?? ""}|${trainer.realName ?? ""}|${trainer.avatarSpriteKey}|${trainer.avatarBackgroundKey ?? ""}|${trainer.cardBackgroundKey ?? ""}|${trainer.reviveUsed}|${trainer.wipeCount}|${trainer.completionCount}|${trainer.runEnded}|${trainer.mainSquadLocked}|${trainer.money ?? ""}|${trainer.playTimeSeconds ?? ""}|${trainer.earnedBadgeKeys.join("|")}|${trainer.pokemon.map((p) => `${p.id}:${p.slot}:${p.partyIndex}`).join(",")}|${encourageImportSave ? 1 : 0}`;
@@ -648,9 +654,9 @@ export function TrainerBoard({
   const [teamExportOpen, setTeamExportOpen] = useState(false);
   const searchParams = useSearchParams();
   const searchPokemonId = searchParams.get("pokemon");
-  const [openedSearchPokemonId, setOpenedSearchPokemonId] = useState<string | null>(
-    null,
-  );
+  const [openedSearchPokemonId, setOpenedSearchPokemonId] = useState<
+    string | null
+  >(null);
 
   if (serverStamp !== seenStamp) {
     setSeenStamp(serverStamp);
@@ -675,7 +681,9 @@ export function TrainerBoard({
       statusEmoji: trainer.statusEmoji ?? null,
       realName: trainer.realName ?? "",
       avatarSpriteKey: trainer.avatarSpriteKey,
-      avatarBackgroundKey: parseAvatarBackgroundKey(trainer.avatarBackgroundKey),
+      avatarBackgroundKey: parseAvatarBackgroundKey(
+        trainer.avatarBackgroundKey,
+      ),
       cardBackgroundKey: parseCardBackgroundKey(trainer.cardBackgroundKey),
       // Don't let a stale RSC revive flag clobber wipe/reset optimism.
       reviveUsed: wipeOrResetInFlight ? false : trainer.reviveUsed,
@@ -844,9 +852,7 @@ export function TrainerBoard({
   async function copyBoardLink() {
     const path = trainerBoardPath(challengeSlug, trainer.id);
     const url =
-      typeof window !== "undefined"
-        ? `${window.location.origin}${path}`
-        : path;
+      typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
     const ok = await copyText(url);
     if (ok) {
       pushSnackbar("Board link copied", "success", 2200);
@@ -884,7 +890,8 @@ export function TrainerBoard({
   async function resetReviveToken() {
     const ok = await confirm({
       title: "Reset revive token?",
-      description: "This restores the trainer’s revive so they can use it again.",
+      description:
+        "This restores the trainer’s revive so they can use it again.",
       confirmLabel: "Reset revive",
       tone: "primary",
     });
@@ -953,9 +960,9 @@ export function TrainerBoard({
       description: (
         <>
           Clears Main Squad, Reserves, Encountered, and R.I.P. on this board,
-          resets badges, money, and playtime to 0, and refreshes your revive token for the
-          next run. Profile (name, avatar, backdrops, status) stays. Locked Main
-          Squad unlocks so you can rebuild.{" "}
+          resets badges, money, and playtime to 0, and refreshes your revive
+          token for the next run. Profile (name, avatar, backdrops, status)
+          stays. Locked Main Squad unlocks so you can rebuild.{" "}
           {runEnded
             ? "Your finished run is already archived — its final team stays in History and Memorial."
             : `This closes run ${runNumber} as wipe #${nextWipe}.`}{" "}
@@ -1013,10 +1020,10 @@ export function TrainerBoard({
       title: "Reset this trainer board?",
       description: (
         <>
-          GM hard reset: clears Main, Reserves, Encountered, and R.I.P. memorial,
-          and resets badges, wipe count, and revive token. Profile stays (name,
-          avatar, backdrops, status). A board history snapshot is saved first.
-          Use for an official fresh start — not a mid-run wipe.
+          GM hard reset: clears Main, Reserves, Encountered, and R.I.P.
+          memorial, and resets badges, wipe count, and revive token. Profile
+          stays (name, avatar, backdrops, status). A board history snapshot is
+          saved first. Use for an official fresh start — not a mid-run wipe.
         </>
       ),
       confirmLabel: "Reset board",
@@ -1137,8 +1144,7 @@ export function TrainerBoard({
   // Only pin a bottom bar when it has a job — save feedback or profile save.
   // The idle "save as you go" hint felt redundant on mobile.
   const showMobileSaveBar =
-    canEdit &&
-    (editingPlayer || mobileSaveStatus.kind !== "idle");
+    canEdit && (editingPlayer || mobileSaveStatus.kind !== "idle");
   // Primary strip + Shortcuts: Import only. Revive is status on R.I.P.; mark /
   // GM reset live in More. Everything else is overflow so mobile stays calm (#325).
   const boardActionSlots: Record<
@@ -1302,9 +1308,9 @@ export function TrainerBoard({
 
   const ripReviveStatus = !isDemo ? (
     <>
-      {reviveSave.status.kind !== "idle" ? (
+      {reviveSave.status.kind !== "idle" && (
         <SaveStatus status={reviveSave.status} />
-      ) : null}
+      )}
       <ReviveToken used={reviveUsed} size="sm" />
     </>
   ) : null;
@@ -1321,24 +1327,22 @@ export function TrainerBoard({
         </Link>
         <div className="flex flex-nowrap items-center gap-2">
           {TRAINER_BOARD_PRIMARY_ACTIONS.map((action) => (
-            <Fragment key={action}>
-              {boardActionSlots[action].toolbar}
-            </Fragment>
+            <Fragment key={action}>{boardActionSlots[action].toolbar}</Fragment>
           ))}
           <TrainerBoardActionsMenu items={overflowMenuItems} />
         </div>
       </div>
 
-      {canEdit && wipeSave.status.kind !== "idle" ? (
+      {canEdit && wipeSave.status.kind !== "idle" && (
         <div className="flex justify-end">
           <SaveStatus status={wipeSave.status} />
         </div>
-      ) : null}
-      {isGm && !isDemo && resetSave.status.kind !== "idle" ? (
+      )}
+      {isGm && !isDemo && resetSave.status.kind !== "idle" && (
         <div className="flex justify-end">
           <SaveStatus status={resetSave.status} />
         </div>
-      ) : null}
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
@@ -1346,11 +1350,11 @@ export function TrainerBoard({
             ? "Your board — profile saves explicitly; party and badges save as you go."
             : "Trainer board"}
         </p>
-        {canEdit ? (
+        {canEdit && (
           <div className="hidden sm:block">
             <SaveStatus status={partySave.status} />
           </div>
-        ) : null}
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:items-start">
@@ -1441,7 +1445,7 @@ export function TrainerBoard({
                       ? `${committed.handle} (${committed.realName})`
                       : committed.handle}
                   </h1>
-                  {trainer.discordUsername || trainer.discordDisplayName ? (
+                  {(trainer.discordUsername || trainer.discordDisplayName) && (
                     <p className="mt-1 text-sm text-muted">
                       Discord{" "}
                       <span className="font-semibold text-ink">
@@ -1450,33 +1454,33 @@ export function TrainerBoard({
                           : trainer.discordDisplayName}
                       </span>
                       {trainer.discordUsername &&
-                      trainer.discordDisplayName &&
-                      trainer.discordDisplayName.toLowerCase() !==
-                        trainer.discordUsername.toLowerCase() ? (
-                        <span> · {trainer.discordDisplayName}</span>
-                      ) : null}
+                        trainer.discordDisplayName &&
+                        trainer.discordDisplayName.toLowerCase() !==
+                          trainer.discordUsername.toLowerCase() && (
+                          <span> · {trainer.discordDisplayName}</span>
+                        )}
                     </p>
-                  ) : null}
-                  {(mainSquadLocked || isDemo) ? (
+                  )}
+                  {(mainSquadLocked || isDemo) && (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {mainSquadLocked ? (
+                      {mainSquadLocked && (
                         <span className="rounded-lg border border-frame bg-accent-2/25 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
                           Main Squad locked
                         </span>
-                      ) : null}
-                      {isDemo ? (
+                      )}
+                      {isDemo && (
                         <span className="rounded-lg border border-frame bg-surface-2 px-2 py-1 font-display text-[10px] font-semibold tracking-tight">
                           Demo example
                         </span>
-                      ) : null}
+                      )}
                     </div>
-                  ) : null}
+                  )}
                   <StatusLine
                     emoji={committed.statusEmoji}
                     text={committed.statusText}
                     className="mt-3 max-w-2xl text-sm leading-relaxed text-muted sm:text-base"
                   />
-                  {isDemo ? (
+                  {isDemo && (
                     <p className="mt-3 text-sm text-muted">
                       This isn&apos;t a real player slot.{" "}
                       {myBoardHref ? (
@@ -1501,15 +1505,17 @@ export function TrainerBoard({
                         </>
                       )}
                     </p>
-                  ) : null}
-                  {canEdit && boardPokemon.length === 0 ? (
+                  )}
+                  {canEdit && boardPokemon.length === 0 && (
                     <p className="mt-3 text-sm text-muted">
                       Your board is ready — customize your profile, then use{" "}
-                      <span className="font-semibold text-ink">Import save</span>{" "}
+                      <span className="font-semibold text-ink">
+                        Import save
+                      </span>{" "}
                       at the top once you have a file from Afterplay. You can
                       also tap party slots and badges by hand.
                     </p>
-                  ) : null}
+                  )}
                 </div>
               </div>
             )}
@@ -1646,13 +1652,13 @@ export function TrainerBoard({
                     + Add
                   </button>
                 </div>
-                {encountered.length > 0 ? (
+                {encountered.length > 0 && (
                   <PartyStrip
                     pokemon={encountered}
                     speciesOnly
                     onSelect={openPokemon}
                   />
-                ) : null}
+                )}
               </div>
             ) : encountered.length > 0 ? (
               <PartyStrip
@@ -1727,7 +1733,7 @@ export function TrainerBoard({
             ))}
           </div>
 
-          {primaryShortcutTiles.length > 0 ? (
+          {primaryShortcutTiles.length > 0 && (
             <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(10rem,1fr))]">
               {TRAINER_BOARD_PRIMARY_ACTIONS.map((action) => (
                 <Fragment key={action}>
@@ -1735,19 +1741,17 @@ export function TrainerBoard({
                 </Fragment>
               ))}
             </div>
-          ) : null}
+          )}
         </div>
       </Frame>
 
-      {canEdit && pokemonInspect?.mode === "view" ? (
+      {canEdit && pokemonInspect?.mode === "view" && (
         <PokemonDetailsModal
           open
           slug={challengeSlug}
           pokemon={pokemonFormToEntry(pokemonInspect.form)}
           onClose={() => setPokemonInspect(null)}
-          onEdit={() =>
-            setPokemonInspect({ ...pokemonInspect, mode: "edit" })
-          }
+          onEdit={() => setPokemonInspect({ ...pokemonInspect, mode: "edit" })}
           survivalMarketsEnabled={survivalMarketsEnabled}
           viewerUserId={viewerUserId}
           trainer={{
@@ -1757,18 +1761,16 @@ export function TrainerBoard({
             avatarBackgroundKey: trainer.avatarBackgroundKey,
           }}
         />
-      ) : null}
+      )}
 
-      {canEdit && pokemonInspect?.mode === "edit" ? (
+      {canEdit && pokemonInspect?.mode === "edit" && (
         <PokemonFormModal
           open
           initial={pokemonInspect.form}
           teamPokemon={boardPokemon}
           pending={pending}
           onClose={() => setPokemonInspect(null)}
-          onPreview={(form) =>
-            setPokemonInspect({ mode: "view", form })
-          }
+          onPreview={(form) => setPokemonInspect({ mode: "view", form })}
           onSave={(form) => {
             partySave.markSaving("Saving Pokémon…");
             startTransition(async () => {
@@ -1822,9 +1824,9 @@ export function TrainerBoard({
             });
           }}
         />
-      ) : null}
+      )}
 
-      {canEdit ? (
+      {canEdit && (
         <EndRunModal
           open={endRunOpen}
           onClose={() => setEndRunOpen(false)}
@@ -1844,9 +1846,9 @@ export function TrainerBoard({
             void startNewRun();
           }}
         />
-      ) : null}
+      )}
 
-      {canEdit && saveImportOpen ? (
+      {canEdit && saveImportOpen && (
         <SaveImportModal
           open
           pending={pending}
@@ -1907,7 +1909,7 @@ export function TrainerBoard({
             });
           }}
         />
-      ) : null}
+      )}
 
       <TeamExportModal
         open={teamExportOpen}
@@ -1929,7 +1931,7 @@ export function TrainerBoard({
         canEdit={canEdit}
       />
 
-      {!isDemo && (isGm || showCompetitiveDetails) && boardHistoryOpen ? (
+      {!isDemo && (isGm || showCompetitiveDetails) && boardHistoryOpen && (
         <BoardHistoryModal
           open
           onClose={() => setBoardHistoryOpen(false)}
@@ -1948,9 +1950,9 @@ export function TrainerBoard({
             router.refresh();
           }}
         />
-      ) : null}
+      )}
 
-      {!canEdit ? (
+      {!canEdit && (
         <PokemonDetailsModal
           open={detailsPokemon != null}
           slug={challengeSlug}
@@ -1966,17 +1968,17 @@ export function TrainerBoard({
           }}
           onClose={() => setDetailsPokemon(null)}
         />
-      ) : null}
+      )}
 
-      {showMobileSaveBar ? (
+      {showMobileSaveBar && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-frame bg-surface/95 px-4 py-3 shadow-[0_-8px_24px_var(--shadow)] backdrop-blur-md sm:hidden">
           <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
             <div className="min-w-0">
-              {mobileSaveStatus.kind !== "idle" ? (
+              {mobileSaveStatus.kind !== "idle" && (
                 <SaveStatus status={mobileSaveStatus} />
-              ) : null}
+              )}
             </div>
-            {editingPlayer ? (
+            {editingPlayer && (
               <button
                 type="button"
                 disabled={pending || !handle.trim()}
@@ -1986,10 +1988,10 @@ export function TrainerBoard({
                 <SaveIcon />
                 Save profile
               </button>
-            ) : null}
+            )}
           </div>
         </div>
-      ) : null}
+      )}
 
       {confirmDialog}
     </div>

@@ -27,9 +27,7 @@ export function TournamentBracket({
 
   const lockedTrainers = challenge.trainers.filter((t) => t.mainSquadLocked);
   const rounds = tournament
-    ? [...new Set(tournament.matches.map((m) => m.round))].sort(
-        (a, b) => a - b,
-      )
+    ? [...new Set(tournament.matches.map((m) => m.round))].sort((a, b) => a - b)
     : [];
 
   return (
@@ -38,9 +36,7 @@ export function TournamentBracket({
         <p className="text-xs font-semibold tracking-tight text-accent-deep">
           Endgame ladder
         </p>
-        <h2 className="text-2xl font-bold tracking-tight">
-          Tournament
-        </h2>
+        <h2 className="text-2xl font-bold tracking-tight">Tournament</h2>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
           Post-Champion ladder. Lock Main Squads from the GM console, seed a
           single-elimination bracket, then pick winners — each finished round
@@ -66,7 +62,7 @@ export function TournamentBracket({
             ))}
           </ul>
         )}
-        {isGm && challenge.id ? (
+        {isGm && challenge.id && (
           <button
             type="button"
             disabled={pending || lockedTrainers.length < 2}
@@ -89,7 +85,7 @@ export function TournamentBracket({
           >
             {tournament ? "Reseed bracket" : "Seed bracket from locked squads"}
           </button>
-        ) : null}
+        )}
       </Frame>
 
       {!tournament ? (
@@ -103,11 +99,11 @@ export function TournamentBracket({
         </Frame>
       ) : (
         <div className="space-y-4">
-          {tournament.status === "COMPLETE" ? (
+          {tournament.status === "COMPLETE" && (
             <p className="text-sm font-semibold text-accent-deep">
               Bracket complete — champion decided.
             </p>
-          ) : null}
+          )}
           {rounds.map((round) => {
             const matches = tournament.matches
               .filter((m) => m.round === round)
@@ -127,13 +123,9 @@ export function TournamentBracket({
                         <MatchSide
                           handle={match.trainerAHandle}
                           isWinner={match.winnerId === match.trainerAId}
-                          canPick={
-                            Boolean(
-                              isGm &&
-                                match.trainerAId &&
-                                !match.winnerId,
-                            )
-                          }
+                          canPick={Boolean(
+                            isGm && match.trainerAId && !match.winnerId,
+                          )}
                           pending={pending}
                           onPick={() => {
                             if (!match.trainerAId) return;
@@ -156,13 +148,9 @@ export function TournamentBracket({
                         <MatchSide
                           handle={match.trainerBHandle}
                           isWinner={match.winnerId === match.trainerBId}
-                          canPick={
-                            Boolean(
-                              isGm &&
-                                match.trainerBId &&
-                                !match.winnerId,
-                            )
-                          }
+                          canPick={Boolean(
+                            isGm && match.trainerBId && !match.winnerId,
+                          )}
                           pending={pending}
                           onPick={() => {
                             if (!match.trainerBId) return;
@@ -183,11 +171,11 @@ export function TournamentBracket({
                           }}
                         />
                       </div>
-                      {match.winnerHandle ? (
+                      {match.winnerHandle && (
                         <p className="mt-2 text-sm font-bold text-accent-deep">
                           Winner: {match.winnerHandle}
                         </p>
-                      ) : null}
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -197,10 +185,10 @@ export function TournamentBracket({
         </div>
       )}
 
-      {message ? (
+      {message && (
         <p className="text-sm font-semibold text-accent-deep">{message}</p>
-      ) : null}
-      {error ? <p className="text-sm font-semibold text-danger">{error}</p> : null}
+      )}
+      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
     </div>
   );
 }

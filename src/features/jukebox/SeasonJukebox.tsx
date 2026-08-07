@@ -26,10 +26,7 @@ import {
   subscribeJukeboxPrefs,
   type JukeboxPrefs,
 } from "@/features/jukebox/jukebox-prefs";
-import {
-  clampTrackIndex,
-  JUKEBOX_PLAYLIST,
-} from "@/features/jukebox/playlist";
+import { clampTrackIndex, JUKEBOX_PLAYLIST } from "@/features/jukebox/playlist";
 
 const btnClass =
   "pressable inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-frame/50 bg-surface text-ink hover:border-interactive/50";
@@ -120,7 +117,7 @@ export function SeasonJukebox() {
         />
       </div>
 
-      {creditsOpen ? <CreditsList prefs={prefs} /> : null}
+      {creditsOpen && <CreditsList prefs={prefs} />}
 
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden rounded-b-[calc(var(--radius)-1px)] bg-frame/35"
@@ -182,7 +179,7 @@ function VolumeControl({
       >
         {muted ? <VolumeMutedIcon /> : <VolumeIcon />}
       </button>
-      {open ? (
+      {open && (
         <div
           id={sliderId}
           role="dialog"
@@ -203,7 +200,7 @@ function VolumeControl({
             className="h-24 w-4 cursor-pointer appearance-auto accent-[var(--accent)] [writing-mode:vertical-lr] [direction:rtl]"
           />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -308,10 +305,7 @@ function VolumeIcon() {
       stroke="currentColor"
       strokeWidth="1.75"
     >
-      <path
-        d="M3.5 8.2v3.6h2.4L9.5 15V5L5.9 8.2H3.5z"
-        strokeLinejoin="round"
-      />
+      <path d="M3.5 8.2v3.6h2.4L9.5 15V5L5.9 8.2H3.5z" strokeLinejoin="round" />
       <path d="M12.2 7.2a3.2 3.2 0 010 5.6" strokeLinecap="round" />
     </svg>
   );
@@ -327,10 +321,7 @@ function VolumeMutedIcon() {
       stroke="currentColor"
       strokeWidth="1.75"
     >
-      <path
-        d="M3.5 8.2v3.6h2.4L9.5 15V5L5.9 8.2H3.5z"
-        strokeLinejoin="round"
-      />
+      <path d="M3.5 8.2v3.6h2.4L9.5 15V5L5.9 8.2H3.5z" strokeLinejoin="round" />
       <path d="M12.5 8l4 4M16.5 8l-4 4" strokeLinecap="round" />
     </svg>
   );

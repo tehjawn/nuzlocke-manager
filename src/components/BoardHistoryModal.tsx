@@ -20,10 +20,7 @@ import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { TeamExportModal } from "@/components/TeamExportModal";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
-import type {
-  BadgeDefinition,
-  PokemonEntry,
-} from "@/lib/challenge-types";
+import type { BadgeDefinition, PokemonEntry } from "@/lib/challenge-types";
 import type { TrainerBoardSnapshotPayload } from "@/lib/board-snapshot";
 import { snapshotTriggerLabel } from "@/lib/board-snapshot";
 
@@ -96,17 +93,17 @@ function RunGraves({ graves }: { graves: TrainerHistoryGrave[] }) {
           <div className="min-w-0 flex-1">
             <p className="font-display truncate text-[11px] font-bold leading-tight">
               {grave.label}
-              {grave.isShiny ? (
+              {grave.isShiny && (
                 <span className="ml-0.5 text-accent-2" title="Shiny">
                   ✦
                 </span>
-              ) : null}
+              )}
             </p>
             <p className="truncate text-[10px] leading-tight text-muted">
               {grave.species}
               {grave.level != null ? ` · Lv.${grave.level}` : ""}
             </p>
-            {grave.causeOfDeath ? (
+            {grave.causeOfDeath && (
               <p
                 className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-ink/90"
                 title={grave.causeOfDeath}
@@ -114,7 +111,7 @@ function RunGraves({ graves }: { graves: TrainerHistoryGrave[] }) {
                 <TombstoneIcon className="mr-1 inline-block h-2.5 w-2.5 shrink-0 align-[-1px]" />
                 {grave.causeOfDeath}
               </p>
-            ) : null}
+            )}
           </div>
         </li>
       ))}
@@ -255,11 +252,11 @@ function TrainerHistoryBody({
       title: "Clear board snapshots?",
       description: (
         <>
-          Permanently deletes every board snapshot for {trainerHandle} (the
-          list below may only show the most recent ones). Run ledger (revive /
-          badge archives) stays, but graves from closed runs are read back from
-          these snapshots — clearing them removes those partners from the
-          Memorial for good. This cannot be undone.
+          Permanently deletes every board snapshot for {trainerHandle} (the list
+          below may only show the most recent ones). Run ledger (revive / badge
+          archives) stays, but graves from closed runs are read back from these
+          snapshots — clearing them removes those partners from the Memorial for
+          good. This cannot be undone.
         </>
       ),
       confirmLabel: "Clear snapshots",
@@ -330,25 +327,22 @@ function TrainerHistoryBody({
         description: (
           <>
             Adds {preview.candidates.length} missing R.I.P. entr
-            {preview.candidates.length === 1 ? "y" : "ies"} for{" "}
-            {trainerHandle} to the live board, from the current run&rsquo;s
-            latest snapshot. Closed runs are not touched — their graves already
-            show in the Memorial, read from history. Existing graves stay;
-            duplicates (same species + nickname) are skipped.
-            {preview.runsRestored.length > 0 ? (
-              <>
-                {" "}
-                Runs covered: {preview.runsRestored.join(", ")}.
-              </>
-            ) : null}
-            {preview.runsSkipped.length > 0 ? (
+            {preview.candidates.length === 1 ? "y" : "ies"} for {trainerHandle}{" "}
+            to the live board, from the current run&rsquo;s latest snapshot.
+            Closed runs are not touched — their graves already show in the
+            Memorial, read from history. Existing graves stay; duplicates (same
+            species + nickname) are skipped.
+            {preview.runsRestored.length > 0 && (
+              <> Runs covered: {preview.runsRestored.join(", ")}.</>
+            )}
+            {preview.runsSkipped.length > 0 && (
               <>
                 {" "}
                 No snapshot for run
                 {preview.runsSkipped.length === 1 ? "" : "s"}{" "}
                 {preview.runsSkipped.join(", ")}.
               </>
-            ) : null}
+            )}
             <span className="mt-2 block text-muted">
               {sample}
               {extra}
@@ -381,9 +375,7 @@ function TrainerHistoryBody({
 
   const viewingDetail = detail != null;
   const main = detail ? slotPokemon(detail.payload.pokemon, "MAIN") : [];
-  const reserves = detail
-    ? slotPokemon(detail.payload.pokemon, "RESERVE")
-    : [];
+  const reserves = detail ? slotPokemon(detail.payload.pokemon, "RESERVE") : [];
   const graveyard = detail
     ? slotPokemon(detail.payload.pokemon, "GRAVEYARD")
     : [];
@@ -425,7 +417,7 @@ function TrainerHistoryBody({
               >
                 ← All runs
               </button>
-              {canExportDetail ? (
+              {canExportDetail && (
                 <button
                   type="button"
                   className="pressable border-frame bg-surface px-2.5 py-1 text-xs font-semibold text-ink"
@@ -434,11 +426,11 @@ function TrainerHistoryBody({
                 >
                   Export team
                 </button>
-              ) : null}
+              )}
             </div>
           ) : canRestore || canClearHistory ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {canRestore ? (
+              {canRestore && (
                 <button
                   type="button"
                   disabled={restoring || clearing || pending}
@@ -449,8 +441,8 @@ function TrainerHistoryBody({
                 >
                   {restoring ? "Restoring…" : "Restore memorial"}
                 </button>
-              ) : null}
-              {canClearHistory ? (
+              )}
+              {canClearHistory && (
                 <button
                   type="button"
                   disabled={clearing || restoring || pending}
@@ -461,30 +453,29 @@ function TrainerHistoryBody({
                 >
                   {clearing ? "Clearing…" : "Clear snapshots"}
                 </button>
-              ) : null}
+              )}
             </div>
           ) : null
         }
       >
-        {error ? (
+        {error && (
           <p className="mb-3 text-sm text-danger" role="alert">
             {error}
           </p>
-        ) : null}
-        {statusMessage ? (
+        )}
+        {statusMessage && (
           <p className="mb-3 text-sm text-interactive" role="status">
             {statusMessage}
           </p>
-        ) : null}
+        )}
 
         {viewingDetail && detail ? (
           <div className="space-y-4">
             <p className="text-sm text-muted">
               Read-only snapshot · {detail.summary}
-              {detail.payload.wipeCount > 0
-                ? ` · recorded at wipe #${detail.payload.wipeCount}`
-                : null}
-              {detail.payload.reviveUsed ? " · revive used" : null}
+              {detail.payload.wipeCount > 0 &&
+                ` · recorded at wipe #${detail.payload.wipeCount}`}
+              {detail.payload.reviveUsed && " · revive used"}
             </p>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -523,7 +514,7 @@ function TrainerHistoryBody({
                     <p className="text-sm text-muted">Memorial empty.</p>
                   )}
                 </Frame>
-                {encountered.length > 0 ? (
+                {encountered.length > 0 && (
                   <Frame title="Encountered">
                     <PartyStrip
                       pokemon={encountered}
@@ -531,7 +522,7 @@ function TrainerHistoryBody({
                       onSelect={setDetailsPokemon}
                     />
                   </Frame>
-                ) : null}
+                )}
               </div>
               <aside>
                 <Frame title="Badges">
@@ -552,19 +543,18 @@ function TrainerHistoryBody({
               inside the run they were taken from (before wipe, import, or GM
               reset). A wipe clears the live board, so graves from closed runs
               are read back from that run&rsquo;s snapshot.
-              {canRestoreMemorial
-                ? " GMs can restore missing R.I.P. for the current run from those snapshots."
-                : null}
+              {canRestoreMemorial &&
+                " GMs can restore missing R.I.P. for the current run from those snapshots."}
             </p>
-            {listLoading ? (
+            {listLoading && (
               <p className="text-sm text-muted">Loading history…</p>
-            ) : null}
-            {!listLoading && runs.length === 0 && !error ? (
+            )}
+            {!listLoading && runs.length === 0 && !error && (
               <p className="text-sm text-muted">
                 No runs recorded for this trainer yet.
               </p>
-            ) : null}
-            {!listLoading && runs.length > 0 ? (
+            )}
+            {!listLoading && runs.length > 0 && (
               <ul className="space-y-2">
                 {runs.map((run) => {
                   const expanded = openRunIds.has(run.id);
@@ -601,9 +591,9 @@ function TrainerHistoryBody({
                         </span>
                       </button>
 
-                      {expanded ? (
+                      {expanded && (
                         <div className="space-y-3 border-t border-frame/30 px-3 py-3">
-                          {run.graves.length > 0 ? (
+                          {run.graves.length > 0 && (
                             <Frame
                               title={frameCountTitle(
                                 "R.I.P.",
@@ -614,19 +604,19 @@ function TrainerHistoryBody({
                             >
                               <RunGraves graves={run.graves} />
                             </Frame>
-                          ) : null}
+                          )}
 
                           {run.status === "CLOSED" &&
-                          run.earnedBadgeKeys.length > 0 ? (
-                            <Frame title="Badges at close" dense>
-                              <BadgeCase
-                                badges={badges}
-                                earnedKeys={run.earnedBadgeKeys}
-                                layout="column"
-                                dense
-                              />
-                            </Frame>
-                          ) : null}
+                            run.earnedBadgeKeys.length > 0 && (
+                              <Frame title="Badges at close" dense>
+                                <BadgeCase
+                                  badges={badges}
+                                  earnedKeys={run.earnedBadgeKeys}
+                                  layout="column"
+                                  dense
+                                />
+                              </Frame>
+                            )}
 
                           {run.snapshots.length === 0 ? (
                             <p className="text-xs text-muted">
@@ -659,7 +649,7 @@ function TrainerHistoryBody({
                                       <span className="text-xs text-muted">
                                         {snapshotTriggerLabel(snap.trigger)} ·{" "}
                                         {snap.summary}
-                                        {active ? " · Opening…" : null}
+                                        {active && " · Opening…"}
                                       </span>
                                     </button>
                                   </li>
@@ -668,17 +658,17 @@ function TrainerHistoryBody({
                             </ul>
                           )}
                         </div>
-                      ) : null}
+                      )}
                     </li>
                   );
                 })}
               </ul>
-            ) : null}
+            )}
           </div>
         )}
       </Modal>
 
-      {detailsPokemon ? (
+      {detailsPokemon && (
         <PokemonDetailsModal
           open
           slug={challengeSlug}
@@ -692,9 +682,9 @@ function TrainerHistoryBody({
           }}
           onClose={() => setDetailsPokemon(null)}
         />
-      ) : null}
+      )}
 
-      {detail && exportOpen ? (
+      {detail && exportOpen && (
         <TeamExportModal
           open
           onClose={() => setExportOpen(false)}
@@ -716,7 +706,7 @@ function TrainerHistoryBody({
             capturedAt: formatWhen(detail.createdAt),
           }}
         />
-      ) : null}
+      )}
 
       {confirmDialog}
     </>

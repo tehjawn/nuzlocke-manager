@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { Challenge, PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
+import type {
+  Challenge,
+  PokemonEntry,
+  TrainerProfile,
+} from "@/lib/challenge-types";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BondHeart } from "@/components/BondHeart";
@@ -16,17 +20,11 @@ import { StatusLine } from "@/components/StatusLine";
 import { SurvivalSentimentIcon } from "@/components/SurvivalPollChip";
 import { formatPlayTime } from "@/lib/gen3-save/playtime";
 import { catchTierHasChrome, type CatchTier } from "@/lib/iv-quality";
-import {
-  resolveCatchTier,
-  resolveTrainingTier,
-} from "@/lib/pokemon-grades";
+import { resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
 import { pokemonInSlot } from "@/lib/trainer-display";
 
 type TrainerCardProps = {
-  challenge: Pick<
-    Challenge,
-    "slug" | "badges" | "survivalMarketsEnabled"
-  >;
+  challenge: Pick<Challenge, "slug" | "badges" | "survivalMarketsEnabled">;
   trainer: TrainerProfile;
   variant?: "list" | "grid";
   /** Signed-in player's own card — soft revolving rainbow edge. */
@@ -37,9 +35,7 @@ type TrainerCardProps = {
 };
 
 /** Quiet league border class — tint only, no board flash. */
-function leagueCatchBorderClass(
-  catchTier: CatchTier | null,
-): string | null {
+function leagueCatchBorderClass(catchTier: CatchTier | null): string | null {
   if (!catchTier || !catchTierHasChrome(catchTier)) return null;
   return `pokemon-catch-border--league pokemon-catch-border--league-${catchTier}`;
 }
@@ -55,11 +51,7 @@ type PartySlotProps = {
  * survival sentiment (BL). Same tier language as My Trainer / details, at
  * roster-safe intensity — no revolving ring or glow.
  */
-function TrainerPartySlot({
-  pokemon,
-  layout,
-  onOpen,
-}: PartySlotProps) {
+function TrainerPartySlot({ pokemon, layout, onOpen }: PartySlotProps) {
   const label = pokemon.nickname || pokemon.species;
   const catchTier = resolveCatchTier(pokemon);
   const trainingTier = resolveTrainingTier(pokemon);
@@ -83,49 +75,40 @@ function TrainerPartySlot({
   const godShell = isGodCatch
     ? "pokemon-catch-border--league pokemon-catch-border--league-god border-0"
     : "";
-  const godFace = isGodCatch
-    ? "pokemon-catch-border--league-god__face"
-    : "";
+  const godFace = isGodCatch ? "pokemon-catch-border--league-god__face" : "";
 
   const chrome =
     showCornerChrome && (showSentiment || showHeart) ? (
       <>
-        {showSentiment ? (
+        {showSentiment && (
           <SurvivalSentimentIcon
             className="pokemon-survival-sentiment--corner-dense h-3 w-3 sm:h-3.5 sm:w-3.5"
             poll={survivalPoll}
           />
-        ) : null}
-        {showHeart ? (
+        )}
+        {showHeart && (
           <BondHeart
             className="pokemon-bond-heart--corner-dense h-3 w-3 sm:h-3.5 sm:w-3.5"
             tier={trainingTier}
           />
-        ) : null}
+        )}
       </>
     ) : null;
 
   if (layout === "grid") {
     return (
-      <PokemonHoverPreview
-        className="relative z-2 min-h-0"
-        pokemon={pokemon}
-      >
+      <PokemonHoverPreview className="relative z-2 min-h-0" pokemon={pokemon}>
         <button
           type="button"
           title={label}
           aria-label={`View ${label}`}
           className={`pressable relative flex aspect-square h-full min-h-0 w-full cursor-pointer items-center justify-center rounded-lg transition ${
-            isGodCatch
-              ? godShell
-              : `border p-1 ${hoverWash} ${slotSurface}`
+            isGodCatch ? godShell : `border p-1 ${hoverWash} ${slotSurface}`
           }`}
           onClick={() => onOpen(pokemon)}
         >
           {isGodCatch ? (
-            <span
-              className={`${godFace} flex items-center justify-center p-1`}
-            >
+            <span className={`${godFace} flex items-center justify-center p-1`}>
               <PokemonSpriteImage
                 alt={label}
                 className="pixelated h-full w-full max-h-14 object-contain lg:max-h-16"
@@ -153,10 +136,7 @@ function TrainerPartySlot({
   }
 
   return (
-    <PokemonHoverPreview
-      pokemon={pokemon}
-      className="relative z-2 min-w-0"
-    >
+    <PokemonHoverPreview pokemon={pokemon} className="relative z-2 min-w-0">
       <button
         type="button"
         title={label}
@@ -273,9 +253,7 @@ export function TrainerCard({
     completionCount > 0
       ? `${completionCount} completion${completionCount === 1 ? "" : "s"}`
       : null,
-    trainer.money != null
-      ? `$${trainer.money.toLocaleString("en-US")}`
-      : null,
+    trainer.money != null ? `$${trainer.money.toLocaleString("en-US")}` : null,
     trainer.playTimeSeconds != null
       ? formatPlayTime(trainer.playTimeSeconds)
       : null,
@@ -288,18 +266,14 @@ export function TrainerCard({
     `${caughtCount} caught`,
     `${ripCount} R.I.P.`,
     `Run ${trainer.activeRunNumber}`,
-    trainer.money != null
-      ? `$${trainer.money.toLocaleString("en-US")}`
-      : null,
+    trainer.money != null ? `$${trainer.money.toLocaleString("en-US")}` : null,
   ]
     .filter(Boolean)
     .join(" • ");
 
   return (
     <div
-      data-tour={
-        isYou ? "your-trainer" : isDemo ? "demo-trainer" : undefined
-      }
+      data-tour={isYou ? "your-trainer" : isDemo ? "demo-trainer" : undefined}
       className={`min-w-0${isYou ? " trainer-you-ring" : ""}`}
     >
       {variant === "grid" ? (
@@ -322,7 +296,7 @@ export function TrainerCard({
             >
               <div className="flex h-full flex-col items-center text-center">
                 <div className="relative flex h-28 w-full items-end justify-center overflow-visible">
-                  {firstMon ? (
+                  {firstMon && (
                     <PokemonSpriteImage
                       alt=""
                       className="pixelated absolute top-0 left-1/2 z-0 h-16 w-16 -translate-x-[15%] object-contain opacity-80"
@@ -332,7 +306,7 @@ export function TrainerCard({
                       species={firstMon.species}
                       width={96}
                     />
-                  ) : null}
+                  )}
                   <AvatarPortrait
                     avatarSpriteKey={trainer.avatarSpriteKey}
                     backgroundKey={avatarBg}
@@ -346,8 +320,7 @@ export function TrainerCard({
                   {trainer.handle}
                 </p>
                 <p className="mt-0.5 text-xs text-muted">
-                  {earnedCount > 0 &&
-                  earnedCount === challenge.badges.length
+                  {earnedCount > 0 && earnedCount === challenge.badges.length
                     ? "All badges · ready"
                     : `${earnedCount} ${earnedCount === 1 ? "badge" : "badges"}`}
                 </p>
@@ -380,14 +353,14 @@ export function TrainerCard({
                   <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep">
                     {trainer.handle}
                   </h2>
-                  {hasStatus ? (
+                  {hasStatus && (
                     <StatusLine
                       emoji={trainer.statusEmoji}
                       text={trainer.statusText}
                       empty=""
                       className="w-full line-clamp-2 text-[11px] leading-snug text-muted"
                     />
-                  ) : null}
+                  )}
                 </div>
 
                 <div className="grid min-h-0 grid-cols-3 grid-rows-2 gap-1.5">
@@ -460,12 +433,12 @@ export function TrainerCard({
                 <h2 className="truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep sm:text-base">
                   {trainer.handle}
                 </h2>
-                {trainer.realName?.trim() ? (
+                {trainer.realName?.trim() && (
                   <p className="mt-0.5 truncate text-xs text-muted/80">
                     {trainer.realName.trim()}
                   </p>
-                ) : null}
-                {hasStatus ? (
+                )}
+                {hasStatus && (
                   <div title={statusTitle} className="mt-0.5 min-w-0">
                     <StatusLine
                       emoji={trainer.statusEmoji}
@@ -474,7 +447,7 @@ export function TrainerCard({
                       className="line-clamp-2 text-xs leading-snug text-muted sm:line-clamp-3"
                     />
                   </div>
-                ) : null}
+                )}
               </div>
             </div>
 

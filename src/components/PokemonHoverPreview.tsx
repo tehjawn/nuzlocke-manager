@@ -25,17 +25,11 @@ import {
   catchTierLabel,
   type CatchTier,
 } from "@/lib/iv-quality";
-import {
-  resolveCatchTier,
-  resolveTrainingTier,
-} from "@/lib/pokemon-grades";
+import { resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
 import type { PokemonType } from "@/lib/pokemon-types";
 import { typesForPokedexId } from "@/lib/resolve-pokemon-types";
 import type { SurvivalPollTally } from "@/lib/survival-market-types";
-import {
-  trainingTierLabel,
-  type TrainingTier,
-} from "@/lib/training-quality";
+import { trainingTierLabel, type TrainingTier } from "@/lib/training-quality";
 
 type SpeciesPreview = {
   species: string;
@@ -134,9 +128,7 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
   const catchLabel =
     model.catchTier !== null ? catchTierLabel(model.catchTier) : null;
   const bondLabel =
-    model.trainingTier !== null
-      ? trainingTierLabel(model.trainingTier)
-      : null;
+    model.trainingTier !== null ? trainingTierLabel(model.trainingTier) : null;
   const hasCatchChrome =
     model.catchTier !== null && catchTierHasChrome(model.catchTier);
   const showSurvival =
@@ -238,8 +230,7 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
   const nickname = model.nickname?.trim() ?? "";
   const label = nickname || model.species;
   const showSpeciesLine =
-    Boolean(nickname) &&
-    nickname.toLowerCase() !== model.species.toLowerCase();
+    Boolean(nickname) && nickname.toLowerCase() !== model.species.toLowerCase();
   const dexLine =
     model.pokedexId != null && model.pokedexId > 0
       ? `#${String(model.pokedexId).padStart(3, "0")}`
@@ -284,7 +275,7 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
                         : "border-frame/50 bg-surface-2"
                     }`}
                   >
-                    {model.catchTier === "god" ? <GodPrismRays /> : null}
+                    {model.catchTier === "god" && <GodPrismRays />}
                     <PokemonSpriteImage
                       alt=""
                       className="pixelated h-20 w-20 object-contain"
@@ -294,39 +285,39 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
                       species={model.species}
                       width={96}
                     />
-                    {showSurvival && model.survivalPoll ? (
+                    {showSurvival && model.survivalPoll && (
                       <SurvivalSentimentIcon
                         className="pokemon-survival-sentiment--corner h-3.5 w-3.5"
                         poll={model.survivalPoll}
                       />
-                    ) : null}
-                    {model.trainingTier !== null ? (
+                    )}
+                    {model.trainingTier !== null && (
                       <BondHeart
                         className="pokemon-bond-heart--corner h-3.5 w-3.5"
                         tier={model.trainingTier}
                       />
-                    ) : null}
+                    )}
                   </div>
                 </div>
                 <div className="min-w-0 w-full">
                   <p className="truncate text-sm font-bold leading-tight tracking-tight">
                     {label}
-                    {model.isShiny ? (
+                    {model.isShiny && (
                       <span className="ml-1 text-accent-2" title="Shiny">
                         ✦
                       </span>
-                    ) : null}
+                    )}
                   </p>
-                  {showSpeciesLine ? (
+                  {showSpeciesLine && (
                     <p className="truncate text-[11px] text-muted">
                       {model.species}
                     </p>
-                  ) : null}
-                  {model.level != null ? (
+                  )}
+                  {model.level != null && (
                     <p className="mt-0.5 text-[11px] font-semibold text-muted">
                       Lv {model.level}
                     </p>
-                  ) : null}
+                  )}
                   {model.subtitle ? (
                     <p className="mt-0.5 text-[11px] font-semibold text-muted">
                       {model.subtitle}
@@ -337,40 +328,40 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
                       {dexLine}
                     </p>
                   ) : null}
-                  {model.detail ? (
+                  {model.detail && (
                     <p className="mt-1 text-left text-[11px] leading-snug text-muted">
                       {model.detail}
                     </p>
-                  ) : null}
-                  {model.types.length > 0 ? (
+                  )}
+                  {model.types.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap justify-center gap-1">
                       {model.types.map((t) => (
                         <TypeBadge key={t} type={t} />
                       ))}
                     </div>
-                  ) : null}
-                  {hasGradeLines ? (
+                  )}
+                  {hasGradeLines && (
                     <div className="mt-1.5 flex w-full gap-1">
-                      {model.catchTier !== null && catchLabel ? (
+                      {model.catchTier !== null && catchLabel && (
                         <CatchTierCaption
                           tier={model.catchTier}
                           variant="tile"
                         />
-                      ) : null}
-                      {showSurvival && model.survivalPoll ? (
+                      )}
+                      {showSurvival && model.survivalPoll && (
                         <SurvivalSentimentCaption
                           poll={model.survivalPoll}
                           variant="tile"
                         />
-                      ) : null}
-                      {model.trainingTier !== null && bondLabel ? (
+                      )}
+                      {model.trainingTier !== null && bondLabel && (
                         <TrainingTierCaption
                           tier={model.trainingTier}
                           variant="tile"
                         />
-                      ) : null}
+                      )}
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </div>
             </div>,

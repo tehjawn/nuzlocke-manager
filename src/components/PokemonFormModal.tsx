@@ -87,8 +87,7 @@ export const EMPTY_POKEMON_FORM: PokemonFormState = {
   causeOfDeath: "",
 };
 
-const LABEL =
-  "mb-1 block text-[10px] font-semibold tracking-tight text-muted";
+const LABEL = "mb-1 block text-[10px] font-semibold tracking-tight text-muted";
 const INPUT =
   "w-full rounded-lg border border-frame bg-surface px-2.5 py-1.5 text-sm";
 
@@ -230,7 +229,8 @@ function PokemonFormModalInner({
 
   const nickname = form.nickname.trim();
   const species = form.species.trim();
-  const title = nickname || species || (form.id ? "Edit Pokémon" : "Add Pokémon");
+  const title =
+    nickname || species || (form.id ? "Edit Pokémon" : "Add Pokémon");
   const types = resolvePokemonTypes({
     pokedexId: form.pokedexId,
     species: species || null,
@@ -251,11 +251,11 @@ function PokemonFormModalInner({
         subtitle={
           <>
             {subtitleText}
-            {form.isShiny ? (
+            {form.isShiny && (
               <span className="ml-1.5 font-semibold text-accent-2">
                 Shiny ✦
               </span>
-            ) : null}
+            )}
           </>
         }
         onClose={onClose}
@@ -288,7 +288,7 @@ function PokemonFormModalInner({
             >
               Cancel
             </button>
-            {form.id && onDelete ? (
+            {form.id && onDelete && (
               <button
                 type="button"
                 disabled={pending}
@@ -307,7 +307,7 @@ function PokemonFormModalInner({
               >
                 Delete
               </button>
-            ) : null}
+            )}
           </div>
         }
       >
@@ -361,13 +361,13 @@ function PokemonFormModalInner({
                 )}
               </div>
 
-              {types.length > 0 ? (
+              {types.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-1 sm:justify-start">
                   {types.map((t) => (
                     <TypeBadge key={t} type={t} />
                   ))}
                 </div>
-              ) : null}
+              )}
 
               <button
                 type="button"
@@ -484,7 +484,7 @@ function PokemonFormModalInner({
                 <div className="text-sm">
                   <span className={LABEL}>Held item</span>
                   <div className="flex items-center gap-1.5">
-                    {form.heldItem ? (
+                    {form.heldItem && (
                       <InfoTip
                         tip={heldItemDescription(form.heldItem) ?? ""}
                         embedded
@@ -499,7 +499,7 @@ function PokemonFormModalInner({
                           className="pixelated h-7 w-7 object-contain"
                         />
                       </InfoTip>
-                    ) : null}
+                    )}
                     <input
                       className={INPUT}
                       value={itemQuery}
@@ -509,7 +509,7 @@ function PokemonFormModalInner({
                         setForm((f) => ({ ...f, heldItem: e.target.value }));
                       }}
                     />
-                    {form.heldItem ? (
+                    {form.heldItem && (
                       <button
                         type="button"
                         className="pressable shrink-0 rounded-lg border border-frame bg-surface px-2 py-1.5 text-[11px] font-semibold"
@@ -520,9 +520,9 @@ function PokemonFormModalInner({
                       >
                         Clear
                       </button>
-                    ) : null}
+                    )}
                   </div>
-                  {itemResults.length > 0 && itemQuery.trim() ? (
+                  {itemResults.length > 0 && itemQuery.trim() && (
                     <ul className="mt-1.5 max-h-32 overflow-auto rounded-lg border border-frame bg-surface">
                       {itemResults.map((item) => (
                         <li key={item.slug}>
@@ -550,7 +550,7 @@ function PokemonFormModalInner({
                         </li>
                       ))}
                     </ul>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
@@ -591,7 +591,7 @@ function PokemonFormModalInner({
                 />
               </div>
 
-              {form.slot === "GRAVEYARD" ? (
+              {form.slot === "GRAVEYARD" && (
                 <label className="block text-sm">
                   <span className={LABEL}>Cause of death</span>
                   <textarea
@@ -602,7 +602,7 @@ function PokemonFormModalInner({
                     }
                   />
                 </label>
-              ) : null}
+              )}
             </div>
           </div>
         </div>

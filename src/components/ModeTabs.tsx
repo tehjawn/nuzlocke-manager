@@ -57,11 +57,7 @@ export function ModeTabs<T extends string>({
   return (
     <div className={`mode-tabs${sizeClass} ${className}`.trim()}>
       <div className="mode-tabs__chrome">
-        <div
-          role="tablist"
-          aria-label={ariaLabel}
-          className="mode-tabs__list"
-        >
+        <div role="tablist" aria-label={ariaLabel} className="mode-tabs__list">
           {tabs.map((tab) => {
             const selected = tab.id === value;
             const tabId = `${prefix}-tab-${tab.id}`;
@@ -102,9 +98,7 @@ export function ModeTabs<T extends string>({
             );
           })}
         </div>
-        {trailing ? (
-          <div className="mode-tabs__trailing">{trailing}</div>
-        ) : null}
+        {trailing && <div className="mode-tabs__trailing">{trailing}</div>}
       </div>
 
       <div

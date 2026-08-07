@@ -35,7 +35,7 @@ export function SpeciesCombobox({
           window.setTimeout(() => setOpen(false), 150);
         }}
       />
-      {open && results.length > 0 ? (
+      {open && results.length > 0 && (
         <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-frame bg-surface shadow-lg">
           {results.map((s) => (
             <li key={s.pokedexId}>
@@ -54,7 +54,7 @@ export function SpeciesCombobox({
             </li>
           ))}
         </ul>
-      ) : null}
+      )}
     </div>
   );
 }

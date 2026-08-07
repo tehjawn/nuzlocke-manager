@@ -69,7 +69,10 @@ type PartyBoardDndProps = {
 
 function normalizeMainItems(ids: string[]): string[] {
   const real: string[] = [];
-  const placed = Array.from({ length: MAIN_PARTY_SIZE }, () => null as string | null);
+  const placed = Array.from(
+    { length: MAIN_PARTY_SIZE },
+    () => null as string | null,
+  );
 
   ids.forEach((id, i) => {
     if (isEmptyMainId(id)) return;
@@ -265,10 +268,7 @@ function SortableSlot({
     onSelect(pokemon);
   }
 
-  const {
-    onKeyDown: dndKeyDown,
-    ...restListeners
-  } = (listeners ?? {}) as {
+  const { onKeyDown: dndKeyDown, ...restListeners } = (listeners ?? {}) as {
     onKeyDown?: (event: ReactKeyboardEvent<HTMLElement>) => void;
     [key: string]: unknown;
   };
@@ -379,7 +379,9 @@ export function PartyBoardDnd({
   const coarsePointer = useCoarsePointer();
   // Touch / phone UX fights scroll and accidental drags — tap-only there.
   const rearrangeDisabled = coarsePointer;
-  const [items, setItems] = useState<BoardItems>(() => buildBoardItems(pokemon));
+  const [items, setItems] = useState<BoardItems>(() =>
+    buildBoardItems(pokemon),
+  );
   const itemsRef = useRef(items);
   const aliveRef = useRef(true);
   const persistQueuedRef = useRef(false);
@@ -401,7 +403,9 @@ export function PartyBoardDnd({
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: rearrangeDisabled ? Number.MAX_SAFE_INTEGER : 8 },
+      activationConstraint: {
+        distance: rearrangeDisabled ? Number.MAX_SAFE_INTEGER : 8,
+      },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -469,7 +473,10 @@ export function PartyBoardDnd({
     board: BoardItems,
     overId: string,
   ): DndSlot | undefined {
-    return findBoardContainer(board, overId) ?? (isDndSlot(overId) ? overId : undefined);
+    return (
+      findBoardContainer(board, overId) ??
+      (isDndSlot(overId) ? overId : undefined)
+    );
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -691,11 +698,11 @@ export function PartyBoardDnd({
       </div>
 
       <DragOverlay dropAnimation={null}>
-        {activePokemon ? (
+        {activePokemon && (
           <div className="w-[min(100vw-2rem,20rem)] scale-[1.02] shadow-lg">
             <PokemonSlotCard pokemon={activePokemon} selectHint="Moving" />
           </div>
-        ) : null}
+        )}
       </DragOverlay>
     </DndContext>
   );

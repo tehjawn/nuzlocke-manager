@@ -52,7 +52,7 @@ export function SearchSelect({
             if (e.key === "Escape") setOpen(false);
           }}
         />
-        {value ? (
+        {value && (
           <button
             type="button"
             className="pressable shrink-0 rounded-lg bg-surface px-2 py-2 text-xs font-semibold tracking-tight"
@@ -60,9 +60,9 @@ export function SearchSelect({
           >
             Clear
           </button>
-        ) : null}
+        )}
       </div>
-      {open ? (
+      {open && (
         <ul
           id={listId}
           role="listbox"
@@ -90,7 +90,7 @@ export function SearchSelect({
             </li>
           )}
         </ul>
-      ) : null}
+      )}
     </div>
   );
 }

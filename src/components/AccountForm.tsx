@@ -99,10 +99,10 @@ export function AccountForm({
       >
         Save account
       </button>
-      {message ? (
+      {message && (
         <p className="text-sm font-semibold text-accent-deep">{message}</p>
-      ) : null}
-      {error ? <p className="text-sm font-semibold text-danger">{error}</p> : null}
+      )}
+      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
     </form>
   );
 }

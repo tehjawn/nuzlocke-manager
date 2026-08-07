@@ -83,21 +83,19 @@ export function HeadlineMoments({
         Season headline moments
       </p>
       <p className="sr-only" aria-live="polite">
-        {active
-          ? `Headline ${safeIndex + 1} of ${count}: ${active.blurb}`
-          : null}
+        {active && `Headline ${safeIndex + 1} of ${count}: ${active.blurb}`}
       </p>
 
-      {active ? (
+      {active && (
         <HeadlineSlide
           key={active.id}
           slug={slug}
           item={active}
           canReact={canReact}
         />
-      ) : null}
+      )}
 
-      {count > 1 ? (
+      {count > 1 && (
         <div
           className="flex items-center justify-center gap-2"
           role="tablist"
@@ -122,7 +120,7 @@ export function HeadlineMoments({
             );
           })}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -193,12 +191,12 @@ function HeadlineSlide({
         </p>
         <p className="mt-1.5 text-[11px] font-medium tracking-tight text-muted">
           {formatHeadlineWhen(item.createdAt)}
-          {item.trainerHandle ? (
+          {item.trainerHandle && (
             <>
               {" · "}
               <span className="text-ink/80">{item.trainerHandle}</span>
             </>
-          ) : null}
+          )}
         </p>
       </div>
     </div>
@@ -222,7 +220,7 @@ function HeadlineSlide({
       ) : (
         body
       )}
-      {(canReact || item.reactions.some((r) => r.count > 0)) ? (
+      {(canReact || item.reactions.some((r) => r.count > 0)) && (
         <div className="relative z-[2] mt-1.5">
           <ActivityReactions
             activityId={item.id}
@@ -231,7 +229,7 @@ function HeadlineSlide({
             className="mt-0"
           />
         </div>
-      ) : null}
+      )}
     </Frame>
   );
 }

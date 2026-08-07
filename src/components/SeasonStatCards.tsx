@@ -94,12 +94,12 @@ export function SpeciesTopCallout({
             </span>
             <span className="min-w-0 truncate font-display text-sm font-bold leading-none">
               {entry.species}
-              {showCount ? (
+              {showCount && (
                 <span className="font-sans font-normal text-muted">
                   {" · x"}
                   {entry.count}
                 </span>
-              ) : null}
+              )}
             </span>
           </li>
         ))}

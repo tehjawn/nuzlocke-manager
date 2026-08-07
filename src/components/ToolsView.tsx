@@ -79,9 +79,7 @@ export function ToolsView({
 
   // Season Stats redirects server-side (#288); never render it inside Tools.
   if (!tool || tool === "stats") {
-    return (
-      <ToolsDirectory slug={slug} challengeName={challengeName} />
-    );
+    return <ToolsDirectory slug={slug} challengeName={challengeName} />;
   }
 
   return (
@@ -281,7 +279,7 @@ function ToolWorkspace({
         </div>
       </header>
 
-      {tool === "pokedex" ? (
+      {tool === "pokedex" && (
         <PokedexPanel
           slug={slug}
           trainers={trainers}
@@ -290,17 +288,17 @@ function ToolWorkspace({
           initialId={initialDexId}
           initialMode={initialPokedexMode}
         />
-      ) : null}
+      )}
 
-      {tool === "itemdex" ? (
+      {tool === "itemdex" && (
         <ItemDexPanel
           slug={slug}
           initialItem={initialItemSlug}
           initialLens={initialItemLens}
         />
-      ) : null}
+      )}
 
-      {tool === "chart" ? (
+      {tool === "chart" && (
         <Frame>
           <TypeChartPanel
             slug={slug}
@@ -308,17 +306,17 @@ function ToolWorkspace({
             myTrainerId={myTrainerId}
           />
         </Frame>
-      ) : null}
+      )}
 
-      {tool === "guide" ? (
+      {tool === "guide" && (
         <GameGuidePanel
           slug={slug}
           trainers={trainers}
           myTrainerId={myTrainerId}
         />
-      ) : null}
+      )}
 
-      {tool === "bounty" ? (
+      {tool === "bounty" && (
         <BountyHunterView
           slug={slug}
           trainers={trainers}
@@ -326,16 +324,16 @@ function ToolWorkspace({
           competitiveTrainerIds={competitiveTrainerIds}
           initialMode={initialBountyMode}
         />
-      ) : null}
+      )}
 
-      {tool === "planner" ? (
+      {tool === "planner" && (
         <TeamPlannerView
           slug={slug}
           trainers={trainers}
           myTrainerId={myTrainerId}
           initialMode={initialPlannerMode}
         />
-      ) : null}
+      )}
     </div>
   );
 }

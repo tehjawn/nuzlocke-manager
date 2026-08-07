@@ -191,14 +191,16 @@ export function GmToolsLauncher({
           </span>
         </button>
 
-        {resetMessage ? (
-          <p className="text-xs font-semibold text-accent-deep">{resetMessage}</p>
-        ) : null}
-        {resetError ? (
+        {resetMessage && (
+          <p className="text-xs font-semibold text-accent-deep">
+            {resetMessage}
+          </p>
+        )}
+        {resetError && (
           <p className="text-xs font-semibold text-danger">{resetError}</p>
-        ) : null}
+        )}
 
-        {aiDrawer ? (
+        {aiDrawer && (
           <button
             type="button"
             onClick={() => {
@@ -209,7 +211,7 @@ export function GmToolsLauncher({
           >
             Open AI Drawer
           </button>
-        ) : null}
+        )}
 
         <Link href={gmConsoleHref} className="gm-tools-panel__console">
           <GmConsoleLinkLabel />
@@ -229,7 +231,7 @@ export function GmToolsLauncher({
         className="pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[max(5rem,calc(1.25rem+env(safe-area-inset-bottom,0px)))] z-40 sm:bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
       >
         <div className="pointer-events-auto relative">
-          {open && isDesktop ? (
+          {open && isDesktop && (
             <div className="absolute right-0 bottom-[calc(100%+0.5rem)] w-[min(20rem,calc(100vw-2rem))]">
               <div
                 ref={panelRef}
@@ -244,7 +246,7 @@ export function GmToolsLauncher({
                 <div className="gm-tools-panel__chrome">{panelBody}</div>
               </div>
             </div>
-          ) : null}
+          )}
 
           <div className={`gm-tools-fab ${on ? "gm-tools-fab--active" : ""}`}>
             <button
@@ -359,7 +361,11 @@ export function GmViewBanner({ slug, initialOn }: GmViewBannerProps) {
   }
 
   return (
-    <div className="gm-view-banner sticky top-0 z-30" role="status" aria-live="polite">
+    <div
+      className="gm-view-banner sticky top-0 z-30"
+      role="status"
+      aria-live="polite"
+    >
       <div className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 py-1.5 text-sm sm:px-6">
         <span className="gm-view-banner__badge" aria-hidden>
           GM

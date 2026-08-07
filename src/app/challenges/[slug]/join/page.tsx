@@ -13,7 +13,6 @@ import { isInviteOnly } from "@/lib/challenge-access";
 import { getChallengeMeta } from "@/lib/challenges";
 import { getAccessForChallenge } from "@/lib/permissions";
 
-
 type PageProps = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ gm?: string }>;
@@ -89,7 +88,7 @@ export default async function JoinPage({ params, searchParams }: PageProps) {
           <p className="mt-2 text-muted">{blurb}</p>
 
           <div className="mt-8 space-y-4">
-            {!session?.user ? (
+            {!session?.user && (
               <Frame title="Discord">
                 <a
                   href={loginHref}
@@ -99,16 +98,16 @@ export default async function JoinPage({ params, searchParams }: PageProps) {
                   Continue with Discord
                 </a>
               </Frame>
-            ) : null}
+            )}
 
-            {session?.user && (inviteOnly || wantsGm) ? (
+            {session?.user && (inviteOnly || wantsGm) && (
               <Frame title={wantsGm ? "GM invite code" : "Season invite code"}>
                 <JoinForm
                   slug={challenge.slug}
                   mode={wantsGm ? "gm" : "invite"}
                 />
               </Frame>
-            ) : null}
+            )}
           </div>
         </div>
       </main>

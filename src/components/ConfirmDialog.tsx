@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useId,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useId, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { CTA_PRIMARY_SM, CTA_SECONDARY_SM } from "@/lib/cta";
 
@@ -79,11 +74,11 @@ export function ConfirmDialog({
           <h2 id={titleId} className="text-base font-bold tracking-tight">
             {title}
           </h2>
-          {description ? (
+          {description && (
             <p id={descId} className="text-sm leading-relaxed text-muted">
               {description}
             </p>
-          ) : null}
+          )}
           <div className="flex flex-wrap justify-end gap-2 pt-1">
             <button
               type="button"

@@ -125,10 +125,7 @@ export function TypeChartPanel({
   );
 
   const coveredCount = useMemo(
-    () =>
-      coverage
-        ? coverage.cells.filter((c) => c.bestMult >= 2).length
-        : 0,
+    () => (coverage ? coverage.cells.filter((c) => c.bestMult >= 2).length : 0),
     [coverage],
   );
 
@@ -143,20 +140,20 @@ export function TypeChartPanel({
 
   const hasSquad = viewer != null && mainSquad.length > 0;
   const cellMatchup =
-    active?.atk && active?.def
-      ? typeMultiplier(active.atk, active.def)
-      : null;
-  const focusCell = focusDef ? coverageByType.get(focusDef) ?? null : null;
+    active?.atk && active?.def ? typeMultiplier(active.atk, active.def) : null;
+  const focusCell = focusDef ? (coverageByType.get(focusDef) ?? null) : null;
   const focusMon =
     focusCell?.viaEntryId != null
-      ? squadById.get(focusCell.viaEntryId) ?? null
+      ? (squadById.get(focusCell.viaEntryId) ?? null)
       : null;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <label className="space-y-1 text-sm">
-          <span className="block font-semibold text-ink">Whose Main Squad?</span>
+          <span className="block font-semibold text-ink">
+            Whose Main Squad?
+          </span>
           <select
             value={viewerId}
             onChange={(e) => {
@@ -226,12 +223,12 @@ export function TypeChartPanel({
           </ul>
         </div>
 
-        {hasSquad ? (
+        {hasSquad && (
           <p className="text-xs text-muted">
             Green dots on defender headers = this squad already hits ≥2×. Red
             dots on attacker rows = shared weakness. Amber = whole squad immune.
           </p>
-        ) : null}
+        )}
 
         <p className="text-xs text-muted/80 sm:hidden" aria-hidden>
           Swipe the grid sideways to see every type →
@@ -298,12 +295,12 @@ export function TypeChartPanel({
                             }}
                           >
                             <TypePip type={t} short fill emphasis={colActive} />
-                            {isCovered ? (
+                            {isCovered && (
                               <span
                                 aria-hidden
                                 className="mx-auto mt-0.5 block h-1.5 w-1.5 rounded-full bg-accent-deep"
                               />
-                            ) : null}
+                            )}
                           </button>
                         </th>
                       );
@@ -403,14 +400,14 @@ export function TypeChartPanel({
           <h3 className="text-base font-semibold text-ink">
             Main Squad coverage
           </h3>
-          {hasSquad ? (
+          {hasSquad && (
             <p className="text-sm tabular-nums text-muted">
               <span className="font-semibold text-accent-deep">
                 {coveredCount}
               </span>
               /{TYPES.length} types hit ≥2×
             </p>
-          ) : null}
+          )}
         </div>
 
         {!viewer ? (
@@ -431,7 +428,7 @@ export function TypeChartPanel({
               coveredCount={coveredCount}
               total={TYPES.length}
             />
-            {offenseTiers && coverage ? (
+            {offenseTiers && coverage && (
               <CoverageStory
                 squad={mainSquad}
                 squadById={squadById}
@@ -443,14 +440,13 @@ export function TypeChartPanel({
                 focusMon={focusMon}
                 onSelectDef={selectDefendingType}
               />
-            ) : null}
+            )}
           </>
         )}
       </section>
     </div>
   );
 }
-
 
 function SquadStrip({
   viewer,
@@ -546,14 +542,14 @@ function CoverageStory({
         </p>
       </div>
 
-      {focusDef && focusCell ? (
+      {focusDef && focusCell && (
         <FocusCallout
           def={focusDef}
           cell={focusCell}
           mon={focusMon}
           onClear={() => onSelectDef(focusDef)}
         />
-      ) : null}
+      )}
 
       <ul className="space-y-3">
         {COVERAGE_OFFENSE_TIER_META.map((meta) => {
@@ -609,7 +605,7 @@ function CoverageStory({
                               {mon ? monLabel(mon) : "—"}
                             </span>
                           </span>
-                          {mon ? (
+                          {mon && (
                             <PokemonSpriteImage
                               alt=""
                               className="pixelated h-8 w-8 shrink-0 object-contain"
@@ -620,7 +616,7 @@ function CoverageStory({
                               species={mon.species}
                               width={32}
                             />
-                          ) : null}
+                          )}
                         </button>
                       </li>
                     );
@@ -793,9 +789,11 @@ function MatchupReadout({
           {formatMultiplier(mult) || "1×"}
         </span>
         <span className="font-medium text-ink">{matchupPlain(mult)}</span>
-        {pinned ? (
-          <span className="text-xs text-muted">Pinned · tap again to clear</span>
-        ) : null}
+        {pinned && (
+          <span className="text-xs text-muted">
+            Pinned · tap again to clear
+          </span>
+        )}
       </>
     );
   } else if (active?.atk) {

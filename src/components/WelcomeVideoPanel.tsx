@@ -44,15 +44,13 @@ export function WelcomeVideoPanel({
             <p className="text-sm font-medium text-ink">From Jason (@Oubori)</p>
             <p className="max-w-sm text-xs text-muted">
               {lockedMessage ?? (
-                <>
-                  Video coming soon — check back here once it&apos;s ready.
-                </>
+                <>Video coming soon — check back here once it&apos;s ready.</>
               )}
             </p>
           </div>
         )}
       </div>
-      {embed && fallbackUrl ? (
+      {embed && fallbackUrl && (
         <p className="mt-2 text-sm text-muted">
           Issues loading the embed?{" "}
           <a
@@ -64,7 +62,7 @@ export function WelcomeVideoPanel({
             Open video →
           </a>
         </p>
-      ) : null}
+      )}
     </div>
   );
 }

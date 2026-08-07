@@ -71,9 +71,7 @@ export function ActivityFeedInfinite({
   initialCursor,
   canReact = false,
 }: ActivityFeedInfiniteProps) {
-  const [items, setItems] = useState(() =>
-    coalesceActivityItems(initialItems),
-  );
+  const [items, setItems] = useState(() => coalesceActivityItems(initialItems));
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +124,9 @@ export function ActivityFeedInfinite({
   return (
     <Frame title="Activity">
       {items.length === 0 ? (
-        <p className="text-sm text-muted">No activity yet. Updates show here.</p>
+        <p className="text-sm text-muted">
+          No activity yet. Updates show here.
+        </p>
       ) : (
         <ul className="space-y-3">
           {items.map((item) => (
@@ -140,13 +140,13 @@ export function ActivityFeedInfinite({
         </ul>
       )}
       <div ref={sentinelRef} className="h-4" aria-hidden />
-      {loading ? (
+      {loading && (
         <p className="mt-2 text-center text-sm text-muted">Loading…</p>
-      ) : null}
-      {error ? (
+      )}
+      {error && (
         <div className="mt-2 flex flex-col items-center gap-2">
           <p className="text-center text-sm text-danger">{error}</p>
-          {cursor ? (
+          {cursor && (
             <button
               type="button"
               className="text-sm text-accent-deep underline-offset-2 hover:underline"
@@ -157,12 +157,12 @@ export function ActivityFeedInfinite({
             >
               Try again
             </button>
-          ) : null}
+          )}
         </div>
-      ) : null}
-      {!cursor && items.length > 0 ? (
+      )}
+      {!cursor && items.length > 0 && (
         <p className="mt-3 text-center text-xs text-muted">End of activity</p>
-      ) : null}
+      )}
     </Frame>
   );
 }
@@ -227,9 +227,9 @@ function ActivityRow({
   // Showdown trainer sprites are full-body; bias crop toward the head.
   const isSpriteAvatar = Boolean(
     item.avatarSrc &&
-      !item.avatarSrc.includes("discord") &&
-      !item.avatarSrc.includes("blob.vercel-storage.com") &&
-      item.avatarSrc !== APP_MARK,
+    !item.avatarSrc.includes("discord") &&
+    !item.avatarSrc.includes("blob.vercel-storage.com") &&
+    item.avatarSrc !== APP_MARK,
   );
   const trainerHref =
     item.trainerId != null
@@ -286,7 +286,7 @@ function ActivityRow({
             {item.type.replaceAll("_", " ")}
             {" · "}
             {formatActivityWhen(item.createdAt)}
-            {item.trainerHandle ? (
+            {item.trainerHandle && (
               <>
                 {" · "}
                 {trainerHref ? (
@@ -300,11 +300,11 @@ function ActivityRow({
                   item.trainerHandle
                 )}
               </>
-            ) : null}
+            )}
           </p>
         </div>
 
-        {canReact ? (
+        {canReact && (
           <div className="relative shrink-0">
             <button
               type="button"
@@ -326,7 +326,7 @@ function ActivityRow({
               <AddReactionIcon />
             </button>
 
-            {pickerOpen ? (
+            {pickerOpen && (
               <>
                 <button
                   type="button"
@@ -376,7 +376,7 @@ function ActivityRow({
                     </button>
                   </div>
 
-                  {moreOpen ? (
+                  {moreOpen && (
                     <div className="emoji-picker-shell mt-1.5 overflow-hidden rounded-lg border border-frame/30">
                       <EmojiPicker
                         onEmojiClick={onEmojiClick}
@@ -390,15 +390,15 @@ function ActivityRow({
                         lazyLoadEmojis
                       />
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </>
-            ) : null}
+            )}
           </div>
-        ) : null}
+        )}
       </div>
 
-      {visibleReactions.length > 0 ? (
+      {visibleReactions.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {visibleReactions.map((summary) => (
             <button
@@ -420,7 +420,7 @@ function ActivityRow({
             </button>
           ))}
         </div>
-      ) : null}
+      )}
     </li>
   );
 }
@@ -455,14 +455,14 @@ function ActivityMessageText({
     <>
       {parts.map((part, index) => (
         <span key={`${index}-${part.slice(0, 12)}`}>
-          {index > 0 ? (
+          {index > 0 && (
             <Link
               href={trainerHref}
               className="underline-offset-2 hover:text-accent-deep hover:underline"
             >
               {trainerHandle}
             </Link>
-          ) : null}
+          )}
           {part}
         </span>
       ))}

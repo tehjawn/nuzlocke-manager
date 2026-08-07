@@ -2,13 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { isCannedAskQuestion } from "@/features/search/ask-canned";
 import { askEntityHints } from "@/features/search/ask-hints";
@@ -281,8 +275,7 @@ export function SearchPalette() {
    * alone no longer unlock Ask — keyboard mash used to slip through.
    * Canned orientation (drawer flag only) stays available when Gemini is down.
    */
-  const canAsk =
-    cannedAsk || (!isAssistUnavailable() && askGuard.ok);
+  const canAsk = cannedAsk || (!isAssistUnavailable() && askGuard.ok);
 
   const runAsk = useCallback(() => {
     if (!trimmedQuery || !canAsk) return;
@@ -297,21 +290,10 @@ export function SearchPalette() {
     const guard = evaluateAskQuery(trimmedQuery, { entityHints });
     if (!guard.ok) return;
     const snapshot = season
-      ? buildSeasonDigestFromPlan(
-          season,
-          detectAskPlan(trimmedQuery, season),
-        )
+      ? buildSeasonDigestFromPlan(season, detectAskPlan(trimmedQuery, season))
       : null;
     void ask(trimmedQuery, snapshot);
-  }, [
-    aiDrawer,
-    ask,
-    canAsk,
-    entityHints,
-    openAsk,
-    season,
-    trimmedQuery,
-  ]);
+  }, [aiDrawer, ask, canAsk, entityHints, openAsk, season, trimmedQuery]);
 
   const relatedResults = useMemo(() => {
     if (aiDrawer || assist.status !== "answered") return [];
@@ -384,7 +366,7 @@ export function SearchPalette() {
             placeholder="Search trainers, Pokémon, pages…"
             className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ink outline-none placeholder:text-muted/80"
           />
-          {query.length >= 240 ? (
+          {query.length >= 240 && (
             <span
               className={`shrink-0 font-mono text-[10px] tabular-nums ${
                 query.length >= MAX_SEARCH_QUERY_CHARS
@@ -395,14 +377,14 @@ export function SearchPalette() {
             >
               {query.length}/{MAX_SEARCH_QUERY_CHARS}
             </span>
-          ) : null}
+          )}
           <kbd className="hidden shrink-0 rounded border border-frame/80 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-muted sm:inline">
             esc
           </kbd>
         </div>
 
         <Command.List className="relative z-[1] min-h-[min(40vh,280px)] max-h-[min(52vh,420px)] overflow-y-auto p-2">
-          {showingAssist ? (
+          {showingAssist && (
             <AssistPanel
               state={assist}
               related={relatedResults}
@@ -410,23 +392,23 @@ export function SearchPalette() {
               onRetry={runAsk}
               onPickRelated={runResult}
             />
-          ) : null}
+          )}
 
-          {showSearchPending ? <SearchPendingPlaceholder /> : null}
+          {showSearchPending && <SearchPendingPlaceholder />}
 
           {/* Empty results: Ask first so Enter asks. With hits, Ask trails so
               fuzzy stays the default selection (cmdk picks DOM order). */}
-          {showAskLeading ? (
+          {showAskLeading && (
             <AskCommandGroup
               query={trimmedQuery}
               subtitle={askSubtitle}
               onAsk={runAsk}
             />
-          ) : null}
+          )}
 
-          {!showingAssist && !hasLiveQuery ? (
+          {!showingAssist && !hasLiveQuery && (
             <>
-              {recents.length > 0 ? (
+              {recents.length > 0 && (
                 <div className="mb-2 px-1.5">
                   <div className="mb-1.5 flex items-center justify-between">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
@@ -456,7 +438,7 @@ export function SearchPalette() {
                     ))}
                   </div>
                 </div>
-              ) : null}
+              )}
 
               <Command.Group
                 heading="Suggested"
@@ -471,9 +453,9 @@ export function SearchPalette() {
                 ))}
               </Command.Group>
             </>
-          ) : null}
+          )}
 
-          {showEmpty ? (
+          {showEmpty && (
             <div
               className={`px-3 text-center text-sm text-muted ${
                 showAskLeading ? "pb-3 pt-1 text-xs" : "py-8"
@@ -491,7 +473,7 @@ export function SearchPalette() {
                 <>No matches for “{trimmedQuery}”</>
               )}
             </div>
-          ) : null}
+          )}
 
           {showHitList && !showSearchPending
             ? displayGroupedHits.map((group) => (
@@ -511,13 +493,13 @@ export function SearchPalette() {
               ))
             : null}
 
-          {showAskTrailing ? (
+          {showAskTrailing && (
             <AskCommandGroup
               query={trimmedQuery}
               subtitle={askSubtitle}
               onAsk={runAsk}
             />
-          ) : null}
+          )}
         </Command.List>
 
         <footer className="relative z-[1] flex items-center justify-between gap-3 border-t border-frame/60 bg-surface-2/80 px-3 py-2 text-[11px] text-muted sm:px-4">
@@ -549,9 +531,7 @@ export function SearchPalette() {
                   </kbd>{" "}
                   move
                 </span>
-                <span
-                  className={askIsPrimary ? "inline" : "hidden sm:inline"}
-                >
+                <span className={askIsPrimary ? "inline" : "hidden sm:inline"}>
                   <kbd className="rounded border border-frame/80 bg-surface px-1 py-0.5">
                     ↵
                   </kbd>{" "}
@@ -598,7 +578,7 @@ function AssistPanel({
         </button>
       </div>
 
-      {state.status === "loading" ? (
+      {state.status === "loading" && (
         <div
           className="flex items-center gap-2 rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3 text-sm text-muted"
           role="status"
@@ -614,9 +594,9 @@ function AssistPanel({
           </span>
           Reading the season board…
         </div>
-      ) : null}
+      )}
 
-      {state.status === "answered" ? (
+      {state.status === "answered" && (
         <div className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm leading-relaxed text-ink motion-safe:animate-[search-panel-in_180ms_cubic-bezier(0.22,1,0.36,1)]">
           {state.text.split(/\n+/).map((para, i) => (
             <p key={i} className={i > 0 ? "mt-2" : undefined}>
@@ -624,9 +604,9 @@ function AssistPanel({
             </p>
           ))}
         </div>
-      ) : null}
+      )}
 
-      {state.status === "error" ? (
+      {state.status === "error" && (
         <div
           className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm text-ink"
           role="alert"
@@ -649,9 +629,9 @@ function AssistPanel({
             </button>
           )}
         </div>
-      ) : null}
+      )}
 
-      {state.status === "answered" && related.length ? (
+      {state.status === "answered" && related.length > 0 && (
         <div className="mt-2">
           <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
             Jump to
@@ -670,13 +650,14 @@ function AssistPanel({
             ))}
           </div>
         </div>
-      ) : null}
+      )}
 
-      {state.status === "answered" ? (
+      {state.status === "answered" && (
         <p className="mt-2 text-[11px] leading-snug text-muted">
-          Generated from this season’s board — double-check anything that matters.
+          Generated from this season’s board — double-check anything that
+          matters.
         </p>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -782,9 +763,9 @@ function SearchItem({
         <p className="truncate font-semibold tracking-tight text-ink">
           {item.title}
         </p>
-        {item.subtitle ? (
+        {item.subtitle && (
           <p className="truncate text-xs text-muted">{item.subtitle}</p>
-        ) : null}
+        )}
       </div>
       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted">
         {CATEGORY_LABEL[item.category]}

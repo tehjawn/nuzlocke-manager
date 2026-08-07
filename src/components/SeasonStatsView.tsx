@@ -222,9 +222,7 @@ export function SeasonStatsView({
           />
           <StandingsCard
             title="Shiny case"
-            rows={standingRows(shinies?.rows ?? [], (row) =>
-              String(row.value),
-            )}
+            rows={standingRows(shinies?.rows ?? [], (row) => String(row.value))}
             emptyText={
               shinies
                 ? "No shinies yet — the odds are the odds."
@@ -248,14 +246,14 @@ export function SeasonStatsView({
                         species={entry.species}
                         width={40}
                       />
-                      {entry.fallen ? (
+                      {entry.fallen && (
                         <span
                           aria-hidden
                           className="absolute -right-1 -bottom-1 text-[10px]"
                         >
                           🪦
                         </span>
-                      ) : null}
+                      )}
                     </span>
                   ))}
                 </div>
@@ -269,7 +267,10 @@ export function SeasonStatsView({
         section="species"
         title="Species"
         action={
-          <Link className={sectionLinkClass} href={`/challenges/${slug}/encounters`}>
+          <Link
+            className={sectionLinkClass}
+            href={`/challenges/${slug}/encounters`}
+          >
             Open Encounters →
           </Link>
         }
@@ -312,7 +313,7 @@ export function SeasonStatsView({
             <p className="mt-1 text-[10px] leading-snug text-muted/80">
               Owned by exactly one trainer
             </p>
-            {exclusives.length > 0 ? (
+            {exclusives.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-1">
                 {exclusives.slice(0, 8).map((entry) => (
                   <span
@@ -330,33 +331,33 @@ export function SeasonStatsView({
                     />
                   </span>
                 ))}
-                {exclusives.length > 8 ? (
+                {exclusives.length > 8 && (
                   <span className="text-[10px] font-semibold text-muted">
                     +{exclusives.length - 8}
                   </span>
-                ) : null}
+                )}
               </div>
-            ) : null}
+            )}
           </Link>
         </div>
       </StatsSection>
 
-      {memorial ? (
+      {memorial && (
         <StatsSection section="memorial" title="Graves & wipes">
-          {memorial.heaviestMemorial.length > 0 ||
-          memorial.mostPartyWipes.length > 0 ||
-          memorial.mostDeathProne.length > 0 ||
-          encounter.deadliestRoutes.length > 0 ? (
+          {(memorial.heaviestMemorial.length > 0 ||
+            memorial.mostPartyWipes.length > 0 ||
+            memorial.mostDeathProne.length > 0 ||
+            encounter.deadliestRoutes.length > 0) && (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {memorial.heaviestMemorial.length > 0 ? (
+              {memorial.heaviestMemorial.length > 0 && (
                 <TrainerTopCallout
                   label="Heaviest memorial"
                   entries={memorial.heaviestMemorial}
                   valueLabel={(count) => `${count} RIP`}
                   trainersById={trainersById}
                 />
-              ) : null}
-              {memorial.mostPartyWipes.length > 0 ? (
+              )}
+              {memorial.mostPartyWipes.length > 0 && (
                 <TrainerTopCallout
                   label="Most party wipes"
                   entries={memorial.mostPartyWipes}
@@ -365,21 +366,21 @@ export function SeasonStatsView({
                   }
                   trainersById={trainersById}
                 />
-              ) : null}
-              {memorial.mostDeathProne.length > 0 ? (
+              )}
+              {memorial.mostDeathProne.length > 0 && (
                 <DeathProneTopCallout entries={memorial.mostDeathProne} />
-              ) : null}
-              {encounter.deadliestRoutes.length > 0 ? (
+              )}
+              {encounter.deadliestRoutes.length > 0 && (
                 <RouteTopCallout
                   label="Deadliest routes"
                   entries={encounter.deadliestRoutes}
                 />
-              ) : null}
+              )}
             </div>
-          ) : null}
+          )}
           <div className="pt-2">{memorialBrowser}</div>
         </StatsSection>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -434,9 +435,9 @@ function StandingsCard({
       <p className="text-[10px] font-bold tracking-wide text-muted uppercase">
         {title}
       </p>
-      {hint ? (
+      {hint && (
         <p className="mt-0.5 text-[10px] leading-snug text-muted/80">{hint}</p>
-      ) : null}
+      )}
       {rows.length === 0 ? (
         <p className="mt-2 text-sm text-muted">{emptyText}</p>
       ) : (
@@ -453,7 +454,7 @@ function StandingsCard({
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface/80 text-sm font-bold tabular-nums text-muted">
                 {row.rank}
               </span>
-              {row.trainer ? (
+              {row.trainer && (
                 <AvatarPortrait
                   avatarSpriteKey={row.trainer.avatarSpriteKey}
                   backgroundKey={row.trainer.avatarBackgroundKey}
@@ -462,12 +463,12 @@ function StandingsCard({
                   height={36}
                   alt=""
                 />
-              ) : null}
+              )}
               <span className="min-w-0 flex-1 truncate font-display text-sm font-bold leading-none">
                 {row.label}
-                {row.flair ? (
+                {row.flair && (
                   <span className="font-sans font-normal"> {row.flair}</span>
-                ) : null}
+                )}
               </span>
               <span className="shrink-0 text-sm font-bold tabular-nums">
                 {row.value}
@@ -505,7 +506,7 @@ function TrainerTopCallout({
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface/80 text-sm font-bold tabular-nums text-muted">
                 {index + 1}
               </span>
-              {trainer ? (
+              {trainer && (
                 <AvatarPortrait
                   avatarSpriteKey={trainer.avatarSpriteKey}
                   backgroundKey={trainer.avatarBackgroundKey}
@@ -514,7 +515,7 @@ function TrainerTopCallout({
                   height={40}
                   alt=""
                 />
-              ) : null}
+              )}
               <span className="min-w-0 flex-1 truncate font-display text-sm font-bold leading-none">
                 {entry.label}
               </span>

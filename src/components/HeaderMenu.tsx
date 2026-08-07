@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export type HeaderMenuItem = {
   href: string;
@@ -168,7 +162,7 @@ export function HeaderMenu({
         <ChevronIcon open={open} className={chevronClassName} />
       </button>
 
-      {open ? (
+      {open && (
         <div className="absolute top-full right-0 z-50 pt-1">
           <div
             id={menuId}
@@ -193,31 +187,33 @@ export function HeaderMenu({
                     : "relative z-[1] flex items-center gap-2.5 px-2.5 py-2 hover:bg-interactive-soft/50 focus-visible:bg-interactive-soft/50 focus-visible:outline-none"
                 }
               >
-                {item.icon ? (
+                {item.icon && (
                   <span
                     className={
-                      item.accent ? "shrink-0 text-accent-deep" : "shrink-0 text-ink/70"
+                      item.accent
+                        ? "shrink-0 text-accent-deep"
+                        : "shrink-0 text-ink/70"
                     }
                     aria-hidden
                   >
                     {item.icon}
                   </span>
-                ) : null}
+                )}
                 <span className="min-w-0">
                   <span className="block truncate text-sm leading-tight">
                     {item.label}
                   </span>
-                  {item.description ? (
+                  {item.description && (
                     <span className="mt-0.5 block truncate text-xs font-normal leading-snug text-muted">
                       {item.description}
                     </span>
-                  ) : null}
+                  )}
                 </span>
               </Link>
             ))}
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

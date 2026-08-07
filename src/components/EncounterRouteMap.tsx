@@ -4,10 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { Frame } from "@/components/Frame";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import {
-  HOENN_MAP_VIEWBOX,
-  type HoennMapZone,
-} from "@/data/hoenn-map-zones";
+import { HOENN_MAP_VIEWBOX, type HoennMapZone } from "@/data/hoenn-map-zones";
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
 import {
   buildEncounterMapStatuses,
@@ -88,7 +85,7 @@ export function EncounterRouteMap({
             for the same claim detail as the ledger.
           </p>
         </div>
-        {routeStatuses.length > 0 ? (
+        {routeStatuses.length > 0 && (
           <label className="min-w-[11rem] space-y-1 text-xs font-semibold text-muted">
             Focus trainer
             <select
@@ -105,7 +102,7 @@ export function EncounterRouteMap({
               ))}
             </select>
           </label>
-        ) : null}
+        )}
       </div>
 
       <MapLegend />
@@ -159,11 +156,11 @@ export function EncounterRouteMap({
         />
       </div>
 
-      {unmapped.length > 0 ? (
+      {unmapped.length > 0 && (
         <p className="text-[11px] text-muted">
           Unmapped open slots (list views only): {unmapped.join(", ")}.
         </p>
-      ) : null}
+      )}
     </section>
   );
 }
@@ -336,7 +333,7 @@ function ZoneDetail({
           ))}
         </ul>
 
-        {onJumpToClaims ? (
+        {onJumpToClaims && (
           <button
             type="button"
             className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
@@ -344,7 +341,7 @@ function ZoneDetail({
           >
             Open Route claims list
           </button>
-        ) : null}
+        )}
       </div>
     </Frame>
   );
@@ -370,7 +367,7 @@ function RouteRowDetail({ row, slug }: { row: MapRouteRow; slug: string }) {
           {badge}
         </span>
       </div>
-      {row.flagClaims.length > 0 ? (
+      {row.flagClaims.length > 0 && (
         <ul className="mb-1.5 flex flex-wrap gap-1">
           {row.flagClaims.map((claim) => (
             <li
@@ -381,7 +378,7 @@ function RouteRowDetail({ row, slug }: { row: MapRouteRow; slug: string }) {
             </li>
           ))}
         </ul>
-      ) : null}
+      )}
       {row.claims.length > 0 ? (
         <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4">
           {row.claims.map((claim) => {

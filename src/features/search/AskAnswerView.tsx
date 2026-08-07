@@ -104,8 +104,11 @@ export function AskAnswerView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" aria-live="polite">
-      {state.status === "loading" ? (
-        <div className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3" role="status">
+      {state.status === "loading" && (
+        <div
+          className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3"
+          role="status"
+        >
           <div className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-3">
             <div className="flex items-center gap-2 text-sm text-muted">
               <span className="flex gap-1" aria-hidden>
@@ -126,9 +129,9 @@ export function AskAnswerView({
             </div>
           </div>
         </div>
-      ) : null}
+      )}
 
-      {state.status === "error" ? (
+      {state.status === "error" && (
         <div className="px-3 pb-3 pt-3">
           <div
             className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm text-ink"
@@ -153,20 +156,20 @@ export function AskAnswerView({
             )}
           </div>
         </div>
-      ) : null}
+      )}
 
-      {state.status === "answered" && answer ? (
+      {state.status === "answered" && answer && (
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-3">
           <div className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 motion-safe:animate-[search-panel-in_180ms_cubic-bezier(0.22,1,0.36,1)]">
-            {answer.kind === "canned" || answer.kind === "prose" ? (
+            {(answer.kind === "canned" || answer.kind === "prose") && (
               <AskSafeMarkdown content={answer.markdown} />
-            ) : null}
+            )}
 
-            {answer.kind === "pokemon_ranking" ? (
+            {answer.kind === "pokemon_ranking" && (
               <div className="flex flex-col gap-3">
-                {answer.summaryMarkdown ? (
+                {answer.summaryMarkdown && (
                   <AskSafeMarkdown content={answer.summaryMarkdown} />
-                ) : null}
+                )}
                 <PokemonRankingCard
                   items={answer.items}
                   season={season}
@@ -174,10 +177,10 @@ export function AskAnswerView({
                   onNavigate={onNavigate}
                 />
               </div>
-            ) : null}
+            )}
           </div>
 
-          {chips.length ? (
+          {chips.length > 0 && (
             <div className="mt-3">
               <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
                 {chipLabel}
@@ -197,13 +200,13 @@ export function AskAnswerView({
                 ))}
               </div>
             </div>
-          ) : null}
+          )}
 
           <p className="mt-3 text-[11px] leading-snug text-muted">
             {disclaimer}
           </p>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

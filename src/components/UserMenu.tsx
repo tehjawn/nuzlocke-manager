@@ -3,11 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import {
-  FeedbackIcon,
-  GmIcon,
-  PreferencesIcon,
-} from "@/components/nav-icons";
+import { FeedbackIcon, GmIcon, PreferencesIcon } from "@/components/nav-icons";
 
 type UserMenuProps = {
   name: string;
@@ -83,7 +79,7 @@ export function UserMenu({
         <ChevronIcon open={open} />
       </button>
 
-      {open ? (
+      {open && (
         <div className="absolute top-full right-0 z-50 pt-1">
           <div
             id={menuId}
@@ -120,7 +116,7 @@ export function UserMenu({
                 Feedback / Support
               </Link>
             )}
-            {gmHref ? (
+            {gmHref && (
               <Link
                 href={gmHref}
                 role="menuitem"
@@ -130,7 +126,7 @@ export function UserMenu({
                 <GmIcon className="h-4 w-4 text-accent-deep" />
                 GM
               </Link>
-            ) : null}
+            )}
             <form action={signOutAction} className="relative z-[1]">
               <button
                 type="submit"
@@ -143,7 +139,7 @@ export function UserMenu({
             </form>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -174,7 +170,10 @@ function ProfileIcon() {
       strokeWidth="1.75"
     >
       <circle cx="10" cy="7" r="3.25" />
-      <path d="M4.5 16.5c1.2-2.4 3.1-3.5 5.5-3.5s4.3 1.1 5.5 3.5" strokeLinecap="round" />
+      <path
+        d="M4.5 16.5c1.2-2.4 3.1-3.5 5.5-3.5s4.3 1.1 5.5 3.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -189,8 +188,15 @@ function SignOutIcon() {
       stroke="currentColor"
       strokeWidth="1.75"
     >
-      <path d="M8 4H4.5A1.5 1.5 0 003 5.5v9A1.5 1.5 0 004.5 16H8" strokeLinecap="round" />
-      <path d="M11 10h6M14 7l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M8 4H4.5A1.5 1.5 0 003 5.5v9A1.5 1.5 0 004.5 16H8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M11 10h6M14 7l3 3-3 3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

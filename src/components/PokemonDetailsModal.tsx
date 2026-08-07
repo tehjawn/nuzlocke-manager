@@ -33,10 +33,7 @@ import {
   summarizeIvs,
 } from "@/lib/iv-quality";
 import { keyStatsForSpecies, recommendPlaystyle } from "@/lib/playstyle";
-import {
-  resolveCatchTier,
-  resolveTrainingTier,
-} from "@/lib/pokemon-grades";
+import { resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
 import {
   baseStatRanksFor,
   statRankHint,
@@ -224,7 +221,7 @@ export function PokemonDetailsModal({
     <>
       {showSpeciesInSubtitle ? speciesLabel : null}
       {levelText}
-      {pokemon.isShiny ? (
+      {pokemon.isShiny && (
         <span
           className={
             hasSubtitleMeta
@@ -234,7 +231,7 @@ export function PokemonDetailsModal({
         >
           Shiny ✦
         </span>
-      ) : null}
+      )}
     </>
   );
 
@@ -334,7 +331,7 @@ export function PokemonDetailsModal({
                     : "border-frame bg-surface-2"
                 }`}
               >
-                {catchTier === "god" ? <GodPrismRays /> : null}
+                {catchTier === "god" && <GodPrismRays />}
                 <PokemonSpriteImage
                   alt=""
                   className="pixelated h-28 w-28 object-contain sm:h-[85%] sm:w-[85%]"
@@ -344,46 +341,46 @@ export function PokemonDetailsModal({
                   species={pokemon.species}
                   width={144}
                 />
-                {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+                {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 && (
                   <SurvivalSentimentIcon
                     className="pokemon-survival-sentiment--corner h-4 w-4"
                     poll={pokemon.survivalPoll}
                   />
-                ) : null}
-                {trainingTier !== null ? (
+                )}
+                {trainingTier !== null && (
                   <BondHeart
                     className="pokemon-bond-heart--corner h-4 w-4"
                     tier={trainingTier}
                   />
-                ) : null}
+                )}
               </div>
             </div>
             {(catchTier !== null ||
               (pokemon.survivalPoll && pokemon.survivalPoll.total > 0) ||
               trainingTier !== null) && (
               <div className="flex w-full flex-col gap-1">
-                {catchTier !== null ? (
+                {catchTier !== null && (
                   <CatchTierCaption tier={catchTier} variant="chip" />
-                ) : null}
-                {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 ? (
+                )}
+                {pokemon.survivalPoll && pokemon.survivalPoll.total > 0 && (
                   <SurvivalSentimentCaption
                     poll={pokemon.survivalPoll}
                     variant="chip"
                   />
-                ) : null}
-                {trainingTier !== null ? (
+                )}
+                {trainingTier !== null && (
                   <TrainingTierCaption tier={trainingTier} variant="chip" />
-                ) : null}
+                )}
               </div>
             )}
-            {pokemon.types.length > 0 ? (
+            {pokemon.types.length > 0 && (
               <div className="flex flex-wrap justify-center gap-1 sm:justify-start">
                 {pokemon.types.map((t) => (
                   <TypeBadge key={t} type={t} />
                 ))}
               </div>
-            ) : null}
-            {meta.length > 0 ? (
+            )}
+            {meta.length > 0 && (
               <dl className="hidden w-full space-y-1.5 sm:block">
                 {meta.map((row) => (
                   <div key={row.label} className="min-w-0">
@@ -400,12 +397,12 @@ export function PokemonDetailsModal({
                   </div>
                 ))}
               </dl>
-            ) : null}
+            )}
           </div>
 
           <div className="min-w-0 space-y-4">
             {/* Mobile meta — desktop lives under the sprite */}
-            {meta.length > 0 ? (
+            {meta.length > 0 && (
               <div className="grid grid-cols-2 gap-1.5 sm:hidden">
                 {meta.map((row) => (
                   <MetaChip
@@ -415,15 +412,15 @@ export function PokemonDetailsModal({
                   />
                 ))}
               </div>
-            ) : null}
+            )}
 
-            {playstyle ? (
+            {playstyle && (
               <div>
                 <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-xs font-semibold tracking-tight text-muted">
                     Playstyle
                   </p>
-                  {pokemon.nature ? (
+                  {pokemon.nature && (
                     <p
                       className={`text-[10px] font-semibold tracking-tight ${
                         playstyle.natureAlignment === "helps"
@@ -435,7 +432,7 @@ export function PokemonDetailsModal({
                     >
                       {playstyle.natureAlignmentLabel}
                     </p>
-                  ) : null}
+                  )}
                 </div>
                 <PlaystyleChips
                   primary={playstyle.primary}
@@ -445,18 +442,18 @@ export function PokemonDetailsModal({
                   {playstyle.tip}
                 </p>
               </div>
-            ) : null}
+            )}
 
-            {baseStats ? (
+            {baseStats && (
               <div>
                 <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-xs font-semibold tracking-tight text-muted">
                     Species base stats
                   </p>
-                  {bst != null ? (
+                  {bst != null && (
                     <p className="flex items-baseline gap-1.5 text-[11px] font-semibold tabular-nums text-muted">
                       BST {bst}
-                      {ranks ? (
+                      {ranks && (
                         <span
                           className={`inline-flex items-center rounded border px-1 text-[10px] font-bold leading-tight ${statRankToneClass(ranks.bst.rank)}`}
                           title={statRankHint(
@@ -467,12 +464,12 @@ export function PokemonDetailsModal({
                         >
                           {ranks.bst.rank}
                         </span>
-                      ) : null}
+                      )}
                     </p>
-                  ) : null}
+                  )}
                 </div>
                 <StatGrid compact ranks={statRankChips} spread={baseStats} />
-                {ranks ? (
+                {ranks && (
                   <>
                     <p className="mt-1.5 text-[11px] leading-snug text-muted">
                       {ranks.headline}
@@ -482,11 +479,11 @@ export function PokemonDetailsModal({
                       {ranks.peerCount} Modern Emerald species.
                     </p>
                   </>
-                ) : null}
+                )}
               </div>
-            ) : null}
+            )}
 
-            {battle ? (
+            {battle && (
               <div>
                 <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-xs font-semibold tracking-tight text-muted">
@@ -495,15 +492,15 @@ export function PokemonDetailsModal({
                   {battleSummary?.headline ? (
                     <p
                       className={`text-[10px] font-semibold tracking-tight ${
-                        battleSummary.cracked
-                          ? "text-accent-2"
-                          : "text-muted"
+                        battleSummary.cracked ? "text-accent-2" : "text-muted"
                       }`}
                     >
                       {battleSummary.headline}
                     </p>
                   ) : (
-                    <p className="text-[10px] text-muted">vs max at this level</p>
+                    <p className="text-[10px] text-muted">
+                      vs max at this level
+                    </p>
                   )}
                 </div>
                 <StatGrid
@@ -513,21 +510,21 @@ export function PokemonDetailsModal({
                   compact
                 />
               </div>
-            ) : null}
+            )}
 
-            {showIvs || showEvs ? (
+            {(showIvs || showEvs) && (
               <div
                 className={`grid gap-3 ${
                   showIvs && showEvs ? "sm:grid-cols-2" : ""
                 }`}
               >
-                {showIvs && ivs ? (
+                {showIvs && ivs && (
                   <div>
                     <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
                       <p className="text-xs font-semibold tracking-tight text-muted">
                         IVs
                       </p>
-                      {ivSummary?.headline ? (
+                      {ivSummary?.headline && (
                         <p
                           className={`text-[10px] font-semibold tracking-tight ${
                             ivSummary.god
@@ -539,36 +536,34 @@ export function PokemonDetailsModal({
                         >
                           {ivSummary.headline}
                         </p>
-                      ) : null}
+                      )}
                     </div>
                     <StatGrid spread={ivs} tone="iv" compact />
                   </div>
-                ) : null}
-                {showEvs && evs ? (
+                )}
+                {showEvs && evs && (
                   <div>
                     <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
                       <p className="text-xs font-semibold tracking-tight text-muted">
                         EVs
                       </p>
-                      {evSummary?.headline ? (
+                      {evSummary?.headline && (
                         <p
                           className={`text-[10px] font-semibold tracking-tight ${
-                            evSummary.cracked
-                              ? "text-accent-2"
-                              : "text-muted"
+                            evSummary.cracked ? "text-accent-2" : "text-muted"
                           }`}
                         >
                           {evSummary.headline}
                         </p>
-                      ) : null}
+                      )}
                     </div>
                     <StatGrid spread={evs} tone="ev" compact />
                   </div>
-                ) : null}
+                )}
               </div>
-            ) : null}
+            )}
 
-            {moves.length > 0 ? (
+            {moves.length > 0 && (
               <div>
                 <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
                   Moves
@@ -584,13 +579,13 @@ export function PokemonDetailsModal({
                   ))}
                 </ul>
               </div>
-            ) : null}
+            )}
 
             {pokemon.pokedexId != null && (
               <ModernEmeraldLearnset pokedexId={pokemon.pokedexId} />
             )}
 
-            {pokemon.pokedexId != null ? (
+            {pokemon.pokedexId != null && (
               <EvolutionPath
                 pokedexId={pokemon.pokedexId}
                 species={pokemon.species}
@@ -600,7 +595,7 @@ export function PokemonDetailsModal({
                 shiny={pokemon.isShiny}
                 slug={slug}
               />
-            ) : null}
+            )}
           </div>
         </div>
 
@@ -611,7 +606,7 @@ export function PokemonDetailsModal({
           viewerUserId={viewerUserId}
         />
 
-        {pokemon.causeOfDeath ? (
+        {pokemon.causeOfDeath && (
           <div className="border-t border-frame/20 pt-3">
             <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
               <TombstoneIcon className="h-3.5 w-3.5 shrink-0" />
@@ -621,7 +616,7 @@ export function PokemonDetailsModal({
               {pokemon.causeOfDeath}
             </p>
           </div>
-        ) : null}
+        )}
       </div>
     </Modal>
   );

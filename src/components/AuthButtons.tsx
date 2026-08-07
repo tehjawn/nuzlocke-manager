@@ -5,10 +5,7 @@ import { LoggedInChrome } from "@/components/LoggedInChrome";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { isDatabaseConfigured } from "@/lib/db";
 import { listNotificationsForUser } from "@/lib/notifications";
-import {
-  resolveSessionUser,
-  SESSION_EXPIRED_LOGIN,
-} from "@/lib/session-user";
+import { resolveSessionUser, SESSION_EXPIRED_LOGIN } from "@/lib/session-user";
 
 const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
 
@@ -61,14 +58,14 @@ export async function AuthButtons({
 
     return (
       <div className="flex items-center gap-2">
-        {!hideMyTrainer ? (
+        {!hideMyTrainer && (
           <Link
             href={AFTER_LOGIN}
             className="pressable hidden h-9 items-center bg-accent px-3 text-sm font-semibold text-[var(--on-accent)] sm:inline-flex"
           >
             My Trainer
           </Link>
-        ) : null}
+        )}
         <LoggedInChrome
           feedbackHref={feedbackHref}
           gmHref={gmHref}
@@ -93,10 +90,7 @@ export async function AuthButtons({
         await signIn("discord", { redirectTo: AFTER_LOGIN });
       }}
     >
-      <button
-        type="submit"
-        className={`${DISCORD_BTN_CLASS} h-9 px-3 text-sm`}
-      >
+      <button type="submit" className={`${DISCORD_BTN_CLASS} h-9 px-3 text-sm`}>
         <DiscordIcon className="h-4 w-4" />
         Discord login
       </button>

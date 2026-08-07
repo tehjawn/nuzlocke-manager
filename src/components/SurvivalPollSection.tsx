@@ -44,20 +44,20 @@ function VoteRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-semibold leading-tight">
           {vote.user.displayName}
-          {highlight ? (
+          {highlight && (
             <span className="ml-1 text-[10px] font-bold text-accent-deep">
               you
             </span>
-          ) : null}
+          )}
           <span className="ml-1.5 text-[10px] font-medium text-muted">
             {vote.prediction === "SURVIVE" ? "Survive" : "Die"}
           </span>
         </p>
-        {vote.comment ? (
+        {vote.comment && (
           <p className="mt-0.5 text-[11px] leading-snug text-ink/80">
             “{vote.comment}”
           </p>
-        ) : null}
+        )}
       </div>
     </li>
   );
@@ -78,9 +78,7 @@ function Roster({
 }) {
   const [expanded, setExpanded] = useState(false);
   const collapsed =
-    Boolean(collapseMisses) &&
-    votes.length > MISSED_COLLAPSE_AT &&
-    !expanded;
+    Boolean(collapseMisses) && votes.length > MISSED_COLLAPSE_AT && !expanded;
   const shown = collapsed ? votes.slice(0, MISSED_COLLAPSE_AT) : votes;
 
   return (
@@ -96,14 +94,12 @@ function Roster({
             <VoteRow
               key={vote.id}
               vote={vote}
-              highlight={Boolean(
-                viewerUserId && vote.user.id === viewerUserId,
-              )}
+              highlight={Boolean(viewerUserId && vote.user.id === viewerUserId)}
             />
           ))}
         </ul>
       )}
-      {collapsed ? (
+      {collapsed && (
         <button
           type="button"
           className="mt-1 text-[11px] font-semibold text-accent-deep underline-offset-2 hover:underline"
@@ -111,7 +107,7 @@ function Roster({
         >
           Show {votes.length - MISSED_COLLAPSE_AT} more misses
         </button>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -244,10 +240,10 @@ export function SurvivalPollSection({
           ) : market.voteBlockedReason ? (
             <p className="text-[11px] text-muted">{market.voteBlockedReason}</p>
           ) : null}
-          {error ? (
+          {error && (
             <p className="text-[11px] font-medium text-danger">{error}</p>
-          ) : null}
-          {market.votes.length > 0 ? (
+          )}
+          {market.votes.length > 0 && (
             <ul className="max-h-40 space-y-0.5 overflow-y-auto">
               {market.votes.slice(0, 12).map((vote) => (
                 <VoteRow
@@ -259,7 +255,7 @@ export function SurvivalPollSection({
                 />
               ))}
             </ul>
-          ) : null}
+          )}
         </div>
       ) : market.status === "VOID" ? (
         <p className="mt-2 text-[11px] text-muted">

@@ -206,20 +206,20 @@ export function ItemDexPanel({
                         <span className="block truncate text-sm font-semibold leading-tight">
                           {item.name}
                         </span>
-                        {item.move ? (
+                        {item.move && (
                           <span className="block truncate text-[11px] leading-tight text-muted">
                             {item.move}
                           </span>
-                        ) : null}
+                        )}
                       </span>
-                      {isWildHoldOnly(item) ? (
+                      {isWildHoldOnly(item) && (
                         <span
                           className="shrink-0 rounded border border-warn/50 bg-warn/15 px-1 text-[10px] font-bold leading-tight text-warn"
                           title="No fixed pickup — wild hold only"
                         >
                           HOLD
                         </span>
-                      ) : null}
+                      )}
                     </button>
                   </li>
                 );
@@ -330,31 +330,31 @@ function ItemEntry({
               <span className="inline-flex rounded border border-relic/45 bg-relic-soft px-1.5 py-0.5 text-[11px] font-semibold tracking-tight text-relic">
                 {POCKET_LABELS[item.pocket]}
               </span>
-              {item.move ? (
+              {item.move && (
                 <span className="inline-flex rounded border border-frame/50 bg-surface-2 px-1.5 py-0.5 text-[11px] font-semibold tracking-tight">
                   Teaches {item.move}
                 </span>
-              ) : null}
-              {item.price > 0 ? (
+              )}
+              {item.price > 0 && (
                 <span className="inline-flex rounded border border-frame/50 bg-surface-2 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums tracking-tight text-muted">
                   ₽{item.price.toLocaleString()}
                 </span>
-              ) : null}
+              )}
             </div>
-            {item.description ? (
+            {item.description && (
               <p className="text-sm leading-snug">{item.description}</p>
-            ) : null}
-            {battleText && battleText !== item.description ? (
+            )}
+            {battleText && battleText !== item.description && (
               <p className="text-[11px] leading-snug text-muted">
                 In battle: {battleText}
               </p>
-            ) : null}
+            )}
           </div>
         </div>
 
-        {evolutionUses.length > 0 ? (
+        {evolutionUses.length > 0 && (
           <EvolutionUses slug={slug} uses={evolutionUses} />
-        ) : null}
+        )}
 
         <Sources
           slug={slug}
@@ -429,12 +429,12 @@ function EvolutionUses({
           </li>
         ))}
       </ul>
-      {uses.some((use) => use.needsTrade) ? (
+      {uses.some((use) => use.needsTrade) && (
         <p className="mt-1.5 text-[11px] leading-snug text-muted">
           Trade evolutions need a partner — the item alone will not do it on a
           solo run.
         </p>
-      ) : null}
+      )}
       <p className="mt-1 text-[11px] leading-snug text-muted">
         With the evolution-method randomizer on, a species reads another
         species&rsquo; evolution row — check your own save before committing an
@@ -470,14 +470,14 @@ function Sources({
         </p>
       </div>
 
-      {item.sources.length === 0 ? (
+      {item.sources.length === 0 && (
         <p className="rounded-lg border border-frame/40 bg-surface-2 px-2.5 py-2 text-sm text-muted">
           No source in the ROM&rsquo;s overworld tables. Reachable only through
           in-game events this catalog doesn&rsquo;t model.
         </p>
-      ) : null}
+      )}
 
-      {holdOnly ? (
+      {holdOnly && (
         <p className="mb-2 rounded-lg border border-warn/50 bg-warn/10 px-2.5 py-2 text-[11px] leading-snug">
           <span className="font-bold">No pickup anywhere in the ROM.</span> Not
           a ball, not a hidden square, not a shop — the only way to get one is
@@ -485,9 +485,9 @@ function Sources({
           holder below actually spawns in your seed rather than trusting a
           vanilla route list.
         </p>
-      ) : null}
+      )}
 
-      {fixed.length > 0 ? (
+      {fixed.length > 0 && (
         <ul className="m-0 mb-2 list-none space-y-1 p-0">
           {fixed.map((source, index) => (
             <li
@@ -499,23 +499,23 @@ function Sources({
               </span>
               <span className="min-w-0 flex-1 text-sm font-semibold leading-snug">
                 {source.detail ?? source.where}
-                {source.detail && source.where !== source.detail ? (
+                {source.detail && source.where !== source.detail && (
                   <span className="ml-1.5 text-[11px] font-medium text-muted">
                     {source.where}
                   </span>
-                ) : null}
+                )}
               </span>
-              {source.count && source.count > 1 ? (
+              {source.count && source.count > 1 && (
                 <span className="shrink-0 text-[11px] font-bold tabular-nums text-muted">
                   ×{source.count}
                 </span>
-              ) : null}
+              )}
             </li>
           ))}
         </ul>
-      ) : null}
+      )}
 
-      {held.length > 0 ? (
+      {held.length > 0 && (
         <div className="mb-2">
           <p className="mb-1 text-[11px] font-semibold tracking-tight text-muted">
             Held by wild
@@ -525,7 +525,7 @@ function Sources({
               const label = source.species ?? "Unknown";
               const chip = (
                 <span className="flex items-center gap-1.5">
-                  {source.pokedexId ? (
+                  {source.pokedexId && (
                     <PokemonSpriteImage
                       alt=""
                       className="pixelated h-7 w-7 shrink-0 object-contain"
@@ -535,7 +535,7 @@ function Sources({
                       species={label}
                       width={28}
                     />
-                  ) : null}
+                  )}
                   <span className="text-xs font-semibold">{label}</span>
                   <span
                     className={`rounded border px-1 text-[10px] font-bold leading-tight ${
@@ -572,21 +572,21 @@ function Sources({
           </ul>
           <p className="mt-1.5 text-[11px] leading-snug text-muted">
             A wild mon rolls {WILD_HOLD_RATES.none}% nothing /{" "}
-            {WILD_HOLD_RATES.common}% common / {WILD_HOLD_RATES.rare}% rare. Lead
-            with Compound Eyes and that becomes{" "}
+            {WILD_HOLD_RATES.common}% common / {WILD_HOLD_RATES.rare}% rare.
+            Lead with Compound Eyes and that becomes{" "}
             {WILD_HOLD_RATES.compoundEyes.none}/
             {WILD_HOLD_RATES.compoundEyes.common}/
             {WILD_HOLD_RATES.compoundEyes.rare}. Thief and Covet take the item
             without a catch.
           </p>
         </div>
-      ) : null}
+      )}
 
-      {pickup ? (
+      {pickup && (
         <p className="text-[11px] leading-snug text-muted">
           Pickup can also turn this up ({holdRateLabel(pickup.rate)} table).
         </p>
-      ) : null}
+      )}
     </section>
   );
 }

@@ -74,19 +74,13 @@ function qualityFor(
   return "average";
 }
 
-function labelClass(
-  band: StatQualityBand,
-  compact: boolean,
-): string {
+function labelClass(band: StatQualityBand, compact: boolean): string {
   const size = compact ? "text-[9px]" : "text-[11px]";
   const tone = qualityToneClass(band);
   return tone ? `${size} ${tone}` : `${size} text-muted`;
 }
 
-function valueClass(
-  band: StatQualityBand,
-  compact: boolean,
-): string {
+function valueClass(band: StatQualityBand, compact: boolean): string {
   const size = compact ? "text-[11px]" : "text-sm";
   const tone = qualityToneClass(band);
   return tone ? `${size} ${tone}` : size;
@@ -106,8 +100,7 @@ export function StatGrid({
   showMax = false,
   ranks = null,
 }: StatGridProps) {
-  const usesMeters =
-    maxSpread != null || tone === "iv" || tone === "ev";
+  const usesMeters = maxSpread != null || tone === "iv" || tone === "ev";
   const hasMaxSpread = maxSpread != null;
 
   if (!usesMeters) {
@@ -136,14 +129,14 @@ export function StatGrid({
               >
                 {spread[key]}
               </p>
-              {rank ? (
+              {rank && (
                 <span
                   className={`mt-0.5 inline-flex items-center justify-center rounded border px-1 text-[10px] font-bold leading-tight ${rank.toneClass}`}
                   title={rank.hint}
                 >
                   {rank.letter}
                 </span>
-              ) : null}
+              )}
             </div>
           );
         })}
@@ -167,8 +160,7 @@ export function StatGrid({
         const pct = Math.min(100, Math.max(0, (value / max) * 100));
         const label = STAT_LABELS[key];
         const band = qualityFor(tone, value, max, hasMaxSpread);
-        const highlight =
-          tone === "iv" || tone === "ev" || hasMaxSpread;
+        const highlight = tone === "iv" || tone === "ev" || hasMaxSpread;
         const perfect = highlight && band === "perfect";
 
         return (
@@ -225,7 +217,7 @@ export function StatGrid({
                 }}
               />
             </div>
-            {showMax ? (
+            {showMax && (
               <span
                 className={`text-right font-mono tabular-nums text-muted ${
                   compact ? "text-[9px]" : "text-[11px]"
@@ -233,7 +225,7 @@ export function StatGrid({
               >
                 {max}
               </span>
-            ) : null}
+            )}
           </div>
         );
       })}

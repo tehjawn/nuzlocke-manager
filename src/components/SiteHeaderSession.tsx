@@ -1,8 +1,5 @@
 import { AuthButtons } from "@/components/AuthButtons";
-import {
-  GmToolsLauncher,
-  GmViewBanner,
-} from "@/components/GmToolsLauncher";
+import { GmToolsLauncher, GmViewBanner } from "@/components/GmToolsLauncher";
 import { MobileMenuAuth } from "@/components/MobileMenuAuth";
 import { MobileNavDrawer } from "@/components/MobileNavDrawer";
 import {
@@ -42,9 +39,7 @@ export async function SiteHeaderSession({
 }: SiteHeaderSessionProps) {
   const menuShowGm =
     !firstRun && (showGm || (await isGmForChallengeSlug(seasonSlug)));
-  const feedbackHref = seasonSlug
-    ? `/challenges/${seasonSlug}/feedback`
-    : null;
+  const feedbackHref = seasonSlug ? `/challenges/${seasonSlug}/feedback` : null;
   const gmHref =
     menuShowGm && seasonSlug ? `/challenges/${seasonSlug}/gm` : null;
 
@@ -52,23 +47,23 @@ export async function SiteHeaderSession({
     <>
       {/* Global pages have no season Search registrar — keep GM Console in sync. */}
       {!challengeSlug &&
-      seasonSlug &&
-      seasonYear != null &&
-      seasonStatus &&
-      menuShowGm ? (
-        <SeasonSearchRegistrar
-          season={briefToSearchSeasonContext(
-            {
-              slug: seasonSlug,
-              name: seasonName ?? seasonSlug,
-              year: seasonYear,
-              status: seasonStatus,
-              game: seasonGame,
-            },
-            { showGm: true },
-          )}
-        />
-      ) : null}
+        seasonSlug &&
+        seasonYear != null &&
+        seasonStatus &&
+        menuShowGm && (
+          <SeasonSearchRegistrar
+            season={briefToSearchSeasonContext(
+              {
+                slug: seasonSlug,
+                name: seasonName ?? seasonSlug,
+                year: seasonYear,
+                status: seasonStatus,
+                game: seasonGame,
+              },
+              { showGm: true },
+            )}
+          />
+        )}
       <AuthButtons
         feedbackHref={feedbackHref}
         hideMyTrainer={Boolean(myTrainerId)}
@@ -127,9 +122,9 @@ export function SiteHeaderSessionFallback({
   return (
     <>
       <div className="flex items-center gap-2" aria-hidden>
-        {!hideMyTrainer ? (
+        {!hideMyTrainer && (
           <span className="hidden h-9 w-24 animate-pulse bg-surface sm:inline-block" />
-        ) : null}
+        )}
         <span className="inline-block h-9 w-9 animate-pulse bg-surface" />
         <span className="hidden h-9 w-28 animate-pulse bg-surface sm:inline-block" />
       </div>

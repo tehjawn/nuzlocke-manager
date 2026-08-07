@@ -5,11 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { ToolsIcon } from "@/components/nav-icons";
 import { ToolChip } from "@/components/tool-icons";
-import {
-  TOOLS_CATALOG,
-  toolsHref,
-  toolsHubHref,
-} from "@/lib/tools-routes";
+import { TOOLS_CATALOG, toolsHref, toolsHubHref } from "@/lib/tools-routes";
 
 type ToolsMenuProps = {
   slug: string;
@@ -171,7 +167,7 @@ export function ToolsMenu({ slug }: ToolsMenuProps) {
         <ChevronIcon open={open} />
       </button>
 
-      {open ? (
+      {open && (
         <div className="absolute top-full right-0 z-50 pt-1">
           <div
             id={menuId}
@@ -221,7 +217,7 @@ export function ToolsMenu({ slug }: ToolsMenuProps) {
             </Link>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

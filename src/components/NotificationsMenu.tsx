@@ -74,9 +74,7 @@ export function NotificationsMenu({
         type="button"
         className="pressable relative inline-flex h-9 w-9 items-center justify-center bg-surface"
         aria-label={
-          badgeLabel
-            ? `Notifications, ${badgeLabel} unread`
-            : "Notifications"
+          badgeLabel ? `Notifications, ${badgeLabel} unread` : "Notifications"
         }
         aria-haspopup="menu"
         aria-expanded={open}
@@ -84,14 +82,14 @@ export function NotificationsMenu({
         onClick={() => setOpen((v) => !v)}
       >
         <BellIcon />
-        {badgeLabel ? (
+        {badgeLabel && (
           <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-md bg-accent px-1 text-[10px] font-bold leading-none text-[var(--on-accent)]">
             {badgeLabel}
           </span>
-        ) : null}
+        )}
       </button>
 
-      {open ? (
+      {open && (
         <div className="fixed inset-x-2 top-16 z-50 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:pt-1">
           <div
             id={menuId}
@@ -154,20 +152,20 @@ export function NotificationsMenu({
                             <span className="block text-sm font-medium">
                               {notification.title}
                             </span>
-                            {notification.body ? (
+                            {notification.body && (
                               <span className="mt-0.5 block text-xs text-muted">
                                 {notification.body}
                               </span>
-                            ) : null}
-                            {deepLinkLabel ? (
+                            )}
+                            {deepLinkLabel && (
                               <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
                                 {deepLinkLabel}
                               </span>
-                            ) : null}
+                            )}
                           </span>
                         </span>
                       </button>
-                      {!pinnedWelcome ? (
+                      {!pinnedWelcome && (
                         <button
                           type="button"
                           aria-label={`Dismiss ${notification.title}`}
@@ -182,7 +180,7 @@ export function NotificationsMenu({
                         >
                           <DismissIcon />
                         </button>
-                      ) : null}
+                      )}
                     </li>
                   );
                 })}
@@ -190,7 +188,7 @@ export function NotificationsMenu({
             )}
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
