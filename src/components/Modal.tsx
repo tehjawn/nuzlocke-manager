@@ -45,7 +45,9 @@ export function Modal({
   containScroll = false,
 }: ModalProps) {
   const titleId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
   const resolvedSize = size ?? (wide ? "wide" : "default");
   const widthClass =
     resolvedSize === "fullscreen"
@@ -61,15 +63,34 @@ export function Modal({
       : "max-h-[92dvh]";
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
     if (!open) return;
     return lockBodyScroll();
   }, [open]);
 
+  // Document-level Escape so close still works when focus has fallen to <body>
+  // (common after button remounts). Nested UIs that call stopPropagation
+  // (SpriteBrowser filters, export confirm strip) still win. Only the topmost
+  // `[data-modal-open]` shell closes — stacked Modals / Confirm / Jump stay put.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const root = rootRef.current;
+      if (!root) return;
+      const shells = document.querySelectorAll("[data-modal-open]");
+      if (shells[shells.length - 1] !== root) return;
+      e.preventDefault();
+      onCloseRef.current();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   const onPanelKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Escape") {
-      onClose();
-      return;
-    }
     if (e.key !== "Tab") return;
     const focusables = panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE);
     if (!focusables || focusables.length === 0) return;
@@ -89,6 +110,7 @@ export function Modal({
   // Portal above sticky rails / overflow parents; sit above body grain (z-80).
   return createPortal(
     <div
+      ref={rootRef}
       className={`fixed inset-x-0 top-0 z-[100] flex h-dvh items-end justify-center overscroll-none pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] sm:items-center ${
         resolvedSize === "fullscreen" ? "sm:p-2 lg:p-3" : "sm:p-4"
       }`}
