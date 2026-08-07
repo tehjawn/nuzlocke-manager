@@ -77,9 +77,7 @@ export function SpecimenShowcase({
   const [shinyOnly, setShinyOnly] = useState(false);
   const [catchTier, setCatchTier] = useState<CatchTier | null>(null);
   const [bstRank, setBstRank] = useState<StatRank | null>(null);
-  const [competitiveRank, setCompetitiveRank] = useState<StatRank | null>(
-    null,
-  );
+  const [competitiveRank, setCompetitiveRank] = useState<StatRank | null>(null);
   const [openRowId, setOpenRowId] = useState<string | null>(null);
 
   // Everything except slot, so the chip tallies below describe what switching
@@ -140,7 +138,11 @@ export function SpecimenShowcase({
 
   return (
     <div className="space-y-4">
-      <div aria-label="Slot filter" className="flex flex-wrap gap-1.5" role="group">
+      <div
+        aria-label="Slot filter"
+        className="flex flex-wrap gap-1.5"
+        role="group"
+      >
         {SLOT_SCOPES.map((scope) => {
           const active = slot === scope.id;
           return (
@@ -387,7 +389,7 @@ function SpecimenCard({
                 : "border-frame"
             }`}
           >
-            {tier === "god" ? <GodPrismRays /> : null}
+            {tier === "god" && <GodPrismRays />}
             <PokemonSpriteImage
               alt=""
               className="pixelated h-[88%] w-[88%] object-contain"
@@ -397,19 +399,18 @@ function SpecimenCard({
               species={row.species}
               width={96}
             />
-            {row.pokemon.survivalPoll &&
-            row.pokemon.survivalPoll.total > 0 ? (
+            {row.pokemon.survivalPoll && row.pokemon.survivalPoll.total > 0 && (
               <SurvivalSentimentIcon
                 className="pokemon-survival-sentiment--corner h-3.5 w-3.5"
                 poll={row.pokemon.survivalPoll}
               />
-            ) : null}
-            {row.trainingTier !== null ? (
+            )}
+            {row.trainingTier !== null && (
               <BondHeart
                 className="pokemon-bond-heart--corner h-3.5 w-3.5"
                 tier={row.trainingTier}
               />
-            ) : null}
+            )}
           </div>
 
           <div className="min-w-0 space-y-0.5 text-center">
@@ -476,9 +477,7 @@ function SpecimenCard({
                   kind="Comp"
                   letter={row.competitiveRank}
                   title={`Competitive Score: ${row.competitiveRank}${
-                    row.competitiveReason
-                      ? ` — ${row.competitiveReason}`
-                      : ""
+                    row.competitiveReason ? ` — ${row.competitiveReason}` : ""
                   }`}
                 />
               )}
@@ -505,7 +504,9 @@ function ScoreChip({
       title={title}
     >
       <span className="font-semibold tracking-tight opacity-80">{kind}</span>
-      <span aria-label={`${kind === "BST" ? "BST" : "Competitive"} Score: ${letter}`}>
+      <span
+        aria-label={`${kind === "BST" ? "BST" : "Competitive"} Score: ${letter}`}
+      >
         {letter}
       </span>
     </span>

@@ -120,9 +120,7 @@ function PrepStatusIcon({
   return (
     <span
       className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold leading-none ${
-        cleared
-          ? "bg-accent/20 text-accent-deep"
-          : "bg-danger/15 text-danger"
+        cleared ? "bg-accent/20 text-accent-deep" : "bg-danger/15 text-danger"
       }`}
       title={title}
       aria-label={cleared ? "Cleared" : "Underleveled"}
@@ -158,9 +156,7 @@ export function TeamPlannerView({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const mode = parsePlannerMode(
-    searchParams.get("mode") ?? initialMode,
-  );
+  const mode = parsePlannerMode(searchParams.get("mode") ?? initialMode);
   const [viewerId, setViewerId] = useState(() => {
     if (myTrainerId) return myTrainerId;
     const withLiving = trainers.find((t) => livingBox(t).length > 0);
@@ -380,7 +376,7 @@ export function TeamPlannerView({
             ))}
           </select>
         </label>
-        {mode === "vs" ? (
+        {mode === "vs" && (
           <label className="min-w-[10rem] space-y-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted">
             Opponent
             <select
@@ -395,7 +391,7 @@ export function TeamPlannerView({
               ))}
             </select>
           </label>
-        ) : null}
+        )}
         <div className="ml-auto flex flex-wrap gap-1.5 pb-0.5">
           <button
             type="button"
@@ -473,35 +469,35 @@ export function TeamPlannerView({
             onValueChange={selectMode}
             panelClassName="min-w-0 space-y-3"
           >
-            {mode === "coverage" ? (
+            {mode === "coverage" && (
               <CoveragePanels
                 draft={draft}
                 verdict={verdict}
                 offenseGrid={offenseGrid}
               />
-            ) : null}
-            {mode === "prep" ? (
+            )}
+            {mode === "prep" && (
               <PrepPanels
                 slug={slug}
                 draft={draft}
                 gymPreps={gymPreps}
                 earnedBadgeKeys={viewer?.earnedBadgeKeys ?? []}
               />
-            ) : null}
-            {mode === "vs" ? (
+            )}
+            {mode === "vs" && (
               <VsTrainerPanel
                 draft={draft}
                 opponent={opponent}
                 opponentMain={opponentMain}
               />
-            ) : null}
-            {mode === "recommended" ? (
+            )}
+            {mode === "recommended" && (
               <RecommendedPanel
                 pool={pool}
                 poolById={poolById}
                 onApply={(entryIds) => commitSlots(toSlots(entryIds))}
               />
-            ) : null}
+            )}
           </ModeTabs>
         </div>
       </div>
@@ -563,11 +559,7 @@ function PartyStripSlots({
                   </span>
                   <span className="flex min-h-[1.125rem] flex-wrap justify-center gap-0.5">
                     {entry.types.map((t) => (
-                      <TypeBadge
-                        key={`${entry.id}-${t}`}
-                        type={t}
-                        size="sm"
-                      />
+                      <TypeBadge key={`${entry.id}-${t}`} type={t} size="sm" />
                     ))}
                   </span>
                 </SlotButton>
@@ -582,11 +574,10 @@ function PartyStripSlots({
                 <span className="absolute left-1 top-1 text-[9px] font-bold tabular-nums text-muted">
                   {index + 1}
                 </span>
-                <span
-                  aria-hidden
-                  className="block h-12 w-12 sm:h-14 sm:w-14"
-                />
-                <span className="text-[10px] font-medium text-muted">Empty</span>
+                <span aria-hidden className="block h-12 w-12 sm:h-14 sm:w-14" />
+                <span className="text-[10px] font-medium text-muted">
+                  Empty
+                </span>
                 <span aria-hidden className="min-h-[1.125rem]" />
               </SlotButton>
             )}
@@ -827,27 +818,27 @@ function RecommendedPanel({
                   {pick.reason}
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-1">
-                  {catchTier && catchLabel ? (
+                  {catchTier && catchLabel && (
                     <span
                       className={`rounded border border-frame/40 px-1.5 py-0.5 text-[10px] font-bold leading-tight ${catchTierToneClass(catchTier)}`}
                     >
                       {catchLabel}
                     </span>
-                  ) : null}
-                  {pick.quality.bstRank ? (
+                  )}
+                  {pick.quality.bstRank && (
                     <RecommendScoreChip
                       kind="BST"
                       letter={pick.quality.bstRank}
                       title={`BST Score: ${pick.quality.bstRank}`}
                     />
-                  ) : null}
-                  {pick.quality.competitive ? (
+                  )}
+                  {pick.quality.competitive && (
                     <RecommendScoreChip
                       kind="Comp"
                       letter={pick.quality.competitive}
                       title={`Competitive Score: ${pick.quality.competitive}`}
                     />
-                  ) : null}
+                  )}
                 </div>
               </div>
             </li>
@@ -949,7 +940,7 @@ function CoveragePanels({
         </div>
       </div>
 
-      {verdict.callouts.length > 0 ? (
+      {verdict.callouts.length > 0 && (
         <ul className="mt-2 space-y-1">
           {verdict.callouts.map((bullet) => (
             <li
@@ -966,15 +957,13 @@ function CoveragePanels({
             </li>
           ))}
         </ul>
-      ) : null}
+      )}
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-          {showAllTypes
-            ? "All types"
-            : `Gaps · ${gapCount}`}
+          {showAllTypes ? "All types" : `Gaps · ${gapCount}`}
         </p>
-        {gapCount > 0 ? (
+        {gapCount > 0 && (
           <button
             type="button"
             className={`${CTA_SECONDARY_SM} !px-2 !py-0.5 !text-[10px]`}
@@ -982,7 +971,7 @@ function CoveragePanels({
           >
             {preferAllTypes ? "Gaps only" : "Show all 18"}
           </button>
-        ) : null}
+        )}
       </div>
 
       <div className="mt-1.5 overflow-x-auto rounded-md border border-frame/60">
@@ -1109,8 +1098,9 @@ function CoveragePanels({
       </div>
 
       <p className="mt-2 text-[10px] leading-snug text-muted">
-        Columns are your planned team. Green cells are ≥2× into that type; dashes
-        are gaps. Weak = how many of yours take ≥2× from that attack type.
+        Columns are your planned team. Green cells are ≥2× into that type;
+        dashes are gaps. Weak = how many of yours take ≥2× from that attack
+        type.
       </p>
     </Frame>
   );
@@ -1309,17 +1299,17 @@ function PrepCard({
         className="group open:bg-surface-2/40"
       >
         <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 [&::-webkit-details-marker]:hidden">
-          {index != null ? (
+          {index != null && (
             <span className="shrink-0 w-4 text-[11px] font-bold tabular-nums text-muted group-open:text-ink">
               {index}.
             </span>
-          ) : null}
+          )}
           <span className="min-w-0 flex-1 truncate text-sm font-semibold">
             <span className={cleared ? "text-muted line-through" : "text-ink"}>
               {prep.leaderName}
-              {badge ? (
+              {badge && (
                 <span className="ml-1.5 font-medium text-muted">{badge}</span>
-              ) : null}
+              )}
             </span>
             <span
               className={`ml-1.5 font-medium tabular-nums ${
@@ -1344,10 +1334,10 @@ function PrepCard({
               {cleared ? "· Cleared!" : `· Lv. ${prep.aceLevel}`}
             </span>
           </span>
-          {specialty || !cleared || underOnly ? (
+          {(specialty || !cleared || underOnly) && (
             <span className="flex shrink-0 items-center gap-3">
-              {specialty ? <TypeBadge type={specialty} size="sm" /> : null}
-              {!cleared ? (
+              {specialty && <TypeBadge type={specialty} size="sm" />}
+              {!cleared && (
                 <span className="flex items-center gap-0.5">
                   {matches.length > 0 ? (
                     matches.slice(0, SUMMARY_MATCH_LIMIT).map((match) => (
@@ -1384,13 +1374,13 @@ function PrepCard({
                       —
                     </span>
                   )}
-                  {matches.length > SUMMARY_MATCH_LIMIT ? (
+                  {matches.length > SUMMARY_MATCH_LIMIT && (
                     <span className="text-[10px] font-semibold tabular-nums text-muted">
                       +{matches.length - SUMMARY_MATCH_LIMIT}
                     </span>
-                  ) : null}
+                  )}
                 </span>
-              ) : null}
+              )}
               {cleared ? (
                 <PrepStatusIcon kind="cleared" title="Badge earned" />
               ) : underOnly ? (
@@ -1400,7 +1390,7 @@ function PrepCard({
                 />
               ) : null}
             </span>
-          ) : null}
+          )}
         </summary>
         <div className="space-y-2 border-t border-frame/40 px-2.5 py-2 pl-7">
           {matches.length > 0 ? (
@@ -1439,19 +1429,15 @@ function PrepCard({
                     <span className="text-[10px] font-semibold text-ink">
                       {monLabel(match.entry)}
                     </span>
-                    {primary ? (
-                      <TypeBadge
-                        type={primary.type}
-                        size="sm"
-                        variant="soft"
-                      />
-                    ) : null}
-                    {viaMove ? (
+                    {primary && (
+                      <TypeBadge type={primary.type} size="sm" variant="soft" />
+                    )}
+                    {viaMove && (
                       <span className="text-[10px] font-medium text-muted">
                         via {viaMove}
                       </span>
-                    ) : null}
-                    {verdict ? (
+                    )}
+                    {verdict && (
                       <span
                         className={`text-[10px] font-semibold tabular-nums ${
                           verdict.state === "under"
@@ -1463,7 +1449,7 @@ function PrepCard({
                       >
                         {formatGymPrepLevelVerdict(verdict, capRole)}
                       </span>
-                    ) : null}
+                    )}
                   </li>
                 );
               })}
@@ -1475,21 +1461,21 @@ function PrepCard({
           )}
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             <TypeRow label="Bring" types={prep.recommendedTypes} />
-            {prep.cautionTypes?.length ? (
+            {prep.cautionTypes && prep.cautionTypes.length > 0 && (
               <TypeRow label="Careful" types={prep.cautionTypes} />
-            ) : null}
+            )}
           </div>
-          {notes ? (
+          {notes && (
             <p className="text-[11px] leading-relaxed text-muted">{notes}</p>
-          ) : null}
-          {guideHref ? (
+          )}
+          {guideHref && (
             <Link
               href={guideHref}
               className="inline-block text-[11px] font-semibold text-interactive underline decoration-interactive/35 underline-offset-2"
             >
               Open Guide
             </Link>
-          ) : null}
+          )}
         </div>
       </details>
     </li>
@@ -1575,8 +1561,7 @@ function VsTrainerPanel({
 
   const callouts = matchup.bullets.filter(
     (b) =>
-      b.tone === "warn" ||
-      /pressure|blind|No ≥2|Only neutral/i.test(b.text),
+      b.tone === "warn" || /pressure|blind|No ≥2|Only neutral/i.test(b.text),
   );
 
   return (
@@ -1622,7 +1607,7 @@ function VsTrainerPanel({
         </div>
       </div>
 
-      {callouts.length > 0 ? (
+      {callouts.length > 0 && (
         <ul className="mt-2 space-y-1">
           {callouts.slice(0, 2).map((bullet) => (
             <li
@@ -1635,7 +1620,7 @@ function VsTrainerPanel({
             </li>
           ))}
         </ul>
-      ) : null}
+      )}
 
       {/* Answer matrix: their rows × your columns */}
       <div className="mt-3 overflow-x-auto rounded-md border border-frame/60">
@@ -1743,7 +1728,10 @@ function VsTrainerPanel({
                         }`
                       : undefined;
                     return (
-                      <td key={cell.draftId} className="px-0.5 py-1 text-center">
+                      <td
+                        key={cell.draftId}
+                        className="px-0.5 py-1 text-center"
+                      >
                         <span
                           title={title}
                           className={`inline-flex h-8 min-w-[2rem] items-center justify-center rounded px-1 text-[11px] font-bold tabular-nums ${

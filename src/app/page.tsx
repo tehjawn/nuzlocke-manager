@@ -5,10 +5,7 @@ import {
   TrainerCarousel,
   type CarouselTrainer,
 } from "@/components/TrainerCarousel";
-import {
-  getHomeCarouselChallenge,
-  listSeasonIndex,
-} from "@/lib/challenges";
+import { getHomeCarouselChallenge, listSeasonIndex } from "@/lib/challenges";
 import { CTA_PRIMARY_LG, CTA_SECONDARY_LG } from "@/lib/cta";
 import { resolvePlayerSeasonEntryPath } from "@/lib/season-entry";
 import { pokemonInSlot } from "@/lib/trainer-display";
@@ -22,10 +19,7 @@ export default async function HomePage() {
     : null;
 
   const openLeagueHref = activeMeta
-    ? await resolvePlayerSeasonEntryPath(
-        activeMeta.slug,
-        session?.user?.id,
-      )
+    ? await resolvePlayerSeasonEntryPath(activeMeta.slug, session?.user?.id)
     : null;
 
   const carouselTrainers: CarouselTrainer[] = (active?.trainers ?? [])
@@ -76,19 +70,19 @@ export default async function HomePage() {
               About →
             </Link>
           )}
-          {!session?.user ? (
+          {!session?.user && (
             <Link href="/login" className={CTA_SECONDARY_LG}>
               Sign in
             </Link>
-          ) : null}
+          )}
         </div>
 
-        {activeMeta && carouselTrainers.length > 0 ? (
+        {activeMeta && carouselTrainers.length > 0 && (
           <TrainerCarousel
             challengeSlug={activeMeta.slug}
             trainers={carouselTrainers}
           />
-        ) : null}
+        )}
       </main>
     </div>
   );

@@ -17,10 +17,7 @@ import {
   type SpeciesOwnershipEntry,
   type SpeciesOwnershipStatus,
 } from "@/lib/encounter-stats";
-import {
-  seasonSpecimenBoard,
-  type SpecimenSort,
-} from "@/lib/specimen-board";
+import { seasonSpecimenBoard, type SpecimenSort } from "@/lib/specimen-board";
 import { ModeTabs } from "@/components/ModeTabs";
 import {
   parseBountyMode,
@@ -48,7 +45,10 @@ type ExclusiveLineFilter = "all" | "whole" | "split" | "partial";
  * `selectMode` resets anything the next mode can't honour.
  */
 type SortMode = "dex" | "rarity" | "alpha" | SpecimenSort;
-type BoardRow = { entry: SpeciesOwnershipEntry; status: SpeciesOwnershipStatus };
+type BoardRow = {
+  entry: SpeciesOwnershipEntry;
+  status: SpeciesOwnershipStatus;
+};
 
 const MODES: ReadonlyArray<{ id: BountyMode; label: string }> = [
   { id: "tracker", label: "Species tracker" },
@@ -169,7 +169,9 @@ export function BountyHunterView({
     () =>
       board.map((entry) => ({
         entry,
-        status: viewerId ? personalSpeciesStatus(entry, viewerId) : entry.status,
+        status: viewerId
+          ? personalSpeciesStatus(entry, viewerId)
+          : entry.status,
       })),
     [board, viewerId],
   );
@@ -202,7 +204,8 @@ export function BountyHunterView({
         ? queryRows
         : queryRows.filter(({ status }) => status === statusFilter);
     return [...filtered].sort((a, b) => {
-      if (sort === "alpha") return a.entry.species.localeCompare(b.entry.species);
+      if (sort === "alpha")
+        return a.entry.species.localeCompare(b.entry.species);
       if (sort === "rarity" && a.entry.totalSeen !== b.entry.totalSeen) {
         return a.entry.totalSeen - b.entry.totalSeen;
       }
@@ -320,7 +323,11 @@ export function BountyHunterView({
         <>
           <StatusLegend />
 
-          <div role="group" aria-label="Status filter" className="flex flex-wrap gap-1.5">
+          <div
+            role="group"
+            aria-label="Status filter"
+            className="flex flex-wrap gap-1.5"
+          >
             {STATUS_FILTERS.map((entry) => {
               const active = statusFilter === entry.id;
               const count =
@@ -403,7 +410,9 @@ export function BountyHunterView({
   );
 }
 
-function exclusiveLineKind(group: ExclusiveLineGroup): Exclude<ExclusiveLineFilter, "all"> {
+function exclusiveLineKind(
+  group: ExclusiveLineGroup,
+): Exclude<ExclusiveLineFilter, "all"> {
   if (group.singleTrainer) return "whole";
   if (new Set(group.entries.map((entry) => entry.trainerId)).size > 1) {
     return "split";
@@ -600,12 +609,12 @@ function ExclusiveLineGroups({
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-frame/30 bg-surface-2/60 px-3 py-2">
                   <p className="text-sm font-semibold text-ink">
                     {group.rootSpecies} line
-                    {group.entries.length > 1 ? (
+                    {group.entries.length > 1 && (
                       <span className="ml-1.5 font-normal text-muted">
                         · {group.entries.length} stage
                         {group.entries.length === 1 ? "" : "s"}
                       </span>
-                    ) : null}
+                    )}
                   </p>
                   {kind === "whole" ? (
                     <span className="rounded-full border border-accent/35 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-deep">

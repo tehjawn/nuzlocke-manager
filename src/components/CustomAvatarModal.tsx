@@ -98,7 +98,9 @@ export function CustomAvatarModal({
       resetLocal();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed — try again");
+      setError(
+        err instanceof Error ? err.message : "Upload failed — try again",
+      );
       setUploading(false);
     }
   }
@@ -234,7 +236,7 @@ export function CustomAvatarModal({
         />
       </label>
 
-      {urlPreview && !pendingFile ? (
+      {urlPreview && !pendingFile && (
         <div className="mt-3 flex justify-center">
           <Image
             src={urlPreview}
@@ -245,7 +247,7 @@ export function CustomAvatarModal({
             unoptimized
           />
         </div>
-      ) : null}
+      )}
 
       {error && (
         <p className="mt-3 text-sm font-medium text-danger" role="alert">

@@ -17,11 +17,7 @@ import {
 } from "@/components/nav-icons";
 import { ToolChip } from "@/components/tool-icons";
 import { SearchTrigger } from "@/features/search";
-import {
-  TOOLS_CATALOG,
-  toolsHref,
-  toolsHubHref,
-} from "@/lib/tools-routes";
+import { TOOLS_CATALOG, toolsHref, toolsHubHref } from "@/lib/tools-routes";
 
 type NavRow =
   | { kind: "link"; key: string; href: string; label: string; icon: ReactNode }
@@ -163,10 +159,7 @@ export function MobileNavDrawer({
 
       {open && typeof document !== "undefined"
         ? createPortal(
-            <div
-              data-modal-open=""
-              className="fixed inset-0 z-[100] sm:hidden"
-            >
+            <div data-modal-open="" className="fixed inset-0 z-[100] sm:hidden">
               <button
                 type="button"
                 aria-label="Close menu"
@@ -331,8 +324,11 @@ function InfoNavSection({
         <ChevronIcon open={open} />
       </button>
 
-      {open ? (
-        <ul id={listId} className="ml-5 flex flex-col gap-1 border-l border-frame/60 pl-2">
+      {open && (
+        <ul
+          id={listId}
+          className="ml-5 flex flex-col gap-1 border-l border-frame/60 pl-2"
+        >
           <li>
             <Link
               href={`${base}/setup`}
@@ -346,7 +342,11 @@ function InfoNavSection({
             </Link>
           </li>
           <li>
-            <Link href={`${base}/about`} onClick={onNavigate} className={NESTED_LINK_CLASS}>
+            <Link
+              href={`${base}/about`}
+              onClick={onNavigate}
+              className={NESTED_LINK_CLASS}
+            >
               <span className="shrink-0 text-ink/70" aria-hidden>
                 <AboutIcon className="h-4 w-4" />
               </span>
@@ -354,7 +354,11 @@ function InfoNavSection({
             </Link>
           </li>
           <li>
-            <Link href={`${base}/rules`} onClick={onNavigate} className={NESTED_LINK_CLASS}>
+            <Link
+              href={`${base}/rules`}
+              onClick={onNavigate}
+              className={NESTED_LINK_CLASS}
+            >
               <span className="shrink-0 text-ink/70" aria-hidden>
                 <RulesIcon className="h-4 w-4" />
               </span>
@@ -386,7 +390,7 @@ function InfoNavSection({
             </Link>
           </li>
         </ul>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -422,17 +426,24 @@ function TrainersNavSection({
         <ChevronIcon open={open} className="text-accent-deep" />
       </button>
 
-      {open ? (
-        <ul id={listId} className="ml-5 flex flex-col gap-1 border-l border-frame/60 pl-2">
+      {open && (
+        <ul
+          id={listId}
+          className="ml-5 flex flex-col gap-1 border-l border-frame/60 pl-2"
+        >
           <li>
-            <Link href={base} onClick={onNavigate} className={NESTED_LINK_CLASS}>
+            <Link
+              href={base}
+              onClick={onNavigate}
+              className={NESTED_LINK_CLASS}
+            >
               <span className="shrink-0 text-ink/70" aria-hidden>
                 <TrainersIcon className="h-4 w-4" />
               </span>
               <span className="text-sm font-medium">All Trainers</span>
             </Link>
           </li>
-          {myTrainerId ? (
+          {myTrainerId && (
             <li>
               <Link
                 href={`${base}/me`}
@@ -445,9 +456,9 @@ function TrainersNavSection({
                 <span className="text-sm">My Trainer</span>
               </Link>
             </li>
-          ) : null}
+          )}
         </ul>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -487,8 +498,11 @@ function ToolsNavSection({
         <ChevronIcon open={open} />
       </button>
 
-      {open ? (
-        <ul id={listId} className="ml-5 flex flex-col gap-1 border-l border-frame/60 pl-2">
+      {open && (
+        <ul
+          id={listId}
+          className="ml-5 flex flex-col gap-1 border-l border-frame/60 pl-2"
+        >
           {TOOLS_CATALOG.map((tool) => (
             <li key={tool.id}>
               <Link
@@ -521,7 +535,7 @@ function ToolsNavSection({
             </Link>
           </li>
         </ul>
-      ) : null}
+      )}
     </div>
   );
 }

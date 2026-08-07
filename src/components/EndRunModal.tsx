@@ -138,12 +138,12 @@ export function EndRunModal({
           }
         />
 
-        {completionCount > 0 ? (
+        {completionCount > 0 && (
           <p className="text-xs text-muted">
             {completionCount} completion{completionCount === 1 ? "" : "s"} on
             record this season.
           </p>
-        ) : null}
+        )}
       </div>
     </Modal>
   );

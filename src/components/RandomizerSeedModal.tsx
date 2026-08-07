@@ -17,10 +17,7 @@ import {
   type ParsedSaveRandomizer,
 } from "@/lib/gen3-save";
 import { evolutionFamily } from "@/lib/species-evolutions";
-import {
-  STAT_RANKS_BEST_FIRST,
-  type StatRank,
-} from "@/lib/species-ranks";
+import { STAT_RANKS_BEST_FIRST, type StatRank } from "@/lib/species-ranks";
 import { toolsHref } from "@/lib/tools-routes";
 import {
   buildCaughtIndex,
@@ -151,9 +148,7 @@ function speciesHoverPreview(pokedexId: number) {
     species: speciesName(pokedexId),
     pokedexId,
     subtitle:
-      entry?.tier != null
-        ? `Comp ${entry.tier}`
-        : "Untiered — not curated yet",
+      entry?.tier != null ? `Comp ${entry.tier}` : "Untiered — not curated yet",
     detail: entry?.reason ?? undefined,
   };
 }
@@ -213,7 +208,13 @@ function toggleCompTier(
  * placeholder instead: a gap in a reference table is survivable, a blank screen
  * is not.
  */
-function Sprite({ pokedexId, size = 40 }: { pokedexId: number; size?: number }) {
+function Sprite({
+  pokedexId,
+  size = 40,
+}: {
+  pokedexId: number;
+  size?: number;
+}) {
   if (!pokedexId || pokedexId <= 0) {
     return (
       <span
@@ -452,7 +453,9 @@ export function RandomizerSeedModal({
     setError(null);
     setParsed(null);
     try {
-      const result = await parsePokemonSaveAsync(new Uint8Array(await file.arrayBuffer()));
+      const result = await parsePokemonSaveAsync(
+        new Uint8Array(await file.arrayBuffer()),
+      );
       if (!result.ok) {
         setError(displayActionError(result.error));
         return;
@@ -526,9 +529,7 @@ export function RandomizerSeedModal({
   ]
     .filter(Boolean)
     .join(" · ");
-  const seedHex = rz
-    ? rz.otId.toString(16).toUpperCase().padStart(8, "0")
-    : "";
+  const seedHex = rz ? rz.otId.toString(16).toUpperCase().padStart(8, "0") : "";
   const settingsChips = rz ? describeSettings(rz) : [];
 
   function clearSecondaryFilters() {
@@ -585,8 +586,8 @@ export function RandomizerSeedModal({
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-5">
             <p className="text-muted">
               Drop a Gen 3 save to replay this run’s randomizer encounter map —
-              where each Pokémon lives, what each route holds, and what
-              scripted encounters rolled.
+              where each Pokémon lives, what each route holds, and what scripted
+              encounters rolled.
             </p>
 
             <details className="group rounded-lg border border-frame/50 bg-surface-2">
@@ -602,9 +603,9 @@ export function RandomizerSeedModal({
               <p className="border-t border-frame/40 px-3 py-2 text-xs leading-relaxed text-muted">
                 Modern Emerald doesn’t rewrite encounter tables — it rerolls
                 each species as it spawns, seeded by the player’s trainer ID.
-                This tool replays that mapping offline. Species they already
-                own and route slots they have already spent are marked.
-                Afterplay’s <code className="text-ink">.sav</code> /{" "}
+                This tool replays that mapping offline. Species they already own
+                and route slots they have already spent are marked. Afterplay’s{" "}
+                <code className="text-ink">.sav</code> /{" "}
                 <code className="text-ink">.srm</code> export is the most
                 reliable source; emulator states work too.
               </p>
@@ -624,11 +625,11 @@ export function RandomizerSeedModal({
               </span>
             </button>
 
-            {error ? (
+            {error && (
               <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-danger">
                 {error}
               </p>
-            ) : null}
+            )}
           </div>
         ) : rz ? (
           <>
@@ -667,11 +668,11 @@ export function RandomizerSeedModal({
                 </button>
               </div>
 
-              {error ? (
+              {error && (
                 <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
                   {error}
                 </p>
-              ) : null}
+              )}
 
               {!rz.reliable ? (
                 <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
@@ -690,7 +691,7 @@ export function RandomizerSeedModal({
                 </p>
               ) : (
                 <>
-                  {check && check.checked > 0 ? (
+                  {check && check.checked > 0 && (
                     <details
                       className={`group rounded-lg border px-3 py-1.5 text-xs ${
                         lowConfidence
@@ -724,14 +725,14 @@ export function RandomizerSeedModal({
                           : "Evolved catches count when the seed rolls a relative — high-level slots spawn already-evolved."}
                       </p>
                     </details>
-                  ) : null}
+                  )}
 
-                  {!parsed.encounterFlagsReliable ? (
+                  {!parsed.encounterFlagsReliable && (
                     <p className="rounded-lg border border-frame bg-surface px-3 py-1.5 text-xs text-muted">
                       Couldn’t read this run’s encounter flags, so spent route
                       slots aren’t marked below. Caught species still are.
                     </p>
-                  ) : null}
+                  )}
 
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex flex-wrap gap-1 rounded-lg border border-frame bg-surface p-1">
@@ -769,7 +770,7 @@ export function RandomizerSeedModal({
                       onChange={(e) => setQuery(e.target.value)}
                     />
 
-                    {hasSecondaryFilters ? (
+                    {hasSecondaryFilters && (
                       <span className="inline-flex max-w-full items-center gap-1.5 text-[0.7rem] font-semibold text-accent-deep">
                         <span className="truncate rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5">
                           {filterSummary}
@@ -782,7 +783,7 @@ export function RandomizerSeedModal({
                           Clear
                         </button>
                       </span>
-                    ) : null}
+                    )}
 
                     <details className="group relative">
                       <summary
@@ -868,7 +869,7 @@ export function RandomizerSeedModal({
                           </div>
                         </div>
 
-                        {hasSecondaryFilters ? (
+                        {hasSecondaryFilters && (
                           <button
                             type="button"
                             className="text-[0.7rem] font-semibold text-muted underline underline-offset-2 hover:text-ink"
@@ -876,7 +877,7 @@ export function RandomizerSeedModal({
                           >
                             Clear filters
                           </button>
-                        ) : null}
+                        )}
                       </div>
                     </details>
                   </div>
@@ -884,20 +885,20 @@ export function RandomizerSeedModal({
               )}
             </div>
 
-            {playable ? (
+            {playable && (
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
-                {obtainFilter ? (
+                {obtainFilter && (
                   <p className="rounded-lg border border-frame/50 bg-surface-2 px-3 py-1.5 text-[0.7rem] leading-snug text-muted">
                     {bucketHint(obtainFilter)}
                   </p>
-                ) : null}
+                )}
 
                 {/* Hatch geography is independent of wild remaps — show on By route
                     even when wild randomization is off (vanilla tables). */}
                 {view === "route" &&
-                (!obtainFilter || obtainFilter === "singleSlot") ? (
-                  <HatchSafeSpotsNote randomizerContext />
-                ) : null}
+                  (!obtainFilter || obtainFilter === "singleSlot") && (
+                    <HatchSafeSpotsNote randomizerContext />
+                  )}
 
                 {obtainFilter && obtainFilter !== "singleSlot" ? (
                   <BucketSpeciesView
@@ -954,7 +955,7 @@ export function RandomizerSeedModal({
                   />
                 )}
               </div>
-            ) : null}
+            )}
           </>
         ) : null}
       </div>
@@ -1037,9 +1038,9 @@ function BucketSpeciesView({
           </li>
         ))}
       </ul>
-      {ids.length === 0 ? (
+      {ids.length === 0 && (
         <p className="text-muted">Nothing matches that filter.</p>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -1109,21 +1110,21 @@ function SpeciesView({
                       </li>
                     ))}
                   </ul>
-                  {entry.sources.length > 4 ? (
+                  {entry.sources.length > 4 && (
                     <p className="mt-0.5 text-xs text-muted">
                       +{entry.sources.length - 4} more area
                       {entry.sources.length - 4 === 1 ? "" : "s"}
                     </p>
-                  ) : null}
+                  )}
                 </div>
               </Link>
             </PokemonHoverPreview>
           </li>
         ))}
       </ul>
-      {entries.length === 0 ? (
+      {entries.length === 0 && (
         <p className="text-muted">Nothing matches that filter.</p>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -1150,12 +1151,14 @@ function groupAreasByRoute(
       order.push(area.label);
     }
   }
-  return order.map((label) => ({
-    label,
-    used: isRouteUsed(label),
-    slotPokedexId: slotPokemon(label),
-    areas: byLabel.get(label) ?? [],
-  })).sort((a, b) => Number(a.used) - Number(b.used));
+  return order
+    .map((label) => ({
+      label,
+      used: isRouteUsed(label),
+      slotPokedexId: slotPokemon(label),
+      areas: byLabel.get(label) ?? [],
+    }))
+    .sort((a, b) => Number(a.used) - Number(b.used));
 }
 
 function RouteSlotTile({
@@ -1231,7 +1234,11 @@ function RouteSlotTile({
           </span>
           <p
             className={`mt-0.5 w-full truncate text-xs font-semibold leading-tight tracking-tight ${
-              caughtHere ? "text-accent-deep" : owned ? "text-muted" : "text-ink"
+              caughtHere
+                ? "text-accent-deep"
+                : owned
+                  ? "text-muted"
+                  : "text-ink"
             }`}
           >
             {name}
@@ -1318,7 +1325,7 @@ function RouteView({
             : ""}
           .
         </p>
-        {groups.length > 0 ? (
+        {groups.length > 0 && (
           <p className="shrink-0 text-[0.7rem] font-semibold text-muted">
             <button
               type="button"
@@ -1340,7 +1347,7 @@ function RouteView({
               Collapse all
             </button>
           </p>
-        ) : null}
+        )}
       </div>
       <ul className="space-y-1.5">
         {groups.map((group) => (
@@ -1379,8 +1386,7 @@ function RouteView({
                     {group.areas
                       .map((area) => KIND_LABELS[area.kind])
                       .join(" · ")}{" "}
-                    ·{" "}
-                    {group.areas.reduce((n, a) => n + a.slots.length, 0)}{" "}
+                    · {group.areas.reduce((n, a) => n + a.slots.length, 0)}{" "}
                     possible
                     {group.used
                       ? group.slotPokedexId
@@ -1413,7 +1419,7 @@ function RouteView({
                       —
                     </span>
                   ) : null}
-                  {group.used ? (
+                  {group.used && (
                     <span
                       className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[var(--on-accent)]"
                       title={
@@ -1424,11 +1430,11 @@ function RouteView({
                     >
                       <CheckIcon />
                     </span>
-                  ) : null}
+                  )}
                 </span>
               </summary>
               <div className="space-y-2.5 border-t border-frame/50 px-2.5 py-2">
-                {group.slotPokedexId ? (
+                {group.slotPokedexId && (
                   <p className="text-[0.7rem] text-muted">
                     Caught{" "}
                     <Link
@@ -1441,7 +1447,7 @@ function RouteView({
                       {speciesName(group.slotPokedexId)}
                     </Link>
                   </p>
-                ) : null}
+                )}
                 {group.areas.map((area) => (
                   <div key={`${area.mapsec}-${area.kind}`}>
                     <p className="mb-1 text-[0.65rem] font-semibold tracking-wide text-muted">
@@ -1473,9 +1479,9 @@ function RouteView({
           </li>
         ))}
       </ul>
-      {groups.length === 0 ? (
+      {groups.length === 0 && (
         <p className="text-muted">Nothing matches that filter.</p>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -1541,14 +1547,14 @@ function StaticRow({
             </span>
           </span>
           <span className="mt-0.5 block truncate text-[0.7rem] leading-snug text-muted">
-            {showVanilla ? (
+            {showVanilla && (
               <>
                 <span className="line-through">
                   {speciesName(vanillaPokedexId)}
                 </span>
                 {" · "}
               </>
-            ) : null}
+            )}
             {label} · {kindLabel}
           </span>
         </span>
@@ -1588,7 +1594,7 @@ function StaticView({
           : "Static randomization is off — everything below is vanilla."}
       </p>
 
-      {rerolled.length > 0 ? (
+      {rerolled.length > 0 && (
         <ul className="divide-y divide-frame/50 overflow-hidden rounded-lg border border-frame bg-surface-2">
           {rerolled.map((entry, i) => (
             <li key={`${entry.mapsec}-${entry.vanillaSpecies}-${i}`}>
@@ -1607,9 +1613,9 @@ function StaticView({
             </li>
           ))}
         </ul>
-      ) : null}
+      )}
 
-      {fixed.length > 0 ? (
+      {fixed.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-frame bg-surface-2">
           <div className="border-b border-frame/50 px-2.5 py-2">
             <p className="text-xs font-semibold tracking-wide text-muted">
@@ -1643,11 +1649,11 @@ function StaticView({
             ))}
           </ul>
         </div>
-      ) : null}
+      )}
 
-      {statics.length === 0 ? (
+      {statics.length === 0 && (
         <p className="text-muted">Nothing matches that filter.</p>
-      ) : null}
+      )}
     </div>
   );
 }

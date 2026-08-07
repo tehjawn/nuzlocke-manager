@@ -27,10 +27,7 @@ export function SeasonStatusBanner({
         <p className="mt-1 text-muted">
           Boards are read-only. Visit Season Stats for the full R.I.P. record.
         </p>
-        <Link
-          href={seasonStatsHref(slug)}
-          className={`${CTA_PRIMARY_SM} mt-3`}
-        >
+        <Link href={seasonStatsHref(slug)} className={`${CTA_PRIMARY_SM} mt-3`}>
           Open Season Stats
         </Link>
       </div>
@@ -44,16 +41,16 @@ export function SeasonStatusBanner({
       </p>
       <p className="mt-1 text-muted">
         Main Squads are locked for the ladder.
-        {isGm ? " Check the tournament board." : null}
+        {isGm && " Check the tournament board."}
       </p>
-      {isGm ? (
+      {isGm && (
         <Link
           href={`/challenges/${slug}/tournament`}
           className={`${CTA_PRIMARY_SM} mt-3`}
         >
           Open tournament
         </Link>
-      ) : null}
+      )}
     </div>
   );
 }

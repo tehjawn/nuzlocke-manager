@@ -95,21 +95,17 @@ function CarouselRow({
             key={`${trainer.id}-${index}`}
             href={`/challenges/${challengeSlug}/trainers/${trainer.id}`}
             className={`group flex shrink-0 flex-col items-center text-center ${
-              compact
-                ? "w-[110px] sm:w-[125px]"
-                : "w-[140px] sm:w-[160px]"
+              compact ? "w-[110px] sm:w-[125px]" : "w-[140px] sm:w-[160px]"
             }`}
             tabIndex={index >= loop.length ? -1 : undefined}
             aria-hidden={index >= loop.length ? true : undefined}
           >
             <div
               className={`relative flex w-full items-end justify-center ${
-                compact
-                  ? "h-[98px] sm:h-[112px]"
-                  : "h-[140px] sm:h-[160px]"
+                compact ? "h-[98px] sm:h-[112px]" : "h-[140px] sm:h-[160px]"
               }`}
             >
-              {trainer.leadPokemon ? (
+              {trainer.leadPokemon && (
                 <PokemonSpriteImage
                   alt=""
                   className={`pixelated absolute top-1.5 left-1/2 -translate-x-[15%] object-contain opacity-80 transition-transform duration-300 group-hover:-translate-y-1 ${
@@ -123,7 +119,7 @@ function CarouselRow({
                   species={trainer.leadPokemon.species}
                   width={96}
                 />
-              ) : null}
+              )}
               <AvatarPortrait
                 avatarSpriteKey={trainer.avatarSpriteKey}
                 backgroundKey={trainer.avatarBackgroundKey}
@@ -139,9 +135,7 @@ function CarouselRow({
             </div>
             <p
               className={`font-display truncate font-bold leading-tight group-hover:text-accent-deep ${
-                compact
-                  ? "mt-1.5 text-xs sm:text-sm"
-                  : "mt-2 text-sm"
+                compact ? "mt-1.5 text-xs sm:text-sm" : "mt-2 text-sm"
               }`}
             >
               {trainerLabel(trainer)}

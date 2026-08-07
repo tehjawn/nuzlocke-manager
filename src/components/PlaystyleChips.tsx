@@ -9,11 +9,11 @@ export function PlaystyleChips({
   return (
     <div className="flex flex-wrap gap-1">
       <span className="info-chip text-xs font-semibold">{primary}</span>
-      {secondary ? (
+      {secondary && (
         <span className="info-chip text-xs font-semibold text-muted">
           {secondary}
         </span>
-      ) : null}
+      )}
     </div>
   );
 }

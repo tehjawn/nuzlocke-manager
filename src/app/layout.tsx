@@ -118,7 +118,7 @@ export default async function RootLayout({
           </SearchHost>
         </PokemonSpritePreferenceProvider>
         <Analytics />
-        {shouldInjectToolbar ? <VercelToolbar /> : null}
+        {shouldInjectToolbar && <VercelToolbar />}
       </body>
     </html>
   );

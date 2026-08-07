@@ -63,8 +63,9 @@ function resolveItems(
     });
 
     const pokemonResult =
-      (nickLower ? pokemonByKey.get(`${handleLower}:${nickLower}`) : undefined) ??
-      pokemonByKey.get(`${handleLower}:${speciesLower}`);
+      (nickLower
+        ? pokemonByKey.get(`${handleLower}:${nickLower}`)
+        : undefined) ?? pokemonByKey.get(`${handleLower}:${speciesLower}`);
     const trainerResult = trainerByHandle.get(handleLower);
     const href = pokemonResult?.href ?? trainerResult?.href;
 
@@ -134,7 +135,7 @@ export function PokemonRankingCard({
               {label}
             </span>
             <span className="mt-0.5 flex items-center justify-center gap-1 text-[10px] text-muted">
-              {item.avatarUrl ? (
+              {item.avatarUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   alt=""
@@ -144,17 +145,17 @@ export function PokemonRankingCard({
                   src={item.avatarUrl}
                   width={14}
                 />
-              ) : null}
+              )}
               <span className="truncate">{item.trainerHandle}</span>
-              {typeof item.level === "number" ? (
+              {typeof item.level === "number" && (
                 <span className="shrink-0 tabular-nums">· Lv{item.level}</span>
-              ) : null}
+              )}
             </span>
-            {item.reason ? (
+            {item.reason && (
               <span className="mt-0.5 block truncate text-center text-[10px] text-muted/90">
                 {item.reason}
               </span>
-            ) : null}
+            )}
           </>
         );
 

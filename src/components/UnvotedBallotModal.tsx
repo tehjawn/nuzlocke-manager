@@ -86,11 +86,7 @@ export function UnvotedBallotModal({
           : `${ballot.total} still need your take · trainers closest to the end first`
       }
       headerActions={
-        <div
-          role="group"
-          aria-label="Slot filter"
-          className="flex gap-1"
-        >
+        <div role="group" aria-label="Slot filter" className="flex gap-1">
           <button
             type="button"
             aria-pressed={slot === "MAIN"}
@@ -156,9 +152,7 @@ export function UnvotedBallotModal({
                       busy={pending && pendingId === item.pokemonId}
                       disabled={pending}
                       error={errorById[item.pokemonId] ?? null}
-                      onCast={(prediction) =>
-                        cast(item.pokemonId, prediction)
-                      }
+                      onCast={(prediction) => cast(item.pokemonId, prediction)}
                       onOpenDetails={
                         onOpenDetails
                           ? () => onOpenDetails(item.pokemonId)
@@ -215,12 +209,12 @@ function BallotRow({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold leading-tight">{label}</p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted">
-            {showSpecies ? <span>{pokemon.species}</span> : null}
+            {showSpecies && <span>{pokemon.species}</span>}
             <span>{pokemon.slot === "MAIN" ? "Main" : "Reserve"}</span>
             <span>{tally}</span>
-            {contested ? (
+            {contested && (
               <span className="font-bold text-warn">Contested</span>
-            ) : null}
+            )}
           </p>
         </div>
       </div>
@@ -241,7 +235,7 @@ function BallotRow({
         >
           {busy ? "…" : "Die"}
         </button>
-        {onOpenDetails ? (
+        {onOpenDetails && (
           <button
             type="button"
             onClick={onOpenDetails}
@@ -249,11 +243,11 @@ function BallotRow({
           >
             Details
           </button>
-        ) : null}
+        )}
       </div>
-      {error ? (
+      {error && (
         <p className="mt-1.5 text-[11px] font-medium text-danger">{error}</p>
-      ) : null}
+      )}
     </div>
   );
 }

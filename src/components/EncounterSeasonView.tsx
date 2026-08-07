@@ -61,7 +61,9 @@ export function EncounterSeasonView({
           <p className="text-xs font-semibold tracking-tight text-accent-deep">
             Season route claims
           </p>
-          <h2 className="text-2xl font-bold tracking-tight">Encounter ledger</h2>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Encounter ledger
+          </h2>
           <p className="max-w-2xl text-sm text-muted">
             Catch routes from trainer boards. Zigzagoon skipped in popularity
             rankings.
@@ -96,9 +98,9 @@ export function EncounterSeasonView({
         </div>
       </header>
 
-      {hasCallouts ? (
+      {hasCallouts && (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {highlights.mostLogged.length > 0 ? (
+          {highlights.mostLogged.length > 0 && (
             <SpeciesTopCallout
               label="Most logged"
               entries={highlights.mostLogged}
@@ -106,44 +108,54 @@ export function EncounterSeasonView({
               hrefLabel="Season stats →"
               showCount
             />
-          ) : null}
-          {highlights.rarestSeen.length > 0 ? (
+          )}
+          {highlights.rarestSeen.length > 0 && (
             <SpeciesTopCallout
               entries={highlights.rarestSeen}
               href={`/challenges/${slug}/encounters/rarest`}
               label="Rarest seen"
             />
-          ) : null}
-          {highlights.deadliestRoutes.length > 0 ? (
+          )}
+          {highlights.deadliestRoutes.length > 0 && (
             <RouteTopCallout
               label="Deadliest routes"
               entries={highlights.deadliestRoutes}
               href={toolsHref(slug, "stats", { section: "memorial" })}
               hrefLabel="Season stats →"
             />
-          ) : null}
+          )}
         </div>
-      ) : null}
+      )}
 
       <ModeTabs
         aria-label="Encounter views"
         idPrefix="encounters"
         size="sm"
         value={view}
-        tabs={[
-          { id: "claims", label: "Route claims", "data-testid": "encounter-view-claims" },
-          {
-            id: "routes",
-            label: myTrainerId ? "My routes" : "Open routes",
-            "data-testid": "encounter-view-routes",
-          },
-          { id: "map", label: "Map", "data-testid": "encounter-view-map" },
-          { id: "missing", label: "Missing dex", "data-testid": "encounter-view-missing" },
-        ] satisfies ReadonlyArray<{
-          id: EncounterView;
-          label: string;
-          "data-testid": string;
-        }>}
+        tabs={
+          [
+            {
+              id: "claims",
+              label: "Route claims",
+              "data-testid": "encounter-view-claims",
+            },
+            {
+              id: "routes",
+              label: myTrainerId ? "My routes" : "Open routes",
+              "data-testid": "encounter-view-routes",
+            },
+            { id: "map", label: "Map", "data-testid": "encounter-view-map" },
+            {
+              id: "missing",
+              label: "Missing dex",
+              "data-testid": "encounter-view-missing",
+            },
+          ] satisfies ReadonlyArray<{
+            id: EncounterView;
+            label: string;
+            "data-testid": string;
+          }>
+        }
         onValueChange={setView}
         trailing={
           <Link
@@ -154,13 +166,11 @@ export function EncounterSeasonView({
           </Link>
         }
       >
-        {view === "missing" ? (
+        {view === "missing" && (
           <MissingModernEmeraldGrid missing={missing} slug={slug} />
-        ) : null}
-        {view === "claims" ? (
-          <EncounterLedger groups={groups} slug={slug} />
-        ) : null}
-        {view === "map" ? (
+        )}
+        {view === "claims" && <EncounterLedger groups={groups} slug={slug} />}
+        {view === "map" && (
           <EncounterRouteMap
             groups={groups}
             myTrainerId={myTrainerId}
@@ -168,14 +178,14 @@ export function EncounterSeasonView({
             routeStatuses={routeStatuses}
             slug={slug}
           />
-        ) : null}
-        {view === "routes" ? (
+        )}
+        {view === "routes" && (
           <PersonalRoutesView
             myTrainerId={myTrainerId}
             routeStatuses={routeStatuses}
             slug={slug}
           />
-        ) : null}
+        )}
       </ModeTabs>
     </div>
   );

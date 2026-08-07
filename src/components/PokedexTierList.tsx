@@ -188,8 +188,8 @@ function BstLadder({
         Raw BST ladder vs the Modern Emerald roster — ignores typing, movepool,
         evolution stage, and stat distribution. An S here is{" "}
         <span className="font-semibold text-ink">not</span> a competitive tier.
-        Switch to <span className="font-semibold text-ink">Competitive</span> for
-        viability-with-reasons.
+        Switch to <span className="font-semibold text-ink">Competitive</span>{" "}
+        for viability-with-reasons.
       </div>
 
       <TierFilters
@@ -239,12 +239,12 @@ function BstLadder({
                     : `${rankBandLabel(bucket.key)} of roster`
                 }
               />
-              {bucket.key === "unranked" ? (
+              {bucket.key === "unranked" && (
                 <p className="text-[11px] text-muted">
                   No catalogued base stats — mostly formes. Not guessed into a
                   letter.
                 </p>
-              ) : null}
+              )}
               <SpriteGrid
                 boardById={boardById}
                 entries={bucket.entries}
@@ -540,9 +540,9 @@ function TierHeader({
           {keyLabel}
         </span>
       )}
-      {subtitle ? (
+      {subtitle && (
         <span className="text-xs font-semibold text-muted">{subtitle}</span>
-      ) : null}
+      )}
       <span className="text-xs tabular-nums text-muted">{count}</span>
     </div>
   );
@@ -630,7 +630,7 @@ function TierFilters({
         >
           <option value="all">All species</option>
           <option value="owned">Owned by trainer</option>
-          {myTrainerId ? <option value="mine">Owned by me</option> : null}
+          {myTrainerId && <option value="mine">Owned by me</option>}
           <option value="untouched">Untouched</option>
         </select>
       </label>
@@ -693,11 +693,7 @@ function matchesFilters(pokedexId: number, options: FilterOpts): boolean {
 }
 
 /** Briefing strip — only when curated. */
-export function CompetitiveTierBrief({
-  pokedexId,
-}: {
-  pokedexId: number;
-}) {
+export function CompetitiveTierBrief({ pokedexId }: { pokedexId: number }) {
   const entry = competitiveTierFor(pokedexId);
   if (!entry?.tier || !entry.reason) return null;
   return (

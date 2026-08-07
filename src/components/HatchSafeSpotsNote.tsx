@@ -43,24 +43,26 @@ export function HatchSafeSpotsNote({
           Met location is still the parent town/city.
         </p>
         <p>
-          <strong className="font-semibold text-ink">Outdoor, no wild table</strong>
-          :{" "}
-          {HATCH_SAFE_OUTDOOR_ROUTES.join(" · ")}.
+          <strong className="font-semibold text-ink">
+            Outdoor, no wild table
+          </strong>
+          : {HATCH_SAFE_OUTDOOR_ROUTES.join(" · ")}.
         </p>
         <p>
-          <strong className="font-semibold text-ink">Look like towns but aren’t safe outdoors</strong>
+          <strong className="font-semibold text-ink">
+            Look like towns but aren’t safe outdoors
+          </strong>
           {" — "}
-          water/fishing tables:{" "}
-          {HATCH_FALSE_FRIEND_ROUTES.join(" · ")}. Prefer a Center or a label
-          above.
+          water/fishing tables: {HATCH_FALSE_FRIEND_ROUTES.join(" · ")}. Prefer
+          a Center or a label above.
         </p>
-        {randomizerContext ? (
+        {randomizerContext && (
           <p>
             Wild remaps don’t add or remove tables — geography stays the same.
             Gift egg <em>species</em> may follow statics randomization; hatch{" "}
             <em>location</em> advice does not.
           </p>
-        ) : null}
+        )}
       </div>
     </details>
   );

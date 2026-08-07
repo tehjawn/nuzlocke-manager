@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export type TrainerBoardMenuItem = {
   key: string;
@@ -139,7 +133,7 @@ export function TrainerBoardActionsMenu({
         <ChevronIcon open={open} />
       </button>
 
-      {open ? (
+      {open && (
         <div className="absolute top-full right-0 z-50 pt-1">
           <div
             id={menuId}
@@ -192,12 +186,16 @@ export function TrainerBoardActionsMenu({
             })}
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
 
-function MoreActionsIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+function MoreActionsIcon({
+  className = "h-3.5 w-3.5",
+}: {
+  className?: string;
+}) {
   return (
     <svg
       className={className}

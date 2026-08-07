@@ -121,9 +121,7 @@ export function ActivityReactions({
   }
 
   return (
-    <div
-      className={`flex items-center gap-1.5 ${className || "mt-2"}`}
-    >
+    <div className={`flex items-center gap-1.5 ${className || "mt-2"}`}>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
         {visibleReactions.map((summary) => (
           <button
@@ -146,7 +144,7 @@ export function ActivityReactions({
         ))}
       </div>
 
-      {canReact ? (
+      {canReact && (
         <div className="relative ml-auto shrink-0">
           <button
             type="button"
@@ -164,7 +162,7 @@ export function ActivityReactions({
             <AddReactionIcon />
           </button>
 
-          {pickerOpen ? (
+          {pickerOpen && (
             <>
               <button
                 type="button"
@@ -214,7 +212,7 @@ export function ActivityReactions({
                   </button>
                 </div>
 
-                {moreOpen ? (
+                {moreOpen && (
                   <div className="emoji-picker-shell mt-1.5 overflow-hidden rounded-lg border border-frame/30">
                     <EmojiPicker
                       onEmojiClick={onEmojiClick}
@@ -228,12 +226,12 @@ export function ActivityReactions({
                       lazyLoadEmojis
                     />
                   </div>
-                ) : null}
+                )}
               </div>
             </>
-          ) : null}
+          )}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

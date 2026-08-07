@@ -65,13 +65,10 @@ export function AskChrome({ children }: { children: ReactNode }) {
   // only AskHost sets.
   return (
     <>
-      <div
-        data-ask-page=""
-        className="flex w-full min-w-0 flex-1 flex-col"
-      >
+      <div data-ask-page="" className="flex w-full min-w-0 flex-1 flex-col">
         {children}
       </div>
-      {aiDrawer ? <AskHost /> : null}
+      {aiDrawer && <AskHost />}
     </>
   );
 }
@@ -86,8 +83,13 @@ function AskHost() {
     open: jumpOpen,
   } = useSearch();
   const router = useRouter();
-  const { state: assist, reset, answerLocal, askRemote, fail } =
-    useJumpAssist();
+  const {
+    state: assist,
+    reset,
+    answerLocal,
+    askRemote,
+    fail,
+  } = useJumpAssist();
   const [draft, setDraft] = useState("");
   const [seenOpen, setSeenOpen] = useState(askOpen);
   const [desktop, setDesktop] = useState(false);
@@ -145,9 +147,7 @@ function AskHost() {
       };
     }
 
-    const digest = season
-      ? buildSeasonDigestFromPlan(season, plan)
-      : null;
+    const digest = season ? buildSeasonDigestFromPlan(season, plan) : null;
     const pathname =
       typeof window !== "undefined" ? window.location.pathname : "";
     const snapshot = includePageContext
@@ -257,8 +257,7 @@ function AskHost() {
         season={season}
         results={results}
         onRetry={() => {
-          const q =
-            assist.status === "idle" ? draft.trim() : assist.question;
+          const q = assist.status === "idle" ? draft.trim() : assist.question;
           if (q) submitAsk(q);
         }}
         onNavigate={navigate}
@@ -277,7 +276,7 @@ function AskHost() {
   // Mobile: portal sheet — never mount both or the composer ref double-binds.
   return (
     <>
-      {askOpen && desktop ? (
+      {askOpen && desktop && (
         <aside
           data-ask-rail-panel=""
           role="dialog"
@@ -288,7 +287,7 @@ function AskHost() {
         >
           {panel}
         </aside>
-      ) : null}
+      )}
 
       {askOpen && !desktop && typeof document !== "undefined"
         ? createPortal(
@@ -400,7 +399,9 @@ function AskPanelFrame({
             <span
               aria-hidden
               className={`absolute h-3.5 w-3.5 rounded-full bg-ink shadow-sm transition-transform ${
-                includePageContext ? "translate-x-[1.125rem]" : "translate-x-0.5"
+                includePageContext
+                  ? "translate-x-[1.125rem]"
+                  : "translate-x-0.5"
               }`}
             />
           </button>
@@ -415,7 +416,9 @@ function AskPanelFrame({
             }
             maxLength={MAX_SEARCH_QUERY_CHARS}
             placeholder={
-              assistStatus === "idle" ? "Ask a question…" : "Ask another question…"
+              assistStatus === "idle"
+                ? "Ask a question…"
+                : "Ask another question…"
             }
             enterKeyHint="send"
             className="min-w-0 flex-1 bg-transparent text-sm font-medium text-ink outline-none placeholder:text-muted/80"

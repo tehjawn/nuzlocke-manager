@@ -11,10 +11,7 @@ import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { GetStartedSeasonCta } from "@/components/GetStartedSeasonCta";
 import { SeasonJukebox } from "@/features/jukebox";
 import type { ChallengeStatus } from "@/lib/challenge-types";
-import {
-  seasonStatusChipClass,
-  seasonStatusLabel,
-} from "@/lib/season-status";
+import { seasonStatusChipClass, seasonStatusLabel } from "@/lib/season-status";
 
 /** Fixed left rail width — keeps tab navigations from shifting columns. */
 export const SEASON_LEFT_RAIL_CLASS = "w-full lg:w-[17rem] lg:shrink-0";
@@ -78,23 +75,25 @@ export function ChallengeShell({
             </h1>
           </dd>
         </div>
-        {game ? (
+        {game && (
           <div>
             <dt className="text-xs font-semibold tracking-tight text-muted">
               Game
             </dt>
             <dd className="mt-0.5 text-sm font-medium">{game}</dd>
           </div>
-        ) : null}
+        )}
         {/* Guest-only pitch — signed-in players already joined. */}
-        {!signedIn ? (
+        {!signedIn && (
           <div>
             <dt className="sr-only">Description</dt>
-            <dd className="text-sm leading-relaxed text-muted">{description}</dd>
+            <dd className="text-sm leading-relaxed text-muted">
+              {description}
+            </dd>
           </div>
-        ) : null}
+        )}
       </dl>
-      {firstRun && myTrainerId ? (
+      {firstRun && myTrainerId && (
         <p className="mt-3 text-sm leading-relaxed text-muted">
           Start here: finish{" "}
           <Link
@@ -105,9 +104,9 @@ export function ChallengeShell({
           </Link>
           , then follow Get Started through ROM setup and save import.
         </p>
-      ) : null}
+      )}
       <GetStartedSeasonCta slug={slug} />
-      {!signedIn ? (
+      {!signedIn && (
         <Link
           href="/login"
           className={`${DISCORD_BTN_CLASS} mt-3 px-3.5 py-2 text-sm`}
@@ -115,7 +114,7 @@ export function ChallengeShell({
           <DiscordIcon className="h-4 w-4" />
           Discord login
         </Link>
-      ) : null}
+      )}
     </Frame>
   );
 

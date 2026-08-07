@@ -155,7 +155,10 @@ export function TeamExportModal({
         "success",
         2200,
       );
-      window.setTimeout(() => setCopied((c) => (c === "team" ? null : c)), 2000);
+      window.setTimeout(
+        () => setCopied((c) => (c === "team" ? null : c)),
+        2000,
+      );
     } else {
       pushSnackbar("Couldn’t copy — select the text instead", "error");
     }
@@ -175,7 +178,10 @@ export function TeamExportModal({
     if (ok) {
       setCopied("link");
       pushSnackbar("Board link copied", "success", 2200);
-      window.setTimeout(() => setCopied((c) => (c === "link" ? null : c)), 2000);
+      window.setTimeout(
+        () => setCopied((c) => (c === "link" ? null : c)),
+        2000,
+      );
     } else {
       pushSnackbar("Couldn’t copy link", "error");
     }
@@ -275,13 +281,13 @@ export function TeamExportModal({
       }
     >
       <div className="space-y-3">
-        {snapshot ? (
+        {snapshot && (
           <p className="border border-frame/50 bg-surface-2/40 px-3 py-2 text-xs text-muted">
             Past board · <span className="text-ink">{snapshot.label}</span> ·
             captured {snapshot.capturedAt}. Run {trainer.runNumber} as it stood
             then — not the live board.
           </p>
-        ) : null}
+        )}
         <div
           role="tablist"
           aria-label="Export format"

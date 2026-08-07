@@ -92,9 +92,7 @@ export function Frame({
   const shellClass = `gba-frame overflow-hidden ${
     tone === "rip" ? "bg-rip" : ""
   } ${className}`;
-  const bodyClass = `relative z-[1] ${
-    dense ? "p-2.5 sm:p-3" : "p-4 sm:p-5"
-  }`;
+  const bodyClass = `relative z-[1] ${dense ? "p-2.5 sm:p-3" : "p-4 sm:p-5"}`;
   const actionsNode = actions ? (
     <div className="relative z-[1] flex shrink-0 items-center gap-1.5">
       {actions}
@@ -145,13 +143,13 @@ export function Frame({
       className={shellClass}
     >
       {overlay}
-      {title ? (
+      {title && (
         <header className="gba-frame-title relative z-[1] flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base">
           {/* min-w-0 without truncate: ReactNode titles (e.g. count suffixes) shouldn't ellipsis mid-number */}
           <span className="min-w-0 font-semibold">{title}</span>
           {actionsNode}
         </header>
-      ) : null}
+      )}
       <div className={bodyClass}>{children}</div>
     </section>
   );

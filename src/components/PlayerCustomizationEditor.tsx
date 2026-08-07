@@ -53,27 +53,25 @@ type PlayerCustomizationEditorProps = {
   leaguePreview?: LeaguePreview | null;
 };
 
-const SECTION_COPY: Record<
-  CustomizationTab,
-  { label: string; hint: string }
-> = {
-  portrait: {
-    label: "Portrait",
-    hint: "Your trainer sprite, a Pokémon, or your own image.",
-  },
-  stage: {
-    label: "Stage",
-    hint: "The plate behind your portrait on the board and league cards.",
-  },
-  card: {
-    label: "Card art",
-    hint: "Chrome behind your league card — separate from the stage.",
-  },
-  profile: {
-    label: "Profile",
-    hint: "Nickname, real name, and the status shown on your board.",
-  },
-};
+const SECTION_COPY: Record<CustomizationTab, { label: string; hint: string }> =
+  {
+    portrait: {
+      label: "Portrait",
+      hint: "Your trainer sprite, a Pokémon, or your own image.",
+    },
+    stage: {
+      label: "Stage",
+      hint: "The plate behind your portrait on the board and league cards.",
+    },
+    card: {
+      label: "Card art",
+      hint: "Chrome behind your league card — separate from the stage.",
+    },
+    profile: {
+      label: "Profile",
+      hint: "Nickname, real name, and the status shown on your board.",
+    },
+  };
 
 const SECTION_ORDER: CustomizationTab[] = [
   "profile",
@@ -201,7 +199,7 @@ export function PlayerCustomizationEditor({
 
   return (
     <div className="space-y-4">
-      {previewTrainer && leaguePreview ? (
+      {previewTrainer && leaguePreview && (
         <div className="space-y-1.5">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
             List Preview
@@ -223,7 +221,7 @@ export function PlayerCustomizationEditor({
             />
           </div>
         </div>
-      ) : null}
+      )}
 
       <div className="grid gap-4 sm:grid-cols-[minmax(9rem,13rem)_minmax(0,1fr)] sm:items-start">
         <div
@@ -278,15 +276,15 @@ export function PlayerCustomizationEditor({
             </p>
           </div>
 
-          {section === "portrait" ? (
+          {section === "portrait" && (
             <AvatarPicker
               panel="portrait"
               value={avatarSpriteKey}
               onChange={onAvatarChange}
               disabled={disabled}
             />
-          ) : null}
-          {section === "stage" ? (
+          )}
+          {section === "stage" && (
             <AvatarPicker
               panel="stage"
               value={avatarSpriteKey}
@@ -297,8 +295,8 @@ export function PlayerCustomizationEditor({
               onSavedCustomBackgroundChange={onSavedCustomAvatarBgChange}
               disabled={disabled}
             />
-          ) : null}
-          {section === "card" ? (
+          )}
+          {section === "card" && (
             <CardBackgroundPicker
               value={cardBackgroundKey}
               onChange={onCardBackgroundChange}
@@ -306,11 +304,13 @@ export function PlayerCustomizationEditor({
               onSavedCustomBackgroundChange={onSavedCustomCardBgChange}
               disabled={disabled}
             />
-          ) : null}
-          {section === "profile" ? (
+          )}
+          {section === "profile" && (
             <div className="space-y-4">
               <label className="block text-sm">
-                <span className="mb-1 block font-bold text-muted">Nickname</span>
+                <span className="mb-1 block font-bold text-muted">
+                  Nickname
+                </span>
                 <input
                   className="w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
                   value={handle}
@@ -320,16 +320,20 @@ export function PlayerCustomizationEditor({
                   onChange={(e) => onHandleChange(e.target.value)}
                 />
               </label>
-              {discordUsername || discordDisplayName ? (
+              {(discordUsername || discordDisplayName) && (
                 <p className="text-sm text-muted">
                   Discord{" "}
                   <span className="font-semibold text-ink">
-                    {discordUsername ? `@${discordUsername}` : discordDisplayName}
+                    {discordUsername
+                      ? `@${discordUsername}`
+                      : discordDisplayName}
                   </span>
                 </p>
-              ) : null}
+              )}
               <label className="block text-sm">
-                <span className="mb-1 block font-bold text-muted">Real name</span>
+                <span className="mb-1 block font-bold text-muted">
+                  Real name
+                </span>
                 <input
                   className="w-full rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
                   value={realName}
@@ -354,7 +358,7 @@ export function PlayerCustomizationEditor({
                 />
               </label>
             </div>
-          ) : null}
+          )}
         </div>
       </div>
     </div>

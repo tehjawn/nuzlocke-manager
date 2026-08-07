@@ -11,7 +11,10 @@ import {
   avatarBackgroundCustomUrl,
   isAvatarBackgroundKey,
 } from "@/data/avatar-backgrounds";
-import { CURATED_PORTRAITS, isCuratedPortraitKey } from "@/data/curated-portraits";
+import {
+  CURATED_PORTRAITS,
+  isCuratedPortraitKey,
+} from "@/data/curated-portraits";
 import {
   avatarImageClassName,
   avatarImageUrl,
@@ -175,14 +178,14 @@ function PortraitOptionButton({
         className={`${TILE_PREVIEW} flex items-end justify-center bg-surface-2/60 p-0.5`}
       >
         {children}
-        {selected ? (
+        {selected && (
           <span
             aria-hidden
             className="absolute top-1.5 right-1.5 z-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-interactive text-white shadow-sm"
           >
             <CheckIcon />
           </span>
-        ) : null}
+        )}
       </span>
       <span
         className={`${TILE_LABEL} ${
@@ -264,7 +267,7 @@ export function AvatarPicker({
               </PortraitOptionButton>
             );
           })}
-          {customSelected ? (
+          {customSelected && (
             <PortraitOptionButton
               label="Custom"
               selected
@@ -280,8 +283,8 @@ export function AvatarPicker({
                 unoptimized
               />
             </PortraitOptionButton>
-          ) : null}
-          {!curatedSelected && !customSelected ? (
+          )}
+          {!curatedSelected && !customSelected && (
             <PortraitOptionButton
               label="Current"
               selected
@@ -297,7 +300,7 @@ export function AvatarPicker({
                 unoptimized
               />
             </PortraitOptionButton>
-          ) : null}
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -344,11 +347,7 @@ export function AvatarPicker({
 
   return (
     <fieldset disabled={disabled} className="min-w-0 space-y-3">
-      <div
-        role="radiogroup"
-        aria-label="Portrait stage"
-        className={TILE_GRID}
-      >
+      <div role="radiogroup" aria-label="Portrait stage" className={TILE_GRID}>
         {CURATED_BACKDROPS.map((option) => (
           <PortraitOptionButton
             key={option.key ?? "none"}
@@ -367,7 +366,7 @@ export function AvatarPicker({
             />
           </PortraitOptionButton>
         ))}
-        {customBackdropUrl && activeCustomBackdrop ? (
+        {customBackdropUrl && activeCustomBackdrop && (
           <PortraitOptionButton
             label="Custom"
             ariaLabel="Custom stage"
@@ -383,7 +382,7 @@ export function AvatarPicker({
               height={72}
             />
           </PortraitOptionButton>
-        ) : null}
+        )}
       </div>
 
       <button

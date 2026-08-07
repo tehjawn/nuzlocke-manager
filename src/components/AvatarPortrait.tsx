@@ -67,12 +67,12 @@ export function AvatarPortrait({
     >
       {stillSrc ? (
         <picture key={avatarSpriteKey} className="contents">
-          {!gifFailed ? (
+          {!gifFailed && (
             <source
               srcSet={stillSrc}
               media="(prefers-reduced-motion: reduce)"
             />
-          ) : null}
+          )}
           {/* Animated GIFs need a plain img so <picture> can swap the still. */}
           <img
             src={displaySrc}

@@ -211,7 +211,7 @@ export function StatusEmojiPicker({
                   +
                 </button>
               </div>
-              {moreOpen ? (
+              {moreOpen && (
                 <div className="emoji-picker-shell mt-1.5 overflow-hidden rounded-lg border border-frame/30">
                   <EmojiPicker
                     onEmojiClick={(data: EmojiClickData) => {
@@ -228,7 +228,7 @@ export function StatusEmojiPicker({
                     lazyLoadEmojis
                   />
                 </div>
-              ) : null}
+              )}
             </div>,
             document.body,
           )

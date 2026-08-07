@@ -51,17 +51,15 @@ export function JoinForm({
         >
           Get my trainer board
         </button>
-        {message ? (
+        {message && (
           <p className="text-sm font-semibold text-accent-deep">{message}</p>
-        ) : null}
-        {error ? (
-          <p className="text-sm font-semibold text-danger">{error}</p>
-        ) : null}
-        {needsInvite ? (
+        )}
+        {error && <p className="text-sm font-semibold text-danger">{error}</p>}
+        {needsInvite && (
           <p className="text-xs text-muted">
             If that fails, this season may require an invite below.
           </p>
-        ) : null}
+        )}
       </div>
     );
   }
@@ -104,10 +102,10 @@ export function JoinForm({
       >
         {mode === "gm" ? "Become Game Master" : "Join with code"}
       </button>
-      {message ? (
+      {message && (
         <p className="text-sm font-semibold text-accent-deep">{message}</p>
-      ) : null}
-      {error ? <p className="text-sm font-semibold text-danger">{error}</p> : null}
+      )}
+      {error && <p className="text-sm font-semibold text-danger">{error}</p>}
     </form>
   );
 }

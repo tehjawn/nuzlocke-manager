@@ -36,7 +36,9 @@ export default async function FeedbackPage({ params }: PageProps) {
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent-deep">
           Player support
         </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">Send feedback</h1>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight">
+          Send feedback
+        </h1>
         <p className="mt-2 max-w-2xl leading-relaxed text-muted">
           Report a bug, request a feature, or ask the {page.challenge.name} GMs
           for help. Your name is attached so they can follow up.
@@ -78,7 +80,7 @@ export default async function FeedbackPage({ params }: PageProps) {
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">
                   {submission.message}
                 </p>
-                {submission.gmNote ? (
+                {submission.gmNote && (
                   <div
                     className="mt-3 rounded-lg border border-accent/25 bg-accent/8 px-3 py-2.5"
                     data-testid={`feedback-gm-note-${submission.id}`}
@@ -91,7 +93,7 @@ export default async function FeedbackPage({ params }: PageProps) {
                       content={submission.gmNote}
                     />
                   </div>
-                ) : null}
+                )}
               </li>
             ))}
           </ol>

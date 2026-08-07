@@ -88,16 +88,16 @@ function SpritePickerShell({
           )}
         </div>
         <div className="min-w-0 self-center text-left sm:min-h-12 sm:self-auto sm:text-center">
-          {preview ? (
+          {preview && (
             <>
               <p className="text-sm font-bold leading-snug">{preview.title}</p>
-              {preview.subtitle ? (
+              {preview.subtitle && (
                 <p className="mt-0.5 text-[11px] text-muted">
                   {preview.subtitle}
                 </p>
-              ) : null}
+              )}
             </>
-          ) : null}
+          )}
         </div>
         <div className="col-span-2 grid grid-cols-2 gap-2 sm:mt-auto sm:flex sm:flex-col">
           <button
@@ -266,7 +266,9 @@ type PokemonBrowserProps = {
   onAnimatedChange?: (animated: boolean) => void;
 };
 
-function initialPokemonDraft(selectedId: number | null): PokemonIndexEntry | null {
+function initialPokemonDraft(
+  selectedId: number | null,
+): PokemonIndexEntry | null {
   return selectedId ? (findPokemonById(selectedId) ?? null) : null;
 }
 
@@ -347,7 +349,7 @@ function PokemonSpriteBrowserInner({
             setFilterMenu(null);
           }}
         >
-          {showMotionFilter ? (
+          {showMotionFilter && (
             <FilterSubmenu
               id="motion"
               openId={filterMenu}
@@ -361,7 +363,7 @@ function PokemonSpriteBrowserInner({
               value={animated ? "animated" : "still"}
               onChange={(next) => onAnimatedChange?.(next === "animated")}
             />
-          ) : null}
+          )}
           <FilterSubmenu
             id="gen"
             openId={filterMenu}
@@ -547,7 +549,7 @@ function FilterSubmenu({
         <span className="truncate">{valueLabel}</span>
         <FilterChevron open={open} />
       </button>
-      {open ? (
+      {open && (
         <ul
           id={menuId}
           role="listbox"
@@ -576,7 +578,7 @@ function FilterSubmenu({
             );
           })}
         </ul>
-      ) : null}
+      )}
     </div>
   );
 }

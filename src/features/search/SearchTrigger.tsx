@@ -52,11 +52,11 @@ export function SearchTrigger({
     >
       <SearchGlyph className="h-4 w-4 shrink-0 text-muted" />
       <span className="hidden text-sm sm:inline">Search</span>
-      {showShortcut ? (
+      {showShortcut && (
         <kbd className="ml-auto hidden rounded border border-frame/60 bg-surface/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-muted/80 md:inline">
           {shortcut}
         </kbd>
-      ) : null}
+      )}
     </button>
   );
 }

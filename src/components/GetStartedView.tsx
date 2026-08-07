@@ -1,12 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { CompleteFirstRunLink } from "@/components/CompleteFirstRunLink";
 import { Frame } from "@/components/Frame";
 import { SaveExportGuide } from "@/components/SaveExportGuide";
@@ -94,9 +89,9 @@ export function GetStartedView({
   );
   const checkoffs = checkoffsWithImport(storedCheckoffs, hasImportedSave);
 
-  const sectionRefs = useRef<Partial<Record<SetupSectionId, HTMLElement | null>>>(
-    {},
-  );
+  const sectionRefs = useRef<
+    Partial<Record<SetupSectionId, HTMLElement | null>>
+  >({});
   // `null` = follow autoExpand; `"closed"` = user collapsed everything
   // (so closing the auto-expanded section doesn't no-op back to open).
   const [expanded, setExpanded] = useState<SetupSectionId | "closed" | null>(
@@ -174,8 +169,8 @@ export function GetStartedView({
             title={sectionTitle("Welcome", welcomeDone, 1)}
           >
             <p className="mb-4 text-sm leading-relaxed text-muted">
-              A message from Jason (@Oubori) to kick off Season 2026 — then follow
-              the steps below to get your run online.
+              A message from Jason (@Oubori) to kick off Season 2026 — then
+              follow the steps below to get your run online.
             </p>
             <WelcomeVideoPanel
               embed={welcomeEmbed}
@@ -421,16 +416,16 @@ export function GetStartedView({
                   </span>
                 </li>
               </ol>
-              {signedIn ? (
+              {signedIn && (
                 <Link href={trainerHref} className={CTA_PRIMARY}>
                   Open trainer board & import save →
                 </Link>
-              ) : null}
-              {importDone ? (
+              )}
+              {importDone && (
                 <p className="text-xs font-semibold text-accent-deep">
                   First save imported — nice work
                 </p>
-              ) : null}
+              )}
             </div>
           </Frame>
         </div>

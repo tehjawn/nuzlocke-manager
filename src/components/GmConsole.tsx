@@ -39,13 +39,7 @@ const hintLinkClass =
 
 const FALLBACK_WELCOME_VIDEO_URL = getWelcomeVideoUrl();
 
-type ConsoleTab =
-  | "season"
-  | "roster"
-  | "rules"
-  | "faq"
-  | "feedback"
-  | "ops";
+type ConsoleTab = "season" | "roster" | "rules" | "faq" | "feedback" | "ops";
 
 const TABS: Array<{ id: ConsoleTab; label: string; index: string }> = [
   { id: "season", label: "Season", index: "01" },
@@ -114,11 +108,11 @@ function Panel({
           <div className="min-w-0">
             <p className="gm-console__panel-kicker">{kicker}</p>
             <h2 className="gm-console__panel-title">{title}</h2>
-            {description ? (
+            {description && (
               <p className="gm-console__panel-desc">{description}</p>
-            ) : null}
+            )}
           </div>
-          {trailing ? <div className="shrink-0">{trailing}</div> : null}
+          {trailing && <div className="shrink-0">{trailing}</div>}
         </header>
         <div className="gm-console__panel-body">{children}</div>
       </div>
@@ -200,7 +194,10 @@ export function GmConsole({
                   access, roster, content, and backups from one glass desk.
                 </p>
               </div>
-              <Link href={boardHref} className="gm-console__btn gm-console__btn--ghost">
+              <Link
+                href={boardHref}
+                className="gm-console__btn gm-console__btn--ghost"
+              >
                 ← League board
               </Link>
             </div>
@@ -263,7 +260,7 @@ export function GmConsole({
         </div>
       </div>
 
-      {flashState ? (
+      {flashState && (
         <div
           className={`gm-console__flash ${
             flashState.tone === "err"
@@ -275,13 +272,10 @@ export function GmConsole({
         >
           {flashState.text}
         </div>
-      ) : null}
+      )}
 
       <div className="gm-console__layout">
-        <nav
-          className="gm-console__nav"
-          aria-labelledby={navLabelId}
-        >
+        <nav className="gm-console__nav" aria-labelledby={navLabelId}>
           <p id={navLabelId} className="sr-only">
             Console sections
           </p>
@@ -314,7 +308,7 @@ export function GmConsole({
         </nav>
 
         <div className="gm-console__panels" key={tab}>
-          {tab === "season" ? (
+          {tab === "season" && (
             <Panel
               kicker="01 · Season"
               title="Season settings"
@@ -348,14 +342,9 @@ export function GmConsole({
                         name: String(fd.get("name") ?? ""),
                         game: String(fd.get("game") ?? ""),
                         status: String(fd.get("status")) as
-                          | "DRAFT"
-                          | "ACTIVE"
-                          | "TOURNAMENT"
-                          | "ARCHIVED",
+                          "DRAFT" | "ACTIVE" | "TOURNAMENT" | "ARCHIVED",
                         visibility: String(fd.get("visibility")) as
-                          | "INVITE"
-                          | "UNLISTED"
-                          | "PUBLIC",
+                          "INVITE" | "UNLISTED" | "PUBLIC",
                         playerInviteCode: String(
                           fd.get("playerInviteCode") ?? "",
                         ),
@@ -364,7 +353,9 @@ export function GmConsole({
                         discordWebhookUrl: String(
                           fd.get("discordWebhookUrl") ?? "",
                         ),
-                        welcomeVideoUrl: String(fd.get("welcomeVideoUrl") ?? ""),
+                        welcomeVideoUrl: String(
+                          fd.get("welcomeVideoUrl") ?? "",
+                        ),
                         welcomeVideoPublishAt,
                         romUrl: String(fd.get("romUrl") ?? ""),
                         survivalMarketsEnabled:
@@ -470,8 +461,8 @@ export function GmConsole({
                       Survive / Die polls
                     </span>
                     <span className="gm-console__hint block">
-                      Members can vote whether living party and box Pokémon
-                      make it. Off hides the UI for this season.
+                      Members can vote whether living party and box Pokémon make
+                      it. Off hides the UI for this season.
                     </span>
                   </span>
                 </label>
@@ -561,9 +552,9 @@ export function GmConsole({
                 </div>
               </form>
             </Panel>
-          ) : null}
+          )}
 
-          {tab === "roster" ? (
+          {tab === "roster" && (
             <Panel
               kicker="02 · Roster"
               title="Trainer roster"
@@ -575,7 +566,9 @@ export function GmConsole({
               }
             >
               {challenge.trainers.length === 0 ? (
-                <p className="gm-console__hint">No trainers in this season yet.</p>
+                <p className="gm-console__hint">
+                  No trainers in this season yet.
+                </p>
               ) : (
                 <ul className="gm-console__roster">
                   {challenge.trainers.map((t) => (
@@ -592,7 +585,9 @@ export function GmConsole({
                         />
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="gm-console__trainer-name">{t.handle}</p>
+                            <p className="gm-console__trainer-name">
+                              {t.handle}
+                            </p>
                             {t.userId ? (
                               <span className="gm-console__pill gm-console__pill--ok">
                                 Claimed
@@ -600,11 +595,11 @@ export function GmConsole({
                             ) : (
                               <span className="gm-console__pill">Open</span>
                             )}
-                            {t.mainSquadLocked ? (
+                            {t.mainSquadLocked && (
                               <span className="gm-console__pill gm-console__pill--lock">
                                 Main locked
                               </span>
-                            ) : null}
+                            )}
                           </div>
                           <p className="gm-console__trainer-meta">
                             {t.realName ? `${t.realName} · ` : ""}
@@ -644,7 +639,7 @@ export function GmConsole({
                         >
                           {t.mainSquadLocked ? "Unlock main" : "Lock main"}
                         </button>
-                        {t.userId ? (
+                        {t.userId && (
                           <button
                             type="button"
                             disabled={pending}
@@ -661,16 +656,16 @@ export function GmConsole({
                           >
                             Unclaim
                           </button>
-                        ) : null}
+                        )}
                       </div>
                     </li>
                   ))}
                 </ul>
               )}
             </Panel>
-          ) : null}
+          )}
 
-          {tab === "rules" ? (
+          {tab === "rules" && (
             <Panel
               kicker="03 · Content"
               title="Rules"
@@ -780,8 +775,7 @@ export function GmConsole({
                         await gmUpdateRuleAction({
                           challengeId,
                           sortOrder: Number(
-                            fd.get("sortOrder") ||
-                              challenge.rules.length + 1,
+                            fd.get("sortOrder") || challenge.rules.length + 1,
                           ),
                           title: String(fd.get("title") ?? ""),
                           body: String(fd.get("body") ?? ""),
@@ -838,9 +832,9 @@ export function GmConsole({
                 </form>
               </div>
             </Panel>
-          ) : null}
+          )}
 
-          {tab === "faq" ? (
+          {tab === "faq" && (
             <Panel
               kicker="04 · Content"
               title="FAQ"
@@ -938,8 +932,7 @@ export function GmConsole({
                         await gmUpdateFaqAction({
                           challengeId,
                           sortOrder: Number(
-                            fd.get("sortOrder") ||
-                              challenge.faqs.length + 1,
+                            fd.get("sortOrder") || challenge.faqs.length + 1,
                           ),
                           question: String(fd.get("question") ?? ""),
                           answer: String(fd.get("answer") ?? ""),
@@ -981,7 +974,7 @@ export function GmConsole({
                 </form>
               </div>
             </Panel>
-          ) : null}
+          )}
 
           {tab === "feedback" && (
             <Panel
@@ -1098,7 +1091,7 @@ export function GmConsole({
             </Panel>
           )}
 
-          {tab === "ops" ? (
+          {tab === "ops" && (
             <div className="gm-console__ops-grid">
               <Panel
                 kicker="06 · Ops"
@@ -1190,9 +1183,11 @@ export function GmConsole({
                   className="gm-console__btn gm-console__btn--primary"
                   onClick={() => {
                     void (async () => {
-                      const preview = await previewSeasonMemorialBackfillAction({
-                        challengeId,
-                      });
+                      const preview = await previewSeasonMemorialBackfillAction(
+                        {
+                          challengeId,
+                        },
+                      );
                       if (!preview.ok) {
                         flash(preview);
                         return;
@@ -1226,8 +1221,9 @@ export function GmConsole({
                           <>
                             Restores {preview.totalCandidates} missing R.I.P.
                             entr
-                            {preview.totalCandidates === 1 ? "y" : "ies"} across{" "}
-                            {preview.trainersAffected} trainer
+                            {preview.totalCandidates === 1
+                              ? "y"
+                              : "ies"} across {preview.trainersAffected} trainer
                             {preview.trainersAffected === 1 ? "" : "s"} from
                             retained board history. Live memorials are not
                             cleared.
@@ -1296,7 +1292,7 @@ export function GmConsole({
                 </button>
               </Panel>
             </div>
-          ) : null}
+          )}
         </div>
       </div>
 

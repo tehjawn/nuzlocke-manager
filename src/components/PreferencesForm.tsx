@@ -154,9 +154,7 @@ function PreferenceSection({
     <section className="space-y-3 border-b border-frame/50 pb-7 last:border-b-0 last:pb-0">
       <div>
         <h2 className="text-sm font-bold tracking-tight">{title}</h2>
-        <p className="mt-1 text-sm leading-relaxed text-muted">
-          {description}
-        </p>
+        <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>
       </div>
       {children}
     </section>
@@ -186,11 +184,11 @@ function PreferenceChoice({
       role="radio"
       type="button"
     >
-      {icon ? (
+      {icon && (
         <span className="shrink-0 opacity-90" aria-hidden>
           {icon}
         </span>
-      ) : null}
+      )}
       {label}
     </button>
   );

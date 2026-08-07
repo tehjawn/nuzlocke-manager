@@ -30,7 +30,10 @@ type EvolutionPathProps = {
 };
 
 /** ItemDex deep link, or null when the catalog doesn't know the item. */
-function itemHref(slug: string | null | undefined, name: string): string | null {
+function itemHref(
+  slug: string | null | undefined,
+  name: string,
+): string | null {
   if (!slug) return null;
   const item = itemDexSlug(name);
   if (!item) return null;
@@ -52,12 +55,7 @@ function ConditionChip({
         <span className="text-muted">Hold</span>
         {/* Unlinked chips stay `embedded` so they keep the flat chip look
             rather than growing the InfoTip's own button chrome. */}
-        <HeldItemLabel
-          name={name}
-          href={href}
-          embedded={!href}
-          iconSize={12}
-        />
+        <HeldItemLabel name={name} href={href} embedded={!href} iconSize={12} />
       </span>
     );
   }
@@ -128,9 +126,7 @@ function StageSprite({
     />
   );
   const shellClass = `flex shrink-0 items-center justify-center rounded-lg border ${
-    current
-      ? "border-accent-2/60 bg-info"
-      : "border-frame/40 bg-surface-2"
+    current ? "border-accent-2/60 bg-info" : "border-frame/40 bg-surface-2"
   }`;
   const shellStyle = { width: size + 8, height: size + 8 };
 
@@ -255,10 +251,7 @@ function BranchOptions({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         {view.ancestors.map((a) => (
-          <div
-            key={a.pokedexId}
-            className="flex items-center gap-2 opacity-60"
-          >
+          <div key={a.pokedexId} className="flex items-center gap-2 opacity-60">
             <StageSprite
               pokedexId={a.pokedexId}
               species={a.name}
@@ -312,11 +305,11 @@ function BranchOptions({
                   />
                 ))}
               </div>
-              {option.note ? (
+              {option.note && (
                 <p className="text-[10px] leading-snug text-muted">
                   {option.note}
                 </p>
-              ) : null}
+              )}
             </div>
           </li>
         ))}
@@ -426,11 +419,11 @@ export function EvolutionPath({
           onSelectSpecies={onSelectSpecies}
         />
       ) : null}
-      {!branched && view.options[0]?.note ? (
+      {!branched && view.options[0]?.note && (
         <p className="mt-1.5 text-[10px] leading-snug text-muted">
           {view.options[0].note}
         </p>
-      ) : null}
+      )}
     </div>
   );
 }

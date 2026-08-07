@@ -18,7 +18,10 @@ import { EvolutionPath } from "@/components/EvolutionPath";
 import { ModeTabs } from "@/components/ModeTabs";
 import { PlaystyleChips } from "@/components/PlaystyleChips";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { PokedexTierList, CompetitiveTierBrief } from "@/components/PokedexTierList";
+import {
+  PokedexTierList,
+  CompetitiveTierBrief,
+} from "@/components/PokedexTierList";
 import { StatGrid, type StatRankChip } from "@/components/StatGrid";
 import { TypeBadge } from "@/components/TypeBadge";
 import { abilitiesForSpecies } from "@/data/pokemon-lookups";
@@ -30,10 +33,7 @@ import {
   type PokemonIndexEntry,
 } from "@/data/pokemon-index";
 import { signatureMovesForTypes } from "@/data/type-signature-moves";
-import type {
-  PokemonEntry,
-  TrainerProfile,
-} from "@/lib/challenge-types";
+import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import {
   formatHolderHandles,
   personalSpeciesStatus,
@@ -55,11 +55,13 @@ import {
   statRankToneClass,
   type SpeciesStatRanks,
 } from "@/lib/species-ranks";
+import { avatarImageClassName, avatarImageUrl } from "@/lib/sprites";
 import {
-  avatarImageClassName,
-  avatarImageUrl,
-} from "@/lib/sprites";
-import { baseStatsForSpecies, bstOf, STAT_KEYS, STAT_LABELS } from "@/lib/stats";
+  baseStatsForSpecies,
+  bstOf,
+  STAT_KEYS,
+  STAT_LABELS,
+} from "@/lib/stats";
 import {
   defensiveMatchups,
   formatMatchupMult,
@@ -170,11 +172,9 @@ export function PokedexPanel({
     readPokedexLastId,
     getPokedexLastIdServerSnapshot,
   );
-  const focusId =
-    pickedId ?? initialId ?? rememberedId ?? DEFAULT_POKEDEX_ID;
+  const focusId = pickedId ?? initialId ?? rememberedId ?? DEFAULT_POKEDEX_ID;
   const selected =
-    resolveDirectoryEntry(focusId) ??
-    resolveDirectoryEntry(DEFAULT_POKEDEX_ID);
+    resolveDirectoryEntry(focusId) ?? resolveDirectoryEntry(DEFAULT_POKEDEX_ID);
 
   // Drop tip exclusions when the focused species changes (including store hydrate).
   const [tipFocusId, setTipFocusId] = useState(focusId);
@@ -216,9 +216,7 @@ export function PokedexPanel({
 
   const myTrainer = useMemo(
     () =>
-      myTrainerId
-        ? (trainers.find((t) => t.id === myTrainerId) ?? null)
-        : null,
+      myTrainerId ? (trainers.find((t) => t.id === myTrainerId) ?? null) : null,
     [myTrainerId, trainers],
   );
   const tipSquad = useMemo(() => {
@@ -259,9 +257,7 @@ export function PokedexPanel({
     () => (selected ? typesForPokedexId(selected.pokedexId) : []),
     [selected],
   );
-  const baseStats = selected
-    ? baseStatsForSpecies(selected.pokedexId)
-    : null;
+  const baseStats = selected ? baseStatsForSpecies(selected.pokedexId) : null;
   const abilities = selected ? abilitiesForSpecies(selected.pokedexId) : [];
   const matchups = useMemo(() => defensiveMatchups(types), [types]);
   const offense = useMemo(() => stabOffense(types), [types]);
@@ -296,8 +292,7 @@ export function PokedexPanel({
     return chips;
   }, [ranks]);
   const ownership = useMemo(
-    () =>
-      selected ? speciesOwnershipFor(trainers, selected.pokedexId) : null,
+    () => (selected ? speciesOwnershipFor(trainers, selected.pokedexId) : null),
     [selected, trainers],
   );
   // Gate on the resolved profile, not the raw id — "signed in but not on this
@@ -348,10 +343,7 @@ export function PokedexPanel({
     typeTips,
   ]);
 
-  function writePokedexUrl(
-    nextMode: PokedexMode,
-    nextId: number | null,
-  ) {
+  function writePokedexUrl(nextMode: PokedexMode, nextId: number | null) {
     // Keep the shareable ?mode= / ?id= URL without a tools-route RSC refetch.
     // pushState (not replace) so BST/Competitive → briefing is undoable.
     const url = new URL(window.location.href);
@@ -441,238 +433,237 @@ export function PokedexPanel({
         />
       ) : (
         <>
-      <div className="space-y-1.5">
-        <p className="text-sm font-bold text-muted">Search</p>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            className="min-w-0 w-full flex-1 rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
-            placeholder="Name or National Dex #…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoComplete="off"
-            aria-label="Search Pokédex"
-          />
-          <div
-            role="group"
-            aria-label="Generation"
-            className="flex flex-wrap items-center gap-1.5 sm:shrink-0"
-          >
-            <GenChip
-              active={generation == null}
-              onClick={() => setGeneration(null)}
-            >
-              All
-            </GenChip>
-            {POKEMON_GENERATIONS.map((g) => (
-              <GenChip
-                key={g}
-                active={generation === g}
-                onClick={() => setGeneration(g)}
-              >
-                {g}
-              </GenChip>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-4 self-start">
-          <Frame
-            title="Pokédex"
-            dense
-            className="min-w-0"
-            actions={
-              <span className="text-[11px] font-semibold tabular-nums text-[var(--on-chrome)]/80">
-                {total}
-              </span>
-            }
-          >
-            {total === 0 ? (
-              <p className="px-1 py-2 text-sm text-muted">No matches.</p>
-            ) : (
+          <div className="space-y-1.5">
+            <p className="text-sm font-bold text-muted">Search</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                className="min-w-0 w-full flex-1 rounded-lg border border-frame bg-surface px-3 py-2 text-sm"
+                placeholder="Name or National Dex #…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                autoComplete="off"
+                aria-label="Search Pokédex"
+              />
               <div
-                ref={scrollRef}
-                onScroll={onScroll}
-                className="max-h-[min(22rem,42vh)] overflow-y-auto overscroll-contain lg:max-h-[min(28rem,48vh)]"
+                role="group"
+                aria-label="Generation"
+                className="flex flex-wrap items-center gap-1.5 sm:shrink-0"
               >
-                {/*
+                <GenChip
+                  active={generation == null}
+                  onClick={() => setGeneration(null)}
+                >
+                  All
+                </GenChip>
+                {POKEMON_GENERATIONS.map((g) => (
+                  <GenChip
+                    key={g}
+                    active={generation === g}
+                    onClick={() => setGeneration(g)}
+                  >
+                    {g}
+                  </GenChip>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+            <div className="min-w-0 space-y-4 self-start">
+              <Frame
+                title="Pokédex"
+                dense
+                className="min-w-0"
+                actions={
+                  <span className="text-[11px] font-semibold tabular-nums text-[var(--on-chrome)]/80">
+                    {total}
+                  </span>
+                }
+              >
+                {total === 0 ? (
+                  <p className="px-1 py-2 text-sm text-muted">No matches.</p>
+                ) : (
+                  <div
+                    ref={scrollRef}
+                    onScroll={onScroll}
+                    className="max-h-[min(22rem,42vh)] overflow-y-auto overscroll-contain lg:max-h-[min(28rem,48vh)]"
+                  >
+                    {/*
                   Fixed total height + absolutely positioned window.
                   Padding-based virtualization desyncs when row math drifts;
                   a stable scroll height keeps up/down scrolling honest.
                 */}
-                <div
-                  role="listbox"
-                  aria-label="Pokédex list"
-                  className="relative w-full"
-                  style={{ height: total * DEX_ROW_HEIGHT }}
-                >
-                  <ul
-                    className="absolute left-0 right-0 m-0 list-none p-0"
-                    style={{ top: startIndex * DEX_ROW_HEIGHT }}
-                  >
-                    {visible.map((mon) => {
-                      const active = selected?.pokedexId === mon.pokedexId;
-                      return (
-                        <li
-                          key={mon.pokedexId}
-                          className="box-border m-0 overflow-hidden p-0"
-                          style={{ height: DEX_ROW_HEIGHT }}
-                        >
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected={active}
-                            className={`pressable flex h-full w-full items-center gap-2 border-b border-frame/25 px-1.5 text-left ${
-                              active
-                                ? "bg-interactive-soft"
-                                : "hover:bg-surface-2/80"
-                            }`}
-                            onClick={() => selectEntry(mon)}
-                          >
-                            <span className="w-9 shrink-0 text-right font-mono text-[11px] font-bold tabular-nums text-muted">
-                              {formatDexNo(mon.pokedexId)}
-                            </span>
-                            <PokemonSpriteImage
-                              alt=""
-                              className="pixelated h-8 w-8 shrink-0 object-contain"
-                              height={32}
-                              loading="lazy"
-                              pokedexId={mon.pokedexId}
-                              species={mon.name}
-                              width={32}
-                            />
-                            <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">
-                              {mon.name}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              </div>
-            )}
-          </Frame>
-
-          <Frame title="Scouter" dense className="min-w-0">
-            {scoutTrainers.length === 0 ? (
-              <p className="px-1 py-2 text-sm text-muted">
-                No main squads to scout yet.
-              </p>
-            ) : (
-              <ul className="max-h-[min(20rem,38vh)] space-y-3 overflow-y-auto overscroll-contain">
-                {scoutTrainers.map(({ trainer, main }) => (
-                  <li key={trainer.id}>
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <Image
-                        src={avatarImageUrl(trainer.avatarSpriteKey)}
-                        alt=""
-                        width={24}
-                        height={24}
-                        className={avatarImageClassName(
-                          trainer.avatarSpriteKey,
-                          "h-6 w-6",
-                        )}
-                        unoptimized
-                      />
-                      <p className="min-w-0 truncate text-xs font-bold tracking-tight">
-                        {trainer.handle}
-                      </p>
-                    </div>
-                    <ul className="flex flex-wrap gap-1">
-                      {main.map((mon) => {
-                        const active =
-                          selected != null &&
-                          ((mon.pokedexId != null &&
-                            mon.pokedexId === selected.pokedexId) ||
-                            mon.species.toLowerCase() ===
-                              selected.name.toLowerCase());
-                        const label =
-                          mon.nickname?.trim() || mon.species;
-                        return (
-                          <li key={mon.id}>
-                            <button
-                              type="button"
-                              title={`${label}${mon.nickname ? ` (${mon.species})` : ""}`}
-                              aria-label={`Look up ${mon.species}`}
-                              aria-pressed={active}
-                              className={`pressable flex h-9 w-9 items-center justify-center rounded-md border ${
-                                active
-                                  ? "border-interactive/50 bg-interactive-soft"
-                                  : "border-frame/40 bg-surface-2 hover:border-frame"
-                              }`}
-                              onClick={() => selectFromRun(mon)}
+                    <div
+                      role="listbox"
+                      aria-label="Pokédex list"
+                      className="relative w-full"
+                      style={{ height: total * DEX_ROW_HEIGHT }}
+                    >
+                      <ul
+                        className="absolute left-0 right-0 m-0 list-none p-0"
+                        style={{ top: startIndex * DEX_ROW_HEIGHT }}
+                      >
+                        {visible.map((mon) => {
+                          const active = selected?.pokedexId === mon.pokedexId;
+                          return (
+                            <li
+                              key={mon.pokedexId}
+                              className="box-border m-0 overflow-hidden p-0"
+                              style={{ height: DEX_ROW_HEIGHT }}
                             >
-                              <PokemonSpriteImage
-                                alt=""
-                                className="pixelated h-7 w-7 object-contain"
-                                height={32}
-                                loading="lazy"
-                                pokedexId={mon.pokedexId}
-                                shiny={mon.isShiny}
-                                species={mon.species}
-                                width={32}
-                              />
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Frame>
-        </div>
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected={active}
+                                className={`pressable flex h-full w-full items-center gap-2 border-b border-frame/25 px-1.5 text-left ${
+                                  active
+                                    ? "bg-interactive-soft"
+                                    : "hover:bg-surface-2/80"
+                                }`}
+                                onClick={() => selectEntry(mon)}
+                              >
+                                <span className="w-9 shrink-0 text-right font-mono text-[11px] font-bold tabular-nums text-muted">
+                                  {formatDexNo(mon.pokedexId)}
+                                </span>
+                                <PokemonSpriteImage
+                                  alt=""
+                                  className="pixelated h-8 w-8 shrink-0 object-contain"
+                                  height={32}
+                                  loading="lazy"
+                                  pokedexId={mon.pokedexId}
+                                  species={mon.name}
+                                  width={32}
+                                />
+                                <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">
+                                  {mon.name}
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </Frame>
 
-        {selected ? (
-          <div className="min-w-0 self-start lg:sticky lg:top-4">
-            <PokedexEntry
-              slug={slug}
-              entry={selected}
-              types={types}
-              abilities={abilities}
-              baseStats={baseStats}
-              bst={bst}
-              playstyle={playstyle}
-              ranks={ranks}
-              statRankChips={statRankChips}
-              matchups={matchups}
-              offense={offense}
-              ownership={ownership}
-              myOwnershipStatus={myOwnershipStatus}
-              packTrainerCount={trainers.length}
-              stabMoves={stabMoves}
-              typeTips={typeTips}
-              tipRerollAction={tipReroll?.action ?? null}
-              tipsPending={tipsPending}
-              tipTrainerLabel={tipTrainerLabel}
-              tipSquadCount={tipSquad.length}
-              tipSquadHasMoves={tipSquadHasMoves}
-              signedIn={signedIn}
-              canGoPrev={selectedIndex > 0}
-              canGoNext={
-                selectedIndex >= 0 && selectedIndex < results.length - 1
-              }
-              onPrev={() => step(-1)}
-              onNext={() => step(1)}
-              onMoreTips={showMoreTips}
-              onSelectSpecies={(pokedexId) => {
-                const next = findPokemonById(pokedexId);
-                if (next) selectEntry(next);
-              }}
-            />
+              <Frame title="Scouter" dense className="min-w-0">
+                {scoutTrainers.length === 0 ? (
+                  <p className="px-1 py-2 text-sm text-muted">
+                    No main squads to scout yet.
+                  </p>
+                ) : (
+                  <ul className="max-h-[min(20rem,38vh)] space-y-3 overflow-y-auto overscroll-contain">
+                    {scoutTrainers.map(({ trainer, main }) => (
+                      <li key={trainer.id}>
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <Image
+                            src={avatarImageUrl(trainer.avatarSpriteKey)}
+                            alt=""
+                            width={24}
+                            height={24}
+                            className={avatarImageClassName(
+                              trainer.avatarSpriteKey,
+                              "h-6 w-6",
+                            )}
+                            unoptimized
+                          />
+                          <p className="min-w-0 truncate text-xs font-bold tracking-tight">
+                            {trainer.handle}
+                          </p>
+                        </div>
+                        <ul className="flex flex-wrap gap-1">
+                          {main.map((mon) => {
+                            const active =
+                              selected != null &&
+                              ((mon.pokedexId != null &&
+                                mon.pokedexId === selected.pokedexId) ||
+                                mon.species.toLowerCase() ===
+                                  selected.name.toLowerCase());
+                            const label = mon.nickname?.trim() || mon.species;
+                            return (
+                              <li key={mon.id}>
+                                <button
+                                  type="button"
+                                  title={`${label}${mon.nickname ? ` (${mon.species})` : ""}`}
+                                  aria-label={`Look up ${mon.species}`}
+                                  aria-pressed={active}
+                                  className={`pressable flex h-9 w-9 items-center justify-center rounded-md border ${
+                                    active
+                                      ? "border-interactive/50 bg-interactive-soft"
+                                      : "border-frame/40 bg-surface-2 hover:border-frame"
+                                  }`}
+                                  onClick={() => selectFromRun(mon)}
+                                >
+                                  <PokemonSpriteImage
+                                    alt=""
+                                    className="pixelated h-7 w-7 object-contain"
+                                    height={32}
+                                    loading="lazy"
+                                    pokedexId={mon.pokedexId}
+                                    shiny={mon.isShiny}
+                                    species={mon.species}
+                                    width={32}
+                                  />
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Frame>
+            </div>
+
+            {selected ? (
+              <div className="min-w-0 self-start lg:sticky lg:top-4">
+                <PokedexEntry
+                  slug={slug}
+                  entry={selected}
+                  types={types}
+                  abilities={abilities}
+                  baseStats={baseStats}
+                  bst={bst}
+                  playstyle={playstyle}
+                  ranks={ranks}
+                  statRankChips={statRankChips}
+                  matchups={matchups}
+                  offense={offense}
+                  ownership={ownership}
+                  myOwnershipStatus={myOwnershipStatus}
+                  packTrainerCount={trainers.length}
+                  stabMoves={stabMoves}
+                  typeTips={typeTips}
+                  tipRerollAction={tipReroll?.action ?? null}
+                  tipsPending={tipsPending}
+                  tipTrainerLabel={tipTrainerLabel}
+                  tipSquadCount={tipSquad.length}
+                  tipSquadHasMoves={tipSquadHasMoves}
+                  signedIn={signedIn}
+                  canGoPrev={selectedIndex > 0}
+                  canGoNext={
+                    selectedIndex >= 0 && selectedIndex < results.length - 1
+                  }
+                  onPrev={() => step(-1)}
+                  onNext={() => step(1)}
+                  onMoreTips={showMoreTips}
+                  onSelectSpecies={(pokedexId) => {
+                    const next = findPokemonById(pokedexId);
+                    if (next) selectEntry(next);
+                  }}
+                />
+              </div>
+            ) : (
+              <Frame title="Data" className="self-start">
+                <p className="text-sm text-muted">
+                  Pick a species from the Pokédex or tap a sprite under Scouter
+                  — details fill in here.
+                </p>
+              </Frame>
+            )}
           </div>
-        ) : (
-          <Frame title="Data" className="self-start">
-            <p className="text-sm text-muted">
-              Pick a species from the Pokédex or tap a sprite under Scouter —
-              details fill in here.
-            </p>
-          </Frame>
-        )}
-      </div>
         </>
       )}
     </ModeTabs>
@@ -746,7 +737,9 @@ function PokedexEntry({
   bst: number | null;
   playstyle: PlaystyleHint | null;
   ranks: SpeciesStatRanks | null;
-  statRankChips: Partial<Record<(typeof STAT_KEYS)[number], StatRankChip>> | null;
+  statRankChips: Partial<
+    Record<(typeof STAT_KEYS)[number], StatRankChip>
+  > | null;
   matchups: ReturnType<typeof defensiveMatchups>;
   offense: StabOffense;
   ownership: SpeciesOwnershipLookup | null;
@@ -807,13 +800,13 @@ function PokedexEntry({
                 width={144}
               />
             </div>
-            {types.length > 0 ? (
+            {types.length > 0 && (
               <div className="flex flex-wrap justify-center gap-1 sm:justify-start">
                 {types.map((t) => (
                   <TypeBadge key={t} type={t} />
                 ))}
               </div>
-            ) : null}
+            )}
             <dl className="w-full space-y-1 text-center sm:text-left">
               <div>
                 <dt className="text-[10px] font-semibold tracking-tight text-muted">
@@ -824,7 +817,7 @@ function PokedexEntry({
                   {entry.isForme ? " · forme" : ""}
                 </dd>
               </div>
-              {abilities.length > 0 ? (
+              {abilities.length > 0 && (
                 <div>
                   <dt className="text-[10px] font-semibold tracking-tight text-muted">
                     Ability
@@ -833,12 +826,12 @@ function PokedexEntry({
                     {abilities.join(" / ")}
                   </dd>
                 </div>
-              ) : null}
+              )}
             </dl>
           </div>
 
           <div className="min-w-0 space-y-4">
-            {playstyle ? (
+            {playstyle && (
               <div>
                 <p className="mb-1.5 text-xs font-semibold tracking-tight text-muted">
                   Role
@@ -850,13 +843,13 @@ function PokedexEntry({
                 <p className="mt-1.5 text-[11px] leading-snug text-muted">
                   {playstyle.tip}
                 </p>
-                {ranks ? (
+                {ranks && (
                   <p className="mt-1 text-[11px] leading-snug text-muted">
                     {ranks.headline}
                   </p>
-                ) : null}
+                )}
               </div>
-            ) : null}
+            )}
 
             <CompetitiveTierBrief pokedexId={entry.pokedexId} />
 
@@ -865,29 +858,29 @@ function PokedexEntry({
                 <p className="text-xs font-semibold tracking-tight text-muted">
                   Base stats
                 </p>
-                {bst != null ? (
+                {bst != null && (
                   <p className="flex items-baseline gap-1.5 text-[11px] font-semibold tabular-nums text-muted">
                     BST {bst}
-                    {ranks ? (
+                    {ranks && (
                       <span
                         className={`inline-flex items-center rounded border px-1 text-[10px] font-bold leading-tight ${statRankToneClass(ranks.bst.rank)}`}
                         title={statRankHint("BST", ranks.bst, ranks.peerCount)}
                       >
                         {ranks.bst.rank}
                       </span>
-                    ) : null}
+                    )}
                   </p>
-                ) : null}
+                )}
               </div>
               {baseStats ? (
                 <>
                   <StatGrid compact ranks={statRankChips} spread={baseStats} />
-                  {ranks ? (
+                  {ranks && (
                     <p className="mt-1.5 text-[11px] leading-snug text-muted">
                       Letters rank each stat F→S against the {ranks.peerCount}{" "}
                       Modern Emerald species with catalogued stats.
                     </p>
-                  ) : null}
+                  )}
                 </>
               ) : (
                 <p className="text-sm text-muted">
@@ -1019,7 +1012,9 @@ function PokedexEntry({
                         {tip.offenseMult}×)
                       </span>
                     </p>
-                    <p className="mt-0.5 text-[11px] text-muted">{tip.reason}</p>
+                    <p className="mt-0.5 text-[11px] text-muted">
+                      {tip.reason}
+                    </p>
                   </div>
                 </li>
               ))}
@@ -1221,25 +1216,27 @@ function PackStatusStrip({
                 : packStatusChipClass(ownership.status)
             }`}
           >
-            {offRom ? "Not in Modern Emerald" : packStatusLabel(ownership.status)}
+            {offRom
+              ? "Not in Modern Emerald"
+              : packStatusLabel(ownership.status)}
           </span>
 
-          {myStatus ? (
+          {myStatus && (
             <span className="inline-flex items-center self-start rounded-md border border-frame/50 bg-surface px-2 py-1 text-xs font-semibold text-muted">
               {personalStatusLabel(myStatus)}
             </span>
-          ) : null}
+          )}
 
-          {owners ? (
+          {owners && (
             <p className="text-xs text-muted">
               Held by <span className="font-semibold text-ink">{owners}</span>
             </p>
-          ) : null}
-          {seenBy ? (
+          )}
+          {seenBy && (
             <p className="text-xs text-muted">
               Seen by <span className="font-semibold text-ink">{seenBy}</span>
             </p>
-          ) : null}
+          )}
 
           {offRom ? (
             <p className="text-xs text-muted">Not catchable this season.</p>

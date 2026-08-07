@@ -26,9 +26,9 @@ export function ChampionRibbon({
     >
       <span className="champion-ribbon__band">
         <span className="champion-ribbon__label">Champion</span>
-        {completionCount > 1 ? (
+        {completionCount > 1 && (
           <span className="champion-ribbon__count">×{completionCount}</span>
-        ) : null}
+        )}
       </span>
     </div>
   );

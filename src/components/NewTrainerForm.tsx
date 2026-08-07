@@ -6,10 +6,7 @@ import { completeTrainerIntroAction } from "@/app/actions/challenge";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { CTA_PRIMARY_LG } from "@/lib/cta";
-import {
-  writeOnboardingActive,
-  writeOnboardingStep,
-} from "@/lib/onboarding";
+import { writeOnboardingActive, writeOnboardingStep } from "@/lib/onboarding";
 
 type NewTrainerFormProps = {
   trainerId: string;
@@ -59,9 +56,7 @@ export function NewTrainerForm({
       }
       writeOnboardingStep(0);
       writeOnboardingActive(true);
-      router.replace(
-        `/challenges/${challengeSlug}/trainers/${trainerId}`,
-      );
+      router.replace(`/challenges/${challengeSlug}/trainers/${trainerId}`);
       router.refresh();
     });
   }
@@ -96,12 +91,12 @@ export function NewTrainerForm({
             <p className="text-xl font-bold tracking-tight">
               {handle.trim() || "Your nickname"}
             </p>
-            {realName.trim() ? (
+            {realName.trim() && (
               <p className="text-sm text-muted">{realName.trim()}</p>
-            ) : null}
-            {discordUsername ? (
+            )}
+            {discordUsername && (
               <p className="text-xs text-muted">@{discordUsername}</p>
-            ) : null}
+            )}
           </div>
         </div>
       </div>
@@ -123,8 +118,7 @@ export function NewTrainerForm({
 
         <label className="block space-y-1.5" htmlFor={realNameId}>
           <span className="text-sm font-semibold tracking-tight">
-            Real name{" "}
-            <span className="font-medium text-muted">(optional)</span>
+            Real name <span className="font-medium text-muted">(optional)</span>
           </span>
           <input
             id={realNameId}
@@ -152,11 +146,11 @@ export function NewTrainerForm({
         </div>
       </div>
 
-      {error ? (
+      {error && (
         <p className="text-sm font-semibold text-danger" role="alert">
           {error}
         </p>
-      ) : null}
+      )}
 
       <button
         type="button"

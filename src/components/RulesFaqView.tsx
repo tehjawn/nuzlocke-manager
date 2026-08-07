@@ -73,16 +73,14 @@ export function RulesFaqView({
                       </span>
                     }
                   >
-                    {illustration ? (
-                      <RuleIllustration kind={illustration} />
-                    ) : null}
-                    {showBody ? (
+                    {illustration && <RuleIllustration kind={illustration} />}
+                    {showBody && (
                       <MarkdownContent
                         className={illustration ? "mt-3" : ""}
                         content={rule.body}
                         toolsHref={toolsHref}
                       />
-                    ) : null}
+                    )}
                   </Frame>
                 </li>
               );

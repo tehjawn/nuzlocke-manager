@@ -142,7 +142,7 @@ function GuideMeter({
                 {counts.storyDone}/{counts.storyTotal}
               </span>{" "}
               story
-              {counts.optionalTotal > 0 ? (
+              {counts.optionalTotal > 0 && (
                 <>
                   {" · "}
                   <span className="tabular-nums">
@@ -150,7 +150,7 @@ function GuideMeter({
                   </span>{" "}
                   optional
                 </>
-              ) : null}
+              )}
             </>
           )}
         </span>
@@ -173,13 +173,7 @@ function GuideMeter({
 }
 
 /** Doubles as the step number and the checkbox control. */
-function StepMarker({
-  index,
-  checked,
-}: {
-  index: number;
-  checked: boolean;
-}) {
+function StepMarker({ index, checked }: { index: number; checked: boolean }) {
   return (
     <span
       aria-hidden
@@ -276,9 +270,9 @@ function GymPrepDetails({
       </p>
       <TypeRow label="Specialty" types={prep.specialtyTypes} />
       <TypeRow label="Bring" types={prep.recommendedTypes} />
-      {prep.cautionTypes?.length ? (
+      {prep.cautionTypes && prep.cautionTypes.length > 0 && (
         <TypeRow label="Be careful" types={prep.cautionTypes} />
-      ) : null}
+      )}
       <p className="text-xs leading-relaxed text-muted">{prep.partyNotes}</p>
       {trainer ? (
         matches.length > 0 ? (
@@ -320,7 +314,7 @@ function GymPrepDetails({
                     <span className="text-[0.65rem] font-medium text-muted">
                       {entry.slot === "MAIN" ? "Main" : "Reserve"}
                     </span>
-                    {verdict ? (
+                    {verdict && (
                       <span
                         className={`text-[0.65rem] font-semibold tabular-nums ${
                           verdict.state === "under"
@@ -339,7 +333,7 @@ function GymPrepDetails({
                       >
                         {formatGymPrepLevelVerdict(verdict, capRole)}
                       </span>
-                    ) : null}
+                    )}
                     <span className="flex flex-wrap items-center justify-center gap-1">
                       {typeMatches.map(({ type, viaMove }) => (
                         <span
@@ -352,11 +346,11 @@ function GymPrepDetails({
                           }
                         >
                           <TypeBadge type={type} size="sm" variant="soft" />
-                          {viaMove ? (
+                          {viaMove && (
                             <span className="text-[0.6rem] font-medium text-muted">
                               via {viaMove}
                             </span>
-                          ) : null}
+                          )}
                         </span>
                       ))}
                     </span>
@@ -399,10 +393,10 @@ function StepRow({
   const done = step.completed;
   const hasDetails = Boolean(
     step.detail ||
-      step.hms?.length ||
-      step.keyItems?.length ||
-      step.nuzlockeNote ||
-      step.gymPrep,
+    step.hms?.length ||
+    step.keyItems?.length ||
+    step.nuzlockeNote ||
+    step.gymPrep,
   );
 
   return (
@@ -436,11 +430,11 @@ function StepRow({
           </span>
           <span className="mt-2 flex flex-wrap items-center gap-1.5">
             <StepChips step={step} />
-            {nearRoute && !done ? (
+            {nearRoute && !done && (
               <span className="text-[0.65rem] font-medium text-muted">
                 You have an encounter here
               </span>
-            ) : null}
+            )}
           </span>
         </span>
 
@@ -449,7 +443,7 @@ function StepRow({
         </span>
       </button>
 
-      {hasDetails ? (
+      {hasDetails && (
         <div className="border-t border-frame/60">
           <button
             type="button"
@@ -468,31 +462,31 @@ function StepRow({
             {expanded ? "Hide details" : "How to do this"}
           </button>
 
-          {expanded ? (
+          {expanded && (
             <div className="px-3.5 pb-3.5">
-              {step.detail ? <MarkdownContent content={step.detail} /> : null}
+              {step.detail && <MarkdownContent content={step.detail} />}
               <GymPrepDetails
                 step={step}
                 trainer={trainer}
                 earnedBadgeKeys={earnedBadgeKeys}
               />
-              {step.hms?.length ? (
+              {step.hms && step.hms.length > 0 && (
                 <p className="mt-2 text-xs text-muted">
                   HM: {step.hms.join(", ")}
                 </p>
-              ) : null}
-              {step.keyItems?.length ? (
+              )}
+              {step.keyItems && step.keyItems.length > 0 && (
                 <p className="mt-1 text-xs text-muted">
                   Key item: {step.keyItems.join(", ")}
                 </p>
-              ) : null}
-              {step.nuzlockeNote ? (
+              )}
+              {step.nuzlockeNote && (
                 <p className="mt-1 text-xs text-muted">{step.nuzlockeNote}</p>
-              ) : null}
+              )}
             </div>
-          ) : null}
+          )}
         </div>
-      ) : null}
+      )}
     </li>
   );
 }
@@ -642,7 +636,7 @@ function ChapterAccordion({
         </button>
       </h3>
 
-      {open ? (
+      {open && (
         <div
           id={panelId}
           role="region"
@@ -656,7 +650,7 @@ function ChapterAccordion({
             size="sm"
             mode={postGame ? "post-game" : "story"}
           />
-          {lockHint ? <p className="text-xs text-muted">{lockHint}</p> : null}
+          {lockHint && <p className="text-xs text-muted">{lockHint}</p>}
           <ul className="space-y-2">
             {steps.map((step, index) => (
               <StepRow
@@ -673,7 +667,7 @@ function ChapterAccordion({
             ))}
           </ul>
         </div>
-      ) : null}
+      )}
     </section>
   );
 }
@@ -756,15 +750,16 @@ export function GameGuidePanel({
   const defaultOpenChapterId = chapterFromParam
     ? chapterFromParam.chapter.id
     : guideComplete
-      ? (showPostGame ? (postGameChapters[0]?.chapter.id ?? null) : null)
+      ? showPostGame
+        ? (postGameChapters[0]?.chapter.id ?? null)
+        : null
       : progress.activeChapterId;
 
   const [openChapterId, setOpenChapterId] = useState<string | null>(
     defaultOpenChapterId,
   );
-  const [prevDefaultOpenChapterId, setPrevDefaultOpenChapterId] = useState(
-    defaultOpenChapterId,
-  );
+  const [prevDefaultOpenChapterId, setPrevDefaultOpenChapterId] =
+    useState(defaultOpenChapterId);
   if (prevDefaultOpenChapterId !== defaultOpenChapterId) {
     setPrevDefaultOpenChapterId(defaultOpenChapterId);
     setOpenChapterId(defaultOpenChapterId);
@@ -777,11 +772,7 @@ export function GameGuidePanel({
   function toggleStep(step: ResolvedGuideStep) {
     const checking = !step.completed;
     const before = progress;
-    const nextCheckoffs = setGuideStepChecked(
-      storageKey,
-      step.id,
-      checking,
-    );
+    const nextCheckoffs = setGuideStepChecked(storageKey, step.id, checking);
     if (!checking) return;
 
     const after = resolveGuideProgress(EMERALD_GUIDE, {
@@ -827,7 +818,7 @@ export function GameGuidePanel({
           Story beats for {EMERALD_GUIDE.gameLabel} — focused on easy-to-miss
           gates (Steven, Rock Smash / Rusturf, Dive), not 100% completion.
         </p>
-        {trainers.length > 0 ? (
+        {trainers.length > 0 && (
           <label className="flex flex-col gap-1 text-sm sm:min-w-[12rem]">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted">
               Progress from
@@ -845,7 +836,7 @@ export function GameGuidePanel({
               ))}
             </select>
           </label>
-        ) : null}
+        )}
       </div>
 
       <Frame
@@ -942,7 +933,7 @@ export function GameGuidePanel({
         </div>
       </div>
 
-      {showPostGame ? (
+      {showPostGame && (
         <div className="space-y-4">
           <div
             role="separator"
@@ -956,10 +947,10 @@ export function GameGuidePanel({
               </h3>
               <p className="text-xs leading-relaxed text-muted">
                 Bonus Modern Emerald epilogue — separate from the story
-                checklist above. Most of this unlocks after the League;
-                browse anytime. Species names are vanilla slot labels; your
-                randomizer may put something else there. Skip freely;
-                tournament readiness doesn’t depend on these.
+                checklist above. Most of this unlocks after the League; browse
+                anytime. Species names are vanilla slot labels; your randomizer
+                may put something else there. Skip freely; tournament readiness
+                doesn’t depend on these.
               </p>
             </div>
             <Frame title="Post-game progress">
@@ -994,7 +985,7 @@ export function GameGuidePanel({
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

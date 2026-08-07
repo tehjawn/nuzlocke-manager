@@ -99,21 +99,13 @@ function OddsBar({
     >
       <span
         className={`h-full ${
-          dieWin
-            ? "bg-accent/35"
-            : surviveWin
-              ? "bg-accent"
-              : "bg-accent/80"
+          dieWin ? "bg-accent/35" : surviveWin ? "bg-accent" : "bg-accent/80"
         }`}
         style={{ width: `${survivePct}%` }}
       />
       <span
         className={`h-full ${
-          surviveWin
-            ? "bg-danger/35"
-            : dieWin
-              ? "bg-danger"
-              : "bg-danger/75"
+          surviveWin ? "bg-danger/35" : dieWin ? "bg-danger" : "bg-danger/75"
         }`}
         style={{ width: `${diePct}%` }}
       />
@@ -171,9 +163,7 @@ export function SurvivalMarketsPanel({
   const [sort, setSort] = useState<MarketsSort>(() =>
     parseMarketsSort(initialSort, parseMarketsMode(initialMode)),
   );
-  const [markets, setMarkets] = useState<SurvivalMarketListItem[] | null>(
-    null,
-  );
+  const [markets, setMarkets] = useState<SurvivalMarketListItem[] | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [detailsPokemon, setDetailsPokemon] = useState<PokemonEntry | null>(
     null,
@@ -247,7 +237,9 @@ export function SurvivalMarketsPanel({
 
   const quiet = useMemo(
     () =>
-      enabled ? buildQuietRows(trainers, marketByPokemonId) : ([] as QuietMarketRow[]),
+      enabled
+        ? buildQuietRows(trainers, marketByPokemonId)
+        : ([] as QuietMarketRow[]),
     [enabled, marketByPokemonId, trainers],
   );
 
@@ -320,10 +312,7 @@ export function SurvivalMarketsPanel({
   if (!enabled) {
     return (
       <div className="space-y-6">
-        <MarketsPageHeader
-          pageHeader={pageHeader}
-          ballotCta={null}
-        />
+        <MarketsPageHeader pageHeader={pageHeader} ballotCta={null} />
         <p className="rounded-xl border border-frame/40 bg-surface-2/50 px-4 py-5 text-sm text-muted">
           Survive / Die polls are turned off for this season. A Game Master can
           re-enable them in the GM console.
@@ -375,284 +364,284 @@ export function SurvivalMarketsPanel({
       <MarketsPageHeader pageHeader={pageHeader} ballotCta={ballotCta} />
 
       <div className="space-y-4">
-      {pulse ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <StatBlock
-            icon={<span aria-hidden>◎</span>}
-            value={String(pulse.openRaces)}
-            label="Open races"
-            hint="Open polls with at least one vote"
-          />
-          <button
-            type="button"
-            disabled={!pulse.closest}
-            onClick={() => {
-              if (!pulse.closest) return;
-              setMode("floor");
-              setSort("contested");
-              setExpandedKey(null);
-              setQuery(
-                pulse.closest.nickname?.trim() || pulse.closest.species,
-              );
-              writeMarketsUrl("floor", "contested");
-            }}
-            className="text-left disabled:cursor-default"
-          >
+        {pulse && (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <StatBlock
-              icon={<span aria-hidden>~</span>}
-              value={
-                pulse.closest
-                  ? pulseLabel(pulse.closest.species, pulse.closest.nickname)
-                  : "—"
-              }
-              label="Closest race"
-              hint={
-                pulse.closest
-                  ? `${pulse.closest.survivePct}% Survive · tap to focus`
-                  : "Needs 3+ votes near 50/50"
-              }
+              icon={<span aria-hidden>◎</span>}
+              value={String(pulse.openRaces)}
+              label="Open races"
+              hint="Open polls with at least one vote"
             />
-          </button>
-          <button
-            type="button"
-            disabled={!pulse.hottest}
-            onClick={() => {
-              if (!pulse.hottest) return;
-              setMode("floor");
-              setSort("hottest");
-              setExpandedKey(null);
-              setQuery(
-                pulse.hottest.nickname?.trim() || pulse.hottest.species,
-              );
-              writeMarketsUrl("floor", "hottest");
-            }}
-            className="text-left disabled:cursor-default"
-          >
-            <StatBlock
-              icon={<span aria-hidden>▲</span>}
-              value={
-                pulse.hottest
-                  ? pulseLabel(pulse.hottest.species, pulse.hottest.nickname)
-                  : "—"
-              }
-              label="Hottest"
-              hint={
-                pulse.hottest
-                  ? `${pulse.hottest.total} votes · tap to focus`
-                  : "No volume yet"
-              }
-            />
-          </button>
-          <StatBlock
-            icon={<span aria-hidden>✓</span>}
-            value={
-              pulse.record
-                ? `${pulse.record.correct}/${pulse.record.scored}`
-                : viewerUserId
-                  ? "—"
-                  : "—"
-            }
-            label="Your record"
-            hint={
-              pulse.record && recordPct != null
-                ? `${recordPct}% called · My takes`
-                : viewerUserId
-                  ? "No settled takes yet"
-                  : "Sign in to keep a record"
-            }
-          />
-        </div>
-      ) : null}
-
-      <ModeTabs
-        aria-label="Survive / Die views"
-        idPrefix="markets"
-        value={mode}
-        tabs={MODE_TABS}
-        onValueChange={selectMode}
-        size="sm"
-        panelClassName="space-y-4"
-      >
-        <p className="text-xs text-muted">
-          Will they make it? Weigh in on living party and box mons still on an
-          active run — then see who called it when they fall or clear the
-          Championship.
-        </p>
-
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="min-w-[12rem] flex-1 space-y-1 text-xs font-semibold text-muted">
-            Search
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Species, nickname, trainer…"
-              className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
-            />
-          </label>
-          <label className="min-w-[10rem] space-y-1 text-xs font-semibold text-muted">
-            Trainer
-            <select
-              value={trainerId}
-              onChange={(event) => setTrainerId(event.target.value)}
-              className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+            <button
+              type="button"
+              disabled={!pulse.closest}
+              onClick={() => {
+                if (!pulse.closest) return;
+                setMode("floor");
+                setSort("contested");
+                setExpandedKey(null);
+                setQuery(
+                  pulse.closest.nickname?.trim() || pulse.closest.species,
+                );
+                writeMarketsUrl("floor", "contested");
+              }}
+              className="text-left disabled:cursor-default"
             >
-              <option value="">All trainers</option>
-            {trainers
-              .filter((trainer) => isTrainerOpenForPolls(trainer))
-              .map((trainer) => (
-                <option key={trainer.id} value={trainer.id}>
-                  {trainer.handle}
-                </option>
-              ))}
-            {trainers.some(
-              (trainer) => !isTrainerOpenForPolls(trainer),
-            ) ? (
-              <optgroup label="Cleared Championship">
+              <StatBlock
+                icon={<span aria-hidden>~</span>}
+                value={
+                  pulse.closest
+                    ? pulseLabel(pulse.closest.species, pulse.closest.nickname)
+                    : "—"
+                }
+                label="Closest race"
+                hint={
+                  pulse.closest
+                    ? `${pulse.closest.survivePct}% Survive · tap to focus`
+                    : "Needs 3+ votes near 50/50"
+                }
+              />
+            </button>
+            <button
+              type="button"
+              disabled={!pulse.hottest}
+              onClick={() => {
+                if (!pulse.hottest) return;
+                setMode("floor");
+                setSort("hottest");
+                setExpandedKey(null);
+                setQuery(
+                  pulse.hottest.nickname?.trim() || pulse.hottest.species,
+                );
+                writeMarketsUrl("floor", "hottest");
+              }}
+              className="text-left disabled:cursor-default"
+            >
+              <StatBlock
+                icon={<span aria-hidden>▲</span>}
+                value={
+                  pulse.hottest
+                    ? pulseLabel(pulse.hottest.species, pulse.hottest.nickname)
+                    : "—"
+                }
+                label="Hottest"
+                hint={
+                  pulse.hottest
+                    ? `${pulse.hottest.total} votes · tap to focus`
+                    : "No volume yet"
+                }
+              />
+            </button>
+            <StatBlock
+              icon={<span aria-hidden>✓</span>}
+              value={
+                pulse.record
+                  ? `${pulse.record.correct}/${pulse.record.scored}`
+                  : viewerUserId
+                    ? "—"
+                    : "—"
+              }
+              label="Your record"
+              hint={
+                pulse.record && recordPct != null
+                  ? `${recordPct}% called · My takes`
+                  : viewerUserId
+                    ? "No settled takes yet"
+                    : "Sign in to keep a record"
+              }
+            />
+          </div>
+        )}
+
+        <ModeTabs
+          aria-label="Survive / Die views"
+          idPrefix="markets"
+          value={mode}
+          tabs={MODE_TABS}
+          onValueChange={selectMode}
+          size="sm"
+          panelClassName="space-y-4"
+        >
+          <p className="text-xs text-muted">
+            Will they make it? Weigh in on living party and box mons still on an
+            active run — then see who called it when they fall or clear the
+            Championship.
+          </p>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="min-w-[12rem] flex-1 space-y-1 text-xs font-semibold text-muted">
+              Search
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Species, nickname, trainer…"
+                className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+              />
+            </label>
+            <label className="min-w-[10rem] space-y-1 text-xs font-semibold text-muted">
+              Trainer
+              <select
+                value={trainerId}
+                onChange={(event) => setTrainerId(event.target.value)}
+                className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+              >
+                <option value="">All trainers</option>
                 {trainers
-                  .filter((trainer) => !isTrainerOpenForPolls(trainer))
+                  .filter((trainer) => isTrainerOpenForPolls(trainer))
                   .map((trainer) => (
                     <option key={trainer.id} value={trainer.id}>
-                      {trainer.handle} (cleared)
+                      {trainer.handle}
                     </option>
                   ))}
-              </optgroup>
-            ) : null}
-            </select>
-          </label>
-          <label className="min-w-[9rem] space-y-1 text-xs font-semibold text-muted">
-            Sort
-            <select
-              value={sort}
-              onChange={(event) =>
-                selectSort(event.target.value as MarketsSort)
-              }
-              className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
-            >
-              {sortsForMode(mode).map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="min-w-[7rem] space-y-1 text-xs font-semibold text-muted">
-            Slot
-            <select
-              value={slot}
-              onChange={(event) =>
-                setSlot(event.target.value as MarketsBoardFilters["slot"])
-              }
-              className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
-            >
-              <option value="all">Main + Reserve</option>
-              <option value="MAIN">Main only</option>
-              <option value="RESERVE">Reserve only</option>
-            </select>
-          </label>
-          <label className="min-w-[6.5rem] space-y-1 text-xs font-semibold text-muted">
-            Min votes
-            <select
-              value={minVotes}
-              onChange={(event) =>
-                setMinVotes(Number(event.target.value) as 0 | 1 | 3 | 5)
-              }
-              className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
-            >
-              <option value={0}>Any</option>
-              <option value={1}>1+</option>
-              <option value={3}>3+</option>
-              <option value={5}>5+</option>
-            </select>
-          </label>
-        </div>
+                {trainers.some(
+                  (trainer) => !isTrainerOpenForPolls(trainer),
+                ) && (
+                  <optgroup label="Cleared Championship">
+                    {trainers
+                      .filter((trainer) => !isTrainerOpenForPolls(trainer))
+                      .map((trainer) => (
+                        <option key={trainer.id} value={trainer.id}>
+                          {trainer.handle} (cleared)
+                        </option>
+                      ))}
+                  </optgroup>
+                )}
+              </select>
+            </label>
+            <label className="min-w-[9rem] space-y-1 text-xs font-semibold text-muted">
+              Sort
+              <select
+                value={sort}
+                onChange={(event) =>
+                  selectSort(event.target.value as MarketsSort)
+                }
+                className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+              >
+                {sortsForMode(mode).map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-[7rem] space-y-1 text-xs font-semibold text-muted">
+              Slot
+              <select
+                value={slot}
+                onChange={(event) =>
+                  setSlot(event.target.value as MarketsBoardFilters["slot"])
+                }
+                className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+              >
+                <option value="all">Main + Reserve</option>
+                <option value="MAIN">Main only</option>
+                <option value="RESERVE">Reserve only</option>
+              </select>
+            </label>
+            <label className="min-w-[6.5rem] space-y-1 text-xs font-semibold text-muted">
+              Min votes
+              <select
+                value={minVotes}
+                onChange={(event) =>
+                  setMinVotes(Number(event.target.value) as 0 | 1 | 3 | 5)
+                }
+                className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+              >
+                <option value={0}>Any</option>
+                <option value={1}>1+</option>
+                <option value={3}>3+</option>
+                <option value={5}>5+</option>
+              </select>
+            </label>
+          </div>
 
-        <div
-          role="group"
-          aria-label="Quick filters"
-          className="flex flex-wrap gap-1.5"
-        >
-          <button
-            type="button"
-            aria-pressed={needsMyVote}
-            disabled={!viewerUserId}
-            onClick={() => setNeedsMyVote((v) => !v)}
-            className={`pressable rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-              needsMyVote
-                ? "border-interactive/50 bg-interactive-soft/50 text-interactive"
-                : "border-frame/50 bg-surface text-muted hover:bg-surface/80"
-            }`}
+          <div
+            role="group"
+            aria-label="Quick filters"
+            className="flex flex-wrap gap-1.5"
           >
-            Needs my vote
-          </button>
-          <button
-            type="button"
-            aria-pressed={contestedOnly}
-            onClick={() => setContestedOnly((v) => !v)}
-            className={`pressable rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-              contestedOnly
-                ? "border-warn/50 bg-warn/15 text-warn"
-                : "border-frame/50 bg-surface text-muted hover:bg-surface/80"
-            }`}
-          >
-            Contested only
-          </button>
-        </div>
+            <button
+              type="button"
+              aria-pressed={needsMyVote}
+              disabled={!viewerUserId}
+              onClick={() => setNeedsMyVote((v) => !v)}
+              className={`pressable rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                needsMyVote
+                  ? "border-interactive/50 bg-interactive-soft/50 text-interactive"
+                  : "border-frame/50 bg-surface text-muted hover:bg-surface/80"
+              }`}
+            >
+              Needs my vote
+            </button>
+            <button
+              type="button"
+              aria-pressed={contestedOnly}
+              onClick={() => setContestedOnly((v) => !v)}
+              className={`pressable rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                contestedOnly
+                  ? "border-warn/50 bg-warn/15 text-warn"
+                  : "border-frame/50 bg-surface text-muted hover:bg-surface/80"
+              }`}
+            >
+              Contested only
+            </button>
+          </div>
 
-        {rows.length === 0 ? (
-          <p className="rounded-lg border border-frame/40 bg-surface/60 px-4 py-5 text-sm text-muted">
-            {emptyCopy(mode, sort)}
-          </p>
-        ) : (
-          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {rows.map((row) => {
-              const expandId =
-                row.kind === "quiet"
-                  ? row.pokemon.id
-                  : (row.market.pokemonId ?? row.key);
-              const expanded = expandedKey === expandId;
-              if (row.kind === "quiet") {
+          {rows.length === 0 ? (
+            <p className="rounded-lg border border-frame/40 bg-surface/60 px-4 py-5 text-sm text-muted">
+              {emptyCopy(mode, sort)}
+            </p>
+          ) : (
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {rows.map((row) => {
+                const expandId =
+                  row.kind === "quiet"
+                    ? row.pokemon.id
+                    : (row.market.pokemonId ?? row.key);
+                const expanded = expandedKey === expandId;
+                if (row.kind === "quiet") {
+                  return (
+                    <li key={row.key} className="min-w-0">
+                      <QuietMarketTile
+                        pokemon={row.pokemon}
+                        trainer={trainersById.get(row.trainer.id) ?? null}
+                        trainerHandle={row.trainer.handle}
+                        expanded={expanded}
+                        onToggle={() =>
+                          setExpandedKey(expanded ? null : expandId)
+                        }
+                        onOpenDetails={() => setDetailsPokemon(row.pokemon)}
+                        onVoted={refreshMarkets}
+                        viewerUserId={viewerUserId}
+                      />
+                    </li>
+                  );
+                }
                 return (
                   <li key={row.key} className="min-w-0">
-                    <QuietMarketTile
+                    <MarketTile
+                      market={row.market}
                       pokemon={row.pokemon}
-                      trainer={trainersById.get(row.trainer.id) ?? null}
-                      trainerHandle={row.trainer.handle}
+                      trainer={trainersById.get(row.market.trainer.id) ?? null}
                       expanded={expanded}
                       onToggle={() =>
                         setExpandedKey(expanded ? null : expandId)
                       }
-                      onOpenDetails={() => setDetailsPokemon(row.pokemon)}
+                      onOpenDetails={
+                        row.pokemon
+                          ? () => setDetailsPokemon(row.pokemon)
+                          : undefined
+                      }
                       onVoted={refreshMarkets}
                       viewerUserId={viewerUserId}
                     />
                   </li>
                 );
-              }
-              return (
-                <li key={row.key} className="min-w-0">
-                  <MarketTile
-                    market={row.market}
-                    pokemon={row.pokemon}
-                    trainer={trainersById.get(row.market.trainer.id) ?? null}
-                    expanded={expanded}
-                    onToggle={() =>
-                      setExpandedKey(expanded ? null : expandId)
-                    }
-                    onOpenDetails={
-                      row.pokemon
-                        ? () => setDetailsPokemon(row.pokemon)
-                        : undefined
-                    }
-                    onVoted={refreshMarkets}
-                    viewerUserId={viewerUserId}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </ModeTabs>
+              })}
+            </ul>
+          )}
+        </ModeTabs>
       </div>
 
       <PokemonDetailsModal
@@ -675,7 +664,7 @@ export function SurvivalMarketsPanel({
         }
       />
 
-      {viewerUserId && markets ? (
+      {viewerUserId && markets && (
         <UnvotedBallotModal
           open={ballotOpen}
           onClose={() => setBallotOpen(false)}
@@ -687,7 +676,7 @@ export function SurvivalMarketsPanel({
             if (mon) setDetailsPokemon(mon);
           }}
         />
-      ) : null}
+      )}
     </div>
   );
 }
@@ -726,9 +715,9 @@ function MarketsPageHeader({
             </p>
           </div>
         </div>
-        {ballotCta ? (
+        {ballotCta && (
           <div className="shrink-0 self-start pt-0.5">{ballotCta}</div>
-        ) : null}
+        )}
       </div>
     </header>
   );
@@ -756,7 +745,7 @@ function MonTrainerSpriteStack({
       className={`relative inline-block h-11 w-[3.35rem] shrink-0 ${faded ? "opacity-90" : ""}`}
       title={trainer ? trainer.handle : undefined}
     >
-      {trainer ? (
+      {trainer && (
         <span className="absolute bottom-0 left-0 z-0">
           <AvatarPortrait
             avatarSpriteKey={trainer.avatarSpriteKey}
@@ -767,7 +756,7 @@ function MonTrainerSpriteStack({
             alt=""
           />
         </span>
-      ) : null}
+      )}
       <PokemonSpriteImage
         species={species}
         pokedexId={pokedexId}
@@ -853,13 +842,13 @@ function MarketTile({
                 <span className="truncate text-sm font-bold leading-tight">
                   {label}
                 </span>
-                {sentiment ? (
+                {sentiment && (
                   <SurvivalSentimentIcon
                     poll={pollTally}
                     className="h-3.5 w-3.5"
                   />
-                ) : null}
-                {market.myPrediction ? (
+                )}
+                {market.myPrediction && (
                   <span
                     className={`rounded border px-1 py-0.5 text-[10px] font-bold ${
                       market.myPrediction === "SURVIVE"
@@ -867,18 +856,17 @@ function MarketTile({
                         : "border-danger/40 bg-danger/10 text-danger"
                     }`}
                   >
-                    You:{" "}
-                    {market.myPrediction === "SURVIVE" ? "Survive" : "Die"}
+                    You: {market.myPrediction === "SURVIVE" ? "Survive" : "Die"}
                   </span>
-                ) : null}
+                )}
               </span>
               <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
-                {showSpecies ? <span>{market.species}</span> : null}
+                {showSpecies && <span>{market.species}</span>}
                 <span>{market.trainer.handle}</span>
-                {slotLabel ? <span>{slotLabel}</span> : null}
+                {slotLabel && <span>{slotLabel}</span>}
               </span>
             </span>
-            {canExpand ? (
+            {canExpand && (
               <span
                 aria-hidden
                 className="shrink-0 text-sm text-muted transition-transform"
@@ -888,7 +876,7 @@ function MarketTile({
               >
                 ›
               </span>
-            ) : null}
+            )}
           </span>
 
           <OddsBar
@@ -901,41 +889,41 @@ function MarketTile({
             <span className="font-semibold text-ink/80">
               {statusLine(market)}
             </span>
-            {contested ? (
+            {contested && (
               <span className="rounded border border-warn/40 bg-warn/12 px-1 py-0.5 text-[10px] font-bold text-warn">
                 Contested
               </span>
-            ) : null}
-            {longshot ? (
+            )}
+            {longshot && (
               <span className="rounded border border-frame/50 bg-surface-2 px-1 py-0.5 text-[10px] font-bold text-muted">
                 Lock lean
               </span>
-            ) : null}
-            {upset ? (
+            )}
+            {upset && (
               <span className="rounded border border-danger/35 bg-danger/10 px-1 py-0.5 text-[10px] font-bold text-danger">
                 Upset
               </span>
-            ) : null}
-            {called === true ? (
+            )}
+            {called === true && (
               <span className="rounded border border-accent/40 bg-accent/12 px-1 py-0.5 text-[10px] font-bold text-accent-deep">
                 Called it
               </span>
-            ) : null}
-            {called === false ? (
+            )}
+            {called === false && (
               <span className="rounded border border-frame/50 bg-surface-2 px-1 py-0.5 text-[10px] font-bold text-muted">
                 Missed
               </span>
-            ) : null}
+            )}
           </span>
 
-          {market.lastComment ? (
+          {market.lastComment && (
             <span className="line-clamp-2 text-[11px] leading-snug text-ink/70">
               “{market.lastComment}”
             </span>
-          ) : null}
+          )}
         </button>
 
-        {onOpenDetails ? (
+        {onOpenDetails && (
           <div className="border-t border-frame/35 px-3 py-1.5">
             <button
               type="button"
@@ -945,10 +933,10 @@ function MarketTile({
               Details
             </button>
           </div>
-        ) : null}
+        )}
       </div>
 
-      {expanded && market.pokemonId ? (
+      {expanded && market.pokemonId && (
         <div className="border-t border-frame/35 px-3 py-2.5">
           {called !== null ? (
             <p
@@ -958,9 +946,7 @@ function MarketTile({
                   : "border-danger/35 bg-danger/10 text-danger"
               }`}
             >
-              {called
-                ? "You called it."
-                : "You missed this one."}
+              {called ? "You called it." : "You missed this one."}
             </p>
           ) : isResolvedMarket(market.status) ? (
             <p className="mb-2 rounded-lg border border-frame/40 bg-surface-2/50 px-2.5 py-1.5 text-xs font-semibold text-muted">
@@ -976,7 +962,7 @@ function MarketTile({
             onVoted={onVoted}
           />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -1024,7 +1010,7 @@ function QuietMarketTile({
               {label}
             </span>
             <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted">
-              {showSpecies ? <span>{pokemon.species}</span> : null}
+              {showSpecies && <span>{pokemon.species}</span>}
               <span>{trainerHandle}</span>
               <span>
                 {pokemon.slot === "MAIN" ? "Main" : "Reserve"} · no votes yet
@@ -1053,7 +1039,7 @@ function QuietMarketTile({
           Details
         </button>
       </div>
-      {expanded ? (
+      {expanded && (
         <div className="border-t border-frame/35 px-3 py-2.5">
           <SurvivalPollSection
             pokemonId={pokemon.id}
@@ -1062,7 +1048,7 @@ function QuietMarketTile({
             onVoted={onVoted}
           />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -7,10 +7,7 @@ import { Frame } from "@/components/Frame";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants-app";
 import { isDatabaseConfigured } from "@/lib/db";
-import {
-  resolveSessionUser,
-  SESSION_EXPIRED_LOGIN,
-} from "@/lib/session-user";
+import { resolveSessionUser, SESSION_EXPIRED_LOGIN } from "@/lib/session-user";
 
 export const metadata: Metadata = {
   title: "Login",
@@ -32,9 +29,7 @@ function safeCallbackUrl(raw: string | undefined): string {
 async function discordSignIn(formData: FormData) {
   "use server";
   const raw = formData.get("callbackUrl");
-  const redirectTo = safeCallbackUrl(
-    typeof raw === "string" ? raw : undefined,
-  );
+  const redirectTo = safeCallbackUrl(typeof raw === "string" ? raw : undefined);
   await signIn("discord", { redirectTo });
 }
 
@@ -76,7 +71,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
             trainer board, the league, and how to get started.
           </p>
 
-          {sessionExpired ? (
+          {sessionExpired && (
             <p
               className="mt-4 rounded-md border border-frame/70 bg-surface-2/80 px-3 py-2.5 text-sm text-ink"
               role="status"
@@ -84,7 +79,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
               Your session no longer matches this database — usually after a
               local DB reset. Sign in with Discord again to continue.
             </p>
-          ) : null}
+          )}
 
           <div className="mt-8 space-y-4">
             <Frame title="Discord">
@@ -108,14 +103,14 @@ export default async function LoginPage({ searchParams }: PageProps) {
               )}
             </Frame>
 
-            {!isDatabaseConfigured() ? (
+            {!isDatabaseConfigured() && (
               <Frame title="Database">
                 <p className="text-sm leading-relaxed text-muted">
                   Set <code>DATABASE_URL</code>, run migrations, then{" "}
                   <code>npm run db:seed</code> so memberships and edits persist.
                 </p>
               </Frame>
-            ) : null}
+            )}
 
             <p className="text-sm text-muted">
               {/* TEMP: pointed home while Seasons index is hidden */}
