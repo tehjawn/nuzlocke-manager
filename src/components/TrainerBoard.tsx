@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-  Fragment,
-  useState,
-  useTransition,
-  type ReactNode,
-} from "react";
+import { Fragment, useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
   gmResetTrainerBoardAction,
@@ -673,8 +668,7 @@ export function TrainerBoard({
   // need setState-in-effect. Read-only boards leave the pending action alone
   // for My Trainer (or a GM-editable board) after soft-nav.
   const myTrainerId = searchSeason?.myTrainerId ?? null;
-  const jumpImportOpen =
-    pendingBoardAction === "import-save" && canEdit;
+  const jumpImportOpen = pendingBoardAction === "import-save" && canEdit;
   const jumpExportOpen =
     pendingBoardAction === "export-team" &&
     (!myTrainerId || trainer.id === myTrainerId || canEdit);
@@ -1179,6 +1173,14 @@ export function TrainerBoard({
     canEdit && (editingPlayer || mobileSaveStatus.kind !== "idle");
   // Primary strip + Shortcuts: Import only. Revive is status on R.I.P.; mark /
   // GM reset live in More. Everything else is overflow so mobile stays calm (#325).
+  //
+  // Exception: once the Championship is earned and the run is still open,
+  // recording the clear is the obvious next action, so it gets promoted out of
+  // More and sits beside Import save. It leaves the menu while promoted so the
+  // same verb never appears twice. The promoted control reads "Mark run
+  // completed" rather than "End run" — in this state it is a victory being
+  // logged, not a run being abandoned, and it is the same modal either way.
+  const promoteEndRun = canEdit && championshipEarned && !runEnded;
   const boardActionSlots: Record<
     TrainerBoardActionKey,
     {
@@ -1309,24 +1311,36 @@ export function TrainerBoard({
     // nothing, so the danger tone is saved for the restart that does.
     endRun: {
       shortcut: null,
-      toolbar: null,
-      menu: canEdit
-        ? {
-            key: "endRun",
-            label: runEnded ? "Start new run" : "End run",
-            icon: runEnded ? (
-              <WipeIcon className="h-4 w-4" />
-            ) : (
-              <EndRunIcon className="h-4 w-4" />
-            ),
-            disabled: pending || wiping,
-            tone: runEnded ? "danger" : "neutral",
-            onClick: () => {
-              if (runEnded) void startNewRun();
-              else setEndRunOpen(true);
-            },
-          }
-        : null,
+      toolbar: promoteEndRun ? (
+        <button
+          className="pressable inline-flex h-9 items-center gap-1.5 border border-accent/55 bg-accent/10 px-3 text-xs font-semibold tracking-tight text-accent-deep hover:border-accent hover:bg-accent/16 disabled:opacity-60"
+          disabled={pending || wiping}
+          onClick={() => setEndRunOpen(true)}
+          title="All badges earned — record this run as complete"
+          type="button"
+        >
+          <EndRunIcon className="h-4 w-4" />
+          <span>Mark run completed</span>
+        </button>
+      ) : null,
+      menu:
+        canEdit && !promoteEndRun
+          ? {
+              key: "endRun",
+              label: runEnded ? "Start new run" : "End run",
+              icon: runEnded ? (
+                <WipeIcon className="h-4 w-4" />
+              ) : (
+                <EndRunIcon className="h-4 w-4" />
+              ),
+              disabled: pending || wiping,
+              tone: runEnded ? "danger" : "neutral",
+              onClick: () => {
+                if (runEnded) void startNewRun();
+                else setEndRunOpen(true);
+              },
+            }
+          : null,
     },
   };
 
