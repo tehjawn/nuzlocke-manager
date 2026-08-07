@@ -33,6 +33,10 @@ import {
   type SpecimenSlotScope,
   type SpecimenSort,
 } from "@/lib/specimen-board";
+import {
+  InfiniteRevealFooter,
+  useInfiniteReveal,
+} from "@/lib/use-infinite-reveal";
 
 type SpecimenShowcaseProps = {
   /**
@@ -137,6 +141,29 @@ export function SpecimenShowcase({
       ),
     [slotScopedRows, slot, sort],
   );
+
+  const revealKey = [
+    slot,
+    type ?? "",
+    generation ?? "",
+    shinyOnly ? 1 : 0,
+    catchTier ?? "",
+    bstRank ?? "",
+    competitiveRank ?? "",
+    query,
+    sort,
+    trainerId ?? "",
+  ].join("|");
+  const {
+    visible: revealed,
+    hasMore,
+    remaining,
+    sentinelRef,
+    loadMore,
+  } = useInfiniteReveal(visible, revealKey, {
+    pageSize: 48,
+    root: "viewport",
+  });
 
   // Looked up in the whole season, not `visible`: the living-only default is
   // itself a filter, so a grave opened from the "Memorialized" chip must not
@@ -348,11 +375,17 @@ export function SpecimenShowcase({
         </p>
       ) : (
         <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {visible.map((row) => (
+          {revealed.map((row) => (
             <li key={row.id}>
               <SpecimenCard onSelect={() => setOpenRowId(row.id)} row={row} />
             </li>
           ))}
+          <InfiniteRevealFooter
+            hasMore={hasMore}
+            remaining={remaining}
+            sentinelRef={sentinelRef}
+            onLoadMore={loadMore}
+          />
         </ul>
       )}
 

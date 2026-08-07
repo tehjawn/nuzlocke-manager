@@ -2,6 +2,7 @@
 
 import { failAction } from "@/lib/action-error";
 import type { PokemonEntry } from "@/lib/challenge-types";
+import { fetchChallengeToolsEncounteredRow } from "@/lib/challenge-cache";
 import {
   pokemonToolsGradeSelect,
   pokemonToolsMovesSelect,
@@ -16,6 +17,7 @@ import { toPublicPokemonEntry } from "@/lib/pokemon-privacy";
 import type {
   ToolsHydrateKind,
   ToolsHydratePayload,
+  ToolsHydrateTrainerSlice,
 } from "@/lib/tools-pokemon-hydrate";
 
 type ActionFail = { ok: false; error: string };
@@ -37,10 +39,13 @@ function selectForKind(kind: ToolsHydrateKind) {
   }
 }
 
+/** Owned slots only — Encountered never carries grade / move columns (#382). */
+const TOOLS_HYDRATE_SLOTS = ["MAIN", "RESERVE", "GRAVEYARD"] as const;
+
 /**
  * Deferred Tools columns (#367). `grades` stamps public catch/bond tiers;
  * `moves` adds move lists for entitled trainers (+ stamps); `competitive`
- * returns full spreads for entitled trainers.
+ * returns full spreads for entitled trainers. Never reads ENCOUNTERED (#382).
  */
 export async function fetchToolsPokemonHydrateAction(input: {
   slug: string;
@@ -72,6 +77,7 @@ export async function fetchToolsPokemonHydrateAction(input: {
             id: true,
             userId: true,
             pokemon: {
+              where: { slot: { in: [...TOOLS_HYDRATE_SLOTS] } },
               select: selectForKind(kind),
               orderBy: [
                 { slot: "asc" as const },
@@ -122,6 +128,42 @@ export async function fetchToolsPokemonHydrateAction(input: {
     return { ok: true, trainers, competitiveTrainerIds };
   } catch (error) {
     return failAction("tools-pokemon-hydrate", error, "Could not load Pokémon details");
+  }
+}
+
+/**
+ * Ownership tracker “seen” stubs (#382). Appends ENCOUNTERED summary rows so
+ * species status can distinguish encountered vs untouched without shipping the
+ * box on every Tools SSR.
+ */
+export async function fetchToolsEncounteredStubsAction(input: {
+  slug: string;
+}): Promise<
+  | { ok: true; trainers: ToolsHydrateTrainerSlice[] }
+  | ActionFail
+> {
+  try {
+    if (!isDatabaseConfigured()) {
+      return { ok: false, error: "Database is not configured" };
+    }
+
+    const row = await fetchChallengeToolsEncounteredRow(input.slug);
+    if (!row) return { ok: false, error: "Season not found" };
+
+    const trainers = row.trainers.map((trainer) => ({
+      id: trainer.id,
+      pokemon: trainer.pokemon.map((p) =>
+        toPublicPokemonEntry(mapPokemonRow(p)),
+      ),
+    }));
+
+    return { ok: true, trainers };
+  } catch (error) {
+    return failAction(
+      "tools-encountered-stubs",
+      error,
+      "Could not load encounter stubs",
+    );
   }
 }
 

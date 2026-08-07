@@ -128,13 +128,20 @@ function boardLeagueInclude() {
 }
 
 /**
- * Tools SSR: all slots at summary columns only (#367). Grades / moves /
- * competitive spreads hydrate client-side when a tool that needs them mounts.
+ * Tools SSR owned board (#367 / #382): MAIN + RESERVE + GRAVEYARD only.
+ * ENCOUNTERED stubs hydrate when Ownership tracker opens — box rows are the
+ * bulk of Neon egress on Uwu-class seasons and Showcase never grades them.
  */
+const TOOLS_SSR_SLOTS: PokemonSlotFilter[] = [
+  "MAIN",
+  "RESERVE",
+  "GRAVEYARD",
+];
+
 function boardPokemonToolsInclude() {
   return {
     ...challengeMetaInclude,
-    trainers: boardTrainers(pokemonToolsBoardSelect),
+    trainers: boardTrainers(pokemonToolsBoardSelect, TOOLS_SSR_SLOTS),
   };
 }
 
@@ -562,9 +569,9 @@ export async function fetchChallengeBoardSummaryRow(slug: string) {
 }
 
 /**
- * Tools page: shared summary board for every `?tool=` (and the hub). One cache
- * key — panels that need grades / moves / spreads call
- * `fetchToolsPokemonHydrateAction` after mount (#367).
+ * Tools page: shared owned-slot summary for every `?tool=` (and the hub).
+ * ENCOUNTERED stays out until Ownership tracker asks (#382). Panels that need
+ * grades / moves / spreads call `fetchToolsPokemonHydrateAction` after mount.
  */
 export async function fetchChallengeToolsSummaryRow(slug: string) {
   "use cache";
@@ -574,6 +581,34 @@ export async function fetchChallengeToolsSummaryRow(slug: string) {
   return getPrisma().challenge.findUnique({
     where: { slug },
     include: boardPokemonToolsInclude(),
+  });
+}
+
+/**
+ * Ownership tracker “seen” stubs — ENCOUNTERED identity only (#382).
+ * Tagged with `:board` so party edits invalidate alongside Tools SSR.
+ */
+export async function fetchChallengeToolsEncounteredRow(slug: string) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  return getPrisma().challenge.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      slug: true,
+      trainers: {
+        select: {
+          id: true,
+          pokemon: {
+            where: { slot: "ENCOUNTERED" },
+            select: pokemonToolsBoardSelect,
+            orderBy: { partyIndex: "asc" as const },
+          },
+        },
+      },
+    },
   });
 }
 

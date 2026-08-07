@@ -31,6 +31,7 @@ import {
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PartyBoardDnd } from "@/components/PartyBoardDnd";
 import { PartyStrip } from "@/components/PartyStrip";
+import { EncounteredSpeciesStrip } from "@/components/EncounteredSpeciesStrip";
 import { PlayerCustomizationEditor } from "@/components/PlayerCustomizationEditor";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { ReviveToken } from "@/components/ReviveToken";
@@ -2056,17 +2057,15 @@ export function TrainerBoard({
                   </button>
                 </div>
                 {encountered.length > 0 && (
-                  <PartyStrip
+                  <EncounteredSpeciesStrip
                     pokemon={encountered}
-                    speciesOnly
                     onSelect={openPokemon}
                   />
                 )}
               </div>
             ) : encountered.length > 0 ? (
-              <PartyStrip
+              <EncounteredSpeciesStrip
                 pokemon={encountered}
-                speciesOnly
                 onSelect={openPokemon}
               />
             ) : (

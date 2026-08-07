@@ -20,6 +20,7 @@ import {
   mergeToolsPokemonHydrate,
   toolsHydrateKindFor,
 } from "@/lib/tools-pokemon-hydrate";
+import { useToolsEncounteredStubs } from "@/lib/use-tools-encountered-stubs";
 import {
   parseToolsId,
   TOOLS_CATALOG,
@@ -247,6 +248,8 @@ function ToolWorkspace({
   const [gradesReady, setGradesReady] = useState(
     () => toolsHydrateKindFor(tool) !== "grades",
   );
+  const seen = useToolsEncounteredStubs(slug, tool === "pokedex");
+  const pokedexTrainers = seen.withStubs(trainers);
 
   // Pay for grades / moves only when the open tool needs them (#367).
   // `key={tool}` remounts this workspace on tool switches, so hydrate state
@@ -343,7 +346,7 @@ function ToolWorkspace({
       {tool === "pokedex" && (
         <PokedexPanel
           slug={slug}
-          trainers={trainers}
+          trainers={pokedexTrainers}
           myTrainerId={myTrainerId}
           signedIn={signedIn}
           initialId={initialDexId}
