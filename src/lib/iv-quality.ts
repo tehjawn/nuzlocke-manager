@@ -40,20 +40,26 @@ const BATTLE_PERFECT = 0.95;
 const BATTLE_STRONG = 0.82;
 const BATTLE_DUMP = 0.45;
 
-/** Dump IVs needed (with no strong/perfect) to call a catch "big oof" (`shit`). */
-const SHIT_DUMP_MIN = 5;
-
 /**
- * Catch-tier floors for randomizer Nuzlocke luck — looser than competitive
- * highlight bands so mid-lucky wild rolls still feel good.
+ * Catch-tier ladder (randomizer Nuzlocke feel).
  *
- * Mid IV expectation is ~15.5. Role "strong/near" bars sit below the UI
- * highlight thresholds (`IV_STRONG` / `IV_NEAR_PERFECT`) on purpose.
+ * Role hit bars are independent of UI highlight bands (`IV_STRONG` / etc.).
+ * Filler dumps are floored in the mean so walls aren't punished for dump offenses.
  */
-const CATCH_ROLE_STRONG = 22;
-const CATCH_ROLE_NEAR = 26;
-const ABOVE_MID_MEAN = 14;
-const AMAZING_MEAN = 19;
+const GOD_MEAN = 22;
+const GOD_ROLE_IV = 28;
+const GOD_ROLE_HITS = 2;
+
+const CRACKED_MEAN = 20;
+const CRACKED_ROLE_IV = 26;
+
+const GREAT_MEAN = 18;
+const GREAT_ROLE_IV = 24;
+
+const GOOD_MEAN = 14;
+
+const BIG_OOF_MEAN = 10;
+const BIG_OOF_MAX_IV = 14;
 
 /** @deprecated Kept for summarizeIvs legacy path without keyStats. */
 const LEGACY_GOD_NEAR_PERFECT_MIN = 3;
@@ -299,12 +305,12 @@ export function summarizeBattleStats(
  * Randomizer catch quality for board-card chrome + details labels.
  *
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}):
- * - shit (Big oof): mostly dump IVs
- * - oof: below the mid floor, nothing notable
- * - good: overall above mid (or a mild hot roll)
- * - great: above mid + ≥1 strong role IV
- * - cracked: above mid + ≥2 strong role IVs
- * - god: solid overall + ≥2 near-perfect role IVs
+ * - god: mean ≥22 + ≥2 role IVs ≥28
+ * - cracked: mean ≥20 + ≥1 role IV ≥26
+ * - great: mean ≥18 + ≥1 role IV ≥24
+ * - good: mean ≥14
+ * - oof: below good, not abysmal
+ * - shit (Big oof): mean <10 and no IV ≥14
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -343,18 +349,18 @@ export function catchTierTip(tier: CatchTier): string {
     return "Big oof: I'm so sorry…";
   }
   if (tier === "oof") {
-    return "Oof: Not even mid.";
+    return "Oof: Below average — no standouts.";
   }
   if (tier === "good") {
-    return "Good: Above mid — usable.";
+    return "Good: Average or better overall.";
   }
   if (tier === "great") {
-    return "Great: A strong roll where it matters.";
+    return "Great: Solid overall with a strong role IV.";
   }
   if (tier === "cracked") {
-    return "Cracked: Two strong rolls on-role.";
+    return "Cracked: Strong overall with a near-perfect role IV.";
   }
-  return "God: Amazing luck on the stats that count.";
+  return "God: Incredible overall with role IVs nearly perfect.";
 }
 
 /** Board / modal ring + sprite wash — oof stays plain. */
@@ -388,15 +394,15 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
 }
 
 /**
- * Role-weighted catch tier — randomizer Nuzlocke feel ladder.
+ * Role-weighted catch tier — eval order God → Cracked → Great → Good → Big oof → Oof.
  *
- * Worked feel-checks (bars are intentionally soft for wild randomizer luck):
- * - Special glass Starmie, SpA 29 / Spe 28 / Atk 26 mid filler → god
+ * Worked feel-checks:
+ * - Special glass Starmie, SpA 29 / Spe 28 / solid mean → god
+ * - Fast Weedle, Spe 30 / Atk 23 / high off-role Def·SpA → cracked (one role ≥26)
+ * - Balanced Claydol, Atk 30 / Spe 31 / mean ~20 → cracked (mean misses god)
  * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
- * - Skarmory wall, 31 Atk / 31 SpA / 31 Spe / dump Def → not god (primary dump)
- * - Physical attacker, lone 31 Atk + mid rest → great
- * - Physical attacker, 26 Atk + 26 Spe + decent rest → cracked / god by mean
- * - ≥5 dumps → big oof; flat mid with no role hits → oof
+ * - Skarmory wall, dump Def + cracked offenses → caps at good
+ * - Flat mid teens → good; mean <10 with nothing ≥14 → big oof
  */
 function roleIvCatchTier(
   ivs: StatSpread,
@@ -411,26 +417,24 @@ function roleIvCatchTier(
     ...secondaryKeys.filter((k) => !primarySet.has(k)),
   ]);
 
-  let roleNear = 0;
-  let roleStrong = 0;
+  let roleGod = 0;
+  let roleCracked = 0;
+  let roleGreat = 0;
   let hardDump = 0;
-  let perfect = 0;
-  let strong = 0;
-  let dump = 0;
-  let catchHot = 0;
+  let maxIv = 0;
   let effectiveSum = 0;
+  let rawSum = 0;
 
   for (const key of STAT_KEYS) {
     const value = ivs[key] ?? 0;
     const band = classifyIv(value);
-    if (band === "perfect") perfect += 1;
-    else if (band === "strong") strong += 1;
-    else if (band === "dump") dump += 1;
-    if (value >= CATCH_ROLE_STRONG) catchHot += 1;
+    if (value > maxIv) maxIv = value;
+    rawSum += value;
 
     if (roleKeys.has(key)) {
-      if (value >= CATCH_ROLE_NEAR) roleNear += 1;
-      if (value >= CATCH_ROLE_STRONG) roleStrong += 1;
+      if (value >= GOD_ROLE_IV) roleGod += 1;
+      if (value >= CRACKED_ROLE_IV) roleCracked += 1;
+      if (value >= GREAT_ROLE_IV) roleGreat += 1;
     }
 
     if (primarySet.has(key)) {
@@ -443,46 +447,38 @@ function roleIvCatchTier(
   }
 
   const effectiveMean = effectiveSum / STAT_KEYS.length;
-  const aboveMid = effectiveMean >= ABOVE_MID_MEAN;
-  const amazing = effectiveMean >= AMAZING_MEAN;
-  const anyHot = perfect + strong > 0 || catchHot > 0;
-  const roleHot = roleStrong > 0 || roleNear > 0;
+  const rawMean = rawSum / STAT_KEYS.length;
+  const isBigOof = rawMean < BIG_OOF_MEAN && maxIv < BIG_OOF_MAX_IV;
 
-  // --- God: solid overall + ≥2 near role IVs ------------------------------
-  if (hardDump === 0 && amazing && roleNear >= 2) {
-    return "god";
-  }
-
-  // --- Cracked: above mid + ≥2 strong role IVs ----------------------------
-  if (hardDump === 0 && aboveMid && roleStrong >= 2) {
-    return "cracked";
-  }
-
-  // Primary key dump caps the ceiling — off-role 31s are consolation only.
+  // Primary key dump caps the ceiling — off-role luck is consolation only.
   if (hardDump > 0) {
-    if (roleHot || anyHot) return "good";
-    if (hardDump >= Math.ceil(primaryKeys.length / 2) || dump >= SHIT_DUMP_MIN) {
-      return "shit";
-    }
+    if (isBigOof) return "shit";
+    if (effectiveMean >= GOOD_MEAN || maxIv >= GREAT_ROLE_IV) return "good";
     return "oof";
   }
 
-  // --- Great: above mid + ≥1 strong role IV -------------------------------
-  if (aboveMid && roleStrong >= 1) {
+  // --- God -----------------------------------------------------------------
+  if (effectiveMean >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) {
+    return "god";
+  }
+
+  // --- Cracked -------------------------------------------------------------
+  if (effectiveMean >= CRACKED_MEAN && roleCracked >= 1) {
+    return "cracked";
+  }
+
+  // --- Great ---------------------------------------------------------------
+  if (effectiveMean >= GREAT_MEAN && roleGreat >= 1) {
     return "great";
   }
 
-  // --- Good: overall above mid (or mild hot roll) -------------------------
-  if (aboveMid || anyHot) {
+  // --- Good ----------------------------------------------------------------
+  if (effectiveMean >= GOOD_MEAN) {
     return "good";
   }
 
-  // --- Big oof: mostly dumps ----------------------------------------------
-  if (dump >= SHIT_DUMP_MIN) {
-    return "shit";
-  }
-
-  // --- Oof: below mid, nothing notable ------------------------------------
+  // --- Big oof / Oof (raw mean — don't let filler floors hide abysmal luck)
+  if (isBigOof) return "shit";
   return "oof";
 }
 
