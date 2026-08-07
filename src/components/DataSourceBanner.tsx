@@ -6,7 +6,7 @@ export function DataSourceBanner({ source }: { source: DataSource }) {
   return (
     <Frame>
       <p className="text-sm leading-relaxed">
-        <span className="font-display font-bold text-accent-2">Demo mode.</span>{" "}
+        <span className="font-display font-bold text-accent-2-ink">Demo mode.</span>{" "}
         Showing seed data. Connect Postgres, run{" "}
         <code className="text-ink">npm run db:seed</code>, and add Discord auth
         env vars to enable login + editing.

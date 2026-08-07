@@ -206,12 +206,12 @@ export function TrainerStatsSummary({
         >
           <dt
             className={`flex min-w-0 items-center gap-2 text-sm font-semibold tracking-tight ${
-              row.complete ? "text-accent-2" : "text-muted"
+              row.complete ? "text-accent-2-ink" : "text-muted"
             }`}
           >
             <span
               className={`shrink-0 ${
-                row.complete ? "text-accent-2" : "text-muted/80"
+                row.complete ? "text-accent-2-ink" : "text-muted/80"
               }`}
             >
               {row.icon}

@@ -220,7 +220,7 @@ export function classifyBattleStat(
 
 /** Tailwind text tone matching IV / EV / battle highlight bands. */
 export function qualityToneClass(band: StatQualityBand): string {
-  if (band === "perfect") return "text-accent-2";
+  if (band === "perfect") return "text-accent-2-ink";
   if (band === "strong") return "text-accent-deep";
   if (band === "dump") return "text-muted";
   return "";

@@ -9,28 +9,49 @@
   - info (cool gray wash): read-only value chips
   - relic (amethyst): ItemDex only — the one hue no other tool chip claims
 */
+/*
+  Light theme is art-directed, not derived from dark by inversion. Three rules
+  keep it out of the "muddy" failure mode dark never hits:
+
+  1. Elevation ladder runs bg -> surface-2 -> surface, monotonically lighter
+     (L* 93.9 -> 97.1 -> 100). Cards are pure white; the page is the recessed
+     plane. Dark builds hierarchy by adding light, so it can tint freely; light
+     builds it by subtracting light, so every tint spent on chrome is contrast
+     it can no longer spend on hierarchy.
+  2. Neutrals stay near-achromatic (C <= 0.02). At L* 90+ even C 0.04 reads as
+     dirt rather than as hue -- that is what made the old sage frames olive.
+  3. Backdrop washes sit ABOVE --bg in lightness. A tint darker than the page
+     is a stain, not a glow; dark gets atmosphere for free because its washes
+     are lighter than its near-black field.
+  4. Every accent splits into a fill and an ink. Green already worked this way
+     (--accent fills, --accent-deep letters); gold did not, so `text-accent-2`
+     sat at 2.34:1 on white. --accent-2 now stays luminous for chrome and
+     --accent-2-ink carries the text. Dark needs no split -- its accents clear
+     7.5:1 on a near-black field in both roles.
+*/
 :root,
 [data-theme="light"] {
-  --bg: #eef2e6;
-  --bg-wash: #c8e0b0;
-  --bg-glow: #f0d9a0;
-  --surface: #fffdf8;
-  --surface-2: #eef3e4;
-  --ink: #121612;
-  --muted: #4d5a4c;
-  --frame: #b7c4aa;
-  --frame-outer: #9aab8c;
+  --bg: #e9ece7;
+  --bg-wash: #e8f4dd;
+  --bg-glow: #fdf6e2;
+  --surface: #ffffff;
+  --surface-2: #f4f6f2;
+  --ink: #111512;
+  --muted: #535f52;
+  --frame: #cfd6c9;
+  --frame-outer: #bcc5b2;
   --frame-inner: #ffffff;
-  --accent: #2f9a52;
-  --accent-deep: #1f7a3d;
-  --accent-2: #d4a017;
-  --warn: #e07a28;
-  --interactive: #2f8fbf;
-  --interactive-soft: #d7eef8;
-  --info: #e7ebe3;
+  --accent: #20874a;
+  --accent-deep: #186a34;
+  --accent-2: #c08d0f;
+  --accent-2-ink: #8a6a0c;
+  --warn: #b35714;
+  --interactive: #22789e;
+  --interactive-soft: #e3f2fb;
+  --info: #eef1ec;
   --info-ink: #2a332a;
-  --iv: #dceaf5;
-  --ev: #f5e6c8;
+  --iv: #e4eef7;
+  --ev: #f7ecd6;
   /* Showdown-inspired stat hues, muted for Crest Pulse */
   --stat-hp: #c45c5c;
   --stat-atk: #c48452;
@@ -38,15 +59,25 @@
   --stat-spa: #5a96c4;
   --stat-spd: #4f9a62;
   --stat-spe: #c46a8e;
-  --danger: #d04a38;
-  --rip: #e4eadc;
+  --danger: #c33f2e;
+  --rip: #e8ece2;
   /* ItemDex. Violet is the only hue left unclaimed by a tool chip — green,
      gold, orange, sky, red, indigo and the pale rip wash are all spoken for. */
-  --relic: #7b4fbf;
-  --relic-soft: #ece2fa;
-  --shadow: rgba(18, 22, 18, 0.12);
-  --shadow-md: rgba(18, 22, 18, 0.2);
-  --on-accent: #f4fff7;
+  --relic: #6b3fb0;
+  --relic-soft: #efe8fb;
+  --shadow: rgba(24, 32, 25, 0.07);
+  --shadow-md: rgba(24, 32, 25, 0.14);
+  /* Accent veil at the bottom of the viewport backdrop. Light needs a fraction
+     of dark's strength: the same mix reads as haze over a pale field. */
+  --bg-veil: color-mix(in srgb, var(--accent) 7%, transparent);
+  /* Light lifts with a tight contact shadow, not a wide smudge. A 28px blur at
+     low alpha over a pale field greys the page instead of separating the card. */
+  --shadow-card:
+    0 1px 2px color-mix(in srgb, var(--shadow) 90%, transparent),
+    0 6px 16px -8px var(--shadow-md);
+  /* Pure white, not a tinted near-white: the mint cast cost enough luminance to
+     drop CTA labels under 4.5:1 on the deepened accent fill. */
+  --on-accent: #ffffff;
   --accent-ink: #14532d;
   /* Ink on gold informational chrome (`.gba-frame-title`); override locally when chrome retints */
   --on-chrome: var(--ink);
@@ -58,8 +89,11 @@
   --radius: 8px;
   --radius-sm: 6px;
   --radius-lg: 12px;
-  --grain-opacity: 0.14;
-  --grain-card: 0.08;
+  /* soft-light noise over an L*95+ field darkens toward grey without reading as
+     texture — it is dinge, not grain. Dark can afford 0.14 because `overlay`
+     on a near-black field returns real tooth. Light gets a whisper. */
+  --grain-opacity: 0.05;
+  --grain-card: 0.025;
   --scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--muted) 70%, transparent);
 }
@@ -78,6 +112,8 @@
   --accent: #3ecf6a;
   --accent-deep: #6aeba0;
   --accent-2: #f0c040;
+  /* Dark needs no fill/ink split — gold already reads 10.4:1 on --surface. */
+  --accent-2-ink: var(--accent-2);
   --warn: #f0923a;
   --interactive: #5ec4e8;
   --interactive-soft: #17303a;
@@ -97,6 +133,12 @@
   --relic-soft: #241a38;
   --shadow: rgba(0, 0, 0, 0.45);
   --shadow-md: rgba(0, 0, 0, 0.6);
+  --bg-veil: color-mix(in srgb, var(--accent) 22%, transparent);
+  /* Dark keeps the wide, soft lift — it reads as depth against a near-black
+     field, where light needs a tight contact shadow instead. */
+  --shadow-card:
+    0 10px 28px -14px var(--shadow-md),
+    0 2px 8px -2px var(--shadow);
   --on-accent: #061209;
   --accent-ink: #d8ffe6;
   /* Ink on gold informational chrome (`.gba-frame-title`); override locally when chrome retints */
@@ -129,6 +171,7 @@
   --color-accent: var(--accent);
   --color-accent-deep: var(--accent-deep);
   --color-accent-2: var(--accent-2);
+  --color-accent-2-ink: var(--accent-2-ink);
   --color-accent-ink: var(--accent-ink);
   --color-warn: var(--warn);
   --color-interactive: var(--interactive);
@@ -182,11 +225,7 @@ body::after {
   background-image:
     radial-gradient(ellipse 90% 55% at 0% 0%, var(--bg-wash) 0%, transparent 58%),
     radial-gradient(ellipse 70% 50% at 100% 0%, var(--bg-glow) 0%, transparent 52%),
-    radial-gradient(
-      ellipse 55% 40% at 50% 110%,
-      color-mix(in srgb, var(--accent) 22%, transparent) 0%,
-      transparent 60%
-    );
+    radial-gradient(ellipse 55% 40% at 50% 110%, var(--bg-veil) 0%, transparent 60%);
   background-repeat: no-repeat;
   background-size: 100% 100%;
 }
@@ -342,8 +381,7 @@ button:disabled,
   border-radius: var(--radius);
   box-shadow:
     0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
-    0 10px 28px -14px var(--shadow-md),
-    0 2px 8px -2px var(--shadow);
+    var(--shadow-card);
 }
 
 .gba-frame::after {
@@ -358,6 +396,22 @@ button:disabled,
   background-repeat: repeat;
   background-size: 100px 100px;
   mix-blend-mode: soft-light;
+}
+
+/*
+  Card sheen. Dark carries a 5%/4% tint fine — on a near-black field any added
+  color reads as light. Over a pure-white card the same mix is a visible
+  cream-to-blue cast, which is the temperature clash that made light look dirty
+  (green page + cream card + olive border). Halve it and pull the neutral
+  midpoint past centre so the tint stays at the corners.
+*/
+[data-theme="light"] .gba-frame {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--accent-2) 2%, var(--surface)) 0%,
+    var(--gba-fill) 52%,
+    color-mix(in srgb, var(--interactive) 2%, var(--gba-fill)) 100%
+  );
 }
 
 [data-theme="dark"] .gba-frame::after {
@@ -412,8 +466,7 @@ button:disabled,
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent),
     0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
-    0 10px 28px -14px var(--shadow-md),
-    0 2px 8px -2px var(--shadow);
+    var(--shadow-card);
 }
 
 .card-bg-swatch[data-card-bg] .card-bg-swatch-preview {
@@ -463,8 +516,7 @@ button:disabled,
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent),
     0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
-    0 10px 28px -14px var(--shadow-md),
-    0 2px 8px -2px var(--shadow);
+    var(--shadow-card);
 }
 
 .card-bg-swatch[data-card-bg="custom"] .card-bg-swatch-preview {
@@ -510,8 +562,7 @@ button:disabled,
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
     0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
-    0 10px 28px -14px var(--shadow-md),
-    0 2px 8px -2px var(--shadow);
+    var(--shadow-card);
 }
 
 [data-theme="dark"] .card-bg-swatch[data-card-bg] .card-bg-swatch-preview {

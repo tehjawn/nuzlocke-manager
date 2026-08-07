@@ -144,7 +144,7 @@ export function PokemonSlotCard({
           <p className="truncate text-[11px] font-bold leading-tight tracking-tight sm:text-xs">
             {label}
             {pokemon.isShiny && (
-              <span className="ml-0.5 text-accent-2" title="Shiny">
+              <span className="ml-0.5 text-accent-2-ink" title="Shiny">
                 ✦
               </span>
             )}
@@ -214,7 +214,7 @@ export function PokemonSlotCard({
           <p className="truncate text-sm font-bold leading-tight">
             {label}
             {pokemon.isShiny && (
-              <span className="ml-1 text-accent-2" title="Shiny">
+              <span className="ml-1 text-accent-2-ink" title="Shiny">
                 ✦
               </span>
             )}
@@ -289,7 +289,7 @@ export function PokemonSlotCard({
               <p className="truncate text-base font-bold leading-tight tracking-tight">
                 {label}
                 {pokemon.isShiny && (
-                  <span className="ml-1 text-accent-2" title="Shiny">
+                  <span className="ml-1 text-accent-2-ink" title="Shiny">
                     ✦
                   </span>
                 )}

@@ -306,7 +306,7 @@ export function PokemonHoverPreview(props: PokemonHoverPreviewProps) {
                   <p className="truncate text-sm font-bold leading-tight tracking-tight">
                     {label}
                     {model.isShiny && (
-                      <span className="ml-1 text-accent-2" title="Shiny">
+                      <span className="ml-1 text-accent-2-ink" title="Shiny">
                         ✦
                       </span>
                     )}

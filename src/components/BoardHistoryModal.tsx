@@ -94,7 +94,7 @@ function RunGraves({ graves }: { graves: TrainerHistoryGrave[] }) {
             <p className="font-display truncate text-[11px] font-bold leading-tight">
               {grave.label}
               {grave.isShiny && (
-                <span className="ml-0.5 text-accent-2" title="Shiny">
+                <span className="ml-0.5 text-accent-2-ink" title="Shiny">
                   ✦
                 </span>
               )}

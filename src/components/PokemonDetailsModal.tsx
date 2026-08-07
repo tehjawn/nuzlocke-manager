@@ -229,8 +229,8 @@ export function PokemonDetailsModal({
         <span
           className={
             hasSubtitleMeta
-              ? "ml-1.5 font-semibold text-accent-2"
-              : "font-semibold text-accent-2"
+              ? "ml-1.5 font-semibold text-accent-2-ink"
+              : "font-semibold text-accent-2-ink"
           }
         >
           Shiny ✦
@@ -500,7 +500,7 @@ export function PokemonDetailsModal({
                   {battleSummary?.headline ? (
                     <p
                       className={`text-[10px] font-semibold tracking-tight ${
-                        battleSummary.cracked ? "text-accent-2" : "text-muted"
+                        battleSummary.cracked ? "text-accent-2-ink" : "text-muted"
                       }`}
                     >
                       {battleSummary.headline}
@@ -558,7 +558,7 @@ export function PokemonDetailsModal({
                       {evSummary?.headline && (
                         <p
                           className={`text-[10px] font-semibold tracking-tight ${
-                            evSummary.cracked ? "text-accent-2" : "text-muted"
+                            evSummary.cracked ? "text-accent-2-ink" : "text-muted"
                           }`}
                         >
                           {evSummary.headline}

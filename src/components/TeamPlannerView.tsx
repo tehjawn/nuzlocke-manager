@@ -1318,7 +1318,7 @@ function PrepCard({
                   : underOnly
                     ? "text-danger"
                     : capRole === "live"
-                      ? "text-accent-2"
+                      ? "text-accent-2-ink"
                       : "text-muted"
               }`}
               title={
@@ -1443,7 +1443,7 @@ function PrepCard({
                           verdict.state === "under"
                             ? "text-danger"
                             : verdict.state === "over" && capRole === "live"
-                              ? "text-accent-2"
+                              ? "text-accent-2-ink"
                               : "text-muted"
                         }`}
                       >

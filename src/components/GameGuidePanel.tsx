@@ -320,7 +320,7 @@ function GymPrepDetails({
                           verdict.state === "under"
                             ? "text-danger"
                             : verdict.state === "over" && capRole === "live"
-                              ? "text-accent-2"
+                              ? "text-accent-2-ink"
                               : "text-muted"
                         }`}
                         title={

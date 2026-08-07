@@ -226,7 +226,7 @@ export function BadgeCase({
         {!hideCount && (
           <p
             className={`min-w-0 truncate font-display text-xs font-semibold tracking-tight ${
-              complete ? "text-accent-2" : "text-muted"
+              complete ? "text-accent-2-ink" : "text-muted"
             }`}
           >
             {complete
@@ -359,7 +359,7 @@ export function BadgeCase({
         <div className="flex items-baseline justify-between gap-2">
           <p
             className={`text-sm font-semibold tabular-nums tracking-tight ${
-              complete ? "text-accent-2" : "text-muted"
+              complete ? "text-accent-2-ink" : "text-muted"
             }`}
           >
             {complete

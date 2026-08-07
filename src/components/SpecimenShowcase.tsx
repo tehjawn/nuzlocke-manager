@@ -417,7 +417,7 @@ function SpecimenCard({
             <p className="truncate text-sm font-bold leading-tight tracking-tight">
               {label}
               {row.isShiny && (
-                <span className="ml-0.5 text-accent-2" title="Shiny">
+                <span className="ml-0.5 text-accent-2-ink" title="Shiny">
                   ✦
                 </span>
               )}
