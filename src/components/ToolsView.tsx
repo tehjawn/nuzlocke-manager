@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { fetchToolsPokemonHydrateAction } from "@/app/actions/tools-pokemon";
 import { BountyHunterView } from "@/components/BountyHunterView";
 import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
@@ -13,6 +15,10 @@ import { ToolChip, TOOL_TONE_CHIP, toolsTone } from "@/components/tool-icons";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
 import type { ItemLens } from "@/data/items";
 import type { TrainerProfile } from "@/lib/challenge-types";
+import {
+  mergeToolsPokemonHydrate,
+  toolsHydrateKindFor,
+} from "@/lib/tools-pokemon-hydrate";
 import {
   parseToolsId,
   TOOLS_CATALOG,
@@ -35,6 +41,7 @@ type ToolsViewProps = {
   /**
    * Trainers whose competitive fields survived redaction for this viewer.
    * Gates raw spreads in the Showcase details modal; tier chrome is public.
+   * SSR starts empty — hydrate / per-entry fetch fills this when needed (#367).
    */
   competitiveTrainerIds?: string[];
   signedIn?: boolean;
@@ -84,6 +91,7 @@ export function ToolsView({
 
   return (
     <ToolWorkspace
+      key={tool}
       slug={slug}
       challengeName={challengeName}
       tool={tool}
@@ -188,9 +196,9 @@ function ToolWorkspace({
   slug,
   challengeName,
   tool,
-  trainers,
+  trainers: summaryTrainers,
   myTrainerId,
-  competitiveTrainerIds,
+  competitiveTrainerIds: initialCompetitiveIds,
   signedIn,
   survivalMarketsEnabled,
   viewerUserId,
@@ -224,6 +232,51 @@ function ToolWorkspace({
   const meta = TOOLS_CATALOG.find((t) => t.id === tool)!;
   const hubHref = toolsHubHref(slug);
   const tone = toolsTone(tool);
+
+  const [trainers, setTrainers] = useState(summaryTrainers);
+  const [competitiveTrainerIds, setCompetitiveTrainerIds] = useState(
+    initialCompetitiveIds ?? [],
+  );
+  const [gradesReady, setGradesReady] = useState(
+    () => toolsHydrateKindFor(tool) !== "grades",
+  );
+
+  // Pay for grades / moves only when the open tool needs them (#367).
+  // `key={tool}` remounts this workspace on tool switches, so hydrate state
+  // starts fresh without a props→state sync effect.
+  useEffect(() => {
+    const kind = toolsHydrateKindFor(tool);
+    if (!kind) return;
+
+    let cancelled = false;
+    const trainerIds =
+      kind === "moves" && tool === "pokedex" && myTrainerId
+        ? [myTrainerId]
+        : undefined;
+
+    void (async () => {
+      const result = await fetchToolsPokemonHydrateAction({
+        slug,
+        kind,
+        trainerIds,
+      });
+      if (cancelled || !result.ok) {
+        if (!cancelled && kind === "grades") setGradesReady(true);
+        return;
+      }
+      const merged = mergeToolsPokemonHydrate(summaryTrainers, result);
+      if (cancelled) return;
+      setTrainers(merged.trainers);
+      if (result.competitiveTrainerIds.length > 0) {
+        setCompetitiveTrainerIds(result.competitiveTrainerIds);
+      }
+      if (kind === "grades") setGradesReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tool, slug, myTrainerId, summaryTrainers]);
 
   // Survive/Die owns its header so Vote now can sit opposite the title.
   if (tool === "markets") {
@@ -322,6 +375,7 @@ function ToolWorkspace({
           trainers={trainers}
           myTrainerId={myTrainerId}
           competitiveTrainerIds={competitiveTrainerIds}
+          gradesReady={gradesReady}
           initialMode={initialBountyMode}
         />
       )}

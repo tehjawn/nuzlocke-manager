@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { fetchToolsPokemonEntryAction } from "@/app/actions/tools-pokemon";
 import { BondHeart } from "@/components/BondHeart";
 import { CatchTierCaption } from "@/components/CatchTierIcon";
 import { GodPrismRays } from "@/components/GodPrismRays";
@@ -10,7 +11,7 @@ import { SurvivalSentimentIcon } from "@/components/SurvivalPollChip";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
 import { POKEMON_GENERATIONS } from "@/data/pokemon-index";
-import type { PokemonSlot } from "@/lib/challenge-types";
+import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import {
   catchTierHasChrome,
   catchTierLabel,
@@ -37,6 +38,7 @@ type SpecimenShowcaseProps = {
   /**
    * Trainers whose IVs / EVs survived redaction for this viewer. Gates the
    * numbers in the details modal only — tier chrome is public season-wide.
+   * May be empty on Tools SSR; the modal fetches spreads on open (#367).
    */
   competitiveTrainerIds: string[];
   /** Already lowercased + trimmed by the caller. */
@@ -79,6 +81,11 @@ export function SpecimenShowcase({
   const [bstRank, setBstRank] = useState<StatRank | null>(null);
   const [competitiveRank, setCompetitiveRank] = useState<StatRank | null>(null);
   const [openRowId, setOpenRowId] = useState<string | null>(null);
+  const [fetchedDetail, setFetchedDetail] = useState<{
+    id: string;
+    pokemon: PokemonEntry;
+    showCompetitiveDetails: boolean;
+  } | null>(null);
 
   // Everything except slot, so the chip tallies below describe what switching
   // scope would actually reveal rather than the whole unfiltered season.
@@ -135,6 +142,44 @@ export function SpecimenShowcase({
   // itself a filter, so a grave opened from the "Memorialized" chip must not
   // vanish mid-read if the scope changes underneath it.
   const openRow = rows.find((row) => row.id === openRowId) ?? null;
+
+  const boardHasSpreads =
+    openRow != null &&
+    competitiveTrainerIds.includes(openRow.trainerId) &&
+    openRow.pokemon.ivs != null;
+
+  const detailPokemon =
+    fetchedDetail?.id === openRowId
+      ? fetchedDetail.pokemon
+      : (openRow?.pokemon ?? null);
+  const showCompetitiveDetails =
+    fetchedDetail?.id === openRowId
+      ? fetchedDetail.showCompetitiveDetails
+      : boardHasSpreads;
+
+  // Tools SSR ships stamped grades without spreads (#367). When a card opens,
+  // fetch the specimen so entitled viewers get IVs/EVs/moves in the modal.
+  useEffect(() => {
+    if (!openRowId || !openRow || boardHasSpreads) return;
+
+    let cancelled = false;
+    void (async () => {
+      const result = await fetchToolsPokemonEntryAction({
+        slug,
+        pokemonId: openRowId,
+      });
+      if (cancelled || !result.ok) return;
+      setFetchedDetail({
+        id: openRowId,
+        pokemon: result.pokemon,
+        showCompetitiveDetails: result.showCompetitiveDetails,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [openRowId, openRow, boardHasSpreads, slug]);
 
   return (
     <div className="space-y-4">
@@ -312,12 +357,13 @@ export function SpecimenShowcase({
       )}
 
       <PokemonDetailsModal
-        onClose={() => setOpenRowId(null)}
+        onClose={() => {
+          setOpenRowId(null);
+          setFetchedDetail(null);
+        }}
         open={openRow !== null}
-        pokemon={openRow?.pokemon ?? null}
-        showCompetitiveDetails={
-          openRow !== null && competitiveTrainerIds.includes(openRow.trainerId)
-        }
+        pokemon={detailPokemon}
+        showCompetitiveDetails={showCompetitiveDetails}
         slug={slug}
         trainer={
           openRow

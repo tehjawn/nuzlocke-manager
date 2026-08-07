@@ -183,19 +183,6 @@ export function toolsTitle(tool: ToolsId | null): string {
 }
 
 /**
- * Which Pokémon columns the Tools RSC loader should select for this tool.
- * Hub / Survive/Die / ItemDex / Type Chart stay on identity; Pokédex + Guide
- * add moves; Ownership + Planner take the full competitive board (#367).
- */
-export function toolsPokemonShapeFor(
-  tool: ToolsId | null,
-): "summary" | "moves" | "competitive" {
-  if (tool === "bounty" || tool === "planner") return "competitive";
-  if (tool === "pokedex" || tool === "guide") return "moves";
-  return "summary";
-}
-
-/**
  * Compare was folded into Team Planner's vs Trainer mode. Its old links —
  * `?tool=compare` and the bare `?a=&b=` pairs the tool used to share — should
  * land on the Planner instead of the hub.

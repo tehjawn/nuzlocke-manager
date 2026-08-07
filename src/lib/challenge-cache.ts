@@ -20,11 +20,9 @@ import {
   pokemonFullSelect,
   pokemonSeasonStatsSelect,
   pokemonSummarySelect,
-  pokemonToolsMovesSelect,
-  pokemonToolsSelect,
+  pokemonToolsBoardSelect,
   trainerRelationInclude,
   type PokemonSlotFilter,
-  type ToolsPokemonShape,
 } from "@/lib/challenge-queries";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 
@@ -32,21 +30,7 @@ type PokemonBoardSelect =
   | typeof pokemonSummarySelect
   | typeof pokemonSeasonStatsSelect
   | typeof pokemonFullSelect
-  | typeof pokemonToolsMovesSelect
-  | typeof pokemonToolsSelect;
-
-function pokemonSelectForToolsShape(
-  shape: ToolsPokemonShape,
-): PokemonBoardSelect {
-  switch (shape) {
-    case "competitive":
-      return pokemonToolsSelect;
-    case "moves":
-      return pokemonToolsMovesSelect;
-    default:
-      return pokemonSummarySelect;
-  }
-}
+  | typeof pokemonToolsBoardSelect;
 
 function boardTrainers(
   select: PokemonBoardSelect,
@@ -126,11 +110,14 @@ function boardLeagueInclude() {
   };
 }
 
-/** Tools: all slots; column width depends on the open tool (#367). */
-function boardPokemonToolsInclude(shape: ToolsPokemonShape) {
+/**
+ * Tools SSR: all slots at summary columns only (#367). Grades / moves /
+ * competitive spreads hydrate client-side when a tool that needs them mounts.
+ */
+function boardPokemonToolsInclude() {
   return {
     ...challengeMetaInclude,
-    trainers: boardTrainers(pokemonSelectForToolsShape(shape)),
+    trainers: boardTrainers(pokemonToolsBoardSelect),
   };
 }
 
@@ -238,22 +225,18 @@ export async function fetchChallengeBoardSummaryRow(slug: string) {
 }
 
 /**
- * Tools page: all Pokémon slots, shaped by the open tool. The cache is
- * viewer-blind — `tools/page.tsx` redacts competitive fields per trainer after
- * a competitive-shape hit, so IVs/EVs never reach a client that isn't entitled
- * to them. `shape` is part of the cache key so hub visits stay thin.
+ * Tools page: shared summary board for every `?tool=` (and the hub). One cache
+ * key — panels that need grades / moves / spreads call
+ * `fetchToolsPokemonHydrateAction` after mount (#367).
  */
-export async function fetchChallengeToolsSummaryRow(
-  slug: string,
-  shape: ToolsPokemonShape = "summary",
-) {
+export async function fetchChallengeToolsSummaryRow(slug: string) {
   "use cache";
   cacheLife("minutes");
   cacheTag(`season:${slug}`, `season:${slug}:board`);
   if (!isDatabaseConfigured()) return null;
   return getPrisma().challenge.findUnique({
     where: { slug },
-    include: boardPokemonToolsInclude(shape),
+    include: boardPokemonToolsInclude(),
   });
 }
 

@@ -1,6 +1,8 @@
 /**
- * Page-shaped Prisma projections for challenges — avoid the fat god-include
- * unless a route truly needs the full graph.
+ * Tools Pokémon column selects + deferred hydrate shapes (#367).
+ *
+ * SSR uses summary only. Grade inputs / moves / full competitive columns load
+ * via `fetchToolsPokemonHydrateAction` when a tool that needs them mounts.
  */
 
 import {
@@ -54,22 +56,38 @@ export const pokemonSeasonStatsSelect = {
 export const pokemonEncounterSelect = pokemonSummarySelect;
 
 /**
- * Tools board shapes (#367) — pick by `?tool=` so the hub / Survive/Die /
- * ItemDex / Type Chart don't pay for competitive columns or moves.
- *
- * - `summary`: identity + types (markets, chart, ItemDex, hub)
- * - `moves`: + move lists for Pokédex tips / Game Guide gym prep
- * - `competitive`: full columns for Ownership Showcase grades + details and
- *   Team Planner coverage / catch chrome. Flight still redacts via
- *   `toPublicPokemonEntry` (stamped public grades, private spreads).
+ * Tools SSR board (#367): identity + types + slots only. Catch/bond grades and
+ * moves hydrate after mount for tools that need them.
  */
-export type ToolsPokemonShape = "summary" | "moves" | "competitive";
+export const pokemonToolsBoardSelect = pokemonSummarySelect;
 
-export const pokemonToolsMovesSelect = {
+/**
+ * Ownership Showcase hydrate: grade inputs so the server can stamp public
+ * catch / bond tiers without shipping spreads on the default Tools Flight.
+ */
+export const pokemonToolsGradeSelect = {
   ...pokemonSummarySelect,
+  nature: true,
+  ability: true,
+  ivs: true,
+  evs: true,
+  friendship: true,
+} as const;
+
+/**
+ * Pokédex tips / Guide gym prep / Team Planner coverage: moves + grade inputs
+ * (planner recommend chrome). Spreads are still stripped for non-entitled
+ * viewers at the action boundary.
+ */
+export const pokemonToolsMovesSelect = {
+  ...pokemonToolsGradeSelect,
   moves: true,
 } as const;
 
+/**
+ * Ownership details / entitled competitive view: full columns. Flight still
+ * redacts via `toPublicPokemonEntry` for everyone else.
+ */
 export const pokemonToolsSelect = {
   ...pokemonFullSelect,
 } as const;

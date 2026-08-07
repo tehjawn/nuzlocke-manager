@@ -7,10 +7,6 @@ import {
   getChallengeMeta,
   getChallengeToolsSummary,
 } from "@/lib/challenges";
-import { canViewCompetitiveDetails } from "@/lib/gm-lens";
-import { readGmLensOn } from "@/lib/gm-lens.server";
-import { getAccessForChallenge } from "@/lib/permissions";
-import { toPublicTrainerPokemon } from "@/lib/pokemon-privacy";
 import { itemDexSlug } from "@/data/item-links";
 import { parseItemLens } from "@/data/items";
 import {
@@ -24,7 +20,6 @@ import {
   parseStatsSection,
   parseToolsId,
   seasonStatsHref,
-  toolsPokemonShapeFor,
   toolsTitle,
 } from "@/lib/tools-routes";
 
@@ -87,48 +82,10 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     redirect(seasonStatsHref(slug, { section: parseStatsSection(section) }));
   }
 
-  // Tool-shaped Neon/Flight payload (#367): hub / markets / chart / ItemDex
-  // stay on summary columns; Pokédex + Guide add moves; Ownership + Planner
-  // take the full competitive board (still redacted per viewer below).
-  const pokemonShape = toolsPokemonShapeFor(initialTool);
-  const challenge = await getChallengeToolsSummary(
-    slug,
-    session?.user?.id,
-    pokemonShape,
-  );
+  // Shared summary board for every tool URL (#367). Grades / moves / spreads
+  // hydrate client-side when Ownership, Planner, Pokédex, or Guide mounts.
+  const challenge = await getChallengeToolsSummary(slug, session?.user?.id);
   if (!challenge) notFound();
-
-  const access = challenge.id
-    ? await getAccessForChallenge(challenge.id)
-    : null;
-  // Speculative read — ignored when the viewer isn't a GM (avoids a second
-  // round-trip after access resolves).
-  const gmLensOn =
-    access?.isGm === true ? await readGmLensOn(challenge.slug) : false;
-
-  // One pass, two outputs: the public payload, and the ids whose competitive
-  // fields survived it. Catch / bond tiers are stamped on during redaction and
-  // stay public; the ids gate the raw spreads in the details modal.
-  //
-  // Lean shapes: never claim competitive details. Moves shape still keeps the
-  // viewer's move lists (Pokédex tips / Guide prep) — `toPublic*` would wipe
-  // them — while rivals are stripped as usual.
-  const competitiveTrainerIds: string[] = [];
-  const trainers = challenge.trainers.map((trainer) => {
-    const canSeeCompetitive = canViewCompetitiveDetails(
-      access,
-      trainer.userId,
-      gmLensOn,
-    );
-    if (pokemonShape === "competitive" && canSeeCompetitive) {
-      competitiveTrainerIds.push(trainer.id);
-      return trainer;
-    }
-    if (pokemonShape === "moves" && canSeeCompetitive) {
-      return trainer;
-    }
-    return toPublicTrainerPokemon(trainer);
-  });
 
   const myTrainerId =
     challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
@@ -161,9 +118,9 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
       <ToolsView
         slug={challenge.slug}
         challengeName={challenge.name}
-        trainers={trainers}
+        trainers={challenge.trainers}
         myTrainerId={myTrainerId}
-        competitiveTrainerIds={competitiveTrainerIds}
+        competitiveTrainerIds={[]}
         signedIn={Boolean(session?.user)}
         survivalMarketsEnabled={challenge.survivalMarketsEnabled !== false}
         viewerUserId={session?.user?.id ?? null}
