@@ -1,9 +1,14 @@
 /**
  * Lazy Prisma client (Prisma 7 + pg adapter).
  * Safe to import when DATABASE_URL is missing — call getPrisma() only when DB is configured.
+ *
+ * On Vercel Fluid, prefer Neon’s pooled DATABASE_URL and attachDatabasePool so idle
+ * TCP connections close before the isolate suspends — otherwise warm isolates can
+ * keep Neon’s Free-plan compute awake past the 5-minute scale-to-zero window.
  */
 
 import { PrismaPg } from "@prisma/adapter-pg";
+import { attachDatabasePool } from "@vercel/functions";
 import { Pool } from "pg";
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -19,12 +24,15 @@ export function isDatabaseConfigured(): boolean {
 
 function createPool(): Pool {
   // Serverless-friendly: few connections per isolate; prefer Neon pooler URL.
-  return new Pool({
+  // Short idle timeout (Vercel Fluid guidance) so Neon can scale to zero when quiet.
+  const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     max: Number(process.env.PG_POOL_MAX ?? 3),
-    idleTimeoutMillis: 30_000,
+    idleTimeoutMillis: Number(process.env.PG_POOL_IDLE_MS ?? 5_000),
     connectionTimeoutMillis: 10_000,
   });
+  attachDatabasePool(pool);
+  return pool;
 }
 
 export function getPrisma(): PrismaClient {
