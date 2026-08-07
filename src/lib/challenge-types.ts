@@ -53,7 +53,7 @@ export type PokemonEntry = {
    * / `resolveTrainingTier` rather than branching on them directly.
    */
   catchTier?: CatchTier | null;
-  /** Rounded weighted catch score (0–100); public tip companion to catchTier. */
+  /** Rounded weighted catch score; public tip companion to catchTier. */
   catchScore?: number | null;
   trainingTier?: TrainingTier | null;
 };

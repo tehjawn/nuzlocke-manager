@@ -35,7 +35,7 @@ type GradableEntry = Pick<
 
 export type CatchGrade = {
   tier: CatchTier;
-  /** Rounded 0–100 weighted score (tips / public stamp). */
+  /** Rounded weighted catch score (tips / public stamp; may exceed 100). */
   score: number;
 };
 

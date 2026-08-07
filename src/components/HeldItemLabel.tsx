@@ -66,7 +66,7 @@ export function HeldItemLabel({
       {linkHref ? (
         <Link
           href={linkHref}
-          className="pressable inline-flex min-w-0 max-w-full"
+          className="inline-flex min-w-0 max-w-full underline-offset-2 hover:underline"
         >
           {body}
         </Link>

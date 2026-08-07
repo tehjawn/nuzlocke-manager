@@ -108,7 +108,12 @@ export function InfoTip({
     return <span className={emptyClass || undefined}>{children}</span>;
   }
 
-  const triggerClass = `inline-flex max-w-full items-center gap-1 text-left ${chipClassName}`;
+  const triggerClass = [
+    "inline-flex max-w-full items-center gap-1 text-left",
+    // Bare tips (details modal, moves) must not pick up UA button chrome;
+    // callers that pass `info-chip` keep their intentional bordered pill.
+    chipClassName || "border-0 bg-transparent p-0 shadow-none",
+  ].join(" ");
 
   const trigger = embedded ? (
     <span className={triggerClass} aria-describedby={open ? tipId : undefined}>

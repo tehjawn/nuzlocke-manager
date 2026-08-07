@@ -58,6 +58,8 @@ const CRITICAL_TRASH_MAX = 10;
 const BIG_OOF_HOT_IV = 15;
 /** Any true perfect IV floors the tier at Oof (never Big oof). */
 const PERFECT_IV = 31;
+/** Flat bonus on the catch score per IV ≥31 (any stat). */
+const PERFECT_IV_BONUS = 1;
 /**
  * Glass God gate: every critical axis must clear this. Stops Spe-led scores
  * with middling offense (Sneasel Atk 23) from wearing God chrome.
@@ -437,9 +439,10 @@ function ivQuality(iv: number): number {
 }
 
 /**
- * Normalized 0–100 catch score for an archetype weight table.
+ * Normalized catch score for an archetype weight table, plus +1 per perfect IV.
  * Dump-weight stats (≤2) use max(iv, 15) so low rolls don't drag; hot dump
- * rolls still count above the floor.
+ * rolls still count above the floor. Perfect bonus applies to every 31
+ * (including dump stats) — soft caps still gate the letter tier.
  */
 function weightedCatchScore(
   ivs: StatSpread,
@@ -447,16 +450,18 @@ function weightedCatchScore(
 ): number {
   let weighted = 0;
   let totalWeight = 0;
+  let perfects = 0;
   for (const key of STAT_KEYS) {
     const weight = weights[key];
     const iv = ivs[key] ?? 0;
+    if (iv >= PERFECT_IV) perfects += 1;
     const effective =
       weight <= DUMP_WEIGHT_MAX ? Math.max(iv, DUMP_FLOOR_IV) : iv;
     weighted += weight * ivQuality(effective);
     totalWeight += weight;
   }
-  if (totalWeight <= 0) return 0;
-  return (100 * weighted) / totalWeight;
+  if (totalWeight <= 0) return perfects * PERFECT_IV_BONUS;
+  return (100 * weighted) / totalWeight + perfects * PERFECT_IV_BONUS;
 }
 
 function tierFromCatchScore(score: number): CatchTier {
@@ -469,7 +474,8 @@ function tierFromCatchScore(score: number): CatchTier {
 }
 
 /**
- * Archetype-weighted catch grade: tier + 0–100 score.
+ * Archetype-weighted catch grade: tier + score (weighted average + perfect
+ * bonuses; may exceed 100 with stacked 31s).
  *
  * Soft caps may lower the tier without rewriting the raw score (tips show both):
  * 1. Critical trash — any weight ≥4 axis with IV ≤10 → at most Good
@@ -478,10 +484,10 @@ function tierFromCatchScore(score: number): CatchTier {
  * 4. Glass God gate — glass archetypes need every critical axis ≥25 for God
  *
  * Feel-checks (approx):
- * - Taco Wobbuffet Bulky `31/31/25/30/24/4` → ~83 God
+ * - Taco Wobbuffet Bulky `31/31/25/30/24/4` → God (~83 + 2 from two 31s)
  * - Starmie glass SpA 29 / Spe 28 → God
- * - Glass Sneasel Atk 23 / Spe 26 / SpA 30 → Cracked (not God)
- * - Dead wall + Perfect Spe → Oof (not Big oof)
+ * - Glass Sneasel Atk 23 / Spe 26 / SpA 30 → Cracked (not God; no perfects)
+ * - Dead wall + Perfect Spe → Oof (not Big oof; +1 on score)
  */
 export function ivCatchGrade(
   ivs: StatSpread,
@@ -505,7 +511,7 @@ export function ivCatchTier(
   return ivCatchGrade(ivs, options).tier;
 }
 
-/** Raw weighted catch score (0–100), before soft-cap tier clamps. */
+/** Weighted catch score (may exceed 100 with stacked perfects), before soft-cap tier clamps. */
 export function ivCatchScore(
   ivs: StatSpread,
   options?: IvCatchTierOptions,

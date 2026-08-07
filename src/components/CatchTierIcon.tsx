@@ -310,7 +310,7 @@ export function CatchTierCaption({
 
   return (
     <p
-      className={`inline-flex max-w-full items-center justify-center gap-1 sm:justify-start ${className}`}
+      className={`flex w-full max-w-full items-center justify-center gap-1 ${className}`}
       title={tip}
     >
       {icon}
