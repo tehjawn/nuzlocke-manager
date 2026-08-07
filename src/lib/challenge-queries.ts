@@ -54,16 +54,22 @@ export const pokemonSeasonStatsSelect = {
 export const pokemonEncounterSelect = pokemonSummarySelect;
 
 /**
- * Tools page: identity + moves for Pokédex tips / bounty / planner, plus the
- * competitive columns Pokémon Ownership's Showcase needs — catch tier is
- * IV-derived and training tier needs EVs / friendship, so both are
- * uncomputable without them.
+ * Tools board shapes (#367) — pick by `?tool=` so the hub / Survive/Die /
+ * ItemDex / Type Chart don't pay for competitive columns or moves.
  *
- * Flight weight is still bounded: `toPublicPokemonEntry` runs at the page
- * boundary, so the payload only carries spreads the viewer already owns (or has
- * the GM lens for). Everyone else's arrive nulled, with the catch / bond tiers
- * stamped on in their place.
+ * - `summary`: identity + types (markets, chart, ItemDex, hub)
+ * - `moves`: + move lists for Pokédex tips / Game Guide gym prep
+ * - `competitive`: full columns for Ownership Showcase grades + details and
+ *   Team Planner coverage / catch chrome. Flight still redacts via
+ *   `toPublicPokemonEntry` (stamped public grades, private spreads).
  */
+export type ToolsPokemonShape = "summary" | "moves" | "competitive";
+
+export const pokemonToolsMovesSelect = {
+  ...pokemonSummarySelect,
+  moves: true,
+} as const;
+
 export const pokemonToolsSelect = {
   ...pokemonFullSelect,
 } as const;

@@ -23,6 +23,7 @@ import {
   fetchSeasonIndexRows,
   fetchSeasonMemorialGraveRows,
 } from "@/lib/challenge-cache";
+import type { ToolsPokemonShape } from "@/lib/challenge-queries";
 import {
   crossRunGraves,
   type CrossRunGravesResult,
@@ -459,15 +460,18 @@ export async function getChallengeBoardSummary(
 }
 
 /**
- * Tools — all slots with summary + moves (Pokédex tips); no IV/EV/heldItem.
+ * Tools — all slots, column width from `shape` (#367). Default is summary
+ * (hub / markets / chart / ItemDex). Competitive tools still redact at the
+ * page boundary.
  */
 export async function getChallengeToolsSummary(
   slug: string,
   viewerUserId?: string | null,
+  shape: ToolsPokemonShape = "summary",
 ): Promise<Challenge | null> {
   if (isDatabaseConfigured()) {
     try {
-      const row = await fetchChallengeToolsSummaryRow(slug);
+      const row = await fetchChallengeToolsSummaryRow(slug, shape);
       if (row) {
         return withSurvivalPollTallies(
           mapDbChallenge({ ...row, activities: [] }, viewerUserId),

@@ -24,6 +24,7 @@ import {
   parseStatsSection,
   parseToolsId,
   seasonStatsHref,
+  toolsPokemonShapeFor,
   toolsTitle,
 } from "@/lib/tools-routes";
 
@@ -81,11 +82,20 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   }
   // Season Stats lives on the former Memorial tab (#288) — keep old Tools
   // deep links working.
-  if (parseToolsId(tool, tab) === "stats") {
+  const initialTool = parseToolsId(tool, tab);
+  if (initialTool === "stats") {
     redirect(seasonStatsHref(slug, { section: parseStatsSection(section) }));
   }
 
-  const challenge = await getChallengeToolsSummary(slug, session?.user?.id);
+  // Tool-shaped Neon/Flight payload (#367): hub / markets / chart / ItemDex
+  // stay on summary columns; Pokédex + Guide add moves; Ownership + Planner
+  // take the full competitive board (still redacted per viewer below).
+  const pokemonShape = toolsPokemonShapeFor(initialTool);
+  const challenge = await getChallengeToolsSummary(
+    slug,
+    session?.user?.id,
+    pokemonShape,
+  );
   if (!challenge) notFound();
 
   const access = challenge.id
@@ -99,10 +109,22 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   // One pass, two outputs: the public payload, and the ids whose competitive
   // fields survived it. Catch / bond tiers are stamped on during redaction and
   // stay public; the ids gate the raw spreads in the details modal.
+  //
+  // Lean shapes: never claim competitive details. Moves shape still keeps the
+  // viewer's move lists (Pokédex tips / Guide prep) — `toPublic*` would wipe
+  // them — while rivals are stripped as usual.
   const competitiveTrainerIds: string[] = [];
   const trainers = challenge.trainers.map((trainer) => {
-    if (canViewCompetitiveDetails(access, trainer.userId, gmLensOn)) {
+    const canSeeCompetitive = canViewCompetitiveDetails(
+      access,
+      trainer.userId,
+      gmLensOn,
+    );
+    if (pokemonShape === "competitive" && canSeeCompetitive) {
       competitiveTrainerIds.push(trainer.id);
+      return trainer;
+    }
+    if (pokemonShape === "moves" && canSeeCompetitive) {
       return trainer;
     }
     return toPublicTrainerPokemon(trainer);
@@ -110,8 +132,6 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
 
   const myTrainerId =
     challenge.trainers.find((t) => t.userId === session?.user?.id)?.id ?? null;
-
-  const initialTool = parseToolsId(tool, tab);
   const dexIdRaw = id != null ? Number(id) : NaN;
   const initialDexId =
     Number.isFinite(dexIdRaw) && dexIdRaw > 0 ? dexIdRaw : null;
