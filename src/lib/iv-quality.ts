@@ -30,9 +30,6 @@ const IV_NEAR_PERFECT = 28;
 const IV_STRONG = 25;
 const IV_DUMP = 5;
 
-/** Neutral floor for filler dumps in effective-mean (walls want dump Atk/SpA). */
-const FILLER_DUMP_FLOOR = 20;
-
 const EV_PERFECT = 252;
 const EV_STRONG = 200;
 
@@ -40,19 +37,99 @@ const BATTLE_PERFECT = 0.95;
 const BATTLE_STRONG = 0.82;
 const BATTLE_DUMP = 0.45;
 
-/** Dump IVs needed (with no strong/perfect) to call a catch "big oof" (`shit`). */
-const SHIT_DUMP_MIN = 4;
+/**
+ * Catch-tier ladder (randomizer Nuzlocke feel) — slightly soft bars so mid-lucky
+ * wild rolls still feel good.
+ *
+ * Overall floors use the **median** IV (not the mean) so a single dump stat
+ * doesn't drag a otherwise-strong spread down. Each of God / Cracked has a
+ * primary path and OR paths. Great stays single-path. Primary-key dumps still
+ * block top tiers.
+ */
+const GOD_MEAN = 20;
+const GOD_ROLE_IV = 27;
+const GOD_ROLE_HITS = 2;
+/** OR: stacked overall with solid (not near-perfect) role hits. */
+const GOD_OR_MEAN = 23;
+const GOD_OR_ROLE_IV = 23;
+/**
+ * OR: incredible overall + one near-perfect role IV + another hot IV anywhere
+ * (covers Fast mons that rolled Spe + off-role heat instead of Atk/SpA).
+ */
+const GOD_BREADTH_MEAN = 23;
+const GOD_BREADTH_ROLE_IV = 27;
+const GOD_BREADTH_OTHER_IV = 25;
+/** OR: raw wild luck — three near-perfects anywhere with a usable median. */
+const GOD_LUCK_MEAN = 20;
+const GOD_LUCK_NEAR_IV = 27;
+const GOD_LUCK_NEAR_HITS = 3;
 
-/** Legacy god bar when no role keys are available (unknown species). */
+const CRACKED_MEAN = 19;
+const CRACKED_ROLE_IV = 25;
+/** OR: strong overall with one decent role hit. */
+const CRACKED_OR_MEAN = 21;
+const CRACKED_OR_ROLE_IV = 21;
+
+const GREAT_MEAN = 17;
+const GREAT_ROLE_IV = 23;
+
+const GOOD_MEAN = 13;
+
+const BIG_OOF_MEAN = 9;
+const BIG_OOF_MAX_IV = 13;
+
+/**
+ * Non-balanced roles: top tiers require every **primary** role IV to be usable.
+ * Trash on a primary axis (≤10) caps at Good — a Def-9 physical wall cannot
+ * God off Atk/SpA/Spe luck, same as a SpA-6 special attacker.
+ */
+const GOD_PRIMARY_MIN = 25;
+const CRACKED_PRIMARY_MIN = 22;
+const GREAT_PRIMARY_MIN = 20;
+/** Below this on any primary role axis counts like a dump for tier capping. */
+const PRIMARY_TRASH_MAX = 10;
+
+/**
+ * Balanced God is overall excellence only — no "any two highs" shortcut.
+ * Median high + three near-perfects + no trash IV.
+ */
+const BALANCED_GOD_MEDIAN = 23;
+const BALANCED_GOD_NEAR_HITS = 3;
+const BALANCED_GOD_MIN_IV = 12;
+
+/** Median of the six IVs — dump outliers don't sink the overall floor. */
+function ivMedian(ivs: StatSpread): number {
+  const values = STAT_KEYS.map((k) => ivs[k] ?? 0).sort((a, b) => a - b);
+  // Six stats → average of the two middle values.
+  return (values[2]! + values[3]!) / 2;
+}
+
+/**
+ * True when the role is Balanced (no primary axes) or every primary key
+ * clears `minIv`.
+ */
+function primaryRoleAllows(
+  ivs: StatSpread,
+  primaryKeys: StatKey[],
+  minIv: number,
+  balanced: boolean,
+): boolean {
+  if (balanced || primaryKeys.length === 0) return true;
+  return primaryKeys.every((k) => (ivs[k] ?? 0) >= minIv);
+}
+
+/** Trash primary role IV — same ceiling as a hard dump (Good max). */
+function primaryRoleIsTrash(
+  ivs: StatSpread,
+  primaryKeys: StatKey[],
+  balanced: boolean,
+): boolean {
+  if (balanced || primaryKeys.length === 0) return false;
+  return primaryKeys.some((k) => (ivs[k] ?? 0) <= PRIMARY_TRASH_MAX);
+}
+
+/** @deprecated Kept for summarizeIvs legacy path without keyStats. */
 const LEGACY_GOD_NEAR_PERFECT_MIN = 3;
-
-/** Effective-mean floors for top tiers (filler dumps floored, not punished). */
-const GOD_EFFECTIVE_MEAN_MIN = 22;
-const GOD_SINGLE_KEY_MEAN_MIN = 20;
-const CRACKED_EFFECTIVE_MEAN_MIN = 19;
-/** Balanced (all-six) god needs a higher bar — 6× near-perfect is brutal. */
-const BALANCED_GOD_NEAR_PERFECT_MIN = 4;
-const BALANCED_GOD_MEAN_MIN = 24;
 
 export function classifyIv(value: number): StatQualityBand {
   if (value >= IV_PERFECT) return "perfect";
@@ -294,11 +371,18 @@ export function summarizeBattleStats(
 /**
  * Randomizer catch quality for board-card chrome + details labels.
  *
- * Role-aware when key stats are supplied (see {@link ivCatchTier}):
- * - shit (label: Big oof): mostly dump IVs / key-stat dumps
- * - oof: below average / nothing notable (no chrome)
- * - good / great: something useful where it matters (or mild off-role luck)
- * - cracked / god: key stats excellent + respectable effective spread
+ * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}).
+ * Overall floors use IV **median**. Non-balanced roles also need every
+ * **primary** role IV to clear a tier floor (walls need Def/HP, attackers need
+ * Atk/SpA, Fast needs Spe, etc.). A dump or trash (≤10) primary IV caps at good
+ * — consolation uses role-only max IV, not off-role luck. Balanced has no
+ * primary hard-gate (overall min-IV rules apply for God instead).
+ * - god: … + primary IVs ≥25 (specialists) / median ≥23 + ≥3×≥27 + min ≥12 (balanced)
+ * - cracked: … + primary IVs ≥22
+ * - great: … + primary IVs ≥20
+ * - good: median ≥13 (also the ceiling when any primary is dumped/trash)
+ * - oof: below good, not abysmal
+ * - shit (Big oof): median <9 and no IV ≥13
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -337,18 +421,18 @@ export function catchTierTip(tier: CatchTier): string {
     return "Big oof: I'm so sorry…";
   }
   if (tier === "oof") {
-    return "Oof: Not even mid.";
+    return "Oof: Below average — no standouts.";
   }
   if (tier === "good") {
-    return "Good: Not all bad!";
+    return "Good: Average or better overall.";
   }
   if (tier === "great") {
-    return "Great: Pretty decent!";
+    return "Great: Solid overall with a strong role IV.";
   }
   if (tier === "cracked") {
-    return "Cracked: A rare find.";
+    return "Cracked: Strong overall with a near-perfect role IV.";
   }
-  return "God: Born under a lucky star~";
+  return "God: Incredible overall with role IVs nearly perfect.";
 }
 
 /** Board / modal ring + sprite wash — oof stays plain. */
@@ -376,189 +460,150 @@ export type SpeciesKeyStatsInput = {
   secondary?: StatKey[];
 };
 
-type IvBands = {
-  perfect: number;
-  strong: number;
-  dump: number;
-  nearPerfect: number;
-};
-
-function countIvBands(ivs: StatSpread): IvBands {
-  let perfect = 0;
-  let strong = 0;
-  let dump = 0;
-  let nearPerfect = 0;
-  for (const key of STAT_KEYS) {
-    const value = ivs[key] ?? 0;
-    if (value >= IV_NEAR_PERFECT) nearPerfect += 1;
-    const band = classifyIv(value);
-    if (band === "perfect") perfect += 1;
-    else if (band === "strong") strong += 1;
-    else if (band === "dump") dump += 1;
-  }
-  return { perfect, strong, dump, nearPerfect };
-}
-
 /** Species-blind fallback when playstyle keys are unavailable. */
 function legacyIvCatchTier(ivs: StatSpread): CatchTier {
-  const { perfect, strong, dump, nearPerfect } = countIvBands(ivs);
-  if (nearPerfect >= LEGACY_GOD_NEAR_PERFECT_MIN) return "god";
-  if (
-    isCrackedSpread(perfect, strong, {
-      perfectAlone: 2,
-      combo: { perfect: 1, strong: 2 },
-      strongAlone: 3,
-    })
-  ) {
-    return "cracked";
-  }
-  if ((perfect >= 1 && strong >= 1) || strong >= 2) return "great";
-  if (perfect >= 1 || strong >= 1) return "good";
-  if (dump >= SHIT_DUMP_MIN) return "shit";
-  return "oof";
+  // Empty primary → Balanced path: weight all six, hard-gate none.
+  return roleIvCatchTier(ivs, { primary: [], secondary: [] });
 }
 
 /**
- * Role-weighted catch tier.
+ * Role-weighted catch tier — eval order God → Cracked → Great → Good → Big oof → Oof.
  *
- * Worked feel-checks (see #342):
- * - Skarmory wall, 31 HP / 31 Def / 28 SpD / dump Atk·SpA → god (filler dumps OK)
- * - Skarmory wall, 31 Atk / 31 SpA / 31 Spe / dump Def → not god (primary key dump)
- * - Special attacker + glass secondary, dump Atk / 31 SpA·Spe → still cracked/god OK
- * - Physical attacker, lone 31 Atk + mid rest → great, not god (needs breadth)
- * - Physical attacker, 31 Atk + two other ≥28 + solid rest → god
+ * Worked feel-checks:
+ * - Special glass Starmie, SpA 29 / Spe 28 → god (primary path)
+ * - Fast Weedle, Spe 30 / Def 30 / SpA 28 → god (breadth OR)
+ * - Physical Graveler, Atk 31 / Def 29 / dump Spe·SpA → god
+ *   (bulky phys soft-key Def + median ≥20 primary path)
+ * - Special Porygon, SpA 6 / cracked HP·Atk·Spe → good (trash primary)
+ * - Physical wall Skarmory, Def 9 / cracked Atk·SpA·Spe → good (trash primary)
+ * - Physical with Atk 6 / cracked sides → good (trash primary)
+ * - Balanced Claydol, Spe 31 / Atk 30 / SpD 7 → cracked (not god — needs
+ *   well-rounded genes, not two random highs)
+ * - Physical Annihilape, Atk 29 / SpD 31 / Def 7 / median 24 → god (breadth OR)
+ * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
+ * - Flat mid teens → good; median <9 with nothing ≥13 → big oof
  */
 function roleIvCatchTier(
   ivs: StatSpread,
   keyStats: SpeciesKeyStatsInput,
 ): CatchTier {
   const balanced = keyStats.primary.length === 0;
+  // Role counting uses all six when Balanced; hard-gates stay empty then.
   const primaryKeys = balanced ? [...STAT_KEYS] : keyStats.primary;
   const secondaryKeys = balanced ? [] : (keyStats.secondary ?? []);
   const primarySet = new Set<StatKey>(primaryKeys);
-  const secondarySet = new Set<StatKey>(
-    secondaryKeys.filter((k) => !primarySet.has(k)),
-  );
-  const keyCount = primaryKeys.length;
+  const hardGateSet = balanced
+    ? new Set<StatKey>()
+    : new Set<StatKey>(keyStats.primary);
+  const roleKeys = new Set<StatKey>([
+    ...primaryKeys,
+    ...secondaryKeys.filter((k) => !primarySet.has(k)),
+  ]);
 
-  let keyNear = 0;
-  let keyStrong = 0;
-  let keyDump = 0;
-  let perfect = 0;
-  let strong = 0;
-  let dump = 0;
-  let nearPerfect = 0;
-  let usefulNear = 0;
-  let usefulStrong = 0;
-  let effectiveSum = 0;
+  let roleGod = 0;
+  let roleGodOr = 0;
+  let roleCracked = 0;
+  let roleCrackedOr = 0;
+  let roleGreat = 0;
+  let roleBreadthNear = 0;
+  let breadthHot = 0;
+  let nearAnywhere = 0;
+  let hardDump = 0;
+  let maxIv = 0;
+  let maxRoleIv = 0;
+  let minIv = 31;
 
   for (const key of STAT_KEYS) {
     const value = ivs[key] ?? 0;
     const band = classifyIv(value);
-    if (value >= IV_NEAR_PERFECT) nearPerfect += 1;
-    if (band === "perfect") perfect += 1;
-    else if (band === "strong") strong += 1;
-    else if (band === "dump") dump += 1;
+    if (value > maxIv) maxIv = value;
+    if (value < minIv) minIv = value;
 
-    if (primarySet.has(key)) {
-      if (value >= IV_NEAR_PERFECT) keyNear += 1;
-      if (value >= IV_STRONG) keyStrong += 1;
-      if (band === "dump") keyDump += 1;
-      effectiveSum += value;
-    } else if (secondarySet.has(key)) {
-      if (value >= IV_NEAR_PERFECT) usefulNear += 1;
-      if (value >= IV_STRONG) usefulStrong += 1;
-      // Dump secondary (e.g. Atk on a special attacker) shouldn't sink the mean.
-      effectiveSum += band === "dump" ? FILLER_DUMP_FLOOR : value;
-    } else {
-      // Dump offenses on a wall are correct — don't sink the mean.
-      effectiveSum += band === "dump" ? FILLER_DUMP_FLOOR : value;
+    if (value >= GOD_BREADTH_OTHER_IV) breadthHot += 1;
+    if (value >= GOD_LUCK_NEAR_IV) nearAnywhere += 1;
+
+    if (roleKeys.has(key)) {
+      if (value > maxRoleIv) maxRoleIv = value;
+      if (value >= GOD_ROLE_IV) roleGod += 1;
+      if (value >= GOD_OR_ROLE_IV) roleGodOr += 1;
+      if (value >= CRACKED_ROLE_IV) roleCracked += 1;
+      if (value >= CRACKED_OR_ROLE_IV) roleCrackedOr += 1;
+      if (value >= GREAT_ROLE_IV) roleGreat += 1;
+      if (value >= GOD_BREADTH_ROLE_IV) roleBreadthNear += 1;
+    }
+
+    if (hardGateSet.has(key) && band === "dump") {
+      hardDump += 1;
     }
   }
 
-  const effectiveMean = effectiveSum / STAT_KEYS.length;
-  const allKeysNear = keyNear === keyCount;
-  const allKeysStrong = keyStrong === keyCount;
-  const breadthNear = nearPerfect;
-  const breadthStrong = perfect + strong;
+  const overall = ivMedian(ivs);
+  const isBigOof = overall < BIG_OOF_MEAN && maxIv < BIG_OOF_MAX_IV;
+  const godBreadth =
+    overall >= GOD_BREADTH_MEAN &&
+    roleBreadthNear >= 1 &&
+    breadthHot >= 2;
+  const godLuck =
+    overall >= GOD_LUCK_MEAN && nearAnywhere >= GOD_LUCK_NEAR_HITS;
+  const primaryTrash = primaryRoleIsTrash(
+    ivs,
+    balanced ? [] : keyStats.primary,
+    balanced,
+  );
 
-  // --- God -----------------------------------------------------------------
-  if (keyDump === 0) {
-    if (balanced) {
-      if (
-        nearPerfect >= BALANCED_GOD_NEAR_PERFECT_MIN &&
-        dump === 0 &&
-        effectiveMean >= BALANCED_GOD_MEAN_MIN
-      ) {
-        return "god";
-      }
-    } else if (allKeysNear) {
-      // Multi-key roles: excellent keys + respectable effective mean.
-      if (keyCount >= 2 && effectiveMean >= GOD_EFFECTIVE_MEAN_MIN) {
-        return "god";
-      }
-      // Single-key roles need a useful secondary or raw breadth so one
-      // perfect Attack with mid garbage isn't auto-god.
-      if (
-        keyCount === 1 &&
-        effectiveMean >= GOD_SINGLE_KEY_MEAN_MIN &&
-        (usefulNear >= 1 ||
-          breadthNear >= 3 ||
-          (keyNear >= 1 && breadthStrong >= 3))
-      ) {
-        return "god";
-      }
-    }
-  }
-
-  // --- Cracked -------------------------------------------------------------
-  if (keyDump === 0) {
-    if (balanced) {
-      if (
-        isCrackedSpread(perfect, strong, {
-          perfectAlone: 2,
-          combo: { perfect: 1, strong: 2 },
-          strongAlone: 3,
-        }) &&
-        effectiveMean >= CRACKED_EFFECTIVE_MEAN_MIN
-      ) {
-        return "cracked";
-      }
-    } else if (allKeysStrong && effectiveMean >= CRACKED_EFFECTIVE_MEAN_MIN) {
-      if (
-        keyCount >= 2 ||
-        (keyNear >= 1 && breadthStrong >= 2) ||
-        (keyNear >= 1 && usefulStrong >= 1)
-      ) {
-        return "cracked";
-      }
-    } else if (
-      keyNear >= Math.ceil(keyCount * 0.67) &&
-      allKeysStrong &&
-      effectiveMean >= CRACKED_EFFECTIVE_MEAN_MIN - 1
-    ) {
-      return "cracked";
-    }
-  }
-
-  // Primary key dump caps the ceiling — off-role 31s are consolation only.
-  if (keyDump > 0) {
-    if (keyNear >= 1 || keyStrong >= 1) return "good";
-    if (perfect >= 1 || strong >= 1) return "good";
-    if (keyDump >= Math.ceil(keyCount / 2) || dump >= SHIT_DUMP_MIN) {
-      return "shit";
-    }
+  // Primary dump OR trash primary role IV → Good max.
+  // Consolation uses role-only max — off-role luck cannot promote a dumped spread.
+  if (hardDump > 0 || primaryTrash) {
+    if (isBigOof) return "shit";
+    if (overall >= GOOD_MEAN || maxRoleIv >= GREAT_ROLE_IV) return "good";
     return "oof";
   }
 
-  // --- Great / good --------------------------------------------------------
-  if (keyNear >= 1 || (keyStrong >= Math.ceil(keyCount / 2) && keyCount > 0)) {
+  // --- God -----------------------------------------------------------------
+  // Balanced: overall excellence only (no "any two highs" specialist shortcut).
+  if (balanced) {
+    if (
+      minIv >= BALANCED_GOD_MIN_IV &&
+      overall >= BALANCED_GOD_MEDIAN &&
+      nearAnywhere >= BALANCED_GOD_NEAR_HITS
+    ) {
+      return "god";
+    }
+  } else if (
+    primaryRoleAllows(ivs, primaryKeys, GOD_PRIMARY_MIN, balanced) &&
+    ((overall >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
+      (overall >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS) ||
+      godBreadth ||
+      godLuck)
+  ) {
+    return "god";
+  }
+
+  // --- Cracked (primary || OR) ---------------------------------------------
+  if (
+    primaryRoleAllows(ivs, primaryKeys, CRACKED_PRIMARY_MIN, balanced) &&
+    ((overall >= CRACKED_MEAN && roleCracked >= 1) ||
+      (overall >= CRACKED_OR_MEAN && roleCrackedOr >= 1))
+  ) {
+    return "cracked";
+  }
+
+  // --- Great (single path) -------------------------------------------------
+  if (
+    primaryRoleAllows(ivs, primaryKeys, GREAT_PRIMARY_MIN, balanced) &&
+    overall >= GREAT_MEAN &&
+    roleGreat >= 1
+  ) {
     return "great";
   }
-  if ((perfect >= 1 && strong >= 1) || strong >= 2) return "great";
-  if (keyStrong >= 1 || perfect >= 1 || strong >= 1) return "good";
 
-  if (dump >= SHIT_DUMP_MIN) return "shit";
+  // --- Good ----------------------------------------------------------------
+  if (overall >= GOOD_MEAN) {
+    return "good";
+  }
+
+  // --- Big oof / Oof -------------------------------------------------------
+  if (isBigOof) return "shit";
   return "oof";
 }
 

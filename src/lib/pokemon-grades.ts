@@ -34,7 +34,7 @@ type GradableEntry = Pick<
  * IV-derived catch tier; null when the specimen has no IVs on file.
  *
  * Grades against the species' playstyle key stats when base stats are known
- * (see `ivCatchTier` / #342). Unknown dex falls back to the legacy count ladder.
+ * (see `ivCatchTier` / #342). Unknown dex falls back to an all-six role ladder.
  */
 export function catchTierFor(pokemon: GradableEntry): CatchTier | null {
   if (isEmptySpread(pokemon.ivs) || !pokemon.ivs) return null;
