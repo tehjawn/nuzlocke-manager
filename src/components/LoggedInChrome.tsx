@@ -22,6 +22,7 @@ import {
 import { feedbackNotificationHref } from "@/lib/feedback-types";
 import {
   isWelcomeNotification,
+  reactionNotificationHref,
   type NotificationItem,
   withPinnedWelcome,
 } from "@/lib/notification-types";
@@ -174,7 +175,9 @@ export function LoggedInChrome({
       return;
     }
     await markRead(notification);
-    const href = feedbackNotificationHref(notification.actionKey);
+    const href =
+      feedbackNotificationHref(notification.actionKey) ??
+      reactionNotificationHref(notification.actionKey);
     if (href) router.push(href);
   }
 

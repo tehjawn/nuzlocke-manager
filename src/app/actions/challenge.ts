@@ -58,6 +58,7 @@ import {
   type ActivityCoalesceCategory,
   type ActivityCoalesceMeta,
 } from "@/lib/activity-coalesce";
+import { notifyActivityReaction } from "@/lib/notifications";
 import {
   createInitialActiveRunInTx,
   closeActiveRunAndStartNextInTx,
@@ -3720,6 +3721,30 @@ export async function toggleActivityReactionAction(input: {
           emoji: input.emoji,
         },
       });
+
+      // Notify the activity author — never self; coalesce per reactor via upsert.
+      if (activity.actorId && activity.actorId !== userId) {
+        try {
+          const reactor = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { displayName: true, name: true },
+          });
+          await notifyActivityReaction({
+            recipientUserId: activity.actorId,
+            actorUserId: userId,
+            actorName:
+              reactor?.displayName?.trim() ||
+              reactor?.name?.trim() ||
+              "Someone",
+            emoji: input.emoji.trim(),
+            activityId: activity.id,
+            activityMessage: activity.message,
+            challengeSlug: activity.challenge.slug,
+          });
+        } catch (notifyError) {
+          console.error("[toggleActivityReactionAction] notify", notifyError);
+        }
+      }
     }
 
     // Invalidate Upstash short-circuit so other clients refetch reaction state.
