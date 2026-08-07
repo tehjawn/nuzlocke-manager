@@ -1,6 +1,8 @@
 type SkeletonProps = {
   /** Size, shape, and surface tone — always include a bg. */
   className?: string;
+  /** Use `span` inside headings / `<p>` so we don’t nest block elements. */
+  as?: "div" | "span";
 };
 
 /**
@@ -9,6 +11,12 @@ type SkeletonProps = {
  */
 export function Skeleton({
   className = "h-4 w-full rounded bg-frame/15",
+  as: Tag = "div",
 }: SkeletonProps) {
-  return <div aria-hidden className={`animate-pulse ${className}`} />;
+  return (
+    <Tag
+      aria-hidden
+      className={`animate-pulse ${Tag === "span" ? "inline-block " : ""}${className}`}
+    />
+  );
 }

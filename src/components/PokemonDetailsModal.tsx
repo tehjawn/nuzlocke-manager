@@ -72,6 +72,53 @@ function LearnsetSkeleton() {
   );
 }
 
+/** Full details body — used while deep-linked Encountered entries fetch (#365). */
+function PokemonDetailsBodySkeleton() {
+  return (
+    <div
+      className="space-y-4"
+      aria-busy="true"
+      aria-label="Loading Pokémon details"
+    >
+      <div className="grid gap-4 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:items-start">
+        <div className="flex flex-col items-center gap-2 sm:items-stretch">
+          <Skeleton className="mx-auto h-36 w-36 rounded-lg border border-frame/40 bg-surface-2 sm:mx-0 sm:aspect-square sm:h-auto sm:w-full" />
+          <Skeleton className="h-6 w-16 rounded bg-frame/15" />
+          <div className="grid w-full grid-cols-2 gap-1.5">
+            <Skeleton className="h-12 rounded-lg border border-frame/40 bg-surface-2" />
+            <Skeleton className="h-12 rounded-lg border border-frame/40 bg-surface-2" />
+          </div>
+        </div>
+        <div className="space-y-3">
+          <Skeleton className="h-3.5 w-32 rounded bg-frame/20" />
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton
+                key={i}
+                className="h-14 rounded-lg border border-frame/40 bg-surface-2"
+              />
+            ))}
+          </div>
+          <Skeleton className="h-14 w-full rounded-lg border border-frame/30 bg-surface" />
+          <LearnsetSkeleton />
+        </div>
+      </div>
+      <section className="rounded-xl border border-frame/40 bg-surface-2/40 px-3 py-2.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+            Will they make it?
+          </p>
+          <Skeleton className="h-2.5 w-28 rounded bg-frame/15" />
+        </div>
+        <div className="mt-2 flex gap-2">
+          <Skeleton className="h-9 flex-1 rounded-lg border border-frame/40 bg-surface" />
+          <Skeleton className="h-9 flex-1 rounded-lg border border-frame/40 bg-surface" />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 const ModernEmeraldLearnset = dynamic(
   () =>
     import("@/components/ModernEmeraldLearnset").then(
@@ -90,6 +137,11 @@ type PokemonDetailsModalProps = {
   open: boolean;
   pokemon: PokemonEntry | null;
   onClose: () => void;
+  /**
+   * Deep-link / deferred entry still fetching (#365). Renders a layout-stable
+   * shell when `pokemon` is null so the modal doesn’t pop in late.
+   */
+  loading?: boolean;
   /** Challenge slug — enables the species → Pokédex link (#236). */
   slug?: string;
   /** Own-board: switch into the edit form. */
@@ -128,6 +180,7 @@ export function PokemonDetailsModal({
   open,
   pokemon,
   onClose,
+  loading = false,
   slug,
   onEdit,
   showCompetitiveDetails = true,
@@ -135,7 +188,23 @@ export function PokemonDetailsModal({
   viewerUserId = null,
   trainer = null,
 }: PokemonDetailsModalProps) {
-  if (!open || !pokemon) return null;
+  if (!open) return null;
+  if (!pokemon) {
+    if (!loading) return null;
+    return (
+      <Modal
+        open
+        title={<Skeleton as="span" className="h-6 w-36 rounded bg-frame/20" />}
+        subtitle={
+          <Skeleton as="span" className="h-3 w-28 rounded bg-frame/10" />
+        }
+        onClose={onClose}
+        size="md"
+      >
+        <PokemonDetailsBodySkeleton />
+      </Modal>
+    );
+  }
 
   const nickname = pokemon.nickname?.trim() ?? "";
   const showSpeciesInSubtitle = Boolean(nickname);

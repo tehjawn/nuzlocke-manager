@@ -672,6 +672,10 @@ export function TrainerBoard({
   const searchPokemonId = searchParams.get("pokemon");
   /** Search `?pokemon=` ids already opened this mount — ref avoids effect setState. */
   const openedSearchPokemonIdRef = useRef<string | null>(null);
+  /** In-flight deep-link fetch for Encountered / off-board ids (#365). */
+  const [searchPokemonFetching, setSearchPokemonFetching] = useState(false);
+  const searchPokemonLoading =
+    Boolean(searchPokemonId) && searchPokemonFetching;
 
   // Jump Actions (#308): derive modal open from pending handoff so we don't
   // need setState-in-effect. Read-only boards leave the pending action alone
@@ -1229,6 +1233,7 @@ export function TrainerBoard({
 
       if (mon) {
         openedSearchPokemonIdRef.current = searchPokemonId;
+        setSearchPokemonFetching(false);
         if (canEdit) {
           setPokemonInspect({
             mode: "view",
@@ -1241,11 +1246,16 @@ export function TrainerBoard({
       }
 
       // Encountered (and rare off-board ids) are not in the SSR party — fetch one.
+      setSearchPokemonFetching(true);
       const result = await fetchToolsPokemonEntryAction({
         slug: challengeSlug,
         pokemonId: searchPokemonId,
       });
-      if (cancelled || !result.ok) return;
+      if (cancelled) return;
+      setSearchPokemonFetching(false);
+      // User dismissed the loading shell — don't reopen.
+      if (openedSearchPokemonIdRef.current === searchPokemonId) return;
+      if (!result.ok) return;
       openedSearchPokemonIdRef.current = searchPokemonId;
       if (canEdit) {
         setPokemonInspect({
@@ -1266,6 +1276,15 @@ export function TrainerBoard({
     canEdit,
     challengeSlug,
   ]);
+
+  function dismissSearchPokemon() {
+    if (searchPokemonId) {
+      openedSearchPokemonIdRef.current = searchPokemonId;
+    }
+    setSearchPokemonFetching(false);
+    setPokemonInspect(null);
+    setDetailsPokemon(null);
+  }
 
   const mobileSaveStatus =
     partySave.status.kind !== "idle"
@@ -1960,23 +1979,34 @@ export function TrainerBoard({
         </div>
       </Frame>
 
-      {canEdit && pokemonInspect?.mode === "view" && (
-        <PokemonDetailsModal
-          open
-          slug={challengeSlug}
-          pokemon={pokemonFormToEntry(pokemonInspect.form)}
-          onClose={() => setPokemonInspect(null)}
-          onEdit={() => setPokemonInspect({ ...pokemonInspect, mode: "edit" })}
-          survivalMarketsEnabled={survivalMarketsEnabled}
-          viewerUserId={viewerUserId}
-          trainer={{
-            id: trainer.id,
-            handle: trainer.handle,
-            avatarSpriteKey: trainer.avatarSpriteKey,
-            avatarBackgroundKey: trainer.avatarBackgroundKey,
-          }}
-        />
-      )}
+      {canEdit &&
+        (pokemonInspect?.mode === "view" || searchPokemonLoading) && (
+          <PokemonDetailsModal
+            open
+            loading={searchPokemonLoading && pokemonInspect == null}
+            slug={challengeSlug}
+            pokemon={
+              pokemonInspect?.mode === "view"
+                ? pokemonFormToEntry(pokemonInspect.form)
+                : null
+            }
+            onClose={dismissSearchPokemon}
+            onEdit={
+              pokemonInspect?.mode === "view"
+                ? () =>
+                    setPokemonInspect({ ...pokemonInspect, mode: "edit" })
+                : undefined
+            }
+            survivalMarketsEnabled={survivalMarketsEnabled}
+            viewerUserId={viewerUserId}
+            trainer={{
+              id: trainer.id,
+              handle: trainer.handle,
+              avatarSpriteKey: trainer.avatarSpriteKey,
+              avatarBackgroundKey: trainer.avatarBackgroundKey,
+            }}
+          />
+        )}
 
       {canEdit && pokemonInspect?.mode === "edit" && (
         <PokemonFormModal
@@ -2169,7 +2199,8 @@ export function TrainerBoard({
 
       {!canEdit && (
         <PokemonDetailsModal
-          open={detailsPokemon != null}
+          open={detailsPokemon != null || searchPokemonLoading}
+          loading={searchPokemonLoading && detailsPokemon == null}
           slug={challengeSlug}
           pokemon={detailsPokemon}
           showCompetitiveDetails={showCompetitiveDetails}
@@ -2181,7 +2212,7 @@ export function TrainerBoard({
             avatarSpriteKey: trainer.avatarSpriteKey,
             avatarBackgroundKey: trainer.avatarBackgroundKey,
           }}
-          onClose={() => setDetailsPokemon(null)}
+          onClose={dismissSearchPokemon}
         />
       )}
 
