@@ -79,10 +79,14 @@ const BIG_OOF_MEAN = 9;
 const BIG_OOF_MAX_IV = 13;
 
 /**
- * Physical / Special / Mixed attackers cannot God without their offense IV(s)
- * actually being high — luck/breadth ORs must not crown a SpA-6 special.
+ * Physical / Special / Mixed attackers: top tiers require usable offense IVs.
+ * Trash offense (≤10) caps at Good even when side rolls look cracked.
  */
 const GOD_OFFENSE_MIN = 25;
+const CRACKED_OFFENSE_MIN = 22;
+const GREAT_OFFENSE_MIN = 20;
+/** Below this on a primary Atk/SpA axis counts like a dump for tier capping. */
+const OFFENSE_TRASH_MAX = 10;
 
 /** Median of the six IVs — dump outliers don't sink the overall floor. */
 function ivMedian(ivs: StatSpread): number {
@@ -91,20 +95,32 @@ function ivMedian(ivs: StatSpread): number {
   return (values[2]! + values[3]!) / 2;
 }
 
+/** Primary Atk / SpA axes that attackers must actually roll well. */
+function primaryOffenseKeys(primaryKeys: StatKey[]): StatKey[] {
+  return primaryKeys.filter((k) => k === "atk" || k === "spa");
+}
+
 /**
- * True when primary keys don't demand an offense check, or every primary
- * offense axis (Atk / SpA) clears {@link GOD_OFFENSE_MIN}.
+ * True when there is no attacker-offense requirement, or every primary
+ * offense axis clears `minIv`.
  */
-function attackerOffenseAllowsGod(
+function attackerOffenseAllows(
+  ivs: StatSpread,
+  primaryKeys: StatKey[],
+  minIv: number,
+): boolean {
+  const offense = primaryOffenseKeys(primaryKeys);
+  if (offense.length === 0) return true;
+  return offense.every((k) => (ivs[k] ?? 0) >= minIv);
+}
+
+/** Trash primary Atk/SpA — same ceiling as a hard dump (Good max). */
+function attackerOffenseIsTrash(
   ivs: StatSpread,
   primaryKeys: StatKey[],
 ): boolean {
-  const needsAtk = primaryKeys.includes("atk");
-  const needsSpa = primaryKeys.includes("spa");
-  if (!needsAtk && !needsSpa) return true;
-  if (needsAtk && (ivs.atk ?? 0) < GOD_OFFENSE_MIN) return false;
-  if (needsSpa && (ivs.spa ?? 0) < GOD_OFFENSE_MIN) return false;
-  return true;
+  const offense = primaryOffenseKeys(primaryKeys);
+  return offense.some((k) => (ivs[k] ?? 0) <= OFFENSE_TRASH_MAX);
 }
 
 /** @deprecated Kept for summarizeIvs legacy path without keyStats. */
@@ -352,12 +368,10 @@ export function summarizeBattleStats(
  *
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}).
  * Overall floors use IV **median** (not mean):
- * - god: (median ≥20 + ≥2 role ≥27) OR (median ≥23 + ≥2 role ≥23)
- *        OR (median ≥23 + ≥1 role ≥27 + ≥1 other IV ≥25)
- *        OR (median ≥20 + ≥3 IVs ≥27 anywhere)
- * - cracked: (median ≥19 + ≥1 role ≥25) OR (median ≥21 + ≥1 role ≥21)
- * - great: median ≥17 + ≥1 role ≥23
- * - good: median ≥13
+ * - god: … + attackers need Atk/SpA ≥25
+ * - cracked: … + attackers need Atk/SpA ≥22
+ * - great: … + attackers need Atk/SpA ≥20
+ * - good: median ≥13 (also the ceiling when attacker offense is ≤10)
  * - oof: below good, not abysmal
  * - shit (Big oof): median <9 and no IV ≥13
  */
@@ -450,7 +464,8 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
  * - Fast Weedle, Spe 30 / Def 30 / SpA 28 → god (breadth OR)
  * - Physical Graveler, Atk 31 / Def 29 / dump Spe·SpA → god
  *   (bulky phys soft-key Def + median ≥20 primary path)
- * - Special Porygon, SpA 6 / cracked HP·Atk·Spe → not god (offense gate)
+ * - Special Porygon, SpA 6 / cracked HP·Atk·Spe → good (trash offense cap)
+ * - Physical with Atk 6 / cracked sides → good (trash offense cap)
  * - Physical Annihilape, Atk 29 / SpD 31 / Def 7 / median 24 → god (breadth OR)
  * - Median ≥23 with three IVs ≥27 anywhere → god (raw-luck OR)
  * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
@@ -510,18 +525,18 @@ function roleIvCatchTier(
     breadthHot >= 2;
   const godLuck =
     overall >= GOD_LUCK_MEAN && nearAnywhere >= GOD_LUCK_NEAR_HITS;
+  const offenseTrash = attackerOffenseIsTrash(ivs, primaryKeys);
 
-  // Primary key dump caps the ceiling — off-role luck is consolation only.
-  if (hardDump > 0) {
+  // Primary dump OR trash attacker offense → Good max (side rolls are consolation).
+  if (hardDump > 0 || offenseTrash) {
     if (isBigOof) return "shit";
     if (overall >= GOOD_MEAN || maxIv >= GREAT_ROLE_IV) return "good";
     return "oof";
   }
 
   // --- God (primary || role-OR || breadth-OR || luck-OR) -------------------
-  // Attackers must clear their offense IV(s) — no crowning a SpA-dump special.
   if (
-    attackerOffenseAllowsGod(ivs, primaryKeys) &&
+    attackerOffenseAllows(ivs, primaryKeys, GOD_OFFENSE_MIN) &&
     ((overall >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
       (overall >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS) ||
       godBreadth ||
@@ -532,14 +547,19 @@ function roleIvCatchTier(
 
   // --- Cracked (primary || OR) ---------------------------------------------
   if (
-    (overall >= CRACKED_MEAN && roleCracked >= 1) ||
-    (overall >= CRACKED_OR_MEAN && roleCrackedOr >= 1)
+    attackerOffenseAllows(ivs, primaryKeys, CRACKED_OFFENSE_MIN) &&
+    ((overall >= CRACKED_MEAN && roleCracked >= 1) ||
+      (overall >= CRACKED_OR_MEAN && roleCrackedOr >= 1))
   ) {
     return "cracked";
   }
 
   // --- Great (single path) -------------------------------------------------
-  if (overall >= GREAT_MEAN && roleGreat >= 1) {
+  if (
+    attackerOffenseAllows(ivs, primaryKeys, GREAT_OFFENSE_MIN) &&
+    overall >= GREAT_MEAN &&
+    roleGreat >= 1
+  ) {
     return "great";
   }
 
