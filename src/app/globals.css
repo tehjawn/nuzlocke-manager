@@ -137,8 +137,7 @@
   /* Dark keeps the wide, soft lift — it reads as depth against a near-black
      field, where light needs a tight contact shadow instead. */
   --shadow-card:
-    0 10px 28px -14px var(--shadow-md),
-    0 2px 8px -2px var(--shadow);
+    0 10px 28px -14px var(--shadow-md), 0 2px 8px -2px var(--shadow);
   --on-accent: #061209;
   --accent-ink: #d8ffe6;
   /* Ink on gold informational chrome (`.gba-frame-title`); override locally when chrome retints */
@@ -223,9 +222,21 @@ body::after {
   z-index: -1;
   pointer-events: none;
   background-image:
-    radial-gradient(ellipse 90% 55% at 0% 0%, var(--bg-wash) 0%, transparent 58%),
-    radial-gradient(ellipse 70% 50% at 100% 0%, var(--bg-glow) 0%, transparent 52%),
-    radial-gradient(ellipse 55% 40% at 50% 110%, var(--bg-veil) 0%, transparent 60%);
+    radial-gradient(
+      ellipse 90% 55% at 0% 0%,
+      var(--bg-wash) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 100% 0%,
+      var(--bg-glow) 0%,
+      transparent 52%
+    ),
+    radial-gradient(
+      ellipse 55% 40% at 50% 110%,
+      var(--bg-veil) 0%,
+      transparent 60%
+    );
   background-repeat: no-repeat;
   background-size: 100% 100%;
 }
@@ -237,11 +248,11 @@ body::before {
   pointer-events: none;
   z-index: 80;
   opacity: var(--grain-opacity);
-  background-image:
-    url("/textures/noise.svg"),
-    url("/textures/noise.png");
+  background-image: url("/textures/noise.svg"), url("/textures/noise.png");
   background-repeat: repeat;
-  background-size: 180px 180px, 100px 100px;
+  background-size:
+    180px 180px,
+    100px 100px;
   mix-blend-mode: soft-light;
 }
 
@@ -283,7 +294,9 @@ body[data-ask-scroll-lock] {
   }
 
   body[data-ask-rail] [data-gm-tools-anchor] {
-    right: calc(var(--ask-rail-width) + max(1rem, env(safe-area-inset-right, 0px)));
+    right: calc(
+      var(--ask-rail-width) + max(1rem, env(safe-area-inset-right, 0px))
+    );
     transition: right 200ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
@@ -370,13 +383,12 @@ button:disabled,
   isolation: isolate;
   /* Clip card contents (incl. avatar stages) to the rounded frame. */
   overflow: hidden;
-  background:
-    linear-gradient(
-      160deg,
-      color-mix(in srgb, var(--accent-2) 5%, var(--surface)) 0%,
-      var(--gba-fill) 48%,
-      color-mix(in srgb, var(--interactive) 4%, var(--gba-fill)) 100%
-    );
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--accent-2) 5%, var(--surface)) 0%,
+    var(--gba-fill) 48%,
+    color-mix(in srgb, var(--interactive) 4%, var(--gba-fill)) 100%
+  );
   border: 1px solid var(--frame);
   border-radius: var(--radius);
   box-shadow:
@@ -503,20 +515,49 @@ button:disabled,
   --card-bg-wash: #b8a8d8;
 }
 
-/* Custom uploaded card chrome — cover image + readability wash. */
+/*
+  Custom uploaded card chrome — cover image + readability wash.
+
+  These carry arbitrary user photography, so the calm-surface tokens stop
+  holding up. Measured over a dark upload: --ink still clears 6:1, but --muted
+  lands at 2.2:1 and `text-muted/80` at 1.9:1 — which is why trainer handles
+  stayed readable while real names and status lines disappeared. Two fixes:
+
+  1. Promote the secondary ink inside the card (below). `text-muted` resolves
+     straight to var(--muted) under `@theme inline`, so re-pointing the token on
+     the card scope lifts every muted descendant — including the /80 opacity
+     variants — with no component or selector churn.
+  2. Anchor a scrim at the bottom edge, where the stats line sits, rather than
+     spending opacity uniformly across the whole card. The old flat 42% wash
+     dulled the artwork everywhere and still under-served the two places text
+     actually lives. Bottom-anchored is layout-independent: these cards render
+     in both list and grid, so a left-rail scrim would be wrong for grid.
+*/
 .gba-frame[data-card-bg="custom"],
 .card-bg-swatch[data-card-bg="custom"] .card-bg-swatch-preview {
   background:
+    var(--card-scrim, none),
     linear-gradient(
       165deg,
-      color-mix(in srgb, var(--surface) 42%, transparent) 0%,
-      color-mix(in srgb, var(--surface-2) 55%, transparent) 100%
+      color-mix(in srgb, var(--surface) 52%, transparent) 0%,
+      color-mix(in srgb, var(--surface-2) 62%, transparent) 100%
     ),
     var(--card-bg-custom) center / cover no-repeat;
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent),
     0 1px 0 color-mix(in srgb, var(--frame-inner) 55%, transparent),
     var(--shadow-card);
+}
+
+/* Cards only — the picker swatch is too small to read as anything but a smudge. */
+.gba-frame[data-card-bg="custom"] {
+  --muted: #26302a;
+  --card-scrim: linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--surface) 84%, transparent) 0%,
+    color-mix(in srgb, var(--surface) 40%, transparent) 22%,
+    transparent 46%
+  );
 }
 
 .card-bg-swatch[data-card-bg="custom"] .card-bg-swatch-preview {
@@ -533,12 +574,22 @@ button:disabled,
   .card-bg-swatch[data-card-bg="custom"]
   .card-bg-swatch-preview {
   background:
+    var(--card-scrim, none),
     linear-gradient(
       165deg,
       color-mix(in srgb, var(--surface) 55%, transparent) 0%,
       color-mix(in srgb, var(--surface-2) 68%, transparent) 100%
     ),
     var(--card-bg-custom) center / cover no-repeat;
+}
+
+/*
+  Dark has the same failure in mirror image — over a *bright* upload its --muted
+  measures 2.9:1. The veil already runs stronger here (55/68), so only the ink
+  needs lifting.
+*/
+[data-theme="dark"] .gba-frame[data-card-bg="custom"] {
+  --muted: #c9d4c8;
 }
 
 [data-theme="dark"] .gba-frame[data-card-bg]:not([data-card-bg="custom"]),
@@ -878,10 +929,16 @@ button:disabled,
     color-mix(in srgb, var(--catch-tint) 6%, transparent),
     color-mix(in srgb, var(--catch-tint) var(--catch-peak), transparent),
     color-mix(in srgb, var(--catch-tint) 8%, transparent),
-    color-mix(in srgb, var(--catch-tint) calc(var(--catch-peak) - 8%), transparent),
+    color-mix(
+      in srgb,
+      var(--catch-tint) calc(var(--catch-peak) - 8%),
+      transparent
+    ),
     color-mix(in srgb, var(--catch-tint) 6%, transparent)
   );
-  box-shadow: 0 0 0 0 transparent, 0 0 0 0 var(--catch-glow);
+  box-shadow:
+    0 0 0 0 transparent,
+    0 0 0 0 var(--catch-glow);
   animation: pokemon-catch-revolve var(--catch-spin) linear infinite;
   transition:
     filter 180ms ease,
@@ -992,7 +1049,8 @@ button:disabled,
   background: radial-gradient(
     ellipse 92% 88% at 50% 48%,
     transparent 30%,
-    color-mix(in srgb, var(--catch-tint) var(--catch-bleed-soft), transparent) 64%,
+    color-mix(in srgb, var(--catch-tint) var(--catch-bleed-soft), transparent)
+      64%,
     color-mix(in srgb, var(--catch-tint) var(--catch-bleed), transparent) 100%
   );
 }
@@ -1132,13 +1190,17 @@ button:disabled,
 .pokemon-catch-sprite {
   --catch-vignette-peak: 18%;
   border-color: color-mix(in srgb, var(--catch-tint) 28%, var(--frame));
-  background:
-    radial-gradient(
-      circle at 50% 48%,
-      color-mix(in srgb, var(--catch-tint) var(--catch-vignette-peak), transparent) 0%,
-      color-mix(in srgb, var(--catch-tint) 8%, transparent) 42%,
-      var(--surface-2) 72%
-    );
+  background: radial-gradient(
+    circle at 50% 48%,
+    color-mix(
+        in srgb,
+        var(--catch-tint) var(--catch-vignette-peak),
+        transparent
+      )
+      0%,
+    color-mix(in srgb, var(--catch-tint) 8%, transparent) 42%,
+    var(--surface-2) 72%
+  );
 }
 
 .pokemon-catch-sprite--shit {
@@ -1171,14 +1233,13 @@ button:disabled,
 .pokemon-catch-sprite--god {
   overflow: hidden;
   border-color: color-mix(in srgb, #c77dff 42%, var(--frame));
-  background:
-    radial-gradient(
-      circle at 50% 45%,
-      color-mix(in srgb, #ffb020 28%, transparent) 0%,
-      color-mix(in srgb, #4ec4ff 22%, transparent) 36%,
-      color-mix(in srgb, #ff6ec7 18%, transparent) 58%,
-      var(--surface-2) 82%
-    );
+  background: radial-gradient(
+    circle at 50% 45%,
+    color-mix(in srgb, #ffb020 28%, transparent) 0%,
+    color-mix(in srgb, #4ec4ff 22%, transparent) 36%,
+    color-mix(in srgb, #ff6ec7 18%, transparent) 58%,
+    var(--surface-2) 82%
+  );
 }
 
 /*
@@ -1225,7 +1286,8 @@ button:disabled,
 .pokemon-catch-sprite--emphasis {
   --catch-vignette-peak: 22%;
   border-color: color-mix(in srgb, var(--catch-tint) 34%, var(--frame));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--catch-tint) 12%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--catch-tint) 12%, transparent);
 }
 
 .pokemon-catch-sprite--emphasis.pokemon-catch-sprite--shit {
@@ -1534,10 +1596,11 @@ button:disabled,
   background-image: radial-gradient(
     circle at 50% 46%,
     color-mix(
-      in srgb,
-      var(--league-catch-tint) var(--league-catch-peak),
-      transparent
-    ) 0%,
+        in srgb,
+        var(--league-catch-tint) var(--league-catch-peak),
+        transparent
+      )
+      0%,
     color-mix(in srgb, var(--league-catch-tint) 5%, transparent) 48%,
     var(--surface-2) 78%
   );
@@ -1663,7 +1726,9 @@ button:disabled,
   border-radius: inherit;
   background-color: transparent;
   background-image: var(--card-bg-motif), var(--card-bg-motif);
-  background-size: 128px 100px, 128px 100px;
+  background-size:
+    128px 100px,
+    128px 100px;
   background-repeat: repeat, repeat;
   /* Second layer shifted ~half tile → offset rows */
   background-position:
@@ -1674,7 +1739,9 @@ button:disabled,
 
 .card-bg-swatch[data-card-bg] .card-bg-swatch-preview::before {
   opacity: 0.2;
-  background-size: 72px 56px, 72px 56px;
+  background-size:
+    72px 56px,
+    72px 56px;
   background-position:
     4px 3px,
     40px 31px;
@@ -2073,7 +2140,8 @@ button:disabled,
   border-color: color-mix(in srgb, var(--frame) 65%, transparent);
   /* Don’t paint a bottom edge — let the strip rule show under idle tabs */
   border-bottom-color: transparent;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--frame-inner) 75%, transparent);
+  box-shadow: inset 0 1px 0
+    color-mix(in srgb, var(--frame-inner) 75%, transparent);
   transform: none;
 }
 
@@ -2145,7 +2213,12 @@ button:disabled,
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 55%, transparent),
     inset 0 1px 1px color-mix(in srgb, var(--shadow) 25%, transparent);
-  background: color-mix(in srgb, var(--accent-2) 10%, var(--frame) 28%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--accent-2) 10%,
+    var(--frame) 28%,
+    transparent
+  );
 }
 
 .stat-meter-fill--perfect {
@@ -2321,13 +2394,12 @@ button:disabled,
   overflow: hidden;
   border-radius: 9999px;
   border: 1px solid color-mix(in srgb, #fff 55%, var(--frame));
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, #fff 55%, transparent) 0%,
-      color-mix(in srgb, var(--surface) 72%, transparent) 42%,
-      color-mix(in srgb, var(--surface-2) 78%, transparent) 100%
-    );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, #fff 55%, transparent) 0%,
+    color-mix(in srgb, var(--surface) 72%, transparent) 42%,
+    color-mix(in srgb, var(--surface-2) 78%, transparent) 100%
+  );
   color: var(--ink);
   font-size: 0.72rem;
   font-weight: 800;
@@ -2365,13 +2437,12 @@ button:disabled,
 
 [data-theme="dark"] .gm-tools-fab__btn {
   border-color: color-mix(in srgb, #fff 16%, var(--frame));
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, #fff 10%, transparent) 0%,
-      color-mix(in srgb, var(--surface) 78%, transparent) 45%,
-      color-mix(in srgb, var(--surface-2) 82%, transparent) 100%
-    );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, #fff 10%, transparent) 0%,
+    color-mix(in srgb, var(--surface) 78%, transparent) 45%,
+    color-mix(in srgb, var(--surface-2) 82%, transparent) 100%
+  );
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
     inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent),
@@ -2402,13 +2473,12 @@ button:disabled,
 
 .gm-tools-fab--active .gm-tools-fab__btn {
   border-color: color-mix(in srgb, var(--interactive) 40%, var(--frame));
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--interactive-soft) 55%, transparent) 0%,
-      color-mix(in srgb, var(--surface) 70%, transparent) 50%,
-      color-mix(in srgb, var(--interactive-soft) 40%, var(--surface-2)) 100%
-    );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--interactive-soft) 55%, transparent) 0%,
+    color-mix(in srgb, var(--surface) 70%, transparent) 50%,
+    color-mix(in srgb, var(--interactive-soft) 40%, var(--surface-2)) 100%
+  );
 }
 
 .gm-tools-fab--active .gm-tools-fab__btn::before {
@@ -2531,13 +2601,12 @@ button:disabled,
   overflow: hidden;
   border-radius: var(--radius);
   border: 1px solid color-mix(in srgb, #fff 55%, var(--frame));
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, #fff 55%, transparent) 0%,
-      color-mix(in srgb, var(--surface) 72%, transparent) 42%,
-      color-mix(in srgb, var(--surface-2) 78%, transparent) 100%
-    );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, #fff 55%, transparent) 0%,
+    color-mix(in srgb, var(--surface) 72%, transparent) 42%,
+    color-mix(in srgb, var(--surface-2) 78%, transparent) 100%
+  );
   color: var(--ink);
   backdrop-filter: blur(22px) saturate(1.35);
   -webkit-backdrop-filter: blur(22px) saturate(1.35);
@@ -2548,13 +2617,12 @@ button:disabled,
 
 [data-theme="dark"] .gm-tools-panel__chrome {
   border-color: color-mix(in srgb, #fff 16%, var(--frame));
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, #fff 10%, transparent) 0%,
-      color-mix(in srgb, var(--surface) 78%, transparent) 45%,
-      color-mix(in srgb, var(--surface-2) 82%, transparent) 100%
-    );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, #fff 10%, transparent) 0%,
+    color-mix(in srgb, var(--surface) 78%, transparent) 45%,
+    color-mix(in srgb, var(--surface-2) 82%, transparent) 100%
+  );
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
     inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent);
@@ -2758,12 +2826,11 @@ button:disabled,
   justify-content: center;
   border-radius: var(--radius);
   border: 1px solid color-mix(in srgb, var(--accent-2) 45%, var(--frame));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--accent-2) 22%, var(--surface)) 0%,
-      color-mix(in srgb, var(--accent-2) 12%, var(--surface-2)) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-2) 22%, var(--surface)) 0%,
+    color-mix(in srgb, var(--accent-2) 12%, var(--surface-2)) 100%
+  );
   padding: 0.65rem 1rem;
   font-size: 0.875rem;
   font-weight: 800;
@@ -2894,12 +2961,11 @@ button:disabled,
 
 .gm-tools-panel--active .gm-tools-panel__console {
   border-color: color-mix(in srgb, var(--interactive) 45%, var(--frame));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--interactive) 22%, var(--surface)) 0%,
-      color-mix(in srgb, var(--interactive) 12%, var(--surface-2)) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--interactive) 22%, var(--surface)) 0%,
+    color-mix(in srgb, var(--interactive) 12%, var(--surface-2)) 100%
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2916,7 +2982,8 @@ button:disabled,
 
 /* Sticky GM view status — frosted glass, high contrast */
 .gm-view-banner {
-  border-bottom: 1px solid color-mix(in srgb, var(--interactive) 28%, var(--frame));
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--interactive) 28%, var(--frame));
   background: color-mix(in srgb, var(--interactive-soft) 55%, transparent);
   color: var(--ink);
   backdrop-filter: blur(16px) saturate(1.25);
@@ -3056,7 +3123,11 @@ button:disabled,
   font-weight: 650;
   color: var(--interactive);
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--interactive) 45%, transparent);
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--interactive) 45%,
+    transparent
+  );
   text-underline-offset: 2px;
 }
 
@@ -3203,13 +3274,12 @@ button:disabled,
   overflow: hidden;
   border-radius: var(--radius-lg);
   border: 1px solid color-mix(in srgb, #fff 55%, var(--frame));
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--surface) 92%, #fff) 0%,
-      color-mix(in srgb, var(--surface) 88%, transparent) 42%,
-      var(--surface-2) 100%
-    );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--surface) 92%, #fff) 0%,
+    color-mix(in srgb, var(--surface) 88%, transparent) 42%,
+    var(--surface-2) 100%
+  );
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 70%, transparent),
     inset 0 0 0 1px color-mix(in srgb, #fff 20%, transparent);
@@ -3224,13 +3294,12 @@ button:disabled,
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .gm-console__hero-chrome {
-    background:
-      linear-gradient(
-        145deg,
-        color-mix(in srgb, #fff 55%, transparent) 0%,
-        color-mix(in srgb, var(--surface) 72%, transparent) 42%,
-        color-mix(in srgb, var(--surface-2) 78%, transparent) 100%
-      );
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, #fff 55%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 72%, transparent) 42%,
+      color-mix(in srgb, var(--surface-2) 78%, transparent) 100%
+    );
     backdrop-filter: blur(18px) saturate(1.25);
     -webkit-backdrop-filter: blur(18px) saturate(1.25);
   }
@@ -3238,13 +3307,12 @@ button:disabled,
 
 [data-theme="dark"] .gm-console__hero-chrome {
   border-color: color-mix(in srgb, #fff 16%, var(--frame));
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--surface) 94%, #fff) 0%,
-      var(--surface) 45%,
-      var(--surface-2) 100%
-    );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--surface) 94%, #fff) 0%,
+    var(--surface) 45%,
+    var(--surface-2) 100%
+  );
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
     inset 0 0 0 1px color-mix(in srgb, #fff 6%, transparent);
@@ -3252,13 +3320,12 @@ button:disabled,
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   [data-theme="dark"] .gm-console__hero-chrome {
-    background:
-      linear-gradient(
-        145deg,
-        color-mix(in srgb, #fff 10%, transparent) 0%,
-        color-mix(in srgb, var(--surface) 78%, transparent) 45%,
-        color-mix(in srgb, var(--surface-2) 82%, transparent) 100%
-      );
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, #fff 10%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 78%, transparent) 45%,
+      color-mix(in srgb, var(--surface-2) 82%, transparent) 100%
+    );
   }
 }
 
@@ -3559,13 +3626,12 @@ button:disabled,
   border-radius: var(--radius);
   border: 1px solid color-mix(in srgb, #fff 55%, var(--frame));
   /* Opaque glass fill — avoid backdrop-filter on every panel (GPU drain). */
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--surface) 96%, #fff) 0%,
-      var(--surface) 48%,
-      var(--surface-2) 100%
-    );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--surface) 96%, #fff) 0%,
+    var(--surface) 48%,
+    var(--surface-2) 100%
+  );
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 65%, transparent),
     inset 0 0 0 1px color-mix(in srgb, #fff 16%, transparent);
@@ -3573,13 +3639,12 @@ button:disabled,
 
 [data-theme="dark"] .gm-console__panel-chrome {
   border-color: color-mix(in srgb, #fff 14%, var(--frame));
-  background:
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--surface) 94%, #fff) 0%,
-      var(--surface) 48%,
-      var(--surface-2) 100%
-    );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--surface) 94%, #fff) 0%,
+    var(--surface) 48%,
+    var(--surface-2) 100%
+  );
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent),
     inset 0 0 0 1px color-mix(in srgb, #fff 5%, transparent);
@@ -3591,7 +3656,8 @@ button:disabled,
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--interactive) 18%, var(--frame));
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--interactive) 18%, var(--frame));
   background: color-mix(in srgb, var(--interactive-soft) 28%, transparent);
   padding: 0.85rem 1rem;
 }
@@ -4071,13 +4137,12 @@ button:disabled,
   z-index: 10045;
   isolation: isolate;
   overflow: hidden;
-  background:
-    linear-gradient(
-      160deg,
-      color-mix(in srgb, var(--accent-2) 5%, var(--surface)) 0%,
-      var(--gba-fill) 48%,
-      color-mix(in srgb, var(--interactive) 4%, var(--gba-fill)) 100%
-    );
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--accent-2) 5%, var(--surface)) 0%,
+    var(--gba-fill) 48%,
+    color-mix(in srgb, var(--interactive) 4%, var(--gba-fill)) 100%
+  );
   color: var(--ink);
   border: 1px solid var(--frame);
   border-radius: var(--radius);
@@ -4514,7 +4579,8 @@ button:disabled,
 .badge-case--strip.badge-case--complete .badge-case__shell,
 .badge-case--strip.badge-case--complete.badge-case--strip-rail {
   border: 1px solid color-mix(in srgb, var(--accent-2) 36%, var(--frame));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 12%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--accent-2) 12%, transparent);
 }
 
 .badge-case--strip.badge-case--complete .badge-case__icon--earned {
@@ -4522,14 +4588,18 @@ button:disabled,
 }
 
 /* Full board case: richer treatment (not strip / tray) */
-.badge-case--complete:not(.badge-case--strip):not(.badge-case--tray) .badge-case__cell {
+.badge-case--complete:not(.badge-case--strip):not(.badge-case--tray)
+  .badge-case__cell {
   border-color: color-mix(in srgb, var(--accent-2) 45%, var(--frame));
   background: color-mix(in srgb, var(--accent-2) 28%, var(--surface));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-2) 20%, transparent);
 }
 
-.badge-case--complete:not(.badge-case--strip):not(.badge-case--tray) .badge-case__icon--earned {
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent-2) 55%, transparent));
+.badge-case--complete:not(.badge-case--strip):not(.badge-case--tray)
+  .badge-case__icon--earned {
+  filter: drop-shadow(
+    0 0 4px color-mix(in srgb, var(--accent-2) 55%, transparent)
+  );
 }
 
 .badge-case--tray.badge-case--complete {
@@ -4564,7 +4634,8 @@ button:disabled,
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .badge-case--complete:not(.badge-case--strip):not(.badge-case--tray) .badge-case__icon--earned {
+  .badge-case--complete:not(.badge-case--strip):not(.badge-case--tray)
+    .badge-case__icon--earned {
     animation: badge-case-sparkle 2.4s ease-in-out infinite;
   }
 
@@ -4576,11 +4647,15 @@ button:disabled,
 @keyframes badge-case-sparkle {
   0%,
   100% {
-    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent-2) 40%, transparent));
+    filter: drop-shadow(
+      0 0 3px color-mix(in srgb, var(--accent-2) 40%, transparent)
+    );
     transform: scale(1);
   }
   50% {
-    filter: drop-shadow(0 0 7px color-mix(in srgb, var(--accent-2) 70%, transparent));
+    filter: drop-shadow(
+      0 0 7px color-mix(in srgb, var(--accent-2) 70%, transparent)
+    );
     transform: scale(1.04);
   }
 }
@@ -4599,13 +4674,13 @@ button:disabled,
 
 .trainer-stat--badges-complete {
   border-color: color-mix(in srgb, var(--accent-2) 45%, var(--frame));
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--accent-2) 24%, var(--surface-2)) 0%,
-      color-mix(in srgb, var(--surface-2) 90%, transparent) 100%
-    );
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 18%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-2) 24%, var(--surface-2)) 0%,
+    color-mix(in srgb, var(--surface-2) 90%, transparent) 100%
+  );
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--accent-2) 18%, transparent);
 }
 
 /* ---- FX celebrations ---- */
@@ -4785,7 +4860,6 @@ button:disabled,
   color: var(--on-chrome);
 }
 
-
 /* Headline Moments rail (#322) — triumphant portrait on card chrome */
 .headline-moment-card {
   isolation: isolate;
@@ -4834,13 +4908,16 @@ button:disabled,
 }
 
 .headline-portrait--champ {
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 55%, transparent));
+  filter: drop-shadow(
+    0 0 10px color-mix(in srgb, var(--accent) 55%, transparent)
+  );
   transform: translateY(-2px) scale(1.04);
   transform-origin: bottom center;
 }
 
 .headline-portrait--wipe {
-  filter: grayscale(0.15) drop-shadow(0 6px 12px color-mix(in srgb, var(--danger) 35%, transparent));
+  filter: grayscale(0.15)
+    drop-shadow(0 6px 12px color-mix(in srgb, var(--danger) 35%, transparent));
 }
 
 @media (prefers-reduced-motion: reduce) {
