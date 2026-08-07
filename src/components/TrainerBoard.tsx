@@ -13,6 +13,8 @@ import {
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
+import { fetchToolsPokemonEntryAction } from "@/app/actions/tools-pokemon";
+import { fetchTrainerEncounteredAction } from "@/app/actions/trainer-board";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
@@ -658,6 +660,13 @@ export function TrainerBoard({
   const [saveImportOpen, setSaveImportOpen] = useState(false);
   const [boardHistoryOpen, setBoardHistoryOpen] = useState(false);
   const [teamExportOpen, setTeamExportOpen] = useState(false);
+  /** null = not loaded yet (SSR omits Encountered); [] = loaded empty. */
+  const [encounteredPokemon, setEncounteredPokemon] = useState<
+    PokemonEntry[] | null
+  >(null);
+  const [encounteredLoading, setEncounteredLoading] = useState(false);
+  const [encounteredError, setEncounteredError] = useState<string | null>(null);
+  const [encounteredOpen, setEncounteredOpen] = useState(false);
   const searchParams = useSearchParams();
   const searchPokemonId = searchParams.get("pokemon");
   const [openedSearchPokemonId, setOpenedSearchPokemonId] = useState<
@@ -728,6 +737,10 @@ export function TrainerBoard({
       setEarnedBadgeKeys(trainer.earnedBadgeKeys);
       setBoardOverride(null);
       setRunEndedOverride(null);
+      // Board writes revalidate `:board` — drop deferred Encountered so a
+      // reopen (or still-open section) refetches after import / edits.
+      setEncounteredPokemon(null);
+      setEncounteredError(null);
     }
   }
 
@@ -766,7 +779,47 @@ export function TrainerBoard({
   const main = pokemonInSlot(boardTrainer, "MAIN");
   const reserves = pokemonInSlot(boardTrainer, "RESERVE");
   const graveyard = pokemonInSlot(boardTrainer, "GRAVEYARD");
-  const encountered = pokemonInSlot(boardTrainer, "ENCOUNTERED");
+  // SSR omits Encountered; prefer hydrated rows, else any still on the trainer
+  // prop (seed / optimistic wipe leftovers).
+  const encountered =
+    encounteredPokemon ?? pokemonInSlot(boardTrainer, "ENCOUNTERED");
+  const encounteredCount =
+    encounteredPokemon?.length ??
+    trainer.slotCounts?.encountered ??
+    encountered.length;
+
+  function loadEncountered() {
+    if (encounteredPokemon != null || encounteredLoading) return;
+    setEncounteredLoading(true);
+    setEncounteredError(null);
+    void (async () => {
+      const result = await fetchTrainerEncounteredAction({
+        slug: challengeSlug,
+        trainerId: trainer.id,
+      });
+      if (result.ok) {
+        setEncounteredPokemon(result.pokemon);
+      } else {
+        setEncounteredError(result.error);
+      }
+      setEncounteredLoading(false);
+    })();
+  }
+
+  function onEncounteredOpenChange(open: boolean) {
+    setEncounteredOpen(open);
+    if (open) loadEncountered();
+  }
+
+  // Section stayed open across a board revalidate — refetch the deferred slice.
+  if (
+    encounteredOpen &&
+    encounteredPokemon == null &&
+    !encounteredLoading &&
+    !encounteredError
+  ) {
+    loadEncountered();
+  }
   const wiping =
     wipeSave.status.kind === "saving" || resetSave.status.kind === "saving";
   const seasonLinkTiles = [
@@ -1019,6 +1072,8 @@ export function TrainerBoard({
     setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
+    setEncounteredPokemon([]);
+    setEncounteredError(null);
 
     wipeSave.markSaving("Starting new run…");
     startTransition(async () => {
@@ -1075,6 +1130,8 @@ export function TrainerBoard({
     setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
+    setEncounteredPokemon([]);
+    setEncounteredError(null);
 
     resetSave.markSaving("Resetting board…");
     startTransition(async () => {
@@ -1114,8 +1171,12 @@ export function TrainerBoard({
         return;
       }
     } else if (partyIndex == null) {
+      const pool =
+        slot === "ENCOUNTERED" && encounteredPokemon
+          ? [...boardPokemon, ...encounteredPokemon]
+          : boardPokemon;
       const used = new Set(
-        boardPokemon.filter((p) => p.slot === slot).map((p) => p.partyIndex),
+        pool.filter((p) => p.slot === slot).map((p) => p.partyIndex),
       );
       partyIndex = 0;
       while (used.has(partyIndex) && partyIndex < 1000) partyIndex += 1;
@@ -1143,7 +1204,10 @@ export function TrainerBoard({
   if (!searchPokemonId && openedSearchPokemonId) {
     setOpenedSearchPokemonId(null);
   } else if (searchPokemonId && searchPokemonId !== openedSearchPokemonId) {
-    const mon = boardPokemon.find((p) => p.id === searchPokemonId) ?? null;
+    const mon =
+      boardPokemon.find((p) => p.id === searchPokemonId) ??
+      encounteredPokemon?.find((p) => p.id === searchPokemonId) ??
+      null;
     setOpenedSearchPokemonId(searchPokemonId);
     if (mon) {
       if (canEdit) {
@@ -1154,6 +1218,23 @@ export function TrainerBoard({
       } else {
         setDetailsPokemon(mon);
       }
+    } else {
+      // Encountered (and rare off-board ids) are not in the SSR party — fetch one.
+      startTransition(async () => {
+        const result = await fetchToolsPokemonEntryAction({
+          slug: challengeSlug,
+          pokemonId: searchPokemonId,
+        });
+        if (!result.ok) return;
+        if (canEdit) {
+          setPokemonInspect({
+            mode: "view",
+            form: pokemonEntryToForm(result.pokemon),
+          });
+        } else {
+          setDetailsPokemon(result.pokemon);
+        }
+      });
     }
   }
 
@@ -1720,11 +1801,16 @@ export function TrainerBoard({
           )}
 
           <Frame
-            title={frameCountTitle("Encountered", encountered.length)}
+            title={frameCountTitle("Encountered", encounteredCount)}
             collapsible
-            defaultOpen={false}
+            open={encounteredOpen}
+            onOpenChange={onEncounteredOpenChange}
           >
-            {canEdit ? (
+            {encounteredLoading && encounteredPokemon == null ? (
+              <p className="text-sm text-muted">Loading encounters…</p>
+            ) : encounteredError && encounteredPokemon == null ? (
+              <p className="text-sm text-muted">{encounteredError}</p>
+            ) : encounteredPokemon == null ? null : canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">

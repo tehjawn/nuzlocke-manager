@@ -547,8 +547,9 @@ export async function getHomeCarouselChallenge(
 }
 
 /**
- * One trainer's board — full competitive columns for that trainer only.
- * Survival tallies are scoped to their Pokémon ids; peers stay off the wire.
+ * One trainer's board — Main / Reserves / R.I.P. with full columns.
+ * Encountered is deferred (count via slotCounts); survival tallies cover the
+ * living + memorial ids on the wire.
  */
 export async function getTrainer(
   slug: string,
@@ -561,13 +562,31 @@ export async function getTrainer(
       if (row) {
         const trainerRow = row.trainers[0];
         if (!trainerRow || trainerRow.id !== trainerId) return null;
+        const slotCountRows =
+          "slotCounts" in row && Array.isArray(row.slotCounts)
+            ? row.slotCounts
+            : [];
         const challenge = await withSurvivalPollTallies(
           mapDbChallenge({ ...row, activities: [] }, viewerUserId),
           viewerUserId,
         );
         const trainer = challenge.trainers.find((t) => t.id === trainerId);
         if (!trainer) return null;
-        return { challenge, trainer };
+        const counts = emptySlotCounts();
+        for (const entry of slotCountRows) {
+          const n = entry._count._all;
+          if (entry.slot === "MAIN") counts.main = n;
+          else if (entry.slot === "RESERVE") counts.reserve = n;
+          else if (entry.slot === "GRAVEYARD") counts.graveyard = n;
+          else if (entry.slot === "ENCOUNTERED") counts.encountered = n;
+        }
+        return {
+          challenge: {
+            ...challenge,
+            trainers: [{ ...trainer, slotCounts: counts }],
+          },
+          trainer: { ...trainer, slotCounts: counts },
+        };
       }
     } catch {
       return null;
@@ -578,9 +597,12 @@ export async function getTrainer(
   const full = seedAsChallenge(seed);
   const trainer = full.trainers.find((t) => t.id === trainerId);
   if (!trainer) return null;
+  const slotCounts = slotCountsFromPokemon(trainer.pokemon);
+  const boardPokemon = trainer.pokemon.filter((p) => p.slot !== "ENCOUNTERED");
+  const lean = { ...trainer, pokemon: boardPokemon, slotCounts };
   return {
-    challenge: { ...full, trainers: [trainer], activities: [] },
-    trainer,
+    challenge: { ...full, trainers: [lean], activities: [] },
+    trainer: lean,
   };
 }
 
