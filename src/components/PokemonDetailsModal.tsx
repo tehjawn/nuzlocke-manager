@@ -22,6 +22,7 @@ import {
 } from "@/components/SurvivalPollChip";
 import { TombstoneIcon } from "@/components/TombstoneIcon";
 import { TypeBadge } from "@/components/TypeBadge";
+import { itemDexSlug } from "@/data/item-links";
 import { abilityDescription } from "@/data/pokemon-lookups";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 import { trainerBoardPath } from "@/lib/team-export";
@@ -127,6 +128,12 @@ export function PokemonDetailsModal({
   const pokedexHref =
     slug && pokemon.pokedexId != null
       ? toolsHref(slug, "pokedex", { id: pokemon.pokedexId })
+      : null;
+  // Free-typed held items that aren't in the ROM catalog stay unlinked.
+  const heldItemSlug = itemDexSlug(pokemon.heldItem);
+  const heldItemDexHref =
+    slug && heldItemSlug
+      ? toolsHref(slug, "itemdex", { item: heldItemSlug })
       : null;
   const speciesLabel = pokedexHref ? (
     <Link
@@ -256,7 +263,13 @@ export function PokemonDetailsModal({
     pokemon.heldItem
       ? {
           label: "Item",
-          value: <HeldItemLabel name={pokemon.heldItem} iconSize={18} />,
+          value: (
+            <HeldItemLabel
+              name={pokemon.heldItem}
+              href={heldItemDexHref}
+              iconSize={18}
+            />
+          ),
         }
       : null,
     slug && trainer
@@ -585,6 +598,7 @@ export function PokemonDetailsModal({
                 heldItem={pokemon.heldItem}
                 moves={showCompetitiveDetails ? pokemon.moves : null}
                 shiny={pokemon.isShiny}
+                slug={slug}
               />
             ) : null}
           </div>

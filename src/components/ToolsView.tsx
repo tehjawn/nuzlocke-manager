@@ -5,11 +5,13 @@ import { useSearchParams } from "next/navigation";
 import { BountyHunterView } from "@/components/BountyHunterView";
 import { Frame } from "@/components/Frame";
 import { GameGuidePanel } from "@/components/GameGuidePanel";
+import { ItemDexPanel } from "@/components/ItemDexPanel";
 import { PokedexPanel } from "@/components/PokedexPanel";
 import { SurvivalMarketsPanel } from "@/components/SurvivalMarketsPanel";
 import { TeamPlannerView } from "@/components/TeamPlannerView";
 import { ToolChip, TOOL_TONE_CHIP, toolsTone } from "@/components/tool-icons";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
+import type { ItemLens } from "@/data/items";
 import type { TrainerProfile } from "@/lib/challenge-types";
 import {
   parseToolsId,
@@ -47,6 +49,8 @@ type ToolsViewProps = {
   initialPokedexMode?: PokedexMode | null;
   initialMarketsMode?: MarketsMode | null;
   initialMarketsSort?: MarketsSort | null;
+  initialItemSlug?: string | null;
+  initialItemLens?: ItemLens | null;
 };
 
 export function ToolsView({
@@ -65,6 +69,8 @@ export function ToolsView({
   initialPokedexMode = null,
   initialMarketsMode = null,
   initialMarketsSort = null,
+  initialItemSlug = null,
+  initialItemLens = null,
 }: ToolsViewProps) {
   const searchParams = useSearchParams();
   const tool =
@@ -95,6 +101,8 @@ export function ToolsView({
       initialPokedexMode={initialPokedexMode}
       initialMarketsMode={initialMarketsMode}
       initialMarketsSort={initialMarketsSort}
+      initialItemSlug={initialItemSlug}
+      initialItemLens={initialItemLens}
     />
   );
 }
@@ -166,6 +174,8 @@ const TOOL_BLURBS: Record<WorkspaceTool, (challengeName: string) => string> = {
   guide: (name) => `What to do next in the story for ${name}.`,
   pokedex: (name) =>
     `Look up species for ${name} — role, F→S BST ranks, competitive viability, matchups, and who's already caught it.`,
+  itemdex: () =>
+    "What an item does and every place Modern Emerald puts one — balls, hidden squares, shops, and the wild mons that hold it.",
   bounty: (name) =>
     `Who owns, who's seen, who's cornered a whole line — and every Pokémon on a board — in ${name}.`,
   markets: (name) =>
@@ -192,6 +202,8 @@ function ToolWorkspace({
   initialPokedexMode,
   initialMarketsMode,
   initialMarketsSort,
+  initialItemSlug,
+  initialItemLens,
 }: {
   slug: string;
   challengeName: string;
@@ -208,6 +220,8 @@ function ToolWorkspace({
   initialPokedexMode?: PokedexMode | null;
   initialMarketsMode?: MarketsMode | null;
   initialMarketsSort?: MarketsSort | null;
+  initialItemSlug?: string | null;
+  initialItemLens?: ItemLens | null;
 }) {
   const meta = TOOLS_CATALOG.find((t) => t.id === tool)!;
   const hubHref = toolsHubHref(slug);
@@ -275,6 +289,14 @@ function ToolWorkspace({
           signedIn={signedIn}
           initialId={initialDexId}
           initialMode={initialPokedexMode}
+        />
+      ) : null}
+
+      {tool === "itemdex" ? (
+        <ItemDexPanel
+          slug={slug}
+          initialItem={initialItemSlug}
+          initialLens={initialItemLens}
         />
       ) : null}
 

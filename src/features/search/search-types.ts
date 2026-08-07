@@ -2,6 +2,7 @@ export type SearchCategory =
   | "navigate"
   | "trainer"
   | "pokemon"
+  | "item"
   | "badge"
   | "rules"
   | "guide"

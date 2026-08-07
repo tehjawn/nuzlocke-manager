@@ -7,6 +7,7 @@
   - warn (flame orange): Survive/Die polls / caution accents
   - interactive (sky): hover affordances on clickable surfaces
   - info (cool gray wash): read-only value chips
+  - relic (amethyst): ItemDex only — the one hue no other tool chip claims
 */
 :root,
 [data-theme="light"] {
@@ -39,6 +40,10 @@
   --stat-spe: #c46a8e;
   --danger: #d04a38;
   --rip: #e4eadc;
+  /* ItemDex. Violet is the only hue left unclaimed by a tool chip — green,
+     gold, orange, sky, red, indigo and the pale rip wash are all spoken for. */
+  --relic: #7b4fbf;
+  --relic-soft: #ece2fa;
   --shadow: rgba(18, 22, 18, 0.12);
   --shadow-md: rgba(18, 22, 18, 0.2);
   --on-accent: #f4fff7;
@@ -88,6 +93,8 @@
   --stat-spe: #e088a8;
   --danger: #ef6b55;
   --rip: #101611;
+  --relic: #b28cf0;
+  --relic-soft: #241a38;
   --shadow: rgba(0, 0, 0, 0.45);
   --shadow-md: rgba(0, 0, 0, 0.6);
   --on-accent: #061209;
@@ -141,6 +148,8 @@
   --color-stat-spe: var(--stat-spe);
   --color-danger: var(--danger);
   --color-rip: var(--rip);
+  --color-relic: var(--relic);
+  --color-relic-soft: var(--relic-soft);
   --font-sans: var(--font-body);
   --font-display: var(--font-body);
   --font-pixel: var(--font-body);

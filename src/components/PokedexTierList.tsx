@@ -153,18 +153,25 @@ function BstLadder({
   setType: (v: PokemonType | null) => void;
   type: PokemonType | null;
 }) {
+  // On by default: 25 of the 28 legendaries land in S, so leaving them in makes
+  // the top of a raw-BST ladder read as a legendary list rather than a ranking
+  // of anything a run can actually use.
+  const [hideLegendaries, setHideLegendaries] = useState(true);
   const tiers = useMemo(() => speciesTierList(), []);
 
   const filteredBuckets = useMemo(() => {
     return tiers
       .map((bucket) => ({
         ...bucket,
-        entries: bucket.entries.filter((entry) =>
-          matchesFilters(entry.pokedexId, filterOpts),
-        ),
+        entries: bucket.entries.filter((entry) => {
+          if (hideLegendaries && isLegendaryNationalId(entry.pokedexId)) {
+            return false;
+          }
+          return matchesFilters(entry.pokedexId, filterOpts);
+        }),
       }))
       .filter((bucket) => bucket.entries.length > 0);
-  }, [tiers, filterOpts]);
+  }, [tiers, filterOpts, hideLegendaries]);
 
   const visibleCount = filteredBuckets.reduce(
     (sum, bucket) => sum + bucket.entries.length,
@@ -195,12 +202,26 @@ function BstLadder({
         setOwnership={setOwnership}
         setType={setType}
         type={type}
+        trailing={
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 self-end pb-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-frame"
+                checked={hideLegendaries}
+                onChange={(event) => setHideLegendaries(event.target.checked)}
+              />
+              Hide legendaries
+            </label>
+          </div>
+        }
       />
 
       <p className="text-xs text-muted">
         Showing {visibleCount}
         {visibleCount !== totalCount ? ` of ${totalCount}` : ""} Modern Emerald
-        species · peer pool {tiers[0]?.peerCount ?? 0}
+        species{hideLegendaries ? " (legendaries hidden)" : ""} · peer pool{" "}
+        {tiers[0]?.peerCount ?? 0}
       </p>
 
       {filteredBuckets.length === 0 ? (
@@ -264,14 +285,12 @@ function CompetitiveLadder({
   setType: (v: PokemonType | null) => void;
   type: PokemonType | null;
 }) {
-  const [hideUntiered, setHideUntiered] = useState(true);
   const [hideLegendaries, setHideLegendaries] = useState(true);
   const meta = useMemo(() => competitiveTierMeta(), []);
   const tiers = useMemo(() => competitiveTierList(), []);
 
   const filteredBuckets = useMemo(() => {
     return tiers
-      .filter((bucket) => !(hideUntiered && bucket.key === "untiered"))
       .map((bucket) => ({
         ...bucket,
         entries: bucket.entries.filter((entry) => {
@@ -282,20 +301,19 @@ function CompetitiveLadder({
         }),
       }))
       .filter((bucket) => bucket.entries.length > 0);
-  }, [tiers, filterOpts, hideUntiered, hideLegendaries]);
+  }, [tiers, filterOpts, hideLegendaries]);
 
+  // Every species now carries a tier, so the untiered bucket is empty and there
+  // is nothing to hide. The bucket still renders if one ever turns up — better
+  // an honest "not curated yet" row than a species silently missing.
   const curatedTotal = tiers
     .filter((b) => b.key !== "untiered")
     .reduce((sum, b) => sum + b.count, 0);
+  const shownTotal = tiers.reduce((sum, b) => sum + b.count, 0);
   const visibleCount = filteredBuckets.reduce(
     (sum, bucket) => sum + bucket.entries.length,
     0,
   );
-
-  const filterNotes: string[] = [
-    hideUntiered ? "untiered hidden" : null,
-    hideLegendaries ? "legendaries hidden" : null,
-  ].filter((note): note is string => note != null);
 
   return (
     <div className="space-y-4">
@@ -328,23 +346,14 @@ function CompetitiveLadder({
               />
               Hide legendaries
             </label>
-            <label className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <input
-                type="checkbox"
-                className="size-4 rounded border-frame"
-                checked={hideUntiered}
-                onChange={(event) => setHideUntiered(event.target.checked)}
-              />
-              Hide untiered
-            </label>
           </div>
         }
       />
 
       <p className="text-xs text-muted">
         Showing {visibleCount}
-        {visibleCount !== curatedTotal ? ` of ${curatedTotal}` : ""} species
-        {filterNotes.length > 0 ? ` (${filterNotes.join(" · ")})` : ""}
+        {visibleCount !== shownTotal ? ` of ${shownTotal}` : ""} species
+        {hideLegendaries ? " (legendaries hidden)" : ""}
       </p>
 
       {filteredBuckets.length === 0 ? (

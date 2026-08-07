@@ -22,6 +22,7 @@ export const TOOL_TONE_CHIP: Record<ToolsTone, string> = {
   danger: "border-danger/40 bg-danger/12 text-danger",
   discord: "border-discord/40 bg-discord/15 text-discord",
   rip: "border-accent-deep/35 bg-rip text-accent-deep",
+  relic: "border-relic/45 bg-relic-soft text-relic",
   muted: "border-frame bg-surface-2 text-muted",
 };
 
@@ -66,6 +67,8 @@ export function ToolIcon({
       return <GuideToolIcon className={className} />;
     case "pokedex":
       return <PokedexToolIcon className={className} />;
+    case "itemdex":
+      return <ItemDexToolIcon className={className} />;
     case "bounty":
       return <OwnershipToolIcon className={className} />;
     case "markets":
@@ -99,6 +102,20 @@ export function PokedexToolIcon({ className = "h-5 w-5" }: IconProps) {
       <rect x="5" y="3.5" width="14" height="17" rx="2.5" />
       <circle cx="12" cy="11" r="3.25" />
       <path d="M9.5 17.5h5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Cut gem — the ItemDex, and the only faceted shape in the set. */
+export function ItemDexToolIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path
+        d="M7.5 4h9l3.5 5-8 11-8-11z"
+        strokeLinejoin="round"
+      />
+      <path d="M4 9h16" strokeLinecap="round" />
+      <path d="M9.75 9L12 4.25 14.25 9 12 20z" strokeLinejoin="round" />
     </svg>
   );
 }
