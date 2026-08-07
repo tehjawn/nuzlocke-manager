@@ -89,6 +89,14 @@ const GREAT_PRIMARY_MIN = 20;
 /** Below this on any primary role axis counts like a dump for tier capping. */
 const PRIMARY_TRASH_MAX = 10;
 
+/**
+ * Balanced God is overall excellence only — no "any two highs" shortcut.
+ * Median high + three near-perfects + no trash IV.
+ */
+const BALANCED_GOD_MEDIAN = 23;
+const BALANCED_GOD_NEAR_HITS = 3;
+const BALANCED_GOD_MIN_IV = 12;
+
 /** Median of the six IVs — dump outliers don't sink the overall floor. */
 function ivMedian(ivs: StatSpread): number {
   const values = STAT_KEYS.map((k) => ivs[k] ?? 0).sort((a, b) => a - b);
@@ -371,6 +379,7 @@ export function summarizeBattleStats(
  * - cracked: … + primary IVs ≥22
  * - great: … + primary IVs ≥20
  * - good: median ≥13 (also the ceiling when any primary IV is ≤10)
+ * - Balanced god: median ≥23 + ≥3 IVs ≥27 + every IV ≥12 (no two-high shortcut)
  * - oof: below good, not abysmal
  * - shit (Big oof): median <9 and no IV ≥13
  */
@@ -466,8 +475,9 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
  * - Special Porygon, SpA 6 / cracked HP·Atk·Spe → good (trash primary)
  * - Physical wall Skarmory, Def 9 / cracked Atk·SpA·Spe → good (trash primary)
  * - Physical with Atk 6 / cracked sides → good (trash primary)
+ * - Balanced Claydol, Spe 31 / Atk 30 / SpD 7 → cracked (not god — needs
+ *   well-rounded genes, not two random highs)
  * - Physical Annihilape, Atk 29 / SpD 31 / Def 7 / median 24 → god (breadth OR)
- * - Median ≥23 with three IVs ≥27 anywhere → god (raw-luck OR)
  * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
  * - Flat mid teens → good; median <9 with nothing ≥13 → big oof
  */
@@ -494,11 +504,13 @@ function roleIvCatchTier(
   let nearAnywhere = 0;
   let hardDump = 0;
   let maxIv = 0;
+  let minIv = 31;
 
   for (const key of STAT_KEYS) {
     const value = ivs[key] ?? 0;
     const band = classifyIv(value);
     if (value > maxIv) maxIv = value;
+    if (value < minIv) minIv = value;
 
     if (value >= GOD_BREADTH_OTHER_IV) breadthHot += 1;
     if (value >= GOD_LUCK_NEAR_IV) nearAnywhere += 1;
@@ -534,8 +546,17 @@ function roleIvCatchTier(
     return "oof";
   }
 
-  // --- God (primary || role-OR || breadth-OR || luck-OR) -------------------
-  if (
+  // --- God -----------------------------------------------------------------
+  // Balanced: overall excellence only (no "any two highs" specialist shortcut).
+  if (balanced) {
+    if (
+      minIv >= BALANCED_GOD_MIN_IV &&
+      overall >= BALANCED_GOD_MEDIAN &&
+      nearAnywhere >= BALANCED_GOD_NEAR_HITS
+    ) {
+      return "god";
+    }
+  } else if (
     primaryRoleAllows(ivs, primaryKeys, GOD_PRIMARY_MIN, balanced) &&
     ((overall >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
       (overall >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS) ||
