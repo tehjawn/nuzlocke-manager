@@ -838,10 +838,18 @@ button:disabled,
   height: 4.1rem;
 }
 
+/*
+  The band is centred on the clip box's diagonal so the whole 6.6rem strip is
+  visible. Sitting it up near the corner tip (top .55 / right -1.55) left only a
+  ~60px chord inside the 76px square — barely the width of the word itself, so
+  "Champion" lost a letter at each end, and the frame's 8px corner radius ate
+  more. Centred, the chord is the full 107px diagonal and the ends clip cleanly
+  against the square's edges, which is what makes it read as a wrapped ribbon.
+*/
 .champion-ribbon__band {
   position: absolute;
-  top: 0.55rem;
-  right: -1.55rem;
+  top: 1.85rem;
+  right: -0.92rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -868,8 +876,8 @@ button:disabled,
 }
 
 .champion-ribbon--dense .champion-ribbon__band {
-  top: 0.45rem;
-  right: -1.45rem;
+  top: 1.6rem;
+  right: -0.87rem;
   width: 5.85rem;
   padding: 0.18rem 0;
   font-size: 0.52rem;

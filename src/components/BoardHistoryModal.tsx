@@ -609,11 +609,18 @@ function TrainerHistoryBody({
                           {run.status === "CLOSED" &&
                             run.earnedBadgeKeys.length > 0 && (
                               <Frame title="Badges at close" dense>
+                                {/*
+                                  Strip, not `layout="column"` — the column
+                                  renders one labelled row per badge, so a
+                                  finished run cost 13 rows of vertical space in
+                                  a modal that is already a long scroll. This is
+                                  the same count + icon rail the league cards
+                                  use, and it says the same thing in one row.
+                                */}
                                 <BadgeCase
                                   badges={badges}
                                   earnedKeys={run.earnedBadgeKeys}
-                                  layout="column"
-                                  dense
+                                  strip
                                 />
                               </Frame>
                             )}

@@ -1,6 +1,10 @@
 type ChampionRibbonProps = {
-  /** Season Championship clears (`TrainerProfile.completionCount`). */
-  completionCount: number;
+  /**
+   * Recorded clears (`TrainerProfile.completionCount`) — drives the ×N suffix
+   * only. Whether the ribbon shows at all is the caller's call: badges alone
+   * earn it, and those trainers sit at 0 recorded completions.
+   */
+  completionCount?: number;
   /** Tighter band for dense / compact grid cards. */
   dense?: boolean;
   className?: string;
@@ -11,12 +15,10 @@ type ChampionRibbonProps = {
  * Decorative chrome — accessible name lives on the card’s board link label.
  */
 export function ChampionRibbon({
-  completionCount,
+  completionCount = 0,
   dense = false,
   className = "",
 }: ChampionRibbonProps) {
-  if (completionCount < 1) return null;
-
   return (
     <div
       className={`champion-ribbon pointer-events-none ${
