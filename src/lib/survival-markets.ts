@@ -1,6 +1,10 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
+import {
+  fetchSurvivalMarketsListPublic,
+  fetchSurvivalPollTalliesPublic,
+} from "@/lib/challenge-cache";
 import { hasBeatenChampionship } from "@/lib/championship";
 import { getPrisma } from "@/lib/db";
 import type {
@@ -152,128 +156,82 @@ function toMarketView(
 }
 
 /**
- * Batch slim tallies for board chips. Viewer prediction is optional (overlay
- * after shared cache) so Flight payloads stay light.
+ * Batch slim tallies for board chips. Public counts come from the season
+ * `:board` cache; viewer prediction is a separate slim read (#366).
  */
 export async function loadSurvivalPollTallies(
+  slug: string,
   pokemonIds: string[],
   viewerUserId?: string | null,
 ): Promise<Map<string, SurvivalPollTally>> {
   const out = new Map<string, SurvivalPollTally>();
   if (pokemonIds.length === 0) return out;
 
-  const rows = await getPrisma().survivalMarket.findMany({
-    where: { pokemonId: { in: pokemonIds } },
-    select: {
-      id: true,
-      pokemonId: true,
-      status: true,
-      votes: {
-        select: {
-          prediction: true,
-          userId: true,
-        },
-      },
-    },
-  });
+  const cached = await fetchSurvivalPollTalliesPublic(slug);
+  if (!cached || cached.length === 0) return out;
 
-  for (const row of rows) {
-    if (!row.pokemonId) continue;
-    const counts = tallyVotes(row.votes);
-    if (counts.total === 0 && row.status === "OPEN") continue;
-    const mine = viewerUserId
-      ? row.votes.find((v) => v.userId === viewerUserId)
-      : undefined;
+  const wanted = new Set(pokemonIds);
+  const relevant = cached.filter((row) => wanted.has(row.pokemonId));
+  if (relevant.length === 0) return out;
+
+  let mineByMarket = new Map<string, SurvivalPrediction>();
+  if (viewerUserId) {
+    mineByMarket = await loadViewerSurvivalPredictions(
+      relevant.map((r) => r.marketId),
+      viewerUserId,
+    );
+  }
+
+  for (const row of relevant) {
     out.set(row.pokemonId, {
-      marketId: row.id,
+      marketId: row.marketId,
       status: row.status,
-      survive: counts.survive,
-      die: counts.die,
-      total: counts.total,
-      myPrediction: mine?.prediction ?? null,
+      survive: row.survive,
+      die: row.die,
+      total: row.total,
+      myPrediction: mineByMarket.get(row.marketId) ?? null,
     });
   }
   return out;
 }
 
+async function loadViewerSurvivalPredictions(
+  marketIds: string[],
+  viewerUserId: string,
+): Promise<Map<string, SurvivalPrediction>> {
+  const out = new Map<string, SurvivalPrediction>();
+  if (marketIds.length === 0) return out;
+  const rows = await getPrisma().survivalVote.findMany({
+    where: { userId: viewerUserId, marketId: { in: marketIds } },
+    select: { marketId: true, prediction: true },
+  });
+  for (const row of rows) out.set(row.marketId, row.prediction);
+  return out;
+}
+
 /**
  * Season-wide Survive/Die board for the Tools page — open + resolved markets
- * (void excluded). Slim tallies only; expand via getSurvivalMarketForPokemon.
+ * (void excluded). Slim cached aggregates; expand via getSurvivalMarketForPokemon.
  */
 export async function listSurvivalMarketsForChallenge(input: {
-  challengeId: string;
+  slug: string;
   viewerUserId?: string | null;
 }): Promise<SurvivalMarketListItem[]> {
-  const prisma = getPrisma();
-  const rows = await prisma.survivalMarket.findMany({
-    where: {
-      challengeId: input.challengeId,
-      status: { not: "VOID" },
-    },
-    select: {
-      id: true,
-      pokemonId: true,
-      trainerId: true,
-      status: true,
-      species: true,
-      nickname: true,
-      pokedexId: true,
-      isShiny: true,
-      resolvedAt: true,
-      updatedAt: true,
-      votes: {
-        select: {
-          prediction: true,
-          userId: true,
-          comment: true,
-          updatedAt: true,
-        },
-        orderBy: { updatedAt: "desc" },
-      },
-    },
-    orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
-  });
+  const rows = await fetchSurvivalMarketsListPublic(input.slug);
+  if (!rows || rows.length === 0) return [];
 
-  const trainerIds = [...new Set(rows.map((row) => row.trainerId))];
-  const trainers =
-    trainerIds.length === 0
-      ? []
-      : await prisma.trainerProfile.findMany({
-          where: { id: { in: trainerIds } },
-          select: { id: true, handle: true },
-        });
-  const handleById = new Map(trainers.map((t) => [t.id, t.handle]));
+  if (!input.viewerUserId) return rows;
 
-  return rows.map((row) => {
-    const counts = tallyVotes(row.votes);
-    const mine = input.viewerUserId
-      ? row.votes.find((v) => v.userId === input.viewerUserId)
-      : undefined;
-    const lastComment =
-      row.votes.find((v) => Boolean(v.comment?.trim()))?.comment?.trim() ??
-      null;
-    return {
-      id: row.id,
-      status: row.status,
-      pokemonId: row.pokemonId,
-      species: row.species,
-      nickname: row.nickname,
-      pokedexId: row.pokedexId,
-      isShiny: row.isShiny,
-      survive: counts.survive,
-      die: counts.die,
-      total: counts.total,
-      survivePct: counts.survivePct,
-      resolvedAt: row.resolvedAt?.toISOString() ?? null,
-      updatedAt: row.updatedAt.toISOString(),
-      lastComment,
-      myPrediction: mine?.prediction ?? null,
-      trainer: {
-        id: row.trainerId,
-        handle: handleById.get(row.trainerId) ?? "Trainer",
-      },
-    };
-  });
+  const mineByMarket = await loadViewerSurvivalPredictions(
+    rows.map((r) => r.id),
+    input.viewerUserId,
+  );
+  if (mineByMarket.size === 0) return rows;
+
+  return rows.map((row) => ({
+    ...row,
+    myPrediction: mineByMarket.get(row.id) ?? null,
+  }));
 }
 
 /** Details / grave: full market with voter chrome. */

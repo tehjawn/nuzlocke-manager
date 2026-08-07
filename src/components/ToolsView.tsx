@@ -15,6 +15,7 @@ import { ToolChip, TOOL_TONE_CHIP, toolsTone } from "@/components/tool-icons";
 import { TypeChartPanel } from "@/components/TypeChartPanel";
 import type { ItemLens } from "@/data/items";
 import type { TrainerProfile } from "@/lib/challenge-types";
+import type { SurvivalMarketListItem } from "@/lib/survival-market-types";
 import {
   mergeToolsPokemonHydrate,
   toolsHydrateKindFor,
@@ -56,6 +57,8 @@ type ToolsViewProps = {
   initialPokedexMode?: PokedexMode | null;
   initialMarketsMode?: MarketsMode | null;
   initialMarketsSort?: MarketsSort | null;
+  /** SSR Survive/Die markets when `?tool=markets` (#366). */
+  initialMarkets?: SurvivalMarketListItem[] | null;
   initialItemSlug?: string | null;
   initialItemLens?: ItemLens | null;
 };
@@ -76,6 +79,7 @@ export function ToolsView({
   initialPokedexMode = null,
   initialMarketsMode = null,
   initialMarketsSort = null,
+  initialMarkets = null,
   initialItemSlug = null,
   initialItemLens = null,
 }: ToolsViewProps) {
@@ -107,6 +111,7 @@ export function ToolsView({
       initialPokedexMode={initialPokedexMode}
       initialMarketsMode={initialMarketsMode}
       initialMarketsSort={initialMarketsSort}
+      initialMarkets={initialMarkets}
       initialItemSlug={initialItemSlug}
       initialItemLens={initialItemLens}
     />
@@ -208,6 +213,7 @@ function ToolWorkspace({
   initialPokedexMode,
   initialMarketsMode,
   initialMarketsSort,
+  initialMarkets = null,
   initialItemSlug,
   initialItemLens,
 }: {
@@ -226,6 +232,7 @@ function ToolWorkspace({
   initialPokedexMode?: PokedexMode | null;
   initialMarketsMode?: MarketsMode | null;
   initialMarketsSort?: MarketsSort | null;
+  initialMarkets?: SurvivalMarketListItem[] | null;
   initialItemSlug?: string | null;
   initialItemLens?: ItemLens | null;
 }) {
@@ -288,6 +295,7 @@ function ToolWorkspace({
         viewerUserId={viewerUserId}
         initialMode={initialMarketsMode}
         initialSort={initialMarketsSort}
+        initialMarkets={initialMarkets}
         pageHeader={{
           hubHref,
           title: meta.title,

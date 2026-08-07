@@ -9,6 +9,8 @@ import {
 } from "@/lib/challenges";
 import { itemDexSlug } from "@/data/item-links";
 import { parseItemLens } from "@/data/items";
+import { listSurvivalMarketsForChallenge } from "@/lib/survival-markets";
+import type { SurvivalMarketListItem } from "@/lib/survival-market-types";
 import {
   isLegacyCompareUrl,
   legacyCompareHref,
@@ -111,6 +113,15 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
   const initialItemLens =
     initialTool === "itemdex" ? parseItemLens(mode) : null;
 
+  // Survive/Die: SSR slim cached markets so the panel skips a remount fetch (#366).
+  let initialMarkets: SurvivalMarketListItem[] | null = null;
+  if (initialTool === "markets" && challenge.survivalMarketsEnabled !== false) {
+    initialMarkets = await listSurvivalMarketsForChallenge({
+      slug,
+      viewerUserId: session?.user?.id ?? null,
+    });
+  }
+
   return (
     <Suspense
       fallback={<p className="text-sm text-muted">Loading tools…</p>}
@@ -131,6 +142,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         initialPokedexMode={initialPokedexMode}
         initialMarketsMode={initialMarketsMode}
         initialMarketsSort={initialMarketsSort}
+        initialMarkets={initialMarkets}
         initialItemSlug={initialItemSlug}
         initialItemLens={initialItemLens}
       />

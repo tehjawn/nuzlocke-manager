@@ -12,6 +12,14 @@ import {
   parseSnapshotGraves,
   type BoardSnapshotTrigger,
 } from "@/lib/board-snapshot";
+import {
+  HEADLINE_ACTIVITY_TYPES,
+  HEADLINE_CANDIDATE_LIMIT,
+  HEADLINE_LIMIT,
+  headlineBlurb,
+  selectHeadlineItems,
+  type HeadlineItem,
+} from "@/lib/activity-headlines";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import {
   activityPreviewInclude,
@@ -25,6 +33,13 @@ import {
   type PokemonSlotFilter,
 } from "@/lib/challenge-queries";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
+import { resolveActivityAvatarSrc } from "@/lib/mappers";
+import { parseAvatarBackgroundKey } from "@/data/avatar-backgrounds";
+import { parseCardBackgroundKey } from "@/data/card-backgrounds";
+import type {
+  SurvivalMarketListItem,
+  SurvivalMarketStatus,
+} from "@/lib/survival-market-types";
 
 type PokemonBoardSelect =
   | typeof pokemonSummarySelect
@@ -154,6 +169,299 @@ export async function fetchChallengeBoardRow(slug: string) {
     where: { slug },
     include: boardInclude(),
   });
+}
+
+/** Public Survive/Die chip tallies — no per-voter rows (#366). */
+export type CachedSurvivalPollTally = {
+  pokemonId: string;
+  marketId: string;
+  status: SurvivalMarketStatus;
+  survive: number;
+  die: number;
+  total: number;
+};
+
+/**
+ * Season Survive/Die aggregates for board chips. Cached on `:board` so votes
+ * invalidate with the rest of the board; overlay `myPrediction` after auth.
+ */
+export async function fetchSurvivalPollTalliesPublic(
+  slug: string,
+): Promise<CachedSurvivalPollTally[] | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  const prisma = getPrisma();
+  const challenge = await prisma.challenge.findUnique({
+    where: { slug },
+    select: { id: true, survivalMarketsEnabled: true },
+  });
+  if (!challenge?.survivalMarketsEnabled) return [];
+
+  const markets = await prisma.survivalMarket.findMany({
+    where: { challengeId: challenge.id, pokemonId: { not: null } },
+    select: { id: true, pokemonId: true, status: true },
+  });
+  if (markets.length === 0) return [];
+
+  const marketIds = markets.map((m) => m.id);
+  const groups = await prisma.survivalVote.groupBy({
+    by: ["marketId", "prediction"],
+    where: { marketId: { in: marketIds } },
+    _count: { _all: true },
+  });
+
+  const countsByMarket = new Map<
+    string,
+    { survive: number; die: number; total: number }
+  >();
+  for (const g of groups) {
+    const cur = countsByMarket.get(g.marketId) ?? {
+      survive: 0,
+      die: 0,
+      total: 0,
+    };
+    if (g.prediction === "SURVIVE") cur.survive += g._count._all;
+    else cur.die += g._count._all;
+    cur.total = cur.survive + cur.die;
+    countsByMarket.set(g.marketId, cur);
+  }
+
+  const out: CachedSurvivalPollTally[] = [];
+  for (const market of markets) {
+    if (!market.pokemonId) continue;
+    const counts = countsByMarket.get(market.id) ?? {
+      survive: 0,
+      die: 0,
+      total: 0,
+    };
+    if (counts.total === 0 && market.status === "OPEN") continue;
+    out.push({
+      pokemonId: market.pokemonId,
+      marketId: market.id,
+      status: market.status,
+      survive: counts.survive,
+      die: counts.die,
+      total: counts.total,
+    });
+  }
+  return out;
+}
+
+/**
+ * Tools Survive/Die board — slim public rows (groupBy counts + last comment).
+ * Overlay `myPrediction` after auth (#366).
+ */
+export async function fetchSurvivalMarketsListPublic(
+  slug: string,
+): Promise<SurvivalMarketListItem[] | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  const prisma = getPrisma();
+  const challenge = await prisma.challenge.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!challenge) return [];
+
+  const rows = await prisma.survivalMarket.findMany({
+    where: {
+      challengeId: challenge.id,
+      status: { not: "VOID" },
+    },
+    select: {
+      id: true,
+      pokemonId: true,
+      trainerId: true,
+      status: true,
+      species: true,
+      nickname: true,
+      pokedexId: true,
+      isShiny: true,
+      resolvedAt: true,
+      updatedAt: true,
+    },
+    orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+  });
+  if (rows.length === 0) return [];
+
+  const marketIds = rows.map((r) => r.id);
+  const trainerIds = [...new Set(rows.map((r) => r.trainerId))];
+
+  const [groups, commentRows, trainers] = await Promise.all([
+    prisma.survivalVote.groupBy({
+      by: ["marketId", "prediction"],
+      where: { marketId: { in: marketIds } },
+      _count: { _all: true },
+    }),
+    prisma.survivalVote.findMany({
+      where: {
+        marketId: { in: marketIds },
+        comment: { not: null },
+      },
+      select: { marketId: true, comment: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.trainerProfile.findMany({
+      where: { id: { in: trainerIds } },
+      select: { id: true, handle: true },
+    }),
+  ]);
+
+  const countsByMarket = new Map<
+    string,
+    { survive: number; die: number; total: number; survivePct: number }
+  >();
+  for (const g of groups) {
+    const cur = countsByMarket.get(g.marketId) ?? {
+      survive: 0,
+      die: 0,
+      total: 0,
+      survivePct: 0,
+    };
+    if (g.prediction === "SURVIVE") cur.survive += g._count._all;
+    else cur.die += g._count._all;
+    cur.total = cur.survive + cur.die;
+    cur.survivePct =
+      cur.total === 0 ? 0 : Math.round((cur.survive / cur.total) * 100);
+    countsByMarket.set(g.marketId, cur);
+  }
+
+  const lastCommentByMarket = new Map<string, string>();
+  for (const row of commentRows) {
+    if (lastCommentByMarket.has(row.marketId)) continue;
+    const trimmed = row.comment?.trim();
+    if (trimmed) lastCommentByMarket.set(row.marketId, trimmed);
+  }
+
+  const handleById = new Map(trainers.map((t) => [t.id, t.handle]));
+
+  return rows.map((row) => {
+    const counts = countsByMarket.get(row.id) ?? {
+      survive: 0,
+      die: 0,
+      total: 0,
+      survivePct: 0,
+    };
+    return {
+      id: row.id,
+      status: row.status,
+      pokemonId: row.pokemonId,
+      species: row.species,
+      nickname: row.nickname,
+      pokedexId: row.pokedexId,
+      isShiny: row.isShiny,
+      survive: counts.survive,
+      die: counts.die,
+      total: counts.total,
+      survivePct: counts.survivePct,
+      resolvedAt: row.resolvedAt?.toISOString() ?? null,
+      updatedAt: row.updatedAt.toISOString(),
+      lastComment: lastCommentByMarket.get(row.id) ?? null,
+      myPrediction: null,
+      trainer: {
+        id: row.trainerId,
+        handle: handleById.get(row.trainerId) ?? "Trainer",
+      },
+    };
+  });
+}
+
+/**
+ * Headline Moments rail — public row with reaction aggregates only (#366).
+ * Overlay `reactedByMe` after auth.
+ */
+export async function fetchHeadlineActivitiesPublic(
+  slug: string,
+  limit: number = HEADLINE_LIMIT,
+): Promise<HeadlineItem[] | null> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  const take = Math.min(Math.max(limit, 1), HEADLINE_LIMIT);
+  const prisma = getPrisma();
+  const challenge = await prisma.challenge.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!challenge) return [];
+
+  const rows = await prisma.activityEvent.findMany({
+    where: {
+      challengeId: challenge.id,
+      type: { in: [...HEADLINE_ACTIVITY_TYPES] },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: HEADLINE_CANDIDATE_LIMIT,
+    select: {
+      id: true,
+      type: true,
+      message: true,
+      createdAt: true,
+      trainer: {
+        select: {
+          id: true,
+          handle: true,
+          avatarSpriteKey: true,
+          cardBackgroundKey: true,
+          avatarBackgroundKey: true,
+        },
+      },
+      actor: { select: { image: true } },
+    },
+  });
+  if (rows.length === 0) return [];
+
+  const activityIds = rows.map((r) => r.id);
+  const reactionGroups = await prisma.activityReaction.groupBy({
+    by: ["activityId", "emoji"],
+    where: { activityId: { in: activityIds } },
+    _count: { _all: true },
+  });
+  const reactionsByActivity = new Map<
+    string,
+    Array<{ emoji: string; count: number; reactedByMe: boolean }>
+  >();
+  for (const g of reactionGroups) {
+    const list = reactionsByActivity.get(g.activityId) ?? [];
+    list.push({
+      emoji: g.emoji,
+      count: g._count._all,
+      reactedByMe: false,
+    });
+    reactionsByActivity.set(g.activityId, list);
+  }
+
+  const mapped: HeadlineItem[] = rows.map((a) => {
+    const base = {
+      id: a.id,
+      type: a.type,
+      message: a.message,
+      createdAt: a.createdAt.toISOString(),
+      trainerId: a.trainer?.id ?? null,
+      trainerHandle: a.trainer?.handle ?? null,
+      avatarSrc: resolveActivityAvatarSrc({
+        trainerAvatarSpriteKey: a.trainer?.avatarSpriteKey,
+        actorImage: a.actor?.image,
+      }),
+      reactions: reactionsByActivity.get(a.id) ?? [],
+    };
+    return {
+      ...base,
+      avatarSpriteKey: a.trainer?.avatarSpriteKey ?? null,
+      cardBackgroundKey: parseCardBackgroundKey(a.trainer?.cardBackgroundKey),
+      avatarBackgroundKey: parseAvatarBackgroundKey(
+        a.trainer?.avatarBackgroundKey,
+      ),
+      blurb: headlineBlurb(base),
+    };
+  });
+
+  return selectHeadlineItems(mapped, take);
 }
 
 export async function fetchChallengeMetaRow(slug: string) {
