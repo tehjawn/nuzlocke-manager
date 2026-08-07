@@ -106,8 +106,12 @@ export type SpeciesKeyStats = {
 };
 
 /**
- * Ensure catch-tier "2 role hits" is reachable: single-axis attackers get Spe
- * as a soft secondary; lone Fast picks up the leading offense.
+ * Ensure catch-tier "2 role hits" is reachable.
+ *
+ * Single-axis attackers pick a soft secondary from species shape:
+ * - Physical: Def when the mon is physically bulky/slow, else Spe
+ * - Special: SpD when specially bulky/slow, else Spe
+ * Lone Fast picks up the leading offense.
  */
 function ensureRoleBreadth(
   primary: StatKey[],
@@ -127,7 +131,13 @@ function ensureRoleBreadth(
     }
   };
 
-  if (primary.includes("atk") || primary.includes("spa")) {
+  if (primary.includes("atk") && !primary.includes("spa")) {
+    // Slow tanks (Graveler) want Def; fast attackers want Spe.
+    add(base.def >= base.spe ? "def" : "spe");
+  } else if (primary.includes("spa") && !primary.includes("atk")) {
+    add(base.spd >= base.spe ? "spd" : "spe");
+  } else if (primary.includes("atk") || primary.includes("spa")) {
+    // Mixed: Spe is the usual second axis.
     add("spe");
   } else if (primary.includes("spe")) {
     const mean = meanOf(base);

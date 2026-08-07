@@ -46,7 +46,7 @@ const BATTLE_DUMP = 0.45;
  * primary path and OR paths. Great stays single-path. Primary-key dumps still
  * block top tiers.
  */
-const GOD_MEAN = 21;
+const GOD_MEAN = 20;
 const GOD_ROLE_IV = 27;
 const GOD_ROLE_HITS = 2;
 /** OR: stacked overall with solid (not near-perfect) role hits. */
@@ -59,8 +59,8 @@ const GOD_OR_ROLE_IV = 23;
 const GOD_BREADTH_MEAN = 23;
 const GOD_BREADTH_ROLE_IV = 27;
 const GOD_BREADTH_OTHER_IV = 25;
-/** OR: raw wild luck — stacked median with three near-perfects anywhere. */
-const GOD_LUCK_MEAN = 23;
+/** OR: raw wild luck — three near-perfects anywhere with a usable median. */
+const GOD_LUCK_MEAN = 20;
 const GOD_LUCK_NEAR_IV = 27;
 const GOD_LUCK_NEAR_HITS = 3;
 
@@ -330,9 +330,9 @@ export function summarizeBattleStats(
  *
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}).
  * Overall floors use IV **median** (not mean):
- * - god: (median ≥21 + ≥2 role ≥27) OR (median ≥23 + ≥2 role ≥23)
+ * - god: (median ≥20 + ≥2 role ≥27) OR (median ≥23 + ≥2 role ≥23)
  *        OR (median ≥23 + ≥1 role ≥27 + ≥1 other IV ≥25)
- *        OR (median ≥23 + ≥3 IVs ≥27 anywhere)
+ *        OR (median ≥20 + ≥3 IVs ≥27 anywhere)
  * - cracked: (median ≥19 + ≥1 role ≥25) OR (median ≥21 + ≥1 role ≥21)
  * - great: median ≥17 + ≥1 role ≥23
  * - good: median ≥13
@@ -426,6 +426,8 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
  * Worked feel-checks:
  * - Special glass Starmie, SpA 29 / Spe 28 → god (primary path)
  * - Fast Weedle, Spe 30 / Def 30 / SpA 28 → god (breadth OR)
+ * - Physical Graveler, Atk 31 / Def 29 / dump Spe·SpA → god
+ *   (bulky phys soft-key Def + median ≥20 primary path)
  * - Physical Annihilape, Atk 29 / SpD 31 / Def 7 / median 24 → god (breadth OR)
  * - Median ≥23 with three IVs ≥27 anywhere → god (raw-luck OR)
  * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
