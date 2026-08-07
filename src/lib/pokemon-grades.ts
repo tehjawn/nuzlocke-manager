@@ -4,12 +4,17 @@
  *
  * **Policy: the grades are public for every Pokémon in the season; the IV / EV
  * spreads behind them are not.** Announcing "God catch" (weighted playstyle
- * score in the top band) or an Ultra-friends heart (Best-friends
- * floors on friendship *and* EVs, plus a true max on at least one) to the whole
+ * score in the top band) or an Ultra-friends heart (true-max bond — see
+ * {@link specimenTrainingTier}) to the whole
  * pack is deliberate — that is what the Showcase is for. The rounded catch
  * **score** may ride along in hover tips (same public grade surface); the
  * spread itself stays private. Finer breakdowns (`summarizeIvs().headline`
  * and friends) belong behind `showCompetitiveDetails`.
+ *
+ * Bond chrome: when friendship is missing, a near-max EV pool (≥450) stands
+ * in for Best friends and a true-max pool (510) for Ultra friends — same
+ * "true max on one axis" idea as the logged-friendship path. An explicit
+ * friendship below the Best-friends floor still blocks ultra.
  *
  * `null` means **nothing on file to grade**, never "withheld from you". An
  * un-imported encounter has no IVs, and grading it "oof" would publish a bad

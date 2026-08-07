@@ -123,10 +123,15 @@ function isUltraBond(input: {
   friendship: number | null | undefined;
   evTotal: number;
 }): boolean {
-  // Need both Best-friends floors, plus a true max on at least one axis.
-  // No friendship on file → cannot be ultra (gold can still use the EV stand-in).
+  // Missing-friendship stand-in ladder (mirrors gold at BONDED_EV_TOTAL):
+  // only the true EV cap unlocks ultra — no nature/cracked shortcut.
+  if (input.friendship == null) {
+    return input.evTotal >= ULTRA_EV_TOTAL;
+  }
+  // Friendship on file: both Best-friends floors, plus a true max on at least
+  // one axis (friendship 255 or EV 510). Logged friendship below the gold
+  // floor wins over inference — even at EV 510.
   if (
-    input.friendship == null ||
     input.friendship < BONDED_FRIENDSHIP_MIN ||
     input.evTotal < BONDED_EV_TOTAL
   ) {
@@ -166,7 +171,8 @@ function isBonded(input: {
  * - **ultra** (prismatic): both Best-friends floors (friendship ≥
  *   {@link BONDED_FRIENDSHIP_MIN} **and** EV ≥ {@link BONDED_EV_TOTAL}), plus
  *   a true max on at least one axis (friendship ≥ {@link ULTRA_FRIENDSHIP_MIN}
- *   **or** EV ≥ {@link ULTRA_EV_TOTAL}). Requires friendship on file.
+ *   **or** EV ≥ {@link ULTRA_EV_TOTAL}). When friendship is missing, EV ≥
+ *   {@link ULTRA_EV_TOTAL} alone stands in (maxed pool ⇒ assume max bond).
  * - **bonded** (gold): friendship ≥ {@link BONDED_FRIENDSHIP_MIN}, or (when
  *   friendship is missing) EV total ≥ {@link BONDED_EV_TOTAL} / nature+cracked
  *
