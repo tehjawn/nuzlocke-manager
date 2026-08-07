@@ -1183,9 +1183,7 @@ export function TrainerBoard({
   //   wipeout — everything in R.I.P. and nothing left alive to play. Graveyard
   //             must be non-empty so a brand-new empty board doesn't qualify.
   //
-  // Victory wins if somehow both hold. "Mark run completed" / "Mark run ended"
-  // rather than "End run": here the run is already over and is being logged,
-  // not being abandoned mid-play.
+  // Victory wins if somehow both hold.
   const wipedOut =
     graveyard.length > 0 && main.length === 0 && reserves.length === 0;
   const endRunPromotion: "victory" | "wipeout" | null =
@@ -1347,7 +1345,7 @@ export function TrainerBoard({
           <span>
             {endRunPromotion === "victory"
               ? "Mark run completed"
-              : "Mark run ended"}
+              : "End this run"}
           </span>
         </button>
       ) : null,

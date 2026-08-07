@@ -8,7 +8,7 @@ export type TrainerBoardActionKey =
  *
  * `endRun` renders a toolbar slot only when an open run has visibly reached its
  * end — Championship earned ("Mark run completed") or nothing left alive
- * ("Mark run ended"). Every other time its toolbar slot is null and it stays in
+ * ("End this run"). Every other time its toolbar slot is null and it stays in
  * More as "End run" / "Start new run", so listing it here costs nothing.
  */
 export const TRAINER_BOARD_PRIMARY_ACTIONS: readonly TrainerBoardActionKey[] = [
