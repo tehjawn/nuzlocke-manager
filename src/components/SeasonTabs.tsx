@@ -147,7 +147,10 @@ export function SeasonTabs({
     under(pathname, `${base}/tools`) ||
     under(pathname, `${base}/season-stats`);
   const trainersActive =
-    pathname === base || under(pathname, `${base}/me`);
+    pathname === base ||
+    under(pathname, `${base}/me`) ||
+    under(pathname, `${base}/trainers`) ||
+    under(pathname, `${base}/new-trainer`);
 
   const activeTool =
     under(pathname, `${base}/season-stats`)
@@ -294,11 +297,12 @@ function NavGroup({
   const [open, setOpen] = useState(initialOpen);
   const listId = useId();
 
-  // Path-driven open: expand when the route enters this group.
+  // Path-driven open: expand only while this group's route is active;
+  // collapse when navigating away (manual toggle still works in-place).
   const [seenActive, setSeenActive] = useState(sectionActive);
   if (sectionActive !== seenActive) {
     setSeenActive(sectionActive);
-    if (sectionActive && !open) setOpen(true);
+    setOpen(sectionActive);
   }
 
   const emphasized = sectionActive || open;
