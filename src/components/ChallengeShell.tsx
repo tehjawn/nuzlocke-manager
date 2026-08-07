@@ -9,6 +9,7 @@ import { ScrollFadeRail } from "@/components/ScrollFadeRail";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { GetStartedSeasonCta } from "@/components/GetStartedSeasonCta";
+import { SeasonJukebox } from "@/features/jukebox";
 import type { ChallengeStatus } from "@/lib/challenge-types";
 import {
   seasonStatusChipClass,
@@ -131,7 +132,7 @@ export function ChallengeShell({
       <div
         className={`mx-auto flex w-full flex-1 flex-col gap-6 px-4 pb-16 pt-2 sm:px-6 lg:flex-row lg:items-start ${SITE_SHELL_MAX_CLASS}`}
       >
-        {/* Desktop: sticky left rail with info + section tabs. */}
+        {/* Desktop: sticky left rail — jukebox last under tabs + headlines (#341). */}
         <ScrollFadeRail
           className={`hidden ${SEASON_LEFT_RAIL_CLASS} lg:block lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start`}
           scrollClassName="lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-2 lg:[scrollbar-gutter:stable]"
@@ -154,6 +155,7 @@ export function ChallengeShell({
             />
           </Suspense>
           <HeadlineMomentsRail slug={slug} />
+          <SeasonJukebox />
         </ScrollFadeRail>
 
         {/*
@@ -164,7 +166,14 @@ export function ChallengeShell({
         <MobileWorkspace
           slug={slug}
           status={status}
-          generalInfo={generalInfo}
+          generalInfo={
+            <div className="space-y-4">
+              {generalInfo}
+              <div className="lg:hidden">
+                <SeasonJukebox />
+              </div>
+            </div>
+          }
           firstRun={firstRun}
           gmViewOn={gmViewOn}
           className="min-w-0 flex-1"
