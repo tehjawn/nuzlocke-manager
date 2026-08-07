@@ -16,7 +16,9 @@ import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import {
   activityPreviewInclude,
   challengeMetaInclude,
+  pokemonEncounterSelect,
   pokemonFullSelect,
+  pokemonSeasonStatsSelect,
   pokemonSummarySelect,
   pokemonToolsSelect,
   trainerRelationInclude,
@@ -24,21 +26,34 @@ import {
 } from "@/lib/challenge-queries";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 
+type PokemonBoardSelect =
+  | typeof pokemonSummarySelect
+  | typeof pokemonSeasonStatsSelect
+  | typeof pokemonFullSelect
+  | typeof pokemonToolsSelect;
+
+function boardTrainers(
+  select: PokemonBoardSelect,
+  pokemonSlots?: PokemonSlotFilter[],
+) {
+  return {
+    include: {
+      ...trainerRelationInclude,
+      pokemon: {
+        ...(pokemonSlots?.length
+          ? { where: { slot: { in: pokemonSlots } } }
+          : {}),
+        select,
+        orderBy: [{ slot: "asc" as const }, { partyIndex: "asc" as const }],
+      },
+    },
+  };
+}
+
 function boardInclude(pokemonSlots?: PokemonSlotFilter[]) {
   return {
     ...challengeMetaInclude,
-    trainers: {
-      include: {
-        ...trainerRelationInclude,
-        pokemon: {
-          ...(pokemonSlots?.length
-            ? { where: { slot: { in: pokemonSlots } } }
-            : {}),
-          select: pokemonFullSelect,
-          orderBy: [{ slot: "asc" as const }, { partyIndex: "asc" as const }],
-        },
-      },
-    },
+    trainers: boardTrainers(pokemonFullSelect, pokemonSlots),
     activities: activityPreviewInclude,
   };
 }
@@ -99,15 +114,31 @@ function boardLeagueInclude() {
 function boardPokemonToolsInclude() {
   return {
     ...challengeMetaInclude,
-    trainers: {
-      include: {
-        ...trainerRelationInclude,
-        pokemon: {
-          select: pokemonToolsSelect,
-          orderBy: [{ slot: "asc" as const }, { partyIndex: "asc" as const }],
-        },
-      },
-    },
+    trainers: boardTrainers(pokemonToolsSelect),
+  };
+}
+
+/** Season Stats: all slots, summary + IVs; no activity preview. */
+function boardSeasonStatsInclude() {
+  return {
+    ...challengeMetaInclude,
+    trainers: boardTrainers(pokemonSeasonStatsSelect),
+  };
+}
+
+/** Encounters ledger: all slots, identity + catchRoute only. */
+function boardEncountersInclude() {
+  return {
+    ...challengeMetaInclude,
+    trainers: boardTrainers(pokemonEncounterSelect),
+  };
+}
+
+/** Tournament: meta + trainer identities; zero Pokémon rows. */
+function boardTournamentInclude() {
+  return {
+    ...challengeMetaInclude,
+    trainers: { include: trainerRelationInclude },
   };
 }
 
@@ -203,6 +234,51 @@ export async function fetchChallengeToolsSummaryRow(slug: string) {
   return getPrisma().challenge.findUnique({
     where: { slug },
     include: boardPokemonToolsInclude(),
+  });
+}
+
+/**
+ * Season Stats — all slots with summary + IVs (god-catch aggregates). Drops
+ * moves / EVs / held items and the activity preview the page never shows.
+ */
+export async function fetchChallengeSeasonStatsRow(slug: string) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  return getPrisma().challenge.findUnique({
+    where: { slug },
+    include: boardSeasonStatsInclude(),
+  });
+}
+
+/**
+ * Encounters — all slots at summary columns (catchRoute ledger). No
+ * competitive fields and no activity preview.
+ */
+export async function fetchChallengeEncountersRow(slug: string) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  return getPrisma().challenge.findUnique({
+    where: { slug },
+    include: boardEncountersInclude(),
+  });
+}
+
+/**
+ * Tournament — challenge meta + trainer identities (mainSquadLocked). Zero
+ * Pokémon rows; the bracket only needs handles and lock state.
+ */
+export async function fetchChallengeTournamentRow(slug: string) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`, `season:${slug}:meta`);
+  if (!isDatabaseConfigured()) return null;
+  return getPrisma().challenge.findUnique({
+    where: { slug },
+    include: boardTournamentInclude(),
   });
 }
 

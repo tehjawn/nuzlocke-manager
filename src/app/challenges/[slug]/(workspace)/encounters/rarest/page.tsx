@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { EncounterRarityView } from "@/components/EncounterRarityView";
-import { getChallenge } from "@/lib/challenges";
+import { getChallengeEncounters, getChallengeMeta } from "@/lib/challenges";
 import { encounterSpeciesRarity } from "@/lib/encounter-stats";
 
 type PageProps = {
@@ -13,7 +13,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const challenge = await getChallenge(slug);
+  const challenge = await getChallengeMeta(slug);
   return {
     title: challenge ? `Rarest seen · ${challenge.name}` : "Rarest seen",
   };
@@ -22,7 +22,7 @@ export async function generateMetadata({
 export default async function RarestSeenPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
-  const challenge = await getChallenge(slug, session?.user?.id);
+  const challenge = await getChallengeEncounters(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const entries = encounterSpeciesRarity(challenge.trainers);
