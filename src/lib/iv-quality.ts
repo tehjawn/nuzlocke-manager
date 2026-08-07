@@ -43,11 +43,11 @@ const BATTLE_DUMP = 0.45;
  * glass spreads (Atk 23 / Spe 26) don't clear it. Score is internal only.
  */
 const CATCH_SCORE_GOD = 72;
-const CATCH_SCORE_CRACKED = 55;
+const CATCH_SCORE_CRACKED = 60;
 /** Great floor — also the trash-critical clamp ceiling (`<` this → Good max). */
-const CATCH_SCORE_GREAT = 45;
-const CATCH_SCORE_GOOD = 33;
-const CATCH_SCORE_OOF = 18;
+const CATCH_SCORE_GREAT = 46;
+const CATCH_SCORE_GOOD = 30;
+const CATCH_SCORE_OOF = 12;
 
 /** Weight ≥ this is a critical axis (trash IV soft-caps the tier). */
 const CRITICAL_WEIGHT = 4;
@@ -348,8 +348,8 @@ export function summarizeBattleStats(
  * HP/defending stat). Dump-weight stats (≤2) floor at 15 so they don't drag;
  * critical axes (weight ≥4) with IV ≤10 soft-cap at Good. Score stays internal.
  *
- * Thresholds: God ≥72 · Cracked ≥55 · Great ≥45 · Good ≥33 · Oof ≥18 ·
- * Big oof <18. God is score-only (no glass median / axis soft-cap).
+ * Thresholds: God ≥72 · Cracked ≥60 · Great ≥46 · Good ≥30 · Oof ≥12 ·
+ * Big oof <12. God is score-only (no glass median / axis soft-cap).
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -483,7 +483,7 @@ function tierFromCatchScore(score: number): CatchTier {
  * Feel-checks (approx):
  * - Taco Wobbuffet Bulky `31/31/25/30/24/4` → God (~83 + 2 from two 31s)
  * - Starmie special attacker (+ glass secondary) SpA 24 / Spe 29 → God on score
- * - Sneasel physical attacker (+ glass secondary) Atk 23 / Spe 26 → Cracked
+ * - Sneasel physical attacker (+ glass secondary) Atk 23 / Spe 26 → Great
  * - Dead wall + Perfect Spe → Oof (not Big oof; +1 on score)
  */
 export function ivCatchGrade(
