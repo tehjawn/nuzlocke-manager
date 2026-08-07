@@ -41,14 +41,19 @@ const BATTLE_STRONG = 0.82;
 const BATTLE_DUMP = 0.45;
 
 /** Dump IVs needed (with no strong/perfect) to call a catch "big oof" (`shit`). */
-const SHIT_DUMP_MIN = 4;
+const SHIT_DUMP_MIN = 5;
 
 /**
- * Catch-tier overall floors (filler dumps floored — walls aren't punished for
- * dump Atk/SpA). Mid IV expectation is ~15.5.
+ * Catch-tier floors for randomizer Nuzlocke luck — looser than competitive
+ * highlight bands so mid-lucky wild rolls still feel good.
+ *
+ * Mid IV expectation is ~15.5. Role "strong/near" bars sit below the UI
+ * highlight thresholds (`IV_STRONG` / `IV_NEAR_PERFECT`) on purpose.
  */
-const ABOVE_MID_MEAN = 16;
-const AMAZING_MEAN = 22;
+const CATCH_ROLE_STRONG = 22;
+const CATCH_ROLE_NEAR = 26;
+const ABOVE_MID_MEAN = 14;
+const AMAZING_MEAN = 19;
 
 /** @deprecated Kept for summarizeIvs legacy path without keyStats. */
 const LEGACY_GOD_NEAR_PERFECT_MIN = 3;
@@ -294,12 +299,12 @@ export function summarizeBattleStats(
  * Randomizer catch quality for board-card chrome + details labels.
  *
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}):
- * - shit (Big oof): mostly dump IVs / nothing redeeming
- * - oof: all mid-or-below, nothing notable
- * - good: overall above mid
+ * - shit (Big oof): mostly dump IVs
+ * - oof: below the mid floor, nothing notable
+ * - good: overall above mid (or a mild hot roll)
  * - great: above mid + ≥1 strong role IV
  * - cracked: above mid + ≥2 strong role IVs
- * - god: amazing overall + ≥2 near-perfect role IVs
+ * - god: solid overall + ≥2 near-perfect role IVs
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -385,15 +390,13 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
 /**
  * Role-weighted catch tier — randomizer Nuzlocke feel ladder.
  *
- * Worked feel-checks:
+ * Worked feel-checks (bars are intentionally soft for wild randomizer luck):
  * - Special glass Starmie, SpA 29 / Spe 28 / Atk 26 mid filler → god
- *   (Attack is not a role key for special glass)
- * - Skarmory wall, 31 HP / 31 Def / 28 SpD / dump Atk·SpA → god
+ * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
  * - Skarmory wall, 31 Atk / 31 SpA / 31 Spe / dump Def → not god (primary dump)
- * - Physical attacker, lone 31 Atk + mid rest → great (needs 2 role hits)
- * - Physical attacker, 31 Atk + 29 Spe + solid rest (≥22 mean) → god
- * - Physical attacker, 31 Atk + 29 Spe + merely good rest → cracked (not amazing)
- * - All dumps → big oof; all mid, no strong → oof
+ * - Physical attacker, lone 31 Atk + mid rest → great
+ * - Physical attacker, 26 Atk + 26 Spe + decent rest → cracked / god by mean
+ * - ≥5 dumps → big oof; flat mid with no role hits → oof
  */
 function roleIvCatchTier(
   ivs: StatSpread,
@@ -414,6 +417,7 @@ function roleIvCatchTier(
   let perfect = 0;
   let strong = 0;
   let dump = 0;
+  let catchHot = 0;
   let effectiveSum = 0;
 
   for (const key of STAT_KEYS) {
@@ -422,10 +426,11 @@ function roleIvCatchTier(
     if (band === "perfect") perfect += 1;
     else if (band === "strong") strong += 1;
     else if (band === "dump") dump += 1;
+    if (value >= CATCH_ROLE_STRONG) catchHot += 1;
 
     if (roleKeys.has(key)) {
-      if (value >= IV_NEAR_PERFECT) roleNear += 1;
-      if (value >= IV_STRONG) roleStrong += 1;
+      if (value >= CATCH_ROLE_NEAR) roleNear += 1;
+      if (value >= CATCH_ROLE_STRONG) roleStrong += 1;
     }
 
     if (primarySet.has(key)) {
@@ -440,10 +445,10 @@ function roleIvCatchTier(
   const effectiveMean = effectiveSum / STAT_KEYS.length;
   const aboveMid = effectiveMean >= ABOVE_MID_MEAN;
   const amazing = effectiveMean >= AMAZING_MEAN;
-  const anyHot = perfect + strong > 0;
+  const anyHot = perfect + strong > 0 || catchHot > 0;
   const roleHot = roleStrong > 0 || roleNear > 0;
 
-  // --- God: amazing overall + ≥2 near-perfect role IVs --------------------
+  // --- God: solid overall + ≥2 near role IVs ------------------------------
   if (hardDump === 0 && amazing && roleNear >= 2) {
     return "god";
   }
@@ -467,17 +472,17 @@ function roleIvCatchTier(
     return "great";
   }
 
-  // --- Good: overall above mid (or mild off-role luck) --------------------
+  // --- Good: overall above mid (or mild hot roll) -------------------------
   if (aboveMid || anyHot) {
     return "good";
   }
 
-  // --- Big oof: mostly dumps / all very low -------------------------------
+  // --- Big oof: mostly dumps ----------------------------------------------
   if (dump >= SHIT_DUMP_MIN) {
     return "shit";
   }
 
-  // --- Oof: all mid or below, nothing notable -----------------------------
+  // --- Oof: below mid, nothing notable ------------------------------------
   return "oof";
 }
 
