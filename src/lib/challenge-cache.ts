@@ -4,6 +4,8 @@
  *
  * Do not catch Prisma errors inside `"use cache"` — a thrown error must not
  * become a cached `null` (seed/demo fallback) for the cache lifetime.
+ *
+ * Tag matrix + write-path helpers: `src/lib/revalidate-season.ts`.
  */
 
 import { cacheLife, cacheTag } from "next/cache";
@@ -628,7 +630,9 @@ export async function fetchChallengeTrainerRow(
 ) {
   "use cache";
   cacheLife("minutes");
-  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  // Per-trainer tag — party edits on peers must not cold-fetch this row (#379).
+  // Keep root `season:${slug}` for GM/mass `revalidateChallenge`; omit `:board`.
+  cacheTag(`season:${slug}`, `season:${slug}:trainer:${trainerId}`);
   if (!isDatabaseConfigured()) return null;
   const prisma = getPrisma();
   const row = await prisma.challenge.findUnique({
@@ -653,7 +657,7 @@ export async function fetchTrainerEncounteredRow(
 ) {
   "use cache";
   cacheLife("minutes");
-  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  cacheTag(`season:${slug}`, `season:${slug}:trainer:${trainerId}`);
   if (!isDatabaseConfigured()) return null;
   return getPrisma().pokemonEntry.findMany({
     where: {

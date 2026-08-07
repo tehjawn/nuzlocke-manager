@@ -15,6 +15,7 @@ import { failAction } from "@/lib/action-error";
 import { getPrisma } from "@/lib/db";
 import { parsePokemonSaveAsync } from "@/lib/gen3-save";
 import { MAX_PLAY_TIME_SECONDS } from "@/lib/gen3-save/playtime";
+import { revalidateBoardViews } from "@/lib/revalidate-season";
 import {
   resolveMarketsForPokemonDeath,
   resolveMarketsForVictory,
@@ -135,18 +136,6 @@ function jsonStatOrNull(
   if (value === undefined) return undefined;
   if (value === null || isEmptySpread(value)) return Prisma.DbNull;
   return value;
-}
-
-/** League board + trainer board only — avoids refreshing Setup/Rules/FAQ chrome. */
-function revalidateBoardViews(slug: string, trainerId?: string) {
-  updateTag(`season:${slug}:board`);
-  revalidateTag(`season:${slug}`, "max");
-  revalidatePath(`/challenges/${slug}`);
-  revalidatePath(`/challenges/${slug}/season-stats`);
-  revalidatePath(`/challenges/${slug}/activity`);
-  if (trainerId) {
-    revalidatePath(`/challenges/${slug}/trainers/${trainerId}`);
-  }
 }
 
 /** Heavier season-wide invalidation (GM/meta/join flows). */
@@ -2176,9 +2165,11 @@ export async function setBadgesProgressAction(
       });
     }
 
-    // League board only — avoid remounting the trainer editor mid-toggle.
-    updateTag(`season:${trainer.challenge.slug}:board`);
-    revalidatePath(`/challenges/${trainer.challenge.slug}`);
+    // League + trainer cache tags; skip trainer path so the editor doesn’t remount.
+    const slug = trainer.challenge.slug;
+    updateTag(`season:${slug}:board`);
+    updateTag(`season:${slug}:trainer:${trainer.id}`);
+    revalidatePath(`/challenges/${slug}`);
     return { ok: true };
   } catch (e) {
     return failAction("badge-update-failed", e, "Badge update failed");
