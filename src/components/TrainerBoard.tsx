@@ -14,7 +14,7 @@ import {
   upsertPokemonAction,
 } from "@/app/actions/challenge";
 import { fetchToolsPokemonEntryAction } from "@/app/actions/tools-pokemon";
-import { fetchTrainerEncounteredAction } from "@/app/actions/trainer-board";
+import { fetchTrainerBoardSlotAction } from "@/app/actions/trainer-board";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
@@ -661,7 +661,19 @@ export function TrainerBoard({
   const [saveImportOpen, setSaveImportOpen] = useState(false);
   const [boardHistoryOpen, setBoardHistoryOpen] = useState(false);
   const [teamExportOpen, setTeamExportOpen] = useState(false);
-  /** null = not loaded yet (SSR omits Encountered); [] = loaded empty. */
+  /** null = not loaded yet (SSR omits deferred slots); [] = loaded empty. */
+  const [reservesPokemon, setReservesPokemon] = useState<
+    PokemonEntry[] | null
+  >(null);
+  const [reservesLoading, setReservesLoading] = useState(false);
+  const [reservesError, setReservesError] = useState<string | null>(null);
+  const [reservesOpen, setReservesOpen] = useState(false);
+  const [graveyardPokemon, setGraveyardPokemon] = useState<
+    PokemonEntry[] | null
+  >(null);
+  const [graveyardLoading, setGraveyardLoading] = useState(false);
+  const [graveyardError, setGraveyardError] = useState<string | null>(null);
+  const [graveyardOpen, setGraveyardOpen] = useState(false);
   const [encounteredPokemon, setEncounteredPokemon] = useState<
     PokemonEntry[] | null
   >(null);
@@ -742,13 +754,31 @@ export function TrainerBoard({
       setBoardOverride(null);
       setRunEndedOverride(null);
       // Board writes revalidate `:trainer:${id}` (+ `:board` for shared views) —
-      // drop deferred Encountered so a reopen (or still-open section) refetches.
+      // drop deferred slots so a reopen (or still-open section) refetches.
+      setReservesPokemon(null);
+      setReservesError(null);
+      setGraveyardPokemon(null);
+      setGraveyardError(null);
       setEncounteredPokemon(null);
       setEncounteredError(null);
     }
   }
 
-  const boardPokemon = boardOverride?.pokemon ?? trainer.pokemon;
+  const ssrPokemon = boardOverride?.pokemon ?? trainer.pokemon;
+  // Wipe/reset optimism owns the full board; otherwise merge accordion hydrates
+  // for Reserves / R.I.P. (SSR is Main-only after #378).
+  const boardPokemon =
+    boardOverride != null
+      ? ssrPokemon
+      : [
+          ...ssrPokemon.filter(
+            (p) => p.slot !== "RESERVE" && p.slot !== "GRAVEYARD",
+          ),
+          ...(reservesPokemon ??
+            ssrPokemon.filter((p) => p.slot === "RESERVE")),
+          ...(graveyardPokemon ??
+            ssrPokemon.filter((p) => p.slot === "GRAVEYARD")),
+        ];
   const wipeCount = boardOverride?.wipeCount ?? trainer.wipeCount ?? 0;
   const runNumber = wipeCount + 1;
   const completionCount = trainer.completionCount ?? 0;
@@ -783,18 +813,78 @@ export function TrainerBoard({
   const main = pokemonInSlot(boardTrainer, "MAIN");
   const reserves = pokemonInSlot(boardTrainer, "RESERVE");
   const graveyard = pokemonInSlot(boardTrainer, "GRAVEYARD");
-  // SSR omits Encountered; prefer hydrated rows, else any still on the trainer
-  // prop (seed / optimistic wipe leftovers).
+  // SSR omits deferred slots; prefer hydrated rows, else any still on the
+  // trainer prop (seed / optimistic wipe leftovers).
   const encountered =
     encounteredPokemon ?? pokemonInSlot(boardTrainer, "ENCOUNTERED");
+  const reservesCount =
+    reservesPokemon?.length ??
+    trainer.slotCounts?.reserve ??
+    reserves.length;
+  const graveyardCount =
+    graveyardPokemon?.length ??
+    trainer.slotCounts?.graveyard ??
+    graveyard.length;
   const encounteredCount =
     encounteredPokemon?.length ??
     trainer.slotCounts?.encountered ??
     encountered.length;
 
-  // Deferred Encountered hydrate — open (or stay open across revalidate).
+  // Deferred slot hydrate — open (or stay open across revalidate).
   // Await before setState so we don't trip react-hooks/set-state-in-effect
   // (same pattern as ToolsView: state updates only after async work).
+  useEffect(() => {
+    if (!reservesOpen || reservesPokemon != null) return;
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setReservesLoading(true);
+      setReservesError(null);
+      const result = await fetchTrainerBoardSlotAction({
+        slug: challengeSlug,
+        trainerId: trainer.id,
+        slot: "RESERVE",
+      });
+      if (cancelled) return;
+      if (result.ok) {
+        setReservesPokemon(result.pokemon);
+      } else {
+        setReservesError(result.error);
+      }
+      setReservesLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reservesOpen, reservesPokemon, challengeSlug, trainer.id]);
+
+  useEffect(() => {
+    if (!graveyardOpen || graveyardPokemon != null) return;
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setGraveyardLoading(true);
+      setGraveyardError(null);
+      const result = await fetchTrainerBoardSlotAction({
+        slug: challengeSlug,
+        trainerId: trainer.id,
+        slot: "GRAVEYARD",
+      });
+      if (cancelled) return;
+      if (result.ok) {
+        setGraveyardPokemon(result.pokemon);
+      } else {
+        setGraveyardError(result.error);
+      }
+      setGraveyardLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [graveyardOpen, graveyardPokemon, challengeSlug, trainer.id]);
+
   useEffect(() => {
     if (!encounteredOpen || encounteredPokemon != null) return;
     let cancelled = false;
@@ -803,9 +893,10 @@ export function TrainerBoard({
       if (cancelled) return;
       setEncounteredLoading(true);
       setEncounteredError(null);
-      const result = await fetchTrainerEncounteredAction({
+      const result = await fetchTrainerBoardSlotAction({
         slug: challengeSlug,
         trainerId: trainer.id,
+        slot: "ENCOUNTERED",
       });
       if (cancelled) return;
       if (result.ok) {
@@ -824,6 +915,22 @@ export function TrainerBoard({
     challengeSlug,
     trainer.id,
   ]);
+
+  function onReservesOpenChange(open: boolean) {
+    setReservesOpen(open);
+    if (open && reservesPokemon == null) {
+      setReservesLoading(true);
+      setReservesError(null);
+    }
+  }
+
+  function onGraveyardOpenChange(open: boolean) {
+    setGraveyardOpen(open);
+    if (open && graveyardPokemon == null) {
+      setGraveyardLoading(true);
+      setGraveyardError(null);
+    }
+  }
 
   function onEncounteredOpenChange(open: boolean) {
     setEncounteredOpen(open);
@@ -1085,6 +1192,10 @@ export function TrainerBoard({
     setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
+    setReservesPokemon([]);
+    setReservesError(null);
+    setGraveyardPokemon([]);
+    setGraveyardError(null);
     setEncounteredPokemon([]);
     setEncounteredError(null);
 
@@ -1143,6 +1254,10 @@ export function TrainerBoard({
     setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
+    setReservesPokemon([]);
+    setReservesError(null);
+    setGraveyardPokemon([]);
+    setGraveyardError(null);
     setEncounteredPokemon([]);
     setEncounteredError(null);
 
@@ -1318,7 +1433,7 @@ export function TrainerBoard({
   // Restart is the one that actually resets a board, so it keeps the danger
   // tone and calls startNewRun directly; the other two open the End Run modal.
   const wipedOut =
-    graveyard.length > 0 && main.length === 0 && reserves.length === 0;
+    graveyardCount > 0 && main.length === 0 && reservesCount === 0;
   const endRunPromotion: "victory" | "wipeout" | "restart" | null = !canEdit
     ? null
     : runEnded
@@ -1797,6 +1912,22 @@ export function TrainerBoard({
                 </button>
               }
               graveyardHeaderActions={ripReviveStatus}
+              reservesDeferred={{
+                open: reservesOpen,
+                onOpenChange: onReservesOpenChange,
+                loading: reservesLoading,
+                error: reservesError,
+                ready: reservesPokemon != null,
+                count: reservesCount,
+              }}
+              graveyardDeferred={{
+                open: graveyardOpen,
+                onOpenChange: onGraveyardOpenChange,
+                loading: graveyardLoading,
+                error: graveyardError,
+                ready: graveyardPokemon != null,
+                count: graveyardCount,
+              }}
             />
           ) : (
             <>
@@ -1813,8 +1944,28 @@ export function TrainerBoard({
                 />
               </Frame>
 
-              <Frame title={frameCountTitle("The Reserves", reserves.length)}>
-                {reserves.length > 0 ? (
+              <Frame
+                title={frameCountTitle("The Reserves", reservesCount)}
+                collapsible
+                open={reservesOpen}
+                onOpenChange={onReservesOpenChange}
+              >
+                {reservesLoading && reservesPokemon == null ? (
+                  <div
+                    className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+                    aria-busy="true"
+                    aria-label="Loading reserves"
+                  >
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <Skeleton
+                        key={i}
+                        className="min-h-28 rounded-lg border border-frame/40 bg-surface"
+                      />
+                    ))}
+                  </div>
+                ) : reservesError && reservesPokemon == null ? (
+                  <p className="text-sm text-muted">{reservesError}</p>
+                ) : reservesPokemon == null ? null : reserves.length > 0 ? (
                   <PartyStrip
                     pokemon={reserves}
                     selectHint="Details"
@@ -1827,11 +1978,29 @@ export function TrainerBoard({
               </Frame>
 
               <Frame
-                title={frameCountTitle("R.I.P.", graveyard.length)}
+                title={frameCountTitle("R.I.P.", graveyardCount)}
                 tone="rip"
                 actions={ripReviveStatus}
+                collapsible
+                open={graveyardOpen}
+                onOpenChange={onGraveyardOpenChange}
               >
-                {graveyard.length > 0 ? (
+                {graveyardLoading && graveyardPokemon == null ? (
+                  <div
+                    className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+                    aria-busy="true"
+                    aria-label="Loading memorial"
+                  >
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <Skeleton
+                        key={i}
+                        className="min-h-28 rounded-lg border border-frame/40 bg-surface"
+                      />
+                    ))}
+                  </div>
+                ) : graveyardError && graveyardPokemon == null ? (
+                  <p className="text-sm text-muted">{graveyardError}</p>
+                ) : graveyardPokemon == null ? null : graveyard.length > 0 ? (
                   <PartyStrip
                     pokemon={graveyard}
                     memorial
@@ -1909,8 +2078,8 @@ export function TrainerBoard({
         <aside className="space-y-6 lg:sticky lg:top-4">
           <Frame title="Stats">
             <TrainerStatsSummary
-              caught={main.length + reserves.length}
-              fallen={graveyard.length}
+              caught={main.length + reservesCount}
+              fallen={graveyardCount}
               badgesEarned={earnedBadgeKeys.length}
               badgesTotal={badges.length}
               runNumber={runNumber}

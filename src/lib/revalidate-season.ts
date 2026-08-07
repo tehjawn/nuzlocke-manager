@@ -6,7 +6,7 @@ import { revalidatePath, updateTag } from "next/cache";
  * | Tag | Loaders | Invalidate on |
  * | --- | --- | --- |
  * | `season:${slug}:board` | League summary, shell Search, tools/stats/encounters, survival tallies/markets, headlines, home carousel, memorial, full board | Any write that changes shared/peer-visible board data |
- * | `season:${slug}:trainer:${id}` | `fetchChallengeTrainerRow`, `fetchTrainerEncounteredRow` | Writes that touch that trainer’s board (and season-wide wipes via root tag) |
+ * | `season:${slug}:trainer:${id}` | `fetchChallengeTrainerRow`, `fetchTrainerBoardSlotRow` (Reserves / R.I.P. / Encountered) | Writes that touch that trainer’s board (and season-wide wipes via root tag) |
  * | `season:${slug}:meta` | Rules/setup/about chrome, tournament identities (+ board) | GM/settings/meta only (`revalidateChallenge`) |
  * | `season:${slug}` (root) | Most season loaders still tag it for mass bust | GM/join/settings only — **never** board party/badge/vote writes (#364) |
  * | `seasons:index` | Season list / search brief | Provision, create, visibility, delete |

@@ -547,9 +547,9 @@ export async function getHomeCarouselChallenge(
 }
 
 /**
- * One trainer's board — Main / Reserves / R.I.P. with full columns.
- * Encountered is deferred (count via slotCounts); survival tallies cover the
- * living + memorial ids on the wire.
+ * One trainer's board — Main Squad with full columns. Reserves / R.I.P. /
+ * Encountered are deferred (counts via slotCounts); survival tallies cover the
+ * Main ids on the wire; box/memorial chips attach on hydrate (#365 / #378).
  */
 export async function getTrainer(
   slug: string,
@@ -598,7 +598,8 @@ export async function getTrainer(
   const trainer = full.trainers.find((t) => t.id === trainerId);
   if (!trainer) return null;
   const slotCounts = slotCountsFromPokemon(trainer.pokemon);
-  const boardPokemon = trainer.pokemon.filter((p) => p.slot !== "ENCOUNTERED");
+  // Seed mirrors DB SSR: Main only; box / memorial / Encountered hydrate on expand.
+  const boardPokemon = trainer.pokemon.filter((p) => p.slot === "MAIN");
   const lean = { ...trainer, pokemon: boardPokemon, slotCounts };
   return {
     challenge: { ...full, trainers: [lean], activities: [] },
