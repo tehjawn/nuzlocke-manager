@@ -162,10 +162,13 @@ function boardTournamentInclude() {
   };
 }
 
-/** Live board slots on the trainer page — Encountered hydrates on expand (#365). */
-const TRAINER_BOARD_SLOTS: PokemonSlot[] = ["MAIN", "RESERVE", "GRAVEYARD"];
+/**
+ * Live board slots on the trainer page SSR — Main only. Reserves / R.I.P. /
+ * Encountered hydrate on expand (#365 / #378).
+ */
+const TRAINER_BOARD_SSR_SLOTS: PokemonSlot[] = ["MAIN"];
 
-/** One trainer board: Main / Reserves / R.I.P., no peers / activity / Encountered. */
+/** One trainer board: Main Squad only, no peers / activity / box / memorial. */
 function boardSingleTrainerInclude(trainerId: string) {
   return {
     ...challengeMetaInclude,
@@ -174,7 +177,7 @@ function boardSingleTrainerInclude(trainerId: string) {
       include: {
         ...trainerRelationInclude,
         pokemon: {
-          where: { slot: { in: TRAINER_BOARD_SLOTS } },
+          where: { slot: { in: TRAINER_BOARD_SSR_SLOTS } },
           select: pokemonFullSelect,
           orderBy: [
             { slot: "asc" as const },
@@ -620,9 +623,9 @@ export async function fetchChallengeTournamentRow(slug: string) {
 }
 
 /**
- * Single trainer board — meta + Main / Reserves / R.I.P. Peers, activity, and
- * Encountered stay out of the Flight payload; slot tallies keep footer counts
- * honest. Encountered rows hydrate when the section opens (#365).
+ * Single trainer board — meta + Main Squad. Peers, activity, Reserves, R.I.P.,
+ * and Encountered stay out of the Flight payload; slot tallies keep collapsed
+ * headers honest. Box / memorial / Encountered hydrate on expand (#365 / #378).
  */
 export async function fetchChallengeTrainerRow(
   slug: string,
@@ -648,12 +651,19 @@ export async function fetchChallengeTrainerRow(
   return { ...row, slotCounts };
 }
 
+/** Deferred board sections — Reserves / R.I.P. / Encountered (#365 / #378). */
+export type DeferredTrainerBoardSlot = Extract<
+  PokemonSlot,
+  "RESERVE" | "GRAVEYARD" | "ENCOUNTERED"
+>;
+
 /**
- * Encountered buffer for one trainer — deferred from the trainer page SSR.
+ * One deferred slot for a trainer — out of SSR Flight; hydrate on expand.
  */
-export async function fetchTrainerEncounteredRow(
+export async function fetchTrainerBoardSlotRow(
   slug: string,
   trainerId: string,
+  slot: DeferredTrainerBoardSlot,
 ) {
   "use cache";
   cacheLife("minutes");
@@ -661,12 +671,20 @@ export async function fetchTrainerEncounteredRow(
   if (!isDatabaseConfigured()) return null;
   return getPrisma().pokemonEntry.findMany({
     where: {
-      slot: "ENCOUNTERED",
+      slot,
       trainer: { id: trainerId, challenge: { slug } },
     },
     select: pokemonFullSelect,
     orderBy: { partyIndex: "asc" },
   });
+}
+
+/** @deprecated Prefer fetchTrainerBoardSlotRow(..., "ENCOUNTERED"). */
+export async function fetchTrainerEncounteredRow(
+  slug: string,
+  trainerId: string,
+) {
+  return fetchTrainerBoardSlotRow(slug, trainerId, "ENCOUNTERED");
 }
 
 export async function fetchSeasonIndexRows() {

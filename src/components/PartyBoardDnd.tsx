@@ -33,6 +33,7 @@ import {
 } from "react";
 import { Frame, frameCountTitle } from "@/components/Frame";
 import { PokemonSlotCard } from "@/components/PokemonSlotCard";
+import { Skeleton } from "@/components/Skeleton";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
 import {
   applyBoardItemsToPokemon,
@@ -54,6 +55,18 @@ export type RelocateUpdate = {
   partyIndex: number;
 };
 
+/** Accordion-hydrate for Reserves / R.I.P. (#378) — SSR omits these slots. */
+export type DeferredPartySection = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  loading: boolean;
+  error: string | null;
+  /** false until hydrate completes (`null` client state). */
+  ready: boolean;
+  /** Collapsed header count from `slotCounts` while not ready. */
+  count: number;
+};
+
 type PartyBoardDndProps = {
   pokemon: PokemonEntry[];
   mainSquadLocked: boolean;
@@ -65,7 +78,45 @@ type PartyBoardDndProps = {
   graveyardActions?: ReactNode;
   /** Status / chrome in the R.I.P. frame header (e.g. revive token). */
   graveyardHeaderActions?: ReactNode;
+  reservesDeferred?: DeferredPartySection;
+  graveyardDeferred?: DeferredPartySection;
 };
+
+function DeferredSlotBody({
+  loading,
+  ready,
+  error,
+  loadingLabel,
+  children,
+}: {
+  loading: boolean;
+  ready: boolean;
+  error: string | null;
+  loadingLabel: string;
+  children: ReactNode;
+}) {
+  if (loading && !ready) {
+    return (
+      <div
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+        aria-busy="true"
+        aria-label={loadingLabel}
+      >
+        {Array.from({ length: 6 }, (_, i) => (
+          <Skeleton
+            key={i}
+            className="min-h-28 rounded-lg border border-frame/40 bg-surface"
+          />
+        ))}
+      </div>
+    );
+  }
+  if (error && !ready) {
+    return <p className="text-sm text-muted">{error}</p>;
+  }
+  if (!ready) return null;
+  return children;
+}
 
 function normalizeMainItems(ids: string[]): string[] {
   const real: string[] = [];
@@ -372,6 +423,8 @@ export function PartyBoardDnd({
   reservesActions,
   graveyardActions,
   graveyardHeaderActions,
+  reservesDeferred,
+  graveyardDeferred,
 }: PartyBoardDndProps) {
   // dnd-kit otherwise assigns its accessibility ID from a module-level counter,
   // which can differ between SSR and client hydration.
@@ -573,9 +626,86 @@ export function PartyBoardDnd({
   }
 
   const mainCount = items.MAIN.filter((id) => !isEmptyMainId(id)).length;
-  const reservesCount = items.RESERVE.length;
-  const graveyardCount = items.GRAVEYARD.length;
+  const reservesLiveCount = items.RESERVE.length;
+  const graveyardLiveCount = items.GRAVEYARD.length;
+  const reservesCount = reservesDeferred?.ready
+    ? reservesLiveCount
+    : (reservesDeferred?.count ?? reservesLiveCount);
+  const graveyardCount = graveyardDeferred?.ready
+    ? graveyardLiveCount
+    : (graveyardDeferred?.count ?? graveyardLiveCount);
   const mainDragDisabled = rearrangeDisabled || mainSquadLocked;
+  const reservesBody = (
+    <SlotSectionDroppable id="RESERVE" disabled={rearrangeDisabled}>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted">
+            {reservesLiveCount === 0
+              ? rearrangeDisabled
+                ? "No reserves yet."
+                : "No reserves yet — drag a Pokémon here."
+              : rearrangeDisabled
+                ? "Tap a Pokémon to view or edit."
+                : "Drag to reorder or move. Tap a Pokémon to view or edit."}
+          </p>
+          {reservesActions}
+        </div>
+        {reservesLiveCount > 0 ? (
+          <SortablePartyGrid
+            slot="RESERVE"
+            items={items.RESERVE}
+            pokemonById={pokemonById}
+            dragDisabled={rearrangeDisabled}
+            selectHint="View"
+            onSelect={onSelect}
+            shouldSuppressClick={consumeSuppressClick}
+          />
+        ) : (
+          <p className="rounded-lg border border-dashed border-frame/40 px-3 py-6 text-center text-sm text-muted">
+            {rearrangeDisabled
+              ? "Reserves will show up here."
+              : "Drop Pokémon here for the reserves."}
+          </p>
+        )}
+      </div>
+    </SlotSectionDroppable>
+  );
+  const graveyardBody = (
+    <SlotSectionDroppable id="GRAVEYARD" disabled={rearrangeDisabled}>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted">
+            {graveyardLiveCount === 0
+              ? rearrangeDisabled
+                ? "Memorial is empty."
+                : "Memorial is empty — drag a fallen Pokémon here."
+              : rearrangeDisabled
+                ? "Tap a Pokémon to view or edit."
+                : "Drag to reorder or move. Tap a Pokémon to view or edit."}
+          </p>
+          {graveyardActions}
+        </div>
+        {graveyardLiveCount > 0 ? (
+          <SortablePartyGrid
+            slot="GRAVEYARD"
+            items={items.GRAVEYARD}
+            pokemonById={pokemonById}
+            memorial
+            dragDisabled={rearrangeDisabled}
+            selectHint="View"
+            onSelect={onSelect}
+            shouldSuppressClick={consumeSuppressClick}
+          />
+        ) : (
+          <p className="rounded-lg border border-dashed border-frame/40 px-3 py-6 text-center text-sm text-muted">
+            {rearrangeDisabled
+              ? "Fallen Pokémon will show up here."
+              : "Drop fallen Pokémon here."}
+          </p>
+        )}
+      </div>
+    </SlotSectionDroppable>
+  );
 
   return (
     <DndContext
@@ -619,82 +749,55 @@ export function PartyBoardDnd({
           </SlotSectionDroppable>
         </Frame>
 
-        <Frame title={frameCountTitle("The Reserves", reservesCount)}>
-          <SlotSectionDroppable id="RESERVE" disabled={rearrangeDisabled}>
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-muted">
-                  {reservesCount === 0
-                    ? rearrangeDisabled
-                      ? "No reserves yet."
-                      : "No reserves yet — drag a Pokémon here."
-                    : rearrangeDisabled
-                      ? "Tap a Pokémon to view or edit."
-                      : "Drag to reorder or move. Tap a Pokémon to view or edit."}
-                </p>
-                {reservesActions}
-              </div>
-              {reservesCount > 0 ? (
-                <SortablePartyGrid
-                  slot="RESERVE"
-                  items={items.RESERVE}
-                  pokemonById={pokemonById}
-                  dragDisabled={rearrangeDisabled}
-                  selectHint="View"
-                  onSelect={onSelect}
-                  shouldSuppressClick={consumeSuppressClick}
-                />
-              ) : (
-                <p className="rounded-lg border border-dashed border-frame/40 px-3 py-6 text-center text-sm text-muted">
-                  {rearrangeDisabled
-                    ? "Reserves will show up here."
-                    : "Drop Pokémon here for the reserves."}
-                </p>
-              )}
-            </div>
-          </SlotSectionDroppable>
-        </Frame>
+        {reservesDeferred ? (
+          <Frame
+            title={frameCountTitle("The Reserves", reservesCount)}
+            collapsible
+            open={reservesDeferred.open}
+            onOpenChange={reservesDeferred.onOpenChange}
+          >
+            <DeferredSlotBody
+              loading={reservesDeferred.loading}
+              ready={reservesDeferred.ready}
+              error={reservesDeferred.error}
+              loadingLabel="Loading reserves"
+            >
+              {reservesBody}
+            </DeferredSlotBody>
+          </Frame>
+        ) : (
+          <Frame title={frameCountTitle("The Reserves", reservesCount)}>
+            {reservesBody}
+          </Frame>
+        )}
 
-        <Frame
-          title={frameCountTitle("R.I.P.", graveyardCount)}
-          tone="rip"
-          actions={graveyardHeaderActions}
-        >
-          <SlotSectionDroppable id="GRAVEYARD" disabled={rearrangeDisabled}>
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-muted">
-                  {graveyardCount === 0
-                    ? rearrangeDisabled
-                      ? "Memorial is empty."
-                      : "Memorial is empty — drag a fallen Pokémon here."
-                    : rearrangeDisabled
-                      ? "Tap a Pokémon to view or edit."
-                      : "Drag to reorder or move. Tap a Pokémon to view or edit."}
-                </p>
-                {graveyardActions}
-              </div>
-              {graveyardCount > 0 ? (
-                <SortablePartyGrid
-                  slot="GRAVEYARD"
-                  items={items.GRAVEYARD}
-                  pokemonById={pokemonById}
-                  memorial
-                  dragDisabled={rearrangeDisabled}
-                  selectHint="View"
-                  onSelect={onSelect}
-                  shouldSuppressClick={consumeSuppressClick}
-                />
-              ) : (
-                <p className="rounded-lg border border-dashed border-frame/40 px-3 py-6 text-center text-sm text-muted">
-                  {rearrangeDisabled
-                    ? "Fallen Pokémon will show up here."
-                    : "Drop fallen Pokémon here."}
-                </p>
-              )}
-            </div>
-          </SlotSectionDroppable>
-        </Frame>
+        {graveyardDeferred ? (
+          <Frame
+            title={frameCountTitle("R.I.P.", graveyardCount)}
+            tone="rip"
+            actions={graveyardHeaderActions}
+            collapsible
+            open={graveyardDeferred.open}
+            onOpenChange={graveyardDeferred.onOpenChange}
+          >
+            <DeferredSlotBody
+              loading={graveyardDeferred.loading}
+              ready={graveyardDeferred.ready}
+              error={graveyardDeferred.error}
+              loadingLabel="Loading memorial"
+            >
+              {graveyardBody}
+            </DeferredSlotBody>
+          </Frame>
+        ) : (
+          <Frame
+            title={frameCountTitle("R.I.P.", graveyardCount)}
+            tone="rip"
+            actions={graveyardHeaderActions}
+          >
+            {graveyardBody}
+          </Frame>
+        )}
       </div>
 
       <DragOverlay dropAnimation={null}>
