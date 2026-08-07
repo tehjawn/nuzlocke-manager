@@ -1174,13 +1174,29 @@ export function TrainerBoard({
   // Primary strip + Shortcuts: Import only. Revive is status on R.I.P.; mark /
   // GM reset live in More. Everything else is overflow so mobile stays calm (#325).
   //
-  // Exception: once the Championship is earned and the run is still open,
-  // recording the clear is the obvious next action, so it gets promoted out of
-  // More and sits beside Import save. It leaves the menu while promoted so the
-  // same verb never appears twice. The promoted control reads "Mark run
-  // completed" rather than "End run" — in this state it is a victory being
-  // logged, not a run being abandoned, and it is the same modal either way.
-  const promoteEndRun = canEdit && championshipEarned && !runEnded;
+  // Exception: when an open run has visibly reached its end, logging it is the
+  // obvious next action, so it gets promoted out of More and sits beside Import
+  // save. It leaves the menu while promoted so the same verb never appears
+  // twice, and both promotions open the same modal — only the framing differs:
+  //
+  //   victory — Championship earned; a clear to record.
+  //   wipeout — everything in R.I.P. and nothing left alive to play. Graveyard
+  //             must be non-empty so a brand-new empty board doesn't qualify.
+  //
+  // Victory wins if somehow both hold. "Mark run completed" / "Mark run ended"
+  // rather than "End run": here the run is already over and is being logged,
+  // not being abandoned mid-play.
+  const wipedOut =
+    graveyard.length > 0 && main.length === 0 && reserves.length === 0;
+  const endRunPromotion: "victory" | "wipeout" | null =
+    !canEdit || runEnded
+      ? null
+      : championshipEarned
+        ? "victory"
+        : wipedOut
+          ? "wipeout"
+          : null;
+  const promoteEndRun = endRunPromotion != null;
   const boardActionSlots: Record<
     TrainerBoardActionKey,
     {
@@ -1311,16 +1327,28 @@ export function TrainerBoard({
     // nothing, so the danger tone is saved for the restart that does.
     endRun: {
       shortcut: null,
-      toolbar: promoteEndRun ? (
+      toolbar: endRunPromotion ? (
         <button
-          className="pressable inline-flex h-9 items-center gap-1.5 border border-accent/55 bg-accent/10 px-3 text-xs font-semibold tracking-tight text-accent-deep hover:border-accent hover:bg-accent/16 disabled:opacity-60"
+          className={`pressable inline-flex h-9 items-center gap-1.5 px-3 text-xs font-semibold tracking-tight disabled:opacity-60 ${
+            endRunPromotion === "victory"
+              ? "border border-accent/55 bg-accent/10 text-accent-deep hover:border-accent hover:bg-accent/16"
+              : "border border-danger/40 bg-danger/10 text-danger hover:border-danger/70 hover:bg-danger/16"
+          }`}
           disabled={pending || wiping}
           onClick={() => setEndRunOpen(true)}
-          title="All badges earned — record this run as complete"
+          title={
+            endRunPromotion === "victory"
+              ? "All badges earned — record this run as complete"
+              : "No Pokémon left alive — record this run as ended"
+          }
           type="button"
         >
           <EndRunIcon className="h-4 w-4" />
-          <span>Mark run completed</span>
+          <span>
+            {endRunPromotion === "victory"
+              ? "Mark run completed"
+              : "Mark run ended"}
+          </span>
         </button>
       ) : null,
       menu:

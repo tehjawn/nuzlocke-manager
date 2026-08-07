@@ -6,11 +6,10 @@ export type TrainerBoardActionKey =
  * Shortcuts). Import leads — revive status lives on R.I.P.; spend/reset are
  * overflow / import-sync (#325).
  *
- * `endRun` renders a toolbar slot only once the Championship is earned and the
- * run is still open — the one moment it is the obvious next action, where it
- * reads "Mark run completed". Every other time its toolbar slot is null and it
- * stays in More as "End run" / "Start new run", so listing it here costs
- * nothing.
+ * `endRun` renders a toolbar slot only when an open run has visibly reached its
+ * end — Championship earned ("Mark run completed") or nothing left alive
+ * ("Mark run ended"). Every other time its toolbar slot is null and it stays in
+ * More as "End run" / "Start new run", so listing it here costs nothing.
  */
 export const TRAINER_BOARD_PRIMARY_ACTIONS: readonly TrainerBoardActionKey[] = [
   "import",
