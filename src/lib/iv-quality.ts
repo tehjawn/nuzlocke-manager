@@ -54,6 +54,13 @@ const GOD_ROLE_HITS = 2;
 /** OR: stacked overall with solid (not near-perfect) role hits. */
 const GOD_OR_MEAN = 24;
 const GOD_OR_ROLE_IV = 24;
+/**
+ * OR: incredible overall + one near-perfect role IV + another hot IV anywhere
+ * (covers Fast mons that rolled Spe + off-role heat instead of Atk/SpA).
+ */
+const GOD_BREADTH_MEAN = 24;
+const GOD_BREADTH_ROLE_IV = 28;
+const GOD_BREADTH_OTHER_IV = 26;
 
 const CRACKED_MEAN = 20;
 const CRACKED_ROLE_IV = 26;
@@ -314,6 +321,7 @@ export function summarizeBattleStats(
  *
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}):
  * - god: (mean ≥22 + ≥2 role ≥28) OR (mean ≥24 + ≥2 role ≥24)
+ *        OR (mean ≥24 + ≥1 role ≥28 + ≥1 other IV ≥26)
  * - cracked: (mean ≥20 + ≥1 role ≥26) OR (mean ≥22 + ≥1 role ≥22)
  * - great: mean ≥18 + ≥1 role ≥24
  * - good: mean ≥14
@@ -406,7 +414,8 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
  *
  * Worked feel-checks:
  * - Special glass Starmie, SpA 29 / Spe 28 / solid mean → god (primary path)
- * - Fast Weedle, Spe 30 / Atk 23 / high off-role → cracked (primary Spe ≥26)
+ * - Fast Weedle, Spe 30 / Atk 23 / Def 30 / SpA 28 / mean 25.5 → god
+ *   (breadth OR: one role near-perfect + another hot IV)
  * - Mean ≥24 with two role IVs ≥24 → god (OR path)
  * - Mean ≥22 with one role IV ≥22 → cracked (OR path)
  * - Balanced Claydol, Atk 30 / Spe 31 / mean ~20 → cracked
@@ -431,6 +440,8 @@ function roleIvCatchTier(
   let roleCracked = 0;
   let roleCrackedOr = 0;
   let roleGreat = 0;
+  let roleBreadthNear = 0;
+  let breadthHot = 0;
   let hardDump = 0;
   let maxIv = 0;
   let effectiveSum = 0;
@@ -442,12 +453,15 @@ function roleIvCatchTier(
     if (value > maxIv) maxIv = value;
     rawSum += value;
 
+    if (value >= GOD_BREADTH_OTHER_IV) breadthHot += 1;
+
     if (roleKeys.has(key)) {
       if (value >= GOD_ROLE_IV) roleGod += 1;
       if (value >= GOD_OR_ROLE_IV) roleGodOr += 1;
       if (value >= CRACKED_ROLE_IV) roleCracked += 1;
       if (value >= CRACKED_OR_ROLE_IV) roleCrackedOr += 1;
       if (value >= GREAT_ROLE_IV) roleGreat += 1;
+      if (value >= GOD_BREADTH_ROLE_IV) roleBreadthNear += 1;
     }
 
     if (primarySet.has(key)) {
@@ -462,6 +476,10 @@ function roleIvCatchTier(
   const effectiveMean = effectiveSum / STAT_KEYS.length;
   const rawMean = rawSum / STAT_KEYS.length;
   const isBigOof = rawMean < BIG_OOF_MEAN && maxIv < BIG_OOF_MAX_IV;
+  const godBreadth =
+    effectiveMean >= GOD_BREADTH_MEAN &&
+    roleBreadthNear >= 1 &&
+    breadthHot >= 2;
 
   // Primary key dump caps the ceiling — off-role luck is consolation only.
   if (hardDump > 0) {
@@ -470,10 +488,11 @@ function roleIvCatchTier(
     return "oof";
   }
 
-  // --- God (primary || OR) -------------------------------------------------
+  // --- God (primary || role-OR || breadth-OR) ------------------------------
   if (
     (effectiveMean >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
-    (effectiveMean >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS)
+    (effectiveMean >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS) ||
+    godBreadth
   ) {
     return "god";
   }
