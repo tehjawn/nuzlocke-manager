@@ -308,6 +308,8 @@ function ZoneDetail({
 
   const { zone, status, rows, packClaimCount } = selected;
   const slotTotal = selected.claimedOpenSlots + selected.openSlots;
+  const hasFocus = focusHandle != null;
+  const displayRows = hasFocus ? sortRowsOpenFirst(rows) : rows;
 
   return (
     <Frame
@@ -324,11 +326,13 @@ function ZoneDetail({
           {slotTotal > 0
             ? `${selected.claimedOpenSlots} of ${slotTotal} open slots claimed`
             : "No wild open slots in this zone"}
-          {packClaimCount > 0 ? ` · ${packClaimCount} pack logs` : ""}.
+          {selected.openSlots > 0 ? ` · ${selected.openSlots} still open` : ""}
+          {packClaimCount > 0 ? ` · ${packClaimCount} pack logs` : ""}
+          {hasFocus ? ` (focus: ${focusHandle})` : ""}.
         </p>
 
         <ul className="space-y-2">
-          {rows.map((row) => (
+          {displayRows.map((row) => (
             <RouteRowDetail key={row.label} row={row} slug={slug} />
           ))}
         </ul>
@@ -347,25 +351,54 @@ function ZoneDetail({
   );
 }
 
+/** Display order when a focus trainer is selected: open → yours → other. */
+function sortRowsOpenFirst(rows: MapRouteRow[]): MapRouteRow[] {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const rankDiff = rowScanRank(a.row) - rowScanRank(b.row);
+      return rankDiff !== 0 ? rankDiff : a.index - b.index;
+    })
+    .map(({ row }) => row);
+}
+
+function rowScanRank(row: MapRouteRow): number {
+  if (row.countsTowardOpen && !row.focusClaimed) {
+    const packClaimed = row.claims.length + row.flagClaims.length > 0;
+    if (!packClaimed) return 0; // still open for focus
+  }
+  if (row.focusClaimed) return 1; // yours
+  return 2; // pack-claimed / static
+}
+
+type RouteRowBadge = "Yours" | "Open" | "Claimed" | "Logged" | "Static";
+
+function routeRowBadge(row: MapRouteRow): RouteRowBadge {
+  const claimCount = row.claims.length + row.flagClaims.length;
+  if (row.countsTowardOpen) {
+    if (row.focusClaimed) return "Yours";
+    if (claimCount > 0) return "Claimed";
+    return "Open";
+  }
+  return claimCount > 0 ? "Logged" : "Static";
+}
+
 function RouteRowDetail({ row, slug }: { row: MapRouteRow; slug: string }) {
   const claimCount = row.claims.length + row.flagClaims.length;
-  const badge = row.countsTowardOpen
-    ? row.focusClaimed
-      ? "Yours"
-      : claimCount > 0
-        ? "Claimed"
-        : "Open"
-    : claimCount > 0
-      ? "Logged"
-      : "Static";
+  const badge = routeRowBadge(row);
+
+  const rowChrome =
+    badge === "Open"
+      ? "border-interactive/50 bg-interactive-soft/55"
+      : badge === "Yours"
+        ? "border-accent/40 bg-accent/10"
+        : "border-frame/30 bg-surface/50";
 
   return (
-    <li className="rounded-md border border-frame/30 bg-surface/50 px-2.5 py-2">
+    <li className={`rounded-md border px-2.5 py-2 ${rowChrome}`}>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
         <span className="text-sm font-semibold leading-tight">{row.label}</span>
-        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted">
-          {badge}
-        </span>
+        <RouteStatusChip badge={badge} />
       </div>
       {row.flagClaims.length > 0 && (
         <ul className="mb-1.5 flex flex-wrap gap-1">
@@ -419,5 +452,42 @@ function RouteRowDetail({ row, slug }: { row: MapRouteRow; slug: string }) {
         <p className="text-[11px] text-muted">No pack claims yet.</p>
       ) : null}
     </li>
+  );
+}
+
+function RouteStatusChip({ badge }: { badge: RouteRowBadge }) {
+  if (badge === "Yours") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold text-accent-deep">
+        <CheckIcon className="h-3 w-3" />
+        Yours
+      </span>
+    );
+  }
+  if (badge === "Open") {
+    return (
+      <span className="inline-flex shrink-0 items-center rounded-full border border-interactive/55 bg-interactive-soft px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+        Open
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-frame/35 bg-surface/70 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+      {badge}
+    </span>
+  );
+}
+
+function CheckIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} fill="none" aria-hidden>
+      <path
+        d="M3.5 8.2 6.2 11l6.3-7"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
