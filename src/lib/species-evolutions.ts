@@ -255,6 +255,9 @@ export function evolutionNote(edge: EvolutionEdgeRaw): string | null {
       return "Branch is fixed by personality value when Wurmple hits the level.";
     case "EVO_LEVEL_NINJASK":
       return "Nincada becomes Ninjask; Shedinja may appear alongside.";
+    case "EVO_TRADE":
+    case "EVO_TRADE_ITEM":
+      return "Self-trade: Lilycove Dept Store 1F.";
     default:
       return null;
   }
@@ -302,11 +305,14 @@ export function evolutionReadiness(
 
   if (method === "EVO_TRADE" || method === "EVO_TRADE_ITEM") {
     if (method === "EVO_TRADE_ITEM" && reqItem && heldMatches(specimen.heldItem, reqItem)) {
-      return { status: "ready", detail: "Ready to trade" };
+      return { status: "ready", detail: "Ready — self-trade at Lilycove" };
     }
     return {
       status: method === "EVO_TRADE_ITEM" && reqItem ? "blocked" : "unknown",
-      detail: method === "EVO_TRADE_ITEM" && reqItem ? `Hold ${reqItem}, then trade` : "Trade required",
+      detail:
+        method === "EVO_TRADE_ITEM" && reqItem
+          ? `Hold ${reqItem}, then self-trade at Lilycove`
+          : "Self-trade at Lilycove Dept Store",
     };
   }
 
