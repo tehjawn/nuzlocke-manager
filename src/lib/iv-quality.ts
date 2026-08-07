@@ -87,14 +87,15 @@ export type CatchWeightTable = Record<StatKey, number>;
 /**
  * Per-archetype weights (1–5).
  *
- * True dumps (weight 1): unused Atk/SpA (and Spe on Slow). Soft dumps (≤2)
+ * True dumps (weight 1): unused Atk/SpA, Spe on walls / Slow. Soft dumps (≤2)
  * floor at 15 so trash rolls don't drag. Offense Spe sits at 3 so a Spe
  * lottery can't outweigh a middling attacking IV. Offense / Fast / Glass /
  * Balanced also get {@link bulkLiftBonus}. Walls / Bulky / Slow already lean
  * on bulk in the table. Glass bulk stays soft (2) rather than ignored (1).
  *
  * Top tiers also require {@link CATCH_PEAK_STATS} to clear floors — score alone
- * can't crown God when the role's starring IV is mediocre (Horsea SpA 19).
+ * can't crown a letter when the starring IV is weak *and* the score is only
+ * barely over that letter's threshold (Horsea SpA 19 stays off God).
  */
 export const CATCH_ARCHETYPE_WEIGHTS: Record<
   CatchArchetype,
@@ -103,9 +104,9 @@ export const CATCH_ARCHETYPE_WEIGHTS: Record<
   "Physical attacker": { hp: 2, atk: 5, def: 2, spa: 1, spd: 2, spe: 3 },
   "Special attacker": { hp: 2, atk: 1, def: 2, spa: 5, spd: 2, spe: 3 },
   "Mixed attacker": { hp: 2, atk: 5, def: 2, spa: 5, spd: 2, spe: 3 },
-  "Physical wall": { hp: 4, atk: 1, def: 5, spa: 1, spd: 4, spe: 3 },
-  "Special wall": { hp: 4, atk: 1, def: 4, spa: 1, spd: 5, spe: 3 },
-  Bulky: { hp: 5, atk: 2, def: 4, spa: 2, spd: 4, spe: 3 },
+  "Physical wall": { hp: 4, atk: 1, def: 5, spa: 1, spd: 4, spe: 1 },
+  "Special wall": { hp: 4, atk: 1, def: 4, spa: 1, spd: 5, spe: 1 },
+  Bulky: { hp: 5, atk: 2, def: 4, spa: 2, spd: 4, spe: 2 },
   Slow: { hp: 5, atk: 2, def: 4, spa: 2, spd: 4, spe: 1 },
   Fast: { hp: 2, atk: 3, def: 2, spa: 3, spd: 2, spe: 5 },
   Balanced: { hp: 3, atk: 3, def: 3, spa: 3, spd: 3, spe: 3 },
@@ -134,9 +135,18 @@ const CATCH_PEAK_STATS: Record<CatchArchetype, readonly StatKey[]> = {
 };
 
 /** Peak IV floor for God — below this, score caps at Cracked. */
-const GOD_PEAK_MIN = 25;
+const GOD_PEAK_MIN = 24;
 /** Peak IV floor for Cracked — below this, score caps at Great. */
 const CRACKED_PEAK_MIN = 20;
+/** Peak IV floor for Great — below this, score caps at Good. */
+const GREAT_PEAK_MIN = 15;
+/**
+ * Raw score above the tier's bypass skips that tier's peak clamp (~+5 over
+ * each letter floor). Middling peaks only bite near the threshold.
+ */
+const GOD_PEAK_BYPASS_SCORE = 80;
+const CRACKED_PEAK_BYPASS_SCORE = 70;
+const GREAT_PEAK_BYPASS_SCORE = 55;
 
 /** HP / Def / SpD — used for the offense bulk lift (not walls/TR). */
 const BULK_STAT_KEYS: readonly StatKey[] = ["hp", "def", "spd"];
@@ -426,7 +436,8 @@ export function summarizeBattleStats(
  * soft-cap at Good. Score stays internal.
  *
  * Thresholds: God ≥75 · Cracked ≥65 · Great ≥50 · Good ≥35 · Oof ≥15 ·
- * Big oof <15. Peak role IVs also gate Cracked (≥20) and God (≥25).
+ * Big oof <15. Peak role IVs also gate Great (≥15) / Cracked (≥20) / God (≥24),
+ * unless raw score clears that tier's bypass (55 / 70 / 80).
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -555,7 +566,8 @@ function tierFromCatchScore(score: number): CatchTier {
  * Soft caps may lower the tier without rewriting the raw score (tips show both):
  * 1. Critical trash — any weight ≥4 axis with IV ≤10 → at most Good
  * 2. Big oof override — every critical axis ≤10 and no IV ≥15 → shit
- * 3. Peak floors — starring role IV(s) must clear 20 for Cracked / 25 for God
+ * 3. Peak floors — starring role IV(s) must clear 15 / 20 / 24 for Great /
+ *    Cracked / God (each skipped when raw score clears that tier's bypass)
  * 4. Perfect floor — any IV 31 → at least Oof
  *
  * Glass weight tables are only used when Glass cannon is the **primary**
@@ -563,9 +575,11 @@ function tierFromCatchScore(score: number): CatchTier {
  *
  * Feel-checks (approx):
  * - Taco Wobbuffet Bulky `31/31/25/30/24/4` → God
- * - Horsea special attacker SpA 19 / Spe 31 / strong SpD → Great (peak SpA gate;
- *   score may still look Cracked+)
- * - Physical attacker thin bulk + hot Atk/Spe → Cracked; high bulk + Atk ≥25 → God
+ * - Torkoal physical wall Def 27 / HP 29 / SpD 26 / Spe 9 → God (Spe dump)
+ * - Horsea special attacker SpA 19 / Spe 31 / strong SpD → Cracked (score ~72
+ *   bypasses the Cracked peak floor; still not God)
+ * - Physical attacker thin bulk + hot Atk/Spe → Cracked; high bulk + Atk ≥24 → God
+ * - Starmie special attacker SpA 24 / Spe 29 → God (peak gate at 24)
  * - Sneasel physical attacker Atk 23 / Spe 26 (thin bulk) → Great
  * - Dead wall + Perfect Spe → Oof (not Big oof; +1 on score)
  */
@@ -635,22 +649,32 @@ function weightedIvCatchGrade(
   if (criticalTrash && score >= CATCH_SCORE_GREAT) {
     tier = "good";
   }
-  // Peak role IV must show up for Cracked / God — Spe lottery + bulk lift
-  // shouldn't crown a mediocre attacking (or walling) stat.
+  // Peak role IV must show up for Great / Cracked / God — Spe lottery + bulk
+  // lift shouldn't crown a mediocre starring IV. Raw scores that clearly clear
+  // a letter floor (+~5) skip that letter's peak clamp.
   const peakKeys = CATCH_PEAK_STATS[archetype];
   if (peakKeys.length > 0) {
     const peakMin = Math.min(...peakKeys.map((key) => ivs[key] ?? 0));
     if (
+      score <= GOD_PEAK_BYPASS_SCORE &&
       peakMin < GOD_PEAK_MIN &&
       catchTierRank(tier) > catchTierRank("cracked")
     ) {
       tier = "cracked";
     }
     if (
+      score <= CRACKED_PEAK_BYPASS_SCORE &&
       peakMin < CRACKED_PEAK_MIN &&
       catchTierRank(tier) > catchTierRank("great")
     ) {
       tier = "great";
+    }
+    if (
+      score <= GREAT_PEAK_BYPASS_SCORE &&
+      peakMin < GREAT_PEAK_MIN &&
+      catchTierRank(tier) > catchTierRank("good")
+    ) {
+      tier = "good";
     }
   }
   // A true perfect anywhere is still a lottery ticket — never Big oof.
