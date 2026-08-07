@@ -32,7 +32,10 @@ import {
   summarizeEvs,
   summarizeIvs,
 } from "@/lib/iv-quality";
-import { keyStatsForSpecies, recommendPlaystyle } from "@/lib/playstyle";
+import {
+  catchArchetypeForSpecies,
+  recommendPlaystyle,
+} from "@/lib/playstyle";
 import { resolveCatchTier, resolveTrainingTier } from "@/lib/pokemon-grades";
 import {
   baseStatRanksFor,
@@ -177,7 +180,7 @@ export function PokemonDetailsModal({
     : null;
   const ivSummary = showIvs
     ? summarizeIvs(ivs, {
-        keyStats: keyStatsForSpecies(pokemon.pokedexId),
+        archetype: catchArchetypeForSpecies(pokemon.pokedexId),
       })
     : null;
   const evSummary = showEvs ? summarizeEvs(evs) : null;

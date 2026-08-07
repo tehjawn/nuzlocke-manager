@@ -38,98 +38,73 @@ const BATTLE_STRONG = 0.82;
 const BATTLE_DUMP = 0.45;
 
 /**
- * Catch-tier ladder (randomizer Nuzlocke feel) — slightly soft bars so mid-lucky
- * wild rolls still feel good.
- *
- * Overall floors use the **median** IV (not the mean) so a single dump stat
- * doesn't drag a otherwise-strong spread down. Each of God / Cracked has a
- * primary path and OR paths. Great stays single-path. Primary-key dumps still
- * block top tiers.
+ * Catch-tier ladder (#356): normalized weighted score by playstyle archetype.
+ * Lower bands stay generous; God stays near the calibrated bar so middling
+ * glass spreads (Atk 23 / Spe 26) don't clear it. Score is internal only.
  */
-const GOD_MEAN = 20;
-const GOD_ROLE_IV = 27;
-const GOD_ROLE_HITS = 2;
-/** OR: stacked overall with solid (not near-perfect) role hits. */
-const GOD_OR_MEAN = 23;
-const GOD_OR_ROLE_IV = 23;
+const CATCH_SCORE_GOD = 72;
+const CATCH_SCORE_CRACKED = 55;
+/** Great floor — also the trash-critical clamp ceiling (`<` this → Good max). */
+const CATCH_SCORE_GREAT = 45;
+const CATCH_SCORE_GOOD = 33;
+const CATCH_SCORE_OOF = 18;
+
+/** Weight ≥ this is a critical axis (trash IV soft-caps the tier). */
+const CRITICAL_WEIGHT = 4;
+/** Dump-weight floor: weight ≤ this uses max(iv, DUMP_FLOOR_IV). */
+const DUMP_WEIGHT_MAX = 2;
+const DUMP_FLOOR_IV = 15;
+const CRITICAL_TRASH_MAX = 10;
+const BIG_OOF_HOT_IV = 15;
+/** Any true perfect IV floors the tier at Oof (never Big oof). */
+const PERFECT_IV = 31;
 /**
- * OR: incredible overall + one near-perfect role IV + another hot IV anywhere
- * (covers Fast mons that rolled Spe + off-role heat instead of Atk/SpA).
+ * Glass God gate: every critical axis must clear this. Stops Spe-led scores
+ * with middling offense (Sneasel Atk 23) from wearing God chrome.
  */
-const GOD_BREADTH_MEAN = 23;
-const GOD_BREADTH_ROLE_IV = 27;
-const GOD_BREADTH_OTHER_IV = 25;
-/** OR: raw wild luck — three near-perfects anywhere with a usable median. */
-const GOD_LUCK_MEAN = 20;
-const GOD_LUCK_NEAR_IV = 27;
-const GOD_LUCK_NEAR_HITS = 3;
+const GLASS_GOD_CRITICAL_MIN = 25;
 
-const CRACKED_MEAN = 19;
-const CRACKED_ROLE_IV = 25;
-/** OR: strong overall with one decent role hit. */
-const CRACKED_OR_MEAN = 21;
-const CRACKED_OR_ROLE_IV = 21;
-
-const GREAT_MEAN = 17;
-const GREAT_ROLE_IV = 23;
-
-const GOOD_MEAN = 13;
-
-const BIG_OOF_MEAN = 9;
-const BIG_OOF_MAX_IV = 13;
-
-/**
- * Non-balanced roles: top tiers require every **primary** role IV to be usable.
- * Trash on a primary axis (≤10) caps at Good — a Def-9 physical wall cannot
- * God off Atk/SpA/Spe luck, same as a SpA-6 special attacker.
- */
-const GOD_PRIMARY_MIN = 25;
-const CRACKED_PRIMARY_MIN = 22;
-const GREAT_PRIMARY_MIN = 20;
-/** Below this on any primary role axis counts like a dump for tier capping. */
-const PRIMARY_TRASH_MAX = 10;
-
-/**
- * Balanced God is overall excellence only — no "any two highs" shortcut.
- * Median high + three near-perfects + no trash IV.
- */
-const BALANCED_GOD_MEDIAN = 23;
-const BALANCED_GOD_NEAR_HITS = 3;
-const BALANCED_GOD_MIN_IV = 12;
-
-/** Median of the six IVs — dump outliers don't sink the overall floor. */
-function ivMedian(ivs: StatSpread): number {
-  const values = STAT_KEYS.map((k) => ivs[k] ?? 0).sort((a, b) => a - b);
-  // Six stats → average of the two middle values.
-  return (values[2]! + values[3]!) / 2;
-}
-
-/**
- * True when the role is Balanced (no primary axes) or every primary key
- * clears `minIv`.
- */
-function primaryRoleAllows(
-  ivs: StatSpread,
-  primaryKeys: StatKey[],
-  minIv: number,
-  balanced: boolean,
-): boolean {
-  if (balanced || primaryKeys.length === 0) return true;
-  return primaryKeys.every((k) => (ivs[k] ?? 0) >= minIv);
-}
-
-/** Trash primary role IV — same ceiling as a hard dump (Good max). */
-function primaryRoleIsTrash(
-  ivs: StatSpread,
-  primaryKeys: StatKey[],
-  balanced: boolean,
-): boolean {
-  if (balanced || primaryKeys.length === 0) return false;
-  return primaryKeys.some((k) => (ivs[k] ?? 0) <= PRIMARY_TRASH_MAX);
-}
-
-/** @deprecated Kept for summarizeIvs legacy path without keyStats. */
+/** @deprecated Kept for summarizeIvs legacy path without archetype. */
 const LEGACY_GOD_NEAR_PERFECT_MIN = 3;
+
+/**
+ * Archetypes for catch scoring. Glass phys/spec/mixed are more specific than
+ * the "Glass cannon" playstyle tag — see {@link catchArchetypeForSpecies}.
+ */
+export type CatchArchetype =
+  | "Physical attacker"
+  | "Special attacker"
+  | "Mixed attacker"
+  | "Physical wall"
+  | "Special wall"
+  | "Bulky"
+  | "Slow"
+  | "Fast"
+  | "Balanced"
+  | "Glass (physical)"
+  | "Glass (special)"
+  | "Glass (mixed)";
+
+export type CatchWeightTable = Record<StatKey, number>;
+
+/** Per-archetype weights (1–5). Offense / Spe / bulk emphasis by role. */
+export const CATCH_ARCHETYPE_WEIGHTS: Record<
+  CatchArchetype,
+  CatchWeightTable
+> = {
+  "Physical attacker": { hp: 2, atk: 5, def: 2, spa: 1, spd: 2, spe: 4 },
+  "Special attacker": { hp: 2, atk: 1, def: 2, spa: 5, spd: 2, spe: 4 },
+  "Mixed attacker": { hp: 2, atk: 5, def: 2, spa: 5, spd: 2, spe: 4 },
+  "Physical wall": { hp: 4, atk: 1, def: 5, spa: 1, spd: 4, spe: 2 },
+  "Special wall": { hp: 4, atk: 1, def: 4, spa: 1, spd: 5, spe: 2 },
+  Bulky: { hp: 5, atk: 2, def: 4, spa: 2, spd: 4, spe: 2 },
+  Slow: { hp: 5, atk: 2, def: 4, spa: 2, spd: 4, spe: 1 },
+  Fast: { hp: 2, atk: 3, def: 2, spa: 3, spd: 2, spe: 5 },
+  Balanced: { hp: 3, atk: 3, def: 3, spa: 3, spd: 3, spe: 3 },
+  "Glass (physical)": { hp: 1, atk: 5, def: 1, spa: 1, spd: 1, spe: 5 },
+  "Glass (special)": { hp: 1, atk: 1, def: 1, spa: 5, spd: 1, spe: 5 },
+  "Glass (mixed)": { hp: 1, atk: 4, def: 1, spa: 4, spd: 1, spe: 5 },
+};
 
 export function classifyIv(value: number): StatQualityBand {
   if (value >= IV_PERFECT) return "perfect";
@@ -262,17 +237,17 @@ function summarizeBands(
 
 export type SummarizeIvsOptions = {
   /**
-   * Role-critical stats from playstyle. Pass {@link SpeciesKeyStats} when
-   * known; omit / null for legacy count-based god/cracked flags.
+   * Catch archetype from {@link catchArchetypeForSpecies}. Pass when known so
+   * god/cracked flags match board chrome; omit for legacy count-based flags.
    */
-  keyStats?: SpeciesKeyStatsInput | null;
+  archetype?: CatchArchetype | null;
 };
 
 /**
  * Summarize which IVs stand out on a specimen.
  * Pure / render-time — does not persist.
  *
- * When `keyStats` is provided, god/cracked flags match {@link ivCatchTier}
+ * When `archetype` is provided, god/cracked flags match {@link ivCatchTier}
  * so the details headline agrees with board chrome.
  */
 export function summarizeIvs(
@@ -293,10 +268,10 @@ export function summarizeIvs(
     else if (band === "dump") dump.push(key);
   }
 
-  const keyStats = options?.keyStats;
+  const archetype = options?.archetype;
   let flags: { god?: boolean; cracked?: boolean } = {};
-  if (keyStats !== undefined) {
-    const tier = ivCatchTier(ivs, { keyStats });
+  if (archetype !== undefined) {
+    const tier = ivCatchTier(ivs, { archetype });
     flags = {
       god: tier === "god",
       cracked: catchTierRank(tier) >= catchTierRank("cracked"),
@@ -371,18 +346,13 @@ export function summarizeBattleStats(
 /**
  * Randomizer catch quality for board-card chrome + details labels.
  *
- * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}).
- * Overall floors use IV **median**. Non-balanced roles also need every
- * **primary** role IV to clear a tier floor (walls need Def/HP, attackers need
- * Atk/SpA, Fast needs Spe, etc.). A dump or trash (≤10) primary IV caps at good
- * — consolation uses role-only max IV, not off-role luck. Balanced has no
- * primary hard-gate (overall min-IV rules apply for God instead).
- * - god: … + primary IVs ≥25 (specialists) / median ≥23 + ≥3×≥27 + min ≥12 (balanced)
- * - cracked: … + primary IVs ≥22
- * - great: … + primary IVs ≥20
- * - good: median ≥13 (also the ceiling when any primary is dumped/trash)
- * - oof: below good, not abysmal
- * - shit (Big oof): median <9 and no IV ≥13
+ * Weighted points ladder (#356) when an archetype is supplied. Each playstyle
+ * weights the six IVs differently (attackers care about Spe; walls care about
+ * HP/defending stat). Dump-weight stats (≤2) floor at 15 so they don't drag;
+ * critical axes (weight ≥4) with IV ≤10 soft-cap at Good. Score stays internal.
+ *
+ * Thresholds: God ≥72 · Cracked ≥55 · Great ≥45 · Good ≥33 · Oof ≥18 ·
+ * Big oof <18. Glass God also needs every critical axis ≥25.
  */
 /** Worst → best, so array order doubles as the tier ladder. */
 export const CATCH_TIERS = [
@@ -427,12 +397,12 @@ export function catchTierTip(tier: CatchTier): string {
     return "Good: Average or better overall.";
   }
   if (tier === "great") {
-    return "Great: Solid overall with a strong role IV.";
+    return "Great: Solid overall for how this mon plays.";
   }
   if (tier === "cracked") {
-    return "Cracked: Strong overall with a near-perfect role IV.";
+    return "Cracked: Strong genes where they matter.";
   }
-  return "God: Incredible overall with role IVs nearly perfect.";
+  return "God: Incredible genes for this playstyle.";
 }
 
 /** Board / modal ring + sprite wash — oof stays plain. */
@@ -447,164 +417,131 @@ export function catchTierToneClass(tier: CatchTier): string {
 
 export type IvCatchTierOptions = {
   /**
-   * Role-critical stats from {@link keyStatsForSpecies} in playstyle.ts.
-   * - Object with primary (/ secondary): role-weighted grading.
-   * - Omit / null: legacy species-blind count ladder (unknown dex).
+   * Playstyle archetype from {@link catchArchetypeForSpecies}.
+   * - Named archetype: weighted scoring for that role.
+   * - Omit / null: Balanced weights (unknown dex / species-blind fallback).
    */
-  keyStats?: SpeciesKeyStatsInput | null;
+  archetype?: CatchArchetype | null;
 };
 
-/** Primary (+ optional secondary) key axes — mirrors playstyle.SpeciesKeyStats. */
-export type SpeciesKeyStatsInput = {
-  primary: StatKey[];
-  secondary?: StatKey[];
-};
-
-/** Species-blind fallback when playstyle keys are unavailable. */
-function legacyIvCatchTier(ivs: StatSpread): CatchTier {
-  // Empty primary → Balanced path: weight all six, hard-gate none.
-  return roleIvCatchTier(ivs, { primary: [], secondary: [] });
+/** Piecewise quality of a single IV on [0, 1]. */
+function ivQuality(iv: number): number {
+  if (iv <= 5) return 0;
+  if (iv >= 31) return 1;
+  return (iv - 5) / 26;
 }
 
 /**
- * Role-weighted catch tier — eval order God → Cracked → Great → Good → Big oof → Oof.
- *
- * Worked feel-checks:
- * - Special glass Starmie, SpA 29 / Spe 28 → god (primary path)
- * - Fast Weedle, Spe 30 / Def 30 / SpA 28 → god (breadth OR)
- * - Physical Graveler, Atk 31 / Def 29 / dump Spe·SpA → god
- *   (bulky phys soft-key Def + median ≥20 primary path)
- * - Special Porygon, SpA 6 / cracked HP·Atk·Spe → good (trash primary)
- * - Physical wall Skarmory, Def 9 / cracked Atk·SpA·Spe → good (trash primary)
- * - Physical with Atk 6 / cracked sides → good (trash primary)
- * - Balanced Claydol, Spe 31 / Atk 30 / SpD 7 → cracked (not god — needs
- *   well-rounded genes, not two random highs)
- * - Physical Annihilape, Atk 29 / SpD 31 / Def 7 / median 24 → god (breadth OR)
- * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
- * - Flat mid teens → good; median <9 with nothing ≥13 → big oof
+ * Normalized 0–100 catch score for an archetype weight table.
+ * Dump-weight stats (≤2) use max(iv, 15) so low rolls don't drag; hot dump
+ * rolls still count above the floor.
  */
-function roleIvCatchTier(
+function weightedCatchScore(
   ivs: StatSpread,
-  keyStats: SpeciesKeyStatsInput,
-): CatchTier {
-  const balanced = keyStats.primary.length === 0;
-  // Role counting uses all six when Balanced; hard-gates stay empty then.
-  const primaryKeys = balanced ? [...STAT_KEYS] : keyStats.primary;
-  const secondaryKeys = balanced ? [] : (keyStats.secondary ?? []);
-  const primarySet = new Set<StatKey>(primaryKeys);
-  const hardGateSet = balanced
-    ? new Set<StatKey>()
-    : new Set<StatKey>(keyStats.primary);
-  const roleKeys = new Set<StatKey>([
-    ...primaryKeys,
-    ...secondaryKeys.filter((k) => !primarySet.has(k)),
-  ]);
+  weights: CatchWeightTable,
+): number {
+  let weighted = 0;
+  let totalWeight = 0;
+  for (const key of STAT_KEYS) {
+    const weight = weights[key];
+    const iv = ivs[key] ?? 0;
+    const effective =
+      weight <= DUMP_WEIGHT_MAX ? Math.max(iv, DUMP_FLOOR_IV) : iv;
+    weighted += weight * ivQuality(effective);
+    totalWeight += weight;
+  }
+  if (totalWeight <= 0) return 0;
+  return (100 * weighted) / totalWeight;
+}
 
-  let roleGod = 0;
-  let roleGodOr = 0;
-  let roleCracked = 0;
-  let roleCrackedOr = 0;
-  let roleGreat = 0;
-  let roleBreadthNear = 0;
-  let breadthHot = 0;
-  let nearAnywhere = 0;
-  let hardDump = 0;
+function tierFromCatchScore(score: number): CatchTier {
+  if (score >= CATCH_SCORE_GOD) return "god";
+  if (score >= CATCH_SCORE_CRACKED) return "cracked";
+  if (score >= CATCH_SCORE_GREAT) return "great";
+  if (score >= CATCH_SCORE_GOOD) return "good";
+  if (score >= CATCH_SCORE_OOF) return "oof";
+  return "shit";
+}
+
+/**
+ * Archetype-weighted catch tier.
+ *
+ * Soft caps:
+ * 1. Critical trash — any weight ≥4 axis with IV ≤10 → at most Good
+ *    (score treated as below the Great threshold).
+ * 2. Big oof override — every critical axis ≤10 and no IV ≥15 → shit.
+ * 3. Perfect floor — any IV 31 → at least Oof (lone Perfect Spe isn't Big oof).
+ * 4. Glass God gate — glass archetypes need every critical axis ≥25 for God
+ *    (else Cracked max). Middling Atk + hot Spe / dump SpA can't wear God.
+ *
+ * Feel-checks (approx):
+ * - Taco Wobbuffet Bulky `31/31/25/30/24/4` → ~83 God (SpD 24 vs 25 is Δ~0.8)
+ * - Skarmory wall `31 HP / 31 Def / 28 SpD` + dump offenses → ~83 God
+ * - Starmie glass SpA 29 / Spe 28 → God
+ * - Soft SpD 22 wall → ~71 Cracked
+ * - Glass Sneasel Atk 23 / Spe 26 / SpA 30 → Cracked (not God)
+ * - Dump Def Skarmory + hot offenses → Good (trash critical)
+ * - Spe-dump Machamp (Atk 31, Spe 4) → Good
+ * - Flat mid teens → Good; all critical dumps + nothing ≥15 → Big oof
+ * - Dead wall + Perfect Spe → Oof (not Big oof)
+ */
+function weightedIvCatchTier(
+  ivs: StatSpread,
+  archetype: CatchArchetype,
+): CatchTier {
+  const weights = CATCH_ARCHETYPE_WEIGHTS[archetype];
+  const score = weightedCatchScore(ivs, weights);
+
+  const criticalKeys = STAT_KEYS.filter((k) => weights[k] >= CRITICAL_WEIGHT);
   let maxIv = 0;
-  let maxRoleIv = 0;
-  let minIv = 31;
+  let hasPerfect = false;
+  let criticalTrash = false;
+  let allCriticalTrash = criticalKeys.length > 0;
+  let glassGodReady = true;
 
   for (const key of STAT_KEYS) {
-    const value = ivs[key] ?? 0;
-    const band = classifyIv(value);
-    if (value > maxIv) maxIv = value;
-    if (value < minIv) minIv = value;
-
-    if (value >= GOD_BREADTH_OTHER_IV) breadthHot += 1;
-    if (value >= GOD_LUCK_NEAR_IV) nearAnywhere += 1;
-
-    if (roleKeys.has(key)) {
-      if (value > maxRoleIv) maxRoleIv = value;
-      if (value >= GOD_ROLE_IV) roleGod += 1;
-      if (value >= GOD_OR_ROLE_IV) roleGodOr += 1;
-      if (value >= CRACKED_ROLE_IV) roleCracked += 1;
-      if (value >= CRACKED_OR_ROLE_IV) roleCrackedOr += 1;
-      if (value >= GREAT_ROLE_IV) roleGreat += 1;
-      if (value >= GOD_BREADTH_ROLE_IV) roleBreadthNear += 1;
-    }
-
-    if (hardGateSet.has(key) && band === "dump") {
-      hardDump += 1;
-    }
+    const iv = ivs[key] ?? 0;
+    if (iv > maxIv) maxIv = iv;
+    if (iv >= PERFECT_IV) hasPerfect = true;
+  }
+  for (const key of criticalKeys) {
+    const iv = ivs[key] ?? 0;
+    if (iv <= CRITICAL_TRASH_MAX) criticalTrash = true;
+    else allCriticalTrash = false;
+    if (iv < GLASS_GOD_CRITICAL_MIN) glassGodReady = false;
   }
 
-  const overall = ivMedian(ivs);
-  const isBigOof = overall < BIG_OOF_MEAN && maxIv < BIG_OOF_MAX_IV;
-  const godBreadth =
-    overall >= GOD_BREADTH_MEAN &&
-    roleBreadthNear >= 1 &&
-    breadthHot >= 2;
-  const godLuck =
-    overall >= GOD_LUCK_MEAN && nearAnywhere >= GOD_LUCK_NEAR_HITS;
-  const primaryTrash = primaryRoleIsTrash(
-    ivs,
-    balanced ? [] : keyStats.primary,
-    balanced,
+  // Big oof wins over the Good soft-cap when every critical axis is trash.
+  if (allCriticalTrash && maxIv < BIG_OOF_HOT_IV) {
+    return "shit";
+  }
+
+  let tier = tierFromCatchScore(score);
+  // Critical trash → Good max (clamp anything that would be Great+).
+  if (criticalTrash && score >= CATCH_SCORE_GREAT) {
+    tier = "good";
+  }
+  // Glass: God requires the actual glass axes, not Spe + dump heat alone.
+  if (
+    tier === "god" &&
+    isGlassCatchArchetype(archetype) &&
+    !glassGodReady
+  ) {
+    tier = "cracked";
+  }
+  // A true perfect anywhere is still a lottery ticket — never Big oof.
+  if (hasPerfect && catchTierRank(tier) < catchTierRank("oof")) {
+    tier = "oof";
+  }
+  return tier;
+}
+
+function isGlassCatchArchetype(archetype: CatchArchetype): boolean {
+  return (
+    archetype === "Glass (physical)" ||
+    archetype === "Glass (special)" ||
+    archetype === "Glass (mixed)"
   );
-
-  // Primary dump OR trash primary role IV → Good max.
-  // Consolation uses role-only max — off-role luck cannot promote a dumped spread.
-  if (hardDump > 0 || primaryTrash) {
-    if (isBigOof) return "shit";
-    if (overall >= GOOD_MEAN || maxRoleIv >= GREAT_ROLE_IV) return "good";
-    return "oof";
-  }
-
-  // --- God -----------------------------------------------------------------
-  // Balanced: overall excellence only (no "any two highs" specialist shortcut).
-  if (balanced) {
-    if (
-      minIv >= BALANCED_GOD_MIN_IV &&
-      overall >= BALANCED_GOD_MEDIAN &&
-      nearAnywhere >= BALANCED_GOD_NEAR_HITS
-    ) {
-      return "god";
-    }
-  } else if (
-    primaryRoleAllows(ivs, primaryKeys, GOD_PRIMARY_MIN, balanced) &&
-    ((overall >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
-      (overall >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS) ||
-      godBreadth ||
-      godLuck)
-  ) {
-    return "god";
-  }
-
-  // --- Cracked (primary || OR) ---------------------------------------------
-  if (
-    primaryRoleAllows(ivs, primaryKeys, CRACKED_PRIMARY_MIN, balanced) &&
-    ((overall >= CRACKED_MEAN && roleCracked >= 1) ||
-      (overall >= CRACKED_OR_MEAN && roleCrackedOr >= 1))
-  ) {
-    return "cracked";
-  }
-
-  // --- Great (single path) -------------------------------------------------
-  if (
-    primaryRoleAllows(ivs, primaryKeys, GREAT_PRIMARY_MIN, balanced) &&
-    overall >= GREAT_MEAN &&
-    roleGreat >= 1
-  ) {
-    return "great";
-  }
-
-  // --- Good ----------------------------------------------------------------
-  if (overall >= GOOD_MEAN) {
-    return "good";
-  }
-
-  // --- Big oof / Oof -------------------------------------------------------
-  if (isBigOof) return "shit";
-  return "oof";
 }
 
 /**
@@ -612,13 +549,12 @@ function roleIvCatchTier(
  *
  * Takes a present spread on purpose: a missing spread is "not graded", not a
  * bad grade, and the tier is public season-wide. Callers go through
- * `catchTierFor`, which owns that null and supplies role key stats.
+ * `catchTierFor`, which owns that null and supplies the catch archetype.
  */
 export function ivCatchTier(
   ivs: StatSpread,
   options?: IvCatchTierOptions,
 ): CatchTier {
-  const keyStats = options?.keyStats;
-  if (keyStats == null) return legacyIvCatchTier(ivs);
-  return roleIvCatchTier(ivs, keyStats);
+  const archetype = options?.archetype ?? "Balanced";
+  return weightedIvCatchTier(ivs, archetype);
 }

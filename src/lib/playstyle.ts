@@ -5,7 +5,7 @@ import {
   type StatKey,
   type StatSpread,
 } from "@/lib/stats";
-import { classifyIv } from "@/lib/iv-quality";
+import { classifyIv, type CatchArchetype } from "@/lib/iv-quality";
 
 /** Closed vocabulary — beginner-friendly, not Smogon jargon. */
 export const PLAYSTYLE_TAGS = [
@@ -99,9 +99,9 @@ export function keysForPlaystyleTag(
 }
 
 export type SpeciesKeyStats = {
-  /** Primary playstyle axes — dump here blocks god/cracked. */
+  /** Primary playstyle axes — historically hard-gated catch tiers. */
   primary: StatKey[];
-  /** Secondary axes — help the score, but dumps do not veto top tiers. */
+  /** Secondary axes — help scoring context without vetoing top tiers. */
   secondary: StatKey[];
 };
 
@@ -153,8 +153,9 @@ function ensureRoleBreadth(
  * - `primary` empty + `secondary` empty: Balanced — every IV equal.
  * - `null`: unknown species (no base stats) — caller keeps a legacy fallback.
  *
- * Only the **primary** tag’s stats are hard gates. Special glass uses SpA + Spe
- * (not Attack); physical glass uses Atk + Spe.
+ * Prefer {@link catchArchetypeForSpecies} for catch-tier scoring (#356).
+ * Only the **primary** tag’s stats are hard gates when using key lists.
+ * Special glass uses SpA + Spe (not Attack); physical glass uses Atk + Spe.
  */
 export function keyStatsForSpecies(
   pokedexId: number | null | undefined,
@@ -176,6 +177,36 @@ export function keyStatsForSpecies(
     }
   }
   return ensureRoleBreadth(primaryKeys, secondaryKeys, base);
+}
+
+/**
+ * Catch-scoring archetype for a species (#356).
+ *
+ * Uses {@link recommendPlaystyle} primary tag, except Glass cannon (primary or
+ * secondary) takes the glass weight table — phys/spec/mixed via
+ * {@link glassCannonKeys}. Returns null when base stats are unknown.
+ */
+export function catchArchetypeForSpecies(
+  pokedexId: number | null | undefined,
+): CatchArchetype | null {
+  const base = baseStatsForSpecies(pokedexId);
+  if (!base) return null;
+
+  const { primary, secondary } = pickTags(scoreShape(base));
+  const useGlass =
+    primary === "Glass cannon" || secondary === "Glass cannon";
+
+  if (useGlass) {
+    const keys = glassCannonKeys(base);
+    const hasAtk = keys.includes("atk");
+    const hasSpa = keys.includes("spa");
+    if (hasAtk && hasSpa) return "Glass (mixed)";
+    if (hasSpa) return "Glass (special)";
+    return "Glass (physical)";
+  }
+
+  // useGlass false ⇒ primary is not Glass cannon; remaining tags map 1:1.
+  return primary;
 }
 
 const TIPS: Record<PlaystyleTag, string> = {
