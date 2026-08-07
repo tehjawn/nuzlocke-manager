@@ -9,6 +9,7 @@ import { ScrollFadeRail } from "@/components/ScrollFadeRail";
 import { SeasonTabs } from "@/components/SeasonTabs";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import { GetStartedSeasonCta } from "@/components/GetStartedSeasonCta";
+import { SeasonJukebox } from "@/features/jukebox";
 import type { ChallengeStatus } from "@/lib/challenge-types";
 import {
   seasonStatusChipClass,
@@ -53,69 +54,75 @@ export function ChallengeShell({
   children,
 }: ChallengeShellProps) {
   // Shared between the mobile Info panel and the desktop sticky rail.
+  // Jukebox sits under the season headline (#341) in both surfaces.
   const generalInfo = (
-    <Frame title="General info">
-      <dl className="space-y-2.5 text-sm">
-        <div>
-          <dt className="text-xs font-semibold tracking-tight text-muted">
-            Season Status
-          </dt>
-          <dd className="mt-1">
-            <span
-              className={`inline-block rounded-lg px-2 py-0.5 text-xs font-semibold tracking-tight ${seasonStatusChipClass(status)}`}
-            >
-              {seasonStatusLabel(status)}
-            </span>
-          </dd>
-        </div>
-        <div>
-          <dt className="sr-only">Season title</dt>
-          <dd>
-            <h1 className="text-lg font-bold leading-snug tracking-tight">
-              {name}{" "}
-              <span className="font-semibold text-muted">(Season {year})</span>
-            </h1>
-          </dd>
-        </div>
-        {game ? (
+    <div className="space-y-4">
+      <Frame title="General info">
+        <dl className="space-y-2.5 text-sm">
           <div>
             <dt className="text-xs font-semibold tracking-tight text-muted">
-              Game
+              Season Status
             </dt>
-            <dd className="mt-0.5 text-sm font-medium">{game}</dd>
+            <dd className="mt-1">
+              <span
+                className={`inline-block rounded-lg px-2 py-0.5 text-xs font-semibold tracking-tight ${seasonStatusChipClass(status)}`}
+              >
+                {seasonStatusLabel(status)}
+              </span>
+            </dd>
           </div>
-        ) : null}
-        {/* Guest-only pitch — signed-in players already joined. */}
-        {!signedIn ? (
           <div>
-            <dt className="sr-only">Description</dt>
-            <dd className="text-sm leading-relaxed text-muted">{description}</dd>
+            <dt className="sr-only">Season title</dt>
+            <dd>
+              <h1 className="text-lg font-bold leading-snug tracking-tight">
+                {name}{" "}
+                <span className="font-semibold text-muted">(Season {year})</span>
+              </h1>
+            </dd>
           </div>
+          {game ? (
+            <div>
+              <dt className="text-xs font-semibold tracking-tight text-muted">
+                Game
+              </dt>
+              <dd className="mt-0.5 text-sm font-medium">{game}</dd>
+            </div>
+          ) : null}
+          {/* Guest-only pitch — signed-in players already joined. */}
+          {!signedIn ? (
+            <div>
+              <dt className="sr-only">Description</dt>
+              <dd className="text-sm leading-relaxed text-muted">
+                {description}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+        {firstRun && myTrainerId ? (
+          <p className="mt-3 text-sm leading-relaxed text-muted">
+            Start here: finish{" "}
+            <Link
+              href={`/challenges/${slug}/me`}
+              className="font-semibold text-accent-deep underline-offset-2 hover:underline"
+            >
+              creating your trainer
+            </Link>
+            , then follow Get Started through ROM setup and save import.
+          </p>
         ) : null}
-      </dl>
-      {firstRun && myTrainerId ? (
-        <p className="mt-3 text-sm leading-relaxed text-muted">
-          Start here: finish{" "}
+        <GetStartedSeasonCta slug={slug} />
+        {!signedIn ? (
           <Link
-            href={`/challenges/${slug}/me`}
-            className="font-semibold text-accent-deep underline-offset-2 hover:underline"
+            href="/login"
+            className={`${DISCORD_BTN_CLASS} mt-3 px-3.5 py-2 text-sm`}
           >
-            creating your trainer
+            <DiscordIcon className="h-4 w-4" />
+            Discord login
           </Link>
-          , then follow Get Started through ROM setup and save import.
-        </p>
-      ) : null}
-      <GetStartedSeasonCta slug={slug} />
-      {!signedIn ? (
-        <Link
-          href="/login"
-          className={`${DISCORD_BTN_CLASS} mt-3 px-3.5 py-2 text-sm`}
-        >
-          <DiscordIcon className="h-4 w-4" />
-          Discord login
-        </Link>
-      ) : null}
-    </Frame>
+        ) : null}
+      </Frame>
+      <SeasonJukebox />
+    </div>
   );
 
   return (
