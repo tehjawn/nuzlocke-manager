@@ -18,6 +18,7 @@ import {
   fetchChallengeSlotRow,
   fetchChallengeToolsSummaryRow,
   fetchChallengeTournamentRow,
+  fetchChallengeTrainerRow,
   fetchDefaultSearchBrief,
   fetchHeadlineActivitiesPublic,
   fetchHomeCarouselRow,
@@ -545,16 +546,64 @@ export async function getHomeCarouselChallenge(
   return getChallenge(slug);
 }
 
+/**
+ * One trainer's board — Main / Reserves / R.I.P. with full columns.
+ * Encountered is deferred (count via slotCounts); survival tallies cover the
+ * living + memorial ids on the wire.
+ */
 export async function getTrainer(
   slug: string,
   trainerId: string,
   viewerUserId?: string | null,
 ): Promise<{ challenge: Challenge; trainer: TrainerProfile } | null> {
-  const challenge = await getChallenge(slug, viewerUserId);
-  if (!challenge) return null;
-  const trainer = challenge.trainers.find((t) => t.id === trainerId);
+  if (isDatabaseConfigured()) {
+    try {
+      const row = await fetchChallengeTrainerRow(slug, trainerId);
+      if (row) {
+        const trainerRow = row.trainers[0];
+        if (!trainerRow || trainerRow.id !== trainerId) return null;
+        const slotCountRows =
+          "slotCounts" in row && Array.isArray(row.slotCounts)
+            ? row.slotCounts
+            : [];
+        const challenge = await withSurvivalPollTallies(
+          mapDbChallenge({ ...row, activities: [] }, viewerUserId),
+          viewerUserId,
+        );
+        const trainer = challenge.trainers.find((t) => t.id === trainerId);
+        if (!trainer) return null;
+        const counts = emptySlotCounts();
+        for (const entry of slotCountRows) {
+          const n = entry._count._all;
+          if (entry.slot === "MAIN") counts.main = n;
+          else if (entry.slot === "RESERVE") counts.reserve = n;
+          else if (entry.slot === "GRAVEYARD") counts.graveyard = n;
+          else if (entry.slot === "ENCOUNTERED") counts.encountered = n;
+        }
+        return {
+          challenge: {
+            ...challenge,
+            trainers: [{ ...trainer, slotCounts: counts }],
+          },
+          trainer: { ...trainer, slotCounts: counts },
+        };
+      }
+    } catch {
+      return null;
+    }
+  }
+  const seed = CHALLENGES.find((c) => c.slug === slug);
+  if (!seed) return null;
+  const full = seedAsChallenge(seed);
+  const trainer = full.trainers.find((t) => t.id === trainerId);
   if (!trainer) return null;
-  return { challenge, trainer };
+  const slotCounts = slotCountsFromPokemon(trainer.pokemon);
+  const boardPokemon = trainer.pokemon.filter((p) => p.slot !== "ENCOUNTERED");
+  const lean = { ...trainer, pokemon: boardPokemon, slotCounts };
+  return {
+    challenge: { ...full, trainers: [lean], activities: [] },
+    trainer: lean,
+  };
 }
 
 export type SearchSeasonBrief = {

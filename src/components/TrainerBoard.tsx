@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Fragment, useState, useTransition, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
   gmResetTrainerBoardAction,
@@ -13,6 +13,8 @@ import {
   updateTrainerBoardAction,
   upsertPokemonAction,
 } from "@/app/actions/challenge";
+import { fetchToolsPokemonEntryAction } from "@/app/actions/tools-pokemon";
+import { fetchTrainerEncounteredAction } from "@/app/actions/trainer-board";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BadgeCaseEditor } from "@/components/BadgeCaseEditor";
@@ -34,6 +36,7 @@ import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { ReviveToken } from "@/components/ReviveToken";
 import { SaveImportModal } from "@/components/SaveImportModal";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
+import { Skeleton } from "@/components/Skeleton";
 import { StatusLine } from "@/components/StatusLine";
 import { TeamExportModal } from "@/components/TeamExportModal";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
@@ -658,11 +661,21 @@ export function TrainerBoard({
   const [saveImportOpen, setSaveImportOpen] = useState(false);
   const [boardHistoryOpen, setBoardHistoryOpen] = useState(false);
   const [teamExportOpen, setTeamExportOpen] = useState(false);
+  /** null = not loaded yet (SSR omits Encountered); [] = loaded empty. */
+  const [encounteredPokemon, setEncounteredPokemon] = useState<
+    PokemonEntry[] | null
+  >(null);
+  const [encounteredLoading, setEncounteredLoading] = useState(false);
+  const [encounteredError, setEncounteredError] = useState<string | null>(null);
+  const [encounteredOpen, setEncounteredOpen] = useState(false);
   const searchParams = useSearchParams();
   const searchPokemonId = searchParams.get("pokemon");
-  const [openedSearchPokemonId, setOpenedSearchPokemonId] = useState<
-    string | null
-  >(null);
+  /** Search `?pokemon=` ids already opened this mount — ref avoids effect setState. */
+  const openedSearchPokemonIdRef = useRef<string | null>(null);
+  /** In-flight deep-link fetch for Encountered / off-board ids (#365). */
+  const [searchPokemonFetching, setSearchPokemonFetching] = useState(false);
+  const searchPokemonLoading =
+    Boolean(searchPokemonId) && searchPokemonFetching;
 
   // Jump Actions (#308): derive modal open from pending handoff so we don't
   // need setState-in-effect. Read-only boards leave the pending action alone
@@ -728,6 +741,10 @@ export function TrainerBoard({
       setEarnedBadgeKeys(trainer.earnedBadgeKeys);
       setBoardOverride(null);
       setRunEndedOverride(null);
+      // Board writes revalidate `:board` — drop deferred Encountered so a
+      // reopen (or still-open section) refetches after import / edits.
+      setEncounteredPokemon(null);
+      setEncounteredError(null);
     }
   }
 
@@ -766,7 +783,56 @@ export function TrainerBoard({
   const main = pokemonInSlot(boardTrainer, "MAIN");
   const reserves = pokemonInSlot(boardTrainer, "RESERVE");
   const graveyard = pokemonInSlot(boardTrainer, "GRAVEYARD");
-  const encountered = pokemonInSlot(boardTrainer, "ENCOUNTERED");
+  // SSR omits Encountered; prefer hydrated rows, else any still on the trainer
+  // prop (seed / optimistic wipe leftovers).
+  const encountered =
+    encounteredPokemon ?? pokemonInSlot(boardTrainer, "ENCOUNTERED");
+  const encounteredCount =
+    encounteredPokemon?.length ??
+    trainer.slotCounts?.encountered ??
+    encountered.length;
+
+  // Deferred Encountered hydrate — open (or stay open across revalidate).
+  // Await before setState so we don't trip react-hooks/set-state-in-effect
+  // (same pattern as ToolsView: state updates only after async work).
+  useEffect(() => {
+    if (!encounteredOpen || encounteredPokemon != null) return;
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setEncounteredLoading(true);
+      setEncounteredError(null);
+      const result = await fetchTrainerEncounteredAction({
+        slug: challengeSlug,
+        trainerId: trainer.id,
+      });
+      if (cancelled) return;
+      if (result.ok) {
+        setEncounteredPokemon(result.pokemon);
+      } else {
+        setEncounteredError(result.error);
+      }
+      setEncounteredLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    encounteredOpen,
+    encounteredPokemon,
+    challengeSlug,
+    trainer.id,
+  ]);
+
+  function onEncounteredOpenChange(open: boolean) {
+    setEncounteredOpen(open);
+    if (open && encounteredPokemon == null) {
+      setEncounteredLoading(true);
+      setEncounteredError(null);
+    }
+  }
+
   const wiping =
     wipeSave.status.kind === "saving" || resetSave.status.kind === "saving";
   const seasonLinkTiles = [
@@ -1019,6 +1085,8 @@ export function TrainerBoard({
     setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
+    setEncounteredPokemon([]);
+    setEncounteredError(null);
 
     wipeSave.markSaving("Starting new run…");
     startTransition(async () => {
@@ -1075,6 +1143,8 @@ export function TrainerBoard({
     setPokemonInspect(null);
     setDetailsPokemon(null);
     setSaveImportOpen(false);
+    setEncounteredPokemon([]);
+    setEncounteredError(null);
 
     resetSave.markSaving("Resetting board…");
     startTransition(async () => {
@@ -1114,8 +1184,12 @@ export function TrainerBoard({
         return;
       }
     } else if (partyIndex == null) {
+      const pool =
+        slot === "ENCOUNTERED" && encounteredPokemon
+          ? [...boardPokemon, ...encounteredPokemon]
+          : boardPokemon;
       const used = new Set(
-        boardPokemon.filter((p) => p.slot === slot).map((p) => p.partyIndex),
+        pool.filter((p) => p.slot === slot).map((p) => p.partyIndex),
       );
       partyIndex = 0;
       while (used.has(partyIndex) && partyIndex < 1000) partyIndex += 1;
@@ -1140,21 +1214,76 @@ export function TrainerBoard({
   }
 
   // Search deep-link: /trainers/:id?pokemon=:pokemonId opens that mon.
-  if (!searchPokemonId && openedSearchPokemonId) {
-    setOpenedSearchPokemonId(null);
-  } else if (searchPokemonId && searchPokemonId !== openedSearchPokemonId) {
-    const mon = boardPokemon.find((p) => p.id === searchPokemonId) ?? null;
-    setOpenedSearchPokemonId(searchPokemonId);
-    if (mon) {
+  useEffect(() => {
+    if (!searchPokemonId) {
+      openedSearchPokemonIdRef.current = null;
+      return;
+    }
+    if (openedSearchPokemonIdRef.current === searchPokemonId) return;
+
+    const mon =
+      boardPokemon.find((p) => p.id === searchPokemonId) ??
+      encounteredPokemon?.find((p) => p.id === searchPokemonId) ??
+      null;
+
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+
+      if (mon) {
+        openedSearchPokemonIdRef.current = searchPokemonId;
+        setSearchPokemonFetching(false);
+        if (canEdit) {
+          setPokemonInspect({
+            mode: "view",
+            form: pokemonEntryToForm(mon),
+          });
+        } else {
+          setDetailsPokemon(mon);
+        }
+        return;
+      }
+
+      // Encountered (and rare off-board ids) are not in the SSR party — fetch one.
+      setSearchPokemonFetching(true);
+      const result = await fetchToolsPokemonEntryAction({
+        slug: challengeSlug,
+        pokemonId: searchPokemonId,
+      });
+      if (cancelled) return;
+      setSearchPokemonFetching(false);
+      // User dismissed the loading shell — don't reopen.
+      if (openedSearchPokemonIdRef.current === searchPokemonId) return;
+      if (!result.ok) return;
+      openedSearchPokemonIdRef.current = searchPokemonId;
       if (canEdit) {
         setPokemonInspect({
           mode: "view",
-          form: pokemonEntryToForm(mon),
+          form: pokemonEntryToForm(result.pokemon),
         });
       } else {
-        setDetailsPokemon(mon);
+        setDetailsPokemon(result.pokemon);
       }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    searchPokemonId,
+    boardPokemon,
+    encounteredPokemon,
+    canEdit,
+    challengeSlug,
+  ]);
+
+  function dismissSearchPokemon() {
+    if (searchPokemonId) {
+      openedSearchPokemonIdRef.current = searchPokemonId;
     }
+    setSearchPokemonFetching(false);
+    setPokemonInspect(null);
+    setDetailsPokemon(null);
   }
 
   const mobileSaveStatus =
@@ -1720,11 +1849,27 @@ export function TrainerBoard({
           )}
 
           <Frame
-            title={frameCountTitle("Encountered", encountered.length)}
+            title={frameCountTitle("Encountered", encounteredCount)}
             collapsible
-            defaultOpen={false}
+            open={encounteredOpen}
+            onOpenChange={onEncounteredOpenChange}
           >
-            {canEdit ? (
+            {encounteredLoading && encounteredPokemon == null ? (
+              <div
+                className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8"
+                aria-busy="true"
+                aria-label="Loading encounters"
+              >
+                {Array.from({ length: 8 }, (_, i) => (
+                  <Skeleton
+                    key={i}
+                    className="min-h-24 rounded-lg border border-frame/40 bg-surface"
+                  />
+                ))}
+              </div>
+            ) : encounteredError && encounteredPokemon == null ? (
+              <p className="text-sm text-muted">{encounteredError}</p>
+            ) : encounteredPokemon == null ? null : canEdit ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted">
@@ -1834,23 +1979,34 @@ export function TrainerBoard({
         </div>
       </Frame>
 
-      {canEdit && pokemonInspect?.mode === "view" && (
-        <PokemonDetailsModal
-          open
-          slug={challengeSlug}
-          pokemon={pokemonFormToEntry(pokemonInspect.form)}
-          onClose={() => setPokemonInspect(null)}
-          onEdit={() => setPokemonInspect({ ...pokemonInspect, mode: "edit" })}
-          survivalMarketsEnabled={survivalMarketsEnabled}
-          viewerUserId={viewerUserId}
-          trainer={{
-            id: trainer.id,
-            handle: trainer.handle,
-            avatarSpriteKey: trainer.avatarSpriteKey,
-            avatarBackgroundKey: trainer.avatarBackgroundKey,
-          }}
-        />
-      )}
+      {canEdit &&
+        (pokemonInspect?.mode === "view" || searchPokemonLoading) && (
+          <PokemonDetailsModal
+            open
+            loading={searchPokemonLoading && pokemonInspect == null}
+            slug={challengeSlug}
+            pokemon={
+              pokemonInspect?.mode === "view"
+                ? pokemonFormToEntry(pokemonInspect.form)
+                : null
+            }
+            onClose={dismissSearchPokemon}
+            onEdit={
+              pokemonInspect?.mode === "view"
+                ? () =>
+                    setPokemonInspect({ ...pokemonInspect, mode: "edit" })
+                : undefined
+            }
+            survivalMarketsEnabled={survivalMarketsEnabled}
+            viewerUserId={viewerUserId}
+            trainer={{
+              id: trainer.id,
+              handle: trainer.handle,
+              avatarSpriteKey: trainer.avatarSpriteKey,
+              avatarBackgroundKey: trainer.avatarBackgroundKey,
+            }}
+          />
+        )}
 
       {canEdit && pokemonInspect?.mode === "edit" && (
         <PokemonFormModal
@@ -2043,7 +2199,8 @@ export function TrainerBoard({
 
       {!canEdit && (
         <PokemonDetailsModal
-          open={detailsPokemon != null}
+          open={detailsPokemon != null || searchPokemonLoading}
+          loading={searchPokemonLoading && detailsPokemon == null}
           slug={challengeSlug}
           pokemon={detailsPokemon}
           showCompetitiveDetails={showCompetitiveDetails}
@@ -2055,7 +2212,7 @@ export function TrainerBoard({
             avatarSpriteKey: trainer.avatarSpriteKey,
             avatarBackgroundKey: trainer.avatarBackgroundKey,
           }}
-          onClose={() => setDetailsPokemon(null)}
+          onClose={dismissSearchPokemon}
         />
       )}
 

@@ -8,6 +8,7 @@ import { ModeTabs } from "@/components/ModeTabs";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import { StatBlock } from "@/components/SeasonStatCards";
+import { Skeleton } from "@/components/Skeleton";
 import {
   SurvivalSentimentIcon,
   survivalSentimentFromPoll,
@@ -349,9 +350,28 @@ export function SurvivalMarketsPanel({
 
   if (markets === null) {
     return (
-      <div className="space-y-6">
+      <div
+        className="space-y-6"
+        aria-busy="true"
+        aria-label="Loading survival polls"
+      >
         <MarketsPageHeader pageHeader={pageHeader} ballotCta={ballotCta} />
-        <p className="text-sm text-muted">Loading survival polls…</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton
+              key={i}
+              className="h-20 rounded-lg border border-frame/40 bg-surface"
+            />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Skeleton
+              key={i}
+              className="h-14 w-full rounded-lg border border-frame/40 bg-surface"
+            />
+          ))}
+        </div>
       </div>
     );
   }

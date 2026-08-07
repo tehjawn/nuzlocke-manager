@@ -160,6 +160,30 @@ function boardTournamentInclude() {
   };
 }
 
+/** Live board slots on the trainer page — Encountered hydrates on expand (#365). */
+const TRAINER_BOARD_SLOTS: PokemonSlot[] = ["MAIN", "RESERVE", "GRAVEYARD"];
+
+/** One trainer board: Main / Reserves / R.I.P., no peers / activity / Encountered. */
+function boardSingleTrainerInclude(trainerId: string) {
+  return {
+    ...challengeMetaInclude,
+    trainers: {
+      where: { id: trainerId },
+      include: {
+        ...trainerRelationInclude,
+        pokemon: {
+          where: { slot: { in: TRAINER_BOARD_SLOTS } },
+          select: pokemonFullSelect,
+          orderBy: [
+            { slot: "asc" as const },
+            { partyIndex: "asc" as const },
+          ],
+        },
+      },
+    },
+  };
+}
+
 export async function fetchChallengeBoardRow(slug: string) {
   "use cache";
   cacheLife("minutes");
@@ -590,6 +614,54 @@ export async function fetchChallengeTournamentRow(slug: string) {
   return getPrisma().challenge.findUnique({
     where: { slug },
     include: boardTournamentInclude(),
+  });
+}
+
+/**
+ * Single trainer board — meta + Main / Reserves / R.I.P. Peers, activity, and
+ * Encountered stay out of the Flight payload; slot tallies keep footer counts
+ * honest. Encountered rows hydrate when the section opens (#365).
+ */
+export async function fetchChallengeTrainerRow(
+  slug: string,
+  trainerId: string,
+) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  const prisma = getPrisma();
+  const row = await prisma.challenge.findUnique({
+    where: { slug },
+    include: boardSingleTrainerInclude(trainerId),
+  });
+  if (!row?.trainers[0]) return row;
+  const slotCounts = await prisma.pokemonEntry.groupBy({
+    by: ["slot"],
+    where: { trainerId },
+    _count: { _all: true },
+  });
+  return { ...row, slotCounts };
+}
+
+/**
+ * Encountered buffer for one trainer — deferred from the trainer page SSR.
+ */
+export async function fetchTrainerEncounteredRow(
+  slug: string,
+  trainerId: string,
+) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(`season:${slug}`, `season:${slug}:board`);
+  if (!isDatabaseConfigured()) return null;
+  return getPrisma().pokemonEntry.findMany({
+    where: {
+      slot: "ENCOUNTERED",
+      trainer: { id: trainerId, challenge: { slug } },
+    },
+    select: pokemonFullSelect,
+    orderBy: { partyIndex: "asc" },
   });
 }
 

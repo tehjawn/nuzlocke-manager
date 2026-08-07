@@ -10,10 +10,9 @@ import {
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 import { canViewCompetitiveDetails } from "@/lib/gm-lens";
 import { readGmLensOn } from "@/lib/gm-lens.server";
+import { mapPokemonRow } from "@/lib/map-pokemon-row";
 import { getAccessForChallenge } from "@/lib/permissions";
 import { toPublicPokemonEntry } from "@/lib/pokemon-privacy";
-import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
-import { clampEvs, clampIvs, IvsSchema, parseStatSpread } from "@/lib/stats";
 import type {
   ToolsHydrateKind,
   ToolsHydratePayload,
@@ -36,70 +35,6 @@ function selectForKind(kind: ToolsHydrateKind) {
     default:
       return pokemonToolsGradeSelect;
   }
-}
-
-function mapPokemonRow(
-  p: {
-    id: string;
-    slot: PokemonEntry["slot"];
-    partyIndex: number;
-    nickname: string | null;
-    species: string;
-    pokedexId: number | null;
-    isShiny: boolean;
-    types: string[];
-    nature?: string | null;
-    level: number | null;
-    ability?: string | null;
-    catchRoute: string | null;
-    heldItem?: string | null;
-    moves?: string[];
-    ivs?: unknown;
-    evs?: unknown;
-    friendship?: number | null;
-    causeOfDeath: string | null;
-    diedOnRun: number | null;
-    runId: string | null;
-  },
-): PokemonEntry {
-  return {
-    id: p.id,
-    slot: p.slot,
-    partyIndex: p.partyIndex,
-    nickname: p.nickname,
-    species: p.species,
-    pokedexId: p.pokedexId,
-    isShiny: p.isShiny,
-    types: resolvePokemonTypes({
-      types: p.types,
-      pokedexId: p.pokedexId,
-      species: p.species,
-    }),
-    nature: p.nature ?? null,
-    level: p.level,
-    ability: p.ability ?? null,
-    catchRoute: p.catchRoute,
-    heldItem: p.heldItem ?? null,
-    moves: p.moves ?? [],
-    ivs: (() => {
-      if (p.ivs == null) return null;
-      const parsed = IvsSchema.safeParse(p.ivs);
-      return clampIvs(
-        parsed.success ? parsed.data : (parseStatSpread(p.ivs) ?? undefined),
-      );
-    })(),
-    evs: p.evs != null ? clampEvs(parseStatSpread(p.evs) ?? undefined) : null,
-    friendship:
-      typeof p.friendship === "number" &&
-      Number.isInteger(p.friendship) &&
-      p.friendship >= 0 &&
-      p.friendship <= 255
-        ? p.friendship
-        : null,
-    causeOfDeath: p.causeOfDeath,
-    diedOnRun: p.diedOnRun ?? null,
-    runId: p.runId ?? null,
-  };
 }
 
 /**
