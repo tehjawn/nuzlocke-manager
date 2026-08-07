@@ -7,12 +7,14 @@ import { Frame } from "@/components/Frame";
 import { SaveExportGuide } from "@/components/SaveExportGuide";
 import { WelcomeVideoPanel } from "@/components/WelcomeVideoPanel";
 import { CTA_PRIMARY } from "@/lib/cta";
+import { withOrderedPrefixCheck } from "@/lib/ordered-prefix-check";
 import {
   isSetupSectionChecked,
   nextSetupSection,
   readSetupCheckoffs,
   setSetupSectionChecked,
   setupCheckoffsStorageKey,
+  SETUP_SECTION_IDS,
   subscribeSetupCheckoffs,
   type SetupCheckoffs,
   type SetupSectionId,
@@ -66,7 +68,12 @@ function checkoffsWithImport(
     return checkoffs;
   }
   return {
-    checkedSectionIds: [...checkoffs.checkedSectionIds, "import"],
+    checkedSectionIds: withOrderedPrefixCheck(
+      SETUP_SECTION_IDS,
+      checkoffs.checkedSectionIds,
+      "import",
+      true,
+    ),
   };
 }
 
@@ -152,7 +159,8 @@ export function GetStartedView({
         <p className="mt-2 text-muted">
           Work through each step — check one off and the next opens. Download
           the ROM, load it in Afterplay, save the pre-loaded Game Mode settings,
-          export your save, then import it on your trainer board.
+          export your save, then import it on your trainer board. Checking a
+          later step marks earlier ones too.
         </p>
       </header>
 

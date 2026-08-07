@@ -3,6 +3,8 @@
  * localStorage only — keyed by season + trainer (or anon).
  */
 
+import { withOrderedPrefixCheck } from "@/lib/ordered-prefix-check";
+
 export const SETUP_CHECKOFFS_CHANGE_EVENT = "nuzlocke-setup-checkoffs-change";
 
 export const SETUP_SECTION_IDS = [
@@ -101,11 +103,13 @@ export function setSetupSectionChecked(
   checked: boolean,
 ): SetupCheckoffs {
   const current = readSetupCheckoffs(key);
-  const checkedSet = new Set(current.checkedSectionIds);
-  if (checked) checkedSet.add(sectionId);
-  else checkedSet.delete(sectionId);
   return writeSetupCheckoffs(key, {
-    checkedSectionIds: [...checkedSet],
+    checkedSectionIds: withOrderedPrefixCheck(
+      SETUP_SECTION_IDS,
+      current.checkedSectionIds,
+      sectionId,
+      checked,
+    ),
   });
 }
 
