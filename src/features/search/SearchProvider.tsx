@@ -17,6 +17,7 @@ import {
   createSearchIndex,
 } from "@/features/search/search-index";
 import type {
+  BoardJumpAction,
   SearchResult,
   SearchSeasonContext,
 } from "@/features/search/search-types";
@@ -45,6 +46,15 @@ type SearchContextValue = {
   aiDrawer: boolean;
   /** Set by AiDrawerFlagSync once the Suspense-deferred flag resolves (#313). */
   setAiDrawer: (enabled: boolean) => void;
+  /**
+   * Queue a board modal (import / export) and close Jump. Soft-nav to My
+   * Trainer first when the board isn't already showing (#308).
+   */
+  requestBoardAction: (action: BoardJumpAction) => void;
+  /** Pending Jump → board modal; TrainerBoard opens then clears. */
+  pendingBoardAction: BoardJumpAction | null;
+  /** Clear after the target board opens the matching modal. */
+  clearBoardAction: () => void;
 };
 
 const SearchContext = createContext<SearchContextValue | null>(null);
@@ -92,6 +102,9 @@ export function SearchProvider({
   const generationRef = useRef(0);
   const activeOwnerRef = useRef<number | null>(null);
   const routeFingerprintRef = useRef("");
+  /** Pending Jump → board modal; state (not ref) so Strict Mode remounts retry. */
+  const [pendingBoardAction, setPendingBoardAction] =
+    useState<BoardJumpAction | null>(null);
 
   // In-season pages overlay richer context (GM / my board); elsewhere fall back
   // to the active season so Search still finds trainers from the homepage.
@@ -99,9 +112,11 @@ export function SearchProvider({
 
   const results = useMemo(() => {
     const global = buildGlobalResults();
-    if (!season) return global;
-    return [...buildSeasonResults(season), ...global];
-  }, [season]);
+    const merged = season ? [...buildSeasonResults(season), ...global] : global;
+    // Hide Ask when the flag is off so Jump never advertises a dead path (#308).
+    if (aiDrawer) return merged;
+    return merged.filter((r) => r.action !== "open-ask");
+  }, [season, aiDrawer]);
 
   const index = useMemo(() => createSearchIndex(results), [results]);
 
@@ -141,6 +156,17 @@ export function SearchProvider({
     setOpenState(false);
     setAskQuery(trimmed.length ? trimmed : null);
     setAskOpen(true);
+  }, []);
+
+  const requestBoardAction = useCallback((action: BoardJumpAction) => {
+    setPendingBoardAction(action);
+    setOpenState(false);
+    setAskOpen(false);
+    setAskQuery(null);
+  }, []);
+
+  const clearBoardAction = useCallback(() => {
+    setPendingBoardAction(null);
   }, []);
 
   const setOpen = useCallback((next: boolean) => {
@@ -197,6 +223,9 @@ export function SearchProvider({
       closeAsk,
       aiDrawer,
       setAiDrawer,
+      requestBoardAction,
+      pendingBoardAction,
+      clearBoardAction,
     }),
     [
       open,
@@ -212,6 +241,9 @@ export function SearchProvider({
       openAsk,
       closeAsk,
       aiDrawer,
+      requestBoardAction,
+      pendingBoardAction,
+      clearBoardAction,
     ],
   );
 

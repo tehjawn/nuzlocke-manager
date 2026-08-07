@@ -14,6 +14,7 @@ import { pickRelatedSearchResults } from "@/features/search/search-related";
 import {
   buildSeasonMemorialResults,
   clearRecentSearches,
+  defaultActionSuggestions,
   defaultSuggestions,
   fuseDebounceMs,
   getRecentSearches,
@@ -35,10 +36,14 @@ import {
   useJumpAssist,
   type AssistState,
 } from "@/features/search/use-jump-assist";
+import { pushSnackbar } from "@/components/Snackbar";
+import { copyText } from "@/lib/copy-text";
 import { pokemonSpriteUrl } from "@/lib/sprites";
+import { trainerBoardPath } from "@/lib/team-export";
 import { getAppliedTheme, toggleTheme } from "@/lib/theme";
 
 const CATEGORY_ORDER: SearchCategory[] = [
+  "action",
   "navigate",
   "trainer",
   "pokemon",
@@ -46,7 +51,6 @@ const CATEGORY_ORDER: SearchCategory[] = [
   "badge",
   "rules",
   "guide",
-  "action",
 ];
 
 const CATEGORY_LABEL: Record<SearchCategory, string> = {
@@ -120,8 +124,16 @@ function ResultIcon({ item }: { item: SearchResult }) {
 }
 
 export function SearchPalette() {
-  const { open, setOpen, results, index, season, openAsk, aiDrawer } =
-    useSearch();
+  const {
+    open,
+    setOpen,
+    results,
+    index,
+    season,
+    openAsk,
+    aiDrawer,
+    requestBoardAction,
+  } = useSearch();
   const router = useRouter();
   /**
    * Captured on open rather than via `usePathname`: under cacheComponents that
@@ -191,6 +203,11 @@ export function SearchPalette() {
     [results, pathname],
   );
 
+  const actionSuggestions = useMemo(
+    () => defaultActionSuggestions(results),
+    [results],
+  );
+
   const trimmedQuery = query.trim();
   const fuseTrimmed = fuseQuery.trim();
   /** Live Ask-shaped / long queries drop fuzzy immediately. */
@@ -244,18 +261,71 @@ export function SearchPalette() {
       saveRecentSearch(item.title);
       recordSearchUse(item.id);
       setRecents(getRecentSearches());
-      close();
 
       if (item.action === "toggle-theme") {
+        close();
         toggleTheme(getAppliedTheme());
         return;
       }
 
+      if (item.action === "open-ask") {
+        // openAsk closes Jump itself.
+        openAsk();
+        return;
+      }
+
+      if (item.action === "copy-board-link") {
+        close();
+        const trainerId = season?.myTrainerId;
+        if (!season || !trainerId) return;
+        const path = trainerBoardPath(season.slug, trainerId);
+        const url =
+          typeof window !== "undefined"
+            ? `${window.location.origin}${path}`
+            : path;
+        void copyText(url).then((ok) => {
+          if (ok) {
+            pushSnackbar("Board link copied", "success", 2200);
+          } else {
+            pushSnackbar("Couldn’t copy board link", "error");
+          }
+        });
+        return;
+      }
+
+      if (item.action === "import-save" || item.action === "export-team") {
+        if (!season?.myTrainerId) {
+          close();
+          return;
+        }
+        const ownPath = trainerBoardPath(season.slug, season.myTrainerId);
+        const onTrainerBoard = /\/trainers\/[^/]+\/?$/.test(pathname);
+        const onOwnBoard = pathname === ownPath || pathname.startsWith(`${ownPath}/`);
+        // Prefer the board already under the player's eyes when they can edit
+        // it (own board, or GM lens on another trainer). Otherwise soft-nav to
+        // My Trainer so the modal has a home (#308).
+        const stayOnCurrent =
+          onOwnBoard || (onTrainerBoard && season.showGm);
+        requestBoardAction(item.action);
+        if (!stayOnCurrent) {
+          router.push(ownPath);
+        }
+        return;
+      }
+
+      close();
       if (item.href) {
         router.push(item.href);
       }
     },
-    [close, router],
+    [
+      close,
+      openAsk,
+      pathname,
+      requestBoardAction,
+      router,
+      season,
+    ],
   );
 
   const entityHints = useMemo(() => askEntityHints(season), [season]);
@@ -408,6 +478,21 @@ export function SearchPalette() {
 
           {!showingAssist && !hasLiveQuery && (
             <>
+              {actionSuggestions.length > 0 && (
+                <Command.Group
+                  heading="Actions"
+                  className="[&_[cmdk-group-heading]]:px-1.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted"
+                >
+                  {actionSuggestions.map((item) => (
+                    <SearchItem
+                      key={item.id}
+                      item={item}
+                      onSelect={() => runResult(item)}
+                    />
+                  ))}
+                </Command.Group>
+              )}
+
               {recents.length > 0 && (
                 <div className="mb-2 px-1.5">
                   <div className="mb-1.5 flex items-center justify-between">

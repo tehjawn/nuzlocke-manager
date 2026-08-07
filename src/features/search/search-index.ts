@@ -86,6 +86,14 @@ export function buildGlobalResults(): SearchResult[] {
       tags: ["login", "sign in", "discord", "auth"],
     },
     {
+      id: "action-open-ask",
+      title: "Open Gomi AI",
+      subtitle: "Ask about this season",
+      category: "action",
+      tags: ["ask", "gomi", "ai", "chat", "assistant", "help", "drawer"],
+      action: "open-ask",
+    },
+    {
       id: "action-theme",
       title: "Toggle theme",
       subtitle: "Switch light / dark",
@@ -94,6 +102,38 @@ export function buildGlobalResults(): SearchResult[] {
       action: "toggle-theme",
     },
   ];
+}
+
+/** Season-scoped verbs for Jump's Actions group (#308). */
+function buildSeasonActions(ctx: SearchSeasonContext): SearchResult[] {
+  if (!ctx.myTrainerId) return [];
+  const actions: SearchResult[] = [
+    {
+      id: `action-import-${ctx.slug}`,
+      title: "Import Save",
+      subtitle: "Upload a .sav to update your board",
+      category: "action",
+      tags: ["import", "save", "upload", "sav", "import save", "file"],
+      action: "import-save",
+    },
+    {
+      id: `action-export-${ctx.slug}`,
+      title: "Export team",
+      subtitle: "Copy living roster for notes / LLM",
+      category: "action",
+      tags: ["export", "team", "copy", "roster", "llm", "paste"],
+      action: "export-team",
+    },
+    {
+      id: `action-copy-link-${ctx.slug}`,
+      title: "Copy board link",
+      subtitle: "Share your trainer board URL",
+      category: "action",
+      tags: ["copy", "link", "share", "url", "board"],
+      action: "copy-board-link",
+    },
+  ];
+  return actions;
 }
 
 function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
@@ -117,8 +157,8 @@ function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
 export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
   const base = `/challenges/${ctx.slug}`;
 
-  // First-run funnel: only Setup + My Trainer (+ GM if somehow firstRun+GM —
-  // GMs are excluded from firstRun by the layout predicate).
+  // First-run funnel: only Setup + My Trainer (+ board actions). GMs are
+  // excluded from firstRun by the layout predicate.
   if (ctx.firstRun) {
     const navigate: SearchResult[] = [
       {
@@ -140,7 +180,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
         tags: ["me", "my board", "my trainer", "self"],
       });
     }
-    return navigate;
+    return [...navigate, ...buildSeasonActions(ctx)];
   }
 
   const tabs = seasonSectionTabs(ctx.slug, ctx.status, ctx.showGm);
@@ -421,6 +461,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
 
   return [
     ...navigate,
+    ...buildSeasonActions(ctx),
     ...trainers,
     ...pokemon,
     ...items,
@@ -679,6 +720,8 @@ export function defaultSuggestions(
   const push = (hit: SearchResult | undefined) => {
     if (!hit || picked.length >= 6) return;
     if (picked.some((p) => p.id === hit.id)) return;
+    // Actions have their own empty-state group (#308).
+    if (hit.category === "action") return;
     picked.push(hit);
   };
 
@@ -707,6 +750,44 @@ export function defaultSuggestions(
     if (r.category === "navigate") push(r);
   }
 
+  return picked;
+}
+
+/**
+ * Empty-state Actions block (#308) — curated verbs ahead of navigate suggestions.
+ * Order: Ask → Import → Export → Theme → Copy link (whichever are indexed).
+ */
+export function defaultActionSuggestions(
+  results: SearchResult[],
+): SearchResult[] {
+  const actions = results.filter((r) => r.category === "action");
+  if (!actions.length) return [];
+
+  const preferred = [
+    "action-open-ask",
+    "action-import-",
+    "action-export-",
+    "action-theme",
+    "action-copy-link-",
+  ];
+  const picked: SearchResult[] = [];
+  const push = (hit: SearchResult | undefined) => {
+    if (!hit || picked.length >= 5) return;
+    if (picked.some((p) => p.id === hit.id)) return;
+    picked.push(hit);
+  };
+
+  for (const key of preferred) {
+    push(
+      actions.find((r) =>
+        key.endsWith("-") ? r.id.startsWith(key) : r.id === key,
+      ),
+    );
+  }
+  for (const r of actions) {
+    if (picked.length >= 5) break;
+    push(r);
+  }
   return picked;
 }
 
