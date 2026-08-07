@@ -79,14 +79,15 @@ const BIG_OOF_MEAN = 9;
 const BIG_OOF_MAX_IV = 13;
 
 /**
- * Physical / Special / Mixed attackers: top tiers require usable offense IVs.
- * Trash offense (≤10) caps at Good even when side rolls look cracked.
+ * Non-balanced roles: top tiers require every **primary** role IV to be usable.
+ * Trash on a primary axis (≤10) caps at Good — a Def-9 physical wall cannot
+ * God off Atk/SpA/Spe luck, same as a SpA-6 special attacker.
  */
-const GOD_OFFENSE_MIN = 25;
-const CRACKED_OFFENSE_MIN = 22;
-const GREAT_OFFENSE_MIN = 20;
-/** Below this on a primary Atk/SpA axis counts like a dump for tier capping. */
-const OFFENSE_TRASH_MAX = 10;
+const GOD_PRIMARY_MIN = 25;
+const CRACKED_PRIMARY_MIN = 22;
+const GREAT_PRIMARY_MIN = 20;
+/** Below this on any primary role axis counts like a dump for tier capping. */
+const PRIMARY_TRASH_MAX = 10;
 
 /** Median of the six IVs — dump outliers don't sink the overall floor. */
 function ivMedian(ivs: StatSpread): number {
@@ -95,32 +96,28 @@ function ivMedian(ivs: StatSpread): number {
   return (values[2]! + values[3]!) / 2;
 }
 
-/** Primary Atk / SpA axes that attackers must actually roll well. */
-function primaryOffenseKeys(primaryKeys: StatKey[]): StatKey[] {
-  return primaryKeys.filter((k) => k === "atk" || k === "spa");
-}
-
 /**
- * True when there is no attacker-offense requirement, or every primary
- * offense axis clears `minIv`.
+ * True when the role is Balanced (no primary axes) or every primary key
+ * clears `minIv`.
  */
-function attackerOffenseAllows(
+function primaryRoleAllows(
   ivs: StatSpread,
   primaryKeys: StatKey[],
   minIv: number,
+  balanced: boolean,
 ): boolean {
-  const offense = primaryOffenseKeys(primaryKeys);
-  if (offense.length === 0) return true;
-  return offense.every((k) => (ivs[k] ?? 0) >= minIv);
+  if (balanced || primaryKeys.length === 0) return true;
+  return primaryKeys.every((k) => (ivs[k] ?? 0) >= minIv);
 }
 
-/** Trash primary Atk/SpA — same ceiling as a hard dump (Good max). */
-function attackerOffenseIsTrash(
+/** Trash primary role IV — same ceiling as a hard dump (Good max). */
+function primaryRoleIsTrash(
   ivs: StatSpread,
   primaryKeys: StatKey[],
+  balanced: boolean,
 ): boolean {
-  const offense = primaryOffenseKeys(primaryKeys);
-  return offense.some((k) => (ivs[k] ?? 0) <= OFFENSE_TRASH_MAX);
+  if (balanced || primaryKeys.length === 0) return false;
+  return primaryKeys.some((k) => (ivs[k] ?? 0) <= PRIMARY_TRASH_MAX);
 }
 
 /** @deprecated Kept for summarizeIvs legacy path without keyStats. */
@@ -367,11 +364,13 @@ export function summarizeBattleStats(
  * Randomizer catch quality for board-card chrome + details labels.
  *
  * Role-aware ladder when key stats are supplied (see {@link ivCatchTier}).
- * Overall floors use IV **median** (not mean):
- * - god: … + attackers need Atk/SpA ≥25
- * - cracked: … + attackers need Atk/SpA ≥22
- * - great: … + attackers need Atk/SpA ≥20
- * - good: median ≥13 (also the ceiling when attacker offense is ≤10)
+ * Overall floors use IV **median** (not mean). Non-balanced roles also need
+ * every **primary** role IV to clear a tier floor (walls need Def/HP, attackers
+ * need Atk/SpA, Fast needs Spe, etc.):
+ * - god: … + primary IVs ≥25
+ * - cracked: … + primary IVs ≥22
+ * - great: … + primary IVs ≥20
+ * - good: median ≥13 (also the ceiling when any primary IV is ≤10)
  * - oof: below good, not abysmal
  * - shit (Big oof): median <9 and no IV ≥13
  */
@@ -464,8 +463,9 @@ function legacyIvCatchTier(ivs: StatSpread): CatchTier {
  * - Fast Weedle, Spe 30 / Def 30 / SpA 28 → god (breadth OR)
  * - Physical Graveler, Atk 31 / Def 29 / dump Spe·SpA → god
  *   (bulky phys soft-key Def + median ≥20 primary path)
- * - Special Porygon, SpA 6 / cracked HP·Atk·Spe → good (trash offense cap)
- * - Physical with Atk 6 / cracked sides → good (trash offense cap)
+ * - Special Porygon, SpA 6 / cracked HP·Atk·Spe → good (trash primary)
+ * - Physical wall Skarmory, Def 9 / cracked Atk·SpA·Spe → good (trash primary)
+ * - Physical with Atk 6 / cracked sides → good (trash primary)
  * - Physical Annihilape, Atk 29 / SpD 31 / Def 7 / median 24 → god (breadth OR)
  * - Median ≥23 with three IVs ≥27 anywhere → god (raw-luck OR)
  * - Skarmory wall, 31 HP / 31 Def / dump Atk·SpA → god
@@ -525,10 +525,10 @@ function roleIvCatchTier(
     breadthHot >= 2;
   const godLuck =
     overall >= GOD_LUCK_MEAN && nearAnywhere >= GOD_LUCK_NEAR_HITS;
-  const offenseTrash = attackerOffenseIsTrash(ivs, primaryKeys);
+  const primaryTrash = primaryRoleIsTrash(ivs, primaryKeys, balanced);
 
-  // Primary dump OR trash attacker offense → Good max (side rolls are consolation).
-  if (hardDump > 0 || offenseTrash) {
+  // Primary dump OR trash primary role IV → Good max (side rolls are consolation).
+  if (hardDump > 0 || primaryTrash) {
     if (isBigOof) return "shit";
     if (overall >= GOOD_MEAN || maxIv >= GREAT_ROLE_IV) return "good";
     return "oof";
@@ -536,7 +536,7 @@ function roleIvCatchTier(
 
   // --- God (primary || role-OR || breadth-OR || luck-OR) -------------------
   if (
-    attackerOffenseAllows(ivs, primaryKeys, GOD_OFFENSE_MIN) &&
+    primaryRoleAllows(ivs, primaryKeys, GOD_PRIMARY_MIN, balanced) &&
     ((overall >= GOD_MEAN && roleGod >= GOD_ROLE_HITS) ||
       (overall >= GOD_OR_MEAN && roleGodOr >= GOD_ROLE_HITS) ||
       godBreadth ||
@@ -547,7 +547,7 @@ function roleIvCatchTier(
 
   // --- Cracked (primary || OR) ---------------------------------------------
   if (
-    attackerOffenseAllows(ivs, primaryKeys, CRACKED_OFFENSE_MIN) &&
+    primaryRoleAllows(ivs, primaryKeys, CRACKED_PRIMARY_MIN, balanced) &&
     ((overall >= CRACKED_MEAN && roleCracked >= 1) ||
       (overall >= CRACKED_OR_MEAN && roleCrackedOr >= 1))
   ) {
@@ -556,7 +556,7 @@ function roleIvCatchTier(
 
   // --- Great (single path) -------------------------------------------------
   if (
-    attackerOffenseAllows(ivs, primaryKeys, GREAT_OFFENSE_MIN) &&
+    primaryRoleAllows(ivs, primaryKeys, GREAT_PRIMARY_MIN, balanced) &&
     overall >= GREAT_MEAN &&
     roleGreat >= 1
   ) {
