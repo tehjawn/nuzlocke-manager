@@ -13,6 +13,11 @@ import type {
   SubmitFeedbackInput,
   UpdateFeedbackStatusInput,
 } from "@/lib/feedback-validation";
+import {
+  NOTIFICATION_TYPE_FEEDBACK,
+  NOTIFICATION_TYPE_FEEDBACK_NOTE,
+  NOTIFICATION_TYPE_FEEDBACK_STATUS,
+} from "@/lib/notification-types";
 import { getAccessForChallenge, requireGm, requireUserId } from "@/lib/permissions";
 
 const MAX_FEEDBACK_PER_HOUR = 5;
@@ -150,13 +155,17 @@ export async function createFeedbackSubmission(input: SubmitFeedbackInput) {
       },
       select: { id: true },
     });
-    if (challenge.memberships.length > 0) {
+    // Never notify yourself (GM submitting feedback into their own inbox).
+    const gmRecipients = challenge.memberships.filter(
+      ({ userId: gmUserId }) => gmUserId !== userId,
+    );
+    if (gmRecipients.length > 0) {
       await tx.notification.createMany({
-        data: challenge.memberships.map(({ userId: gmUserId }) => ({
+        data: gmRecipients.map(({ userId: gmUserId }) => ({
           actionKey: feedbackReviewActionKey(challenge.slug, submission.id),
           body: `${input.subject} · from ${requesterName}`,
           title: `New ${feedbackCategoryLabel(input.category).toLowerCase()}`,
-          type: "FEEDBACK",
+          type: NOTIFICATION_TYPE_FEEDBACK,
           userId: gmUserId,
         })),
       });
@@ -166,7 +175,7 @@ export async function createFeedbackSubmission(input: SubmitFeedbackInput) {
 }
 
 export async function updateFeedbackStatus(input: UpdateFeedbackStatusInput) {
-  await requireGm(input.challengeId);
+  const { userId: gmUserId } = await requireGm(input.challengeId);
   const prisma = getPrisma();
   const gmNote = input.gmNote.trim() || null;
   const submission = await prisma.feedbackSubmission.findFirst({
@@ -188,6 +197,8 @@ export async function updateFeedbackStatus(input: UpdateFeedbackStatusInput) {
   }
 
   const slug = submission.challenge.slug;
+  // GM reviewing their own player submission — no self-notify.
+  const notifyPlayer = submission.userId !== gmUserId;
 
   await prisma.$transaction(async (tx) => {
     await tx.feedbackSubmission.update({
@@ -198,7 +209,7 @@ export async function updateFeedbackStatus(input: UpdateFeedbackStatusInput) {
       },
     });
 
-    if (statusChanged) {
+    if (statusChanged && notifyPlayer) {
       await tx.notification.upsert({
         where: {
           userId_type_actionKey: {
@@ -207,7 +218,7 @@ export async function updateFeedbackStatus(input: UpdateFeedbackStatusInput) {
               input.submissionId,
               input.status,
             ),
-            type: "FEEDBACK_STATUS",
+            type: NOTIFICATION_TYPE_FEEDBACK_STATUS,
             userId: submission.userId,
           },
         },
@@ -219,7 +230,7 @@ export async function updateFeedbackStatus(input: UpdateFeedbackStatusInput) {
           ),
           body: submission.subject,
           title: `Feedback marked ${feedbackStatusLabel(input.status).toLowerCase()}`,
-          type: "FEEDBACK_STATUS",
+          type: NOTIFICATION_TYPE_FEEDBACK_STATUS,
           userId: submission.userId,
         },
         update: {
@@ -232,13 +243,13 @@ export async function updateFeedbackStatus(input: UpdateFeedbackStatusInput) {
       return;
     }
 
-    if (noteChanged && gmNote) {
+    if (noteChanged && gmNote && notifyPlayer) {
       // Note-only updates notify when a non-empty shared reply is saved/edited.
       await tx.notification.upsert({
         where: {
           userId_type_actionKey: {
             actionKey: feedbackNoteActionKey(slug, input.submissionId),
-            type: "FEEDBACK_NOTE",
+            type: NOTIFICATION_TYPE_FEEDBACK_NOTE,
             userId: submission.userId,
           },
         },
@@ -246,7 +257,7 @@ export async function updateFeedbackStatus(input: UpdateFeedbackStatusInput) {
           actionKey: feedbackNoteActionKey(slug, input.submissionId),
           body: submission.subject,
           title: "GM left a note on your feedback",
-          type: "FEEDBACK_NOTE",
+          type: NOTIFICATION_TYPE_FEEDBACK_NOTE,
           userId: submission.userId,
         },
         update: {

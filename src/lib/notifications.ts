@@ -1,9 +1,11 @@
 import { getPrisma } from "@/lib/db";
 import {
   NOTIFICATION_ACTION_WELCOME,
+  NOTIFICATION_TYPE_REACTION,
   NOTIFICATION_TYPE_WELCOME,
   WELCOME_NOTIFICATION,
   isWelcomeNotification,
+  reactionActionKey,
   withPinnedWelcome,
   type NotificationItem,
 } from "@/lib/notification-types";
@@ -11,11 +13,77 @@ import {
 export type { NotificationItem } from "@/lib/notification-types";
 export {
   NOTIFICATION_ACTION_WELCOME,
+  NOTIFICATION_TYPE_FEEDBACK,
+  NOTIFICATION_TYPE_FEEDBACK_NOTE,
+  NOTIFICATION_TYPE_FEEDBACK_STATUS,
+  NOTIFICATION_TYPE_REACTION,
   NOTIFICATION_TYPE_WELCOME,
   WELCOME_NOTIFICATION,
   isWelcomeNotification,
+  reactionActionKey,
+  reactionNotificationHref,
   withPinnedWelcome,
 } from "@/lib/notification-types";
+
+const REACTION_BODY_MAX = 140;
+
+function truncateNotificationBody(value: string, max = REACTION_BODY_MAX) {
+  const trimmed = value.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max - 1).trimEnd()}…`;
+}
+
+/**
+ * Notify an activity author that someone reacted. Idempotent per
+ * (recipient, activity, reactor) via upsert — no wall on emoji spam.
+ * Never notifies the reactor themselves.
+ */
+export async function notifyActivityReaction(input: {
+  recipientUserId: string;
+  actorUserId: string;
+  actorName: string;
+  emoji: string;
+  activityId: string;
+  activityMessage: string;
+  challengeSlug: string;
+}): Promise<void> {
+  if (!input.recipientUserId || input.recipientUserId === input.actorUserId) {
+    return;
+  }
+  if (!(await userExists(input.recipientUserId))) return;
+
+  const actionKey = reactionActionKey(
+    input.challengeSlug,
+    input.activityId,
+    input.actorUserId,
+  );
+  const title = `${input.actorName} reacted ${input.emoji}`;
+  const body = truncateNotificationBody(input.activityMessage);
+
+  await getPrisma().notification.upsert({
+    where: {
+      userId_type_actionKey: {
+        userId: input.recipientUserId,
+        type: NOTIFICATION_TYPE_REACTION,
+        actionKey,
+      },
+    },
+    create: {
+      userId: input.recipientUserId,
+      type: NOTIFICATION_TYPE_REACTION,
+      actionKey,
+      title,
+      body,
+    },
+    update: {
+      title,
+      body,
+      createdAt: new Date(),
+      readAt: null,
+      archivedAt: null,
+    },
+  });
+}
 
 type WelcomeRow = {
   type: string;

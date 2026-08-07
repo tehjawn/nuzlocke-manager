@@ -2,8 +2,11 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { feedbackNotificationHref } from "@/lib/feedback-types";
-import type { NotificationItem } from "@/lib/notification-types";
-import { isWelcomeNotification } from "@/lib/notification-types";
+import {
+  isWelcomeNotification,
+  reactionNotificationHref,
+  type NotificationItem,
+} from "@/lib/notification-types";
 import { useCoarsePointer } from "@/lib/use-coarse-pointer";
 
 type NotificationsMenuProps = {
@@ -111,7 +114,17 @@ export function NotificationsMenu({
                   const feedbackHref = feedbackNotificationHref(
                     notification.actionKey,
                   );
+                  const reactionHref = reactionNotificationHref(
+                    notification.actionKey,
+                  );
                   const pinnedWelcome = isWelcomeNotification(notification);
+                  const deepLinkLabel = pinnedWelcome
+                    ? "Start tour →"
+                    : feedbackHref
+                      ? "Open feedback →"
+                      : reactionHref
+                        ? "Open activity →"
+                        : null;
                   return (
                     <li key={notification.id} className="relative">
                       <button
@@ -146,14 +159,9 @@ export function NotificationsMenu({
                                 {notification.body}
                               </span>
                             ) : null}
-                            {pinnedWelcome ? (
+                            {deepLinkLabel ? (
                               <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
-                                Start tour →
-                              </span>
-                            ) : null}
-                            {feedbackHref ? (
-                              <span className="mt-1 block text-[11px] font-semibold text-accent-deep">
-                                Open feedback →
+                                {deepLinkLabel}
                               </span>
                             ) : null}
                           </span>
