@@ -604,10 +604,21 @@ button:disabled,
   --card-bg-wash: #3a2a58;
 }
 
-/* Avatar backdrop — exactly fills the avatar box and sits behind the sprite. */
+/*
+  Avatar backdrop — exactly fills the avatar box and sits behind the sprite.
+
+  Deliberately NOT `overflow: hidden`. Nothing here needs clipping: the stage
+  plate is an `inset: 0` ::before (its background cannot paint outside its own
+  box) and the sprite is always `object-contain` inside the same box. The only
+  thing a clip caught was the sprite's own `filter: drop-shadow(...)`, which
+  extends ~24px past its bottom edge and was being sliced flat into a hard grey
+  band. That was invisible in dark — a 0.6-alpha black shadow cut off against a
+  near-black field reads as nothing — and obvious the moment the field went
+  pale. Surfaces that genuinely want a cropped tile opt in locally instead
+  (see GmConsole's bordered avatar).
+*/
 .avatar-portrait {
   position: relative;
-  overflow: hidden;
 }
 
 .avatar-portrait[data-avatar-bg] {

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 import { DiscordIcon, DISCORD_BTN_CLASS } from "@/components/DiscordIcon";
 import { LoggedInChrome } from "@/components/LoggedInChrome";
@@ -10,16 +9,19 @@ import { resolveSessionUser, SESSION_EXPIRED_LOGIN } from "@/lib/session-user";
 const AFTER_LOGIN = `/challenges/${DEFAULT_CHALLENGE_SLUG}/me`;
 
 type AuthButtonsProps = {
-  /** When true, SiteHeader already shows My Trainer — skip the duplicate. */
-  hideMyTrainer?: boolean;
   /** Desktop profile menu GM link; mobile keeps GM in the hamburger drawer. */
   gmHref?: string | null;
   feedbackHref?: string | null;
 };
 
+/**
+ * Session chrome only. My Trainer deliberately lives in TrainersMenu — this
+ * component used to render a standalone accent pill as a fallback, which showed
+ * up as a duplicate next to the Trainers menu on every page that could not
+ * resolve `myTrainerId`.
+ */
 export async function AuthButtons({
   feedbackHref = null,
-  hideMyTrainer = false,
   gmHref = null,
 }: AuthButtonsProps) {
   const session = await auth();
@@ -58,14 +60,6 @@ export async function AuthButtons({
 
     return (
       <div className="flex items-center gap-2">
-        {!hideMyTrainer && (
-          <Link
-            href={AFTER_LOGIN}
-            className="pressable hidden h-9 items-center bg-accent px-3 text-sm font-semibold text-[var(--on-accent)] sm:inline-flex"
-          >
-            My Trainer
-          </Link>
-        )}
         <LoggedInChrome
           feedbackHref={feedbackHref}
           gmHref={gmHref}

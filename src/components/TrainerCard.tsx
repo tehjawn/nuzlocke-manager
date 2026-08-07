@@ -348,7 +348,6 @@ export function TrainerCard({
                     sizeClass="mx-auto h-20 w-20 lg:h-24 lg:w-24"
                     width={112}
                     height={112}
-                    className="overflow-visible"
                   />
                   <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep">
                     {trainer.handle}

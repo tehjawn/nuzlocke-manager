@@ -8,7 +8,6 @@ import {
   SiteHeaderSessionFallback,
 } from "@/components/SiteHeaderSession";
 import { ToolsMenu } from "@/components/ToolsMenu";
-import { TrainersMenu } from "@/components/TrainersMenu";
 import { SearchTrigger } from "@/features/search";
 import type { Challenge } from "@/lib/challenge-types";
 import { getChallengeMeta, getDefaultSearchChallenge } from "@/lib/challenges";
@@ -141,19 +140,19 @@ export async function SiteHeader({
             */}
             {/*
               Info / Tools: season chrome only (hidden on first-run funnel).
-              Trainers sits after Tools; always when joined (incl. first-run,
-              matching the old My Trainer pill); otherwise All Trainers only
-              outside first-run.
+              Trainers renders in SiteHeaderSession instead — its My Trainer row
+              is gated on the session, which this static shell cannot read.
             */}
             {seasonSlug && !firstRun && <InfoMenu slug={seasonSlug} />}
             {seasonSlug && !firstRun && <ToolsMenu slug={seasonSlug} />}
-            {seasonSlug && (myTrainerId || !firstRun) && (
-              <TrainersMenu slug={seasonSlug} myTrainerId={myTrainerId} />
-            )}
           </div>
           <Suspense
             fallback={
-              <SiteHeaderSessionFallback hideMyTrainer={Boolean(myTrainerId)} />
+              <SiteHeaderSessionFallback
+                showTrainers={
+                  Boolean(seasonSlug) && (Boolean(myTrainerId) || !firstRun)
+                }
+              />
             }
           >
             <SiteHeaderSession
