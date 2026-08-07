@@ -13,6 +13,14 @@ import { SearchHost } from "@/features/search/SearchHost";
 import { briefToSearchSeasonContext } from "@/features/search/search-season";
 import { PokemonSpritePreferenceProvider } from "@/features/preferences/PokemonSpritePreferenceProvider";
 import { getDefaultSearchChallenge } from "@/lib/challenges";
+import {
+  SITE_DESCRIPTION,
+  SITE_SHORT_NAME,
+  SITE_TITLE,
+  SITE_URL,
+  THEME_COLOR_DARK,
+  THEME_COLOR_LIGHT,
+} from "@/lib/constants-app";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -39,27 +47,22 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#eef2e6" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0e0b" },
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOR_LIGHT },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOR_DARK },
   ],
 };
-
-const SITE_URL = "https://nuzlocke-manager.vercel.app";
-const SITE_TITLE = "Trash Pack's Nuzlocke Challenge Manager";
-const SITE_DESCRIPTION =
-  "Trash Pack's Nuzlocke Challenge Manager — league boards, graves, badges, and season archives.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: SITE_TITLE,
-    template: "%s · Nuzlocke Manager",
+    template: `%s · ${SITE_SHORT_NAME}`,
   },
   description: SITE_DESCRIPTION,
   openGraph: {
     type: "website",
     url: SITE_URL,
-    siteName: "Nuzlocke Manager",
+    siteName: SITE_SHORT_NAME,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     locale: "en_US",
