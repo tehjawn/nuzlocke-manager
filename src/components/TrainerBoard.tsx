@@ -741,8 +741,8 @@ export function TrainerBoard({
       setEarnedBadgeKeys(trainer.earnedBadgeKeys);
       setBoardOverride(null);
       setRunEndedOverride(null);
-      // Board writes revalidate `:board` — drop deferred Encountered so a
-      // reopen (or still-open section) refetches after import / edits.
+      // Board writes revalidate `:trainer:${id}` (+ `:board` for shared views) —
+      // drop deferred Encountered so a reopen (or still-open section) refetches.
       setEncounteredPokemon(null);
       setEncounteredError(null);
     }

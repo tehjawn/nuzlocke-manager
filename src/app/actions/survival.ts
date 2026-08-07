@@ -1,10 +1,11 @@
 "use server";
 
 import { z } from "zod";
-import { revalidatePath, revalidateTag, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { failAction } from "@/lib/action-error";
 import { getPrisma } from "@/lib/db";
 import { getAccessForChallenge, requireUserId } from "@/lib/permissions";
+import { revalidateBoardViews } from "@/lib/revalidate-season";
 import {
   SURVIVAL_COMMENT_MAX,
   castSurvivalVote,
@@ -19,17 +20,6 @@ import type {
 export type ActionResult =
   | { ok: true; message?: string }
   | { ok: false; error: string; code?: string };
-
-function revalidateBoardViews(slug: string, trainerId?: string) {
-  updateTag(`season:${slug}:board`);
-  revalidateTag(`season:${slug}`, "max");
-  revalidatePath(`/challenges/${slug}`);
-  revalidatePath(`/challenges/${slug}/season-stats`);
-  revalidatePath(`/challenges/${slug}/activity`);
-  if (trainerId) {
-    revalidatePath(`/challenges/${slug}/trainers/${trainerId}`);
-  }
-}
 
 const CastVoteSchema = z.object({
   pokemonId: z.string().min(1),
