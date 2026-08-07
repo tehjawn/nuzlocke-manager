@@ -11,6 +11,7 @@ import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { BadgeCase } from "@/components/BadgeCase";
 import { BondHeart } from "@/components/BondHeart";
 import { ChampionRibbon } from "@/components/ChampionRibbon";
+import { hasBeatenChampionship } from "@/lib/championship";
 import { Frame } from "@/components/Frame";
 import { PokemonDetailsModal } from "@/components/PokemonDetailsModal";
 import { PokemonHoverPreview } from "@/components/PokemonHoverPreview";
@@ -224,14 +225,24 @@ export function TrainerCard({
     .filter(Boolean)
     .join(" ");
   const completionCount = trainer.completionCount ?? 0;
-  const isChampion = completionCount > 0;
+  /*
+    Badges earn the ribbon on their own — recording a run completion is an
+    optional bookkeeping step, and plenty of trainers finish the game without
+    ever opening End Run. `hasBeatenChampionship` (Elite Four + Champion, not
+    the Champion badge alone) is already how season-stats and survival markets
+    decide who has beaten the game; the ribbon was the one place still gated on
+    completionCount. Requiring the full run keeps a stray badge tap from
+    minting a champion.
+  */
+  const isChampion =
+    completionCount > 0 || hasBeatenChampionship(trainer.earnedBadgeKeys);
   const boardLabel = [
     `Open ${trainer.handle}'s board`,
     isYou ? "(you)" : null,
     isChampion
-      ? completionCount === 1
-        ? "— Champion"
-        : `— Champion · ${completionCount} completions`
+      ? completionCount > 1
+        ? `— Champion · ${completionCount} completions`
+        : "— Champion"
       : null,
   ]
     .filter(Boolean)
@@ -348,7 +359,6 @@ export function TrainerCard({
                     sizeClass="mx-auto h-20 w-20 lg:h-24 lg:w-24"
                     width={112}
                     height={112}
-                    className="overflow-visible"
                   />
                   <h2 className="w-full truncate text-sm font-bold leading-tight tracking-tight group-hover:text-accent-deep">
                     {trainer.handle}

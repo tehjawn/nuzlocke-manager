@@ -137,7 +137,7 @@ function formatChance(chance: number): string {
  */
 function chanceTone(chance: number): string {
   if (chance >= 40) return "text-accent-deep";
-  if (chance >= 20) return "text-accent-2";
+  if (chance >= 20) return "text-accent-2-ink";
   if (chance >= 10) return "text-ink";
   return "text-muted";
 }

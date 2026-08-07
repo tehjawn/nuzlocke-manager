@@ -180,7 +180,7 @@ export function SeasonStatsView({
                   : String(row.value),
               (row) =>
                 row.champion ? (
-                  <span className="text-[11px] font-semibold text-accent-2">
+                  <span className="text-[11px] font-semibold text-accent-2-ink">
                     ★ Champion
                   </span>
                 ) : null,

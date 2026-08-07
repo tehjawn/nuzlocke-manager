@@ -22,13 +22,18 @@ import { TOOLS_CATALOG, toolsHref, toolsHubHref } from "@/lib/tools-routes";
 type NavRow =
   | { kind: "link"; key: string; href: string; label: string; icon: ReactNode }
   | { kind: "info"; key: string; slug: string }
-  | { kind: "trainers"; key: string; slug: string; myTrainerId: string | null }
+  | { kind: "trainers"; key: string; slug: string; showMyTrainer: boolean }
   | { kind: "tools"; key: string; slug: string };
 
 type MobileNavDrawerProps = {
   challengeSlug?: string;
   showGm?: boolean;
   myTrainerId?: string | null;
+  /**
+   * Show the My Trainer row. Gated on the session rather than `myTrainerId` so
+   * it matches TrainersMenu — global pages never resolve an id.
+   */
+  showMyTrainer?: boolean;
   /** First-run funnel (#183): hide Rules / Tools. */
   firstRun?: boolean;
   /** Applied to the trigger button (e.g. `sm:hidden`). */
@@ -49,6 +54,7 @@ export function MobileNavDrawer({
   challengeSlug,
   showGm = false,
   myTrainerId = null,
+  showMyTrainer = false,
   firstRun = false,
   className = "",
   children,
@@ -77,7 +83,7 @@ export function MobileNavDrawer({
         kind: "trainers",
         key: "trainers",
         slug: challengeSlug,
-        myTrainerId,
+        showMyTrainer,
       },
     );
   } else if (challengeSlug && myTrainerId) {
@@ -86,7 +92,7 @@ export function MobileNavDrawer({
       kind: "trainers",
       key: "trainers",
       slug: challengeSlug,
-      myTrainerId,
+      showMyTrainer,
     });
   }
   if (challengeSlug && showGm) {
@@ -226,7 +232,7 @@ export function MobileNavDrawer({
                           <TrainersNavSection
                             key={row.key}
                             slug={row.slug}
-                            myTrainerId={row.myTrainerId}
+                            showMyTrainer={row.showMyTrainer}
                             initialOpen={
                               pathname === boardHref ||
                               isUnder(pathname, meHref)
@@ -397,12 +403,12 @@ function InfoNavSection({
 
 function TrainersNavSection({
   slug,
-  myTrainerId,
+  showMyTrainer,
   initialOpen,
   onNavigate,
 }: {
   slug: string;
-  myTrainerId: string | null;
+  showMyTrainer: boolean;
   initialOpen: boolean;
   onNavigate: () => void;
 }) {
@@ -443,7 +449,7 @@ function TrainersNavSection({
               <span className="text-sm font-medium">All Trainers</span>
             </Link>
           </li>
-          {myTrainerId && (
+          {showMyTrainer && (
             <li>
               <Link
                 href={`${base}/me`}

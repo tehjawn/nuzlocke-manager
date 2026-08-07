@@ -109,7 +109,9 @@ export function ChallengeShell({
       {!signedIn && (
         <Link
           href="/login"
-          className={`${DISCORD_BTN_CLASS} mt-3 px-3.5 py-2 text-sm`}
+          /* Same size system as the Get Started CTA above it — btn-cta owns the
+             padding/type scale, DISCORD_BTN_CLASS just supplies the blurple. */
+          className={`${DISCORD_BTN_CLASS} btn-cta mt-2 w-full`}
         >
           <DiscordIcon className="h-4 w-4" />
           Discord login

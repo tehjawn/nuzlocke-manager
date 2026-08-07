@@ -88,7 +88,7 @@ function ReadinessBadge({ option }: { option: EvolutionOption }) {
     status === "ready"
       ? "text-accent-deep"
       : status === "close"
-        ? "text-accent-2"
+        ? "text-accent-2-ink"
         : status === "blocked"
           ? "text-muted"
           : "text-muted";
@@ -191,7 +191,7 @@ function LinearChain({
           current
           size={40}
         />
-        <span className="text-[9px] font-semibold tracking-tight text-accent-2">
+        <span className="text-[9px] font-semibold tracking-tight text-accent-2-ink">
           {currentLabel}
         </span>
       </div>
@@ -271,7 +271,7 @@ function BranchOptions({
             current
             size={36}
           />
-          <span className="text-[9px] font-semibold tracking-tight text-accent-2">
+          <span className="text-[9px] font-semibold tracking-tight text-accent-2-ink">
             {currentLabel}
           </span>
         </div>
@@ -354,7 +354,7 @@ function FinalForm({
           current
           size={40}
         />
-        <span className="text-[9px] font-semibold tracking-tight text-accent-2">
+        <span className="text-[9px] font-semibold tracking-tight text-accent-2-ink">
           {currentLabel}
         </span>
       </div>

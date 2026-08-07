@@ -17,6 +17,8 @@ type HeaderMenuProps = {
   label: string;
   icon: ReactNode;
   items: HeaderMenuItem[];
+  /** Classes for the positioning wrapper (e.g. responsive visibility). */
+  className?: string;
   /** Optional wider panel for two-line rows. */
   menuClassName?: string;
   /** Override the default trigger pill classes (border / text theme). */
@@ -36,6 +38,7 @@ export function HeaderMenu({
   label,
   icon,
   items,
+  className = "",
   menuClassName = "w-52",
   triggerClassName = "pressable inline-flex h-9 items-center gap-2 border-frame bg-surface px-3.5 font-medium hover:border-interactive/50",
   iconClassName = "text-ink/70",
@@ -143,7 +146,11 @@ export function HeaderMenu({
   const rovingIndex = activeIndex < 0 ? 0 : activeIndex;
 
   return (
-    <div ref={rootRef} className="relative" onBlur={onFocusOut}>
+    <div
+      ref={rootRef}
+      className={`relative${className ? ` ${className}` : ""}`}
+      onBlur={onFocusOut}
+    >
       <button
         ref={triggerRef}
         id={triggerId}

@@ -252,7 +252,7 @@ function PokemonFormModalInner({
           <>
             {subtitleText}
             {form.isShiny && (
-              <span className="ml-1.5 font-semibold text-accent-2">
+              <span className="ml-1.5 font-semibold text-accent-2-ink">
                 Shiny ✦
               </span>
             )}

@@ -100,7 +100,7 @@ export function rankBandLabel(rank: StatRank): string {
  * "something went wrong", not "this stat is low".
  */
 export function statRankToneClass(rank: StatRank): string {
-  if (rank === "S") return "border-accent-2/45 bg-accent-2/15 text-accent-2";
+  if (rank === "S") return "border-accent-2/45 bg-accent-2/15 text-accent-2-ink";
   if (rank === "A") return "border-accent/35 bg-accent/10 text-accent-deep";
   if (rank === "B") return "border-frame/50 bg-surface-2 text-ink";
   if (rank === "C") return "border-frame/40 bg-surface-2/70 text-muted";

@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-  Fragment,
-  useState,
-  useTransition,
-  type ReactNode,
-} from "react";
+import { Fragment, useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
   gmResetTrainerBoardAction,
@@ -673,8 +668,7 @@ export function TrainerBoard({
   // need setState-in-effect. Read-only boards leave the pending action alone
   // for My Trainer (or a GM-editable board) after soft-nav.
   const myTrainerId = searchSeason?.myTrainerId ?? null;
-  const jumpImportOpen =
-    pendingBoardAction === "import-save" && canEdit;
+  const jumpImportOpen = pendingBoardAction === "import-save" && canEdit;
   const jumpExportOpen =
     pendingBoardAction === "export-team" &&
     (!myTrainerId || trainer.id === myTrainerId || canEdit);
@@ -1179,6 +1173,55 @@ export function TrainerBoard({
     canEdit && (editingPlayer || mobileSaveStatus.kind !== "idle");
   // Primary strip + Shortcuts: Import only. Revive is status on R.I.P.; mark /
   // GM reset live in More. Everything else is overflow so mobile stays calm (#325).
+  //
+  // Exception: when an open run has visibly reached its end, logging it is the
+  // obvious next action, so it gets promoted out of More and sits beside Import
+  // save. It leaves the menu while promoted so the same verb never appears
+  // twice, and both promotions open the same modal — only the framing differs:
+  //
+  //   victory — Championship earned; a clear to record.
+  //   wipeout — everything in R.I.P. and nothing left alive to play. Graveyard
+  //             must be non-empty so a brand-new empty board doesn't qualify.
+  //   restart — already ended and no new run started; the only thing left.
+  //
+  // Victory wins if victory and wipeout somehow both hold. Restart outranks
+  // both: once the run is closed neither of the open-run prompts still applies.
+  // Restart is the one that actually resets a board, so it keeps the danger
+  // tone and calls startNewRun directly; the other two open the End Run modal.
+  const wipedOut =
+    graveyard.length > 0 && main.length === 0 && reserves.length === 0;
+  const endRunPromotion: "victory" | "wipeout" | "restart" | null = !canEdit
+    ? null
+    : runEnded
+      ? "restart"
+      : championshipEarned
+        ? "victory"
+        : wipedOut
+          ? "wipeout"
+          : null;
+  const promoteEndRun = endRunPromotion != null;
+  const endRunPromo = endRunPromotion
+    ? {
+        victory: {
+          label: "Mark run completed",
+          title: "All badges earned — record this run as complete",
+          tone: "border-accent/55 bg-accent/10 text-accent-deep hover:border-accent hover:bg-accent/16",
+          restart: false,
+        },
+        wipeout: {
+          label: "End this run",
+          title: "No Pokémon left alive — record this run as ended",
+          tone: "border-danger/40 bg-danger/10 text-danger hover:border-danger/70 hover:bg-danger/16",
+          restart: false,
+        },
+        restart: {
+          label: "Start new run",
+          title: "This run is closed — start a fresh run",
+          tone: "border-danger/40 bg-danger/10 text-danger hover:border-danger/70 hover:bg-danger/16",
+          restart: true,
+        },
+      }[endRunPromotion]
+    : null;
   const boardActionSlots: Record<
     TrainerBoardActionKey,
     {
@@ -1309,24 +1352,38 @@ export function TrainerBoard({
     // nothing, so the danger tone is saved for the restart that does.
     endRun: {
       shortcut: null,
-      toolbar: null,
-      menu: canEdit
-        ? {
-            key: "endRun",
-            label: runEnded ? "Start new run" : "End run",
-            icon: runEnded ? (
-              <WipeIcon className="h-4 w-4" />
-            ) : (
-              <EndRunIcon className="h-4 w-4" />
-            ),
-            disabled: pending || wiping,
-            tone: runEnded ? "danger" : "neutral",
-            onClick: () => {
-              if (runEnded) void startNewRun();
-              else setEndRunOpen(true);
-            },
-          }
-        : null,
+      toolbar: endRunPromo ? (
+        <button
+          className={`pressable inline-flex h-9 items-center gap-1.5 border px-3 text-xs font-semibold tracking-tight disabled:opacity-60 ${endRunPromo.tone}`}
+          disabled={pending || wiping}
+          onClick={() => {
+            if (endRunPromo.restart) void startNewRun();
+            else setEndRunOpen(true);
+          }}
+          title={endRunPromo.title}
+          type="button"
+        >
+          {endRunPromo.restart ? (
+            <WipeIcon className="h-4 w-4" />
+          ) : (
+            <EndRunIcon className="h-4 w-4" />
+          )}
+          <span>{endRunPromo.label}</span>
+        </button>
+      ) : null,
+      menu:
+        // Only reachable mid-run: an ended run always promotes to "Start new
+        // run" in the strip, so this entry no longer needs that branch.
+        canEdit && !promoteEndRun
+          ? {
+              key: "endRun",
+              label: "End run",
+              icon: <EndRunIcon className="h-4 w-4" />,
+              disabled: pending || wiping,
+              tone: "neutral",
+              onClick: () => setEndRunOpen(true),
+            }
+          : null,
     },
   };
 
