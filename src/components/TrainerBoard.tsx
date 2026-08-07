@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Fragment, useState, useTransition, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import {
   deletePokemonAction,
   gmResetTrainerBoardAction,
@@ -669,9 +669,8 @@ export function TrainerBoard({
   const [encounteredOpen, setEncounteredOpen] = useState(false);
   const searchParams = useSearchParams();
   const searchPokemonId = searchParams.get("pokemon");
-  const [openedSearchPokemonId, setOpenedSearchPokemonId] = useState<
-    string | null
-  >(null);
+  /** Search `?pokemon=` ids already opened this mount — ref avoids effect setState. */
+  const openedSearchPokemonIdRef = useRef<string | null>(null);
 
   // Jump Actions (#308): derive modal open from pending handoff so we don't
   // need setState-in-effect. Read-only boards leave the pending action alone
@@ -788,15 +787,22 @@ export function TrainerBoard({
     trainer.slotCounts?.encountered ??
     encountered.length;
 
-  function loadEncountered() {
-    if (encounteredPokemon != null || encounteredLoading) return;
-    setEncounteredLoading(true);
-    setEncounteredError(null);
+  // Deferred Encountered hydrate — open (or stay open across revalidate).
+  // Await before setState so we don't trip react-hooks/set-state-in-effect
+  // (same pattern as ToolsView: state updates only after async work).
+  useEffect(() => {
+    if (!encounteredOpen || encounteredPokemon != null) return;
+    let cancelled = false;
     void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setEncounteredLoading(true);
+      setEncounteredError(null);
       const result = await fetchTrainerEncounteredAction({
         slug: challengeSlug,
         trainerId: trainer.id,
       });
+      if (cancelled) return;
       if (result.ok) {
         setEncounteredPokemon(result.pokemon);
       } else {
@@ -804,22 +810,24 @@ export function TrainerBoard({
       }
       setEncounteredLoading(false);
     })();
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    encounteredOpen,
+    encounteredPokemon,
+    challengeSlug,
+    trainer.id,
+  ]);
 
   function onEncounteredOpenChange(open: boolean) {
     setEncounteredOpen(open);
-    if (open) loadEncountered();
+    if (open && encounteredPokemon == null) {
+      setEncounteredLoading(true);
+      setEncounteredError(null);
+    }
   }
 
-  // Section stayed open across a board revalidate — refetch the deferred slice.
-  if (
-    encounteredOpen &&
-    encounteredPokemon == null &&
-    !encounteredLoading &&
-    !encounteredError
-  ) {
-    loadEncountered();
-  }
   const wiping =
     wipeSave.status.kind === "saving" || resetSave.status.kind === "saving";
   const seasonLinkTiles = [
@@ -1201,42 +1209,62 @@ export function TrainerBoard({
   }
 
   // Search deep-link: /trainers/:id?pokemon=:pokemonId opens that mon.
-  if (!searchPokemonId && openedSearchPokemonId) {
-    setOpenedSearchPokemonId(null);
-  } else if (searchPokemonId && searchPokemonId !== openedSearchPokemonId) {
+  useEffect(() => {
+    if (!searchPokemonId) {
+      openedSearchPokemonIdRef.current = null;
+      return;
+    }
+    if (openedSearchPokemonIdRef.current === searchPokemonId) return;
+
     const mon =
       boardPokemon.find((p) => p.id === searchPokemonId) ??
       encounteredPokemon?.find((p) => p.id === searchPokemonId) ??
       null;
-    setOpenedSearchPokemonId(searchPokemonId);
-    if (mon) {
-      if (canEdit) {
-        setPokemonInspect({
-          mode: "view",
-          form: pokemonEntryToForm(mon),
-        });
-      } else {
-        setDetailsPokemon(mon);
-      }
-    } else {
-      // Encountered (and rare off-board ids) are not in the SSR party — fetch one.
-      startTransition(async () => {
-        const result = await fetchToolsPokemonEntryAction({
-          slug: challengeSlug,
-          pokemonId: searchPokemonId,
-        });
-        if (!result.ok) return;
+
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+
+      if (mon) {
+        openedSearchPokemonIdRef.current = searchPokemonId;
         if (canEdit) {
           setPokemonInspect({
             mode: "view",
-            form: pokemonEntryToForm(result.pokemon),
+            form: pokemonEntryToForm(mon),
           });
         } else {
-          setDetailsPokemon(result.pokemon);
+          setDetailsPokemon(mon);
         }
+        return;
+      }
+
+      // Encountered (and rare off-board ids) are not in the SSR party — fetch one.
+      const result = await fetchToolsPokemonEntryAction({
+        slug: challengeSlug,
+        pokemonId: searchPokemonId,
       });
-    }
-  }
+      if (cancelled || !result.ok) return;
+      openedSearchPokemonIdRef.current = searchPokemonId;
+      if (canEdit) {
+        setPokemonInspect({
+          mode: "view",
+          form: pokemonEntryToForm(result.pokemon),
+        });
+      } else {
+        setDetailsPokemon(result.pokemon);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    searchPokemonId,
+    boardPokemon,
+    encounteredPokemon,
+    canEdit,
+    challengeSlug,
+  ]);
 
   const mobileSaveStatus =
     partySave.status.kind !== "idle"
