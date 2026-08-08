@@ -4935,10 +4935,10 @@ button:disabled,
 }
 
 /*
- * Hoenn claim map — selected region blink (Gen 3 region-map cadence).
- * Pulses stroke/fill opacity so irregular path/rect hit targets stay readable.
+ * Hoenn claim map — Gen 3 region-map blink for the selected zone and for
+ * every region matching an active planning filter.
  */
-.claim-map-region--selected {
+.claim-map-region--pulse {
   animation: claim-map-select-pulse 0.85s steps(1, end) infinite;
 }
 
@@ -4960,7 +4960,7 @@ button:disabled,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .claim-map-region--selected {
+  .claim-map-region--pulse {
     animation: none;
     stroke-opacity: 1;
     fill-opacity: 1;

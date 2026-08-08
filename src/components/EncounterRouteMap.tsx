@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState, type KeyboardEvent } from "react";
-import type { CatchRouteEncounter } from "@/data/catch-routes";
 import { Frame } from "@/components/Frame";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
+import type { CatchRouteEncounter } from "@/data/catch-routes";
 import {
   HOENN_MAP_IMAGE,
   HOENN_MAP_VIEWBOX,
@@ -13,14 +13,18 @@ import {
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
 import {
   buildEncounterMapStatuses,
+  countHatchSpots,
   countOpenSlots,
   listOpenSlotsForMap,
-  MAP_ENCOUNTER_METHODS,
+  MAP_METHOD_FILTERS,
   mapMethodLabel,
   mapStatusLabel,
   sortMapMethods,
   unmappedOpenCatchRoutes,
+  zoneHasHatchSafe,
+  zoneIsPaintable,
   zoneMatchesMapFilter,
+  type MapMethodFilter,
   type MapOpenSlot,
   type MapRouteClaimStatus,
   type MapRouteRow,
@@ -54,6 +58,9 @@ const STATUS_STROKE: Record<MapRouteClaimStatus, string> = {
   empty: "transparent",
 };
 
+const HATCH_FILL = "color-mix(in srgb, var(--interactive) 14%, transparent)";
+const HATCH_STROKE = "color-mix(in srgb, var(--interactive) 55%, var(--ink))";
+
 export function EncounterRouteMap({
   groups,
   myTrainerId = null,
@@ -66,9 +73,7 @@ export function EncounterRouteMap({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showEncounters, setShowEncounters] = useState(false);
   const [unclaimedOnly, setUnclaimedOnly] = useState(false);
-  const [methodFilters, setMethodFilters] = useState<CatchRouteEncounter[]>(
-    [],
-  );
+  const [methodFilters, setMethodFilters] = useState<MapMethodFilter[]>([]);
 
   const focusStatus =
     routeStatuses.find((entry) => entry.trainerId === trainerId) ?? null;
@@ -85,6 +90,10 @@ export function EncounterRouteMap({
 
   const openSlotTotal = useMemo(
     () => countOpenSlots(zoneStatuses),
+    [zoneStatuses],
+  );
+  const hatchSpotTotal = useMemo(
+    () => countHatchSpots(zoneStatuses),
     [zoneStatuses],
   );
 
@@ -105,12 +114,14 @@ export function EncounterRouteMap({
   const unmapped = useMemo(() => unmappedOpenCatchRoutes(), []);
   const planningActive = unclaimedOnly || methodFilters.length > 0;
 
-  function toggleMethod(method: CatchRouteEncounter) {
-    setMethodFilters((prev) =>
-      prev.includes(method)
+  function toggleMethod(method: MapMethodFilter) {
+    setMethodFilters((prev) => {
+      const next = prev.includes(method)
         ? prev.filter((entry) => entry !== method)
-        : [...prev, method],
-    );
+        : [...prev, method];
+      if (next.length > 0) setSelectedId(null);
+      return next;
+    });
   }
 
   return (
@@ -129,8 +140,8 @@ export function EncounterRouteMap({
           </h3>
           <p className="max-w-xl text-xs text-muted">
             Game region map with pret-accurate route hit targets. Colors follow
-            the focused trainer&apos;s open-slot progress — unclaimed, partial,
-            or fully claimed. Use Unclaimed only to plan remaining routes.
+            the focused trainer&apos;s open-slot progress — plus hatch-safe
+            outdoor spots that never spend a wild slot. Use filters to plan.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -189,8 +200,14 @@ export function EncounterRouteMap({
         <span className="hidden text-[10px] font-semibold uppercase tracking-wide text-muted sm:inline">
           Methods
         </span>
-        {MAP_ENCOUNTER_METHODS.map((method) => {
+        {MAP_METHOD_FILTERS.map((method) => {
           const active = methodFilters.includes(method);
+          const countHint =
+            method === "egg" ? (
+              <span className="tabular-nums text-muted">
+                ({hatchSpotTotal})
+              </span>
+            ) : null;
           return (
             <button
               key={method}
@@ -198,13 +215,14 @@ export function EncounterRouteMap({
               aria-pressed={active}
               data-testid={`encounter-map-method-${method}`}
               onClick={() => toggleMethod(method)}
-              className={`pressable inline-flex items-center rounded-md border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+              className={`pressable inline-flex items-center gap-1 rounded-md border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
                 active
                   ? "border-interactive/45 bg-interactive-soft text-ink"
                   : "border-frame/35 bg-surface/60 text-muted hover:border-frame/55 hover:text-ink"
               }`}
             >
               {mapMethodLabel(method)}
+              {countHint}
             </button>
           );
         })}
@@ -246,11 +264,13 @@ export function EncounterRouteMap({
             {paintOrder.map((entry) => {
               const emphasized = zoneMatchesMapFilter(entry, filter);
               const selected = entry.zone.id === selectedId;
+              const pulse = selected || (planningActive && emphasized);
               return (
                 <RegionShape
                   key={entry.zone.id}
                   dimmed={planningActive && !emphasized && !selected}
                   entry={entry}
+                  pulse={pulse}
                   selected={selected}
                   onSelect={() =>
                     setSelectedId((prev) =>
@@ -281,8 +301,8 @@ export function EncounterRouteMap({
             <p className="text-sm text-muted">
               Select a route or town on the map to see open-slot progress
               {focusHandleLine(focusStatus?.trainerHandle)}. Turn on{" "}
-              <span className="font-semibold text-ink">Unclaimed only</span> for
-              a full checklist of remaining routes.
+              <span className="font-semibold text-ink">Unclaimed only</span> or{" "}
+              <span className="font-semibold text-ink">Egg</span> to plan.
             </p>
           </Frame>
         )}
@@ -299,27 +319,52 @@ export function EncounterRouteMap({
 
 function MapLegend() {
   const items: {
-    status: MapRouteClaimStatus;
+    key: string;
     hint: string;
+    fill: string;
+    stroke: string;
     dashed?: boolean;
   }[] = [
-    { status: "unclaimed", hint: "Unclaimed (outline)", dashed: true },
-    { status: "partial", hint: "Partially claimed" },
-    { status: "claimed", hint: "Fully claimed" },
+    {
+      key: "unclaimed",
+      hint: "Unclaimed (outline)",
+      fill: STATUS_FILL.unclaimed,
+      stroke: STATUS_STROKE.unclaimed,
+      dashed: true,
+    },
+    {
+      key: "partial",
+      hint: "Partially claimed",
+      fill: STATUS_FILL.partial,
+      stroke: STATUS_STROKE.partial,
+    },
+    {
+      key: "claimed",
+      hint: "Fully claimed",
+      fill: STATUS_FILL.claimed,
+      stroke: STATUS_STROKE.claimed,
+    },
+    {
+      key: "hatch",
+      hint: "Hatch-safe (no wild slot)",
+      fill: HATCH_FILL,
+      stroke: HATCH_STROKE,
+      dashed: true,
+    },
   ];
   return (
     <ul className="flex flex-wrap gap-2 text-[10px] font-semibold text-muted">
       {items.map((item) => (
         <li
           className="inline-flex items-center gap-1.5 rounded-full border border-frame/35 bg-surface/70 px-2 py-1"
-          key={item.status}
+          key={item.key}
         >
           <span
             aria-hidden
             className="inline-block h-2.5 w-2.5 rounded-sm border-2"
             style={{
-              background: STATUS_FILL[item.status],
-              borderColor: STATUS_STROKE[item.status],
+              background: item.fill,
+              borderColor: item.stroke,
               borderStyle: item.dashed ? "dashed" : "solid",
             }}
           />
@@ -333,26 +378,41 @@ function MapLegend() {
 function RegionShape({
   entry,
   selected,
+  pulse,
   dimmed,
   onSelect,
 }: {
   entry: MapZoneStatus;
   selected: boolean;
+  pulse: boolean;
   dimmed: boolean;
   onSelect: () => void;
 }) {
   const { zone, status } = entry;
-  // Skip pure static regions (no open slots) — keeps the art readable.
-  if (status === "empty") return null;
+  if (!zoneIsPaintable(entry)) return null;
 
+  const hatchOnly = status === "empty" && zoneHasHatchSafe(entry);
   const slotTotal = entry.claimedOpenSlots + entry.openSlots;
-  const stroke = selected ? "var(--ink)" : STATUS_STROKE[status];
-  const strokeWidth = selected ? 3 : status === "unclaimed" ? 1.5 : 2;
+  const stroke = selected
+    ? "var(--ink)"
+    : hatchOnly
+      ? HATCH_STROKE
+      : STATUS_STROKE[status];
+  const fill = hatchOnly ? HATCH_FILL : STATUS_FILL[status];
+  const strokeWidth = selected || pulse ? 3 : status === "unclaimed" || hatchOnly ? 1.5 : 2;
   const dash =
-    status === "unclaimed" && !selected ? "3.5 2.5" : undefined;
+    !selected &&
+    !pulse &&
+    (status === "unclaimed" || hatchOnly)
+      ? "3.5 2.5"
+      : undefined;
+
+  const statusText = hatchOnly
+    ? "Hatch-safe"
+    : mapStatusLabel(status);
 
   const shared = {
-    fill: STATUS_FILL[status],
+    fill,
     stroke,
     strokeWidth,
     strokeDasharray: dash,
@@ -360,20 +420,23 @@ function RegionShape({
     opacity: dimmed ? 0.18 : 1,
     className: [
       "cursor-pointer focus:outline-none focus-visible:stroke-[var(--ink)]",
-      selected
-        ? "claim-map-region--selected"
+      pulse
+        ? "claim-map-region--pulse"
         : "transition-[filter,opacity] hover:brightness-105",
     ].join(" "),
     tabIndex: 0 as const,
     role: "button" as const,
-    "aria-label": `${zone.name}: ${mapStatusLabel(status)}${
+    "aria-label": `${zone.name}: ${statusText}${
       slotTotal > 0
         ? `, ${entry.claimedOpenSlots} claimed of ${slotTotal}`
         : ""
+    }${
+      zoneHasHatchSafe(entry) && !hatchOnly ? ", hatch-safe spot" : ""
     }${dimmed ? ", filtered out" : ""}`,
     "aria-pressed": selected,
     "data-region": zone.id,
     "data-dimmed": dimmed ? "true" : undefined,
+    "data-hatch-only": hatchOnly ? "true" : undefined,
     onClick: onSelect,
     onKeyDown: (event: KeyboardEvent) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -415,10 +478,19 @@ function OpenSlotsPanel({
   focusHandle: string | null;
   onSelectZone: (zoneId: string) => void;
 }) {
+  const wildCount = slots.filter((slot) => !slot.hatchSafe).length;
+  const hatchCount = slots.filter((slot) => slot.hatchSafe).length;
+  const title =
+    hatchCount > 0 && wildCount === 0
+      ? "Hatch spots"
+      : hatchCount > 0
+        ? "Matching spots"
+        : "Open slots";
+
   return (
     <Frame
       dense
-      title="Open slots"
+      title={title}
       actions={
         <span className="text-[11px] font-semibold tabular-nums text-white/80">
           {slots.length}
@@ -427,7 +499,9 @@ function OpenSlotsPanel({
     >
       <div className="space-y-3">
         <p className="text-xs text-muted">
-          Unclaimed open slots matching the current filters
+          {hatchCount > 0 && wildCount === 0
+            ? "Outdoor hatch-safe met locations — hatching here does not spend a wild route slot"
+            : "Spots matching the current filters"}
           {focusHandleLine(focusHandle)}. Click a row to jump to that region.
         </p>
 
@@ -452,7 +526,11 @@ function OpenSlotsPanel({
                         {slot.zoneName}
                       </span>
                     )}
-                    <MethodChips methods={slot.methods} />
+                    {slot.hatchSafe ? (
+                      <EggChip />
+                    ) : (
+                      <MethodChips methods={slot.methods} />
+                    )}
                   </span>
                 </button>
               </li>
@@ -460,7 +538,7 @@ function OpenSlotsPanel({
           </ul>
         ) : (
           <p className="text-sm text-muted">
-            No open slots match these filters.
+            No spots match these filters.
           </p>
         )}
       </div>
@@ -481,8 +559,9 @@ function ZoneDetail({
 }) {
   if (!selected) return null;
 
-  const { zone, status, rows } = selected;
+  const { zone, status, rows, hatchRows } = selected;
   const slotTotal = selected.claimedOpenSlots + selected.openSlots;
+  const hatchOnly = status === "empty" && hatchRows.length > 0;
   const displayRows = sortRowsUnclaimedFirst(rows);
 
   return (
@@ -491,22 +570,24 @@ function ZoneDetail({
       title={zone.name}
       actions={
         <span className="text-[11px] font-semibold tabular-nums text-white/80">
-          {mapStatusLabel(status)}
+          {hatchOnly ? "Hatch-safe" : mapStatusLabel(status)}
         </span>
       }
     >
       <div className="space-y-3">
         <p className="text-xs text-muted">
-          {slotTotal > 0
-            ? `${selected.claimedOpenSlots} of ${slotTotal} claimed`
-            : "No wild open slots here"}
-          {selected.openSlots > 0
+          {hatchOnly
+            ? "No wild open slot — outdoor hatching is safe here and does not spend a ROM route bit"
+            : slotTotal > 0
+              ? `${selected.claimedOpenSlots} of ${slotTotal} claimed`
+              : "No wild open slots here"}
+          {!hatchOnly && selected.openSlots > 0
             ? ` · ${selected.openSlots} still unclaimed`
             : ""}
-          {focusHandle ? ` (focus: ${focusHandle})` : ""}.
+          {focusHandleLine(focusHandle)}.
         </p>
 
-        {displayRows.length > 0 ? (
+        {displayRows.length > 0 && (
           <ul className="space-y-2">
             {displayRows.map((row) => (
               <RouteRowDetail
@@ -517,7 +598,29 @@ function ZoneDetail({
               />
             ))}
           </ul>
-        ) : (
+        )}
+
+        {hatchRows.length > 0 && (
+          <div className="space-y-2">
+            {!hatchOnly && (
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Hatch-safe
+              </p>
+            )}
+            <ul className="space-y-2">
+              {hatchRows.map((row) => (
+                <RouteRowDetail
+                  key={row.label}
+                  row={row}
+                  showEncounters={showEncounters}
+                  slug={slug}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {displayRows.length === 0 && hatchRows.length === 0 && (
           <p className="text-sm text-muted">No open-slot routes here.</p>
         )}
 
@@ -554,9 +657,12 @@ function RouteRowDetail({
   showEncounters: boolean;
 }) {
   const claimed = row.focusClaimed;
+  const hatchSafe = row.hatchSafe;
   const rowChrome = claimed
     ? "border-accent/50 bg-accent/10"
-    : "border-frame bg-surface-2";
+    : hatchSafe
+      ? "border-interactive/35 bg-interactive-soft/25"
+      : "border-frame bg-surface-2";
 
   const hasFocusEncounters =
     row.focusClaims.length > 0 || row.focusFlagClaims.length > 0;
@@ -571,12 +677,18 @@ function RouteRowDetail({
         >
           {row.label}
         </span>
-        <RouteStatusChip claimed={claimed} />
+        <RouteStatusChip claimed={claimed} hatchSafe={hatchSafe} />
       </div>
 
-      <div className="mt-1.5">
-        <MethodChips methods={row.methods} />
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        {hatchSafe ? <EggChip /> : <MethodChips methods={row.methods} />}
       </div>
+
+      {hatchSafe && (
+        <p className="mt-1.5 text-[11px] text-muted">
+          Hatch here outdoors without spending a wild route slot.
+        </p>
+      )}
 
       {showEncounters && (
         <div className="mt-1.5">
@@ -627,14 +739,26 @@ function RouteRowDetail({
             </ul>
           ) : !hasFocusEncounters ? (
             <p className="text-[11px] text-muted">
-              {claimed
-                ? "Slot claimed — no catch logged on the board."
-                : "No encounters logged yet."}
+              {hatchSafe
+                ? claimed
+                  ? "Logged here — no sprites on the board."
+                  : "No hatch logged here yet."
+                : claimed
+                  ? "Slot claimed — no catch logged on the board."
+                  : "No encounters logged yet."}
             </p>
           ) : null}
         </div>
       )}
     </li>
+  );
+}
+
+function EggChip() {
+  return (
+    <span className="rounded-full border border-interactive/40 bg-interactive-soft/50 px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+      Egg
+    </span>
   );
 }
 
@@ -658,7 +782,28 @@ function MethodChips({
   );
 }
 
-function RouteStatusChip({ claimed }: { claimed: boolean }) {
+function RouteStatusChip({
+  claimed,
+  hatchSafe,
+}: {
+  claimed: boolean;
+  hatchSafe: boolean;
+}) {
+  if (hatchSafe) {
+    if (claimed) {
+      return (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent-deep">
+          Logged
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-interactive/40 bg-interactive-soft/40 px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+        Available
+      </span>
+    );
+  }
+
   if (claimed) {
     return (
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent-deep">
