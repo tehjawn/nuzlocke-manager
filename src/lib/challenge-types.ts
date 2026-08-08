@@ -194,6 +194,26 @@ export type Challenge = {
   source: DataSource;
 };
 
+export type TournamentFormat = "SINGLE_ELIM" | "SWISS";
+
+/** Frozen Main Squad mon at match lock — independent of later roster edits. */
+export type SquadPokemonSnapshot = {
+  species: string;
+  nickname: string | null;
+  pokedexId: number | null;
+  level: number | null;
+  isShiny: boolean;
+  types: string[];
+  partyIndex: number;
+};
+
+export type MatchSideSnapshot = {
+  trainerId: string;
+  handle: string;
+  pokemon: SquadPokemonSnapshot[];
+  capturedAt: string;
+};
+
 export type TournamentMatchView = {
   id: string;
   round: number;
@@ -206,11 +226,43 @@ export type TournamentMatchView = {
   trainerAHandle: string | null;
   trainerBHandle: string | null;
   winnerHandle: string | null;
+  squadA: MatchSideSnapshot | null;
+  squadB: MatchSideSnapshot | null;
+  pokepasteA: string | null;
+  pokepasteB: string | null;
+  lockedAt: string | null;
+};
+
+export type TournamentStandingView = {
+  trainerId: string;
+  handle: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  buchholz: number;
+  sortOrder: number;
+};
+
+export type TournamentSummary = {
+  id: string;
+  name: string | null;
+  format: TournamentFormat;
+  status: string;
+  swissRoundCount: number | null;
+  matchCount: number;
+  currentRound: number | null;
+  createdAt: string;
 };
 
 export type TournamentView = {
   id: string;
+  challengeId: string;
   name: string | null;
+  format: TournamentFormat;
   status: string;
+  swissRoundCount: number | null;
   matches: TournamentMatchView[];
+  standings: TournamentStandingView[];
+  createdAt: string;
 };

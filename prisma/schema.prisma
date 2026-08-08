@@ -29,6 +29,11 @@ enum ChallengeVisibility {
   PUBLIC
 }
 
+enum TournamentFormat {
+  SINGLE_ELIM
+  SWISS
+}
+
 enum PokemonSlot {
   MAIN
   RESERVE
@@ -177,7 +182,7 @@ model Challenge {
   trainers         TrainerProfile[]
   activities       ActivityEvent[]
   snapshots        TrainerBoardSnapshot[]
-  tournament       Tournament?
+  tournaments      Tournament[]
   feedback         FeedbackSubmission[]
   survivalMarkets  SurvivalMarket[]
 }
@@ -301,9 +306,10 @@ model TrainerProfile {
   pokemon    PokemonEntry[]
   activities ActivityEvent[]
   snapshots  TrainerBoardSnapshot[]
-  matchAsA   TournamentMatch[] @relation("MatchTrainerA")
-  matchAsB   TournamentMatch[] @relation("MatchTrainerB")
-  matchWins  TournamentMatch[] @relation("MatchWinner")
+  matchAsA           TournamentMatch[]     @relation("MatchTrainerA")
+  matchAsB           TournamentMatch[]     @relation("MatchTrainerB")
+  matchWins          TournamentMatch[]     @relation("MatchWinner")
+  tournamentStandings TournamentStanding[]
 
   @@unique([challengeId, handle])
   /// One claimed board per user per season (DB: partial unique WHERE userId IS NOT NULL).
@@ -494,36 +500,72 @@ model ActivityReaction {
   @@index([activityId])
 }
 
+/// Season ladder / event. A challenge may host many tournaments (Swiss + elim, etc.).
 model Tournament {
-  id          String   @id @default(cuid())
-  challengeId String   @unique
-  name        String?
+  id              String           @id @default(cuid())
+  challengeId     String
+  name            String?
+  format          TournamentFormat @default(SINGLE_ELIM)
   /// DRAFT | ACTIVE | COMPLETE
-  status      String   @default("DRAFT")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status          String           @default("DRAFT")
+  /// Planned Swiss rounds (ignored for elim).
+  swissRoundCount Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  challenge Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  challenge Challenge            @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   matches   TournamentMatch[]
+  standings TournamentStanding[]
+
+  @@index([challengeId, createdAt])
 }
 
 model TournamentMatch {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   tournamentId String
   round        Int
-  sortOrder    Int      @default(0)
+  sortOrder    Int       @default(0)
   label        String?
   trainerAId   String?
   trainerBId   String?
   winnerId     String?
   notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  /// Locked Main Squad snapshot for side A at pair time (JSON MatchSideSnapshot).
+  squadA       Json?
+  /// Locked Main Squad snapshot for side B at pair time (JSON MatchSideSnapshot).
+  squadB       Json?
+  pokepasteA   String?
+  pokepasteB   String?
+  lockedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  tournament Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournament Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   trainerA   TrainerProfile? @relation("MatchTrainerA", fields: [trainerAId], references: [id], onDelete: SetNull)
   trainerB   TrainerProfile? @relation("MatchTrainerB", fields: [trainerBId], references: [id], onDelete: SetNull)
   winner     TrainerProfile? @relation("MatchWinner", fields: [winnerId], references: [id], onDelete: SetNull)
 
   @@index([tournamentId, round, sortOrder])
+}
+
+/// Swiss points / tiebreakers per entrant (elim formats leave this empty).
+model TournamentStanding {
+  id           String   @id @default(cuid())
+  tournamentId String
+  trainerId    String
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  draws        Int      @default(0)
+  /// Match points (3 win / 1 draw).
+  points       Int      @default(0)
+  /// Sum of opponents' match points (Buchholz).
+  buchholz     Int      @default(0)
+  sortOrder    Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  tournament Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  trainer    TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, trainerId])
+  @@index([tournamentId, points])
 }

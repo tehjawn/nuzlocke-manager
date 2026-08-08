@@ -28,8 +28,8 @@ type SeasonTabsProps = {
   status?: ChallengeStatus;
   firstRun?: boolean;
   /**
-   * TEMP (#240): Tournament under Info → Get Started. Requires GM view (lens),
-   * not merely the GAME_MASTER role.
+   * TEMP (#240 legacy): kept for call-site compatibility; Tournament no longer
+   * lives in season tabs (#185).
    */
   gmViewOn?: boolean;
   /** When set, include My Trainer under the Trainers group. */
@@ -49,6 +49,8 @@ export function getSeasonTabs(
   status: ChallengeStatus = "ACTIVE",
   options?: { firstRun?: boolean; gmViewOn?: boolean },
 ): SeasonTab[] {
+  void status;
+  void options?.gmViewOn;
   const base = `/challenges/${slug}`;
   const tabs: SeasonTab[] = [
     {
@@ -76,16 +78,6 @@ export function getSeasonTabs(
       icon: <ToolsIcon />,
     },
   ];
-
-  // TEMP (#240): Tournament / Ladder is still WIP — GM view only.
-  if (options?.gmViewOn) {
-    tabs.push({
-      href: `${base}/tournament`,
-      label: status === "TOURNAMENT" ? "Ladder" : "Tournament",
-      match: "prefix",
-      icon: <TournamentIcon />,
-    });
-  }
 
   tabs.push({
     href: `${base}/activity`,
@@ -127,6 +119,8 @@ export function SeasonTabs({
   gmViewOn = false,
   myTrainerId = null,
 }: SeasonTabsProps) {
+  void status;
+  void gmViewOn;
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const base = `/challenges/${slug}`;
@@ -136,7 +130,8 @@ export function SeasonTabs({
     under(pathname, `${base}/about`) ||
     under(pathname, `${base}/rules`) ||
     under(pathname, `${base}/activity`) ||
-    (gmViewOn && under(pathname, `${base}/tournament`));
+    under(pathname, `${base}/tournaments`) ||
+    under(pathname, `${base}/tournament`);
   const toolsActive =
     under(pathname, `${base}/tools`) ||
     under(pathname, `${base}/season-stats`) ||
@@ -170,14 +165,6 @@ export function SeasonTabs({
           icon={<GetStartedIcon className="h-3.5 w-3.5" />}
           active={under(pathname, `${base}/setup`)}
         />
-        {gmViewOn && (
-          <NavChild
-            href={`${base}/tournament`}
-            label={status === "TOURNAMENT" ? "Ladder" : "Tournament"}
-            icon={<TournamentIcon />}
-            active={under(pathname, `${base}/tournament`)}
-          />
-        )}
         <NavChild
           href={`${base}/about`}
           label="About"
@@ -397,24 +384,6 @@ function ChevronIcon({
       strokeWidth="2"
     >
       <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function TournamentIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-    >
-      <path d="M7 4h10v3a5 5 0 01-5 5 5 5 0 01-5-5V4z" strokeLinejoin="round" />
-      <path d="M12 12v4" strokeLinecap="round" />
-      <path d="M8 20h8" strokeLinecap="round" />
-      <path d="M5 7H3.5A1.5 1.5 0 012 5.5V5" strokeLinecap="round" />
-      <path d="M19 7h1.5A1.5 1.5 0 0022 5.5V5" strokeLinecap="round" />
     </svg>
   );
 }
