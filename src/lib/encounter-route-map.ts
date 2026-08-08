@@ -39,18 +39,7 @@ export const MAP_ENCOUNTER_METHODS: readonly CatchRouteEncounter[] = [
   "rock-smash",
 ];
 
-/**
- * Planning chips: wild methods + outdoor no-wild-table filter.
- * `"no-wilds"` covers egg-only and empty-static met locations (gifts/fossils/hatches).
- */
-export type MapMethodFilter = CatchRouteEncounter | "no-wilds";
-
-export const MAP_METHOD_FILTERS: readonly MapMethodFilter[] = [
-  ...MAP_ENCOUNTER_METHODS,
-  "no-wilds",
-];
-
-/** Legend / status chips — OR-matched when any are selected. */
+/** Legend status chips — single-select toggle (null = show all). */
 export type MapStatusFilter =
   | "unclaimed"
   | "partial"
@@ -112,10 +101,8 @@ export type MapOpenSlot = {
 };
 
 export type MapZoneFilter = {
-  /** Empty = any status. Otherwise OR-match legend status chips. */
-  statuses: readonly MapStatusFilter[];
-  /** Empty = all methods. Otherwise OR-match. `"no-wilds"` matches hatch-safe zones. */
-  methods: readonly MapMethodFilter[];
+  /** Null = any status. Otherwise match that legend chip only. */
+  status: MapStatusFilter | null;
 };
 
 function ledgerByRoute(
@@ -247,56 +234,12 @@ export function zoneIsPaintable(zone: MapZoneStatus): boolean {
   return zone.status !== "empty" || zone.hatchRows.length > 0;
 }
 
-function wildMethodFilters(
-  methods: readonly MapMethodFilter[],
-): CatchRouteEncounter[] {
-  return methods.filter(
-    (method): method is CatchRouteEncounter => method !== "no-wilds",
-  );
-}
-
-function noWildsMethodActive(methods: readonly MapMethodFilter[]): boolean {
-  return methods.includes("no-wilds");
-}
-
-function noWildsStatusActive(statuses: readonly MapStatusFilter[]): boolean {
-  return statuses.includes("no-wilds");
-}
-
 function zoneMatchesStatusFilter(
   zone: MapZoneStatus,
-  statuses: readonly MapStatusFilter[],
+  status: MapStatusFilter,
 ): boolean {
-  if (statuses.length === 0) return true;
-  return statuses.some((status) => {
-    if (status === "no-wilds") return zoneHasHatchSafe(zone);
-    return zone.status === status;
-  });
-}
-
-function zoneMatchesMethodFilter(
-  zone: MapZoneStatus,
-  filter: MapZoneFilter,
-): boolean {
-  const wildFilters = wildMethodFilters(filter.methods);
-  const noWildsMethod = noWildsMethodActive(filter.methods);
-  if (wildFilters.length === 0 && !noWildsMethod) return true;
-
-  const methodSet = new Set(wildFilters);
-  const claimedOnly =
-    filter.statuses.length === 1 && filter.statuses[0] === "claimed";
-
-  const matchesWild =
-    wildFilters.length > 0 &&
-    zone.rows.some((row) => {
-      if (!row.methods.some((method) => methodSet.has(method))) return false;
-      if (claimedOnly) return row.focusClaimed;
-      if (filter.statuses.includes("claimed") && row.focusClaimed) return true;
-      return !row.focusClaimed;
-    });
-
-  const matchesNoWilds = noWildsMethod && zoneHasHatchSafe(zone);
-  return matchesWild || matchesNoWilds;
+  if (status === "no-wilds") return zoneHasHatchSafe(zone);
+  return zone.status === status;
 }
 
 /** Whether a zone should stay emphasized under the planning filters. */
@@ -305,30 +248,26 @@ export function zoneMatchesMapFilter(
   filter: MapZoneFilter,
 ): boolean {
   if (!zoneIsPaintable(zone)) return false;
-
-  const hasStatus = filter.statuses.length > 0;
-  const hasMethod = filter.methods.length > 0;
-
-  // Default map — every paintable zone is emphasized.
-  if (!hasStatus && !hasMethod) return true;
-
-  if (hasStatus && !zoneMatchesStatusFilter(zone, filter.statuses)) {
-    return false;
-  }
-
-  if (hasMethod && !zoneMatchesMethodFilter(zone, filter)) {
-    return false;
-  }
-
-  return true;
+  if (!filter.status) return true;
+  return zoneMatchesStatusFilter(zone, filter.status);
 }
 
-function rowMatchesWildMethods(
+function pushSlot(
+  slots: MapOpenSlot[],
+  zone: MapZoneStatus,
   row: MapRouteRow,
-  wildFilters: readonly CatchRouteEncounter[],
-): boolean {
-  if (wildFilters.length === 0) return true;
-  return row.methods.some((method) => wildFilters.includes(method));
+): void {
+  slots.push({
+    zoneId: zone.zone.id,
+    zoneName: zone.zone.name,
+    label: row.label,
+    methods: row.methods,
+    hatchSafe: row.hatchSafe,
+    offRouteKind: row.offRouteKind,
+    focusClaimed: row.focusClaimed,
+    focusClaims: row.focusClaims,
+    focusFlagClaims: row.focusFlagClaims,
+  });
 }
 
 /** Matching checklist rows for the planning side panel. */
@@ -337,66 +276,27 @@ export function listOpenSlotsForMap(
   filter: MapZoneFilter,
 ): MapOpenSlot[] {
   const slots: MapOpenSlot[] = [];
-  const wildFilters = wildMethodFilters(filter.methods);
-  const noWildsOn =
-    noWildsMethodActive(filter.methods) ||
-    noWildsStatusActive(filter.statuses);
-  const statuses = filter.statuses;
-  const statusOpen =
-    statuses.length === 0 ||
-    statuses.includes("unclaimed") ||
-    statuses.includes("partial");
-  const statusClaimed = statuses.includes("claimed");
-  // Status chips that include open buckets, or method-only planning.
-  const showOpenWild =
-    (statusOpen && statuses.length > 0) ||
-    (statuses.length === 0 && wildFilters.length > 0);
-  const includeClaimedWild = statusClaimed;
-  const includeNoWilds = noWildsOn;
+  const status = filter.status;
+  if (!status) return slots;
 
   for (const zone of zones) {
     if (!zoneMatchesMapFilter(zone, filter)) continue;
 
-    if (showOpenWild || includeClaimedWild) {
-      for (const row of zone.rows) {
-        if (!rowMatchesWildMethods(row, wildFilters)) continue;
-        if (row.focusClaimed && !includeClaimedWild) continue;
-        if (!row.focusClaimed && !showOpenWild) continue;
-        slots.push({
-          zoneId: zone.zone.id,
-          zoneName: zone.zone.name,
-          label: row.label,
-          methods: row.methods,
-          hatchSafe: false,
-          offRouteKind: null,
-          focusClaimed: row.focusClaimed,
-          focusClaims: row.focusClaims,
-          focusFlagClaims: row.focusFlagClaims,
-        });
-      }
+    if (status === "no-wilds") {
+      for (const row of zone.hatchRows) pushSlot(slots, zone, row);
+      continue;
     }
 
-    if (includeNoWilds) {
-      for (const row of zone.hatchRows) {
-        slots.push({
-          zoneId: zone.zone.id,
-          zoneName: zone.zone.name,
-          label: row.label,
-          methods: row.methods,
-          hatchSafe: true,
-          offRouteKind: row.offRouteKind,
-          focusClaimed: row.focusClaimed,
-          focusClaims: row.focusClaims,
-          focusFlagClaims: row.focusFlagClaims,
-        });
+    for (const row of zone.rows) {
+      if (status === "claimed") {
+        if (row.focusClaimed) pushSlot(slots, zone, row);
+        continue;
       }
+      // unclaimed / partial zones: list still-open wild rows
+      if (!row.focusClaimed) pushSlot(slots, zone, row);
     }
   }
   return slots;
-}
-
-export function countHatchSpots(zones: MapZoneStatus[]): number {
-  return zones.reduce((sum, zone) => sum + zone.hatchRows.length, 0);
 }
 
 /** Counts for legend status chips. */
@@ -433,7 +333,7 @@ export function mapStatusLabel(status: MapRouteClaimStatus): string {
   }
 }
 
-export function mapMethodLabel(method: MapMethodFilter): string {
+export function mapMethodLabel(method: CatchRouteEncounter): string {
   switch (method) {
     case "land":
       return "Grass";
@@ -443,8 +343,6 @@ export function mapMethodLabel(method: MapMethodFilter): string {
       return "Fishing";
     case "rock-smash":
       return "Rock Smash";
-    case "no-wilds":
-      return "No wilds";
     default:
       return method;
   }

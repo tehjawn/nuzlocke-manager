@@ -13,10 +13,8 @@ import {
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
 import {
   buildEncounterMapStatuses,
-  countHatchSpots,
   countZonesForStatusFilter,
   listOpenSlotsForMap,
-  MAP_METHOD_FILTERS,
   MAP_STATUS_FILTERS,
   mapMethodLabel,
   mapOffRouteKindLabel,
@@ -27,7 +25,6 @@ import {
   zoneHasHatchSafe,
   zoneIsPaintable,
   zoneMatchesMapFilter,
-  type MapMethodFilter,
   type MapOffRouteKind,
   type MapOpenSlot,
   type MapRouteClaimStatus,
@@ -76,8 +73,9 @@ export function EncounterRouteMap({
     () => myTrainerId ?? routeStatuses[0]?.trainerId ?? "",
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [statusFilters, setStatusFilters] = useState<MapStatusFilter[]>([]);
-  const [methodFilters, setMethodFilters] = useState<MapMethodFilter[]>([]);
+  const [statusFilter, setStatusFilter] = useState<MapStatusFilter | null>(
+    null,
+  );
 
   const focusStatus =
     routeStatuses.find((entry) => entry.trainerId === trainerId) ?? null;
@@ -87,18 +85,8 @@ export function EncounterRouteMap({
     [groups, focusStatus],
   );
 
-  const filter = useMemo(
-    () => ({
-      statuses: statusFilters,
-      methods: methodFilters,
-    }),
-    [statusFilters, methodFilters],
-  );
+  const filter = useMemo(() => ({ status: statusFilter }), [statusFilter]);
 
-  const hatchSpotTotal = useMemo(
-    () => countHatchSpots(zoneStatuses),
-    [zoneStatuses],
-  );
   const statusCounts = useMemo(() => {
     const counts = {} as Record<MapStatusFilter, number>;
     for (const status of MAP_STATUS_FILTERS) {
@@ -122,25 +110,11 @@ export function EncounterRouteMap({
   const selected =
     zoneStatuses.find((entry) => entry.zone.id === selectedId) ?? null;
   const unmapped = useMemo(() => unmappedOpenCatchRoutes(), []);
-  const planningActive =
-    statusFilters.length > 0 || methodFilters.length > 0;
-
-  function toggleMethod(method: MapMethodFilter) {
-    setSelectedId(null);
-    setMethodFilters((prev) =>
-      prev.includes(method)
-        ? prev.filter((entry) => entry !== method)
-        : [...prev, method],
-    );
-  }
+  const planningActive = statusFilter != null;
 
   function toggleStatus(status: MapStatusFilter) {
     setSelectedId(null);
-    setStatusFilters((prev) =>
-      prev.includes(status)
-        ? prev.filter((entry) => entry !== status)
-        : [...prev, status],
-    );
+    setStatusFilter((prev) => (prev === status ? null : status));
   }
 
   return (
@@ -184,53 +158,8 @@ export function EncounterRouteMap({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="hidden text-[10px] font-semibold uppercase tracking-wide text-muted sm:inline">
-          Methods
-        </span>
-        {MAP_METHOD_FILTERS.map((method) => {
-          const active = methodFilters.includes(method);
-          const countHint =
-            method === "no-wilds" ? (
-              <span className="tabular-nums text-muted">
-                ({hatchSpotTotal})
-              </span>
-            ) : null;
-          return (
-            <button
-              key={method}
-              type="button"
-              aria-pressed={active}
-              data-testid={`encounter-map-method-${method}`}
-              onClick={() => toggleMethod(method)}
-              className={`pressable inline-flex items-center gap-1 rounded-md border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
-                active
-                  ? "border-interactive/45 bg-interactive-soft text-ink"
-                  : "border-frame/35 bg-surface/60 text-muted hover:border-frame/55 hover:text-ink"
-              }`}
-            >
-              {mapMethodLabel(method)}
-              {countHint}
-            </button>
-          );
-        })}
-        {planningActive && (
-          <button
-            type="button"
-            data-testid="encounter-map-clear-filters"
-            onClick={() => {
-              setStatusFilters([]);
-              setMethodFilters([]);
-            }}
-            className="pressable text-[11px] font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
-
       <MapLegend
-        activeStatuses={statusFilters}
+        activeStatus={statusFilter}
         counts={statusCounts}
         onToggle={toggleStatus}
       />
@@ -293,7 +222,7 @@ export function EncounterRouteMap({
             <p className="text-sm text-muted">
               Select a route or town on the map to see open-slot progress
               {focusHandleLine(focusStatus?.trainerHandle)}. Click a legend chip
-              or method filter to plan.
+              to filter.
             </p>
           </Frame>
         )}
@@ -309,11 +238,11 @@ export function EncounterRouteMap({
 }
 
 function MapLegend({
-  activeStatuses,
+  activeStatus,
   counts,
   onToggle,
 }: {
-  activeStatuses: readonly MapStatusFilter[];
+  activeStatus: MapStatusFilter | null;
   counts: Record<MapStatusFilter, number>;
   onToggle: (status: MapStatusFilter) => void;
 }) {
@@ -357,7 +286,7 @@ function MapLegend({
       aria-label="Filter map by claim status"
     >
       {items.map((item) => {
-        const active = activeStatuses.includes(item.status);
+        const active = activeStatus === item.status;
         return (
           <li key={item.status}>
             <button
@@ -365,10 +294,10 @@ function MapLegend({
               aria-pressed={active}
               data-testid={`encounter-map-status-${item.status}`}
               onClick={() => onToggle(item.status)}
-              className={`pressable inline-flex items-center gap-1.5 rounded-full border px-2 py-1 transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 transition-colors ${
                 active
-                  ? "border-interactive/50 bg-interactive-soft text-ink shadow-sm"
-                  : "border-frame/35 bg-surface/70 text-muted hover:border-frame/55 hover:text-ink"
+                  ? "border-interactive/50 bg-interactive-soft text-ink"
+                  : "border-frame/35 bg-surface/70 text-muted hover:bg-ink/8 hover:text-ink"
               }`}
             >
               <span
@@ -607,6 +536,7 @@ function ZoneDetail({
   const slotTotal = selected.claimedOpenSlots + selected.openSlots;
   const hatchOnly = status === "empty" && hatchRows.length > 0;
   const displayRows = sortRowsUnclaimedFirst(rows);
+  const allRows = [...displayRows, ...hatchRows];
 
   return (
     <Frame
@@ -618,44 +548,33 @@ function ZoneDetail({
         </span>
       }
     >
-      <div className="space-y-3">
-        <p className="text-xs text-muted">
+      <div className="space-y-2">
+        <p className="text-[11px] leading-snug text-muted">
           {hatchOnly
-            ? "No wild open slot — gifts, fossils, or outdoor hatching can log here without spending a ROM route bit"
+            ? "No wild open slot — egg / gift / fossil logs only"
             : slotTotal > 0
               ? `${selected.claimedOpenSlots} of ${slotTotal} claimed`
               : "No wild open slots here"}
           {!hatchOnly && selected.openSlots > 0
-            ? ` · ${selected.openSlots} still unclaimed`
+            ? ` · ${selected.openSlots} open`
             : ""}
           {focusHandleLine(focusHandle)}.
         </p>
 
-        {displayRows.length > 0 && (
-          <ul className="space-y-2">
-            {displayRows.map((row) => (
+        {allRows.length > 0 ? (
+          <ul className="divide-y divide-frame/30">
+            {allRows.map((row) => (
               <RouteRowDetail key={row.label} row={row} slug={slug} />
             ))}
           </ul>
-        )}
-
-        {hatchRows.length > 0 && (
-          <div className="space-y-2">
-            {!hatchOnly && (
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                No wilds
-              </p>
-            )}
-            <ul className="space-y-2">
-              {hatchRows.map((row) => (
-                <RouteRowDetail key={row.label} row={row} slug={slug} />
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {displayRows.length === 0 && hatchRows.length === 0 && (
+        ) : (
           <p className="text-sm text-muted">No open-slot routes here.</p>
+        )}
+
+        {hatchOnly && (
+          <p className="text-[11px] text-muted">
+            {mapOffRouteKindNote(hatchRows[0]?.offRouteKind ?? null)}
+          </p>
         )}
 
         <Link
@@ -690,42 +609,51 @@ function RouteRowDetail({
 }) {
   const claimed = row.focusClaimed;
   const hatchSafe = row.hatchSafe;
-  const rowChrome = claimed
-    ? "border-accent/50 bg-accent/10"
-    : hatchSafe
-      ? "border-interactive/35 bg-interactive-soft/25"
-      : "border-frame bg-surface-2";
+  const hasEncounters =
+    claimed &&
+    (row.focusClaims.length > 0 || row.focusFlagClaims.length > 0);
 
   return (
-    <li className={`rounded-md border px-2.5 py-2 ${rowChrome}`}>
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className={`min-w-0 text-sm font-semibold leading-tight tracking-tight ${
-            claimed ? "text-accent-deep" : "text-ink"
-          }`}
-        >
-          {row.label}
-        </span>
-        <RouteStatusChip claimed={claimed} hatchSafe={hatchSafe} />
+    <li
+      className={`flex gap-2 px-1.5 py-2 ${
+        claimed ? "bg-accent/5" : ""
+      }`}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span
+            className={`truncate text-sm font-semibold tracking-tight ${
+              claimed ? "text-accent-deep" : "text-ink"
+            }`}
+          >
+            {row.label}
+          </span>
+          <span
+            className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide ${
+              claimed ? "text-accent-deep/80" : "text-muted"
+            }`}
+          >
+            {hatchSafe
+              ? claimed
+                ? "Logged"
+                : "Available"
+              : claimed
+                ? "Claimed"
+                : "Open"}
+          </span>
+        </div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted">
+          {hatchSafe ? (
+            <OffRouteChip kind={row.offRouteKind} quiet />
+          ) : (
+            <MethodChips methods={row.methods} quiet />
+          )}
+        </div>
       </div>
-
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        {hatchSafe ? (
-          <OffRouteChip kind={row.offRouteKind} />
-        ) : (
-          <MethodChips methods={row.methods} />
-        )}
-      </div>
-
-      {hatchSafe && (
-        <p className="mt-1.5 text-[11px] text-muted">
-          {mapOffRouteKindNote(row.offRouteKind)}
-        </p>
-      )}
-
-      {claimed && (
+      {hasEncounters && (
         <FocusEncounterStrip
           claimed={claimed}
+          compact
           focusClaims={row.focusClaims}
           focusFlagClaims={row.focusFlagClaims}
           hatchSafe={hatchSafe}
@@ -737,82 +665,26 @@ function RouteRowDetail({
 }
 
 function FocusEncounterStrip({
-  claimed,
-  compact = false,
   focusClaims,
   focusFlagClaims,
-  hatchSafe,
   slug,
 }: {
   claimed: boolean;
-  /** Dense side-rail layout: borderless sprites, no nested cards. */
   compact?: boolean;
   focusClaims: MapRouteRow["focusClaims"];
   focusFlagClaims: MapRouteRow["focusFlagClaims"];
   hatchSafe: boolean;
   slug: string;
 }) {
-  const hasFocusEncounters =
-    focusClaims.length > 0 || focusFlagClaims.length > 0;
-
-  if (compact) {
-    if (!hasFocusEncounters) return null;
-    return (
-      <div className="flex shrink-0 flex-col items-end justify-center gap-1">
-        {focusFlagClaims.length > 0 && (
-          <span className="text-[10px] font-semibold text-muted">Flag</span>
-        )}
-        {focusClaims.length > 0 && (
-          <ul className="flex flex-wrap justify-end gap-0.5">
-            {focusClaims.map((claim) => {
-              const label = claim.nickname?.trim() || claim.species;
-              return (
-                <li key={claim.pokemonId}>
-                  <Link
-                    href={`/challenges/${slug}/trainers/${claim.trainerId}`}
-                    title={`${label} · ${claim.trainerHandle}`}
-                    aria-label={`${label} · ${claim.trainerHandle}${
-                      claim.isAlive ? "" : " · fallen"
-                    }`}
-                    className="block rounded-sm hover:bg-ink/10"
-                  >
-                    <PokemonSpriteImage
-                      alt=""
-                      className={`pixelated h-8 w-8 object-contain ${
-                        claim.isAlive ? "" : "opacity-50 grayscale"
-                      }`}
-                      height={32}
-                      pokedexId={claim.pokedexId}
-                      shiny={claim.isShiny}
-                      species={claim.species}
-                      width={32}
-                    />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    );
-  }
+  if (focusClaims.length === 0 && focusFlagClaims.length === 0) return null;
 
   return (
-    <div className="mt-1.5 w-full">
+    <div className="flex shrink-0 flex-col items-end justify-center gap-1">
       {focusFlagClaims.length > 0 && (
-        <ul className="mb-1.5 flex flex-wrap gap-1">
-          {focusFlagClaims.map((claim) => (
-            <li
-              className="rounded-full border border-frame/40 bg-interactive-soft/40 px-2 py-0.5 text-[10px] font-semibold text-ink"
-              key={claim.trainerId}
-            >
-              {claim.trainerHandle} · flag
-            </li>
-          ))}
-        </ul>
+        <span className="text-[10px] font-semibold text-muted">Flag</span>
       )}
-      {focusClaims.length > 0 ? (
-        <ul className="flex flex-wrap gap-1.5">
+      {focusClaims.length > 0 && (
+        <ul className="flex flex-wrap justify-end gap-0.5">
           {focusClaims.map((claim) => {
             const label = claim.nickname?.trim() || claim.species;
             return (
@@ -823,58 +695,37 @@ function FocusEncounterStrip({
                   aria-label={`${label} · ${claim.trainerHandle}${
                     claim.isAlive ? "" : " · fallen"
                   }`}
-                  className="pressable flex items-center gap-1.5 rounded-md px-0.5 py-0.5 hover:bg-interactive-soft/35"
+                  className="block rounded-sm hover:bg-ink/10"
                 >
                   <PokemonSpriteImage
                     alt=""
-                    className={`pixelated h-9 w-9 object-contain ${
+                    className={`pixelated h-8 w-8 object-contain ${
                       claim.isAlive ? "" : "opacity-50 grayscale"
                     }`}
-                    height={36}
+                    height={32}
                     pokedexId={claim.pokedexId}
                     shiny={claim.isShiny}
                     species={claim.species}
-                    width={36}
+                    width={32}
                   />
-                  <span className="max-w-[6.5rem] truncate text-[11px] font-semibold leading-tight">
-                    {label}
-                  </span>
                 </Link>
               </li>
             );
           })}
         </ul>
-      ) : !hasFocusEncounters ? (
-        <p className="text-[11px] text-muted">
-          {hatchSafe
-            ? claimed
-              ? "Logged here — no sprites on the board."
-              : "Nothing logged here yet."
-            : claimed
-              ? "Slot claimed — no catch logged on the board."
-              : "No encounters logged yet."}
-        </p>
-      ) : null}
+      )}
     </div>
   );
 }
 
 function OffRouteChip({
   kind,
-  quiet = false,
 }: {
   kind: MapOffRouteKind | null;
   quiet?: boolean;
 }) {
-  if (quiet) {
-    return (
-      <span className="font-semibold text-muted">
-        {mapOffRouteKindLabel(kind)}
-      </span>
-    );
-  }
   return (
-    <span className="rounded-full border border-interactive/40 bg-interactive-soft/50 px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+    <span className="font-semibold text-muted">
       {mapOffRouteKindLabel(kind)}
     </span>
   );
@@ -882,104 +733,15 @@ function OffRouteChip({
 
 function MethodChips({
   methods,
-  quiet = false,
 }: {
   methods: readonly CatchRouteEncounter[];
-  /** Inline muted labels instead of pill chips (side list). */
   quiet?: boolean;
 }) {
   if (methods.length === 0) return null;
   const sorted = sortMapMethods(methods);
-  if (quiet) {
-    return (
-      <span className="font-semibold text-muted">
-        {sorted.map((method) => mapMethodLabel(method)).join(" · ")}
-      </span>
-    );
-  }
   return (
-    <ul className="flex flex-wrap gap-1">
-      {sorted.map((method) => (
-        <li
-          key={method}
-          className="rounded-full border border-frame/40 bg-surface/80 px-1.5 py-0.5 text-[10px] font-semibold text-muted"
-        >
-          {mapMethodLabel(method)}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function RouteStatusChip({
-  claimed,
-  hatchSafe,
-}: {
-  claimed: boolean;
-  hatchSafe: boolean;
-}) {
-  if (hatchSafe) {
-    if (claimed) {
-      return (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent-deep">
-          Logged
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-interactive/40 bg-interactive-soft/40 px-1.5 py-0.5 text-[10px] font-semibold text-ink">
-        Available
-      </span>
-    );
-  }
-
-  if (claimed) {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent-deep">
-        <span
-          className="flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[var(--on-accent)]"
-          aria-hidden
-        >
-          <CheckIcon className="h-2.5 w-2.5" />
-        </span>
-        Claimed
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-frame/45 bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-ink">
-      <UnclaimedIcon className="h-3 w-3 text-muted" />
-      Unclaimed
+    <span className="font-semibold text-muted">
+      {sorted.map((method) => mapMethodLabel(method)).join(" · ")}
     </span>
-  );
-}
-
-function CheckIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" className={className} fill="none" aria-hidden>
-      <path
-        d="M3.5 8.2 6.2 11l6.3-7"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function UnclaimedIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" className={className} fill="none" aria-hidden>
-      <rect
-        x="3"
-        y="3"
-        width="10"
-        height="10"
-        rx="1.5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-      />
-    </svg>
   );
 }
