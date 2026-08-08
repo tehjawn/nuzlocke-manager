@@ -2061,11 +2061,15 @@ async function prismaMemorialBackfillCreate(
       evs: jsonStatOrNull(mon.evs),
       friendship:
         typeof mon.friendship === "number" ? mon.friendship : null,
-      personalityValue:
-        typeof mon.personalityValue === "number" ||
-        typeof mon.personalityValue === "bigint"
-          ? u32ToDbBigInt(dbBigIntToU32(mon.personalityValue))
-          : null,
+      personalityValue: u32ToDbBigInt(
+        realPersonalityValue(
+          typeof mon.personalityValue === "number" ||
+            typeof mon.personalityValue === "bigint" ||
+            typeof mon.personalityValue === "string"
+            ? dbBigIntToU32(mon.personalityValue)
+            : null,
+        ),
+      ),
       otId:
         typeof mon.otId === "number" || typeof mon.otId === "bigint"
           ? u32ToDbBigInt(dbBigIntToU32(mon.otId))
@@ -2326,14 +2330,27 @@ export async function upsertPokemonAction(
             personalityValue: u32ToDbBigInt(
               realPersonalityValue(data.personalityValue),
             ),
+            // Keep otId paired with PID — null PID ⇒ null OT (import rule).
+            ...(realPersonalityValue(data.personalityValue) == null &&
+            data.otId === undefined
+              ? { otId: null }
+              : {}),
           }
         : {}),
       ...(data.otId !== undefined
         ? {
             otId: u32ToDbBigInt(
-              data.otId == null
-                ? null
-                : Math.max(0, Math.min(0xffffffff, Math.trunc(data.otId))),
+              (() => {
+                const pid =
+                  data.personalityValue !== undefined
+                    ? realPersonalityValue(data.personalityValue)
+                    : undefined;
+                if (pid === null) return null;
+                if (data.otId == null) return null;
+                if (!Number.isInteger(data.otId)) return null;
+                if (data.otId < 0 || data.otId > 0xffffffff) return null;
+                return data.otId;
+              })(),
             ),
           }
         : {}),
@@ -2865,9 +2882,13 @@ export async function importFromSaveAction(
 
       const personalityValue = realPersonalityValue(mon.personalityValue);
       const otId =
-        mon.otId == null
+        personalityValue == null ||
+        mon.otId == null ||
+        !Number.isInteger(mon.otId) ||
+        mon.otId < 0 ||
+        mon.otId > 0xffffffff
           ? null
-          : Math.max(0, Math.min(0xffffffff, Math.trunc(mon.otId)));
+          : mon.otId;
 
       const defaultCause =
         mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null;
@@ -2941,9 +2962,11 @@ export async function importFromSaveAction(
       ...mon,
       personalityValue: realPersonalityValue(mon.personalityValue),
       otId:
-        mon.otId == null
+        mon.otId == null || !Number.isInteger(mon.otId)
           ? null
-          : Math.max(0, Math.min(0xffffffff, Math.trunc(mon.otId))),
+          : mon.otId < 0 || mon.otId > 0xffffffff
+            ? null
+            : mon.otId,
     }));
 
     const livingSlots = (["MAIN", "RESERVE"] as const).filter((s) =>
@@ -2951,10 +2974,10 @@ export async function importFromSaveAction(
     );
     const replaceEncountered = replaceSet.has("ENCOUNTERED");
 
+    // Match every living payload mon so a MAIN↔RESERVE move is not read as
+    // "disappeared" when only one living slot is in replaceSlots.
     const incomingLiving = normalizedPokemon.filter(
-      (mon) =>
-        (mon.slot === "MAIN" || mon.slot === "RESERVE") &&
-        replaceSet.has(mon.slot),
+      (mon) => mon.slot === "MAIN" || mon.slot === "RESERVE",
     );
     const incomingEncountered = replaceEncountered
       ? normalizedPokemon.filter((mon) => {
@@ -3026,6 +3049,8 @@ export async function importFromSaveAction(
         for (const pid of plan.handledGravePids) handledGravePids.add(pid);
 
         // Assign party indexes in payload order so Main/Reserve order sticks.
+        // Skip creates whose destination slot is not in replaceSlots.
+        const upsertIncoming = new Set(plan.upserts.map((u) => u.incoming));
         const partyIndexFor = new Map<(typeof incomingLiving)[number], number>();
         for (const mon of incomingLiving) {
           // Deaths are memorialized separately — skip living index for those PIDs.
@@ -3035,6 +3060,8 @@ export async function importFromSaveAction(
           ) {
             continue;
           }
+          const writingUpsert = upsertIncoming.has(mon);
+          if (!writingUpsert && !replaceSet.has(mon.slot)) continue;
           const partyIndex = indexes[mon.slot] ?? 0;
           indexes[mon.slot] = partyIndex + 1;
           partyIndexFor.set(mon, partyIndex);
@@ -3086,7 +3113,6 @@ export async function importFromSaveAction(
           if (replaceMemorial) {
             // Memorial hard-replace will recreate graves from the R.I.P. payload.
             await tx.pokemonEntry.delete({ where: { id: existing.id } });
-            importedCount += 1;
             continue;
           }
 
@@ -3126,6 +3152,7 @@ export async function importFromSaveAction(
         }
 
         for (const mon of plan.creates) {
+          if (!replaceSet.has(mon.slot)) continue;
           const partyIndex = partyIndexFor.get(mon) ?? indexes[mon.slot] ?? 0;
           if (!partyIndexFor.has(mon)) {
             indexes[mon.slot] = partyIndex + 1;
@@ -3154,8 +3181,20 @@ export async function importFromSaveAction(
 
       // --- GRAVEYARD ---
       if (replaceMemorial) {
-        await tx.pokemonEntry.deleteMany({
+        const doomedGraves = await tx.pokemonEntry.findMany({
           where: { trainerId: trainer.id, slot: "GRAVEYARD" },
+          select: { id: true },
+        });
+        // Graves should have no OPEN market, but void defensively before delete.
+        await voidOpenMarketsForPokemonIds(
+          tx,
+          doomedGraves.map((g) => g.id),
+        );
+        await tx.pokemonEntry.deleteMany({
+          where: {
+            id: { in: doomedGraves.map((g) => g.id) },
+            trainerId: trainer.id,
+          },
         });
         // Living→grave moves above already handled Die resolution; hard-replace
         // wipes memorial rows — recreate from the full R.I.P. payload.

@@ -113,6 +113,11 @@ export type ParsedSavePokemon = {
   /** Gen 3 growth friendship (0–255); null when unknown (e.g. Pokédex-only stubs). */
   friendship: number | null;
   category: SaveMonCategory;
+  /**
+   * Pokédex-seen placeholder (not a physical mon). `pid` is only a stable UI
+   * key — never persist it as personalityValue.
+   */
+  isDexSeenStub?: boolean;
 };
 
 export type ParsedSaveTrainer = {
@@ -280,40 +285,44 @@ function nuzlockeFlagsAfterParty(mode: SpeciesIdMode): number {
     ? MODERN_NUZLOCKE_FLAGS_AFTER_PARTY
     : CREST_NUZLOCKE_FLAGS_AFTER_PARTY;
 }
-/** Synthetic PID prefix for dex-only encounter stubs (avoids real PID clashes). */
+/**
+ * Client-only PID prefix for dex-seen stubs (stable React keys).
+ * Not a reserved physical PID range — never infer identity from this band.
+ */
 export const DEX_SEEN_PID_BASE = 0xde000000;
 
 /**
- * True for Pokédex-seen stubs — not a physical mon identity.
- * Only the `0xDE00xxxx` band is reserved (pokedexId in the low 16 bits).
- * A prior `>= 0xDE000000` check wrongly discarded ~14% of real u32 PIDs.
+ * @deprecated Prefer `ParsedSavePokemon.isDexSeenStub`. Range checks discard
+ * valid Gen 3 PIDs; kept only for older drafts that lack the provenance flag.
  */
 export function isSyntheticSavePid(pid: number): boolean {
   return ((pid >>> 0) >>> 16) === DEX_SEEN_PID_BASE >>> 16;
 }
 
 /**
- * Persistable Gen 3 personality value, or null for missing / synthetic dex stubs.
- * Rejects the synthetic band so a buggy client cannot poison the unique index.
+ * Persistable Gen 3 personality value, or null for missing / non-integer /
+ * out-of-range inputs. Every valid u32 PID is persistable — dex stubs are
+ * marked via `isDexSeenStub` and nulled by the import client, not by range.
  */
 export function realPersonalityValue(
   pid: number | null | undefined,
 ): number | null {
-  if (pid == null || !Number.isFinite(pid)) return null;
-  const n = Math.trunc(Number(pid));
-  if (n < 0 || n > 0xffffffff) return null;
-  if (isSyntheticSavePid(n)) return null;
-  return n;
+  if (pid == null || !Number.isFinite(pid) || !Number.isInteger(pid)) {
+    return null;
+  }
+  if (pid < 0 || pid > 0xffffffff) return null;
+  return pid;
 }
 
 /** Coerce a JS u32 into Prisma `BigInt` for Postgres BIGINT columns. */
 export function u32ToDbBigInt(
   value: number | null | undefined,
 ): bigint | null {
-  if (value == null || !Number.isFinite(value)) return null;
-  const n = Math.trunc(Number(value));
-  if (n < 0 || n > 0xffffffff) return null;
-  return BigInt(n);
+  if (value == null || !Number.isFinite(value) || !Number.isInteger(value)) {
+    return null;
+  }
+  if (value < 0 || value > 0xffffffff) return null;
+  return BigInt(value);
 }
 
 /**
@@ -337,10 +346,13 @@ export function dbBigIntToU32(
       return null;
     }
   }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    const n = Math.trunc(value);
-    if (n < 0 || n > 0xffffffff) return null;
-    return n;
+  if (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    Number.isInteger(value)
+  ) {
+    if (value < 0 || value > 0xffffffff) return null;
+    return value;
   }
   return null;
 }
@@ -914,6 +926,7 @@ function toParsed(
     evs: mon.evs ?? { ...EMPTY_EVS },
     friendship: mon.friendship,
     category,
+    isDexSeenStub: false,
   };
 }
 
@@ -1667,6 +1680,7 @@ function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedS
       : romDexOrNational;
   const entry = findPokemonById(pokedexId);
   return {
+    // UI-only key so Encountered list rows stay unique — not a real PID.
     pid: (DEX_SEEN_PID_BASE | (pokedexId & 0xffff)) >>> 0,
     otId: 0,
     nickname: null,
@@ -1683,6 +1697,7 @@ function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedS
     evs: { ...EMPTY_EVS },
     friendship: null,
     category: "encountered",
+    isDexSeenStub: true,
   };
 }
 

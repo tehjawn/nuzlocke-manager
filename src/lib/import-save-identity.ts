@@ -44,6 +44,9 @@ export function planLivingPidMerge<T extends LivingMergeIncoming>(
   const wipeNullIds: string[] = [];
   for (const row of existing) {
     if (row.personalityValue != null) {
+      const prior = existingByPid.get(row.personalityValue);
+      // Pre-migration data can repeat a PID; keep one row and wipe the rest.
+      if (prior) wipeNullIds.push(prior.id);
       existingByPid.set(row.personalityValue, row);
     } else {
       wipeNullIds.push(row.id);

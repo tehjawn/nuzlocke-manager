@@ -67,12 +67,16 @@ export function importedGravesToAppend<T extends GraveIdentity>(
         existingByPid.has(mon.personalityValue) ||
         seenIncomingPids.has(mon.personalityValue)
       ) {
-        if (existingByPid.has(mon.personalityValue)) {
+        if (
+          existingByPid.has(mon.personalityValue) &&
+          !seenIncomingPids.has(mon.personalityValue)
+        ) {
           toRefresh.push({
             personalityValue: mon.personalityValue,
             incoming: mon,
           });
         }
+        seenIncomingPids.add(mon.personalityValue);
         continue;
       }
       seenIncomingPids.add(mon.personalityValue);

@@ -37,6 +37,8 @@ export type SaveImportDraft = {
   friendship: number | null;
   slot: PokemonSlot;
   include: boolean;
+  /** Pokédex-seen placeholder — pid is UI-only, never persist as identity. */
+  isDexSeenStub: boolean;
 };
 
 export type SaveImportPayload = {
@@ -111,6 +113,7 @@ function categoryToDrafts(
     friendship: mon.friendship,
     slot,
     include: true,
+    isDexSeenStub: Boolean(mon.isDexSeenStub),
   }));
 }
 
