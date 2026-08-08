@@ -38,7 +38,16 @@ export type PokemonEntry = {
   evs: StatSpread | null;
   /** Gen 3 growth friendship (0–255); null when unknown / not imported. */
   friendship: number | null;
+  /**
+   * Gen 3 personality value (PID). Null for manual rows / dex-seen stubs /
+   * pre-migration entries. Sticky identity across save re-imports.
+   */
+  personalityValue?: number | null;
+  /** Optional OT id from the save box struct; not used as a match key. */
+  otId?: number | null;
   causeOfDeath: string | null;
+  /** Player-owned free-text notes (not import provenance). */
+  notes?: string | null;
   /** 1-based run attempt when memorialized; null when unknown (legacy graves). */
   diedOnRun: number | null;
   /** TrainerRun id when known (living = active run; graves = run of death). */

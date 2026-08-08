@@ -6,6 +6,8 @@ import type { PersonalRouteStatus } from "@/lib/personal-routes";
 
 type EncounterSeasonViewProps = {
   groups: EncounterRouteGroup[];
+  /** Validated `HoennMapRegion.id` from `?route=` (or null). */
+  initialRoute?: string | null;
   myTrainerId?: string | null;
   routeStatuses: PersonalRouteStatus[];
   slug: string;
@@ -17,6 +19,7 @@ type EncounterSeasonViewProps = {
  */
 export function EncounterSeasonView({
   groups,
+  initialRoute = null,
   myTrainerId = null,
   routeStatuses,
   slug,
@@ -24,6 +27,7 @@ export function EncounterSeasonView({
   return (
     <EncounterRouteMap
       groups={groups}
+      initialRoute={initialRoute}
       myTrainerId={myTrainerId}
       routeStatuses={routeStatuses}
       slug={slug}

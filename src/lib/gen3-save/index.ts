@@ -1,6 +1,11 @@
 export {
   parsePokemonSave,
   parsePokemonSaveAsync,
+  DEX_SEEN_PID_BASE,
+  isSyntheticSavePid,
+  realPersonalityValue,
+  u32ToDbBigInt,
+  dbBigIntToU32,
   type ParsedSavePokemon,
   type ParsedSaveTrainer,
   type ParsedSaveBadges,

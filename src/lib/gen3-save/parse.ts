@@ -96,6 +96,8 @@ type SpeciesIdMode = "modern" | "crest";
 
 export type ParsedSavePokemon = {
   pid: number;
+  /** Original trainer id from the box/party struct (0 when unknown / dex stub). */
+  otId: number;
   nickname: string | null;
   species: string;
   pokedexId: number;
@@ -111,6 +113,11 @@ export type ParsedSavePokemon = {
   /** Gen 3 growth friendship (0–255); null when unknown (e.g. Pokédex-only stubs). */
   friendship: number | null;
   category: SaveMonCategory;
+  /**
+   * Pokédex-seen placeholder (not a physical mon). `pid` is only a stable UI
+   * key — never persist it as personalityValue.
+   */
+  isDexSeenStub?: boolean;
 };
 
 export type ParsedSaveTrainer = {
@@ -278,8 +285,77 @@ function nuzlockeFlagsAfterParty(mode: SpeciesIdMode): number {
     ? MODERN_NUZLOCKE_FLAGS_AFTER_PARTY
     : CREST_NUZLOCKE_FLAGS_AFTER_PARTY;
 }
-/** Synthetic PID prefix for dex-only encounter stubs (avoids real PID clashes). */
-const DEX_SEEN_PID_BASE = 0xde000000;
+/**
+ * Client-only PID prefix for dex-seen stubs (stable React keys).
+ * Not a reserved physical PID range — never infer identity from this band.
+ */
+export const DEX_SEEN_PID_BASE = 0xde000000;
+
+/**
+ * @deprecated Prefer `ParsedSavePokemon.isDexSeenStub`. Range checks discard
+ * valid Gen 3 PIDs; kept only for older drafts that lack the provenance flag.
+ */
+export function isSyntheticSavePid(pid: number): boolean {
+  return ((pid >>> 0) >>> 16) === DEX_SEEN_PID_BASE >>> 16;
+}
+
+/**
+ * Persistable Gen 3 personality value, or null for missing / non-integer /
+ * out-of-range inputs. Every valid u32 PID is persistable — dex stubs are
+ * marked via `isDexSeenStub` and nulled by the import client, not by range.
+ */
+export function realPersonalityValue(
+  pid: number | null | undefined,
+): number | null {
+  if (pid == null || !Number.isFinite(pid) || !Number.isInteger(pid)) {
+    return null;
+  }
+  if (pid < 0 || pid > 0xffffffff) return null;
+  return pid;
+}
+
+/** Coerce a JS u32 into Prisma `BigInt` for Postgres BIGINT columns. */
+export function u32ToDbBigInt(
+  value: number | null | undefined,
+): bigint | null {
+  if (value == null || !Number.isFinite(value) || !Number.isInteger(value)) {
+    return null;
+  }
+  if (value < 0 || value > 0xffffffff) return null;
+  return BigInt(value);
+}
+
+/**
+ * Coerce Prisma `BigInt` / number / cache-string back to a JS u32.
+ * `"use cache"` / Flight may round-trip BIGINT as a decimal string.
+ */
+export function dbBigIntToU32(
+  value: bigint | number | string | null | undefined,
+): number | null {
+  if (value == null) return null;
+  if (typeof value === "bigint") {
+    if (value < BigInt(0) || value > BigInt(0xffffffff)) return null;
+    return Number(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!/^\d+$/.test(trimmed)) return null;
+    try {
+      return dbBigIntToU32(BigInt(trimmed));
+    } catch {
+      return null;
+    }
+  }
+  if (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    Number.isInteger(value)
+  ) {
+    if (value < 0 || value > 0xffffffff) return null;
+    return value;
+  }
+  return null;
+}
 /**
  * Crest seen/owned bitfields have been observed near mid-EWRAM (~0x27bxx).
  * Search preferred windows first; only fall through to the rest of EWRAM if needed.
@@ -833,6 +909,7 @@ function toParsed(
 
   return {
     pid: mon.pid,
+    otId: mon.oid,
     nickname: nick,
     species,
     pokedexId,
@@ -849,6 +926,7 @@ function toParsed(
     evs: mon.evs ?? { ...EMPTY_EVS },
     friendship: mon.friendship,
     category,
+    isDexSeenStub: false,
   };
 }
 
@@ -1602,7 +1680,9 @@ function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedS
       : romDexOrNational;
   const entry = findPokemonById(pokedexId);
   return {
+    // UI-only key so Encountered list rows stay unique — not a real PID.
     pid: (DEX_SEEN_PID_BASE | (pokedexId & 0xffff)) >>> 0,
+    otId: 0,
     nickname: null,
     species: entry?.name ?? `Species #${pokedexId}`,
     pokedexId,
@@ -1617,6 +1697,7 @@ function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedS
     evs: { ...EMPTY_EVS },
     friendship: null,
     category: "encountered",
+    isDexSeenStub: true,
   };
 }
 
