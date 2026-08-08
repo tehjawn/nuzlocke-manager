@@ -106,8 +106,9 @@ export type MapOpenSlot = {
   methods: readonly CatchRouteEncounter[];
   hatchSafe: boolean;
   offRouteKind: MapOffRouteKind | null;
-  /** Wild row claim state (always false for hatch rows). */
   focusClaimed: boolean;
+  focusClaims: EncounterClaim[];
+  focusFlagClaims: EncounterFlagClaim[];
 };
 
 export type MapZoneFilter = {
@@ -369,6 +370,8 @@ export function listOpenSlotsForMap(
           hatchSafe: false,
           offRouteKind: null,
           focusClaimed: row.focusClaimed,
+          focusClaims: row.focusClaims,
+          focusFlagClaims: row.focusFlagClaims,
         });
       }
     }
@@ -383,6 +386,8 @@ export function listOpenSlotsForMap(
           hatchSafe: true,
           offRouteKind: row.offRouteKind,
           focusClaimed: row.focusClaimed,
+          focusClaims: row.focusClaims,
+          focusFlagClaims: row.focusFlagClaims,
         });
       }
     }

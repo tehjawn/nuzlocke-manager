@@ -76,7 +76,6 @@ export function EncounterRouteMap({
     () => myTrainerId ?? routeStatuses[0]?.trainerId ?? "",
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showEncounters, setShowEncounters] = useState(false);
   const [statusFilters, setStatusFilters] = useState<MapStatusFilter[]>([]);
   const [methodFilters, setMethodFilters] = useState<MapMethodFilter[]>([]);
 
@@ -165,36 +164,24 @@ export function EncounterRouteMap({
             plan.
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
-          {routeStatuses.length > 0 && (
-            <label className="min-w-[11rem] space-y-1 text-xs font-semibold text-muted">
-              Focus trainer
-              <select
-                className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
-                data-testid="encounter-map-trainer"
-                onChange={(event) => setTrainerId(event.target.value)}
-                value={focusStatus?.trainerId ?? trainerId}
-              >
-                {routeStatuses.map((entry) => (
-                  <option key={entry.trainerId} value={entry.trainerId}>
-                    {entry.trainerHandle}
-                    {entry.trainerId === myTrainerId ? " (you)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-frame/40 bg-surface/70 px-2.5 py-2 text-xs font-semibold text-ink">
-            <input
-              checked={showEncounters}
-              className="accent-[var(--accent)]"
-              data-testid="encounter-map-show-encounters"
-              onChange={(event) => setShowEncounters(event.target.checked)}
-              type="checkbox"
-            />
-            Show encounters
+        {routeStatuses.length > 0 && (
+          <label className="min-w-[11rem] space-y-1 text-xs font-semibold text-muted">
+            Focus trainer
+            <select
+              className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+              data-testid="encounter-map-trainer"
+              onChange={(event) => setTrainerId(event.target.value)}
+              value={focusStatus?.trainerId ?? trainerId}
+            >
+              {routeStatuses.map((entry) => (
+                <option key={entry.trainerId} value={entry.trainerId}>
+                  {entry.trainerHandle}
+                  {entry.trainerId === myTrainerId ? " (you)" : ""}
+                </option>
+              ))}
+            </select>
           </label>
-        </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -292,13 +279,13 @@ export function EncounterRouteMap({
           <ZoneDetail
             focusHandle={focusStatus?.trainerHandle ?? null}
             selected={selected}
-            showEncounters={showEncounters}
             slug={slug}
           />
         ) : planningActive ? (
           <OpenSlotsPanel
             focusHandle={focusStatus?.trainerHandle ?? null}
             slots={openSlots}
+            slug={slug}
             onSelectZone={(zoneId) => setSelectedId(zoneId)}
           />
         ) : (
@@ -500,10 +487,12 @@ function focusHandleLine(focusHandle: string | null | undefined): string {
 function OpenSlotsPanel({
   slots,
   focusHandle,
+  slug,
   onSelectZone,
 }: {
   slots: MapOpenSlot[];
   focusHandle: string | null;
+  slug: string;
   onSelectZone: (zoneId: string) => void;
 }) {
   const wildCount = slots.filter((slot) => !slot.hatchSafe).length;
@@ -538,36 +527,59 @@ function OpenSlotsPanel({
             className="max-h-[28rem] space-y-1.5 overflow-y-auto pr-0.5"
             data-testid="encounter-map-open-slots"
           >
-            {slots.map((slot) => (
-              <li key={`${slot.zoneId}:${slot.label}`}>
-                <button
-                  type="button"
-                  onClick={() => onSelectZone(slot.zoneId)}
-                  className="pressable flex w-full flex-col gap-1 rounded-md border border-frame bg-surface-2 px-2.5 py-2 text-left hover:border-interactive/40 hover:bg-interactive-soft/25"
+            {slots.map((slot) => {
+              const claimedChrome = slot.focusClaimed
+                ? "border-accent/50 bg-accent/10"
+                : "border-frame bg-surface-2";
+              return (
+                <li
+                  key={`${slot.zoneId}:${slot.label}`}
+                  className={`rounded-md border px-2.5 py-2 ${claimedChrome}`}
                 >
-                  <span className="text-sm font-semibold leading-tight tracking-tight text-ink">
-                    {slot.label}
-                  </span>
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    {slot.label !== slot.zoneName && (
-                      <span className="text-[10px] font-semibold text-muted">
-                        {slot.zoneName}
+                  <button
+                    type="button"
+                    onClick={() => onSelectZone(slot.zoneId)}
+                    className="pressable flex w-full flex-col gap-1 text-left hover:opacity-90"
+                  >
+                    <span className="flex w-full items-center justify-between gap-2">
+                      <span
+                        className={`min-w-0 text-sm font-semibold leading-tight tracking-tight ${
+                          slot.focusClaimed ? "text-accent-deep" : "text-ink"
+                        }`}
+                      >
+                        {slot.label}
                       </span>
-                    )}
-                    {slot.hatchSafe ? (
-                      <OffRouteChip kind={slot.offRouteKind} />
-                    ) : (
-                      <MethodChips methods={slot.methods} />
-                    )}
-                    {slot.focusClaimed && (
-                      <span className="text-[10px] font-semibold text-accent-deep">
-                        {slot.hatchSafe ? "Logged" : "Claimed"}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </li>
-            ))}
+                      {slot.focusClaimed && (
+                        <span className="shrink-0 text-[10px] font-semibold text-accent-deep">
+                          {slot.hatchSafe ? "Logged" : "Claimed"}
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {slot.label !== slot.zoneName && (
+                        <span className="text-[10px] font-semibold text-muted">
+                          {slot.zoneName}
+                        </span>
+                      )}
+                      {slot.hatchSafe ? (
+                        <OffRouteChip kind={slot.offRouteKind} />
+                      ) : (
+                        <MethodChips methods={slot.methods} />
+                      )}
+                    </span>
+                  </button>
+                  {slot.focusClaimed && (
+                    <FocusEncounterStrip
+                      claimed={slot.focusClaimed}
+                      focusClaims={slot.focusClaims}
+                      focusFlagClaims={slot.focusFlagClaims}
+                      hatchSafe={slot.hatchSafe}
+                      slug={slug}
+                    />
+                  )}
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p className="text-sm text-muted">
@@ -583,12 +595,10 @@ function ZoneDetail({
   selected,
   slug,
   focusHandle,
-  showEncounters,
 }: {
   selected: MapZoneStatus | null;
   slug: string;
   focusHandle: string | null;
-  showEncounters: boolean;
 }) {
   if (!selected) return null;
 
@@ -623,12 +633,7 @@ function ZoneDetail({
         {displayRows.length > 0 && (
           <ul className="space-y-2">
             {displayRows.map((row) => (
-              <RouteRowDetail
-                key={row.label}
-                row={row}
-                showEncounters={showEncounters}
-                slug={slug}
-              />
+              <RouteRowDetail key={row.label} row={row} slug={slug} />
             ))}
           </ul>
         )}
@@ -642,12 +647,7 @@ function ZoneDetail({
             )}
             <ul className="space-y-2">
               {hatchRows.map((row) => (
-                <RouteRowDetail
-                  key={row.label}
-                  row={row}
-                  showEncounters={showEncounters}
-                  slug={slug}
-                />
+                <RouteRowDetail key={row.label} row={row} slug={slug} />
               ))}
             </ul>
           </div>
@@ -683,11 +683,9 @@ function sortRowsUnclaimedFirst(rows: MapRouteRow[]): MapRouteRow[] {
 function RouteRowDetail({
   row,
   slug,
-  showEncounters,
 }: {
   row: MapRouteRow;
   slug: string;
-  showEncounters: boolean;
 }) {
   const claimed = row.focusClaimed;
   const hatchSafe = row.hatchSafe;
@@ -696,9 +694,6 @@ function RouteRowDetail({
     : hatchSafe
       ? "border-interactive/35 bg-interactive-soft/25"
       : "border-frame bg-surface-2";
-
-  const hasFocusEncounters =
-    row.focusClaims.length > 0 || row.focusFlagClaims.length > 0;
 
   return (
     <li className={`rounded-md border px-2.5 py-2 ${rowChrome}`}>
@@ -727,67 +722,94 @@ function RouteRowDetail({
         </p>
       )}
 
-      {showEncounters && (
-        <div className="mt-1.5">
-          {row.focusFlagClaims.length > 0 && (
-            <ul className="mb-1.5 flex flex-wrap gap-1">
-              {row.focusFlagClaims.map((claim) => (
-                <li
-                  className="rounded-full border border-frame/40 bg-interactive-soft/40 px-2 py-0.5 text-[10px] font-semibold text-ink"
-                  key={claim.trainerId}
-                >
-                  {claim.trainerHandle} · flag
-                </li>
-              ))}
-            </ul>
-          )}
-          {row.focusClaims.length > 0 ? (
-            <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4">
-              {row.focusClaims.map((claim) => {
-                const label = claim.nickname?.trim() || claim.species;
-                return (
-                  <li key={claim.pokemonId}>
-                    <Link
-                      href={`/challenges/${slug}/trainers/${claim.trainerId}`}
-                      title={`${label} · ${claim.trainerHandle}`}
-                      aria-label={`${label} · ${claim.trainerHandle}${
-                        claim.isAlive ? "" : " · fallen"
-                      }`}
-                      className="pressable flex flex-col items-center gap-0.5 rounded-md border border-frame/25 bg-surface/40 px-1 py-1 text-center hover:border-interactive/40"
-                    >
-                      <PokemonSpriteImage
-                        alt=""
-                        className={`pixelated h-10 w-10 object-contain ${
-                          claim.isAlive ? "" : "opacity-50 grayscale"
-                        }`}
-                        height={40}
-                        pokedexId={claim.pokedexId}
-                        shiny={claim.isShiny}
-                        species={claim.species}
-                        width={40}
-                      />
-                      <span className="w-full truncate text-[10px] font-semibold leading-tight">
-                        {label}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : !hasFocusEncounters ? (
-            <p className="text-[11px] text-muted">
-              {hatchSafe
-                ? claimed
-                  ? "Logged here — no sprites on the board."
-                  : "Nothing logged here yet."
-                : claimed
-                  ? "Slot claimed — no catch logged on the board."
-                  : "No encounters logged yet."}
-            </p>
-          ) : null}
-        </div>
+      {claimed && (
+        <FocusEncounterStrip
+          claimed={claimed}
+          focusClaims={row.focusClaims}
+          focusFlagClaims={row.focusFlagClaims}
+          hatchSafe={hatchSafe}
+          slug={slug}
+        />
       )}
     </li>
+  );
+}
+
+function FocusEncounterStrip({
+  claimed,
+  focusClaims,
+  focusFlagClaims,
+  hatchSafe,
+  slug,
+}: {
+  claimed: boolean;
+  focusClaims: MapRouteRow["focusClaims"];
+  focusFlagClaims: MapRouteRow["focusFlagClaims"];
+  hatchSafe: boolean;
+  slug: string;
+}) {
+  const hasFocusEncounters =
+    focusClaims.length > 0 || focusFlagClaims.length > 0;
+
+  return (
+    <div className="mt-1.5 w-full">
+      {focusFlagClaims.length > 0 && (
+        <ul className="mb-1.5 flex flex-wrap gap-1">
+          {focusFlagClaims.map((claim) => (
+            <li
+              className="rounded-full border border-frame/40 bg-interactive-soft/40 px-2 py-0.5 text-[10px] font-semibold text-ink"
+              key={claim.trainerId}
+            >
+              {claim.trainerHandle} · flag
+            </li>
+          ))}
+        </ul>
+      )}
+      {focusClaims.length > 0 ? (
+        <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4">
+          {focusClaims.map((claim) => {
+            const label = claim.nickname?.trim() || claim.species;
+            return (
+              <li key={claim.pokemonId}>
+                <Link
+                  href={`/challenges/${slug}/trainers/${claim.trainerId}`}
+                  title={`${label} · ${claim.trainerHandle}`}
+                  aria-label={`${label} · ${claim.trainerHandle}${
+                    claim.isAlive ? "" : " · fallen"
+                  }`}
+                  className="pressable flex flex-col items-center gap-0.5 rounded-md border border-frame/25 bg-surface/40 px-1 py-1 text-center hover:border-interactive/40"
+                >
+                  <PokemonSpriteImage
+                    alt=""
+                    className={`pixelated h-10 w-10 object-contain ${
+                      claim.isAlive ? "" : "opacity-50 grayscale"
+                    }`}
+                    height={40}
+                    pokedexId={claim.pokedexId}
+                    shiny={claim.isShiny}
+                    species={claim.species}
+                    width={40}
+                  />
+                  <span className="w-full truncate text-[10px] font-semibold leading-tight">
+                    {label}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      ) : !hasFocusEncounters ? (
+        <p className="text-[11px] text-muted">
+          {hatchSafe
+            ? claimed
+              ? "Logged here — no sprites on the board."
+              : "Nothing logged here yet."
+            : claimed
+              ? "Slot claimed — no catch logged on the board."
+              : "No encounters logged yet."}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
