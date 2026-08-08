@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { isCannedAskQuestion } from "@/features/search/ask-canned";
+import { isCannedAskQuestion, matchCannedAskIntent } from "@/features/search/ask-canned";
+import { matchDeterministicAsk } from "@/features/search/ask-deterministic";
 import { askEntityHints } from "@/features/search/ask-hints";
 import {
   buildSeasonDigestFromPlan,
@@ -157,7 +158,12 @@ export function SearchPalette() {
   const [recents, setRecents] = useState<string[]>([]);
   const [seenOpen, setSeenOpen] = useState(open);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { state: assist, ask, reset: resetAssist } = useJumpAssist();
+  const {
+    state: assist,
+    askRemote,
+    answerLocal,
+    reset: resetAssist,
+  } = useJumpAssist();
 
   // Reset ephemeral search state when the palette opens (render-time sync).
   if (open !== seenOpen) {
@@ -416,13 +422,32 @@ export function SearchPalette() {
     }
 
     // Legacy: answer inside the centered Jump modal.
+    const canned = matchCannedAskIntent(trimmedQuery, season);
+    if (canned) {
+      answerLocal(trimmedQuery, canned);
+      return;
+    }
+    const deterministic = matchDeterministicAsk(trimmedQuery, season);
+    if (deterministic) {
+      answerLocal(trimmedQuery, deterministic);
+      return;
+    }
     const guard = evaluateAskQuery(trimmedQuery, { entityHints });
     if (!guard.ok) return;
     const snapshot = season
       ? buildSeasonDigestFromPlan(season, detectAskPlan(trimmedQuery, season))
       : null;
-    void ask(trimmedQuery, snapshot);
-  }, [aiDrawer, ask, canAsk, entityHints, openAsk, season, trimmedQuery]);
+    void askRemote(trimmedQuery, snapshot, { preferRanking: false });
+  }, [
+    aiDrawer,
+    answerLocal,
+    askRemote,
+    canAsk,
+    entityHints,
+    openAsk,
+    season,
+    trimmedQuery,
+  ]);
 
   const relatedResults = useMemo(() => {
     if (aiDrawer || assist.status !== "answered") return [];
@@ -791,6 +816,9 @@ function AssistPanel({
 
       {state.status === "answered" && (
         <div className="rounded-md border border-frame/60 bg-surface-2/60 px-3 py-2.5 text-sm leading-relaxed text-ink motion-safe:animate-[search-panel-in_180ms_cubic-bezier(0.22,1,0.36,1)]">
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted">
+            {state.route === "local" ? "Local" : "Gemini"}
+          </p>
           {state.text.split(/\n+/).map((para, i) => (
             <p key={i} className={i > 0 ? "mt-2" : undefined}>
               {para}

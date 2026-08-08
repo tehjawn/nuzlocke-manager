@@ -226,10 +226,16 @@ export function askStarterPrompts(
   );
 
   if (season.myTrainerId) {
-    starters.push({
-      label: "Strongest on my team?",
-      question: "What are the strongest on my team?",
-    });
+    starters.push(
+      {
+        label: "Show my Pokémon",
+        question: "Show me my Pokémon",
+      },
+      {
+        label: "Strongest on my team?",
+        question: "What are the strongest on my team?",
+      },
+    );
   }
 
   return starters;

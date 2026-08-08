@@ -1,0 +1,167 @@
+[
+  {
+    "id": "orient-what-can-you-do",
+    "question": "What can you do?",
+    "expectRoute": "canned",
+    "mustInclude": ["Jump"]
+  },
+  {
+    "id": "orient-how-to-play",
+    "question": "How do I play?",
+    "expectRoute": "canned"
+  },
+  {
+    "id": "orient-help",
+    "question": "help",
+    "expectRoute": "canned"
+  },
+  {
+    "id": "rank-strongest-board",
+    "question": "What are the strongest Pokémon?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Strongest", "Swampert"]
+  },
+  {
+    "id": "rank-weakest-board",
+    "question": "Who is the weakest Pokémon?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Weakest", "Zigzagoon"]
+  },
+  {
+    "id": "rank-my-team",
+    "question": "What are the strongest on my team?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Strongest", "Swampert"]
+  },
+  {
+    "id": "rank-handle-team",
+    "question": "Strongest on ash's team?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Strongest", "Swampert"]
+  },
+  {
+    "id": "list-my-pokemon",
+    "question": "Show me my Pokémon",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Swampert"]
+  },
+  {
+    "id": "list-my-team",
+    "question": "What's on my team?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Swampert"]
+  },
+  {
+    "id": "list-handle-team",
+    "question": "Show me misty's team",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Gyarados"]
+  },
+  {
+    "id": "list-my-fallen",
+    "question": "Show me my fallen Pokémon",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Zigzagoon"]
+  },
+  {
+    "id": "list-who-wiped",
+    "question": "Who's wiped?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["brock"]
+  },
+  {
+    "id": "standings-ahead",
+    "question": "Who's ahead in badges?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["ash"]
+  },
+  {
+    "id": "standings-badge-race",
+    "question": "badge standings",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Badge standings"]
+  },
+  {
+    "id": "count-living",
+    "question": "How many living Pokémon are there?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["living"]
+  },
+  {
+    "id": "count-fallen",
+    "question": "How many fallen Pokémon?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["fallen"]
+  },
+  {
+    "id": "count-badges-handle",
+    "question": "How many badges does misty have?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["misty"]
+  },
+  {
+    "id": "count-trainers",
+    "question": "How many trainers are there?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["trainer"]
+  },
+  {
+    "id": "gen-rules-dupes",
+    "question": "What are the dupe clause rules?",
+    "expectRoute": "generative",
+    "mustInclude": ["dupe"]
+  },
+  {
+    "id": "gen-faq-nickname",
+    "question": "Do we have to nickname Pokémon?",
+    "expectRoute": "generative"
+  },
+  {
+    "id": "gen-meta-bst",
+    "question": "What is Swampert's BST in Modern Emerald?",
+    "expectRoute": "generative"
+  },
+  {
+    "id": "gen-meta-typing",
+    "question": "Is Gyarados a good water type for this ROM?",
+    "expectRoute": "generative"
+  },
+  {
+    "id": "gen-rules-level-cap",
+    "question": "What is the level cap before Wattson?",
+    "expectRoute": "generative"
+  },
+  {
+    "id": "gen-open-strategy",
+    "question": "Should I sac a mon for the rival fight?",
+    "expectRoute": "generative"
+  },
+  {
+    "id": "paraphrase-water-board",
+    "question": "Any water mons on the board?",
+    "expectRoute": "generative"
+  },
+  {
+    "id": "paraphrase-memorial-weakest",
+    "question": "Weakest fallen Pokémon in the memorial?",
+    "expectRoute": "generative"
+  },
+  {
+    "id": "canned-self-trade",
+    "question": "Where is the self trader?",
+    "expectRoute": "canned",
+    "mustInclude": ["Self"]
+  },
+  {
+    "id": "canned-hyper-training",
+    "question": "Where do I EV train?",
+    "expectRoute": "canned",
+    "mustInclude": ["Hyper Training"]
+  },
+  {
+    "id": "steal-about-badges",
+    "question": "What can you tell me about badge standings?",
+    "expectRoute": "deterministic",
+    "mustInclude": ["Badge"]
+  }
+]
