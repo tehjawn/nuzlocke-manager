@@ -112,16 +112,19 @@ export function Frame({
 
   // Capture summary Y before the next commit that changes open/body; restore
   // after layout so skeleton → strip (and re-open with cached data) don't jump.
+  // While closed, keep a pin ready for controlled open (no click capture).
   useLayoutEffect(() => {
     if (!collapsible) return;
-    if (!open) {
-      summaryPinRef.current = null;
-      return;
+    const summary = summaryRef.current;
+    if (open) {
+      restoreSummaryScrollPin(summary, summaryPinRef);
+    } else if (summary) {
+      summaryPinRef.current = summary.getBoundingClientRect().top;
     }
-    restoreSummaryScrollPin(summaryRef.current, summaryPinRef);
     return () => {
-      const summary = summaryRef.current;
-      if (summary) {
+      // Refresh pin only while open (hydrate / children swap). Do not overwrite
+      // the closed-state pin after the open commit — that top is already jumped.
+      if (open && summary) {
         summaryPinRef.current = summary.getBoundingClientRect().top;
       }
     };
@@ -153,7 +156,7 @@ export function Frame({
     if (next) {
       restoreSummaryScrollPin(summaryRef.current, summaryPinRef);
     } else {
-      summaryPinRef.current = null;
+      captureSummaryPin();
     }
   }
 
