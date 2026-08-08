@@ -153,6 +153,37 @@ export function isPostGameMapZone(zoneId: string): boolean {
   return POST_GAME_MAP_ZONE_IDS.has(zoneId);
 }
 
+/** Label → drawn zone id (nested labels like Petalburg Woods → route-104). */
+const ZONE_ID_BY_LABEL = new Map<string, string>();
+for (const zone of HOENN_MAP_REGIONS) {
+  for (const label of zone.labels) {
+    const key = normalizeCatchRoute(label);
+    if (!ZONE_ID_BY_LABEL.has(key)) ZONE_ID_BY_LABEL.set(key, zone.id);
+  }
+}
+
+/**
+ * Resolve a stored `catchRoute` string to a Catch Map zone id for deep links.
+ *
+ * Uses the catalog canonical label (and the original string for nested labels
+ * that are themselves catalog rows). Unmapped open slots, aliasesRoute101-only
+ * cells, and free-typed junk return null — no silent remap to Route 101.
+ */
+export function mapZoneIdForCatchRoute(
+  catchRoute: string | null | undefined,
+): string | null {
+  if (!catchRoute?.trim()) return null;
+  const catalog = findCatchRoute(catchRoute);
+  const candidates = [catalog?.label, catchRoute.trim()].filter(
+    (value): value is string => Boolean(value),
+  );
+  for (const candidate of candidates) {
+    const zoneId = ZONE_ID_BY_LABEL.get(normalizeCatchRoute(candidate));
+    if (zoneId) return zoneId;
+  }
+  return null;
+}
+
 export function isPostGameCatchRouteLabel(label: string): boolean {
   return POST_GAME_CATCH_ROUTE_LABELS.has(label);
 }
