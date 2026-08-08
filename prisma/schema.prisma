@@ -117,6 +117,7 @@ model User {
   trainers        TrainerProfile[]
   activities      ActivityEvent[]       @relation("ActivityActor")
   feedback        FeedbackSubmission[]
+  aiAskLogs       AiAskLog[]
   reactions       ActivityReaction[]
   notifications   Notification[]
   survivalVotes   SurvivalVote[]
@@ -179,7 +180,49 @@ model Challenge {
   snapshots        TrainerBoardSnapshot[]
   tournament       Tournament?
   feedback         FeedbackSubmission[]
+  aiAskLogs        AiAskLog[]
   survivalMarkets  SurvivalMarket[]
+}
+
+/// Append-only Jump Ask run log for ops (#394). Not user-facing chat history.
+/// Retention: keep forever for v1 (prune job later if needed).
+model AiAskLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Optional season context when the client can send it.
+  challengeId String?
+  challenge   Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+
+  question     String
+  /// Normalized question for analytics grouping.
+  questionNorm String?
+
+  /// ok | cached | rate_limited | guard_blocked | upstream_error | not_configured | bad_request
+  status String
+  /// prose | pokemon_ranking | canned | null when no answer
+  answerKind String?
+  /// Answer payload as returned to the client (ask-types shapes).
+  answer     Json?
+
+  model         String?
+  cached        Boolean @default(false)
+  preferRanking Boolean @default(false)
+  inputTokens   Int?
+  outputTokens  Int?
+  latencyMs     Int?
+
+  /// SHA-256 of snapshot text used for the cache key — not the snapshot itself.
+  snapshotHash  String?
+  errorCode     String?
+  errorMessage  String?
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([status, createdAt])
 }
 
 model FeedbackSubmission {

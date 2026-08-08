@@ -33,8 +33,17 @@ type MemoryEntry = CachedAnswer & { expiresAt: number };
 
 const memory = new Map<string, MemoryEntry>();
 
-function normalizeQuestion(question: string): string {
+export function normalizeJumpAskQuestion(question: string): string {
   return question.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** SHA-256 of snapshot text only — for Ask ops logs (#394), not the plaintext. */
+export function jumpAskSnapshotHash(
+  snapshot: string | null | undefined,
+): string | null {
+  const trimmed = snapshot?.trim();
+  if (!trimmed) return null;
+  return createHash("sha256").update(trimmed).digest("hex");
 }
 
 export function jumpAskCacheKey(
@@ -42,7 +51,7 @@ export function jumpAskCacheKey(
   snapshot: string | null | undefined,
   mode = "prose",
 ): string {
-  const payload = `${normalizeQuestion(question)}\n---\n${mode}\n---\n${snapshot?.trim() ?? ""}`;
+  const payload = `${normalizeJumpAskQuestion(question)}\n---\n${mode}\n---\n${snapshot?.trim() ?? ""}`;
   return createHash("sha256").update(payload).digest("hex");
 }
 

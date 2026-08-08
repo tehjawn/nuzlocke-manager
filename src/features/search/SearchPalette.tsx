@@ -437,7 +437,10 @@ export function SearchPalette() {
     const snapshot = season
       ? buildSeasonDigestFromPlan(season, detectAskPlan(trimmedQuery, season))
       : null;
-    void askRemote(trimmedQuery, snapshot, { preferRanking: false });
+    void askRemote(trimmedQuery, snapshot, {
+      preferRanking: false,
+      challengeId: season?.id,
+    });
   }, [
     aiDrawer,
     answerLocal,

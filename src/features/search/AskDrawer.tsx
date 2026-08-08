@@ -161,7 +161,10 @@ function AskHost() {
       ? prependPageContext(digest, buildPageContext(pathname, season))
       : digest;
 
-    void askRemote(trimmed, snapshot, { preferRanking });
+    void askRemote(trimmed, snapshot, {
+      preferRanking,
+      challengeId: season?.id,
+    });
   };
 
   const onSeedAsk = useEffectEvent((q: string) => {

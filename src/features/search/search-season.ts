@@ -15,6 +15,7 @@ export function challengeToSearchSeasonContext(
   },
 ): SearchSeasonContext {
   return {
+    id: challenge.id,
     slug: challenge.slug,
     name: challenge.name,
     year: challenge.year,
@@ -65,6 +66,7 @@ export function challengeToSearchSeasonContext(
 /** Root-layout default: identity only until a season page registers the index. */
 export function briefToSearchSeasonContext(
   brief: {
+    id?: string;
     slug: string;
     name: string;
     year: number;
@@ -78,6 +80,7 @@ export function briefToSearchSeasonContext(
   },
 ): SearchSeasonContext {
   return {
+    id: brief.id,
     slug: brief.slug,
     name: brief.name,
     year: brief.year,

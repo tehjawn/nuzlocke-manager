@@ -135,12 +135,13 @@ export function useJumpAssist() {
     async (
       question: string,
       snapshot: string | null,
-      opts?: { preferRanking?: boolean },
+      opts?: { preferRanking?: boolean; challengeId?: string | null },
     ) => {
       const trimmed = question.trim();
       if (!trimmed) return;
 
       const preferRanking = Boolean(opts?.preferRanking);
+      const challengeId = opts?.challengeId?.trim() || undefined;
       const key = cacheKey(trimmed, snapshot, preferRanking);
       const cached = sessionAnswerCache.get(key);
       if (cached) {
@@ -167,6 +168,7 @@ export function useJumpAssist() {
             question: trimmed,
             snapshot,
             preferRanking: preferRanking || undefined,
+            challengeId,
           }),
           signal: controller.signal,
         });
