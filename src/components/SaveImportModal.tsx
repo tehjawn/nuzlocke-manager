@@ -52,7 +52,9 @@ export type SaveImportPayload = {
   applyPlayTime: boolean;
   /** Base64 of the parsed save — server re-parses for money/playtime. */
   saveBytesBase64: string | null;
-  safariZoneAreas: string[] | null;
+  /** Spent NuzlockeEncounterFlags bits; null when unreliable or opted out. */
+  nuzlockeEncounterBits: number[] | null;
+  applyEncounterFlags: boolean;
 };
 
 function uint8ToBase64(bytes: Uint8Array): string {
@@ -139,7 +141,11 @@ export function SaveImportModal({
   const [applyPlayTime, setApplyPlayTime] = useState(false);
   const [playTimeReliable, setPlayTimeReliable] = useState(false);
   const [saveBytes, setSaveBytes] = useState<Uint8Array | null>(null);
-  const [safariZoneAreas, setSafariZoneAreas] = useState<string[] | null>(null);
+  const [nuzlockeEncounterBits, setNuzlockeEncounterBits] = useState<
+    number[] | null
+  >(null);
+  const [applyEncounterFlags, setApplyEncounterFlags] = useState(false);
+  const [encounterFlagsReliable, setEncounterFlagsReliable] = useState(false);
   const [parsing, setParsing] = useState(false);
 
   if (!open) return null;
@@ -164,7 +170,9 @@ export function SaveImportModal({
     setApplyPlayTime(false);
     setPlayTimeReliable(false);
     setSaveBytes(null);
-    setSafariZoneAreas(null);
+    setNuzlockeEncounterBits(null);
+    setApplyEncounterFlags(false);
+    setEncounterFlagsReliable(false);
     setParsing(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -208,9 +216,10 @@ export function SaveImportModal({
       setPlayTimeSeconds(playTimeOk ? result.playTime.totalSeconds : null);
       setPlayTimeReliable(playTimeOk);
       setApplyPlayTime(playTimeOk);
-      setSafariZoneAreas(
-        result.safariZoneAreas.reliable ? result.safariZoneAreas.areas : null,
-      );
+      const flagsOk = result.encounterFlags.reliable;
+      setEncounterFlagsReliable(flagsOk);
+      setNuzlockeEncounterBits(flagsOk ? result.encounterFlags.usedBits : null);
+      setApplyEncounterFlags(flagsOk);
       setSections({
         party: categoryToDrafts(result.party, "MAIN"),
         box: categoryToDrafts(result.box, "RESERVE"),
@@ -278,7 +287,8 @@ export function SaveImportModal({
                 !applyBadges &&
                 !applyRevive &&
                 !applyMoney &&
-                !applyPlayTime) ||
+                !applyPlayTime &&
+                !(applyEncounterFlags && encounterFlagsReliable)) ||
               pending ||
               parsing ||
               !sections
@@ -312,7 +322,12 @@ export function SaveImportModal({
                   needsEconomyProof && saveBytes
                     ? uint8ToBase64(saveBytes)
                     : null,
-                safariZoneAreas,
+                nuzlockeEncounterBits,
+                applyEncounterFlags: Boolean(
+                  applyEncounterFlags &&
+                    encounterFlagsReliable &&
+                    nuzlockeEncounterBits != null,
+                ),
               });
             }}
           >
@@ -326,8 +341,9 @@ export function SaveImportModal({
           Upload a Modern Emerald save. Prefer Afterplay’s in-game export (
           <code className="text-ink">.sav</code> /{" "}
           <code className="text-ink">.srm</code>) — that’s the most stable
-          source for badges, revive, money, playtime, Day Care, and Pokédex
-          encounters. Emulator states (<code className="text-ink">.state</code>,{" "}
+          source for badges, revive, money, playtime, Day Care, catch-failed
+          encounter flags, and Pokédex encounters. Emulator states (
+          <code className="text-ink">.state</code>,{" "}
           <code className="text-ink">.ss0</code>–
           <code className="text-ink">.ss9</code>,{" "}
           <code className="text-ink">.s0</code>–
@@ -335,13 +351,15 @@ export function SaveImportModal({
           <code className="text-ink">.sr0</code>–
           <code className="text-ink">.sr9</code>) still work for
           party/box/R.I.P. and usually encounters, but badges, revive, money,
-          and playtime may be unavailable. Party, box (including Day Care),
-          R.I.P., and Encountered are detected separately — uncheck anything you
-          want to skip. Box Pokémon levels are derived from experience. Nature,
-          ability, moves, IVs, and EVs are imported when readable. Encountered
-          is the wild buffer plus Pokédex “seen” species, and replaces your
-          current Encountered list on import. Fainted → R.I.P. is added to the
-          season memorial (duplicates skipped); existing graves are kept.
+          playtime, and flags may be unavailable. Party, box (including Day
+          Care), R.I.P., and Encountered are detected separately — uncheck
+          anything you want to skip. Box Pokémon levels are derived from
+          experience. Nature, ability, moves, IVs, and EVs are imported when
+          readable. Encountered is the wild buffer plus Pokédex “seen” species,
+          and replaces your current Encountered list on import. Fainted → R.I.P.
+          is added to the season memorial (duplicates skipped); existing graves
+          are kept. Encounter flags mark catch-failed routes even when no
+          catch was logged (fled / failed / released).
         </p>
 
         <label className="block">
@@ -450,6 +468,20 @@ export function SaveImportModal({
                   {playTimeReliable && playTimeSeconds != null
                     ? ` (${formatPlayTime(playTimeSeconds)})`
                     : " (unavailable — try a .sav/.srm export)"}
+                </span>
+              </label>
+              <label className="flex flex-wrap items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={applyEncounterFlags && encounterFlagsReliable}
+                  disabled={!encounterFlagsReliable}
+                  onChange={(e) => setApplyEncounterFlags(e.target.checked)}
+                />
+                <span>
+                  Mark catch-failed routes from save flags
+                  {encounterFlagsReliable && nuzlockeEncounterBits != null
+                    ? ` (${nuzlockeEncounterBits.length} flagged · includes fled / failed / released)`
+                    : " (unavailable)"}
                 </span>
               </label>
             </div>

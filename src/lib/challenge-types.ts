@@ -74,6 +74,10 @@ export type TrainerProfile = {
   safariZoneAreas?: string[];
   /** False means legacy Safari catches cannot be resolved by area yet. */
   safariZoneAreasReliable?: boolean;
+  /** Spent NuzlockeEncounterFlags bit indices from the last reliable import. */
+  nuzlockeEncounterBits?: number[];
+  /** False means open-route views should not trust the bitset yet. */
+  nuzlockeEncounterBitsReliable?: boolean;
   /** Times this trainer restarted their run this season (= closed run count). */
   wipeCount: number;
   /** 1-based living attempt; equals wipeCount + 1 when in sync. */
@@ -110,6 +114,11 @@ export type TrainerProfile = {
     graveyard: number;
     encountered: number;
   };
+  /**
+   * Catch-route labels for owned mons (MAIN / RESERVE / GRAVEYARD) when
+   * `pokemon` is MAIN-only on the board SSR. Used for catch-failed stats.
+   */
+  ownedCatchRoutes?: string[];
   /** ISO timestamp of latest trainer or Pokémon change, when known. */
   updatedAt: string | null;
 };

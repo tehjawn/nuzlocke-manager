@@ -595,6 +595,11 @@ type RawMon = {
   heldItem: string | null;
   /** Raw MAPSEC byte; resolved to a name once species mode is known. */
   metLocation: number;
+  /**
+   * Met level from the origins word (`misc` u16@2, bits 0–6). Distinct from
+   * current level — used to remap gifts whose ROM met-location is a wild map.
+   */
+  metLevel: number;
   /** Raw move IDs; resolved to names once species mode is known. */
   moveIds: number[];
   ivs: StatSpread;
@@ -689,6 +694,8 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
   };
 
   const metLocation = miscView.getUint8(1);
+  // Origins: metLevel:7 | metGame:4 | pokeball:4 | otGender:1
+  const metLevel = miscView.getUint16(2, true) & 0x7f;
 
   const ivAbility = miscView.getUint32(4, true);
   const ivs: StatSpread = {
@@ -743,6 +750,7 @@ function tryParseMon(bytes: Uint8Array, offset: number): RawMon | null {
     abilitySlot,
     heldItem,
     metLocation,
+    metLevel,
     moveIds,
     ivs,
     evs,
@@ -761,6 +769,32 @@ function monScore(m: RawMon): number {
 
 /** Modern Emerald HIDDEN_NATURE_NONE — growth.hiddenNature on an unminted mon. */
 const HIDDEN_NATURE_NONE = 26;
+
+/** Route 101 MAPSEC — Birch bag scene stamps this on the starter gift. */
+const MAPSEC_ROUTE_101 = 16;
+/** Birch starter met level; Route 101 wilds only roll 2–3. */
+const BIRCH_STARTER_MET_LEVEL = 5;
+
+/**
+ * Resolve catch-route label from met location (+ met level for gift remaps).
+ *
+ * The Birch starter is received during the Route 101 bag scene, so the ROM
+ * stamps mapsec 16 — but our gift catalog attributes it to Littleroot Town.
+ * Met level 5 is unique to that gift among Route 101 encounters.
+ */
+function resolveCatchRoute(
+  metLocation: number,
+  metLevel: number,
+  mode: SpeciesIdMode,
+): string | null {
+  if (metLocation === MAPSEC_ROUTE_101 && metLevel === BIRCH_STARTER_MET_LEVEL) {
+    return "Littleroot Town";
+  }
+  return gen3MetLocationName(
+    metLocation,
+    mode === "modern" ? "modern" : "vanilla",
+  );
+}
 
 /**
  * Nature the game actually battles with. Mints write the new nature into
@@ -807,10 +841,7 @@ function toParsed(
     nature: effectiveNature(mon, mode),
     ability: abilityForSpecies(pokedexId, mon.abilitySlot),
     heldItem: mon.heldItem,
-    catchRoute: gen3MetLocationName(
-      mon.metLocation,
-      mode === "modern" ? "modern" : "vanilla",
-    ),
+    catchRoute: resolveCatchRoute(mon.metLocation, mon.metLevel, mode),
     moves: mon.moveIds
       .map((id) => gen3MoveName(id, mode === "modern" ? "modern" : "crest"))
       .filter((name): name is string => Boolean(name)),

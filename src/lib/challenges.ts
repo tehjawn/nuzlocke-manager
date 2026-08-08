@@ -575,6 +575,10 @@ export async function getTrainer(
           "slotCounts" in row && Array.isArray(row.slotCounts)
             ? row.slotCounts
             : [];
+        const ownedCatchRoutes =
+          "ownedCatchRoutes" in row && Array.isArray(row.ownedCatchRoutes)
+            ? (row.ownedCatchRoutes as string[])
+            : [];
         const challenge = await withSurvivalPollTallies(
           mapDbChallenge({ ...row, activities: [] }, viewerUserId),
           viewerUserId,
@@ -589,12 +593,17 @@ export async function getTrainer(
           else if (entry.slot === "GRAVEYARD") counts.graveyard = n;
           else if (entry.slot === "ENCOUNTERED") counts.encountered = n;
         }
+        const withRoutes = {
+          ...trainer,
+          slotCounts: counts,
+          ownedCatchRoutes,
+        };
         return {
           challenge: {
             ...challenge,
-            trainers: [{ ...trainer, slotCounts: counts }],
+            trainers: [withRoutes],
           },
-          trainer: { ...trainer, slotCounts: counts },
+          trainer: withRoutes,
         };
       }
     } catch {
@@ -609,7 +618,20 @@ export async function getTrainer(
   const slotCounts = slotCountsFromPokemon(trainer.pokemon);
   // Seed mirrors DB SSR: Main only; box / memorial / Encountered hydrate on expand.
   const boardPokemon = trainer.pokemon.filter((p) => p.slot === "MAIN");
-  const lean = { ...trainer, pokemon: boardPokemon, slotCounts };
+  const ownedCatchRoutes = [
+    ...new Set(
+      trainer.pokemon
+        .filter(
+          (p) =>
+            (p.slot === "MAIN" ||
+              p.slot === "RESERVE" ||
+              p.slot === "GRAVEYARD") &&
+            p.catchRoute?.trim(),
+        )
+        .map((p) => p.catchRoute!.trim()),
+    ),
+  ];
+  const lean = { ...trainer, pokemon: boardPokemon, slotCounts, ownedCatchRoutes };
   return {
     challenge: { ...full, trainers: [lean], activities: [] },
     trainer: lean,

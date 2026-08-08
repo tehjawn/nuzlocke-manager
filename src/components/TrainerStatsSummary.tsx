@@ -5,6 +5,11 @@ import { formatPlayTime } from "@/lib/gen3-save/playtime";
 type TrainerStatsSummaryProps = {
   caught: number;
   fallen: number;
+    /**
+   * Open-slot catch failures with no species on that route (fled / failed / released).
+   * Null when save flags have not been imported yet.
+   */
+  spentRoutes: number | null;
   badgesEarned: number;
   badgesTotal: number;
   /** 1-based attempt on the board right now — the durable count, not closed wipes. */
@@ -87,6 +92,20 @@ function RipIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
+/** Unknown species — catch failed with no Pokémon on file. */
+function CatchFailedIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path
+        d="M9.5 9.25c0-1.4 1.1-2.5 2.5-2.5s2.5 1.1 2.5 2.5c0 1.15-.75 1.7-1.5 2.2-.55.35-.9.7-.9 1.3"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="16.75" r="0.85" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 function BadgesIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
@@ -133,6 +152,7 @@ function UpdatedIcon({ className = "h-3.5 w-3.5" }: IconProps) {
 export function TrainerStatsSummary({
   caught,
   fallen,
+  spentRoutes,
   badgesEarned,
   badgesTotal,
   runNumber,
@@ -149,6 +169,7 @@ export function TrainerStatsSummary({
     value: string;
     icon: ReactNode;
     complete?: boolean;
+    title?: string;
   }> = [
     {
       label: "Caught",
@@ -159,6 +180,15 @@ export function TrainerStatsSummary({
       label: "R.I.P.",
       value: String(fallen),
       icon: <RipIcon />,
+    },
+    {
+      label: "Catches failed",
+      value: spentRoutes != null ? String(spentRoutes) : "—",
+      icon: <CatchFailedIcon />,
+      title:
+        spentRoutes != null
+          ? "Routes flagged spent in the save with no owned Pokémon (party, box, or memorial) from that slot. Re-import after progress to refresh."
+          : "Import a Modern Emerald save to mark catch-failed routes from encounter flags.",
     },
     {
       label: badgesComplete ? "All badges" : "Badges",
@@ -200,6 +230,7 @@ export function TrainerStatsSummary({
       {rows.map((row) => (
         <div
           key={row.label}
+          title={row.title}
           className={`flex items-center justify-between gap-3 px-3 py-2 ${
             row.complete ? "trainer-stat--badges-complete" : ""
           }`}

@@ -63,6 +63,8 @@ type DbChallenge = {
     playTimeSeconds?: number | null;
     safariZoneAreas?: string[];
     safariZoneAreasReliable?: boolean;
+    nuzlockeEncounterBits?: number[];
+    nuzlockeEncounterBitsReliable?: boolean;
     activeRunId: string | null;
     introCompletedAt?: Date | null;
     mainSquadLocked: boolean;
@@ -239,6 +241,8 @@ export function mapDbTrainer(
     reviveUsed: trainer.reviveUsed,
     safariZoneAreas: trainer.safariZoneAreas,
     safariZoneAreasReliable: trainer.safariZoneAreasReliable,
+    nuzlockeEncounterBits: trainer.nuzlockeEncounterBits,
+    nuzlockeEncounterBitsReliable: trainer.nuzlockeEncounterBitsReliable,
     wipeCount: trainer.wipeCount ?? 0,
     activeRunNumber: (trainer.wipeCount ?? 0) + 1,
     completionCount: trainer.completionCount ?? 0,
