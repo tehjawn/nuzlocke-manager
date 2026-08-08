@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type KeyboardEvent } from "react";
+import type { CatchRouteEncounter } from "@/data/catch-routes";
 import { Frame } from "@/components/Frame";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import {
@@ -12,8 +13,15 @@ import {
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
 import {
   buildEncounterMapStatuses,
+  countOpenSlots,
+  listOpenSlotsForMap,
+  MAP_ENCOUNTER_METHODS,
+  mapMethodLabel,
   mapStatusLabel,
+  sortMapMethods,
   unmappedOpenCatchRoutes,
+  zoneMatchesMapFilter,
+  type MapOpenSlot,
   type MapRouteClaimStatus,
   type MapRouteRow,
   type MapZoneStatus,
@@ -57,6 +65,10 @@ export function EncounterRouteMap({
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showEncounters, setShowEncounters] = useState(false);
+  const [unclaimedOnly, setUnclaimedOnly] = useState(false);
+  const [methodFilters, setMethodFilters] = useState<CatchRouteEncounter[]>(
+    [],
+  );
 
   const focusStatus =
     routeStatuses.find((entry) => entry.trainerId === trainerId) ?? null;
@@ -64,6 +76,21 @@ export function EncounterRouteMap({
   const zoneStatuses = useMemo(
     () => buildEncounterMapStatuses(groups, focusStatus),
     [groups, focusStatus],
+  );
+
+  const filter = useMemo(
+    () => ({ unclaimedOnly, methods: methodFilters }),
+    [unclaimedOnly, methodFilters],
+  );
+
+  const openSlotTotal = useMemo(
+    () => countOpenSlots(zoneStatuses),
+    [zoneStatuses],
+  );
+
+  const openSlots = useMemo(
+    () => listOpenSlotsForMap(zoneStatuses, filter),
+    [zoneStatuses, filter],
   );
 
   /** Paint large regions first; small towns stay on top for clicks. */
@@ -76,6 +103,15 @@ export function EncounterRouteMap({
   const selected =
     zoneStatuses.find((entry) => entry.zone.id === selectedId) ?? null;
   const unmapped = useMemo(() => unmappedOpenCatchRoutes(), []);
+  const planningActive = unclaimedOnly || methodFilters.length > 0;
+
+  function toggleMethod(method: CatchRouteEncounter) {
+    setMethodFilters((prev) =>
+      prev.includes(method)
+        ? prev.filter((entry) => entry !== method)
+        : [...prev, method],
+    );
+  }
 
   return (
     <section
@@ -94,7 +130,7 @@ export function EncounterRouteMap({
           <p className="max-w-xl text-xs text-muted">
             Game region map with pret-accurate route hit targets. Colors follow
             the focused trainer&apos;s open-slot progress — unclaimed, partial,
-            or fully claimed. Click a route or town for detail.
+            or fully claimed. Use Unclaimed only to plan remaining routes.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -129,6 +165,64 @@ export function EncounterRouteMap({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={unclaimedOnly}
+          data-testid="encounter-map-unclaimed-only"
+          onClick={() => {
+            setUnclaimedOnly((prev) => {
+              const next = !prev;
+              if (next) setSelectedId(null);
+              return next;
+            });
+          }}
+          className={`pressable inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+            unclaimedOnly
+              ? "border-interactive/45 bg-interactive-soft text-ink"
+              : "border-frame/40 bg-surface/70 text-ink hover:border-interactive/35"
+          }`}
+        >
+          Unclaimed only
+          <span className="tabular-nums text-muted">({openSlotTotal})</span>
+        </button>
+        <span className="hidden text-[10px] font-semibold uppercase tracking-wide text-muted sm:inline">
+          Methods
+        </span>
+        {MAP_ENCOUNTER_METHODS.map((method) => {
+          const active = methodFilters.includes(method);
+          return (
+            <button
+              key={method}
+              type="button"
+              aria-pressed={active}
+              data-testid={`encounter-map-method-${method}`}
+              onClick={() => toggleMethod(method)}
+              className={`pressable inline-flex items-center rounded-md border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                active
+                  ? "border-interactive/45 bg-interactive-soft text-ink"
+                  : "border-frame/35 bg-surface/60 text-muted hover:border-frame/55 hover:text-ink"
+              }`}
+            >
+              {mapMethodLabel(method)}
+            </button>
+          );
+        })}
+        {planningActive && (
+          <button
+            type="button"
+            data-testid="encounter-map-clear-filters"
+            onClick={() => {
+              setUnclaimedOnly(false);
+              setMethodFilters([]);
+            }}
+            className="pressable text-[11px] font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
       <MapLegend />
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(15rem,0.9fr)]">
@@ -149,27 +243,48 @@ export function EncounterRouteMap({
               x="0"
               y="0"
             />
-            {paintOrder.map((entry) => (
-              <RegionShape
-                key={entry.zone.id}
-                entry={entry}
-                selected={entry.zone.id === selectedId}
-                onSelect={() =>
-                  setSelectedId((prev) =>
-                    prev === entry.zone.id ? null : entry.zone.id,
-                  )
-                }
-              />
-            ))}
+            {paintOrder.map((entry) => {
+              const emphasized = zoneMatchesMapFilter(entry, filter);
+              return (
+                <RegionShape
+                  key={entry.zone.id}
+                  dimmed={planningActive && !emphasized}
+                  entry={entry}
+                  selected={entry.zone.id === selectedId}
+                  onSelect={() =>
+                    setSelectedId((prev) =>
+                      prev === entry.zone.id ? null : entry.zone.id,
+                    )
+                  }
+                />
+              );
+            })}
           </svg>
         </div>
 
-        <ZoneDetail
-          focusHandle={focusStatus?.trainerHandle ?? null}
-          selected={selected}
-          showEncounters={showEncounters}
-          slug={slug}
-        />
+        {selected ? (
+          <ZoneDetail
+            focusHandle={focusStatus?.trainerHandle ?? null}
+            selected={selected}
+            showEncounters={showEncounters}
+            slug={slug}
+          />
+        ) : planningActive ? (
+          <OpenSlotsPanel
+            focusHandle={focusStatus?.trainerHandle ?? null}
+            slots={openSlots}
+            onSelectZone={(zoneId) => setSelectedId(zoneId)}
+          />
+        ) : (
+          <Frame dense title="Route detail">
+            <p className="text-sm text-muted">
+              Select a route or town on the map to see open-slot progress
+              {focusHandleLine(focusStatus?.trainerHandle)}. Turn on{" "}
+              <span className="font-semibold text-ink">Unclaimed only</span> for
+              a full checklist of remaining routes.
+            </p>
+          </Frame>
+        )}
       </div>
 
       {unmapped.length > 0 && (
@@ -217,10 +332,12 @@ function MapLegend() {
 function RegionShape({
   entry,
   selected,
+  dimmed,
   onSelect,
 }: {
   entry: MapZoneStatus;
   selected: boolean;
+  dimmed: boolean;
   onSelect: () => void;
 }) {
   const { zone, status } = entry;
@@ -239,17 +356,19 @@ function RegionShape({
     strokeWidth,
     strokeDasharray: dash,
     strokeLinejoin: "round" as const,
+    opacity: dimmed ? 0.18 : 1,
     className:
-      "cursor-pointer transition-[filter] hover:brightness-105 focus:outline-none focus-visible:stroke-[var(--ink)]",
+      "cursor-pointer transition-[filter,opacity] hover:brightness-105 focus:outline-none focus-visible:stroke-[var(--ink)]",
     tabIndex: 0 as const,
     role: "button" as const,
     "aria-label": `${zone.name}: ${mapStatusLabel(status)}${
       slotTotal > 0
         ? `, ${entry.claimedOpenSlots} claimed of ${slotTotal}`
         : ""
-    }`,
+    }${dimmed ? ", filtered out" : ""}`,
     "aria-pressed": selected,
     "data-region": zone.id,
+    "data-dimmed": dimmed ? "true" : undefined,
     onClick: onSelect,
     onKeyDown: (event: KeyboardEvent) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -278,6 +397,72 @@ function RegionShape({
   );
 }
 
+function focusHandleLine(focusHandle: string | null | undefined): string {
+  return focusHandle ? ` (focus: ${focusHandle})` : "";
+}
+
+function OpenSlotsPanel({
+  slots,
+  focusHandle,
+  onSelectZone,
+}: {
+  slots: MapOpenSlot[];
+  focusHandle: string | null;
+  onSelectZone: (zoneId: string) => void;
+}) {
+  return (
+    <Frame
+      dense
+      title="Open slots"
+      actions={
+        <span className="text-[11px] font-semibold tabular-nums text-white/80">
+          {slots.length}
+        </span>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-xs text-muted">
+          Unclaimed open slots matching the current filters
+          {focusHandleLine(focusHandle)}. Click a row to jump to that region.
+        </p>
+
+        {slots.length > 0 ? (
+          <ul
+            className="max-h-[28rem] space-y-1.5 overflow-y-auto pr-0.5"
+            data-testid="encounter-map-open-slots"
+          >
+            {slots.map((slot) => (
+              <li key={`${slot.zoneId}:${slot.label}`}>
+                <button
+                  type="button"
+                  onClick={() => onSelectZone(slot.zoneId)}
+                  className="pressable flex w-full flex-col gap-1 rounded-md border border-frame bg-surface-2 px-2.5 py-2 text-left hover:border-interactive/40 hover:bg-interactive-soft/25"
+                >
+                  <span className="text-sm font-semibold leading-tight tracking-tight text-ink">
+                    {slot.label}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    {slot.label !== slot.zoneName && (
+                      <span className="text-[10px] font-semibold text-muted">
+                        {slot.zoneName}
+                      </span>
+                    )}
+                    <MethodChips methods={slot.methods} />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">
+            No open slots match these filters.
+          </p>
+        )}
+      </div>
+    </Frame>
+  );
+}
+
 function ZoneDetail({
   selected,
   slug,
@@ -289,16 +474,7 @@ function ZoneDetail({
   focusHandle: string | null;
   showEncounters: boolean;
 }) {
-  if (!selected) {
-    return (
-      <Frame dense title="Route detail">
-        <p className="text-sm text-muted">
-          Select a route or town on the map to see open-slot progress
-          {focusHandle ? ` (focus: ${focusHandle})` : ""}.
-        </p>
-      </Frame>
-    );
-  }
+  if (!selected) return null;
 
   const { zone, status, rows } = selected;
   const slotTotal = selected.claimedOpenSlots + selected.openSlots;
@@ -393,6 +569,10 @@ function RouteRowDetail({
         <RouteStatusChip claimed={claimed} />
       </div>
 
+      <div className="mt-1.5">
+        <MethodChips methods={row.methods} />
+      </div>
+
       {showEncounters && (
         <div className="mt-1.5">
           {row.focusFlagClaims.length > 0 && (
@@ -450,6 +630,26 @@ function RouteRowDetail({
         </div>
       )}
     </li>
+  );
+}
+
+function MethodChips({
+  methods,
+}: {
+  methods: readonly CatchRouteEncounter[];
+}) {
+  if (methods.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap gap-1">
+      {sortMapMethods(methods).map((method) => (
+        <li
+          key={method}
+          className="rounded-full border border-frame/40 bg-surface/80 px-1.5 py-0.5 text-[10px] font-semibold text-muted"
+        >
+          {mapMethodLabel(method)}
+        </li>
+      ))}
+    </ul>
   );
 }
 
