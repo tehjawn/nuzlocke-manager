@@ -123,20 +123,20 @@ async function loadApp(slug: string): Promise<GmAppReport> {
   });
   if (!challenge) throw new Error("Season not found");
 
-  const [activityGroups, activeTrainerRows] = await Promise.all([
+  const [activityGroups, activeTrainerGroups] = await Promise.all([
     prisma.activityEvent.groupBy({
       by: ["type"],
       where: { challengeId: challenge.id, createdAt: { gte: since } },
       _count: { _all: true },
     }),
-    prisma.activityEvent.findMany({
+    prisma.activityEvent.groupBy({
+      by: ["trainerId"],
       where: {
         challengeId: challenge.id,
         createdAt: { gte: since },
         trainerId: { not: null },
       },
-      select: { trainerId: true },
-      distinct: ["trainerId"],
+      _count: { _all: true },
     }),
   ]);
 
@@ -163,7 +163,7 @@ async function loadApp(slug: string): Promise<GmAppReport> {
       safariZoneAreasReliable: t.safariZoneAreasReliable,
     })),
     activityLast7d,
-    activeTrainers7d: activeTrainerRows.length,
+    activeTrainers7d: activeTrainerGroups.length,
     activityByType: activityGroups.map((row) => ({
       type: row.type,
       count: row._count._all,

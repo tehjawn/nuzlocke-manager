@@ -536,13 +536,16 @@ export function GmAnalyticsPanel({ slug }: { slug: string }) {
 
   return (
     <div className="gm-analytics">
-      <div className="gm-analytics__sections" role="tablist" aria-label="Analytics">
+      <div
+        className="gm-analytics__sections"
+        role="group"
+        aria-label="Analytics sections"
+      >
         {GM_ANALYTICS_SECTIONS.map((id) => (
           <button
             key={id}
             type="button"
-            role="tab"
-            aria-selected={section === id}
+            aria-pressed={section === id}
             className={`gm-analytics__section-btn${
               section === id ? " gm-analytics__section-btn--active" : ""
             }`}

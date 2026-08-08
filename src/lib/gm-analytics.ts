@@ -614,19 +614,23 @@ export function buildGmGameReport(input: {
     }
   }
 
-  const toRank = (map: Map<string, number>, detailWord: string): GmRankRow[] =>
+  const toRank = (
+    map: Map<string, number>,
+    one: string,
+    many: string,
+  ): GmRankRow[] =>
     [...map.entries()]
       .map(([label, score]) => ({
         label,
         score,
-        detail: `${score} ${detailWord}${score === 1 ? "" : "s"}`,
+        detail: `${score} ${score === 1 ? one : many}`,
       }))
       .sort(sortByScoreDesc)
       .slice(0, LIST_TOP);
 
-  const missedClaimRoutes = toRank(missedMap, "miss");
-  const deadliestRoutes = toRank(graveMap, "death");
-  const mostClaimedRoutes = toRank(claimedMap, "catch");
+  const missedClaimRoutes = toRank(missedMap, "miss", "misses");
+  const deadliestRoutes = toRank(graveMap, "death", "deaths");
+  const mostClaimedRoutes = toRank(claimedMap, "catch", "catches");
 
   const callouts: string[] = [];
   if (trainersWithFlags === 0) {
