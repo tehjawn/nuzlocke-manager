@@ -670,9 +670,9 @@ export function GmConsole({
             <Panel
               kicker="03 · Meta"
               title="Pack analytics"
-              description="Season design intel from claimed trainers’ saved Main Squads — least covered types, pack pressure, and typing concentration."
+              description="Season design intel — App pulse, Trainers, Pokémon meta, and Game routes. Loads per section so other GM tabs stay light."
               trailing={
-                <span className="gm-console__chip">Main Squads only</span>
+                <span className="gm-console__chip">Lazy sections</span>
               }
             >
               <GmAnalyticsPanel key={challenge.slug} slug={challenge.slug} />
