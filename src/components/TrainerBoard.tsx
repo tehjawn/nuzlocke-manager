@@ -689,6 +689,24 @@ export function TrainerBoard({
     setSaveImportOpen(false);
     if (pendingBoardAction === "import-save") clearBoardAction();
   };
+  const openSaveImport = () => {
+    setSaveImportOpen(true);
+    // Prefetch Reserves / R.I.P. for sticky-PID review (SSR is Main-only).
+    if (
+      reservesPokemon == null &&
+      (trainer.slotCounts?.reserve ?? 0) > 0
+    ) {
+      setReservesLoading(true);
+      setReservesError(null);
+    }
+    if (
+      graveyardPokemon == null &&
+      (trainer.slotCounts?.graveyard ?? 0) > 0
+    ) {
+      setGraveyardLoading(true);
+      setGraveyardError(null);
+    }
+  };
   const closeTeamExport = () => {
     setTeamExportOpen(false);
     if (pendingBoardAction === "export-team") clearBoardAction();
@@ -826,11 +844,17 @@ export function TrainerBoard({
     trainer.slotCounts?.encountered ??
     encountered.length;
 
-  // Deferred slot hydrate — open (or stay open across revalidate).
+  // Deferred slot hydrate — open (or stay open across revalidate), or prefetch
+  // Reserves / R.I.P. when import opens so sticky-PID review sees living + memorial.
   // Await before setState so we don't trip react-hooks/set-state-in-effect
   // (same pattern as ToolsView: state updates only after async work).
   useEffect(() => {
-    if (!reservesOpen || reservesPokemon != null) return;
+    if (
+      (!reservesOpen && !importModalOpen) ||
+      reservesPokemon != null
+    ) {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       await Promise.resolve();
@@ -853,10 +877,21 @@ export function TrainerBoard({
     return () => {
       cancelled = true;
     };
-  }, [reservesOpen, reservesPokemon, challengeSlug, trainer.id]);
+  }, [
+    reservesOpen,
+    importModalOpen,
+    reservesPokemon,
+    challengeSlug,
+    trainer.id,
+  ]);
 
   useEffect(() => {
-    if (!graveyardOpen || graveyardPokemon != null) return;
+    if (
+      (!graveyardOpen && !importModalOpen) ||
+      graveyardPokemon != null
+    ) {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       await Promise.resolve();
@@ -879,7 +914,13 @@ export function TrainerBoard({
     return () => {
       cancelled = true;
     };
-  }, [graveyardOpen, graveyardPokemon, challengeSlug, trainer.id]);
+  }, [
+    graveyardOpen,
+    importModalOpen,
+    graveyardPokemon,
+    challengeSlug,
+    trainer.id,
+  ]);
 
   useEffect(() => {
     if (!encounteredOpen || encounteredPokemon != null) return;
@@ -1519,7 +1560,7 @@ export function TrainerBoard({
           disabled={pending || wiping}
           icon={<ImportSaveIcon className="h-4 w-4" />}
           label="Import save"
-          onClick={() => setSaveImportOpen(true)}
+          onClick={openSaveImport}
           tone="import"
           firstImport={importSaveGlow}
         />
@@ -1531,7 +1572,7 @@ export function TrainerBoard({
           }`}
           data-tour="import-save"
           disabled={pending || wiping}
-          onClick={() => setSaveImportOpen(true)}
+          onClick={openSaveImport}
           type="button"
         >
           <ImportSaveIcon />
@@ -2249,7 +2290,7 @@ export function TrainerBoard({
           pending={pending || wiping}
           onImportSave={() => {
             setEndRunOpen(false);
-            setSaveImportOpen(true);
+            openSaveImport();
           }}
           onMarkFinalTeam={() => {
             void markFinalTeam();
@@ -2264,9 +2305,42 @@ export function TrainerBoard({
         <SaveImportModal
           open
           pending={pending}
-          hasLivingPokemon={boardPokemon.some(
-            (p) => p.slot === "MAIN" || p.slot === "RESERVE",
-          )}
+          boardLiving={boardPokemon
+            .filter((p) => p.slot === "MAIN" || p.slot === "RESERVE")
+            .map((p) => ({
+              id: p.id,
+              slot: p.slot as "MAIN" | "RESERVE",
+              personalityValue: p.personalityValue ?? null,
+              species: p.species,
+              nickname: p.nickname,
+              level: p.level,
+              pokedexId: p.pokedexId,
+              isShiny: p.isShiny,
+              causeOfDeath: p.causeOfDeath,
+              notes: p.notes ?? null,
+            }))}
+          boardGraves={boardPokemon
+            .filter((p) => p.slot === "GRAVEYARD")
+            .map((p) => ({
+              id: p.id,
+              partyIndex: p.partyIndex,
+              personalityValue: p.personalityValue ?? null,
+              species: p.species,
+              nickname: p.nickname,
+              level: p.level,
+              pokedexId: p.pokedexId,
+              isShiny: p.isShiny,
+            }))}
+          boardLivingReady={
+            (reservesPokemon != null ||
+              reservesCount === 0 ||
+              boardPokemon.filter((p) => p.slot === "RESERVE").length >=
+                reservesCount) &&
+            (graveyardPokemon != null ||
+              graveyardCount === 0 ||
+              boardPokemon.filter((p) => p.slot === "GRAVEYARD").length >=
+                graveyardCount)
+          }
           onClose={closeSaveImport}
           onApply={(payload) => {
             partySave.markSaving("Importing save…");
