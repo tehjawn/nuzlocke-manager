@@ -288,12 +288,12 @@ export function teamCoverageSummary(
   const topHole = defense.sharedHoles[0];
   if (topHole) {
     bullets.push({
-      text: `Weak to ${topHole.attackType} — pressures ${topHole.weakCount}/${draft.length} of your team.`,
+      text: `Weak to ${topHole.attackType} — pressures ${topHole.weakCount}/${draft.length} of this team.`,
       tone: topHole.weakCount >= 3 || topHole.worstMult >= 4 ? "warn" : "neutral",
     });
   } else {
     bullets.push({
-      text: "No shared defensive holes — nothing hits 2+ of your team hard.",
+      text: "No shared defensive holes — nothing hits 2+ of this team hard.",
       tone: "good",
     });
   }
@@ -527,7 +527,7 @@ export function coverageVerdict(
   );
   for (const hole of bigHoles.slice(0, 2)) {
     callouts.push({
-      text: `Weak to ${hole.attackType} — pressures ${hole.weakCount}/${draft.length} of your team.`,
+      text: `Weak to ${hole.attackType} — pressures ${hole.weakCount}/${draft.length} of this team.`,
       tone: "warn",
     });
   }
@@ -877,8 +877,8 @@ export function vsTrainerMatchup(
   if (verdict === "favorable") {
     recommendation =
       blinds.length > 0
-        ? `Type edge is yours — still watch ${blinds.map((t) => t.displayName).slice(0, 2).join(" / ")} (no hard answer).`
-        : "Type edge is yours — lean on the matchups you hit hard.";
+        ? `Type edge favors this team — still watch ${blinds.map((t) => t.displayName).slice(0, 2).join(" / ")} (no hard answer).`
+        : "Type edge favors this team — lean on the matchups it hits hard.";
   } else if (verdict === "even") {
     recommendation =
       blinds.length > 0 || softs.length > 0
@@ -948,7 +948,7 @@ export function vsTrainerMatchup(
   if (topThreats[0]) {
     const threat = topThreats[0];
     bullets.push({
-      text: `${threat.displayName} threatens ${threat.threatenedCount}/${draft.length} of your team${
+      text: `${threat.displayName} threatens ${threat.threatenedCount}/${draft.length} of this team${
         threat.threatAttackType
           ? ` (${formatMatchupMult(threat.threatMult)} ${threat.threatAttackType})`
           : ""
@@ -960,7 +960,7 @@ export function vsTrainerMatchup(
     });
   } else if (pressureCount === 0) {
     bullets.push({
-      text: "No opponent threatens 2+ of your team.",
+      text: "No opponent threatens 2+ of this team.",
       tone: "good",
     });
   }

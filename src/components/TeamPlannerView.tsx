@@ -810,7 +810,7 @@ function RecommendedPanel({
           >
             {result.coverageLabel}
             <span className="ml-2 align-middle text-xs font-bold tabular-nums text-muted">
-              {result.coveredCount}/{result.totalTypes}
+              {result.coveredCount}/{result.totalTypes} types covered
             </span>
           </p>
           <p className="mt-0.5 text-[12px] leading-snug text-muted">
@@ -968,7 +968,7 @@ function CoveragePanels({
           >
             {verdict.label}
             <span className="ml-2 align-middle text-xs font-bold tabular-nums text-muted">
-              {verdict.coveredCount}/{verdict.total}
+              {verdict.coveredCount}/{verdict.total} types covered
             </span>
           </p>
           <p className="mt-0.5 text-[12px] leading-snug text-muted">
@@ -1033,7 +1033,7 @@ function CoveragePanels({
       <div className="mt-1.5 overflow-x-auto rounded-md border border-frame/60">
         <table className="w-full min-w-[18rem] border-collapse text-left">
           <caption className="sr-only">
-            Coverage grid: rows are defending types, columns are your planned
+            Coverage grid: rows are defending types, columns are this planned
             team. Cells show each Pokémon&apos;s best multiplier into that type.
           </caption>
           <thead>
@@ -1069,7 +1069,7 @@ function CoveragePanels({
               <th
                 scope="col"
                 className="px-1 py-1.5 text-center text-[0.55rem] font-semibold uppercase tracking-wide text-muted"
-                title="How many of your planned team are weak to this attack type"
+                title="How many of this planned team are weak to this attack type"
               >
                 Weak to
               </th>
@@ -1140,7 +1140,7 @@ function CoveragePanels({
                             ? "bg-accent-2/20 text-ink"
                             : "bg-surface-2 text-muted"
                       }`}
-                      title={`${row.threatenedCount}/${draft.length} of your team are weak to ${row.defendingType}`}
+                      title={`${row.threatenedCount}/${draft.length} of this team are weak to ${row.defendingType}`}
                     >
                       {row.threatenedCount}/{draft.length}
                     </span>
@@ -1159,11 +1159,11 @@ function CoveragePanels({
           How this is scored
         </summary>
         <p className="mt-1">
-          Columns are your planned team. Green cells hit that type hard
+          Columns are this planned team. Green cells hit that type hard
           (super-effective); dashes mean no damage into it.{" "}
-          <span className="font-semibold">Weak to</span> counts how many of
-          yours take super-effective damage from that attack type. Power users:
-          hard hit = ≥2×.
+          <span className="font-semibold">Weak to</span> counts how many on
+          this team take super-effective damage from that attack type. Power
+          users: hard hit = ≥2×.
         </p>
       </details>
     </Frame>
@@ -1693,8 +1693,8 @@ function VsTrainerPanel({
         <table className="w-full min-w-[18rem] border-collapse text-left">
           <caption className="sr-only">
             Matchup grid: rows are {displayName(opponent)}&apos;s Main, columns
-            are your planned team. Cells show your best type multiplier into
-            that Pokémon.
+            are this planned team. Cells show each Pokémon&apos;s best type
+            multiplier into that opponent.
           </caption>
           <thead>
             <tr className="border-b border-frame/50 bg-surface-2/60">
@@ -1729,7 +1729,7 @@ function VsTrainerPanel({
               <th
                 scope="col"
                 className="px-1 py-1.5 text-center text-[0.55rem] font-semibold uppercase tracking-wide text-muted"
-                title="How many of your planned team this Pokémon hits hard"
+                title="How many of this planned team this Pokémon hits hard"
               >
                 Threatens
               </th>
@@ -1824,8 +1824,8 @@ function VsTrainerPanel({
                         }`}
                         title={
                           assessment.threatAttackType
-                            ? `Threatens ${assessment.threatenedCount}/${draft.length} of your team (${formatMatchupMult(assessment.threatMult)} ${assessment.threatAttackType})`
-                            : `Threatens ${assessment.threatenedCount}/${draft.length} of your team`
+                            ? `Threatens ${assessment.threatenedCount}/${draft.length} of this team (${formatMatchupMult(assessment.threatMult)} ${assessment.threatAttackType})`
+                            : `Threatens ${assessment.threatenedCount}/${draft.length} of this team`
                         }
                       >
                         {assessment.threatenedCount}/{draft.length}
@@ -1846,11 +1846,11 @@ function VsTrainerPanel({
           How this is scored
         </summary>
         <p className="mt-1">
-          Columns are your planned team. Green cells hit their Pokémon hard
+          Columns are this planned team. Green cells hit their Pokémon hard
           (super-effective); dashes mean no answer.{" "}
-          <span className="font-semibold">Threatens</span> counts how many of
-          yours they hit hard. Opponent side is always their Main Squad. Power
-          users: hard hit = ≥2×.
+          <span className="font-semibold">Threatens</span> counts how many on
+          this team they hit hard. Opponent side is always their Main Squad.
+          Power users: hard hit = ≥2×.
         </p>
       </details>
     </Frame>
