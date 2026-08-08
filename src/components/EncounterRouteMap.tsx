@@ -245,12 +245,13 @@ export function EncounterRouteMap({
             />
             {paintOrder.map((entry) => {
               const emphasized = zoneMatchesMapFilter(entry, filter);
+              const selected = entry.zone.id === selectedId;
               return (
                 <RegionShape
                   key={entry.zone.id}
-                  dimmed={planningActive && !emphasized}
+                  dimmed={planningActive && !emphasized && !selected}
                   entry={entry}
-                  selected={entry.zone.id === selectedId}
+                  selected={selected}
                   onSelect={() =>
                     setSelectedId((prev) =>
                       prev === entry.zone.id ? null : entry.zone.id,
@@ -346,7 +347,7 @@ function RegionShape({
 
   const slotTotal = entry.claimedOpenSlots + entry.openSlots;
   const stroke = selected ? "var(--ink)" : STATUS_STROKE[status];
-  const strokeWidth = selected ? 2.5 : status === "unclaimed" ? 1.5 : 2;
+  const strokeWidth = selected ? 3 : status === "unclaimed" ? 1.5 : 2;
   const dash =
     status === "unclaimed" && !selected ? "3.5 2.5" : undefined;
 
@@ -357,8 +358,12 @@ function RegionShape({
     strokeDasharray: dash,
     strokeLinejoin: "round" as const,
     opacity: dimmed ? 0.18 : 1,
-    className:
-      "cursor-pointer transition-[filter,opacity] hover:brightness-105 focus:outline-none focus-visible:stroke-[var(--ink)]",
+    className: [
+      "cursor-pointer focus:outline-none focus-visible:stroke-[var(--ink)]",
+      selected
+        ? "claim-map-region--selected"
+        : "transition-[filter,opacity] hover:brightness-105",
+    ].join(" "),
     tabIndex: 0 as const,
     role: "button" as const,
     "aria-label": `${zone.name}: ${mapStatusLabel(status)}${
