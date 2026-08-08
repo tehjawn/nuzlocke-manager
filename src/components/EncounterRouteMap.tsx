@@ -750,7 +750,7 @@ function OpenSlotsPanel({
               : filter === "partial" && openLeft != null
                 ? `${openLeft} still open across partial zones`
                 : filter === "claimed"
-                  ? "Caught or spent wild slots"
+                  ? "Caught or catch-failed wild slots"
                   : "Still open — tap to jump"}
           {focusHandle ? ` · ${focusHandle}` : ""}.
         </p>
@@ -783,7 +783,7 @@ function OpenSlotsPanel({
                       <RowStatusBadge
                         claimed={slot.focusClaimed}
                         hatchSafe={slot.hatchSafe}
-                        spentOnly={
+                        catchFailed={
                           slot.focusClaimed && slot.focusClaims.length === 0
                         }
                       />
@@ -801,7 +801,8 @@ function OpenSlotsPanel({
                   </button>
                   {slot.focusClaimed &&
                     (slot.focusClaims.length > 0 ||
-                      slot.focusFlagClaims.length > 0) && (
+                      slot.focusFlagClaims.length > 0 ||
+                      (!slot.hatchSafe && slot.focusClaims.length === 0)) && (
                       <FocusEncounterStrip
                         claimed={slot.focusClaimed}
                         compact
@@ -909,7 +910,7 @@ function ZoneDetail({
 function RowStatusBadge({
   claimed,
   hatchSafe,
-  spentOnly = false,
+  catchFailed = false,
 }: {
   claimed: boolean;
   hatchSafe: boolean;
@@ -917,15 +918,15 @@ function RowStatusBadge({
    * Slot is used but this label has no Pokémon claim — fled/failed burn, or a
    * shared-slot sibling of a catch elsewhere.
    */
-  spentOnly?: boolean;
+  catchFailed?: boolean;
 }) {
   const label = hatchSafe
     ? claimed
       ? "Logged"
       : "Open"
     : claimed
-      ? spentOnly
-        ? "Spent"
+      ? catchFailed
+        ? "Catches failed"
         : "Caught"
       : "Open";
   return (
@@ -934,8 +935,8 @@ function RowStatusBadge({
         claimed ? "text-accent-deep/80" : "text-muted"
       }`}
       title={
-        spentOnly
-          ? "Encounter slot already spent — do not catch here again"
+        catchFailed
+          ? "First encounter failed — do not catch here again"
           : undefined
       }
     >
@@ -967,7 +968,9 @@ function RouteRowDetail({
   const hatchSafe = row.hatchSafe;
   const hasEncounters =
     claimed &&
-    (row.focusClaims.length > 0 || row.focusFlagClaims.length > 0);
+    (row.focusClaims.length > 0 ||
+      row.focusFlagClaims.length > 0 ||
+      (!hatchSafe && row.focusClaims.length === 0));
 
   return (
     <li
@@ -987,7 +990,7 @@ function RouteRowDetail({
           <RowStatusBadge
             claimed={claimed}
             hatchSafe={hatchSafe}
-            spentOnly={claimed && row.focusClaims.length === 0}
+            catchFailed={claimed && row.focusClaims.length === 0}
           />
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted">
@@ -1013,8 +1016,10 @@ function RouteRowDetail({
 }
 
 function FocusEncounterStrip({
+  claimed,
   focusClaims,
   focusFlagClaims,
+  hatchSafe,
   slug,
 }: {
   claimed: boolean;
@@ -1024,16 +1029,20 @@ function FocusEncounterStrip({
   hatchSafe: boolean;
   slug: string;
 }) {
-  if (focusClaims.length === 0 && focusFlagClaims.length === 0) return null;
+  const showUnknown =
+    focusClaims.length === 0 &&
+    (focusFlagClaims.length > 0 || (claimed && !hatchSafe));
+  if (focusClaims.length === 0 && !showUnknown) return null;
 
   return (
     <div className="flex shrink-0 flex-col items-end justify-center gap-1">
-      {focusFlagClaims.length > 0 && focusClaims.length === 0 && (
+      {showUnknown && (
         <span
-          className="text-[10px] font-semibold text-muted"
-          title="Encounter slot already spent — do not catch here again"
+          className="flex h-8 w-8 items-center justify-center rounded-sm border border-dashed border-accent/40 bg-surface text-sm font-semibold text-muted"
+          title="Catch failed — no species logged (fled, failed, or released)"
+          aria-label="Catch failed — no species logged"
         >
-          Spent
+          ?
         </span>
       )}
       {focusClaims.length > 0 && (

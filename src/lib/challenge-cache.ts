@@ -678,12 +678,30 @@ export async function fetchChallengeTrainerRow(
     include: boardSingleTrainerInclude(trainerId),
   });
   if (!row?.trainers[0]) return row;
-  const slotCounts = await prisma.pokemonEntry.groupBy({
-    by: ["slot"],
-    where: { trainerId },
-    _count: { _all: true },
-  });
-  return { ...row, slotCounts };
+  const [slotCounts, ownedCatchRouteRows] = await Promise.all([
+    prisma.pokemonEntry.groupBy({
+      by: ["slot"],
+      where: { trainerId },
+      _count: { _all: true },
+    }),
+    // Board SSR is MAIN-only; catch-failed stats still need box / memorial routes.
+    prisma.pokemonEntry.findMany({
+      where: {
+        trainerId,
+        slot: { in: ["MAIN", "RESERVE", "GRAVEYARD"] },
+        catchRoute: { not: null },
+      },
+      select: { catchRoute: true },
+    }),
+  ]);
+  const ownedCatchRoutes = [
+    ...new Set(
+      ownedCatchRouteRows
+        .map((row) => row.catchRoute?.trim())
+        .filter((route): route is string => Boolean(route)),
+    ),
+  ];
+  return { ...row, slotCounts, ownedCatchRoutes };
 }
 
 /** Deferred board sections — Reserves / R.I.P. / Encountered (#365 / #378). */

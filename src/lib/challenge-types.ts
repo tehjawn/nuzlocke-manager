@@ -114,6 +114,11 @@ export type TrainerProfile = {
     graveyard: number;
     encountered: number;
   };
+  /**
+   * Catch-route labels for owned mons (MAIN / RESERVE / GRAVEYARD) when
+   * `pokemon` is MAIN-only on the board SSR. Used for catch-failed stats.
+   */
+  ownedCatchRoutes?: string[];
   /** ISO timestamp of latest trainer or Pokémon change, when known. */
   updatedAt: string | null;
 };

@@ -3075,7 +3075,7 @@ export async function importFromSaveAction(
       txResult.importedCount > 0
         ? `imported save data (${txResult.importedCount} Pokémon)`
         : data.applyEncounterFlags
-          ? "updated spent routes from save flags"
+          ? "updated catch-failed routes from save flags"
           : "applied save import";
     await logActivity({
       challengeId: trainer.challengeId,
@@ -3103,7 +3103,7 @@ export async function importFromSaveAction(
       txResult.importedCount > 0
         ? `Imported ${txResult.importedCount} Pokémon from save`
         : data.applyEncounterFlags
-          ? "Updated spent routes from save flags"
+          ? "Updated catch-failed routes from save flags"
           : "Save import applied";
     return { ok: true, message };
   } catch (e) {

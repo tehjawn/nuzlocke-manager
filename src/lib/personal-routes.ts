@@ -1,5 +1,6 @@
 import {
   CATCH_ROUTE_TABLE,
+  findCatchRoute,
   normalizeCatchRoute,
   type CatchRoute,
 } from "@/data/catch-routes";
@@ -39,6 +40,51 @@ export type PersonalRouteStatus = {
   trainerHandle: string;
   trainerId: string;
 };
+
+/** Owned board slots — Encountered stubs are seen-not-owned. */
+function isOwnedSlot(slot: PokemonEntry["slot"]): boolean {
+  return slot === "MAIN" || slot === "RESERVE" || slot === "GRAVEYARD";
+}
+
+/**
+ * Catch-route strings for mons the trainer owns (party / box / memorial).
+ * Merges live `pokemon` with SSR `ownedCatchRoutes` when the board is MAIN-only.
+ */
+export function ownedCatchRouteLabels(
+  trainer: TrainerProfile,
+): string[] {
+  const labels: string[] = [];
+  for (const pokemon of trainer.pokemon) {
+    if (!isOwnedSlot(pokemon.slot)) continue;
+    const route = pokemon.catchRoute?.trim();
+    if (route) labels.push(route);
+  }
+  for (const route of trainer.ownedCatchRoutes ?? []) {
+    const trimmed = route.trim();
+    if (trimmed) labels.push(trimmed);
+  }
+  return labels;
+}
+
+/**
+ * Encounter `slotKey`s already claimed by an owned Pokémon's catch route.
+ * Safari Zone umbrella catches are tracked separately — area bits never stamp
+ * on the mon, so they cannot be matched by slotKey alone.
+ */
+function ownedEncounterSlotKeys(catchRoutes: readonly string[]): {
+  slotKeys: Set<number>;
+  hasUmbrellaSafari: boolean;
+} {
+  const slotKeys = new Set<number>();
+  let hasUmbrellaSafari = false;
+  for (const logged of catchRoutes) {
+    const catalog = findCatchRoute(logged);
+    if (!catalog) continue;
+    if (catalog.label === "Safari Zone") hasUmbrellaSafari = true;
+    if (catalog.slotKey != null) slotKeys.add(catalog.slotKey);
+  }
+  return { slotKeys, hasUmbrellaSafari };
+}
 
 export function buildPersonalRouteStatus(
   trainer: TrainerProfile,
@@ -84,6 +130,15 @@ export function buildPersonalRouteStatus(
     else claimsByLabel.set(catalogRoute.label, [claim]);
   }
 
+  // MAIN-only SSR: owned box / memorial routes still close those slots for
+  // claim status even when the Pokémon rows are not on the Flight payload.
+  for (const loggedRoute of trainer.ownedCatchRoutes ?? []) {
+    const catalogRoute = catalogByKey.get(normalizeCatchRoute(loggedRoute));
+    if (!catalogRoute) continue;
+    if (claimsByLabel.has(catalogRoute.label)) continue;
+    claimsByLabel.set(catalogRoute.label, []);
+  }
+
   const safariAreaKeys = new Set(
     MODERN_SAFARI_ZONE_AREAS.map(({ route }) => normalizeCatchRoute(route)),
   );
@@ -114,7 +169,11 @@ export function buildPersonalRouteStatus(
    * unknowable rather than open — but only then, so a trainer who has never
    * logged a Safari catch is not nagged to re-import.
    */
-  const hasUmbrellaSafariClaim = claimsByLabel.has("Safari Zone");
+  const hasUmbrellaSafariClaim =
+    claimsByLabel.has("Safari Zone") ||
+    (trainer.ownedCatchRoutes ?? []).some(
+      (route) => normalizeCatchRoute(route) === "safari zone",
+    );
   const safariFlagsKnown =
     trainer.nuzlockeEncounterBitsReliable || trainer.safariZoneAreasReliable;
   const unresolvedRoutes =
@@ -166,6 +225,8 @@ export function buildPersonalRouteStatus(
         claims: members.flatMap((route) => claimsByLabel.get(route.label) ?? []),
         route: owner.label,
         ...(shared.length > 0 ? { sharedWith: shared } : {}),
+        // Empty claims from ownedCatchRoutes still count as a pokemon source —
+        // the mon exists, it just is not on the MAIN-only Flight payload.
         source: claimed.length > 0 ? "pokemon" : "encounter-flag",
       });
       continue;
@@ -198,13 +259,20 @@ export function buildPersonalRouteStatuses(
   return trainers.map((trainer) => buildPersonalRouteStatus(trainer, catalog));
 }
 
+const SAFARI_AREA_BITS = new Set<number>(
+  MODERN_SAFARI_ZONE_AREAS.map(({ encounterFlag }) => encounterFlag),
+);
+
 /**
- * Open-slot burns with no Pokémon catch logged (fled / failed / released).
- * Requires a reliable flag import; returns null when the bitset is unknown.
+ * Open-slot burns with no owned Pokémon catch on that slot (fled / failed /
+ * released). Ignores Encountered stubs. Safari area bits are skipped when the
+ * trainer has an umbrella "Safari Zone" catch (ROM never stamps the area).
+ *
+ * Returns null when save flags have not been imported yet.
  */
 export function countSpentWithoutCatch(
   trainer: TrainerProfile,
-  status?: PersonalRouteStatus,
+  catalog: readonly CatchRoute[] = CATCH_ROUTE_TABLE,
 ): number | null {
   if (
     !trainer.nuzlockeEncounterBitsReliable &&
@@ -212,7 +280,32 @@ export function countSpentWithoutCatch(
   ) {
     return null;
   }
-  const resolved = status ?? buildPersonalRouteStatus(trainer);
-  return resolved.claimedRoutes.filter((group) => group.source === "encounter-flag")
-    .length;
+
+  const { slotKeys: ownedSlots, hasUmbrellaSafari } = ownedEncounterSlotKeys(
+    ownedCatchRouteLabels(trainer),
+  );
+
+  if (trainer.nuzlockeEncounterBitsReliable) {
+    const usedBits = new Set(trainer.nuzlockeEncounterBits ?? []);
+    let count = 0;
+    for (const route of catalog) {
+      if (route.nuzlockeBit == null || !usedBits.has(route.nuzlockeBit)) {
+        continue;
+      }
+      if (route.slotKey == null) continue;
+      if (ownedSlots.has(route.slotKey)) continue;
+      if (hasUmbrellaSafari && SAFARI_AREA_BITS.has(route.nuzlockeBit)) {
+        continue;
+      }
+      count += 1;
+    }
+    return count;
+  }
+
+  // Legacy Safari-only imports: count flagged areas that are not covered by an
+  // umbrella Safari catch (we cannot tell which area succeeded).
+  if (hasUmbrellaSafari) return 0;
+  return (trainer.safariZoneAreas ?? []).filter((route) =>
+    MODERN_SAFARI_ZONE_AREAS.some((area) => area.route === route),
+  ).length;
 }

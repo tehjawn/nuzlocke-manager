@@ -341,8 +341,8 @@ export function SaveImportModal({
           Upload a Modern Emerald save. Prefer Afterplay’s in-game export (
           <code className="text-ink">.sav</code> /{" "}
           <code className="text-ink">.srm</code>) — that’s the most stable
-          source for badges, revive, money, playtime, Day Care, spent encounter
-          flags, and Pokédex encounters. Emulator states (
+          source for badges, revive, money, playtime, Day Care, catch-failed
+          encounter flags, and Pokédex encounters. Emulator states (
           <code className="text-ink">.state</code>,{" "}
           <code className="text-ink">.ss0</code>–
           <code className="text-ink">.ss9</code>,{" "}
@@ -358,8 +358,8 @@ export function SaveImportModal({
           readable. Encountered is the wild buffer plus Pokédex “seen” species,
           and replaces your current Encountered list on import. Fainted → R.I.P.
           is added to the season memorial (duplicates skipped); existing graves
-          are kept. Spent flags mark routes burned even when no catch was
-          logged (fled / failed / released).
+          are kept. Encounter flags mark catch-failed routes even when no
+          catch was logged (fled / failed / released).
         </p>
 
         <label className="block">
@@ -478,9 +478,9 @@ export function SaveImportModal({
                   onChange={(e) => setApplyEncounterFlags(e.target.checked)}
                 />
                 <span>
-                  Mark spent routes from save flags
+                  Mark catch-failed routes from save flags
                   {encounterFlagsReliable && nuzlockeEncounterBits != null
-                    ? ` (${nuzlockeEncounterBits.length} spent · includes fled / failed / released)`
+                    ? ` (${nuzlockeEncounterBits.length} flagged · includes fled / failed / released)`
                     : " (unavailable)"}
                 </span>
               </label>

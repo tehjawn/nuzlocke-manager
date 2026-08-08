@@ -796,6 +796,7 @@ export function TrainerBoard({
           nuzlockeEncounterBitsReliable: false,
           safariZoneAreas: [],
           safariZoneAreasReliable: false,
+          ownedCatchRoutes: [],
         }
       : {}),
   };
@@ -1154,7 +1155,7 @@ export function TrainerBoard({
       description: (
         <>
           Clears Main Squad, Reserves, Encountered, and R.I.P. on this board,
-          resets badges, money, playtime, and spent-route flags to 0, and
+          resets badges, money, playtime, and catch-failed route flags to 0, and
           refreshes your revive token for the next run. Profile (name, avatar,
           backdrops, status) stays. Locked Main Squad unlocks so you can
           rebuild.{" "}
@@ -1222,10 +1223,10 @@ export function TrainerBoard({
       description: (
         <>
           GM hard reset: clears Main, Reserves, Encountered, and R.I.P.
-          memorial, and resets badges, wipe count, revive token, and spent-route
-          flags. Profile stays (name, avatar, backdrops, status). A board
-          history snapshot is saved first. Use for an official fresh start —
-          not a mid-run wipe.
+          memorial, and resets badges, wipe count, revive token, and
+          catch-failed route flags. Profile stays (name, avatar, backdrops,
+          status). A board history snapshot is saved first. Use for an official
+          fresh start — not a mid-run wipe.
         </>
       ),
       confirmLabel: "Reset board",

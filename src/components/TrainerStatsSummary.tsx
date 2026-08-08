@@ -5,8 +5,8 @@ import { formatPlayTime } from "@/lib/gen3-save/playtime";
 type TrainerStatsSummaryProps = {
   caught: number;
   fallen: number;
-  /**
-   * Open-slot burns with no catch logged (fled / failed / released).
+    /**
+   * Open-slot catch failures with no species on that route (fled / failed / released).
    * Null when save flags have not been imported yet.
    */
   spentRoutes: number | null;
@@ -92,16 +92,16 @@ function RipIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
-/** Dashed route mark — slot spent with no catch on file. */
-function SpentIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+/** Unknown species — catch failed with no Pokémon on file. */
+function CatchFailedIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
+      <circle cx="12" cy="12" r="8.25" />
       <path
-        d="M4 12h3M10 12h4M17 12h3"
+        d="M9.5 9.25c0-1.4 1.1-2.5 2.5-2.5s2.5 1.1 2.5 2.5c0 1.15-.75 1.7-1.5 2.2-.55.35-.9.7-.9 1.3"
         strokeLinecap="round"
-        strokeDasharray="0.1 2.4"
       />
-      <circle cx="12" cy="12" r="8.25" strokeDasharray="2.5 2" />
+      <circle cx="12" cy="16.75" r="0.85" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -182,13 +182,13 @@ export function TrainerStatsSummary({
       icon: <RipIcon />,
     },
     {
-      label: "Spent",
+      label: "Catches failed",
       value: spentRoutes != null ? String(spentRoutes) : "—",
-      icon: <SpentIcon />,
+      icon: <CatchFailedIcon />,
       title:
         spentRoutes != null
-          ? "Open slots marked spent by save flags with no catch on that route (fled, failed, released; Safari areas are flag-only even when caught). Re-import after progress to refresh."
-          : "Import a Modern Emerald save to mark spent routes from encounter flags.",
+          ? "Routes flagged spent in the save with no owned Pokémon (party, box, or memorial) from that slot. Re-import after progress to refresh."
+          : "Import a Modern Emerald save to mark catch-failed routes from encounter flags.",
     },
     {
       label: badgesComplete ? "All badges" : "Badges",
