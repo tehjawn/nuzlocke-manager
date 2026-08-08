@@ -88,7 +88,17 @@ export function buildPersonalRouteStatus(
     MODERN_SAFARI_ZONE_AREAS.map(({ route }) => normalizeCatchRoute(route)),
   );
   const flagClaimedLabels = new Set<string>();
-  if (trainer.safariZoneAreasReliable) {
+
+  // Full NuzlockeEncounterFlags bitset (includes fled / failed / released burns).
+  if (trainer.nuzlockeEncounterBitsReliable) {
+    const usedBits = new Set(trainer.nuzlockeEncounterBits ?? []);
+    for (const route of catalog) {
+      if (route.nuzlockeBit != null && usedBits.has(route.nuzlockeBit)) {
+        flagClaimedLabels.add(route.label);
+      }
+    }
+  } else if (trainer.safariZoneAreasReliable) {
+    // Legacy Safari-only imports before full bitset persistence.
     for (const loggedRoute of trainer.safariZoneAreas ?? []) {
       const key = normalizeCatchRoute(loggedRoute);
       const catalogRoute = catalogByKey.get(key);
@@ -105,8 +115,10 @@ export function buildPersonalRouteStatus(
    * logged a Safari catch is not nagged to re-import.
    */
   const hasUmbrellaSafariClaim = claimsByLabel.has("Safari Zone");
+  const safariFlagsKnown =
+    trainer.nuzlockeEncounterBitsReliable || trainer.safariZoneAreasReliable;
   const unresolvedRoutes =
-    !trainer.safariZoneAreasReliable && hasUmbrellaSafariClaim
+    !safariFlagsKnown && hasUmbrellaSafariClaim
       ? catalog
           .filter((route) => safariAreaKeys.has(normalizeCatchRoute(route.label)))
           .map((route) => route.label)
@@ -184,4 +196,23 @@ export function buildPersonalRouteStatuses(
   catalog: readonly CatchRoute[] = CATCH_ROUTE_TABLE,
 ): PersonalRouteStatus[] {
   return trainers.map((trainer) => buildPersonalRouteStatus(trainer, catalog));
+}
+
+/**
+ * Open-slot burns with no Pokémon catch logged (fled / failed / released).
+ * Requires a reliable flag import; returns null when the bitset is unknown.
+ */
+export function countSpentWithoutCatch(
+  trainer: TrainerProfile,
+  status?: PersonalRouteStatus,
+): number | null {
+  if (
+    !trainer.nuzlockeEncounterBitsReliable &&
+    !trainer.safariZoneAreasReliable
+  ) {
+    return null;
+  }
+  const resolved = status ?? buildPersonalRouteStatus(trainer);
+  return resolved.claimedRoutes.filter((group) => group.source === "encounter-flag")
+    .length;
 }

@@ -15,3 +15,13 @@ export function modernSafariZoneAreasFromEncounterFlags(
     return byte != null && (byte & (1 << (encounterFlag & 7))) !== 0;
   }).map(({ route }) => route);
 }
+
+/** Derive Safari area labels from already-decoded `NuzlockeEncounterFlags` bits. */
+export function modernSafariZoneAreasFromUsedBits(
+  usedBits: readonly number[],
+): string[] {
+  const bits = new Set(usedBits);
+  return MODERN_SAFARI_ZONE_AREAS.filter(({ encounterFlag }) =>
+    bits.has(encounterFlag),
+  ).map(({ route }) => route);
+}

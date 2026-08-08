@@ -1,4 +1,4 @@
-import { CATCH_ROUTES } from "@/data/catch-routes";
+import { CATCH_ROUTE_TABLE, CATCH_ROUTES } from "@/data/catch-routes";
 import { MODERN_SAFARI_ZONE_AREAS } from "@/data/safari-zone";
 import type { PokemonEntry, TrainerProfile } from "@/lib/challenge-types";
 
@@ -66,6 +66,23 @@ export function buildEncounterLedger(
       });
     }
 
+    if (trainer.nuzlockeEncounterBitsReliable) {
+      const usedBits = new Set(trainer.nuzlockeEncounterBits ?? []);
+      for (const route of CATCH_ROUTE_TABLE) {
+        if (route.nuzlockeBit == null || !usedBits.has(route.nuzlockeBit)) {
+          continue;
+        }
+        // Only labels that own the ROM bit — aliasesRoute101 siblings share a
+        // slotKey but must not each get a flag claim (same as seed UI).
+        groupFor(route.label, "route").flagClaims.push({
+          trainerId: trainer.id,
+          trainerHandle: trainer.handle,
+        });
+      }
+      continue;
+    }
+
+    // Legacy Safari-only imports before full bitset persistence.
     if (!trainer.safariZoneAreasReliable) continue;
     for (const route of trainer.safariZoneAreas ?? []) {
       if (!MODERN_SAFARI_ZONE_AREAS.some((area) => area.route === route)) {

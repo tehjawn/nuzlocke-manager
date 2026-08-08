@@ -750,7 +750,7 @@ function OpenSlotsPanel({
               : filter === "partial" && openLeft != null
                 ? `${openLeft} still open across partial zones`
                 : filter === "claimed"
-                  ? "Caught wild slots"
+                  ? "Caught or spent wild slots"
                   : "Still open — tap to jump"}
           {focusHandle ? ` · ${focusHandle}` : ""}.
         </p>
@@ -783,6 +783,9 @@ function OpenSlotsPanel({
                       <RowStatusBadge
                         claimed={slot.focusClaimed}
                         hatchSafe={slot.hatchSafe}
+                        spentOnly={
+                          slot.focusClaimed && slot.focusClaims.length === 0
+                        }
                       />
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted">
@@ -906,22 +909,35 @@ function ZoneDetail({
 function RowStatusBadge({
   claimed,
   hatchSafe,
+  spentOnly = false,
 }: {
   claimed: boolean;
   hatchSafe: boolean;
+  /**
+   * Slot is used but this label has no Pokémon claim — fled/failed burn, or a
+   * shared-slot sibling of a catch elsewhere.
+   */
+  spentOnly?: boolean;
 }) {
   const label = hatchSafe
     ? claimed
       ? "Logged"
       : "Open"
     : claimed
-      ? "Caught"
+      ? spentOnly
+        ? "Spent"
+        : "Caught"
       : "Open";
   return (
     <span
       className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide ${
         claimed ? "text-accent-deep/80" : "text-muted"
       }`}
+      title={
+        spentOnly
+          ? "Encounter slot already spent — do not catch here again"
+          : undefined
+      }
     >
       {label}
     </span>
@@ -968,7 +984,11 @@ function RouteRowDetail({
           >
             {row.label}
           </span>
-          <RowStatusBadge claimed={claimed} hatchSafe={hatchSafe} />
+          <RowStatusBadge
+            claimed={claimed}
+            hatchSafe={hatchSafe}
+            spentOnly={claimed && row.focusClaims.length === 0}
+          />
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted">
           {hatchSafe ? (
@@ -1008,8 +1028,13 @@ function FocusEncounterStrip({
 
   return (
     <div className="flex shrink-0 flex-col items-end justify-center gap-1">
-      {focusFlagClaims.length > 0 && (
-        <span className="text-[10px] font-semibold text-muted">Flag</span>
+      {focusFlagClaims.length > 0 && focusClaims.length === 0 && (
+        <span
+          className="text-[10px] font-semibold text-muted"
+          title="Encounter slot already spent — do not catch here again"
+        >
+          Spent
+        </span>
       )}
       {focusClaims.length > 0 && (
         <ul className="flex flex-wrap justify-end gap-0.5">

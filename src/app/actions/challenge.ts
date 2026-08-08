@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { modernSafariZoneAreasFromUsedBits } from "@/data/safari-zone";
 import { findSpecies } from "@/data/species";
 import {
   bumpActivityReactionRev,
@@ -2693,7 +2694,16 @@ const ImportFromSaveSchema = z.object({
     .max(MAX_IMPORT_SAVE_PROOF_BASE64_CHARS)
     .optional()
     .nullable(),
-  safariZoneAreas: z.array(z.string().max(64)).max(6).optional().nullable(),
+  /**
+   * Spent `NuzlockeEncounterFlags` bit indices (0–71). When applied, also
+   * refreshes Safari area labels derived from the same bitset.
+   */
+  nuzlockeEncounterBits: z
+    .array(z.number().int().min(0).max(71))
+    .max(72)
+    .optional()
+    .nullable(),
+  applyEncounterFlags: z.boolean().default(false),
   /**
    * Which living / Encountered slots to overwrite from this import.
    * GRAVEYARD is season-wide: omitted here means append imported R.I.P.
@@ -3021,11 +3031,20 @@ export async function importFromSaveAction(
         });
       }
 
-      if (data.safariZoneAreas != null) {
+      if (
+        data.applyEncounterFlags &&
+        data.nuzlockeEncounterBits != null
+      ) {
+        const bits = [...new Set(data.nuzlockeEncounterBits)].sort(
+          (a, b) => a - b,
+        );
         await tx.trainerProfile.update({
           where: { id: trainer.id },
           data: {
-            safariZoneAreas: data.safariZoneAreas,
+            nuzlockeEncounterBits: bits,
+            nuzlockeEncounterBitsReliable: true,
+            // Keep Safari labels in lockstep with the full bitset.
+            safariZoneAreas: modernSafariZoneAreasFromUsedBits(bits),
             safariZoneAreasReliable: true,
           },
         });
@@ -3061,10 +3080,13 @@ export async function importFromSaveAction(
     }
 
     revalidateBoardViews(trainer.challenge.slug, trainer.id);
-    return {
-      ok: true,
-      message: `Imported ${txResult.importedCount} Pokémon from save`,
-    };
+    const message =
+      txResult.importedCount > 0
+        ? `Imported ${txResult.importedCount} Pokémon from save`
+        : data.applyEncounterFlags
+          ? "Updated spent routes from save flags"
+          : "Save import applied";
+    return { ok: true, message };
   } catch (e) {
     return failAction("save-import-failed", e, "Save import failed");
   }

@@ -186,9 +186,14 @@ function ledgerByRoute(
 
 function focusClaimedKeys(status: PersonalRouteStatus | null): Set<string> {
   if (!status) return new Set();
-  const claimed = new Set(
-    status.claimedRoutes.map((g) => normalizeCatchRoute(g.route)),
-  );
+  const claimed = new Set<string>();
+  for (const group of status.claimedRoutes) {
+    claimed.add(normalizeCatchRoute(group.route));
+    // Shared slotKey siblings (aliasesRoute101, …) burn together in-game.
+    for (const shared of group.sharedWith ?? []) {
+      claimed.add(normalizeCatchRoute(shared));
+    }
+  }
   for (const group of status.legacyClaims) {
     claimed.add(normalizeCatchRoute(group.route));
   }

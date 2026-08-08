@@ -5,6 +5,11 @@ import { formatPlayTime } from "@/lib/gen3-save/playtime";
 type TrainerStatsSummaryProps = {
   caught: number;
   fallen: number;
+  /**
+   * Open-slot burns with no catch logged (fled / failed / released).
+   * Null when save flags have not been imported yet.
+   */
+  spentRoutes: number | null;
   badgesEarned: number;
   badgesTotal: number;
   /** 1-based attempt on the board right now — the durable count, not closed wipes. */
@@ -87,6 +92,20 @@ function RipIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
+/** Dashed route mark — slot spent with no catch on file. */
+function SpentIcon({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg {...iconBase} className={className}>
+      <path
+        d="M4 12h3M10 12h4M17 12h3"
+        strokeLinecap="round"
+        strokeDasharray="0.1 2.4"
+      />
+      <circle cx="12" cy="12" r="8.25" strokeDasharray="2.5 2" />
+    </svg>
+  );
+}
+
 function BadgesIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
@@ -133,6 +152,7 @@ function UpdatedIcon({ className = "h-3.5 w-3.5" }: IconProps) {
 export function TrainerStatsSummary({
   caught,
   fallen,
+  spentRoutes,
   badgesEarned,
   badgesTotal,
   runNumber,
@@ -149,6 +169,7 @@ export function TrainerStatsSummary({
     value: string;
     icon: ReactNode;
     complete?: boolean;
+    title?: string;
   }> = [
     {
       label: "Caught",
@@ -159,6 +180,15 @@ export function TrainerStatsSummary({
       label: "R.I.P.",
       value: String(fallen),
       icon: <RipIcon />,
+    },
+    {
+      label: "Spent",
+      value: spentRoutes != null ? String(spentRoutes) : "—",
+      icon: <SpentIcon />,
+      title:
+        spentRoutes != null
+          ? "First-encounter slots burned with no catch logged (fled, failed, or released). Import a save with encounter flags to keep this current."
+          : "Import a Modern Emerald save to mark spent routes from encounter flags.",
     },
     {
       label: badgesComplete ? "All badges" : "Badges",
@@ -200,6 +230,7 @@ export function TrainerStatsSummary({
       {rows.map((row) => (
         <div
           key={row.label}
+          title={row.title}
           className={`flex items-center justify-between gap-3 px-3 py-2 ${
             row.complete ? "trainer-stat--badges-complete" : ""
           }`}

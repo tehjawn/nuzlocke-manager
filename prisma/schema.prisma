@@ -269,6 +269,9 @@ model TrainerProfile {
   /// Modern Emerald Safari-area claims imported from the Nuzlocke flagset.
   safariZoneAreas String[] @default([])
   safariZoneAreasReliable Boolean @default(false)
+  /// Spent `NuzlockeEncounterFlags` bit indices (fled / failed / caught).
+  nuzlockeEncounterBits Int[] @default([])
+  nuzlockeEncounterBitsReliable Boolean @default(false)
   /// Closed-run count this season; active run number is wipeCount + 1.
   /// A run closed as VICTORY does not count here until the next run starts.
   wipeCount       Int      @default(0)
