@@ -380,37 +380,6 @@ function NavChild({
   );
 }
 
-function NavLeaf({
-  href,
-  label,
-  icon,
-  active,
-}: {
-  href: string;
-  label: string;
-  icon: ReactNode;
-  active: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      prefetch={false}
-      aria-current={active ? "page" : undefined}
-      className={`flex items-center gap-2 rounded-[calc(var(--radius-sm)-2px)] px-2 py-1.5 text-sm font-semibold transition-colors ${
-        active ? "bg-surface text-ink" : "text-ink hover:bg-surface/80"
-      }`}
-    >
-      <span
-        className={`shrink-0 ${active ? "text-ink" : "text-ink/70"}`}
-        aria-hidden
-      >
-        {icon}
-      </span>
-      <span className="min-w-0 truncate">{label}</span>
-    </Link>
-  );
-}
-
 function ChevronIcon({
   open,
   className = "text-muted",
