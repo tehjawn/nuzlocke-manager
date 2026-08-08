@@ -7,6 +7,7 @@ import { coalesceActivityItems } from "@/lib/activity-messages";
 import { parseAvatarBackgroundKey } from "@/data/avatar-backgrounds";
 import { parseCardBackgroundKey } from "@/data/card-backgrounds";
 import { avatarImageUrl } from "@/lib/sprites";
+import { dbBigIntToU32 } from "@/lib/gen3-save";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import { clampEvs, clampIvs, IvsSchema, parseStatSpread } from "@/lib/stats";
 
@@ -98,6 +99,9 @@ type DbChallenge = {
       causeOfDeath: string | null;
       diedOnRun: number | null;
       runId: string | null;
+      personalityValue?: bigint | number | string | null;
+      otId?: bigint | number | string | null;
+      notes?: string | null;
       updatedAt: Date;
     }>;
   }>;
@@ -296,7 +300,10 @@ export function mapDbTrainer(
         p.friendship <= 255
           ? p.friendship
           : null,
+      personalityValue: dbBigIntToU32(p.personalityValue),
+      otId: dbBigIntToU32(p.otId),
       causeOfDeath: p.causeOfDeath,
+      notes: p.notes ?? null,
       diedOnRun: p.diedOnRun ?? null,
       runId: p.runId ?? null,
     })),

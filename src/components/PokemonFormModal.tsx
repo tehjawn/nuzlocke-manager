@@ -58,11 +58,16 @@ export type PokemonFormState = {
   /** Passthrough — set from save import; not edited in the form UI. */
   friendship: number | null;
   causeOfDeath: string;
+  /** Player-owned free-text notes (distinct from cause of death). */
+  notes: string;
   /**
    * Passthrough Survive/Die tally for the details preview — not edited in the
    * form UI. Dropped on save; reattached from the board after refresh.
    */
   survivalPoll?: PokemonEntry["survivalPoll"];
+  /** Sticky Gen 3 identity — passthrough; not edited in the form UI. */
+  personalityValue?: number | null;
+  otId?: number | null;
 };
 
 export const EMPTY_POKEMON_FORM: PokemonFormState = {
@@ -86,6 +91,7 @@ export const EMPTY_POKEMON_FORM: PokemonFormState = {
   evs: { ...EMPTY_EVS },
   friendship: null,
   causeOfDeath: "",
+  notes: "",
 };
 
 const LABEL = "mb-1 block text-[10px] font-semibold tracking-tight text-muted";
@@ -114,7 +120,10 @@ export function pokemonEntryToForm(mon: PokemonEntry): PokemonFormState {
     evs: clampEvs(mon.evs ?? undefined),
     friendship: mon.friendship,
     causeOfDeath: mon.causeOfDeath ?? "",
+    notes: mon.notes ?? "",
     survivalPoll: mon.survivalPoll ?? null,
+    personalityValue: mon.personalityValue ?? null,
+    otId: mon.otId ?? null,
   };
 }
 
@@ -148,9 +157,12 @@ export function pokemonFormToEntry(form: PokemonFormState): PokemonEntry {
     evs: isEmptySpread(form.evs) ? null : form.evs,
     friendship: form.friendship,
     causeOfDeath: form.causeOfDeath.trim() || null,
+    notes: form.notes.trim() || null,
     diedOnRun: null,
     runId: null,
     survivalPoll: form.survivalPoll ?? null,
+    personalityValue: form.personalityValue ?? null,
+    otId: form.otId ?? null,
   };
 }
 
@@ -597,6 +609,66 @@ function PokemonFormModalInner({
                     }
                   />
                 </label>
+              )}
+
+              <label className="block text-sm">
+                <span className={LABEL}>Notes</span>
+                <textarea
+                  className={`${INPUT} min-h-16`}
+                  value={form.notes}
+                  placeholder="Player notes (kept across save re-imports)"
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, notes: e.target.value }))
+                  }
+                />
+              </label>
+
+              {(form.personalityValue != null || form.otId != null) && (
+                <div className="rounded-lg border border-frame/40 bg-surface-2/50 px-2.5 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                    Save identity
+                  </p>
+                  <dl className="mt-1.5 grid grid-cols-2 gap-2 text-sm">
+                    {form.personalityValue != null && (
+                      <div className="min-w-0">
+                        <dt className="text-[10px] font-semibold text-muted">
+                          PID
+                        </dt>
+                        <dd>
+                          <InfoTip
+                            tip={`Personality value ${form.personalityValue.toLocaleString("en-US")} (decimal) — sticky across save re-imports`}
+                          >
+                            <span className="font-mono text-[13px] tabular-nums tracking-tight">
+                              {(form.personalityValue >>> 0)
+                                .toString(16)
+                                .toUpperCase()
+                                .padStart(8, "0")}
+                            </span>
+                          </InfoTip>
+                        </dd>
+                      </div>
+                    )}
+                    {form.otId != null && (
+                      <div className="min-w-0">
+                        <dt className="text-[10px] font-semibold text-muted">
+                          OT ID
+                        </dt>
+                        <dd>
+                          <InfoTip
+                            tip={`OT ID ${form.otId.toLocaleString("en-US")} (decimal)`}
+                          >
+                            <span className="font-mono text-[13px] tabular-nums tracking-tight">
+                              {(form.otId >>> 0)
+                                .toString(16)
+                                .toUpperCase()
+                                .padStart(8, "0")}
+                            </span>
+                          </InfoTip>
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
               )}
             </div>
           </div>

@@ -14,13 +14,14 @@ import {
 } from "@/lib/activity-watermark";
 import { failAction } from "@/lib/action-error";
 import { getPrisma } from "@/lib/db";
-import { parsePokemonSaveAsync } from "@/lib/gen3-save";
+import { parsePokemonSaveAsync, realPersonalityValue, u32ToDbBigInt, dbBigIntToU32 } from "@/lib/gen3-save";
 import { MAX_PLAY_TIME_SECONDS } from "@/lib/gen3-save/playtime";
 import { revalidateBoardViews } from "@/lib/revalidate-season";
 import {
   resolveMarketsForPokemonDeath,
   resolveMarketsForVictory,
   resolveMarketsForWipe,
+  syncSurvivalMarketChrome,
   voidMarketsForTrainer,
   voidOpenMarketsForPokemonIds,
 } from "@/lib/survival-markets";
@@ -78,6 +79,7 @@ import {
   DEFAULT_IMPORT_REPLACE_SLOTS,
   importedGravesToAppend,
 } from "@/lib/import-memorial";
+import { planLivingPidMerge } from "@/lib/import-save-identity";
 import {
   crossRunGraves,
   memorialBackfillCandidates,
@@ -2059,6 +2061,19 @@ async function prismaMemorialBackfillCreate(
       evs: jsonStatOrNull(mon.evs),
       friendship:
         typeof mon.friendship === "number" ? mon.friendship : null,
+      personalityValue: u32ToDbBigInt(
+        realPersonalityValue(
+          typeof mon.personalityValue === "number" ||
+            typeof mon.personalityValue === "bigint" ||
+            typeof mon.personalityValue === "string"
+            ? dbBigIntToU32(mon.personalityValue)
+            : null,
+        ),
+      ),
+      otId:
+        typeof mon.otId === "number" || typeof mon.otId === "bigint"
+          ? u32ToDbBigInt(dbBigIntToU32(mon.otId))
+          : null,
       causeOfDeath: c.causeOfDeath,
       diedOnRun: c.diedOnRun,
       runId: c.runId,
@@ -2310,6 +2325,35 @@ export async function upsertPokemonAction(
           : Math.max(0, Math.min(255, Math.trunc(data.friendship))),
       causeOfDeath: data.causeOfDeath ?? null,
       notes: data.notes ?? null,
+      ...(data.personalityValue !== undefined
+        ? {
+            personalityValue: u32ToDbBigInt(
+              realPersonalityValue(data.personalityValue),
+            ),
+            // Keep otId paired with PID — null PID ⇒ null OT (import rule).
+            ...(realPersonalityValue(data.personalityValue) == null &&
+            data.otId === undefined
+              ? { otId: null }
+              : {}),
+          }
+        : {}),
+      ...(data.otId !== undefined
+        ? {
+            otId: u32ToDbBigInt(
+              (() => {
+                const pid =
+                  data.personalityValue !== undefined
+                    ? realPersonalityValue(data.personalityValue)
+                    : undefined;
+                if (pid === null) return null;
+                if (data.otId == null) return null;
+                if (!Number.isInteger(data.otId)) return null;
+                if (data.otId < 0 || data.otId > 0xffffffff) return null;
+                return data.otId;
+              })(),
+            ),
+          }
+        : {}),
     };
 
     if (data.id) {
@@ -2661,6 +2705,14 @@ const SaveImportMonSchema = z.object({
   ivs: IvsSchema.optional().nullable(),
   evs: StatSpreadSchema.optional().nullable(),
   friendship: z.number().int().min(0).max(255).optional().nullable(),
+  personalityValue: z
+    .number()
+    .int()
+    .min(0)
+    .max(0xffffffff)
+    .optional()
+    .nullable(),
+  otId: z.number().int().min(0).max(0xffffffff).optional().nullable(),
   slot: PokemonSlotSchema,
 });
 
@@ -2807,7 +2859,11 @@ export async function importFromSaveAction(
         mon.catchRoute?.trim().toLowerCase() || ""
       }`;
 
-    function buildImportRow(mon: (typeof data.pokemon)[number], partyIndex: number) {
+    function buildImportRow(
+      mon: (typeof data.pokemon)[number],
+      partyIndex: number,
+      options?: { causeOfDeath?: string | null; notes?: string | null },
+    ) {
       const speciesMeta = findSpecies(mon.species);
       const indexHit =
         (mon.pokedexId ? findPokemonById(mon.pokedexId) : undefined) ??
@@ -2823,6 +2879,23 @@ export async function importFromSaveAction(
         speciesMeta?.pokedexId ??
         indexHit?.pokedexId ??
         null;
+
+      const personalityValue = realPersonalityValue(mon.personalityValue);
+      const otId =
+        personalityValue == null ||
+        mon.otId == null ||
+        !Number.isInteger(mon.otId) ||
+        mon.otId < 0 ||
+        mon.otId > 0xffffffff
+          ? null
+          : mon.otId;
+
+      const defaultCause =
+        mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null;
+      const causeOfDeath =
+        options && "causeOfDeath" in options
+          ? options.causeOfDeath
+          : defaultCause;
 
       return {
         trainerId: trainer.id,
@@ -2848,33 +2921,85 @@ export async function importFromSaveAction(
           mon.friendship == null
             ? null
             : Math.max(0, Math.min(255, Math.trunc(mon.friendship))),
-        causeOfDeath:
-          mon.slot === "GRAVEYARD" ? "Imported from save (fainted)" : null,
+        personalityValue: u32ToDbBigInt(personalityValue),
+        otId: u32ToDbBigInt(personalityValue == null ? null : otId),
+        causeOfDeath,
         diedOnRun:
           mon.slot === "GRAVEYARD"
             ? currentRunNumber(trainer.wipeCount)
             : null,
         runId: null as string | null,
-        notes: `Imported from save (${mon.slot.toLowerCase()})`,
+        // Player-owned field — do not stuff import provenance here.
+        notes: options && "notes" in options ? options.notes : null,
       };
     }
 
-    const livingRows = data.pokemon
-      .filter((mon) => mon.slot !== "GRAVEYARD" && replaceSet.has(mon.slot))
-      .filter((mon) => {
-        if (mon.slot !== "ENCOUNTERED") return true;
-        const key = encounterDedupeKey(mon);
-        if (seenEncounterKeys.has(key)) return false;
-        seenEncounterKeys.add(key);
-        return true;
-      })
-      .map((mon) => {
-        const partyIndex = indexes[mon.slot] ?? 0;
-        indexes[mon.slot] = partyIndex + 1;
-        return buildImportRow(mon, partyIndex);
-      });
+    type ImportRow = ReturnType<typeof buildImportRow>;
 
-    const incomingGraves = data.pokemon.filter((mon) => mon.slot === "GRAVEYARD");
+    function livingStatsFromRow(row: ImportRow) {
+      return {
+        nickname: row.nickname,
+        species: row.species,
+        pokedexId: row.pokedexId,
+        isShiny: row.isShiny,
+        types: row.types,
+        level: row.level,
+        nature: row.nature,
+        ability: row.ability,
+        catchRoute: row.catchRoute,
+        heldItem: row.heldItem,
+        moves: row.moves,
+        ivs: row.ivs,
+        evs: row.evs,
+        friendship: row.friendship,
+        personalityValue: row.personalityValue,
+        otId: row.otId,
+      };
+    }
+
+    // Normalize identity on the wire before merge planning.
+    const normalizedPokemon = data.pokemon.map((mon) => ({
+      ...mon,
+      personalityValue: realPersonalityValue(mon.personalityValue),
+      otId:
+        mon.otId == null || !Number.isInteger(mon.otId)
+          ? null
+          : mon.otId < 0 || mon.otId > 0xffffffff
+            ? null
+            : mon.otId,
+    }));
+
+    const livingSlots = (["MAIN", "RESERVE"] as const).filter((s) =>
+      replaceSet.has(s),
+    );
+    const replaceEncountered = replaceSet.has("ENCOUNTERED");
+
+    // Match every living payload mon so a MAIN↔RESERVE move is not read as
+    // "disappeared" when only one living slot is in replaceSlots.
+    const incomingLiving = normalizedPokemon.filter(
+      (mon) => mon.slot === "MAIN" || mon.slot === "RESERVE",
+    );
+    const incomingEncountered = replaceEncountered
+      ? normalizedPokemon.filter((mon) => {
+          if (mon.slot !== "ENCOUNTERED") return false;
+          const key = encounterDedupeKey(mon);
+          if (seenEncounterKeys.has(key)) return false;
+          seenEncounterKeys.add(key);
+          return true;
+        })
+      : [];
+    const incomingGraves = normalizedPokemon.filter(
+      (mon) => mon.slot === "GRAVEYARD",
+    );
+    const incomingGravesByPid = new Map<
+      number,
+      (typeof normalizedPokemon)[number]
+    >();
+    for (const grave of incomingGraves) {
+      if (grave.personalityValue != null) {
+        incomingGravesByPid.set(grave.personalityValue, grave);
+      }
+    }
 
     const txResult = await prisma.$transaction(async (tx) => {
       await captureTrainerBoardSnapshotInTx(tx, {
@@ -2889,58 +3014,268 @@ export async function importFromSaveAction(
         activeRunId: trainer.activeRunId,
       });
 
-      const slotsToClear = replaceMemorial
-        ? data.replaceSlots
-        : data.replaceSlots.filter((slot) => slot !== "GRAVEYARD");
-      if (slotsToClear.length > 0) {
-        const doomed = await tx.pokemonEntry.findMany({
+      let importedCount = 0;
+      const handledGravePids = new Set<number>();
+      // Batch all inserts — ~100+ Encountered stubs alone blow the 5s default
+      // when created one row at a time (PRISMA_P2028).
+      const createRows: Array<ImportRow & { runId: string }> = [];
+
+      // --- MAIN / RESERVE: sticky PID upsert ---
+      if (livingSlots.length > 0) {
+        const existingLivingRaw = await tx.pokemonEntry.findMany({
           where: {
             trainerId: trainer.id,
-            slot: { in: slotsToClear },
+            slot: { in: [...livingSlots] },
           },
+          select: {
+            id: true,
+            slot: true,
+            personalityValue: true,
+            causeOfDeath: true,
+            notes: true,
+            partyIndex: true,
+          },
+        });
+        const existingLiving = existingLivingRaw.map((row) => ({
+          ...row,
+          personalityValue: dbBigIntToU32(row.personalityValue),
+        }));
+
+        const plan = planLivingPidMerge(
+          existingLiving,
+          incomingLiving,
+          incomingGravesByPid,
+        );
+        for (const pid of plan.handledGravePids) handledGravePids.add(pid);
+
+        // Assign party indexes in payload order so Main/Reserve order sticks.
+        // Skip creates whose destination slot is not in replaceSlots.
+        const upsertIncoming = new Set(plan.upserts.map((u) => u.incoming));
+        const partyIndexFor = new Map<(typeof incomingLiving)[number], number>();
+        for (const mon of incomingLiving) {
+          // Deaths are memorialized separately — skip living index for those PIDs.
+          if (
+            mon.personalityValue != null &&
+            plan.handledGravePids.has(mon.personalityValue)
+          ) {
+            continue;
+          }
+          const writingUpsert = upsertIncoming.has(mon);
+          if (!writingUpsert && !replaceSet.has(mon.slot)) continue;
+          const partyIndex = indexes[mon.slot] ?? 0;
+          indexes[mon.slot] = partyIndex + 1;
+          partyIndexFor.set(mon, partyIndex);
+        }
+
+        // Void + delete disappeared real-PID rows and all null-PID living rows.
+        const wipeIds = [...plan.voidIds, ...plan.wipeNullIds];
+        if (wipeIds.length > 0) {
+          await voidOpenMarketsForPokemonIds(tx, wipeIds);
+          await tx.pokemonEntry.deleteMany({
+            where: { id: { in: wipeIds }, trainerId: trainer.id },
+          });
+        }
+
+        for (const { existing, incoming } of plan.upserts) {
+          const partyIndex = partyIndexFor.get(incoming) ?? 0;
+          const built = buildImportRow(incoming, partyIndex, {
+            causeOfDeath: existing.causeOfDeath,
+            notes: existing.notes,
+          });
+          const stats = livingStatsFromRow(built);
+          await tx.pokemonEntry.update({
+            where: { id: existing.id },
+            data: {
+              ...stats,
+              slot: incoming.slot,
+              partyIndex,
+              runId: activeRun.id,
+              diedOnRun: null,
+              // Preserve human memorial text on matched re-import.
+              causeOfDeath: existing.causeOfDeath,
+              notes: existing.notes,
+            },
+          });
+          await syncSurvivalMarketChrome(tx, {
+            id: existing.id,
+            species: built.species,
+            nickname: built.nickname,
+            pokedexId: built.pokedexId,
+            isShiny: built.isShiny,
+          });
+          importedCount += 1;
+        }
+
+        let nextGraveIndex: number | null = null;
+        for (const { existing, incoming } of plan.deaths) {
+          await resolveMarketsForPokemonDeath(tx, existing.id);
+
+          if (replaceMemorial) {
+            // Memorial hard-replace will recreate graves from the R.I.P. payload.
+            await tx.pokemonEntry.delete({ where: { id: existing.id } });
+            continue;
+          }
+
+          if (nextGraveIndex == null) {
+            const maxGrave = await tx.pokemonEntry.aggregate({
+              where: { trainerId: trainer.id, slot: "GRAVEYARD" },
+              _max: { partyIndex: true },
+            });
+            nextGraveIndex = (maxGrave._max.partyIndex ?? -1) + 1;
+          }
+          const partyIndex = nextGraveIndex++;
+          indexes.GRAVEYARD = Math.max(indexes.GRAVEYARD ?? 0, partyIndex + 1);
+
+          const built = buildImportRow(
+            { ...incoming, slot: "GRAVEYARD" },
+            partyIndex,
+            {
+              causeOfDeath:
+                existing.causeOfDeath?.trim() ||
+                "Imported from save (fainted)",
+              notes: existing.notes,
+            },
+          );
+          await tx.pokemonEntry.update({
+            where: { id: existing.id },
+            data: {
+              ...livingStatsFromRow(built),
+              slot: "GRAVEYARD",
+              partyIndex,
+              runId: activeRun.id,
+              diedOnRun: currentRunNumber(trainer.wipeCount),
+              causeOfDeath: built.causeOfDeath,
+              notes: existing.notes,
+            },
+          });
+          importedCount += 1;
+        }
+
+        for (const mon of plan.creates) {
+          if (!replaceSet.has(mon.slot)) continue;
+          const partyIndex = partyIndexFor.get(mon) ?? indexes[mon.slot] ?? 0;
+          if (!partyIndexFor.has(mon)) {
+            indexes[mon.slot] = partyIndex + 1;
+          }
+          createRows.push({
+            ...buildImportRow(mon, partyIndex),
+            runId: activeRun.id,
+          });
+        }
+      }
+
+      // --- ENCOUNTERED: wipe + recreate (no Survive/Die identity) ---
+      if (replaceEncountered) {
+        await tx.pokemonEntry.deleteMany({
+          where: { trainerId: trainer.id, slot: "ENCOUNTERED" },
+        });
+        for (const mon of incomingEncountered) {
+          const partyIndex = indexes.ENCOUNTERED ?? 0;
+          indexes.ENCOUNTERED = partyIndex + 1;
+          createRows.push({
+            ...buildImportRow(mon, partyIndex),
+            runId: activeRun.id,
+          });
+        }
+      }
+
+      // --- GRAVEYARD ---
+      if (replaceMemorial) {
+        const doomedGraves = await tx.pokemonEntry.findMany({
+          where: { trainerId: trainer.id, slot: "GRAVEYARD" },
           select: { id: true },
         });
-        // Import recreates rows with new IDs — void open polls first.
+        // Graves should have no OPEN market, but void defensively before delete.
         await voidOpenMarketsForPokemonIds(
           tx,
-          doomed.map((row) => row.id),
+          doomedGraves.map((g) => g.id),
         );
         await tx.pokemonEntry.deleteMany({
           where: {
+            id: { in: doomedGraves.map((g) => g.id) },
             trainerId: trainer.id,
-            slot: { in: slotsToClear },
           },
         });
-      }
-
-      let graveRows: ReturnType<typeof buildImportRow>[] = [];
-      if (replaceMemorial) {
-        graveRows = incomingGraves.map((mon) => {
+        // Living→grave moves above already handled Die resolution; hard-replace
+        // wipes memorial rows — recreate from the full R.I.P. payload.
+        for (const mon of incomingGraves) {
           const partyIndex = indexes.GRAVEYARD ?? 0;
           indexes.GRAVEYARD = partyIndex + 1;
-          return buildImportRow(mon, partyIndex);
-        });
+          createRows.push({
+            ...buildImportRow(mon, partyIndex),
+            runId: activeRun.id,
+          });
+        }
       } else if (incomingGraves.length > 0) {
-        const existingGraves = await tx.pokemonEntry.findMany({
+        const existingGravesRaw = await tx.pokemonEntry.findMany({
           where: { trainerId: trainer.id, slot: "GRAVEYARD" },
-          select: { species: true, nickname: true, partyIndex: true },
+          select: {
+            id: true,
+            species: true,
+            nickname: true,
+            partyIndex: true,
+            personalityValue: true,
+            causeOfDeath: true,
+            notes: true,
+          },
           orderBy: { partyIndex: "asc" },
         });
-        const { toCreate, nextPartyIndex } = importedGravesToAppend(
-          existingGraves,
-          incomingGraves,
+        const existingGraves = existingGravesRaw.map((g) => ({
+          ...g,
+          personalityValue: dbBigIntToU32(g.personalityValue),
+        }));
+
+        const gravesForAppend = incomingGraves.filter(
+          (mon) =>
+            mon.personalityValue == null ||
+            !handledGravePids.has(mon.personalityValue),
         );
+
+        const { toCreate, toRefresh, nextPartyIndex } = importedGravesToAppend(
+          existingGraves,
+          gravesForAppend,
+        );
+
+        for (const { personalityValue, incoming } of toRefresh) {
+          const existing = existingGraves.find(
+            (g) => g.personalityValue === personalityValue,
+          );
+          if (!existing) continue;
+          const built = buildImportRow(incoming, existing.partyIndex, {
+            causeOfDeath: existing.causeOfDeath,
+            notes: existing.notes,
+          });
+          await tx.pokemonEntry.update({
+            where: { id: existing.id },
+            data: {
+              ...livingStatsFromRow(built),
+              // Keep memorial text sticky; refresh species/level chrome only.
+              causeOfDeath: existing.causeOfDeath?.trim()
+                ? existing.causeOfDeath
+                : built.causeOfDeath,
+              notes: existing.notes,
+            },
+          });
+          importedCount += 1;
+        }
+
         let partyIndex = nextPartyIndex;
-        graveRows = toCreate.map((mon) => buildImportRow(mon, partyIndex++));
+        for (const mon of toCreate) {
+          createRows.push({
+            ...buildImportRow(mon, partyIndex++),
+            runId: activeRun.id,
+          });
+        }
+        indexes.GRAVEYARD = partyIndex;
       }
 
-      const importRows = [...livingRows, ...graveRows].map((row) => ({
-        ...row,
-        runId: activeRun.id,
-      }));
-      if (importRows.length > 0) {
-        await tx.pokemonEntry.createMany({ data: importRows });
+      if (createRows.length > 0) {
+        await tx.pokemonEntry.createMany({ data: createRows });
+        importedCount += createRows.length;
       }
+
+      // Hard-replace path may also list GRAVEYARD in replaceSlots alongside
+      // living slots already handled above — nothing else to clear.
 
       if (data.applyTrainerName && data.trainerName) {
         const nextHandle = sanitizeHandle(data.trainerName);
@@ -3063,8 +3398,11 @@ export async function importFromSaveAction(
         });
       }
 
-      return { reviveTransition, importedCount: importRows.length };
-    });
+      return { reviveTransition, importedCount };
+    },
+    // Dex-seen recreates alone are 100+ rows; cold Neon + snapshot push past 5s.
+    { timeout: 60_000, maxWait: 15_000 },
+    );
 
     const handleLabel =
       data.applyTrainerName && data.trainerName

@@ -37,6 +37,9 @@ export const pokemonFullSelect = {
   ivs: true,
   evs: true,
   friendship: true,
+  personalityValue: true,
+  otId: true,
+  notes: true,
 } as const;
 
 /**

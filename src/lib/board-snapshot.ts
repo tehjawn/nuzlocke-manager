@@ -1,4 +1,5 @@
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
+import { dbBigIntToU32 } from "@/lib/gen3-save";
 import { toPublicPokemonEntry } from "@/lib/pokemon-privacy";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import { clampEvs, clampIvs, IvsSchema, parseStatSpread } from "@/lib/stats";
@@ -57,6 +58,9 @@ type DbPokemonRow = {
   causeOfDeath: string | null;
   diedOnRun: number | null;
   runId: string | null;
+  personalityValue?: bigint | number | string | null;
+  otId?: bigint | number | string | null;
+  notes?: string | null;
 };
 
 function mapPokemonRow(p: DbPokemonRow): PokemonEntry {
@@ -94,7 +98,10 @@ function mapPokemonRow(p: DbPokemonRow): PokemonEntry {
       p.friendship <= 255
         ? p.friendship
         : null,
+    personalityValue: dbBigIntToU32(p.personalityValue),
+    otId: dbBigIntToU32(p.otId),
     causeOfDeath: p.causeOfDeath,
+    notes: p.notes ?? null,
     diedOnRun: p.diedOnRun ?? null,
     runId: p.runId ?? null,
   };
@@ -402,7 +409,17 @@ function parseSnapshotPokemonRow(
       p.friendship <= 255
         ? p.friendship
         : null,
+    personalityValue: dbBigIntToU32(
+      typeof p.personalityValue === "bigint" ||
+        typeof p.personalityValue === "number"
+        ? p.personalityValue
+        : null,
+    ),
+    otId: dbBigIntToU32(
+      typeof p.otId === "bigint" || typeof p.otId === "number" ? p.otId : null,
+    ),
     causeOfDeath: typeof p.causeOfDeath === "string" ? p.causeOfDeath : null,
+    notes: typeof p.notes === "string" ? p.notes : null,
     diedOnRun: typeof p.diedOnRun === "number" ? p.diedOnRun : null,
     runId: typeof p.runId === "string" ? p.runId : null,
   };
