@@ -56,10 +56,10 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
   {
     id: "catch-map",
     title: "Catch Map",
-    navLabel: "Hoenn claim map",
+    navLabel: "Catch Map",
     tone: "muted",
     blurb:
-      "Plan open wild slots on the Hoenn region map — filter by claim status, hide post-game, and focus any trainer's progress.",
+      "Plan your next catch on the Hoenn map — filter by status, hide post-game, and focus any trainer's progress.",
   },
   {
     id: "pokedex",

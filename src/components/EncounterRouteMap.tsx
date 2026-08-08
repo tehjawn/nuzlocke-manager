@@ -22,6 +22,7 @@ import {
   mapMethodLabel,
   mapOffRouteKindLabel,
   mapOffRouteKindNote,
+  mapStatusFilterLabel,
   mapStatusLabel,
   sortMapMethods,
   unmappedOpenCatchRoutes,
@@ -46,7 +47,7 @@ type EncounterRouteMapProps = {
 
 /**
  * Status reads primarily from stroke; fills stay light so route art shows through.
- * Unclaimed = outline only · partial/claimed = soft wash + strong border.
+ * Still open = outline only · partial/done = soft wash + strong border.
  */
 const STATUS_FILL: Record<MapRouteClaimStatus, string> = {
   unclaimed: "color-mix(in srgb, var(--ink) 6%, transparent)",
@@ -75,14 +76,16 @@ export function EncounterRouteMap({
     () => myTrainerId ?? routeStatuses[0]?.trainerId ?? "",
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Default Still open — land as a next-catch planner. */
   const [statusFilter, setStatusFilter] = useState<MapStatusFilter | null>(
-    null,
+    "unclaimed",
   );
   /** On by default — season runs are League-capped; show post-game when needed. */
   const [hidePostGame, setHidePostGame] = useState(true);
 
   const focusStatus =
     routeStatuses.find((entry) => entry.trainerId === trainerId) ?? null;
+  const focusHandle = focusStatus?.trainerHandle ?? null;
 
   const zoneStatuses = useMemo(
     () =>
@@ -94,6 +97,11 @@ export function EncounterRouteMap({
   );
 
   const filter = useMemo(() => ({ status: statusFilter }), [statusFilter]);
+  /** Checklist stays useful when the map filter is cleared — still show opens. */
+  const listFilter = useMemo(
+    () => ({ status: statusFilter ?? ("unclaimed" as const) }),
+    [statusFilter],
+  );
 
   const statusCounts = useMemo(() => {
     const counts = {} as Record<MapStatusFilter, number>;
@@ -104,8 +112,8 @@ export function EncounterRouteMap({
   }, [zoneStatuses]);
 
   const openSlots = useMemo(
-    () => listOpenSlotsForMap(zoneStatuses, filter),
-    [zoneStatuses, filter],
+    () => listOpenSlotsForMap(zoneStatuses, listFilter),
+    [zoneStatuses, listFilter],
   );
 
   /** Paint large regions first; small towns stay on top for clicks. */
@@ -123,6 +131,7 @@ export function EncounterRouteMap({
     return labels.filter((label) => !isPostGameCatchRouteLabel(label));
   }, [hidePostGame]);
   const planningActive = statusFilter != null;
+  const panelFilter = listFilter.status;
 
   function toggleStatus(status: MapStatusFilter) {
     setSelectedId(null);
@@ -137,6 +146,72 @@ export function EncounterRouteMap({
       );
     }
   }
+
+  const blurbTrainer = focusHandle
+    ? focusStatus?.trainerId === myTrainerId
+      ? "your"
+      : `${focusHandle}'s`
+    : "this trainer's";
+
+  const mapBlock = (
+    <div className="min-w-0 overflow-hidden rounded-md border border-frame/40 bg-[color-mix(in_srgb,var(--interactive)_10%,var(--surface))] p-1">
+      <svg
+        aria-label="Hoenn Catch Map"
+        className="block h-auto w-full max-w-full"
+        role="img"
+        viewBox={HOENN_MAP_VIEWBOX}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <title>Catch Map</title>
+        <image
+          href={HOENN_MAP_IMAGE}
+          height="360"
+          opacity={0.78}
+          width="640"
+          x="0"
+          y="0"
+        />
+        {paintOrder.map((entry) => {
+          const emphasized = zoneMatchesMapFilter(entry, filter);
+          const isSelected = entry.zone.id === selectedId;
+          return (
+            <RegionShape
+              key={entry.zone.id}
+              dimmed={planningActive && !emphasized && !isSelected}
+              entry={entry}
+              matchHighlight={planningActive && emphasized && !isSelected}
+              pulse={isSelected}
+              selected={isSelected}
+              onSelect={() =>
+                setSelectedId((prev) =>
+                  prev === entry.zone.id ? null : entry.zone.id,
+                )
+              }
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+
+  const panelBlock = selected ? (
+    <ZoneDetail
+      focusHandle={focusHandle}
+      selected={selected}
+      slug={slug}
+      onClear={() => setSelectedId(null)}
+      backLabel={mapStatusFilterLabel(panelFilter)}
+    />
+  ) : (
+    <OpenSlotsPanel
+      filter={panelFilter}
+      focusHandle={focusHandle}
+      mapFilterCleared={statusFilter == null}
+      slots={openSlots}
+      slug={slug}
+      onSelectZone={(zoneId) => setSelectedId(zoneId)}
+    />
+  );
 
   return (
     <section
@@ -153,10 +228,8 @@ export function EncounterRouteMap({
             Catch Map
           </h2>
           <p className="max-w-xl text-sm text-muted">
-            Hoenn region map with pret-accurate route hit targets. Colors follow
-            the focused trainer&apos;s open-slot progress — plus no-wilds spots
-            (egg / gift) that never spend a wild slot. Season stats and Missing
-            dex live under Season Stats / Pokémon Ownership.
+            Plan {blurbTrainer} next catch. Colors show catch progress — tap a
+            status to filter the map.
           </p>
         </div>
         {routeStatuses.length > 0 && (
@@ -197,73 +270,15 @@ export function EncounterRouteMap({
         </label>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(15rem,0.9fr)]">
-        <div className="min-w-0 overflow-hidden rounded-md border border-frame/40 bg-[color-mix(in_srgb,var(--interactive)_10%,var(--surface))] p-1">
-          <svg
-            aria-label="Hoenn region claim map"
-            className="block h-auto w-full max-w-full"
-            role="img"
-            viewBox={HOENN_MAP_VIEWBOX}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <title>Hoenn claim map</title>
-            <image
-              href={HOENN_MAP_IMAGE}
-              height="360"
-              opacity={0.78}
-              width="640"
-              x="0"
-              y="0"
-            />
-            {paintOrder.map((entry) => {
-              const emphasized = zoneMatchesMapFilter(entry, filter);
-              const selected = entry.zone.id === selectedId;
-              const pulse = selected || (planningActive && emphasized);
-              return (
-                <RegionShape
-                  key={entry.zone.id}
-                  dimmed={planningActive && !emphasized && !selected}
-                  entry={entry}
-                  pulse={pulse}
-                  selected={selected}
-                  onSelect={() =>
-                    setSelectedId((prev) =>
-                      prev === entry.zone.id ? null : entry.zone.id,
-                    )
-                  }
-                />
-              );
-            })}
-          </svg>
-        </div>
-
-        {selected ? (
-          <ZoneDetail
-            focusHandle={focusStatus?.trainerHandle ?? null}
-            selected={selected}
-            slug={slug}
-          />
-        ) : planningActive ? (
-          <OpenSlotsPanel
-            focusHandle={focusStatus?.trainerHandle ?? null}
-            slots={openSlots}
-            slug={slug}
-            onSelectZone={(zoneId) => setSelectedId(zoneId)}
-          />
-        ) : (
-          <Frame dense title="Route detail">
-            <p className="text-sm text-muted">
-              Select a route or town on the map to see open-slot progress
-              {focusHandleLine(focusStatus?.trainerHandle)}. Click a legend chip
-              to filter.
-            </p>
-          </Frame>
-        )}
+      {/* Mobile: checklist first. Desktop: map | panel. */}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(15rem,0.85fr)]">
+        <div className="order-2 min-w-0 lg:order-1">{mapBlock}</div>
+        <div className="order-1 min-w-0 lg:order-2">{panelBlock}</div>
       </div>
 
       {unmapped.length > 0 && (
         <p className="text-[11px] text-muted">
-          Unmapped open slots (list views only): {unmapped.join(", ")}.
+          Not on map yet: {unmapped.join(", ")}.
         </p>
       )}
     </section>
@@ -281,33 +296,28 @@ function MapLegend({
 }) {
   const items: {
     status: MapStatusFilter;
-    hint: string;
     fill: string;
     stroke: string;
     dashed?: boolean;
   }[] = [
     {
       status: "unclaimed",
-      hint: "Unclaimed",
       fill: STATUS_FILL.unclaimed,
       stroke: STATUS_STROKE.unclaimed,
       dashed: true,
     },
     {
       status: "partial",
-      hint: "Partially claimed",
       fill: STATUS_FILL.partial,
       stroke: STATUS_STROKE.partial,
     },
     {
       status: "claimed",
-      hint: "Fully claimed",
       fill: STATUS_FILL.claimed,
       stroke: STATUS_STROKE.claimed,
     },
     {
       status: "no-wilds",
-      hint: "No wilds",
       fill: HATCH_FILL,
       stroke: HATCH_STROKE,
       dashed: true,
@@ -316,7 +326,7 @@ function MapLegend({
   return (
     <ul
       className="flex flex-wrap gap-2 text-[10px] font-semibold"
-      aria-label="Filter map by claim status"
+      aria-label="Filter map by catch status"
     >
       {items.map((item) => {
         const active = activeStatus === item.status;
@@ -342,7 +352,7 @@ function MapLegend({
                   borderStyle: item.dashed ? "dashed" : "solid",
                 }}
               />
-              {item.hint}
+              {mapStatusFilterLabel(item.status)}
               <span className="tabular-nums opacity-70">
                 ({counts[item.status]})
               </span>
@@ -358,12 +368,15 @@ function RegionShape({
   entry,
   selected,
   pulse,
+  matchHighlight,
   dimmed,
   onSelect,
 }: {
   entry: MapZoneStatus;
   selected: boolean;
   pulse: boolean;
+  /** Static emphasis for filter matches — no animation (avoids map strobe). */
+  matchHighlight: boolean;
   dimmed: boolean;
   onSelect: () => void;
 }) {
@@ -372,21 +385,35 @@ function RegionShape({
 
   const hatchOnly = status === "empty" && zoneHasHatchSafe(entry);
   const slotTotal = entry.claimedOpenSlots + entry.openSlots;
+  // Selection uses a solid interactive wash (blinks via CSS) — ink outlines
+  // disappear against the map art.
   const stroke = selected
-    ? "var(--ink)"
+    ? "var(--interactive)"
     : hatchOnly
       ? HATCH_STROKE
       : STATUS_STROKE[status];
-  const fill = hatchOnly ? HATCH_FILL : STATUS_FILL[status];
-  const strokeWidth = selected || pulse ? 3 : status === "unclaimed" || hatchOnly ? 1.5 : 2;
+  const fill = selected
+    ? "var(--interactive)"
+    : hatchOnly
+      ? HATCH_FILL
+      : STATUS_FILL[status];
+  const strokeWidth = selected
+    ? 2.5
+    : matchHighlight
+      ? 2.75
+      : status === "unclaimed" || hatchOnly
+        ? 1.5
+        : 2;
   const dash =
     !selected &&
-    !pulse &&
+    !matchHighlight &&
     (status === "unclaimed" || hatchOnly)
       ? "3.5 2.5"
       : undefined;
 
-  const statusText = hatchOnly ? "No wilds" : mapStatusLabel(status);
+  const statusText = hatchOnly
+    ? mapStatusFilterLabel("no-wilds")
+    : mapStatusLabel(status);
 
   const shared = {
     fill,
@@ -399,21 +426,22 @@ function RegionShape({
       "cursor-pointer focus:outline-none focus-visible:stroke-[var(--ink)]",
       pulse
         ? "claim-map-region--pulse"
-        : "transition-[filter,opacity] hover:brightness-105",
+        : "transition-opacity hover:brightness-105",
     ].join(" "),
     tabIndex: 0 as const,
     role: "button" as const,
     "aria-label": `${zone.name}: ${statusText}${
       slotTotal > 0
-        ? `, ${entry.claimedOpenSlots} claimed of ${slotTotal}`
+        ? `, ${entry.claimedOpenSlots} of ${slotTotal} caught`
         : ""
     }${
-      zoneHasHatchSafe(entry) && !hatchOnly ? ", no-wilds spot" : ""
+      zoneHasHatchSafe(entry) && !hatchOnly ? ", egg or gift spot" : ""
     }${dimmed ? ", filtered out" : ""}`,
     "aria-pressed": selected,
     "data-region": zone.id,
     "data-dimmed": dimmed ? "true" : undefined,
     "data-hatch-only": hatchOnly ? "true" : undefined,
+    "data-match": matchHighlight ? "true" : undefined,
     onClick: onSelect,
     onKeyDown: (event: KeyboardEvent) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -442,29 +470,26 @@ function RegionShape({
   );
 }
 
-function focusHandleLine(focusHandle: string | null | undefined): string {
-  return focusHandle ? ` (focus: ${focusHandle})` : "";
-}
-
 function OpenSlotsPanel({
   slots,
+  filter,
   focusHandle,
+  mapFilterCleared,
   slug,
   onSelectZone,
 }: {
   slots: MapOpenSlot[];
+  filter: MapStatusFilter;
   focusHandle: string | null;
+  mapFilterCleared: boolean;
   slug: string;
   onSelectZone: (zoneId: string) => void;
 }) {
-  const wildCount = slots.filter((slot) => !slot.hatchSafe).length;
-  const noWildsCount = slots.filter((slot) => slot.hatchSafe).length;
-  const title =
-    noWildsCount > 0 && wildCount === 0
-      ? "No-wilds spots"
-      : noWildsCount > 0
-        ? "Matching spots"
-        : "Open slots";
+  const title = mapStatusFilterLabel(filter);
+  const openLeft =
+    filter === "partial"
+      ? slots.filter((slot) => !slot.focusClaimed).length
+      : null;
 
   return (
     <Frame
@@ -478,10 +503,16 @@ function OpenSlotsPanel({
     >
       <div className="space-y-2">
         <p className="text-[11px] leading-snug text-muted">
-          {noWildsCount > 0 && wildCount === 0
-            ? "No wild table — egg / gift / fossil logs"
-            : "Matching filters"}
-          {focusHandleLine(focusHandle)}. Click to jump.
+          {mapFilterCleared
+            ? "Map shows all statuses"
+            : filter === "no-wilds"
+              ? "Egg / gift spots — no wild slot spent"
+              : filter === "partial" && openLeft != null
+                ? `${openLeft} still open across partial zones`
+                : filter === "claimed"
+                  ? "Caught wild slots"
+                  : "Still open — tap to jump"}
+          {focusHandle ? ` · ${focusHandle}` : ""}.
         </p>
 
         {slots.length > 0 ? (
@@ -509,15 +540,10 @@ function OpenSlotsPanel({
                       >
                         {slot.label}
                       </span>
-                      {slot.focusClaimed ? (
-                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-accent-deep/80">
-                          {slot.hatchSafe ? "Logged" : "Claimed"}
-                        </span>
-                      ) : (
-                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted">
-                          Open
-                        </span>
-                      )}
+                      <RowStatusBadge
+                        claimed={slot.focusClaimed}
+                        hatchSafe={slot.hatchSafe}
+                      />
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted">
                       {slot.label !== slot.zoneName && (
@@ -547,7 +573,11 @@ function OpenSlotsPanel({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted">No spots match these filters.</p>
+          <p className="text-sm text-muted">
+            {filter === "unclaimed"
+              ? "No open catches left on the map."
+              : "No spots match this filter."}
+          </p>
         )}
       </div>
     </Frame>
@@ -558,10 +588,14 @@ function ZoneDetail({
   selected,
   slug,
   focusHandle,
+  onClear,
+  backLabel,
 }: {
   selected: MapZoneStatus | null;
   slug: string;
   focusHandle: string | null;
+  onClear: () => void;
+  backLabel: string;
 }) {
   if (!selected) return null;
 
@@ -570,6 +604,7 @@ function ZoneDetail({
   const hatchOnly = status === "empty" && hatchRows.length > 0;
   const displayRows = sortRowsUnclaimedFirst(rows);
   const allRows = [...displayRows, ...hatchRows];
+  const openLeft = selected.openSlots;
 
   return (
     <Frame
@@ -577,21 +612,33 @@ function ZoneDetail({
       title={zone.name}
       actions={
         <span className="text-[11px] font-semibold tabular-nums text-white/80">
-          {hatchOnly ? "No wilds" : mapStatusLabel(status)}
+          {hatchOnly
+            ? mapStatusFilterLabel("no-wilds")
+            : slotTotal > 0
+              ? `${selected.claimedOpenSlots}/${slotTotal}`
+              : mapStatusLabel(status)}
         </span>
       }
     >
       <div className="space-y-2">
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-[11px] font-semibold text-interactive hover:underline"
+          data-testid="encounter-map-clear-zone"
+        >
+          ← {backLabel}
+        </button>
+
         <p className="text-[11px] leading-snug text-muted">
           {hatchOnly
-            ? "No wild open slot — egg / gift / fossil logs only"
+            ? "Egg / gift only — no wild catch here"
             : slotTotal > 0
-              ? `${selected.claimedOpenSlots} of ${slotTotal} claimed`
-              : "No wild open slots here"}
-          {!hatchOnly && selected.openSlots > 0
-            ? ` · ${selected.openSlots} open`
-            : ""}
-          {focusHandleLine(focusHandle)}.
+              ? `${selected.claimedOpenSlots} of ${slotTotal} caught${
+                  openLeft > 0 ? ` · ${openLeft} open` : ""
+                }`
+              : "No wild catch here"}
+          {focusHandle ? ` · ${focusHandle}` : ""}.
         </p>
 
         {allRows.length > 0 ? (
@@ -601,7 +648,7 @@ function ZoneDetail({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted">No open-slot routes here.</p>
+          <p className="text-sm text-muted">Nothing to log here.</p>
         )}
 
         {hatchOnly && (
@@ -611,6 +658,31 @@ function ZoneDetail({
         )}
       </div>
     </Frame>
+  );
+}
+
+function RowStatusBadge({
+  claimed,
+  hatchSafe,
+}: {
+  claimed: boolean;
+  hatchSafe: boolean;
+}) {
+  const label = hatchSafe
+    ? claimed
+      ? "Logged"
+      : "Open"
+    : claimed
+      ? "Caught"
+      : "Open";
+  return (
+    <span
+      className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide ${
+        claimed ? "text-accent-deep/80" : "text-muted"
+      }`}
+    >
+      {label}
+    </span>
   );
 }
 
@@ -654,19 +726,7 @@ function RouteRowDetail({
           >
             {row.label}
           </span>
-          <span
-            className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide ${
-              claimed ? "text-accent-deep/80" : "text-muted"
-            }`}
-          >
-            {hatchSafe
-              ? claimed
-                ? "Logged"
-                : "Available"
-              : claimed
-                ? "Claimed"
-                : "Open"}
-          </span>
+          <RowStatusBadge claimed={claimed} hatchSafe={hatchSafe} />
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted">
           {hatchSafe ? (

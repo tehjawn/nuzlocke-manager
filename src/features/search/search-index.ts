@@ -225,7 +225,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
     {
       id: `nav-catch-map-${ctx.slug}`,
       title: "Catch Map",
-      subtitle: `${ctx.name} · Hoenn claim map`,
+      subtitle: `${ctx.name} · Catch Map`,
       href: catchMapHref(ctx.slug),
       category: "navigate",
       tags: [
@@ -235,8 +235,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
         "claim map",
         "encounters",
         "routes",
-        "claimed",
-        "unclaimed",
+        "still open",
         "open slots",
         "tools",
       ],

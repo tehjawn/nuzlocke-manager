@@ -395,13 +395,29 @@ export function unmappedOpenCatchRoutes(): string[] {
 export function mapStatusLabel(status: MapRouteClaimStatus): string {
   switch (status) {
     case "claimed":
-      return "Fully claimed";
+      return "Done";
     case "partial":
-      return "Partially claimed";
+      return "Partial";
     case "unclaimed":
-      return "Unclaimed";
+      return "Still open";
     case "empty":
-      return "No wild slot";
+      return "No wild catch";
+    default:
+      return status;
+  }
+}
+
+/** Player-facing legend / panel title for a status filter chip. */
+export function mapStatusFilterLabel(status: MapStatusFilter): string {
+  switch (status) {
+    case "unclaimed":
+      return "Still open";
+    case "partial":
+      return "Partial";
+    case "claimed":
+      return "Done";
+    case "no-wilds":
+      return "Egg · gift";
     default:
       return status;
   }
@@ -430,18 +446,18 @@ export function mapOffRouteKindLabel(kind: MapOffRouteKind | null): string {
     case "static":
       return "Gift";
     default:
-      return "No wilds";
+      return "Egg · gift";
   }
 }
 
 export function mapOffRouteKindNote(kind: MapOffRouteKind | null): string {
   switch (kind) {
     case "egg-only":
-      return "No wild table or script static — outdoor hatching is safe and does not spend a wild route slot.";
+      return "No wild table — outdoor hatching is safe and does not spend a wild catch slot.";
     case "static":
-      return "No outdoor wild table — script gifts (or fossils in Rustboro) and outdoor hatching can log here without spending a wild route slot.";
+      return "No outdoor wild table — gifts (or fossils in Rustboro) and outdoor hatching can log here without spending a wild catch slot.";
     default:
-      return "No outdoor wild table — logging here does not spend a wild route slot.";
+      return "No outdoor wild table — logging here does not spend a wild catch slot.";
   }
 }
 

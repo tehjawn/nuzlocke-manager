@@ -4935,8 +4935,9 @@ button:disabled,
 }
 
 /*
- * Hoenn claim map — Gen 3 region-map blink for the selected zone and for
- * every region matching an active planning filter.
+ * Catch Map — Gen 3 blink for the selected zone only.
+ * Solid interactive fill (not ink outline). No drop-shadow — SVG filters
+ * on sibling shapes flicker neighbors. Filter matches stay static.
  */
 .claim-map-region--pulse {
   animation: claim-map-select-pulse 0.85s steps(1, end) infinite;
@@ -4945,27 +4946,20 @@ button:disabled,
 @keyframes claim-map-select-pulse {
   0%,
   49% {
+    fill-opacity: 0.72;
     stroke-opacity: 1;
-    fill-opacity: 1;
-    filter: drop-shadow(
-      0 0 2.5px color-mix(in srgb, var(--ink) 45%, transparent)
-    );
   }
   50%,
   100% {
-    stroke-opacity: 0.28;
-    fill-opacity: 0.45;
-    filter: none;
+    fill-opacity: 0.2;
+    stroke-opacity: 0.9;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .claim-map-region--pulse {
     animation: none;
+    fill-opacity: 0.55;
     stroke-opacity: 1;
-    fill-opacity: 1;
-    filter: drop-shadow(
-      0 0 2px color-mix(in srgb, var(--ink) 35%, transparent)
-    );
   }
 }
