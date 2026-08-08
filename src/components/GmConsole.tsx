@@ -34,20 +34,12 @@ import {
   getWelcomeVideoUrl,
   toEasternDatetimeLocalInput,
 } from "@/lib/welcome-video";
+import type { ConsoleTab } from "@/lib/gm-console-tabs";
 
 const hintLinkClass =
   "font-medium text-ink underline-offset-2 hover:text-accent-deep hover:underline";
 
 const FALLBACK_WELCOME_VIDEO_URL = getWelcomeVideoUrl();
-
-export type ConsoleTab =
-  | "season"
-  | "roster"
-  | "analytics"
-  | "rules"
-  | "faq"
-  | "feedback"
-  | "ops";
 
 const TABS: Array<{ id: ConsoleTab; label: string; index: string }> = [
   { id: "season", label: "Season", index: "01" },
@@ -59,15 +51,6 @@ const TABS: Array<{ id: ConsoleTab; label: string; index: string }> = [
   { id: "ops", label: "Ops", index: "07" },
 ];
 
-const CONSOLE_TABS = new Set<string>(TABS.map((t) => t.id));
-
-/** Deep-link helper for `/gm?tab=` — unknown values fall back to Season. */
-export function resolveGmConsoleTab(
-  tab: string | undefined | null,
-): ConsoleTab {
-  if (tab && CONSOLE_TABS.has(tab)) return tab as ConsoleTab;
-  return "season";
-}
 function downloadTextFile(filename: string, content: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);

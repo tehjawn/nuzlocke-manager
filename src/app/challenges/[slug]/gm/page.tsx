@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { GmConsole, resolveGmConsoleTab } from "@/components/GmConsole";
+import { GmConsole } from "@/components/GmConsole";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import {
   SeasonSearchRegistrar,
@@ -10,8 +10,8 @@ import type { Challenge } from "@/lib/challenge-types";
 import { getChallengeMeta, getChallengeTournament } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
 import { listFeedbackForGm } from "@/lib/feedback";
+import { resolveGmConsoleTab } from "@/lib/gm-console-tabs";
 import { getAccessForChallenge } from "@/lib/permissions";
-
 
 type PageProps = {
   params: Promise<{ slug: string }>;
