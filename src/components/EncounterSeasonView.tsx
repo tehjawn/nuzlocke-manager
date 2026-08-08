@@ -12,7 +12,7 @@ type EncounterSeasonViewProps = {
 };
 
 /**
- * Catch Map tool surface — Hoenn claim map is the sole focus (former Encounters
+ * Catch Map tool surface — next-catch planner on the Hoenn map (former Encounters
  * ledger / my-routes / missing-dex tabs graduated elsewhere).
  */
 export function EncounterSeasonView({

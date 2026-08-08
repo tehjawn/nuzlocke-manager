@@ -84,7 +84,7 @@ export function ToolIcon({
   }
 }
 
-/** Region map outline — Catch Map (Hoenn claim planner). */
+/** Region map outline — Catch Map. */
 export function CatchMapToolIcon({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg {...base} className={className}>
