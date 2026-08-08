@@ -530,14 +530,14 @@ function OpenSlotsPanel({
             {slots.map((slot) => (
               <li key={`${slot.zoneId}:${slot.label}`}>
                 <div
-                  className={`flex gap-2 px-1 py-2 ${
-                    slot.focusClaimed ? "bg-accent/5" : ""
+                  className={`flex gap-2 rounded-sm px-1.5 py-2 transition-colors hover:bg-ink/8 ${
+                    slot.focusClaimed ? "bg-accent/5 hover:bg-accent/12" : ""
                   }`}
                 >
                   <button
                     type="button"
                     onClick={() => onSelectZone(slot.zoneId)}
-                    className="pressable min-w-0 flex-1 text-left"
+                    className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left shadow-none outline-none focus-visible:ring-2 focus-visible:ring-interactive/40"
                   >
                     <span className="flex items-baseline justify-between gap-2">
                       <span
@@ -562,7 +562,7 @@ function OpenSlotsPanel({
                         <span className="font-semibold">{slot.zoneName}</span>
                       )}
                       {slot.hatchSafe ? (
-                        <OffRouteChip kind={slot.offRouteKind} />
+                        <OffRouteChip kind={slot.offRouteKind} quiet />
                       ) : (
                         <MethodChips methods={slot.methods} quiet />
                       )}
@@ -774,7 +774,7 @@ function FocusEncounterStrip({
                     aria-label={`${label} · ${claim.trainerHandle}${
                       claim.isAlive ? "" : " · fallen"
                     }`}
-                    className="pressable block rounded-sm hover:bg-interactive-soft/40"
+                    className="block rounded-sm hover:bg-ink/10"
                   >
                     <PokemonSpriteImage
                       alt=""
@@ -859,7 +859,20 @@ function FocusEncounterStrip({
   );
 }
 
-function OffRouteChip({ kind }: { kind: MapOffRouteKind | null }) {
+function OffRouteChip({
+  kind,
+  quiet = false,
+}: {
+  kind: MapOffRouteKind | null;
+  quiet?: boolean;
+}) {
+  if (quiet) {
+    return (
+      <span className="font-semibold text-muted">
+        {mapOffRouteKindLabel(kind)}
+      </span>
+    );
+  }
   return (
     <span className="rounded-full border border-interactive/40 bg-interactive-soft/50 px-1.5 py-0.5 text-[10px] font-semibold text-ink">
       {mapOffRouteKindLabel(kind)}
