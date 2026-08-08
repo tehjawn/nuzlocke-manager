@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { GmConsole } from "@/components/GmConsole";
+import { GmConsole, resolveGmConsoleTab } from "@/components/GmConsole";
 import { SiteHeader, SITE_SHELL_MAX_CLASS } from "@/components/SiteHeader";
 import {
   SeasonSearchRegistrar,
@@ -94,8 +94,8 @@ export default async function GmPage({ params, searchParams }: PageProps) {
             gmInviteCode: secrets?.gmInviteCode ?? null,
           })}
           feedbackSubmissions={feedbackSubmissions}
-          initialTab={query.tab === "feedback" ? "feedback" : "season"}
-          key={query.tab === "feedback" ? "feedback" : "season"}
+          initialTab={resolveGmConsoleTab(query.tab)}
+          key={resolveGmConsoleTab(query.tab)}
         />
       </main>
     </div>

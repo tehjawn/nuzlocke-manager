@@ -3986,6 +3986,143 @@ button:disabled,
   }
 }
 
+/* GM Analytics tab (#404) */
+.gm-analytics {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.gm-analytics__summary {
+  display: grid;
+  gap: 0.55rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--interactive) 22%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 22%, var(--surface));
+  padding: 0.75rem 0.9rem;
+}
+
+.gm-analytics__counts {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.gm-analytics__callouts {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.gm-analytics__grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .gm-analytics__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.gm-analytics__metric {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.gm-analytics__metric-head {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.gm-analytics__metric-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.gm-analytics__metric-desc {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.gm-analytics__rank {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.gm-analytics__rank-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  padding: 0.45rem 0.55rem;
+  overflow: hidden;
+}
+
+.gm-analytics__rank-row--bar {
+  padding-bottom: 0.55rem;
+}
+
+.gm-analytics__rank-copy {
+  flex: 1 1 8rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.gm-analytics__flag {
+  font-weight: 700;
+  color: color-mix(in srgb, var(--accent-deep) 70%, var(--ink));
+}
+
+.gm-analytics__bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: color-mix(in srgb, var(--interactive) 55%, transparent);
+  border-radius: 0 2px 0 0;
+  pointer-events: none;
+}
+
+.gm-analytics__disclosure {
+  border-top: 1px solid color-mix(in srgb, var(--frame) 75%, transparent);
+  padding-top: 0.65rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.gm-analytics__disclosure summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.gm-analytics__disclosure p {
+  margin: 0.45rem 0 0;
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
 @keyframes gm-console-panel-in {
   from {
     opacity: 0;

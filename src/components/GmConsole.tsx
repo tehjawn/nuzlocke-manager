@@ -16,6 +16,7 @@ import {
 import { updateFeedbackStatusAction } from "@/app/actions/feedback";
 import { AvatarPortrait } from "@/components/AvatarPortrait";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { GmAnalyticsPanel } from "@/components/GmAnalyticsPanel";
 import { RandomizerSeedModal } from "@/components/RandomizerSeedModal";
 import { displayActionError } from "@/lib/action-error-display";
 import type { Challenge } from "@/lib/challenge-types";
@@ -39,17 +40,34 @@ const hintLinkClass =
 
 const FALLBACK_WELCOME_VIDEO_URL = getWelcomeVideoUrl();
 
-type ConsoleTab = "season" | "roster" | "rules" | "faq" | "feedback" | "ops";
+export type ConsoleTab =
+  | "season"
+  | "roster"
+  | "analytics"
+  | "rules"
+  | "faq"
+  | "feedback"
+  | "ops";
 
 const TABS: Array<{ id: ConsoleTab; label: string; index: string }> = [
   { id: "season", label: "Season", index: "01" },
   { id: "roster", label: "Roster", index: "02" },
-  { id: "rules", label: "Rules", index: "03" },
-  { id: "faq", label: "FAQ", index: "04" },
-  { id: "feedback", label: "Feedback", index: "05" },
-  { id: "ops", label: "Ops", index: "06" },
+  { id: "analytics", label: "Analytics", index: "03" },
+  { id: "rules", label: "Rules", index: "04" },
+  { id: "faq", label: "FAQ", index: "05" },
+  { id: "feedback", label: "Feedback", index: "06" },
+  { id: "ops", label: "Ops", index: "07" },
 ];
 
+const CONSOLE_TABS = new Set<string>(TABS.map((t) => t.id));
+
+/** Deep-link helper for `/gm?tab=` — unknown values fall back to Season. */
+export function resolveGmConsoleTab(
+  tab: string | undefined | null,
+): ConsoleTab {
+  if (tab && CONSOLE_TABS.has(tab)) return tab as ConsoleTab;
+  return "season";
+}
 function downloadTextFile(filename: string, content: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -665,9 +683,22 @@ export function GmConsole({
             </Panel>
           )}
 
+          {tab === "analytics" && (
+            <Panel
+              kicker="03 · Meta"
+              title="Pack analytics"
+              description="Season design intel from claimed trainers’ saved Main Squads — least covered types, pack pressure, and typing concentration."
+              trailing={
+                <span className="gm-console__chip">Main Squads only</span>
+              }
+            >
+              <GmAnalyticsPanel key={challenge.slug} slug={challenge.slug} />
+            </Panel>
+          )}
+
           {tab === "rules" && (
             <Panel
-              kicker="03 · Content"
+              kicker="04 · Content"
               title="Rules"
               description="Core and house rules shown on the season Rules page."
             >
@@ -836,7 +867,7 @@ export function GmConsole({
 
           {tab === "faq" && (
             <Panel
-              kicker="04 · Content"
+              kicker="05 · Content"
               title="FAQ"
               description="Questions and answers on the season FAQ page."
             >
@@ -979,7 +1010,7 @@ export function GmConsole({
           {tab === "feedback" && (
             <Panel
               description="Player bug reports, feature requests, and support questions."
-              kicker="05 · Inbox"
+              kicker="06 · Inbox"
               title="Feedback"
               trailing={
                 <span className="gm-console__chip">
@@ -1094,7 +1125,7 @@ export function GmConsole({
           {tab === "ops" && (
             <div className="gm-console__ops-grid">
               <Panel
-                kicker="06 · Ops"
+                kicker="07 · Ops"
                 title="Export"
                 description="Full season backup — trainers, badges, Pokémon, rules, and FAQ."
               >
@@ -1159,7 +1190,7 @@ export function GmConsole({
               </Panel>
 
               <Panel
-                kicker="06 · Ops"
+                kicker="07 · Ops"
                 title="Parse randomizer seed data"
                 description="Replay a trainer’s randomizer seed from their save: where a given Pokémon spawns in their run, what each route holds, and what the scripted encounters rolled — with their own catches and spent route slots marked."
               >
@@ -1173,7 +1204,7 @@ export function GmConsole({
               </Panel>
 
               <Panel
-                kicker="06 · Ops"
+                kicker="07 · Ops"
                 title="Reconstruct memorial history"
                 description="Backfill missing R.I.P. entries from each trainer’s retained board snapshots (wipe / import / reset). Existing graves stay; duplicates are skipped."
               >
