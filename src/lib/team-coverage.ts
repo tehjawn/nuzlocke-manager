@@ -253,12 +253,12 @@ export function teamCoverageSummary(
 
   if (coverage.gaps.length === 0) {
     bullets.push({
-      text: `Offensive coverage looks solid — ≥2× into all ${total} types.`,
+      text: `Strong against all ${total} types.`,
       tone: "good",
     });
   } else {
     bullets.push({
-      text: `${covered}/${total} types covered at ≥2×. Soft into ${gapNames.slice(0, 4).join(", ")}${gapNames.length > 4 ? "…" : ""}.`,
+      text: `Hits ${covered}/${total} types hard. Soft into ${gapNames.slice(0, 4).join(", ")}${gapNames.length > 4 ? "…" : ""}.`,
       tone: coverage.gaps.length >= 4 ? "warn" : "neutral",
     });
   }
@@ -288,12 +288,12 @@ export function teamCoverageSummary(
   const topHole = defense.sharedHoles[0];
   if (topHole) {
     bullets.push({
-      text: `Biggest shared hole: ${topHole.attackType} ${formatMatchupMult(topHole.worstMult)} hits ${topHole.weakCount}/${draft.length}.`,
+      text: `Weak to ${topHole.attackType} — pressures ${topHole.weakCount}/${draft.length} of your team.`,
       tone: topHole.weakCount >= 3 || topHole.worstMult >= 4 ? "warn" : "neutral",
     });
   } else {
     bullets.push({
-      text: "No shared ≥2× defensive holes across the draft.",
+      text: "No shared defensive holes — nothing hits 2+ of your team hard.",
       tone: "good",
     });
   }
@@ -305,10 +305,10 @@ export function teamCoverageSummary(
     });
   }
 
-  const softGaps = coverage.gaps.filter((g) => g.bestMult === 0);
-  if (softGaps.length > 0) {
+  const noAnswerGaps = coverage.gaps.filter((g) => g.bestMult === 0);
+  if (noAnswerGaps.length > 0) {
     bullets.push({
-      text: `Blind spots (0×): ${softGaps.map((g) => g.defendingType).join(", ")}.`,
+      text: `No answer for ${noAnswerGaps.map((g) => g.defendingType).join(", ")}.`,
       tone: "warn",
     });
   }
@@ -395,10 +395,10 @@ export const COVERAGE_OFFENSE_TIER_META: ReadonlyArray<{
   label: string;
   hint: string;
 }> = [
-  { id: "S", label: "Super", hint: "Best hit ≥2×" },
+  { id: "S", label: "Hits hard", hint: "Best hit ≥2× (super-effective)" },
   { id: "A", label: "Neutral", hint: "Best hit 1×" },
-  { id: "B", label: "Resist", hint: "Best hit ½×" },
-  { id: "F", label: "Blind", hint: "Best hit 0×" },
+  { id: "B", label: "Resisted", hint: "Best hit ½×" },
+  { id: "F", label: "No answer", hint: "Best hit 0×" },
 ];
 
 /**
@@ -459,7 +459,15 @@ export function coverageVerdict(
   ).length;
   const softCount = coverage.gaps.filter((g) => g.bestMult > 0).length;
   const blindCount = coverage.gaps.filter((g) => g.bestMult === 0).length;
-  const gapNames = coverage.gaps.map((g) => g.defendingType);
+  const softNames = coverage.gaps
+    .filter((g) => g.bestMult > 0)
+    .map((g) => g.defendingType);
+  const blindNames = coverage.gaps
+    .filter((g) => g.bestMult === 0)
+    .map((g) => g.defendingType);
+  const strongNames = coverage.cells
+    .filter((c) => c.bestMult >= SE_THRESHOLD)
+    .map((c) => c.defendingType);
 
   let label: CoverageVerdictLabel;
   let tone: CoverageSummaryTone;
@@ -477,18 +485,40 @@ export function coverageVerdict(
     tone = "warn";
   }
 
+  // Plain-language lead: strong against / soft into / no answer / weak to.
+  const lineParts: string[] = [];
+  if (coverage.gaps.length === 0) {
+    lineParts.push(`Strong against all ${total} types`);
+  } else {
+    if (softNames.length > 0) {
+      lineParts.push(
+        `Soft into ${softNames.slice(0, 4).join(", ")}${softNames.length > 4 ? "…" : ""}`,
+      );
+    }
+    if (blindNames.length > 0) {
+      lineParts.push(
+        `No answer for ${blindNames.slice(0, 4).join(", ")}${blindNames.length > 4 ? "…" : ""}`,
+      );
+    }
+    if (lineParts.length === 0 && strongNames.length > 0) {
+      lineParts.push(
+        `Strong against ${strongNames.slice(0, 5).join(", ")}${strongNames.length > 5 ? "…" : ""}`,
+      );
+    }
+  }
+  const topHole = defense.sharedHoles[0];
+  if (topHole && (topHole.weakCount >= 2 || topHole.worstMult >= 4)) {
+    lineParts.push(`Weak to ${topHole.attackType}`);
+  }
   const line =
-    coverage.gaps.length === 0
-      ? `≥2× into all ${total} types.`
-      : `Soft into ${gapNames.slice(0, 5).join(", ")}${gapNames.length > 5 ? "…" : ""}.`;
+    lineParts.length > 0
+      ? `${lineParts.join(" · ")}.`
+      : `Hits ${coveredCount}/${total} types hard.`;
 
   const callouts: CoverageSummaryBullet[] = [];
   if (blindCount > 0) {
     callouts.push({
-      text: `Blind (0×): ${coverage.gaps
-        .filter((g) => g.bestMult === 0)
-        .map((g) => g.defendingType)
-        .join(", ")}.`,
+      text: `No answer for ${blindNames.join(", ")}.`,
       tone: "warn",
     });
   }
@@ -497,7 +527,7 @@ export function coverageVerdict(
   );
   for (const hole of bigHoles.slice(0, 2)) {
     callouts.push({
-      text: `${hole.attackType} pressures ${hole.weakCount}/${draft.length} (${formatMatchupMult(hole.worstMult)}).`,
+      text: `Weak to ${hole.attackType} — pressures ${hole.weakCount}/${draft.length} of your team.`,
       tone: "warn",
     });
   }
@@ -847,8 +877,8 @@ export function vsTrainerMatchup(
   if (verdict === "favorable") {
     recommendation =
       blinds.length > 0
-        ? `Type edge is yours — still watch ${blinds.map((t) => t.displayName).slice(0, 2).join(" / ")} with no ≥2× answer.`
-        : "Type edge is yours — lean on the answered matchups and keep the answered cores in."
+        ? `Type edge is yours — still watch ${blinds.map((t) => t.displayName).slice(0, 2).join(" / ")} (no hard answer).`
+        : "Type edge is yours — lean on the matchups you hit hard.";
   } else if (verdict === "even") {
     recommendation =
       blinds.length > 0 || softs.length > 0
@@ -873,11 +903,15 @@ export function vsTrainerMatchup(
         : "Poor type spread into this board — rebuild coverage before committing.";
   }
 
+  const summaryBits: string[] = [
+    `Strong against ${answeredCount}/${n} of their Main`,
+  ];
+  if (softCount > 0) summaryBits.push(`${softCount} soft`);
+  if (blindCount > 0) summaryBits.push(`${blindCount} no answer`);
+
   const bullets: CoverageSummaryBullet[] = [
     {
-      text: `You answer ${answeredCount}/${n} of their Main at ≥2×${
-        softCount > 0 ? ` · ${softCount} soft` : ""
-      }${blindCount > 0 ? ` · ${blindCount} blind` : ""}.`,
+      text: `${summaryBits.join(" · ")}.`,
       tone:
         answeredCount === n
           ? "good"
@@ -889,7 +923,7 @@ export function vsTrainerMatchup(
 
   if (answered.length > 0) {
     bullets.push({
-      text: `Strong into ${answered
+      text: `Strong against ${answered
         .slice(0, 4)
         .map((t) => t.displayName)
         .join(", ")}${answered.length > 4 ? "…" : ""}.`,
@@ -899,12 +933,12 @@ export function vsTrainerMatchup(
 
   if (blinds.length > 0) {
     bullets.push({
-      text: `No ≥2× into ${blinds.map((t) => t.displayName).join(", ")}.`,
+      text: `No answer for ${blinds.map((t) => t.displayName).join(", ")}.`,
       tone: "warn",
     });
   } else if (softs.length > 0) {
     bullets.push({
-      text: `Only neutral/resisted into ${softs
+      text: `Only soft pressure into ${softs
         .map((t) => t.displayName)
         .join(", ")}.`,
       tone: "neutral",
@@ -914,7 +948,7 @@ export function vsTrainerMatchup(
   if (topThreats[0]) {
     const threat = topThreats[0];
     bullets.push({
-      text: `${threat.displayName} pressures ${threat.threatenedCount}/${draft.length} of your draft${
+      text: `${threat.displayName} threatens ${threat.threatenedCount}/${draft.length} of your team${
         threat.threatAttackType
           ? ` (${formatMatchupMult(threat.threatMult)} ${threat.threatAttackType})`
           : ""
@@ -926,7 +960,7 @@ export function vsTrainerMatchup(
     });
   } else if (pressureCount === 0) {
     bullets.push({
-      text: "No opponent hits 2+ of your draft for ≥2×.",
+      text: "No opponent threatens 2+ of your team.",
       tone: "good",
     });
   }
