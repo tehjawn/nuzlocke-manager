@@ -32,7 +32,8 @@
     "data:evolutions": "node scripts/generate-species-evolutions.mjs",
     "data:catch-routes": "node scripts/generate-catch-routes.mjs",
     "data:randomizer": "node scripts/generate-randomizer-tables.mjs",
-    "data:sprites": "node scripts/vendor-showdown-sprites.mjs"
+    "data:sprites": "node scripts/vendor-showdown-sprites.mjs",
+    "eval:ask": "tsx scripts/eval-ask-providers.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.35",

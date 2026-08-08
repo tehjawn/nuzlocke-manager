@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { AskAnswerView } from "@/features/search/AskAnswerView";
 import { askEntityHints } from "@/features/search/ask-hints";
 import { matchCannedAskIntent } from "@/features/search/ask-canned";
+import { matchDeterministicAsk } from "@/features/search/ask-deterministic";
 import {
   buildPageContext,
   prependPageContext,
@@ -124,6 +125,12 @@ function AskHost() {
     const canned = matchCannedAskIntent(trimmed, season);
     if (canned) {
       answerLocal(trimmed, canned);
+      return;
+    }
+
+    const deterministic = matchDeterministicAsk(trimmed, season);
+    if (deterministic) {
+      answerLocal(trimmed, deterministic);
       return;
     }
 

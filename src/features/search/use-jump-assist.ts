@@ -8,11 +8,14 @@ import {
 } from "@/features/search/ask-types";
 
 /**
- * Client half of Ask (#184 / #300).
+ * Client half of Ask (#184 / #300 / #395).
  *
- * Canned answers never hit the network. Remote asks post a season snapshot to
- * `/api/ai/jump` and accept structured cards when the server returns them.
+ * Canned + deterministic answers never hit the network. Generative asks post a
+ * season snapshot to `/api/ai/jump` (Gemini).
  */
+
+/** Which path produced the current answer — for subtle UI / evals. */
+export type AskRoute = "local" | "gemini";
 
 export type AssistState =
   | { status: "idle" }
@@ -23,6 +26,7 @@ export type AssistState =
       answer: AskAnswer;
       /** Flat text for Jump-to salvage matching. */
       text: string;
+      route: AskRoute;
     }
   | { status: "error"; question: string; error: string; signIn?: boolean };
 
@@ -35,12 +39,12 @@ type AssistResponse = {
 };
 
 /**
- * Session-lifetime kill switch for *remote* Ask. Canned orientation still
- * works when Gemini is unset or the visitor is signed out.
+ * Session-lifetime kill switch for *remote* Ask. Canned / deterministic still
+ * work when Gemini is unset or the visitor is signed out.
  */
 let assistUnavailable = false;
 
-const sessionAnswerCache = new Map<string, AskAnswerWire>();
+const sessionAnswerCache = new Map<string, AskAnswerWire & { route: AskRoute }>();
 const SESSION_CACHE_MAX = 24;
 
 export function isAssistUnavailable(): boolean {
@@ -109,6 +113,7 @@ export function useJumpAssist() {
       question: trimmed,
       answer,
       text: askAnswerToText(answer),
+      route: "local",
     });
   }, []);
 
@@ -144,6 +149,7 @@ export function useJumpAssist() {
           question: trimmed,
           answer: cached.answer,
           text: cached.text,
+          route: cached.route,
         });
         return;
       }
@@ -209,13 +215,14 @@ export function useJumpAssist() {
           const oldest = sessionAnswerCache.keys().next().value;
           if (oldest) sessionAnswerCache.delete(oldest);
         }
-        sessionAnswerCache.set(key, wire);
+        sessionAnswerCache.set(key, { ...wire, route: "gemini" });
 
         setState({
           status: "answered",
           question: trimmed,
           answer: wire.answer,
           text: wire.text,
+          route: "gemini",
         });
       } catch (error) {
         if (controller.signal.aborted) return;

@@ -2,6 +2,9 @@ import "server-only";
 
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
+import { GEMINI_MODEL } from "@/lib/ai/gemini-model";
+
+export { GEMINI_MODEL };
 
 /**
  * Google AI Studio (Gemini) via the Vercel AI SDK — server-only.
@@ -12,20 +15,10 @@ import { generateText } from "ai";
  * Fail-open: when the key is unset every entry point here returns a
  * `NOT_CONFIGURED` result instead of throwing, so local dev and deploys
  * without an AI key keep working exactly as before.
- */
-
-/**
- * Cheapest Flash-Lite tier with a free AI Studio quota — $0.25/$1.50 per M
- * input/output tokens if we ever exceed free, vs $0.30/$2.50 for 3.5 Flash-Lite.
- * 3.5 is the faster and stronger model; revisit if assist latency or answer
- * quality disappoints in real use.
  *
- * `gemini-2.5-flash-lite` (the slug #184 researched) now 404s for keys created
- * after its retirement — "no longer available to new users". Pinned to an
- * explicit version rather than the floating `gemini-flash-lite-latest` alias so
- * quality and cost don't shift under us; re-check when this one retires too.
+ * Model pin lives in `gemini-model.ts` so Node eval scripts can import it
+ * without pulling in `server-only`.
  */
-export const GEMINI_MODEL = "gemini-3.1-flash-lite";
 
 /** Keep replies palette-sized; also caps spend if we ever leave the free tier. */
 const DEFAULT_MAX_OUTPUT_TOKENS = 256;
