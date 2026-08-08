@@ -18,6 +18,8 @@ import {
   listOpenSlotsForMap,
   MAP_METHOD_FILTERS,
   mapMethodLabel,
+  mapOffRouteKindLabel,
+  mapOffRouteKindNote,
   mapStatusLabel,
   sortMapMethods,
   unmappedOpenCatchRoutes,
@@ -25,6 +27,7 @@ import {
   zoneIsPaintable,
   zoneMatchesMapFilter,
   type MapMethodFilter,
+  type MapOffRouteKind,
   type MapOpenSlot,
   type MapRouteClaimStatus,
   type MapRouteRow,
@@ -140,8 +143,9 @@ export function EncounterRouteMap({
           </h3>
           <p className="max-w-xl text-xs text-muted">
             Game region map with pret-accurate route hit targets. Colors follow
-            the focused trainer&apos;s open-slot progress — plus hatch-safe
-            outdoor spots that never spend a wild slot. Use filters to plan.
+            the focused trainer&apos;s open-slot progress — plus no-wilds spots
+            (egg / gift / fossil) that never spend a wild slot. Use filters to
+            plan.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -203,7 +207,7 @@ export function EncounterRouteMap({
         {MAP_METHOD_FILTERS.map((method) => {
           const active = methodFilters.includes(method);
           const countHint =
-            method === "egg" ? (
+            method === "no-wilds" ? (
               <span className="tabular-nums text-muted">
                 ({hatchSpotTotal})
               </span>
@@ -302,7 +306,7 @@ export function EncounterRouteMap({
               Select a route or town on the map to see open-slot progress
               {focusHandleLine(focusStatus?.trainerHandle)}. Turn on{" "}
               <span className="font-semibold text-ink">Unclaimed only</span> or{" "}
-              <span className="font-semibold text-ink">Egg</span> to plan.
+              <span className="font-semibold text-ink">No wilds</span> to plan.
             </p>
           </Frame>
         )}
@@ -346,7 +350,7 @@ function MapLegend() {
     },
     {
       key: "hatch",
-      hint: "Hatch-safe (no wild slot)",
+      hint: "No wilds (egg / gift / fossil)",
       fill: HATCH_FILL,
       stroke: HATCH_STROKE,
       dashed: true,
@@ -407,9 +411,7 @@ function RegionShape({
       ? "3.5 2.5"
       : undefined;
 
-  const statusText = hatchOnly
-    ? "Hatch-safe"
-    : mapStatusLabel(status);
+  const statusText = hatchOnly ? "No wilds" : mapStatusLabel(status);
 
   const shared = {
     fill,
@@ -431,7 +433,7 @@ function RegionShape({
         ? `, ${entry.claimedOpenSlots} claimed of ${slotTotal}`
         : ""
     }${
-      zoneHasHatchSafe(entry) && !hatchOnly ? ", hatch-safe spot" : ""
+      zoneHasHatchSafe(entry) && !hatchOnly ? ", no-wilds spot" : ""
     }${dimmed ? ", filtered out" : ""}`,
     "aria-pressed": selected,
     "data-region": zone.id,
@@ -479,11 +481,11 @@ function OpenSlotsPanel({
   onSelectZone: (zoneId: string) => void;
 }) {
   const wildCount = slots.filter((slot) => !slot.hatchSafe).length;
-  const hatchCount = slots.filter((slot) => slot.hatchSafe).length;
+  const noWildsCount = slots.filter((slot) => slot.hatchSafe).length;
   const title =
-    hatchCount > 0 && wildCount === 0
-      ? "Hatch spots"
-      : hatchCount > 0
+    noWildsCount > 0 && wildCount === 0
+      ? "No-wilds spots"
+      : noWildsCount > 0
         ? "Matching spots"
         : "Open slots";
 
@@ -499,8 +501,8 @@ function OpenSlotsPanel({
     >
       <div className="space-y-3">
         <p className="text-xs text-muted">
-          {hatchCount > 0 && wildCount === 0
-            ? "Outdoor hatch-safe met locations — hatching here does not spend a wild route slot"
+          {noWildsCount > 0 && wildCount === 0
+            ? "Outdoor maps with no wild table — eggs, gifts, or fossils can log here without spending a wild route slot"
             : "Spots matching the current filters"}
           {focusHandleLine(focusHandle)}. Click a row to jump to that region.
         </p>
@@ -527,7 +529,7 @@ function OpenSlotsPanel({
                       </span>
                     )}
                     {slot.hatchSafe ? (
-                      <EggChip />
+                      <OffRouteChip kind={slot.offRouteKind} />
                     ) : (
                       <MethodChips methods={slot.methods} />
                     )}
@@ -570,14 +572,14 @@ function ZoneDetail({
       title={zone.name}
       actions={
         <span className="text-[11px] font-semibold tabular-nums text-white/80">
-          {hatchOnly ? "Hatch-safe" : mapStatusLabel(status)}
+          {hatchOnly ? "No wilds" : mapStatusLabel(status)}
         </span>
       }
     >
       <div className="space-y-3">
         <p className="text-xs text-muted">
           {hatchOnly
-            ? "No wild open slot — outdoor hatching is safe here and does not spend a ROM route bit"
+            ? "No wild open slot — gifts, fossils, or outdoor hatching can log here without spending a ROM route bit"
             : slotTotal > 0
               ? `${selected.claimedOpenSlots} of ${slotTotal} claimed`
               : "No wild open slots here"}
@@ -604,7 +606,7 @@ function ZoneDetail({
           <div className="space-y-2">
             {!hatchOnly && (
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                Hatch-safe
+                No wilds
               </p>
             )}
             <ul className="space-y-2">
@@ -681,12 +683,16 @@ function RouteRowDetail({
       </div>
 
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        {hatchSafe ? <EggChip /> : <MethodChips methods={row.methods} />}
+        {hatchSafe ? (
+          <OffRouteChip kind={row.offRouteKind} />
+        ) : (
+          <MethodChips methods={row.methods} />
+        )}
       </div>
 
       {hatchSafe && (
         <p className="mt-1.5 text-[11px] text-muted">
-          Hatch here outdoors without spending a wild route slot.
+          {mapOffRouteKindNote(row.offRouteKind)}
         </p>
       )}
 
@@ -742,7 +748,7 @@ function RouteRowDetail({
               {hatchSafe
                 ? claimed
                   ? "Logged here — no sprites on the board."
-                  : "No hatch logged here yet."
+                  : "Nothing logged here yet."
                 : claimed
                   ? "Slot claimed — no catch logged on the board."
                   : "No encounters logged yet."}
@@ -754,10 +760,10 @@ function RouteRowDetail({
   );
 }
 
-function EggChip() {
+function OffRouteChip({ kind }: { kind: MapOffRouteKind | null }) {
   return (
     <span className="rounded-full border border-interactive/40 bg-interactive-soft/50 px-1.5 py-0.5 text-[10px] font-semibold text-ink">
-      Egg
+      {mapOffRouteKindLabel(kind)}
     </span>
   );
 }

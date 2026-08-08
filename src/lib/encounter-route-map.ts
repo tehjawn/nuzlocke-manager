@@ -4,6 +4,7 @@ import {
   isHatchSafeOutdoor,
   normalizeCatchRoute,
   type CatchRouteEncounter,
+  type CatchRouteKind,
 } from "@/data/catch-routes";
 import {
   HOENN_MAP_LABELS,
@@ -38,25 +39,33 @@ export const MAP_ENCOUNTER_METHODS: readonly CatchRouteEncounter[] = [
   "rock-smash",
 ];
 
-/** Planning chips: wild methods + outdoor hatch-safe filter. */
-export type MapMethodFilter = CatchRouteEncounter | "egg";
+/**
+ * Planning chips: wild methods + outdoor no-wild-table filter.
+ * `"no-wilds"` covers egg-only and empty-static met locations (gifts/fossils/hatches).
+ */
+export type MapMethodFilter = CatchRouteEncounter | "no-wilds";
 
 export const MAP_METHOD_FILTERS: readonly MapMethodFilter[] = [
   ...MAP_ENCOUNTER_METHODS,
-  "egg",
+  "no-wilds",
 ];
+
+/** How a no-wild-table label can be logged (catalog kind). */
+export type MapOffRouteKind = Extract<CatchRouteKind, "egg-only" | "static">;
 
 export type MapRouteRow = {
   label: string;
   /**
    * Wild open slot: focus spent the slot.
-   * Hatch-safe row: focus has a met-location log here (not a ROM slot spend).
+   * No-wilds row: focus has a met-location log here (not a ROM slot spend).
    */
   focusClaimed: boolean;
-  /** ROM wild-table methods for this catch-route label (empty for hatch-only). */
+  /** ROM wild-table methods for this catch-route label (empty for no-wilds). */
   methods: readonly CatchRouteEncounter[];
-  /** Outdoor hatch-safe met location (no wild open slot). */
+  /** Outdoor no-wild-table met location (egg-only or empty-static). */
   hatchSafe: boolean;
+  /** Catalog kind when `hatchSafe` — distinguishes pure hatch maps from gift/fossil towns. */
+  offRouteKind: MapOffRouteKind | null;
   /** Focus trainer's Pokémon claims on this route (encounters toggle). */
   focusClaims: EncounterClaim[];
   /** Focus trainer's Safari / encounter-flag claims on this route. */
@@ -75,19 +84,20 @@ export type MapZoneStatus = {
   hatchRows: MapRouteRow[];
 };
 
-/** Flattened planning checklist row (wild open slot or hatch-safe spot). */
+/** Flattened planning checklist row (wild open slot or no-wilds spot). */
 export type MapOpenSlot = {
   zoneId: string;
   zoneName: string;
   label: string;
   methods: readonly CatchRouteEncounter[];
   hatchSafe: boolean;
+  offRouteKind: MapOffRouteKind | null;
 };
 
 export type MapZoneFilter = {
   /** When true, fully claimed wild zones are dimmed / omitted from the open list. */
   unclaimedOnly: boolean;
-  /** Empty = all methods. Otherwise OR-match. `"egg"` matches hatch-safe zones. */
+  /** Empty = all methods. Otherwise OR-match. `"no-wilds"` matches hatch-safe zones. */
   methods: readonly MapMethodFilter[];
 };
 
@@ -128,6 +138,17 @@ function aggregateZoneStatus(
   return "partial";
 }
 
+function offRouteKindFor(
+  catalog: NonNullable<ReturnType<typeof findCatchRoute>>,
+  hatchSafe: boolean,
+): MapOffRouteKind | null {
+  if (!hatchSafe) return null;
+  if (catalog.kind === "egg-only" || catalog.kind === "static") {
+    return catalog.kind;
+  }
+  return null;
+}
+
 function buildRouteRow(
   label: string,
   catalog: NonNullable<ReturnType<typeof findCatchRoute>>,
@@ -145,6 +166,7 @@ function buildRouteRow(
     focusClaimed: claimed.has(key),
     methods: catalog.encounters,
     hatchSafe,
+    offRouteKind: offRouteKindFor(catalog, hatchSafe),
     focusClaims: focusId
       ? allClaims.filter((claim) => claim.trainerId === focusId)
       : [],
@@ -211,11 +233,13 @@ export function zoneIsPaintable(zone: MapZoneStatus): boolean {
 function wildMethodFilters(
   methods: readonly MapMethodFilter[],
 ): CatchRouteEncounter[] {
-  return methods.filter((method): method is CatchRouteEncounter => method !== "egg");
+  return methods.filter(
+    (method): method is CatchRouteEncounter => method !== "no-wilds",
+  );
 }
 
-function eggFilterActive(methods: readonly MapMethodFilter[]): boolean {
-  return methods.includes("egg");
+function noWildsFilterActive(methods: readonly MapMethodFilter[]): boolean {
+  return methods.includes("no-wilds");
 }
 
 /** Whether a zone should stay emphasized under the planning filters. */
@@ -226,7 +250,7 @@ export function zoneMatchesMapFilter(
   if (!zoneIsPaintable(zone)) return false;
 
   const wildFilters = wildMethodFilters(filter.methods);
-  const eggOn = eggFilterActive(filter.methods);
+  const noWildsOn = noWildsFilterActive(filter.methods);
   const noMethodFilter = filter.methods.length === 0;
 
   const matchesWild = (() => {
@@ -242,36 +266,35 @@ export function zoneMatchesMapFilter(
     );
   })();
 
-  const matchesEgg = (() => {
+  const matchesNoWilds = (() => {
     if (!zoneHasHatchSafe(zone)) return false;
-    // Hatch spots are never wild open slots — only emphasize with Egg filter,
-    // or when no method filter is set and Unclaimed only is off (default map).
-    if (eggOn) return true;
+    // No-wilds spots are never wild open slots — only emphasize with that
+    // filter, or when no method filter is set and Unclaimed only is off.
+    if (noWildsOn) return true;
     if (noMethodFilter && !filter.unclaimedOnly) return true;
     return false;
   })();
 
   if (noMethodFilter) {
-    // Unclaimed only: wild progress only (hatch-only towns dim).
+    // Unclaimed only: wild progress only (no-wilds towns dim).
     if (filter.unclaimedOnly) return matchesWild;
-    return matchesWild || matchesEgg;
+    return matchesWild || matchesNoWilds;
   }
 
-  return matchesWild || matchesEgg;
+  return matchesWild || matchesNoWilds;
 }
 
-/** Matching checklist rows for the open-slots / hatch planning panel. */
+/** Matching checklist rows for the open-slots / no-wilds planning panel. */
 export function listOpenSlotsForMap(
   zones: MapZoneStatus[],
   filter: MapZoneFilter,
 ): MapOpenSlot[] {
   const slots: MapOpenSlot[] = [];
   const wildFilters = wildMethodFilters(filter.methods);
-  const eggOn = eggFilterActive(filter.methods);
+  const noWildsOn = noWildsFilterActive(filter.methods);
   const noMethodFilter = filter.methods.length === 0;
-  const includeWild =
-    noMethodFilter || wildFilters.length > 0;
-  const includeEgg = eggOn;
+  const includeWild = noMethodFilter || wildFilters.length > 0;
+  const includeNoWilds = noWildsOn;
 
   for (const zone of zones) {
     if (!zoneMatchesMapFilter(zone, filter)) continue;
@@ -291,11 +314,12 @@ export function listOpenSlotsForMap(
           label: row.label,
           methods: row.methods,
           hatchSafe: false,
+          offRouteKind: null,
         });
       }
     }
 
-    if (includeEgg) {
+    if (includeNoWilds) {
       for (const row of zone.hatchRows) {
         slots.push({
           zoneId: zone.zone.id,
@@ -303,6 +327,7 @@ export function listOpenSlotsForMap(
           label: row.label,
           methods: row.methods,
           hatchSafe: true,
+          offRouteKind: row.offRouteKind,
         });
       }
     }
@@ -351,10 +376,33 @@ export function mapMethodLabel(method: MapMethodFilter): string {
       return "Fishing";
     case "rock-smash":
       return "Rock Smash";
-    case "egg":
-      return "Egg";
+    case "no-wilds":
+      return "No wilds";
     default:
       return method;
+  }
+}
+
+/** Chip label for a no-wild-table catalog row. */
+export function mapOffRouteKindLabel(kind: MapOffRouteKind | null): string {
+  switch (kind) {
+    case "egg-only":
+      return "Egg";
+    case "static":
+      return "Gift / fossil";
+    default:
+      return "No wilds";
+  }
+}
+
+export function mapOffRouteKindNote(kind: MapOffRouteKind | null): string {
+  switch (kind) {
+    case "egg-only":
+      return "No wild table or script static — outdoor hatching is safe and does not spend a wild route slot.";
+    case "static":
+      return "No outdoor wild table — gifts, fossils, or hatching can log here without spending a wild route slot.";
+    default:
+      return "No outdoor wild table — logging here does not spend a wild route slot.";
   }
 }
 
