@@ -64,6 +64,15 @@ export const PokemonEntryInputSchema = z.object({
   friendship: z.number().int().min(0).max(255).optional().nullable(),
   causeOfDeath: z.string().max(500).optional().nullable(),
   notes: z.string().max(1000).optional().nullable(),
+  /** Gen 3 PID — sticky identity across save imports. */
+  personalityValue: z
+    .number()
+    .int()
+    .min(0)
+    .max(0xffffffff)
+    .optional()
+    .nullable(),
+  otId: z.number().int().min(0).max(0xffffffff).optional().nullable(),
 });
 
 export const TrainerBoardUpdateSchema = z.object({

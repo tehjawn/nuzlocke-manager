@@ -549,3 +549,25 @@ export async function voidOpenMarketsForPokemonIds(
     data: { status: "VOID", resolvedAt: new Date() },
   });
 }
+
+/** Keep Survive/Die board chrome in sync when a linked mon evolves / renames. */
+export async function syncSurvivalMarketChrome(
+  db: DbClient,
+  pokemon: {
+    id: string;
+    species: string;
+    nickname: string | null;
+    pokedexId: number | null;
+    isShiny: boolean;
+  },
+): Promise<void> {
+  await db.survivalMarket.updateMany({
+    where: { pokemonId: pokemon.id, status: "OPEN" },
+    data: {
+      species: pokemon.species,
+      nickname: pokemon.nickname,
+      pokedexId: pokemon.pokedexId,
+      isShiny: pokemon.isShiny,
+    },
+  });
+}

@@ -177,6 +177,28 @@ function MetaChip({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+/** Gen 3 u32 as 8-digit hex — matches ROM / PKHeX style. */
+function formatGen3IdHex(value: number): string {
+  return (value >>> 0).toString(16).toUpperCase().padStart(8, "0");
+}
+
+function Gen3IdValue({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  const hex = formatGen3IdHex(value);
+  return (
+    <InfoTip tip={`${label} ${value.toLocaleString("en-US")} (decimal)`}>
+      <span className="font-mono text-[13px] tabular-nums tracking-tight">
+        {hex}
+      </span>
+    </InfoTip>
+  );
+}
+
 export function PokemonDetailsModal({
   open,
   pokemon,
@@ -400,6 +422,7 @@ export function PokemonDetailsModal({
           ),
         }
       : null,
+    // Sticky save-import identity (#399) is shown in the footer section below.
   ].filter(Boolean) as Array<{ label: string; value: ReactNode }>;
 
   return (
@@ -727,6 +750,46 @@ export function PokemonDetailsModal({
             <p className="mt-1 text-sm leading-relaxed text-muted italic">
               {pokemon.causeOfDeath}
             </p>
+          </div>
+        )}
+
+        {pokemon.notes?.trim() && (
+          <div className="border-t border-frame/20 pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Notes
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-muted whitespace-pre-wrap">
+              {pokemon.notes}
+            </p>
+          </div>
+        )}
+
+        {(pokemon.personalityValue != null || pokemon.otId != null) && (
+          <div className="border-t border-frame/20 pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Save identity
+            </p>
+            <dl className="mt-1.5 grid grid-cols-2 gap-2 sm:max-w-xs">
+              {pokemon.personalityValue != null && (
+                <div className="min-w-0">
+                  <dt className="text-[10px] font-semibold text-muted">PID</dt>
+                  <dd>
+                    <Gen3IdValue
+                      label="Personality value"
+                      value={pokemon.personalityValue}
+                    />
+                  </dd>
+                </div>
+              )}
+              {pokemon.otId != null && (
+                <div className="min-w-0">
+                  <dt className="text-[10px] font-semibold text-muted">OT ID</dt>
+                  <dd>
+                    <Gen3IdValue label="OT ID" value={pokemon.otId} />
+                  </dd>
+                </div>
+              )}
+            </dl>
           </div>
         )}
       </div>

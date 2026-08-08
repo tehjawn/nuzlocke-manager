@@ -21,6 +21,7 @@ const MAX_SAVE_PARSE_BYTES = 32 * 1024 * 1024;
 
 export type SaveImportDraft = {
   pid: number;
+  otId: number;
   nickname: string;
   species: string;
   pokedexId: number;
@@ -36,6 +37,8 @@ export type SaveImportDraft = {
   friendship: number | null;
   slot: PokemonSlot;
   include: boolean;
+  /** Pokédex-seen placeholder — pid is UI-only, never persist as identity. */
+  isDexSeenStub: boolean;
 };
 
 export type SaveImportPayload = {
@@ -94,6 +97,7 @@ function categoryToDrafts(
 ): SaveImportDraft[] {
   return list.map((mon) => ({
     pid: mon.pid,
+    otId: mon.otId,
     nickname: mon.nickname ?? "",
     species: mon.species,
     pokedexId: mon.pokedexId,
@@ -109,6 +113,7 @@ function categoryToDrafts(
     friendship: mon.friendship,
     slot,
     include: true,
+    isDexSeenStub: Boolean(mon.isDexSeenStub),
   }));
 }
 
