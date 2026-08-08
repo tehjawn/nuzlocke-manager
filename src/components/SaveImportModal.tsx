@@ -21,6 +21,7 @@ const MAX_SAVE_PARSE_BYTES = 32 * 1024 * 1024;
 
 export type SaveImportDraft = {
   pid: number;
+  otId: number;
   nickname: string;
   species: string;
   pokedexId: number;
@@ -94,6 +95,7 @@ function categoryToDrafts(
 ): SaveImportDraft[] {
   return list.map((mon) => ({
     pid: mon.pid,
+    otId: mon.otId,
     nickname: mon.nickname ?? "",
     species: mon.species,
     pokedexId: mon.pokedexId,

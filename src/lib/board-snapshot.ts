@@ -57,6 +57,9 @@ type DbPokemonRow = {
   causeOfDeath: string | null;
   diedOnRun: number | null;
   runId: string | null;
+  personalityValue?: number | null;
+  otId?: number | null;
+  notes?: string | null;
 };
 
 function mapPokemonRow(p: DbPokemonRow): PokemonEntry {
@@ -94,7 +97,11 @@ function mapPokemonRow(p: DbPokemonRow): PokemonEntry {
       p.friendship <= 255
         ? p.friendship
         : null,
+    personalityValue:
+      typeof p.personalityValue === "number" ? p.personalityValue : null,
+    otId: typeof p.otId === "number" ? p.otId : null,
     causeOfDeath: p.causeOfDeath,
+    notes: p.notes ?? null,
     diedOnRun: p.diedOnRun ?? null,
     runId: p.runId ?? null,
   };
@@ -402,7 +409,11 @@ function parseSnapshotPokemonRow(
       p.friendship <= 255
         ? p.friendship
         : null,
+    personalityValue:
+      typeof p.personalityValue === "number" ? p.personalityValue : null,
+    otId: typeof p.otId === "number" ? p.otId : null,
     causeOfDeath: typeof p.causeOfDeath === "string" ? p.causeOfDeath : null,
+    notes: typeof p.notes === "string" ? p.notes : null,
     diedOnRun: typeof p.diedOnRun === "number" ? p.diedOnRun : null,
     runId: typeof p.runId === "string" ? p.runId : null,
   };

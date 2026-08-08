@@ -2210,6 +2210,7 @@ export function TrainerBoard({
                 evs: isEmptySpread(form.evs) ? null : form.evs,
                 friendship: form.friendship,
                 causeOfDeath: form.causeOfDeath || null,
+                notes: form.notes || null,
               });
               if (result.ok) {
                 partySave.markSaved(result.message ?? "Pokémon saved");
@@ -2283,6 +2284,8 @@ export function TrainerBoard({
                   ivs: m.ivs,
                   evs: m.evs,
                   friendship: m.friendship,
+                  personalityValue: m.pid,
+                  otId: m.otId || null,
                   slot: m.slot,
                 })),
                 trainerName: payload.trainerName,

@@ -58,11 +58,16 @@ export type PokemonFormState = {
   /** Passthrough — set from save import; not edited in the form UI. */
   friendship: number | null;
   causeOfDeath: string;
+  /** Player-owned free-text notes (distinct from cause of death). */
+  notes: string;
   /**
    * Passthrough Survive/Die tally for the details preview — not edited in the
    * form UI. Dropped on save; reattached from the board after refresh.
    */
   survivalPoll?: PokemonEntry["survivalPoll"];
+  /** Sticky Gen 3 identity — passthrough; not edited in the form UI. */
+  personalityValue?: number | null;
+  otId?: number | null;
 };
 
 export const EMPTY_POKEMON_FORM: PokemonFormState = {
@@ -86,6 +91,7 @@ export const EMPTY_POKEMON_FORM: PokemonFormState = {
   evs: { ...EMPTY_EVS },
   friendship: null,
   causeOfDeath: "",
+  notes: "",
 };
 
 const LABEL = "mb-1 block text-[10px] font-semibold tracking-tight text-muted";
@@ -114,7 +120,10 @@ export function pokemonEntryToForm(mon: PokemonEntry): PokemonFormState {
     evs: clampEvs(mon.evs ?? undefined),
     friendship: mon.friendship,
     causeOfDeath: mon.causeOfDeath ?? "",
+    notes: mon.notes ?? "",
     survivalPoll: mon.survivalPoll ?? null,
+    personalityValue: mon.personalityValue ?? null,
+    otId: mon.otId ?? null,
   };
 }
 
@@ -148,9 +157,12 @@ export function pokemonFormToEntry(form: PokemonFormState): PokemonEntry {
     evs: isEmptySpread(form.evs) ? null : form.evs,
     friendship: form.friendship,
     causeOfDeath: form.causeOfDeath.trim() || null,
+    notes: form.notes.trim() || null,
     diedOnRun: null,
     runId: null,
     survivalPoll: form.survivalPoll ?? null,
+    personalityValue: form.personalityValue ?? null,
+    otId: form.otId ?? null,
   };
 }
 
@@ -598,6 +610,18 @@ function PokemonFormModalInner({
                   />
                 </label>
               )}
+
+              <label className="block text-sm">
+                <span className={LABEL}>Notes</span>
+                <textarea
+                  className={`${INPUT} min-h-16`}
+                  value={form.notes}
+                  placeholder="Player notes (kept across save re-imports)"
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, notes: e.target.value }))
+                  }
+                />
+              </label>
             </div>
           </div>
         </div>

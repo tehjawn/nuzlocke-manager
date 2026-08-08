@@ -400,6 +400,10 @@ model PokemonEntry {
   evs          Json?
   /// Gen 3 growth friendship (0–255); null when unknown / pre-import rows.
   friendship   Int?
+  /// Gen 3 personality value (PID). Null for manual rows / dex-seen stubs.
+  personalityValue Int?
+  /// Optional OT id from the box struct (debug / future trade nuance). Not a match key.
+  otId         Int?
   causeOfDeath String?
   /// 1-based run attempt when this mon entered GRAVEYARD (wipeCount + 1 at death).
   diedOnRun    Int?
@@ -414,6 +418,9 @@ model PokemonEntry {
   survivalMarket SurvivalMarket?
 
   @@index([trainerId, slot, partyIndex])
+  /// Match key for sticky save re-import. Partial unique in SQL:
+  /// UNIQUE (trainerId, personalityValue) WHERE personalityValue IS NOT NULL.
+  @@index([trainerId, personalityValue])
   @@index([runId])
 }
 

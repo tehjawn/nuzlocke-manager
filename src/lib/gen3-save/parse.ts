@@ -96,6 +96,8 @@ type SpeciesIdMode = "modern" | "crest";
 
 export type ParsedSavePokemon = {
   pid: number;
+  /** Original trainer id from the box/party struct (0 when unknown / dex stub). */
+  otId: number;
   nickname: string | null;
   species: string;
   pokedexId: number;
@@ -279,7 +281,26 @@ function nuzlockeFlagsAfterParty(mode: SpeciesIdMode): number {
     : CREST_NUZLOCKE_FLAGS_AFTER_PARTY;
 }
 /** Synthetic PID prefix for dex-only encounter stubs (avoids real PID clashes). */
-const DEX_SEEN_PID_BASE = 0xde000000;
+export const DEX_SEEN_PID_BASE = 0xde000000;
+
+/** True for Pokédex-seen stubs — not a physical mon identity. */
+export function isSyntheticSavePid(pid: number): boolean {
+  return (pid >>> 0) >= DEX_SEEN_PID_BASE;
+}
+
+/**
+ * Persistable Gen 3 personality value, or null for missing / synthetic dex stubs.
+ * Rejects the synthetic range so a buggy client cannot poison the unique index.
+ */
+export function realPersonalityValue(
+  pid: number | null | undefined,
+): number | null {
+  if (pid == null || !Number.isFinite(pid)) return null;
+  const n = Math.trunc(Number(pid));
+  if (n < 0 || n > 0xffffffff) return null;
+  if (isSyntheticSavePid(n)) return null;
+  return n;
+}
 /**
  * Crest seen/owned bitfields have been observed near mid-EWRAM (~0x27bxx).
  * Search preferred windows first; only fall through to the rest of EWRAM if needed.
@@ -833,6 +854,7 @@ function toParsed(
 
   return {
     pid: mon.pid,
+    otId: mon.oid,
     nickname: nick,
     species,
     pokedexId,
@@ -1603,6 +1625,7 @@ function dexSeenToParsed(romDexOrNational: number, mode: SpeciesIdMode): ParsedS
   const entry = findPokemonById(pokedexId);
   return {
     pid: (DEX_SEEN_PID_BASE | (pokedexId & 0xffff)) >>> 0,
+    otId: 0,
     nickname: null,
     species: entry?.name ?? `Species #${pokedexId}`,
     pokedexId,

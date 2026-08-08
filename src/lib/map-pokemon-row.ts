@@ -24,6 +24,9 @@ export function mapPokemonRow(p: {
   causeOfDeath: string | null;
   diedOnRun: number | null;
   runId: string | null;
+  personalityValue?: number | null;
+  otId?: number | null;
+  notes?: string | null;
 }): PokemonEntry {
   return {
     id: p.id,
@@ -59,7 +62,11 @@ export function mapPokemonRow(p: {
       p.friendship <= 255
         ? p.friendship
         : null,
+    personalityValue:
+      typeof p.personalityValue === "number" ? p.personalityValue : null,
+    otId: typeof p.otId === "number" ? p.otId : null,
     causeOfDeath: p.causeOfDeath,
+    notes: p.notes ?? null,
     diedOnRun: p.diedOnRun ?? null,
     runId: p.runId ?? null,
   };

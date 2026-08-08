@@ -98,6 +98,9 @@ type DbChallenge = {
       causeOfDeath: string | null;
       diedOnRun: number | null;
       runId: string | null;
+      personalityValue?: number | null;
+      otId?: number | null;
+      notes?: string | null;
       updatedAt: Date;
     }>;
   }>;
@@ -296,7 +299,11 @@ export function mapDbTrainer(
         p.friendship <= 255
           ? p.friendship
           : null,
+      personalityValue:
+        typeof p.personalityValue === "number" ? p.personalityValue : null,
+      otId: typeof p.otId === "number" ? p.otId : null,
       causeOfDeath: p.causeOfDeath,
+      notes: p.notes ?? null,
       diedOnRun: p.diedOnRun ?? null,
       runId: p.runId ?? null,
     })),

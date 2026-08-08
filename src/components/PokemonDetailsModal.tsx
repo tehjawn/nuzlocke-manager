@@ -708,6 +708,17 @@ export function PokemonDetailsModal({
             </p>
           </div>
         )}
+
+        {pokemon.notes?.trim() && (
+          <div className="border-t border-frame/20 pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Notes
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-muted whitespace-pre-wrap">
+              {pokemon.notes}
+            </p>
+          </div>
+        )}
       </div>
     </Modal>
   );
