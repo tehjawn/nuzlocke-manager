@@ -283,14 +283,18 @@ function nuzlockeFlagsAfterParty(mode: SpeciesIdMode): number {
 /** Synthetic PID prefix for dex-only encounter stubs (avoids real PID clashes). */
 export const DEX_SEEN_PID_BASE = 0xde000000;
 
-/** True for Pokédex-seen stubs — not a physical mon identity. */
+/**
+ * True for Pokédex-seen stubs — not a physical mon identity.
+ * Only the `0xDE00xxxx` band is reserved (pokedexId in the low 16 bits).
+ * A prior `>= 0xDE000000` check wrongly discarded ~14% of real u32 PIDs.
+ */
 export function isSyntheticSavePid(pid: number): boolean {
-  return (pid >>> 0) >= DEX_SEEN_PID_BASE;
+  return ((pid >>> 0) >>> 16) === DEX_SEEN_PID_BASE >>> 16;
 }
 
 /**
  * Persistable Gen 3 personality value, or null for missing / synthetic dex stubs.
- * Rejects the synthetic range so a buggy client cannot poison the unique index.
+ * Rejects the synthetic band so a buggy client cannot poison the unique index.
  */
 export function realPersonalityValue(
   pid: number | null | undefined,
@@ -312,14 +316,26 @@ export function u32ToDbBigInt(
   return BigInt(n);
 }
 
-/** Coerce Prisma `BigInt` / number back to a JS u32 for app types. */
+/**
+ * Coerce Prisma `BigInt` / number / cache-string back to a JS u32.
+ * `"use cache"` / Flight may round-trip BIGINT as a decimal string.
+ */
 export function dbBigIntToU32(
-  value: bigint | number | null | undefined,
+  value: bigint | number | string | null | undefined,
 ): number | null {
   if (value == null) return null;
   if (typeof value === "bigint") {
     if (value < BigInt(0) || value > BigInt(0xffffffff)) return null;
     return Number(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!/^\d+$/.test(trimmed)) return null;
+    try {
+      return dbBigIntToU32(BigInt(trimmed));
+    } catch {
+      return null;
+    }
   }
   if (typeof value === "number" && Number.isFinite(value)) {
     const n = Math.trunc(value);

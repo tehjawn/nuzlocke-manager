@@ -99,8 +99,8 @@ type DbChallenge = {
       causeOfDeath: string | null;
       diedOnRun: number | null;
       runId: string | null;
-      personalityValue?: bigint | number | null;
-      otId?: bigint | number | null;
+      personalityValue?: bigint | number | string | null;
+      otId?: bigint | number | string | null;
       notes?: string | null;
       updatedAt: Date;
     }>;

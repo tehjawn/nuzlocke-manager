@@ -622,6 +622,54 @@ function PokemonFormModalInner({
                   }
                 />
               </label>
+
+              {(form.personalityValue != null || form.otId != null) && (
+                <div className="rounded-lg border border-frame/40 bg-surface-2/50 px-2.5 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                    Save identity
+                  </p>
+                  <dl className="mt-1.5 grid grid-cols-2 gap-2 text-sm">
+                    {form.personalityValue != null && (
+                      <div className="min-w-0">
+                        <dt className="text-[10px] font-semibold text-muted">
+                          PID
+                        </dt>
+                        <dd>
+                          <InfoTip
+                            tip={`Personality value ${form.personalityValue.toLocaleString("en-US")} (decimal) — sticky across save re-imports`}
+                          >
+                            <span className="font-mono text-[13px] tabular-nums tracking-tight">
+                              {(form.personalityValue >>> 0)
+                                .toString(16)
+                                .toUpperCase()
+                                .padStart(8, "0")}
+                            </span>
+                          </InfoTip>
+                        </dd>
+                      </div>
+                    )}
+                    {form.otId != null && (
+                      <div className="min-w-0">
+                        <dt className="text-[10px] font-semibold text-muted">
+                          OT ID
+                        </dt>
+                        <dd>
+                          <InfoTip
+                            tip={`OT ID ${form.otId.toLocaleString("en-US")} (decimal)`}
+                          >
+                            <span className="font-mono text-[13px] tabular-nums tracking-tight">
+                              {(form.otId >>> 0)
+                                .toString(16)
+                                .toUpperCase()
+                                .padStart(8, "0")}
+                            </span>
+                          </InfoTip>
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              )}
             </div>
           </div>
         </div>

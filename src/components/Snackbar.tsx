@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { snackbarDurationMs } from "@/lib/action-error-display";
 
 export type SnackbarTone = "success" | "error" | "info";
 
@@ -31,18 +32,23 @@ function dismissSnackbar(id: string) {
   emit();
 }
 
-/** Fire-and-forget snackbar — works from hooks without React context. */
+/**
+ * Fire-and-forget snackbar — works from hooks without React context.
+ * Omit `durationMs` to use tone/message-aware defaults (errors linger longer;
+ * schema / retry hints linger longest). Always dismissable via ×.
+ */
 export function pushSnackbar(
   message: string,
   tone: SnackbarTone = "success",
-  durationMs = 3200,
+  durationMs?: number,
 ) {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const lifetime = durationMs ?? snackbarDurationMs(message, tone);
   items = [...items, { id, message, tone }].slice(-3);
   emit();
   timers.set(
     id,
-    setTimeout(() => dismissSnackbar(id), durationMs),
+    setTimeout(() => dismissSnackbar(id), lifetime),
   );
 }
 
@@ -93,7 +99,7 @@ export function SnackbarHost() {
         <div
           key={toast.id}
           role="status"
-          className={`pointer-events-auto flex max-w-sm items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-semibold tracking-tight shadow-lg backdrop-blur-md ${
+          className={`snackbar-in pointer-events-auto flex max-w-sm items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-semibold tracking-tight shadow-lg backdrop-blur-md ${
             toast.tone === "error"
               ? "border-danger/35 bg-danger/95 text-white"
               : toast.tone === "info"

@@ -2993,6 +2993,9 @@ export async function importFromSaveAction(
 
       let importedCount = 0;
       const handledGravePids = new Set<number>();
+      // Batch all inserts — ~100+ Encountered stubs alone blow the 5s default
+      // when created one row at a time (PRISMA_P2028).
+      const createRows: Array<ImportRow & { runId: string }> = [];
 
       // --- MAIN / RESERVE: sticky PID upsert ---
       if (livingSlots.length > 0) {
@@ -3127,61 +3130,42 @@ export async function importFromSaveAction(
           if (!partyIndexFor.has(mon)) {
             indexes[mon.slot] = partyIndex + 1;
           }
-          const built = buildImportRow(mon, partyIndex);
-          await tx.pokemonEntry.create({
-            data: { ...built, runId: activeRun.id },
+          createRows.push({
+            ...buildImportRow(mon, partyIndex),
+            runId: activeRun.id,
           });
-          importedCount += 1;
         }
       }
 
       // --- ENCOUNTERED: wipe + recreate (no Survive/Die identity) ---
       if (replaceEncountered) {
-        const doomedEncountered = await tx.pokemonEntry.findMany({
-          where: { trainerId: trainer.id, slot: "ENCOUNTERED" },
-          select: { id: true },
-        });
-        await voidOpenMarketsForPokemonIds(
-          tx,
-          doomedEncountered.map((row) => row.id),
-        );
         await tx.pokemonEntry.deleteMany({
           where: { trainerId: trainer.id, slot: "ENCOUNTERED" },
         });
         for (const mon of incomingEncountered) {
           const partyIndex = indexes.ENCOUNTERED ?? 0;
           indexes.ENCOUNTERED = partyIndex + 1;
-          const built = buildImportRow(mon, partyIndex);
-          await tx.pokemonEntry.create({
-            data: { ...built, runId: activeRun.id },
+          createRows.push({
+            ...buildImportRow(mon, partyIndex),
+            runId: activeRun.id,
           });
-          importedCount += 1;
         }
       }
 
       // --- GRAVEYARD ---
       if (replaceMemorial) {
-        const doomedGraves = await tx.pokemonEntry.findMany({
-          where: { trainerId: trainer.id, slot: "GRAVEYARD" },
-          select: { id: true },
-        });
-        // Markets on graves are already resolved; still clear rows for hard replace.
         await tx.pokemonEntry.deleteMany({
-          where: {
-            id: { in: doomedGraves.map((g) => g.id) },
-            trainerId: trainer.id,
-          },
+          where: { trainerId: trainer.id, slot: "GRAVEYARD" },
         });
-        // Living→grave moves above already created memorial rows for handled PIDs;
-        // hard-replace wipes those too — recreate from the full R.I.P. payload.
+        // Living→grave moves above already handled Die resolution; hard-replace
+        // wipes memorial rows — recreate from the full R.I.P. payload.
         for (const mon of incomingGraves) {
           const partyIndex = indexes.GRAVEYARD ?? 0;
           indexes.GRAVEYARD = partyIndex + 1;
-          const built = buildImportRow(mon, partyIndex);
-          await tx.pokemonEntry.create({
-            data: { ...built, runId: activeRun.id },
+          createRows.push({
+            ...buildImportRow(mon, partyIndex),
+            runId: activeRun.id,
           });
-          importedCount += 1;
         }
       } else if (incomingGraves.length > 0) {
         const existingGravesRaw = await tx.pokemonEntry.findMany({
@@ -3238,13 +3222,17 @@ export async function importFromSaveAction(
 
         let partyIndex = nextPartyIndex;
         for (const mon of toCreate) {
-          const built = buildImportRow(mon, partyIndex++);
-          await tx.pokemonEntry.create({
-            data: { ...built, runId: activeRun.id },
+          createRows.push({
+            ...buildImportRow(mon, partyIndex++),
+            runId: activeRun.id,
           });
-          importedCount += 1;
         }
         indexes.GRAVEYARD = partyIndex;
+      }
+
+      if (createRows.length > 0) {
+        await tx.pokemonEntry.createMany({ data: createRows });
+        importedCount += createRows.length;
       }
 
       // Hard-replace path may also list GRAVEYARD in replaceSlots alongside
@@ -3372,7 +3360,10 @@ export async function importFromSaveAction(
       }
 
       return { reviveTransition, importedCount };
-    });
+    },
+    // Dex-seen recreates alone are 100+ rows; cold Neon + snapshot push past 5s.
+    { timeout: 60_000, maxWait: 15_000 },
+    );
 
     const handleLabel =
       data.applyTrainerName && data.trainerName

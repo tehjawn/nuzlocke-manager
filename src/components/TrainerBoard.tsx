@@ -38,6 +38,7 @@ import { ReviveToken } from "@/components/ReviveToken";
 import { SaveImportModal } from "@/components/SaveImportModal";
 import { SaveStatus, useSaveStatus } from "@/components/SaveStatus";
 import { Skeleton } from "@/components/Skeleton";
+import { isSyntheticSavePid } from "@/lib/gen3-save";
 import { StatusLine } from "@/components/StatusLine";
 import { TeamExportModal } from "@/components/TeamExportModal";
 import { TrainerStatsSummary } from "@/components/TrainerStatsSummary";
@@ -2270,24 +2271,29 @@ export function TrainerBoard({
             startTransition(async () => {
               const result = await importFromSaveAction({
                 trainerId: trainer.id,
-                pokemon: payload.pokemon.map((m) => ({
-                  nickname: m.nickname || null,
-                  species: m.species.trim(),
-                  pokedexId: m.pokedexId,
-                  level: m.level ? Number(m.level) : null,
-                  isShiny: m.isShiny,
-                  nature: m.nature,
-                  ability: m.ability,
-                  catchRoute: m.catchRoute,
-                  heldItem: m.heldItem,
-                  moves: m.moves,
-                  ivs: m.ivs,
-                  evs: m.evs,
-                  friendship: m.friendship,
-                  personalityValue: m.pid,
-                  otId: m.otId || null,
-                  slot: m.slot,
-                })),
+                pokemon: payload.pokemon.map((m) => {
+                  const synthetic = isSyntheticSavePid(m.pid);
+                  return {
+                    nickname: m.nickname || null,
+                    species: m.species.trim(),
+                    pokedexId: m.pokedexId,
+                    level: m.level ? Number(m.level) : null,
+                    isShiny: m.isShiny,
+                    nature: m.nature,
+                    ability: m.ability,
+                    catchRoute: m.catchRoute,
+                    heldItem: m.heldItem,
+                    moves: m.moves,
+                    ivs: m.ivs,
+                    evs: m.evs,
+                    friendship: m.friendship,
+                    // Dex-seen stubs use a synthetic PID for React keys only —
+                    // never persist them as identity (#399).
+                    personalityValue: synthetic ? null : m.pid,
+                    otId: synthetic || !m.otId ? null : m.otId,
+                    slot: m.slot,
+                  };
+                }),
                 trainerName: payload.trainerName,
                 applyTrainerName: payload.applyTrainerName,
                 badgeKeys: payload.badgeKeys,
