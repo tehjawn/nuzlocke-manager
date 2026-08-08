@@ -65,6 +65,8 @@ export function ToolIcon({
   switch (id) {
     case "guide":
       return <GuideToolIcon className={className} />;
+    case "catch-map":
+      return <CatchMapToolIcon className={className} />;
     case "pokedex":
       return <PokedexToolIcon className={className} />;
     case "itemdex":
@@ -80,6 +82,20 @@ export function ToolIcon({
     case "chart":
       return <TypeChartToolIcon className={className} />;
   }
+}
+
+/** Region map outline — Catch Map (Hoenn claim planner). */
+export function CatchMapToolIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path
+        d="M4.5 7.5l5-2.25 5 2.25 5-2.25v11.25l-5 2.25-5-2.25-5 2.25V7.5z"
+        strokeLinejoin="round"
+      />
+      <path d="M9.5 5.5v11M14.5 7.5v11" strokeLinecap="round" />
+      <circle cx="11.5" cy="12" r="1.25" fill="currentColor" stroke="none" />
+    </svg>
+  );
 }
 
 /** Map / checklist mark for the Game Guide. */

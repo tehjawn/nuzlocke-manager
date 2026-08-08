@@ -34,7 +34,7 @@ const itemActive =
 const itemIdle = "border-transparent text-ink hover:bg-surface";
 
 /**
- * Mobile workspace shell. The section tabs (Trainers, Encounters, …) sit in one
+ * Mobile workspace shell. The section tabs (Trainers, Tools, …) sit in one
  * horizontal scroller alongside an "Info" tab. Info isn't a route — selecting it
  * swaps the whole content area to that panel and hides the page content; the
  * section tabs are real links that navigate. Desktop instead uses the sticky

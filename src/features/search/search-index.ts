@@ -13,7 +13,11 @@ import type {
 import { ITEM_SEARCH_ROWS } from "@/data/items-lite.generated";
 import { heldItemSpriteUrl } from "@/data/pokemon-index";
 import { avatarImageUrl } from "@/lib/sprites";
-import { toolsHref, seasonStatsHref } from "@/lib/tools-routes";
+import {
+  catchMapHref,
+  seasonStatsHref,
+  toolsHref,
+} from "@/lib/tools-routes";
 
 const FUSE_OPTIONS: IFuseOptions<SearchResult> = {
   keys: [
@@ -142,7 +146,6 @@ function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
     { href: `${base}/about`, label: "About" },
     { href: `${base}/rules`, label: "Rules / FAQ" },
     { href: base, label: "Trainers" },
-    { href: `${base}/encounters`, label: "Encounters" },
     { href: `${base}/tools`, label: "Tools" },
     { href: seasonStatsHref(slug), label: "Season Stats" },
   ];
@@ -219,6 +222,39 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
             ]
           : [tab.label.toLowerCase(), "section", "tab"],
     })),
+    {
+      id: `nav-catch-map-${ctx.slug}`,
+      title: "Catch Map",
+      subtitle: `${ctx.name} · Hoenn claim map`,
+      href: catchMapHref(ctx.slug),
+      category: "navigate",
+      tags: [
+        "catch map",
+        "map",
+        "hoenn",
+        "claim map",
+        "encounters",
+        "routes",
+        "claimed",
+        "unclaimed",
+        "open slots",
+        "tools",
+      ],
+    },
+    {
+      id: `nav-ownership-untouched-${ctx.slug}`,
+      title: "Missing dex",
+      subtitle: `${ctx.name} · Pokémon Ownership · Untouched`,
+      href: toolsHref(ctx.slug, "bounty", { status: "untouched" }),
+      category: "navigate",
+      tags: [
+        "missing",
+        "missing dex",
+        "untouched",
+        "ownership",
+        "encounters",
+      ],
+    },
     {
       id: `nav-faq-${ctx.slug}`,
       title: "FAQ",
@@ -731,24 +767,24 @@ export { isQuestionLike } from "@/lib/ai/ask-guard";
  */
 function contextualTitles(pathname: string): string[] {
   if (/\/gm(\/|$)/.test(pathname)) {
-    return ["GM Console", "Trainers", "Encounters", "Season Stats"];
+    return ["GM Console", "Trainers", "Catch Map", "Season Stats"];
   }
   if (/\/setup(\/|$)/.test(pathname)) {
     return ["Setup", "My Trainer", "Rules / FAQ", "Game Guide"];
   }
   if (/\/(me|trainers)(\/|$)/.test(pathname)) {
-    return ["My Trainer", "Encounters", "Team Planner", "Pokémon Ownership"];
+    return ["My Trainer", "Catch Map", "Team Planner", "Pokémon Ownership"];
   }
-  if (/\/tools(\/|$)/.test(pathname)) {
-    return ["Team Planner", "Pokémon Ownership", "Game Guide", "Season Stats"];
+  if (/\/tools(\/|$)/.test(pathname) || /\/encounters(\/|$)/.test(pathname)) {
+    return ["Catch Map", "Team Planner", "Pokémon Ownership", "Game Guide"];
   }
   if (/\/(rules|about)(\/|$)/.test(pathname)) {
     return ["Rules / FAQ", "FAQ", "Game Guide", "Trainers"];
   }
-  if (/\/memorial(\/|$)/.test(pathname)) {
-    return ["Season Stats", "Trainers", "Encounters"];
+  if (/\/(memorial|season-stats)(\/|$)/.test(pathname)) {
+    return ["Season Stats", "Trainers", "Catch Map"];
   }
-  return ["My Trainer", "Season Stats", "Encounters", "Trainers"];
+  return ["My Trainer", "Season Stats", "Catch Map", "Trainers"];
 }
 
 export function defaultSuggestions(

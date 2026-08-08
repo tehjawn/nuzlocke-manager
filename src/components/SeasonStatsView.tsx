@@ -269,9 +269,9 @@ export function SeasonStatsView({
         action={
           <Link
             className={sectionLinkClass}
-            href={`/challenges/${slug}/encounters`}
+            href={toolsHref(slug, "bounty", { status: "untouched" })}
           >
-            Open Encounters →
+            Open Pokémon Ownership →
           </Link>
         }
       >

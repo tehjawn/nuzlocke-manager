@@ -23,9 +23,9 @@ export function EncounterRarityView({
       <header className="space-y-2">
         <Link
           className="inline-flex text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-          href={`/challenges/${slug}/encounters`}
+          href={toolsHref(slug, "stats", { section: "species" })}
         >
-          ← Encounter ledger
+          ← Season Stats
         </Link>
         <div className="space-y-1">
           <p className="text-xs font-semibold tracking-tight text-accent-deep">

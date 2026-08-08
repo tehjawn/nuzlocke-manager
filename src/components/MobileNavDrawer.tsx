@@ -17,7 +17,13 @@ import {
 } from "@/components/nav-icons";
 import { ToolChip } from "@/components/tool-icons";
 import { SearchTrigger } from "@/features/search";
-import { TOOLS_CATALOG, toolsHref, toolsHubHref } from "@/lib/tools-routes";
+import {
+  catchMapHref,
+  seasonStatsHref,
+  TOOLS_CATALOG,
+  toolsHref,
+  toolsHubHref,
+} from "@/lib/tools-routes";
 
 type NavRow =
   | { kind: "link"; key: string; href: string; label: string; icon: ReactNode }
@@ -246,10 +252,11 @@ export function MobileNavDrawer({
                           <ToolsNavSection
                             key={row.key}
                             slug={row.slug}
-                            initialOpen={isUnder(
-                              pathname,
-                              toolsHubHref(row.slug),
-                            )}
+                            initialOpen={
+                              isUnder(pathname, toolsHubHref(row.slug)) ||
+                              isUnder(pathname, seasonStatsHref(row.slug)) ||
+                              isUnder(pathname, catchMapHref(row.slug))
+                            }
                             onNavigate={() => setOpen(false)}
                           />
                         );

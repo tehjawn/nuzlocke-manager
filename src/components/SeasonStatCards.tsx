@@ -10,7 +10,7 @@ import type {
 
 /**
  * Counter-block + callout-card primitives shared by season-wide stat
- * surfaces (Encounters header, Season Stats tool). Extracted from
+ * surfaces (Season Stats tool). Extracted from
  * EncounterSeasonView so the pattern stays one implementation.
  */
 

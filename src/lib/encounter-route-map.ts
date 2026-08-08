@@ -1,12 +1,15 @@
 import {
   CATCH_ROUTE_TABLE,
   findCatchRoute,
+  isHatchSafeOutdoor,
   normalizeCatchRoute,
+  type CatchRouteEncounter,
+  type CatchRouteKind,
 } from "@/data/catch-routes";
 import {
   HOENN_MAP_LABELS,
-  HOENN_MAP_ZONES,
-  type HoennMapZone,
+  HOENN_MAP_REGIONS,
+  type HoennMapRegion,
 } from "@/data/hoenn-map-zones";
 import type {
   EncounterClaim,
@@ -15,31 +18,158 @@ import type {
 } from "@/lib/encounter-ledger";
 import type { PersonalRouteStatus } from "@/lib/personal-routes";
 
-export type MapRouteClaimStatus = "open" | "mine" | "theirs" | "mixed" | "static";
+/**
+ * Focus-trainer checklist fill for a zone (or empty when no wild slots).
+ * - unclaimed: 0 of N open slots claimed
+ * - partial: some but not all open slots claimed
+ * - claimed: all open slots claimed (fully claimed)
+ * Hatch-safe labels never drive this status — see `hatchRows`.
+ */
+export type MapRouteClaimStatus =
+  | "unclaimed"
+  | "partial"
+  | "claimed"
+  | "empty";
+
+/** Stable display order for wild-table methods. */
+export const MAP_ENCOUNTER_METHODS: readonly CatchRouteEncounter[] = [
+  "land",
+  "water",
+  "fishing",
+  "rock-smash",
+];
+
+/** Legend status chips — single-select toggle (null = show all). */
+export type MapStatusFilter =
+  | "unclaimed"
+  | "partial"
+  | "claimed"
+  | "no-wilds";
+
+export const MAP_STATUS_FILTERS: readonly MapStatusFilter[] = [
+  "unclaimed",
+  "partial",
+  "claimed",
+  "no-wilds",
+];
+
+/** How a no-wild-table label can be logged (catalog kind). */
+export type MapOffRouteKind = Extract<CatchRouteKind, "egg-only" | "static">;
 
 export type MapRouteRow = {
   label: string;
-  /** True when this label counts toward open-route slots. */
-  countsTowardOpen: boolean;
-  /** Pack-wide Pokémon claims for this label (ledger). */
-  claims: EncounterClaim[];
-  /** Pack-wide Safari / encounter-flag claims. */
-  flagClaims: EncounterFlagClaim[];
-  /** Focus trainer spent this slot (personal routes), if known. */
+  /**
+   * Wild open slot: focus spent the slot.
+   * No-wilds row: focus has a met-location log here (not a ROM slot spend).
+   */
   focusClaimed: boolean;
-  /** Focus trainer still has this open slot available. */
-  focusOpen: boolean;
+  /** ROM wild-table methods for this catch-route label (empty for no-wilds). */
+  methods: readonly CatchRouteEncounter[];
+  /** Outdoor no-wild-table met location (egg-only or empty-static). */
+  hatchSafe: boolean;
+  /** Catalog kind when `hatchSafe` — distinguishes pure hatch maps from gift/fossil towns. */
+  offRouteKind: MapOffRouteKind | null;
+  /** Focus trainer's Pokémon claims on this route (encounters toggle). */
+  focusClaims: EncounterClaim[];
+  /** Focus trainer's Safari / encounter-flag claims on this route. */
+  focusFlagClaims: EncounterFlagClaim[];
 };
 
 export type MapZoneStatus = {
-  zone: HoennMapZone;
-  /** Aggregate fill for the zone shape. */
+  zone: HoennMapRegion;
+  /** Aggregate fill from focus open-slot progress in this region. */
   status: MapRouteClaimStatus;
   claimedOpenSlots: number;
   openSlots: number;
-  packClaimCount: number;
+  /** Open-slot labels only (wild / flag slots). */
   rows: MapRouteRow[];
+  /** Hatch-safe outdoor labels on this region (never counted as open slots). */
+  hatchRows: MapRouteRow[];
 };
+
+/** Flattened planning checklist row (wild open slot or no-wilds spot). */
+export type MapOpenSlot = {
+  zoneId: string;
+  zoneName: string;
+  label: string;
+  methods: readonly CatchRouteEncounter[];
+  hatchSafe: boolean;
+  offRouteKind: MapOffRouteKind | null;
+  focusClaimed: boolean;
+  focusClaims: EncounterClaim[];
+  focusFlagClaims: EncounterFlagClaim[];
+};
+
+export type MapZoneFilter = {
+  /** Null = any status. Otherwise match that legend chip only. */
+  status: MapStatusFilter | null;
+};
+
+/**
+ * Dedicated region-map zones that only matter after the Champion (ferry /
+ * event-ticket content). Nested post-game labels on story routes are listed
+ * separately in `POST_GAME_CATCH_ROUTE_LABELS`.
+ */
+export const POST_GAME_MAP_ZONE_IDS: ReadonlySet<string> = new Set([
+  "battle-frontier",
+  "southern-island",
+]);
+
+/**
+ * Catch-route labels that are post-Champion (or ticket/BP gated) for a
+ * League-capped nuzlocke. Includes labels folded onto story parent zones.
+ */
+export const POST_GAME_CATCH_ROUTE_LABELS: ReadonlySet<string> = new Set([
+  "Battle Frontier",
+  "Southern Island",
+  "Trainer Hill",
+  "Artisan Cave",
+  "Mirage Island",
+  "Birth Island",
+  "Faraway Island",
+  "Navel Rock",
+  "Marine Cave",
+  "Terra Cave",
+]);
+
+export function isPostGameMapZone(zoneId: string): boolean {
+  return POST_GAME_MAP_ZONE_IDS.has(zoneId);
+}
+
+export function isPostGameCatchRouteLabel(label: string): boolean {
+  return POST_GAME_CATCH_ROUTE_LABELS.has(label);
+}
+
+/**
+ * Drop post-game zones/labels for League-capped planning. Recalculates open-slot
+ * aggregates so legend counts stay honest.
+ */
+export function filterMapZonesForStory(
+  zones: MapZoneStatus[],
+  hidePostGame: boolean,
+): MapZoneStatus[] {
+  if (!hidePostGame) return zones;
+
+  return zones
+    .filter((zone) => !isPostGameMapZone(zone.zone.id))
+    .map((zone) => {
+      const rows = zone.rows.filter(
+        (row) => !isPostGameCatchRouteLabel(row.label),
+      );
+      const hatchRows = zone.hatchRows.filter(
+        (row) => !isPostGameCatchRouteLabel(row.label),
+      );
+      const claimedOpenSlots = rows.filter((row) => row.focusClaimed).length;
+      return {
+        ...zone,
+        rows,
+        hatchRows,
+        claimedOpenSlots,
+        openSlots: rows.length - claimedOpenSlots,
+        status: aggregateZoneStatus(claimedOpenSlots, rows.length),
+      };
+    });
+}
 
 function ledgerByRoute(
   groups: EncounterRouteGroup[],
@@ -51,11 +181,8 @@ function ledgerByRoute(
   return map;
 }
 
-function focusSets(status: PersonalRouteStatus | null): {
-  claimed: Set<string>;
-  open: Set<string>;
-} {
-  if (!status) return { claimed: new Set(), open: new Set() };
+function focusClaimedKeys(status: PersonalRouteStatus | null): Set<string> {
+  if (!status) return new Set();
   const claimed = new Set(
     status.claimedRoutes.map((g) => normalizeCatchRoute(g.route)),
   );
@@ -68,127 +195,264 @@ function focusSets(status: PersonalRouteStatus | null): {
   for (const group of status.otherRoutes) {
     claimed.add(normalizeCatchRoute(group.route));
   }
-  const open = new Set(status.openRoutes.map(normalizeCatchRoute));
-  return { claimed, open };
-}
-
-function rowStatus(
-  row: MapRouteRow,
-  hasFocus: boolean,
-): MapRouteClaimStatus {
-  if (!row.countsTowardOpen) {
-    if (row.claims.length + row.flagClaims.length > 0) {
-      return hasFocus && row.focusClaimed ? "mine" : "theirs";
-    }
-    return "static";
-  }
-  const packClaimed = row.claims.length + row.flagClaims.length > 0;
-  if (hasFocus) {
-    if (row.focusClaimed) return "mine";
-    if (packClaimed) return "theirs";
-    if (row.focusOpen) return "open";
-    return "open";
-  }
-  return packClaimed ? "theirs" : "open";
+  return claimed;
 }
 
 function aggregateZoneStatus(
-  rows: MapRouteRow[],
-  hasFocus: boolean,
+  claimedCount: number,
+  slotTotal: number,
 ): MapRouteClaimStatus {
-  const slotRows = rows.filter((r) => r.countsTowardOpen);
-  if (slotRows.length === 0) {
-    const anyClaim = rows.some((r) => r.claims.length + r.flagClaims.length > 0);
-    if (!anyClaim) return "static";
-    return hasFocus && rows.some((r) => r.focusClaimed) ? "mine" : "theirs";
-  }
-
-  let mine = 0;
-  let theirs = 0;
-  let open = 0;
-  for (const row of slotRows) {
-    const s = rowStatus(row, hasFocus);
-    if (s === "mine") mine += 1;
-    else if (s === "theirs") theirs += 1;
-    else open += 1;
-  }
-
-  if (mine > 0 && (theirs > 0 || open > 0)) return "mixed";
-  if (mine > 0) return "mine";
-  if (theirs > 0 && open > 0) return "mixed";
-  if (theirs > 0) return "theirs";
-  return "open";
+  if (slotTotal === 0) return "empty";
+  if (claimedCount <= 0) return "unclaimed";
+  if (claimedCount >= slotTotal) return "claimed";
+  return "partial";
 }
 
-/** Build per-zone claim status from live ledger + personal route data. */
+function offRouteKindFor(
+  catalog: NonNullable<ReturnType<typeof findCatchRoute>>,
+  hatchSafe: boolean,
+): MapOffRouteKind | null {
+  if (!hatchSafe) return null;
+  if (catalog.kind === "egg-only" || catalog.kind === "static") {
+    return catalog.kind;
+  }
+  return null;
+}
+
+function buildRouteRow(
+  label: string,
+  catalog: NonNullable<ReturnType<typeof findCatchRoute>>,
+  claimed: Set<string>,
+  byRoute: Map<string, EncounterRouteGroup>,
+  focusId: string | null,
+  hatchSafe: boolean,
+): MapRouteRow {
+  const key = normalizeCatchRoute(label);
+  const group = byRoute.get(key);
+  const allClaims = group?.claims ?? [];
+  const allFlags = group?.flagClaims ?? [];
+  return {
+    label,
+    focusClaimed: claimed.has(key),
+    methods: catalog.encounters,
+    hatchSafe,
+    offRouteKind: offRouteKindFor(catalog, hatchSafe),
+    focusClaims: focusId
+      ? allClaims.filter((claim) => claim.trainerId === focusId)
+      : [],
+    focusFlagClaims: focusId
+      ? allFlags.filter((claim) => claim.trainerId === focusId)
+      : [],
+  };
+}
+
+/** Build per-region focus-trainer claim status from personal routes + ledger. */
 export function buildEncounterMapStatuses(
   groups: EncounterRouteGroup[],
   focusStatus: PersonalRouteStatus | null,
 ): MapZoneStatus[] {
   const byRoute = ledgerByRoute(groups);
-  const focus = focusSets(focusStatus);
-  const hasFocus = focusStatus != null;
+  const claimed = focusClaimedKeys(focusStatus);
+  const focusId = focusStatus?.trainerId ?? null;
 
-  return HOENN_MAP_ZONES.map((zone) => {
-    const rows: MapRouteRow[] = zone.labels.map((label) => {
+  return HOENN_MAP_REGIONS.map((zone) => {
+    const rows: MapRouteRow[] = [];
+    const hatchRows: MapRouteRow[] = [];
+
+    for (const label of zone.labels) {
       const catalog = findCatchRoute(label);
-      const key = normalizeCatchRoute(label);
-      const group = byRoute.get(key);
-      const focusClaimed = focus.claimed.has(key);
-      const focusOpen = focus.open.has(key);
-      return {
-        label,
-        countsTowardOpen: catalog?.countsTowardOpen ?? false,
-        claims: group?.claims ?? [],
-        flagClaims: group?.flagClaims ?? [],
-        focusClaimed,
-        focusOpen,
-      };
-    });
+      if (!catalog) continue;
 
-    const slotRows = rows.filter((r) => r.countsTowardOpen);
-    const claimedOpenSlots = slotRows.filter((r) => {
-      if (hasFocus) return r.focusClaimed;
-      return r.claims.length + r.flagClaims.length > 0;
-    }).length;
-    const openSlots = slotRows.length - claimedOpenSlots;
-    const packClaimCount = rows.reduce(
-      (sum, r) => sum + r.claims.length + r.flagClaims.length,
-      0,
-    );
+      if (catalog.countsTowardOpen) {
+        rows.push(
+          buildRouteRow(label, catalog, claimed, byRoute, focusId, false),
+        );
+        continue;
+      }
+
+      if (isHatchSafeOutdoor(catalog)) {
+        hatchRows.push(
+          buildRouteRow(label, catalog, claimed, byRoute, focusId, true),
+        );
+      }
+    }
+
+    const claimedOpenSlots = rows.filter((row) => row.focusClaimed).length;
+    const openSlots = rows.length - claimedOpenSlots;
 
     return {
       zone,
-      status: aggregateZoneStatus(rows, hasFocus),
+      status: aggregateZoneStatus(claimedOpenSlots, rows.length),
       claimedOpenSlots,
       openSlots,
-      packClaimCount,
       rows,
+      hatchRows,
     };
   });
 }
 
-/** Catalog open-slot labels that are not drawn on any zone (graceful omit). */
+export function zoneHasHatchSafe(zone: MapZoneStatus): boolean {
+  return zone.hatchRows.length > 0;
+}
+
+/** Zone has something to paint (wild open slot and/or hatch-safe label). */
+export function zoneIsPaintable(zone: MapZoneStatus): boolean {
+  return zone.status !== "empty" || zone.hatchRows.length > 0;
+}
+
+function zoneMatchesStatusFilter(
+  zone: MapZoneStatus,
+  status: MapStatusFilter,
+): boolean {
+  if (status === "no-wilds") return zoneHasHatchSafe(zone);
+  return zone.status === status;
+}
+
+/** Whether a zone should stay emphasized under the planning filters. */
+export function zoneMatchesMapFilter(
+  zone: MapZoneStatus,
+  filter: MapZoneFilter,
+): boolean {
+  if (!zoneIsPaintable(zone)) return false;
+  if (!filter.status) return true;
+  return zoneMatchesStatusFilter(zone, filter.status);
+}
+
+function pushSlot(
+  slots: MapOpenSlot[],
+  zone: MapZoneStatus,
+  row: MapRouteRow,
+): void {
+  slots.push({
+    zoneId: zone.zone.id,
+    zoneName: zone.zone.name,
+    label: row.label,
+    methods: row.methods,
+    hatchSafe: row.hatchSafe,
+    offRouteKind: row.offRouteKind,
+    focusClaimed: row.focusClaimed,
+    focusClaims: row.focusClaims,
+    focusFlagClaims: row.focusFlagClaims,
+  });
+}
+
+/** Matching checklist rows for the planning side panel. */
+export function listOpenSlotsForMap(
+  zones: MapZoneStatus[],
+  filter: MapZoneFilter,
+): MapOpenSlot[] {
+  const slots: MapOpenSlot[] = [];
+  const status = filter.status;
+  if (!status) return slots;
+
+  for (const zone of zones) {
+    if (!zoneMatchesMapFilter(zone, filter)) continue;
+
+    if (status === "no-wilds") {
+      for (const row of zone.hatchRows) pushSlot(slots, zone, row);
+      continue;
+    }
+
+    for (const row of zone.rows) {
+      if (status === "claimed") {
+        if (row.focusClaimed) pushSlot(slots, zone, row);
+        continue;
+      }
+      // unclaimed / partial zones: list still-open wild rows
+      if (!row.focusClaimed) pushSlot(slots, zone, row);
+    }
+  }
+  return slots;
+}
+
+/** Counts for legend status chips. */
+export function countZonesForStatusFilter(
+  zones: MapZoneStatus[],
+  status: MapStatusFilter,
+): number {
+  if (status === "no-wilds") {
+    return zones.filter((zone) => zoneHasHatchSafe(zone)).length;
+  }
+  return zones.filter((zone) => zone.status === status).length;
+}
+
+/**
+ * Catalog open-slot labels that are not drawn on any region (graceful omit).
+ *
+ * Skips `aliasesRoute101` rows (Route 110 East, Route 132 North, …): they share
+ * Route 101's ROM bit / `slotKey`, so the mapped Route 101 cell already covers
+ * that slot — listing them here looked like missing independent encounters.
+ */
 export function unmappedOpenCatchRoutes(): string[] {
   return CATCH_ROUTE_TABLE.filter(
     (route) =>
-      route.countsTowardOpen && !HOENN_MAP_LABELS.has(route.label),
+      route.countsTowardOpen &&
+      !route.aliasesRoute101 &&
+      !HOENN_MAP_LABELS.has(route.label),
   ).map((route) => route.label);
 }
 
 export function mapStatusLabel(status: MapRouteClaimStatus): string {
   switch (status) {
-    case "mine":
-      return "Your claim";
-    case "theirs":
-      return "Claimed";
-    case "mixed":
-      return "Mixed";
-    case "open":
-      return "Open";
-    case "static":
+    case "claimed":
+      return "Fully claimed";
+    case "partial":
+      return "Partially claimed";
+    case "unclaimed":
+      return "Unclaimed";
+    case "empty":
       return "No wild slot";
     default:
       return status;
   }
+}
+
+export function mapMethodLabel(method: CatchRouteEncounter): string {
+  switch (method) {
+    case "land":
+      return "Grass";
+    case "water":
+      return "Surf";
+    case "fishing":
+      return "Fishing";
+    case "rock-smash":
+      return "Rock Smash";
+    default:
+      return method;
+  }
+}
+
+/** Chip label for a no-wild-table catalog row. */
+export function mapOffRouteKindLabel(kind: MapOffRouteKind | null): string {
+  switch (kind) {
+    case "egg-only":
+      return "Egg";
+    case "static":
+      return "Gift";
+    default:
+      return "No wilds";
+  }
+}
+
+export function mapOffRouteKindNote(kind: MapOffRouteKind | null): string {
+  switch (kind) {
+    case "egg-only":
+      return "No wild table or script static — outdoor hatching is safe and does not spend a wild route slot.";
+    case "static":
+      return "No outdoor wild table — script gifts (or fossils in Rustboro) and outdoor hatching can log here without spending a wild route slot.";
+    default:
+      return "No outdoor wild table — logging here does not spend a wild route slot.";
+  }
+}
+
+/** Sort methods into the canonical Grass → Surf → Fishing → Rock Smash order. */
+export function sortMapMethods(
+  methods: readonly CatchRouteEncounter[],
+): CatchRouteEncounter[] {
+  const order = new Map(
+    MAP_ENCOUNTER_METHODS.map((method, index) => [method, index]),
+  );
+  return [...methods].sort(
+    (a, b) => (order.get(a) ?? 99) - (order.get(b) ?? 99),
+  );
 }
