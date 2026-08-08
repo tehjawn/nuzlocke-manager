@@ -92,16 +92,29 @@ function RipIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
-/** Unknown species — catch failed with no Pokémon on file. */
+/** Dotted Poké Ball — catch failed with no Pokémon on file. */
 function CatchFailedIcon({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg {...iconBase} className={className}>
-      <circle cx="12" cy="12" r="8.25" />
-      <path
-        d="M9.5 9.25c0-1.4 1.1-2.5 2.5-2.5s2.5 1.1 2.5 2.5c0 1.15-.75 1.7-1.5 2.2-.55.35-.9.7-.9 1.3"
+      <circle
+        cx="12"
+        cy="12"
+        r="8.25"
+        strokeDasharray="2.25 2.5"
         strokeLinecap="round"
       />
-      <circle cx="12" cy="16.75" r="0.85" fill="currentColor" stroke="none" />
+      <path
+        d="M3.75 12h16.5"
+        strokeLinecap="round"
+        strokeDasharray="2.25 2.5"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="2.25"
+        strokeDasharray="1.5 1.75"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
