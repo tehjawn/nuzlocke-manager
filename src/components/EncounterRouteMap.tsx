@@ -926,13 +926,17 @@ function RowStatusBadge({
       : "Open"
     : claimed
       ? catchFailed
-        ? "Catches failed"
+        ? "Catch failed!"
         : "Caught"
       : "Open";
   return (
     <span
       className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide ${
-        claimed ? "text-accent-deep/80" : "text-muted"
+        catchFailed
+          ? "text-danger"
+          : claimed
+            ? "text-accent-deep/80"
+            : "text-muted"
       }`}
       title={
         catchFailed
