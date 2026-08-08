@@ -1071,6 +1071,11 @@ export async function startNewRunAction(input: {
           runEndedAt: null,
           money: 0,
           playTimeSeconds: 0,
+          // Prior-run burns must not claim Catch Map slots on the new attempt.
+          nuzlockeEncounterBits: [],
+          nuzlockeEncounterBitsReliable: false,
+          safariZoneAreas: [],
+          safariZoneAreasReliable: false,
         },
       });
       await tx.activityEvent.create({
@@ -1132,6 +1137,10 @@ async function hardResetTrainerInTx(
       mainSquadLocked: false,
       completionCount: 0,
       runEndedAt: null,
+      nuzlockeEncounterBits: [],
+      nuzlockeEncounterBitsReliable: false,
+      safariZoneAreas: [],
+      safariZoneAreasReliable: false,
     },
   });
 }
@@ -1171,6 +1180,10 @@ async function hardResetTrainersInTx(
       mainSquadLocked: false,
       completionCount: 0,
       runEndedAt: null,
+      nuzlockeEncounterBits: [],
+      nuzlockeEncounterBitsReliable: false,
+      safariZoneAreas: [],
+      safariZoneAreasReliable: false,
     },
   });
   for (const trainerId of trainerIds) {
@@ -3058,12 +3071,18 @@ export async function importFromSaveAction(
         ? sanitizeHandle(data.trainerName)
         : trainer.handle;
 
+    const importSummary =
+      txResult.importedCount > 0
+        ? `imported save data (${txResult.importedCount} Pokémon)`
+        : data.applyEncounterFlags
+          ? "updated spent routes from save flags"
+          : "applied save import";
     await logActivity({
       challengeId: trainer.challengeId,
       actorId: userId,
       trainerId: trainer.id,
       type: "NOTE",
-      message: `${handleLabel} imported save data (${txResult.importedCount} Pokémon)`,
+      message: `${handleLabel} ${importSummary}`,
     });
 
     if (txResult.reviveTransition) {

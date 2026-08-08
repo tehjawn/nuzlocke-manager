@@ -788,6 +788,16 @@ export function TrainerBoard({
     mainSquadLocked,
     money: boardMoney,
     playTimeSeconds: boardPlayTimeSeconds,
+    // Wipe / GM reset clear burns with the run; don't keep prior-run flags
+    // while the optimistic empty board is on screen.
+    ...(boardOverride != null
+      ? {
+          nuzlockeEncounterBits: [],
+          nuzlockeEncounterBitsReliable: false,
+          safariZoneAreas: [],
+          safariZoneAreasReliable: false,
+        }
+      : {}),
   };
 
   const championshipEarned = hasBeatenChampionship(earnedBadgeKeys);
@@ -1144,9 +1154,10 @@ export function TrainerBoard({
       description: (
         <>
           Clears Main Squad, Reserves, Encountered, and R.I.P. on this board,
-          resets badges, money, and playtime to 0, and refreshes your revive
-          token for the next run. Profile (name, avatar, backdrops, status)
-          stays. Locked Main Squad unlocks so you can rebuild.{" "}
+          resets badges, money, playtime, and spent-route flags to 0, and
+          refreshes your revive token for the next run. Profile (name, avatar,
+          backdrops, status) stays. Locked Main Squad unlocks so you can
+          rebuild.{" "}
           {runEnded
             ? "Your finished run is already archived — its final team stays in History and Memorial."
             : `This closes run ${runNumber} as wipe #${nextWipe}.`}{" "}
@@ -1211,9 +1222,10 @@ export function TrainerBoard({
       description: (
         <>
           GM hard reset: clears Main, Reserves, Encountered, and R.I.P.
-          memorial, and resets badges, wipe count, and revive token. Profile
-          stays (name, avatar, backdrops, status). A board history snapshot is
-          saved first. Use for an official fresh start — not a mid-run wipe.
+          memorial, and resets badges, wipe count, revive token, and spent-route
+          flags. Profile stays (name, avatar, backdrops, status). A board
+          history snapshot is saved first. Use for an official fresh start —
+          not a mid-run wipe.
         </>
       ),
       confirmLabel: "Reset board",

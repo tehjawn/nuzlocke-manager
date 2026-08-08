@@ -187,7 +187,7 @@ export function TrainerStatsSummary({
       icon: <SpentIcon />,
       title:
         spentRoutes != null
-          ? "First-encounter slots burned with no catch logged (fled, failed, or released). Import a save with encounter flags to keep this current."
+          ? "Open slots marked spent by save flags with no catch on that route (fled, failed, released; Safari areas are flag-only even when caught). Re-import after progress to refresh."
           : "Import a Modern Emerald save to mark spent routes from encounter flags.",
     },
     {
