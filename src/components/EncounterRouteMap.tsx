@@ -15,8 +15,10 @@ import {
   buildEncounterMapStatuses,
   countHatchSpots,
   countOpenSlots,
+  countZonesForStatusFilter,
   listOpenSlotsForMap,
   MAP_METHOD_FILTERS,
+  MAP_STATUS_FILTERS,
   mapMethodLabel,
   mapOffRouteKindLabel,
   mapOffRouteKindNote,
@@ -31,6 +33,7 @@ import {
   type MapOpenSlot,
   type MapRouteClaimStatus,
   type MapRouteRow,
+  type MapStatusFilter,
   type MapZoneStatus,
 } from "@/lib/encounter-route-map";
 import { encountersHref } from "@/lib/encounters-view";
@@ -76,6 +79,7 @@ export function EncounterRouteMap({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showEncounters, setShowEncounters] = useState(false);
   const [unclaimedOnly, setUnclaimedOnly] = useState(false);
+  const [statusFilters, setStatusFilters] = useState<MapStatusFilter[]>([]);
   const [methodFilters, setMethodFilters] = useState<MapMethodFilter[]>([]);
 
   const focusStatus =
@@ -87,8 +91,12 @@ export function EncounterRouteMap({
   );
 
   const filter = useMemo(
-    () => ({ unclaimedOnly, methods: methodFilters }),
-    [unclaimedOnly, methodFilters],
+    () => ({
+      unclaimedOnly,
+      statuses: statusFilters,
+      methods: methodFilters,
+    }),
+    [unclaimedOnly, statusFilters, methodFilters],
   );
 
   const openSlotTotal = useMemo(
@@ -99,6 +107,13 @@ export function EncounterRouteMap({
     () => countHatchSpots(zoneStatuses),
     [zoneStatuses],
   );
+  const statusCounts = useMemo(() => {
+    const counts = {} as Record<MapStatusFilter, number>;
+    for (const status of MAP_STATUS_FILTERS) {
+      counts[status] = countZonesForStatusFilter(zoneStatuses, status);
+    }
+    return counts;
+  }, [zoneStatuses]);
 
   const openSlots = useMemo(
     () => listOpenSlotsForMap(zoneStatuses, filter),
@@ -115,16 +130,25 @@ export function EncounterRouteMap({
   const selected =
     zoneStatuses.find((entry) => entry.zone.id === selectedId) ?? null;
   const unmapped = useMemo(() => unmappedOpenCatchRoutes(), []);
-  const planningActive = unclaimedOnly || methodFilters.length > 0;
+  const planningActive =
+    unclaimedOnly || statusFilters.length > 0 || methodFilters.length > 0;
 
   function toggleMethod(method: MapMethodFilter) {
-    setMethodFilters((prev) => {
-      const next = prev.includes(method)
+    setSelectedId(null);
+    setMethodFilters((prev) =>
+      prev.includes(method)
         ? prev.filter((entry) => entry !== method)
-        : [...prev, method];
-      if (next.length > 0) setSelectedId(null);
-      return next;
-    });
+        : [...prev, method],
+    );
+  }
+
+  function toggleStatus(status: MapStatusFilter) {
+    setSelectedId(null);
+    setStatusFilters((prev) =>
+      prev.includes(status)
+        ? prev.filter((entry) => entry !== status)
+        : [...prev, status],
+    );
   }
 
   return (
@@ -186,11 +210,8 @@ export function EncounterRouteMap({
           aria-pressed={unclaimedOnly}
           data-testid="encounter-map-unclaimed-only"
           onClick={() => {
-            setUnclaimedOnly((prev) => {
-              const next = !prev;
-              if (next) setSelectedId(null);
-              return next;
-            });
+            setSelectedId(null);
+            setUnclaimedOnly((prev) => !prev);
           }}
           className={`pressable inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
             unclaimedOnly
@@ -236,6 +257,7 @@ export function EncounterRouteMap({
             data-testid="encounter-map-clear-filters"
             onClick={() => {
               setUnclaimedOnly(false);
+              setStatusFilters([]);
               setMethodFilters([]);
             }}
             className="pressable text-[11px] font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
@@ -245,7 +267,11 @@ export function EncounterRouteMap({
         )}
       </div>
 
-      <MapLegend />
+      <MapLegend
+        activeStatuses={statusFilters}
+        counts={statusCounts}
+        onToggle={toggleStatus}
+      />
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(15rem,0.9fr)]">
         <div className="min-w-0 overflow-hidden rounded-md border border-frame/40 bg-[color-mix(in_srgb,var(--interactive)_10%,var(--surface))] p-1">
@@ -304,9 +330,8 @@ export function EncounterRouteMap({
           <Frame dense title="Route detail">
             <p className="text-sm text-muted">
               Select a route or town on the map to see open-slot progress
-              {focusHandleLine(focusStatus?.trainerHandle)}. Turn on{" "}
-              <span className="font-semibold text-ink">Unclaimed only</span> or{" "}
-              <span className="font-semibold text-ink">No wilds</span> to plan.
+              {focusHandleLine(focusStatus?.trainerHandle)}. Click a legend chip
+              or method filter to plan.
             </p>
           </Frame>
         )}
@@ -321,60 +346,86 @@ export function EncounterRouteMap({
   );
 }
 
-function MapLegend() {
+function MapLegend({
+  activeStatuses,
+  counts,
+  onToggle,
+}: {
+  activeStatuses: readonly MapStatusFilter[];
+  counts: Record<MapStatusFilter, number>;
+  onToggle: (status: MapStatusFilter) => void;
+}) {
   const items: {
-    key: string;
+    status: MapStatusFilter;
     hint: string;
     fill: string;
     stroke: string;
     dashed?: boolean;
   }[] = [
     {
-      key: "unclaimed",
-      hint: "Unclaimed (outline)",
+      status: "unclaimed",
+      hint: "Unclaimed",
       fill: STATUS_FILL.unclaimed,
       stroke: STATUS_STROKE.unclaimed,
       dashed: true,
     },
     {
-      key: "partial",
+      status: "partial",
       hint: "Partially claimed",
       fill: STATUS_FILL.partial,
       stroke: STATUS_STROKE.partial,
     },
     {
-      key: "claimed",
+      status: "claimed",
       hint: "Fully claimed",
       fill: STATUS_FILL.claimed,
       stroke: STATUS_STROKE.claimed,
     },
     {
-      key: "hatch",
-      hint: "No wilds (egg / gift / fossil)",
+      status: "no-wilds",
+      hint: "No wilds",
       fill: HATCH_FILL,
       stroke: HATCH_STROKE,
       dashed: true,
     },
   ];
   return (
-    <ul className="flex flex-wrap gap-2 text-[10px] font-semibold text-muted">
-      {items.map((item) => (
-        <li
-          className="inline-flex items-center gap-1.5 rounded-full border border-frame/35 bg-surface/70 px-2 py-1"
-          key={item.key}
-        >
-          <span
-            aria-hidden
-            className="inline-block h-2.5 w-2.5 rounded-sm border-2"
-            style={{
-              background: item.fill,
-              borderColor: item.stroke,
-              borderStyle: item.dashed ? "dashed" : "solid",
-            }}
-          />
-          {item.hint}
-        </li>
-      ))}
+    <ul
+      className="flex flex-wrap gap-2 text-[10px] font-semibold"
+      aria-label="Filter map by claim status"
+    >
+      {items.map((item) => {
+        const active = activeStatuses.includes(item.status);
+        return (
+          <li key={item.status}>
+            <button
+              type="button"
+              aria-pressed={active}
+              data-testid={`encounter-map-status-${item.status}`}
+              onClick={() => onToggle(item.status)}
+              className={`pressable inline-flex items-center gap-1.5 rounded-full border px-2 py-1 transition-colors ${
+                active
+                  ? "border-interactive/50 bg-interactive-soft text-ink shadow-sm"
+                  : "border-frame/35 bg-surface/70 text-muted hover:border-frame/55 hover:text-ink"
+              }`}
+            >
+              <span
+                aria-hidden
+                className="inline-block h-2.5 w-2.5 rounded-sm border-2"
+                style={{
+                  background: item.fill,
+                  borderColor: item.stroke,
+                  borderStyle: item.dashed ? "dashed" : "solid",
+                }}
+              />
+              {item.hint}
+              <span className="tabular-nums opacity-70">
+                ({counts[item.status]})
+              </span>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -532,6 +583,11 @@ function OpenSlotsPanel({
                       <OffRouteChip kind={slot.offRouteKind} />
                     ) : (
                       <MethodChips methods={slot.methods} />
+                    )}
+                    {slot.focusClaimed && (
+                      <span className="text-[10px] font-semibold text-accent-deep">
+                        {slot.hatchSafe ? "Logged" : "Claimed"}
+                      </span>
                     )}
                   </span>
                 </button>

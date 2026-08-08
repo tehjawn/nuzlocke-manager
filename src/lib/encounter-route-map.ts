@@ -50,6 +50,20 @@ export const MAP_METHOD_FILTERS: readonly MapMethodFilter[] = [
   "no-wilds",
 ];
 
+/** Legend / status chips — OR-matched when any are selected. */
+export type MapStatusFilter =
+  | "unclaimed"
+  | "partial"
+  | "claimed"
+  | "no-wilds";
+
+export const MAP_STATUS_FILTERS: readonly MapStatusFilter[] = [
+  "unclaimed",
+  "partial",
+  "claimed",
+  "no-wilds",
+];
+
 /** How a no-wild-table label can be logged (catalog kind). */
 export type MapOffRouteKind = Extract<CatchRouteKind, "egg-only" | "static">;
 
@@ -92,11 +106,18 @@ export type MapOpenSlot = {
   methods: readonly CatchRouteEncounter[];
   hatchSafe: boolean;
   offRouteKind: MapOffRouteKind | null;
+  /** Wild row claim state (always false for hatch rows). */
+  focusClaimed: boolean;
 };
 
 export type MapZoneFilter = {
-  /** When true, fully claimed wild zones are dimmed / omitted from the open list. */
+  /**
+   * When true, fully claimed wild zones are dimmed / omitted from the open list
+   * (unless a status chip explicitly includes `claimed`).
+   */
   unclaimedOnly: boolean;
+  /** Empty = any status. Otherwise OR-match legend status chips. */
+  statuses: readonly MapStatusFilter[];
   /** Empty = all methods. Otherwise OR-match. `"no-wilds"` matches hatch-safe zones. */
   methods: readonly MapMethodFilter[];
 };
@@ -238,8 +259,48 @@ function wildMethodFilters(
   );
 }
 
-function noWildsFilterActive(methods: readonly MapMethodFilter[]): boolean {
+function noWildsMethodActive(methods: readonly MapMethodFilter[]): boolean {
   return methods.includes("no-wilds");
+}
+
+function noWildsStatusActive(statuses: readonly MapStatusFilter[]): boolean {
+  return statuses.includes("no-wilds");
+}
+
+function zoneMatchesStatusFilter(
+  zone: MapZoneStatus,
+  statuses: readonly MapStatusFilter[],
+): boolean {
+  if (statuses.length === 0) return true;
+  return statuses.some((status) => {
+    if (status === "no-wilds") return zoneHasHatchSafe(zone);
+    return zone.status === status;
+  });
+}
+
+function zoneMatchesMethodFilter(
+  zone: MapZoneStatus,
+  filter: MapZoneFilter,
+): boolean {
+  const wildFilters = wildMethodFilters(filter.methods);
+  const noWildsMethod = noWildsMethodActive(filter.methods);
+  if (wildFilters.length === 0 && !noWildsMethod) return true;
+
+  const methodSet = new Set(wildFilters);
+  const claimedOnly =
+    filter.statuses.length === 1 && filter.statuses[0] === "claimed";
+
+  const matchesWild =
+    wildFilters.length > 0 &&
+    zone.rows.some((row) => {
+      if (!row.methods.some((method) => methodSet.has(method))) return false;
+      if (claimedOnly) return row.focusClaimed;
+      if (filter.statuses.includes("claimed") && row.focusClaimed) return true;
+      return !row.focusClaimed;
+    });
+
+  const matchesNoWilds = noWildsMethod && zoneHasHatchSafe(zone);
+  return matchesWild || matchesNoWilds;
 }
 
 /** Whether a zone should stay emphasized under the planning filters. */
@@ -249,65 +310,77 @@ export function zoneMatchesMapFilter(
 ): boolean {
   if (!zoneIsPaintable(zone)) return false;
 
-  const wildFilters = wildMethodFilters(filter.methods);
-  const noWildsOn = noWildsFilterActive(filter.methods);
-  const noMethodFilter = filter.methods.length === 0;
+  const hasStatus = filter.statuses.length > 0;
+  const hasMethod = filter.methods.length > 0;
 
-  const matchesWild = (() => {
-    if (zone.status === "empty") return false;
-    if (filter.unclaimedOnly && zone.status === "claimed") return false;
-    if (noMethodFilter) return true;
-    if (wildFilters.length === 0) return false;
-    const methodSet = new Set(wildFilters);
-    return zone.rows.some(
-      (row) =>
-        !row.focusClaimed &&
-        row.methods.some((method) => methodSet.has(method)),
-    );
-  })();
+  // Default map — every paintable zone is emphasized.
+  if (!filter.unclaimedOnly && !hasStatus && !hasMethod) return true;
 
-  const matchesNoWilds = (() => {
-    if (!zoneHasHatchSafe(zone)) return false;
-    // No-wilds spots are never wild open slots — only emphasize with that
-    // filter, or when no method filter is set and Unclaimed only is off.
-    if (noWildsOn) return true;
-    if (noMethodFilter && !filter.unclaimedOnly) return true;
+  if (hasStatus && !zoneMatchesStatusFilter(zone, filter.statuses)) {
     return false;
-  })();
-
-  if (noMethodFilter) {
-    // Unclaimed only: wild progress only (no-wilds towns dim).
-    if (filter.unclaimedOnly) return matchesWild;
-    return matchesWild || matchesNoWilds;
   }
 
-  return matchesWild || matchesNoWilds;
+  if (
+    filter.unclaimedOnly &&
+    zone.status === "claimed" &&
+    !filter.statuses.includes("claimed")
+  ) {
+    return false;
+  }
+
+  // Unclaimed only alone: remaining wild progress (not hatch-only towns).
+  if (filter.unclaimedOnly && !hasStatus && !hasMethod) {
+    return zone.status === "unclaimed" || zone.status === "partial";
+  }
+
+  if (hasMethod && !zoneMatchesMethodFilter(zone, filter)) {
+    return false;
+  }
+
+  return true;
 }
 
-/** Matching checklist rows for the open-slots / no-wilds planning panel. */
+function rowMatchesWildMethods(
+  row: MapRouteRow,
+  wildFilters: readonly CatchRouteEncounter[],
+): boolean {
+  if (wildFilters.length === 0) return true;
+  return row.methods.some((method) => wildFilters.includes(method));
+}
+
+/** Matching checklist rows for the planning side panel. */
 export function listOpenSlotsForMap(
   zones: MapZoneStatus[],
   filter: MapZoneFilter,
 ): MapOpenSlot[] {
   const slots: MapOpenSlot[] = [];
   const wildFilters = wildMethodFilters(filter.methods);
-  const noWildsOn = noWildsFilterActive(filter.methods);
-  const noMethodFilter = filter.methods.length === 0;
-  const includeWild = noMethodFilter || wildFilters.length > 0;
+  const noWildsOn =
+    noWildsMethodActive(filter.methods) ||
+    noWildsStatusActive(filter.statuses);
+  const statuses = filter.statuses;
+  const statusOpen =
+    statuses.length === 0 ||
+    statuses.includes("unclaimed") ||
+    statuses.includes("partial");
+  const statusClaimed = statuses.includes("claimed");
+  const includeOpenWild =
+    statusOpen && (statuses.length > 0 || wildFilters.length > 0 || filter.unclaimedOnly);
+  // Method-only (e.g. Fishing) with no status chips: remaining open wild slots.
+  const includeMethodOpenWild =
+    statuses.length === 0 && wildFilters.length > 0 && !filter.unclaimedOnly;
+  const showOpenWild = includeOpenWild || includeMethodOpenWild;
+  const includeClaimedWild = statusClaimed;
   const includeNoWilds = noWildsOn;
 
   for (const zone of zones) {
     if (!zoneMatchesMapFilter(zone, filter)) continue;
 
-    if (includeWild) {
+    if (showOpenWild || includeClaimedWild) {
       for (const row of zone.rows) {
-        if (row.focusClaimed) continue;
-        if (
-          wildFilters.length > 0 &&
-          !row.methods.some((method) => wildFilters.includes(method))
-        ) {
-          continue;
-        }
+        if (!rowMatchesWildMethods(row, wildFilters)) continue;
+        if (row.focusClaimed && !includeClaimedWild) continue;
+        if (!row.focusClaimed && !showOpenWild) continue;
         slots.push({
           zoneId: zone.zone.id,
           zoneName: zone.zone.name,
@@ -315,6 +388,7 @@ export function listOpenSlotsForMap(
           methods: row.methods,
           hatchSafe: false,
           offRouteKind: null,
+          focusClaimed: row.focusClaimed,
         });
       }
     }
@@ -328,6 +402,7 @@ export function listOpenSlotsForMap(
           methods: row.methods,
           hatchSafe: true,
           offRouteKind: row.offRouteKind,
+          focusClaimed: row.focusClaimed,
         });
       }
     }
@@ -341,6 +416,17 @@ export function countOpenSlots(zones: MapZoneStatus[]): number {
 
 export function countHatchSpots(zones: MapZoneStatus[]): number {
   return zones.reduce((sum, zone) => sum + zone.hatchRows.length, 0);
+}
+
+/** Counts for legend status chips. */
+export function countZonesForStatusFilter(
+  zones: MapZoneStatus[],
+  status: MapStatusFilter,
+): number {
+  if (status === "no-wilds") {
+    return zones.filter((zone) => zoneHasHatchSafe(zone)).length;
+  }
+  return zones.filter((zone) => zone.status === status).length;
 }
 
 /** Catalog open-slot labels that are not drawn on any region (graceful omit). */
