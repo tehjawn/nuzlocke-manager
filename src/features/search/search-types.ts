@@ -40,6 +40,8 @@ export type SearchResult = {
 export type BoardJumpAction = "import-save" | "export-team";
 
 export type SearchSeasonContext = {
+  /** Challenge id when known — forwarded to Ask run logs (#394). */
+  id?: string;
   slug: string;
   name: string;
   year: number;

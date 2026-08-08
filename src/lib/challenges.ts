@@ -639,6 +639,7 @@ export async function getTrainer(
 }
 
 export type SearchSeasonBrief = {
+  id?: string;
   slug: string;
   name: string;
   year: number;
