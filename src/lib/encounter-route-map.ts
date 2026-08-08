@@ -111,11 +111,6 @@ export type MapOpenSlot = {
 };
 
 export type MapZoneFilter = {
-  /**
-   * When true, fully claimed wild zones are dimmed / omitted from the open list
-   * (unless a status chip explicitly includes `claimed`).
-   */
-  unclaimedOnly: boolean;
   /** Empty = any status. Otherwise OR-match legend status chips. */
   statuses: readonly MapStatusFilter[];
   /** Empty = all methods. Otherwise OR-match. `"no-wilds"` matches hatch-safe zones. */
@@ -314,23 +309,10 @@ export function zoneMatchesMapFilter(
   const hasMethod = filter.methods.length > 0;
 
   // Default map — every paintable zone is emphasized.
-  if (!filter.unclaimedOnly && !hasStatus && !hasMethod) return true;
+  if (!hasStatus && !hasMethod) return true;
 
   if (hasStatus && !zoneMatchesStatusFilter(zone, filter.statuses)) {
     return false;
-  }
-
-  if (
-    filter.unclaimedOnly &&
-    zone.status === "claimed" &&
-    !filter.statuses.includes("claimed")
-  ) {
-    return false;
-  }
-
-  // Unclaimed only alone: remaining wild progress (not hatch-only towns).
-  if (filter.unclaimedOnly && !hasStatus && !hasMethod) {
-    return zone.status === "unclaimed" || zone.status === "partial";
   }
 
   if (hasMethod && !zoneMatchesMethodFilter(zone, filter)) {
@@ -364,12 +346,10 @@ export function listOpenSlotsForMap(
     statuses.includes("unclaimed") ||
     statuses.includes("partial");
   const statusClaimed = statuses.includes("claimed");
-  const includeOpenWild =
-    statusOpen && (statuses.length > 0 || wildFilters.length > 0 || filter.unclaimedOnly);
-  // Method-only (e.g. Fishing) with no status chips: remaining open wild slots.
-  const includeMethodOpenWild =
-    statuses.length === 0 && wildFilters.length > 0 && !filter.unclaimedOnly;
-  const showOpenWild = includeOpenWild || includeMethodOpenWild;
+  // Status chips that include open buckets, or method-only planning.
+  const showOpenWild =
+    (statusOpen && statuses.length > 0) ||
+    (statuses.length === 0 && wildFilters.length > 0);
   const includeClaimedWild = statusClaimed;
   const includeNoWilds = noWildsOn;
 
@@ -408,10 +388,6 @@ export function listOpenSlotsForMap(
     }
   }
   return slots;
-}
-
-export function countOpenSlots(zones: MapZoneStatus[]): number {
-  return zones.reduce((sum, zone) => sum + zone.openSlots, 0);
 }
 
 export function countHatchSpots(zones: MapZoneStatus[]): number {

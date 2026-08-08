@@ -14,7 +14,6 @@ import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
 import {
   buildEncounterMapStatuses,
   countHatchSpots,
-  countOpenSlots,
   countZonesForStatusFilter,
   listOpenSlotsForMap,
   MAP_METHOD_FILTERS,
@@ -78,7 +77,6 @@ export function EncounterRouteMap({
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showEncounters, setShowEncounters] = useState(false);
-  const [unclaimedOnly, setUnclaimedOnly] = useState(false);
   const [statusFilters, setStatusFilters] = useState<MapStatusFilter[]>([]);
   const [methodFilters, setMethodFilters] = useState<MapMethodFilter[]>([]);
 
@@ -92,17 +90,12 @@ export function EncounterRouteMap({
 
   const filter = useMemo(
     () => ({
-      unclaimedOnly,
       statuses: statusFilters,
       methods: methodFilters,
     }),
-    [unclaimedOnly, statusFilters, methodFilters],
+    [statusFilters, methodFilters],
   );
 
-  const openSlotTotal = useMemo(
-    () => countOpenSlots(zoneStatuses),
-    [zoneStatuses],
-  );
   const hatchSpotTotal = useMemo(
     () => countHatchSpots(zoneStatuses),
     [zoneStatuses],
@@ -131,7 +124,7 @@ export function EncounterRouteMap({
     zoneStatuses.find((entry) => entry.zone.id === selectedId) ?? null;
   const unmapped = useMemo(() => unmappedOpenCatchRoutes(), []);
   const planningActive =
-    unclaimedOnly || statusFilters.length > 0 || methodFilters.length > 0;
+    statusFilters.length > 0 || methodFilters.length > 0;
 
   function toggleMethod(method: MapMethodFilter) {
     setSelectedId(null);
@@ -205,23 +198,6 @@ export function EncounterRouteMap({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          aria-pressed={unclaimedOnly}
-          data-testid="encounter-map-unclaimed-only"
-          onClick={() => {
-            setSelectedId(null);
-            setUnclaimedOnly((prev) => !prev);
-          }}
-          className={`pressable inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-            unclaimedOnly
-              ? "border-interactive/45 bg-interactive-soft text-ink"
-              : "border-frame/40 bg-surface/70 text-ink hover:border-interactive/35"
-          }`}
-        >
-          Unclaimed only
-          <span className="tabular-nums text-muted">({openSlotTotal})</span>
-        </button>
         <span className="hidden text-[10px] font-semibold uppercase tracking-wide text-muted sm:inline">
           Methods
         </span>
@@ -256,7 +232,6 @@ export function EncounterRouteMap({
             type="button"
             data-testid="encounter-map-clear-filters"
             onClick={() => {
-              setUnclaimedOnly(false);
               setStatusFilters([]);
               setMethodFilters([]);
             }}
