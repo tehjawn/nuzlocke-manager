@@ -24,12 +24,14 @@ import {
   searchPokemonIndex,
   type PokemonIndexEntry,
 } from "@/data/pokemon-index";
+import { TrainerAtlasIcon } from "@/components/TrainerAtlasIcon";
 import {
   pokemonAnimatedSpriteUrl,
   pokemonSpriteUrl,
   SHOWDOWN_ANI_SPRITES_DIR,
   SHOWDOWN_POKEMON_SPRITES_DIR,
   SHOWDOWN_TRAINER_SPRITES_DIR,
+  trainerSpriteStem,
   trainerSpriteUrl,
 } from "@/lib/sprites";
 import {
@@ -198,6 +200,7 @@ function TrainerSpriteBrowserInner({
             <SpriteTile
               key={key}
               src={src}
+              atlas={{ stem: trainerSpriteStem(key) }}
               name={key}
               label={label}
               selected={selected}
@@ -646,6 +649,7 @@ type SpritePreview = {
 
 function SpriteTile({
   src,
+  atlas,
   fallbackSrc,
   name,
   label,
@@ -658,6 +662,8 @@ function SpriteTile({
   onPreviewHide,
 }: {
   src: string;
+  /** When set, grid cells use the trainer spritesheet instead of N requests. */
+  atlas?: { stem: string };
   fallbackSrc?: string;
   name: string;
   label: string;
@@ -692,19 +698,27 @@ function SpriteTile({
       onFocus={(e) => onPreviewShow(e.currentTarget, displaySrc, label)}
       onBlur={onPreviewHide}
     >
-      <Image
-        key={displaySrc}
-        src={displaySrc}
-        alt=""
-        width={72}
-        height={72}
-        className={`${smooth && !failed ? "" : "pixelated "}h-14 w-14 object-contain sm:h-16 sm:w-16`}
-        unoptimized
-        loading="lazy"
-        onError={() => {
-          if (fallbackSrc && !failed) setFailed(true);
-        }}
-      />
+      {atlas && !failed ? (
+        <TrainerAtlasIcon
+          stem={atlas.stem}
+          size={64}
+          className="h-14 w-14 sm:h-16 sm:w-16"
+        />
+      ) : (
+        <Image
+          key={displaySrc}
+          src={displaySrc}
+          alt=""
+          width={72}
+          height={72}
+          className={`${smooth && !failed ? "" : "pixelated "}h-14 w-14 object-contain sm:h-16 sm:w-16`}
+          unoptimized
+          loading="lazy"
+          onError={() => {
+            if (fallbackSrc && !failed) setFailed(true);
+          }}
+        />
+      )}
       <span className="w-full truncate text-[11px] font-bold text-muted">
         {name}
       </span>

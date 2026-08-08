@@ -1,6 +1,5 @@
 import pokemonData from "@/data/pokemon.json";
 import heldItemsData from "@/data/held-items.json";
-import { showdownProxyUrl } from "@/lib/showdown-sprites";
 
 export type PokemonIndexEntry = {
   name: string;
@@ -151,18 +150,27 @@ export function searchHeldItems(query: string, limit = 40): HeldItemEntry[] {
   ).slice(0, limit);
 }
 
-export function heldItemSpriteUrl(slugOrName: string): string {
+/** Showdown itemicons filename stem for a held-item name/slug. */
+export function heldItemIconStem(slugOrName: string): string {
   const key = slugOrName
     .trim()
     .toLowerCase()
     .replace(/['’.]/g, "");
   const hyphenSlug = key.replace(/\s+/g, "-");
-  const icon =
+  // Showdown often drops hyphens (blackglasses, nevermeltice, thunderstone).
+  const compact = hyphenSlug.replace(/-/g, "");
+  return (
     HELD_ITEM_ICON_BY_KEY[key] ??
     HELD_ITEM_ICON_BY_KEY[hyphenSlug] ??
-    // Unknown free-typed items: try hyphen form (matches most Showdown icons).
-    hyphenSlug;
-  return showdownProxyUrl("itemicons", `${icon}.png`);
+    HELD_ITEM_ICON_BY_KEY[compact] ??
+    // Prefer hyphen form in the URL; atlas lookup also tries compact.
+    hyphenSlug
+  );
+}
+
+/** Same-origin static item icon PNG (vendored via `npm run data:sprites`). */
+export function heldItemSpriteUrl(slugOrName: string): string {
+  return `/sprites/itemicons/${heldItemIconStem(slugOrName)}.png`;
 }
 
 /** Battle effect text for a known held item name/slug (case-insensitive). */

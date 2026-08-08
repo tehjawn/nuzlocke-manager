@@ -3,6 +3,11 @@ import {
   SHOWDOWN_ORIGIN,
 } from "@/lib/showdown-sprites";
 
+/**
+ * Showdown sprite proxy — kept primarily for `ani` / `ani-shiny` GIFs
+ * (and rare gen5 name fallbacks). Trainers + item icons are vendored under
+ * `/sprites/…` and should not hit this route in normal UI traffic.
+ */
 
 /** Long browser/CDN cache — sprites are immutable by filename. */
 const CACHE_CONTROL =

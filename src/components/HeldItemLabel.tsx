@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { InfoTip } from "@/components/InfoTip";
+import { ItemAtlasIcon } from "@/components/ItemAtlasIcon";
 import {
   heldItemDescription,
-  heldItemSpriteUrl,
+  heldItemIconStem,
 } from "@/data/pokemon-index";
 
 type HeldItemLabelProps = {
@@ -41,15 +42,10 @@ export function HeldItemLabel({
   const linkHref = embedded ? null : href;
   const body = (
     <span className="inline-flex min-w-0 max-w-full items-center gap-1">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={heldItemSpriteUrl(name)}
-        alt=""
-        width={iconSize}
-        height={iconSize}
-        className="pixelated shrink-0 object-contain"
-        style={{ width: iconSize, height: iconSize }}
-        decoding="async"
+      <ItemAtlasIcon
+        stem={heldItemIconStem(name)}
+        size={iconSize}
+        loading="lazy"
       />
       <span className="truncate">{name}</span>
     </span>

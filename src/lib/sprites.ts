@@ -1,8 +1,8 @@
 /**
  * Free/open sprite helpers.
  * Prefer PokeAPI numeric IDs; fall back to Showdown gen5 name sprites.
- * Trainers / ani / Showdown fallbacks: same-origin `/api/sprites` proxy
- * (avoids intermittent Cloudflare 403s on play.pokemonshowdown.com).
+ * Trainers + item icons: same-origin static `/sprites/…` (vendored).
+ * Ani / gen5 fallbacks: `/api/sprites` proxy (Cloudflare 403 avoidance).
  */
 
 import { findPokemonById } from "@/data/pokemon-index";
@@ -62,15 +62,19 @@ export function pokemonSpriteUrl(
   return showdownProxyUrl(folder, `${showdownId}.png`);
 }
 
-export function trainerSpriteUrl(spriteKey: string): string {
+/** Normalize a Showdown trainer filename stem (lowercase, no path/ext). */
+export function trainerSpriteStem(spriteKey: string): string {
   const key = spriteKey
     .replace(/\.png$/i, "")
     .replace(/^.*\//, "")
     .toLowerCase();
-  if (!/^[a-z0-9][a-z0-9._-]*$/.test(key)) {
-    return showdownProxyUrl("trainers", "brendan.png");
-  }
-  return showdownProxyUrl("trainers", `${key}.png`);
+  if (!/^[a-z0-9][a-z0-9._-]*$/.test(key)) return "brendan";
+  return key;
+}
+
+/** Same-origin static trainer PNG (vendored via `npm run data:sprites`). */
+export function trainerSpriteUrl(spriteKey: string): string {
+  return `/sprites/trainers/${trainerSpriteStem(spriteKey)}.png`;
 }
 
 /** Prefix for Pokémon species avatars stored in `avatarSpriteKey`. */

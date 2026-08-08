@@ -8,8 +8,7 @@ import type {
 } from "@/features/search/search-types";
 // Digest, not `@/data/items` — this module is mounted from the root layout, so
 // the ~100 KB catalog would ship on every page for a palette most sessions
-// never open. `heldItemSpriteUrl` is free here: `lib/sprites` already pulls
-// `pokemon-index` into this bundle.
+// never open. `heldItemSpriteUrl` is a static `/sprites` path (no network I/O).
 import { ITEM_SEARCH_ROWS } from "@/data/items-lite.generated";
 import { heldItemSpriteUrl } from "@/data/pokemon-index";
 import { avatarImageUrl } from "@/lib/sprites";
