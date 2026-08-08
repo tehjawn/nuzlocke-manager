@@ -70,8 +70,41 @@ const STATUS_STROKE: Record<MapRouteClaimStatus, string> = {
   empty: "transparent",
 };
 
+/** Selected pulse wash — matches claim status (open / partial / done). */
+const SELECTED_FILL: Record<MapRouteClaimStatus, string> = {
+  unclaimed: "var(--danger)",
+  partial: "var(--accent-2)",
+  claimed: "var(--accent)",
+  empty: "var(--danger)",
+};
+
+const SELECTED_STROKE: Record<MapRouteClaimStatus, string> = {
+  unclaimed: "var(--danger)",
+  partial: "var(--accent-2)",
+  claimed: "var(--accent-deep)",
+  empty: "var(--danger)",
+};
+
 const HATCH_FILL = "color-mix(in srgb, var(--interactive) 14%, transparent)";
 const HATCH_STROKE = "color-mix(in srgb, var(--interactive) 55%, var(--ink))";
+const SELECTED_HATCH_FILL = "var(--interactive)";
+const SELECTED_HATCH_STROKE = "var(--interactive)";
+
+/** Solid color for selected pulse (map wash + panel status dot). */
+function selectedStatusColor(
+  status: MapRouteClaimStatus,
+  hatchOnly: boolean,
+): string {
+  if (hatchOnly) return SELECTED_HATCH_FILL;
+  return SELECTED_FILL[status];
+}
+
+/** Keep map wash + panel dot on the same blink phase (CSS animations start on mount). */
+const CLAIM_MAP_PULSE_MS = 850;
+
+function claimMapPulseDelayMs(now = Date.now()): number {
+  return -(now % CLAIM_MAP_PULSE_MS);
+}
 
 export function EncounterRouteMap({
   groups,
@@ -134,6 +167,11 @@ export function EncounterRouteMap({
 
   const selected =
     zoneStatuses.find((entry) => entry.zone.id === selectedId) ?? null;
+  /** Freeze phase on select so hover re-renders don't restart the blink. */
+  const pulseDelayMs = useMemo(
+    () => (selectedId ? claimMapPulseDelayMs() : 0),
+    [selectedId],
+  );
   const hovered =
     zoneStatuses.find((entry) => entry.zone.id === hoveredId) ?? null;
   const hoverTooltip = hovered
@@ -197,6 +235,7 @@ export function EncounterRouteMap({
             hovered={hoveredId === entry.zone.id}
             matchHighlight={planningActive && emphasized && !isSelected}
             pulse={isSelected}
+            pulseDelayMs={pulseDelayMs}
             selected={isSelected}
             onHoverChange={(active) =>
               setHoveredId(active ? entry.zone.id : null)
@@ -224,6 +263,7 @@ export function EncounterRouteMap({
   const panelBlock = selected ? (
     <ZoneDetail
       focusHandle={focusHandle}
+      pulseDelayMs={pulseDelayMs}
       selected={selected}
       slug={slug}
       onClear={() => setSelectedId(null)}
@@ -577,6 +617,7 @@ function RegionShape({
   entry,
   selected,
   pulse,
+  pulseDelayMs = 0,
   matchHighlight,
   dimmed,
   hovered = false,
@@ -586,6 +627,8 @@ function RegionShape({
   entry: MapZoneStatus;
   selected: boolean;
   pulse: boolean;
+  /** Shared negative delay so map + panel blink stay in phase. */
+  pulseDelayMs?: number;
   /** Static emphasis for filter matches — no animation (avoids map strobe). */
   matchHighlight: boolean;
   dimmed: boolean;
@@ -598,23 +641,32 @@ function RegionShape({
 
   const hatchOnly = status === "empty" && zoneHasHatchSafe(entry);
   const slotTotal = entry.claimedOpenSlots + entry.openSlots;
-  // Selection: solid scarlet wash that blinks. Filter matches: marching dashes.
+  // Selection: claim-status wash that blinks (scarlet / yellow / green).
+  // Filter matches: marching dashes — white for open, else same status colors.
   // Hover: stronger wash so the hit target is obvious when magnified.
   const stroke = selected
-    ? "var(--danger)"
-    : hovered
+    ? hatchOnly
+      ? SELECTED_HATCH_STROKE
+      : SELECTED_STROKE[status]
+    : matchHighlight
       ? hatchOnly
-        ? "var(--interactive)"
-        : status === "claimed"
-          ? "var(--accent-deep)"
-          : status === "partial"
-            ? "var(--accent-2)"
-            : "var(--ink)"
-      : hatchOnly
-        ? HATCH_STROKE
-        : STATUS_STROKE[status];
+        ? SELECTED_HATCH_STROKE
+        : status === "unclaimed" || status === "empty"
+          ? "#ffffff"
+          : SELECTED_STROKE[status]
+      : hovered
+        ? hatchOnly
+          ? "var(--interactive)"
+          : status === "claimed"
+            ? "var(--accent-deep)"
+            : status === "partial"
+              ? "var(--accent-2)"
+              : "var(--ink)"
+        : hatchOnly
+          ? HATCH_STROKE
+          : STATUS_STROKE[status];
   const fill = selected
-    ? "var(--danger)"
+    ? selectedStatusColor(status, hatchOnly)
     : hovered
       ? hatchOnly
         ? "color-mix(in srgb, var(--interactive) 42%, transparent)"
@@ -655,6 +707,9 @@ function RegionShape({
     strokeDasharray: dash,
     strokeLinejoin: "round" as const,
     opacity: dimmed && !hovered ? 0.18 : dimmed && hovered ? 0.55 : 1,
+    style: pulse
+      ? ({ animationDelay: `${pulseDelayMs}ms` } as const)
+      : undefined,
     className: [
       "cursor-pointer focus:outline-none focus-visible:stroke-[var(--ink)] focus-visible:opacity-100",
       pulse ? "claim-map-region--pulse" : "",
@@ -832,12 +887,14 @@ function ZoneDetail({
   selected,
   slug,
   focusHandle,
+  pulseDelayMs = 0,
   onClear,
   backLabel,
 }: {
   selected: MapZoneStatus | null;
   slug: string;
   focusHandle: string | null;
+  pulseDelayMs?: number;
   onClear: () => void;
   backLabel: string;
 }) {
@@ -850,10 +907,29 @@ function ZoneDetail({
   const allRows = [...displayRows, ...hatchRows];
   const openLeft = selected.openSlots;
 
+  const pulseColor = selectedStatusColor(status, hatchOnly);
+
   return (
     <Frame
       dense
-      title={zone.name}
+      title={
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden
+            className="claim-map-status-dot"
+            style={{
+              backgroundColor: pulseColor,
+              animationDelay: `${pulseDelayMs}ms`,
+            }}
+            title={
+              hatchOnly
+                ? mapStatusFilterLabel("no-wilds")
+                : mapStatusLabel(status)
+            }
+          />
+          <span className="min-w-0 truncate">{zone.name}</span>
+        </span>
+      }
       actions={
         <span className="text-[11px] font-semibold tabular-nums text-white/80">
           {hatchOnly
