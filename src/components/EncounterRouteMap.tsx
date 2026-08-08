@@ -14,6 +14,9 @@ import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
 import {
   buildEncounterMapStatuses,
   countZonesForStatusFilter,
+  filterMapZonesForStory,
+  isPostGameCatchRouteLabel,
+  isPostGameMapZone,
   listOpenSlotsForMap,
   MAP_STATUS_FILTERS,
   mapMethodLabel,
@@ -32,7 +35,6 @@ import {
   type MapStatusFilter,
   type MapZoneStatus,
 } from "@/lib/encounter-route-map";
-import { encountersHref } from "@/lib/encounters-view";
 import type { PersonalRouteStatus } from "@/lib/personal-routes";
 
 type EncounterRouteMapProps = {
@@ -76,13 +78,19 @@ export function EncounterRouteMap({
   const [statusFilter, setStatusFilter] = useState<MapStatusFilter | null>(
     null,
   );
+  /** On by default — season runs are League-capped; show post-game when needed. */
+  const [hidePostGame, setHidePostGame] = useState(true);
 
   const focusStatus =
     routeStatuses.find((entry) => entry.trainerId === trainerId) ?? null;
 
   const zoneStatuses = useMemo(
-    () => buildEncounterMapStatuses(groups, focusStatus),
-    [groups, focusStatus],
+    () =>
+      filterMapZonesForStory(
+        buildEncounterMapStatuses(groups, focusStatus),
+        hidePostGame,
+      ),
+    [groups, focusStatus, hidePostGame],
   );
 
   const filter = useMemo(() => ({ status: statusFilter }), [statusFilter]);
@@ -109,12 +117,25 @@ export function EncounterRouteMap({
 
   const selected =
     zoneStatuses.find((entry) => entry.zone.id === selectedId) ?? null;
-  const unmapped = useMemo(() => unmappedOpenCatchRoutes(), []);
+  const unmapped = useMemo(() => {
+    const labels = unmappedOpenCatchRoutes();
+    if (!hidePostGame) return labels;
+    return labels.filter((label) => !isPostGameCatchRouteLabel(label));
+  }, [hidePostGame]);
   const planningActive = statusFilter != null;
 
   function toggleStatus(status: MapStatusFilter) {
     setSelectedId(null);
     setStatusFilter((prev) => (prev === status ? null : status));
+  }
+
+  function onHidePostGameChange(checked: boolean) {
+    setHidePostGame(checked);
+    if (checked) {
+      setSelectedId((prev) =>
+        prev && isPostGameMapZone(prev) ? null : prev,
+      );
+    }
   }
 
   return (
@@ -125,17 +146,17 @@ export function EncounterRouteMap({
     >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
-          <h3
-            className="font-display text-lg font-bold"
+          <h2
+            className="font-display text-2xl font-bold tracking-tight"
             id="encounter-map-heading"
           >
-            Hoenn claim map
-          </h3>
-          <p className="max-w-xl text-xs text-muted">
-            Game region map with pret-accurate route hit targets. Colors follow
+            Catch Map
+          </h2>
+          <p className="max-w-xl text-sm text-muted">
+            Hoenn region map with pret-accurate route hit targets. Colors follow
             the focused trainer&apos;s open-slot progress — plus no-wilds spots
-            (egg / gift / fossil) that never spend a wild slot. Use filters to
-            plan.
+            (egg / gift) that never spend a wild slot. Season stats and Missing
+            dex live under Season Stats / Pokémon Ownership.
           </p>
         </div>
         {routeStatuses.length > 0 && (
@@ -158,11 +179,23 @@ export function EncounterRouteMap({
         )}
       </div>
 
-      <MapLegend
-        activeStatus={statusFilter}
-        counts={statusCounts}
-        onToggle={toggleStatus}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <MapLegend
+          activeStatus={statusFilter}
+          counts={statusCounts}
+          onToggle={toggleStatus}
+        />
+        <label className="flex items-center gap-2 text-[11px] font-semibold text-ink">
+          <input
+            type="checkbox"
+            className="size-3.5 rounded border-frame"
+            checked={hidePostGame}
+            data-testid="encounter-map-hide-post-game"
+            onChange={(event) => onHidePostGameChange(event.target.checked)}
+          />
+          Hide post-game areas
+        </label>
+      </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(15rem,0.9fr)]">
         <div className="min-w-0 overflow-hidden rounded-md border border-frame/40 bg-[color-mix(in_srgb,var(--interactive)_10%,var(--surface))] p-1">
@@ -576,13 +609,6 @@ function ZoneDetail({
             {mapOffRouteKindNote(hatchRows[0]?.offRouteKind ?? null)}
           </p>
         )}
-
-        <Link
-          href={encountersHref(slug, "claims")}
-          className="inline-block text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-        >
-          Open Route claims list
-        </Link>
       </div>
     </Frame>
   );

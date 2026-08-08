@@ -111,7 +111,7 @@ export function buildPageContext(
       .filter(Boolean);
     if (titles.length) lines.push(`rules: ${titles.join("; ")}`);
   } else if (path.startsWith(`${base}/encounters`)) {
-    lines.push("VIEW: Encounters");
+    lines.push("VIEW: Catch Map (Hoenn claim planner)");
   } else if (path.startsWith(`${base}/setup`)) {
     lines.push("VIEW: Setup / get started");
   } else if (path.startsWith(`${base}/gm`)) {

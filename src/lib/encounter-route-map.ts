@@ -105,6 +105,72 @@ export type MapZoneFilter = {
   status: MapStatusFilter | null;
 };
 
+/**
+ * Dedicated region-map zones that only matter after the Champion (ferry /
+ * event-ticket content). Nested post-game labels on story routes are listed
+ * separately in `POST_GAME_CATCH_ROUTE_LABELS`.
+ */
+export const POST_GAME_MAP_ZONE_IDS: ReadonlySet<string> = new Set([
+  "battle-frontier",
+  "southern-island",
+]);
+
+/**
+ * Catch-route labels that are post-Champion (or ticket/BP gated) for a
+ * League-capped nuzlocke. Includes labels folded onto story parent zones.
+ */
+export const POST_GAME_CATCH_ROUTE_LABELS: ReadonlySet<string> = new Set([
+  "Battle Frontier",
+  "Southern Island",
+  "Trainer Hill",
+  "Artisan Cave",
+  "Mirage Island",
+  "Birth Island",
+  "Faraway Island",
+  "Navel Rock",
+  "Marine Cave",
+  "Terra Cave",
+]);
+
+export function isPostGameMapZone(zoneId: string): boolean {
+  return POST_GAME_MAP_ZONE_IDS.has(zoneId);
+}
+
+export function isPostGameCatchRouteLabel(label: string): boolean {
+  return POST_GAME_CATCH_ROUTE_LABELS.has(label);
+}
+
+/**
+ * Drop post-game zones/labels for League-capped planning. Recalculates open-slot
+ * aggregates so legend counts stay honest.
+ */
+export function filterMapZonesForStory(
+  zones: MapZoneStatus[],
+  hidePostGame: boolean,
+): MapZoneStatus[] {
+  if (!hidePostGame) return zones;
+
+  return zones
+    .filter((zone) => !isPostGameMapZone(zone.zone.id))
+    .map((zone) => {
+      const rows = zone.rows.filter(
+        (row) => !isPostGameCatchRouteLabel(row.label),
+      );
+      const hatchRows = zone.hatchRows.filter(
+        (row) => !isPostGameCatchRouteLabel(row.label),
+      );
+      const claimedOpenSlots = rows.filter((row) => row.focusClaimed).length;
+      return {
+        ...zone,
+        rows,
+        hatchRows,
+        claimedOpenSlots,
+        openSlots: rows.length - claimedOpenSlots,
+        status: aggregateZoneStatus(claimedOpenSlots, rows.length),
+      };
+    });
+}
+
 function ledgerByRoute(
   groups: EncounterRouteGroup[],
 ): Map<string, EncounterRouteGroup> {
@@ -310,11 +376,19 @@ export function countZonesForStatusFilter(
   return zones.filter((zone) => zone.status === status).length;
 }
 
-/** Catalog open-slot labels that are not drawn on any region (graceful omit). */
+/**
+ * Catalog open-slot labels that are not drawn on any region (graceful omit).
+ *
+ * Skips `aliasesRoute101` rows (Route 110 East, Route 132 North, …): they share
+ * Route 101's ROM bit / `slotKey`, so the mapped Route 101 cell already covers
+ * that slot — listing them here looked like missing independent encounters.
+ */
 export function unmappedOpenCatchRoutes(): string[] {
   return CATCH_ROUTE_TABLE.filter(
     (route) =>
-      route.countsTowardOpen && !HOENN_MAP_LABELS.has(route.label),
+      route.countsTowardOpen &&
+      !route.aliasesRoute101 &&
+      !HOENN_MAP_LABELS.has(route.label),
   ).map((route) => route.label);
 }
 
@@ -354,7 +428,7 @@ export function mapOffRouteKindLabel(kind: MapOffRouteKind | null): string {
     case "egg-only":
       return "Egg";
     case "static":
-      return "Gift / fossil";
+      return "Gift";
     default:
       return "No wilds";
   }
@@ -365,7 +439,7 @@ export function mapOffRouteKindNote(kind: MapOffRouteKind | null): string {
     case "egg-only":
       return "No wild table or script static — outdoor hatching is safe and does not spend a wild route slot.";
     case "static":
-      return "No outdoor wild table — gifts, fossils, or hatching can log here without spending a wild route slot.";
+      return "No outdoor wild table — script gifts (or fossils in Rustboro) and outdoor hatching can log here without spending a wild route slot.";
     default:
       return "No outdoor wild table — logging here does not spend a wild route slot.";
   }

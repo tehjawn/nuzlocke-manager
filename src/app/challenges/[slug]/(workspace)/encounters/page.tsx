@@ -4,10 +4,6 @@ import { auth } from "@/auth";
 import { EncounterSeasonView } from "@/components/EncounterSeasonView";
 import { getChallengeEncounters, getChallengeMeta } from "@/lib/challenges";
 import { buildEncounterLedger } from "@/lib/encounter-ledger";
-import {
-  encounterSeasonHighlights,
-  missingModernEmeraldSpecies,
-} from "@/lib/encounter-stats";
 import { buildPersonalRouteStatuses } from "@/lib/personal-routes";
 
 type PageProps = {
@@ -20,19 +16,17 @@ export async function generateMetadata({
   const { slug } = await params;
   const challenge = await getChallengeMeta(slug);
   return {
-    title: challenge ? `Encounters · ${challenge.name}` : "Encounters",
+    title: challenge ? `Catch Map · ${challenge.name}` : "Catch Map",
   };
 }
 
-export default async function EncountersPage({ params }: PageProps) {
+export default async function CatchMapPage({ params }: PageProps) {
   const { slug } = await params;
   const session = await auth();
   const challenge = await getChallengeEncounters(slug, session?.user?.id);
   if (!challenge) notFound();
 
   const groups = buildEncounterLedger(challenge.trainers);
-  const highlights = encounterSeasonHighlights(challenge.trainers);
-  const missing = missingModernEmeraldSpecies(challenge.trainers);
   const myTrainerId =
     challenge.trainers.find((trainer) => trainer.userId === session?.user?.id)
       ?.id ?? null;
@@ -41,8 +35,6 @@ export default async function EncountersPage({ params }: PageProps) {
   return (
     <EncounterSeasonView
       groups={groups}
-      highlights={highlights}
-      missing={missing}
       myTrainerId={myTrainerId}
       routeStatuses={routeStatuses}
       slug={challenge.slug}

@@ -19,6 +19,7 @@ import {
   parseMarketsSort,
   parsePlannerMode,
   parsePokedexMode,
+  catchMapHref,
   parseStatsSection,
   parseToolsId,
   seasonStatsHref,
@@ -39,6 +40,7 @@ type PageProps = {
     sort?: string;
     section?: string;
     item?: string;
+    status?: string;
   }>;
 };
 
@@ -61,6 +63,9 @@ export async function generateMetadata({
   if (resolved === "stats") {
     return { title: `Season Stats · ${challenge.name}` };
   }
+  if (resolved === "catch-map") {
+    return { title: `Catch Map · ${challenge.name}` };
+  }
   if (!resolved) return { title: `Tools · ${challenge.name}` };
   return {
     title: `${toolsTitle(resolved)} · Tools · ${challenge.name}`,
@@ -73,15 +78,17 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     searchParams,
     auth(),
   ]);
-  const { tool, tab, a, b, id, mode, section, sort, item } = sp;
+  const { tool, tab, a, b, id, mode, section, sort, item, status } = sp;
   if (isLegacyCompareUrl({ a, b, tab, tool })) {
     redirect(legacyCompareHref(slug));
   }
-  // Season Stats lives on the former Memorial tab (#288) — keep old Tools
-  // deep links working.
+  // Season Stats / Catch Map live on dedicated URLs — keep old Tools deep links.
   const initialTool = parseToolsId(tool, tab);
   if (initialTool === "stats") {
     redirect(seasonStatsHref(slug, { section: parseStatsSection(section) }));
+  }
+  if (initialTool === "catch-map") {
+    redirect(catchMapHref(slug));
   }
 
   // Shared summary board for every tool URL (#367). Grades / moves / spreads
@@ -96,6 +103,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
     Number.isFinite(dexIdRaw) && dexIdRaw > 0 ? dexIdRaw : null;
   const initialBountyMode =
     initialTool === "bounty" ? parseBountyMode(mode) : null;
+  const initialBountyStatus = initialTool === "bounty" ? status ?? null : null;
   const initialPlannerMode =
     initialTool === "planner" ? parsePlannerMode(mode) : null;
   const initialPokedexMode =
@@ -138,6 +146,7 @@ export default async function ToolsPage({ params, searchParams }: PageProps) {
         initialTool={initialTool}
         initialDexId={initialDexId}
         initialBountyMode={initialBountyMode}
+        initialBountyStatus={initialBountyStatus}
         initialPlannerMode={initialPlannerMode}
         initialPokedexMode={initialPokedexMode}
         initialMarketsMode={initialMarketsMode}

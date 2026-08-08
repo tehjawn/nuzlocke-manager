@@ -55,6 +55,7 @@ type ToolsViewProps = {
   initialTool?: ToolsId | null;
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
+  initialBountyStatus?: string | null;
   initialPlannerMode?: PlannerMode | null;
   initialPokedexMode?: PokedexMode | null;
   initialMarketsMode?: MarketsMode | null;
@@ -77,6 +78,7 @@ export function ToolsView({
   initialTool = null,
   initialDexId = null,
   initialBountyMode = null,
+  initialBountyStatus = null,
   initialPlannerMode = null,
   initialPokedexMode = null,
   initialMarketsMode = null,
@@ -90,8 +92,8 @@ export function ToolsView({
     parseToolsId(searchParams.get("tool"), searchParams.get("tab")) ??
     initialTool;
 
-  // Season Stats redirects server-side (#288); never render it inside Tools.
-  if (!tool || tool === "stats") {
+  // Season Stats / Catch Map redirect server-side; never render inside Tools.
+  if (!tool || tool === "stats" || tool === "catch-map") {
     return <ToolsDirectory slug={slug} challengeName={challengeName} />;
   }
 
@@ -109,6 +111,7 @@ export function ToolsView({
       viewerUserId={viewerUserId}
       initialDexId={initialDexId}
       initialBountyMode={initialBountyMode}
+      initialBountyStatus={initialBountyStatus}
       initialPlannerMode={initialPlannerMode}
       initialPokedexMode={initialPokedexMode}
       initialMarketsMode={initialMarketsMode}
@@ -180,7 +183,7 @@ function ToolsDirectory({
   );
 }
 
-type WorkspaceTool = Exclude<ToolsId, "stats">;
+type WorkspaceTool = Exclude<ToolsId, "stats" | "catch-map">;
 
 /** Exhaustive by construction — a new ToolsId fails to compile until added. */
 const TOOL_BLURBS: Record<WorkspaceTool, (challengeName: string) => string> = {
@@ -211,6 +214,7 @@ function ToolWorkspace({
   viewerUserId,
   initialDexId,
   initialBountyMode,
+  initialBountyStatus,
   initialPlannerMode,
   initialPokedexMode,
   initialMarketsMode,
@@ -230,6 +234,7 @@ function ToolWorkspace({
   viewerUserId?: string | null;
   initialDexId?: number | null;
   initialBountyMode?: BountyMode | null;
+  initialBountyStatus?: string | null;
   initialPlannerMode?: PlannerMode | null;
   initialPokedexMode?: PokedexMode | null;
   initialMarketsMode?: MarketsMode | null;
@@ -416,6 +421,7 @@ function ToolWorkspace({
           competitiveTrainerIds={competitiveTrainerIds}
           gradesReady={gradesReady}
           initialMode={initialBountyMode}
+          initialStatus={initialBountyStatus}
         />
       )}
 

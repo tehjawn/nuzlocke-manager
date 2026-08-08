@@ -47,9 +47,26 @@ type BountyHunterViewProps = {
    */
   gradesReady?: boolean;
   initialMode?: BountyMode | null;
+  /** Deep-link tracker status (`?status=untouched` = former Missing dex). */
+  initialStatus?: string | null;
 };
 
 type StatusFilter = "all" | SpeciesOwnershipStatus;
+
+function parseOwnershipStatus(
+  raw: string | null | undefined,
+): StatusFilter {
+  if (
+    raw === "owned" ||
+    raw === "encountered" ||
+    raw === "untouched" ||
+    raw === "all"
+  ) {
+    return raw;
+  }
+  return "all";
+}
+
 type ExclusiveLineFilter = "all" | "whole" | "split" | "partial";
 /**
  * One control drives three boards, so the union is the superset. `MODE_SORTS`
@@ -123,7 +140,11 @@ const STATUS_LEGEND: ReadonlyArray<{
 }> = [
   { id: "owned", label: "Owned", hint: "Currently held" },
   { id: "encountered", label: "Encountered", hint: "Seen or lost" },
-  { id: "untouched", label: "Untouched", hint: "Not owned yet" },
+  {
+    id: "untouched",
+    label: "Untouched",
+    hint: "Never logged by the pack (Missing dex)",
+  },
 ];
 
 /**
@@ -145,10 +166,13 @@ export function BountyHunterView({
   competitiveTrainerIds = [],
   gradesReady = true,
   initialMode = "tracker",
+  initialStatus = null,
 }: BountyHunterViewProps) {
   const [mode, setMode] = useState<BountyMode>(parseBountyMode(initialMode));
   const [viewerId, setViewerId] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
+    parseOwnershipStatus(initialStatus),
+  );
   const [lineFilter, setLineFilter] = useState<ExclusiveLineFilter>("all");
   // Showcase is a catch-quality browser first — open on catch tier, not dex #.
   const [sort, setSort] = useState<SortMode>(
@@ -386,7 +410,18 @@ export function BountyHunterView({
                   key={entry.id}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => setStatusFilter(entry.id)}
+                  onClick={() => {
+                    setStatusFilter(entry.id);
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("tool", "bounty");
+                    if (entry.id === "all") url.searchParams.delete("status");
+                    else url.searchParams.set("status", entry.id);
+                    window.history.replaceState(
+                      window.history.state,
+                      "",
+                      url.href,
+                    );
+                  }}
                   className={`pressable rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
                     active
                       ? statusChipActiveClass(entry.id)

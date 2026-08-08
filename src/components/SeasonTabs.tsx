@@ -70,12 +70,6 @@ export function getSeasonTabs(
       icon: <TrainersIcon />,
     },
     {
-      href: `${base}/encounters`,
-      label: "Encounters",
-      match: "prefix",
-      icon: <EncountersIcon />,
-    },
-    {
       href: `${base}/tools`,
       label: "Tools",
       match: "prefix",
@@ -144,7 +138,9 @@ export function SeasonTabs({
     under(pathname, `${base}/activity`) ||
     (gmViewOn && under(pathname, `${base}/tournament`));
   const toolsActive =
-    under(pathname, `${base}/tools`) || under(pathname, `${base}/season-stats`);
+    under(pathname, `${base}/tools`) ||
+    under(pathname, `${base}/season-stats`) ||
+    under(pathname, `${base}/encounters`);
   const trainersActive =
     pathname === base ||
     under(pathname, `${base}/me`) ||
@@ -153,7 +149,9 @@ export function SeasonTabs({
 
   const activeTool = under(pathname, `${base}/season-stats`)
     ? "stats"
-    : parseToolsId(searchParams.get("tool"), searchParams.get("tab"));
+    : under(pathname, `${base}/encounters`)
+      ? "catch-map"
+      : parseToolsId(searchParams.get("tool"), searchParams.get("tab"));
 
   return (
     <nav
@@ -269,14 +267,6 @@ export function SeasonTabs({
         )}
       </NavGroup>
 
-      {!firstRun && (
-        <NavLeaf
-          href={`${base}/encounters`}
-          label="Encounters"
-          icon={<EncountersIcon />}
-          active={under(pathname, `${base}/encounters`)}
-        />
-      )}
     </nav>
   );
 }
@@ -438,21 +428,6 @@ function ChevronIcon({
       strokeWidth="2"
     >
       <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function EncountersIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-    >
-      <path d="M4 7h16M4 12h10M4 17h13" strokeLinecap="round" />
-      <circle cx="18.5" cy="12" r="2.25" />
     </svg>
   );
 }

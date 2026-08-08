@@ -1,5 +1,6 @@
 export type ToolsId =
   | "guide"
+  | "catch-map"
   | "pokedex"
   | "itemdex"
   | "bounty"
@@ -51,6 +52,14 @@ export const TOOLS_CATALOG: ReadonlyArray<ToolsCatalogEntry> = [
     tone: "accent",
     blurb:
       "What to do next in Modern Emerald — story gates and easy-to-miss beats based on your badges.",
+  },
+  {
+    id: "catch-map",
+    title: "Catch Map",
+    navLabel: "Hoenn claim map",
+    tone: "muted",
+    blurb:
+      "Plan open wild slots on the Hoenn region map — filter by claim status, hide post-game, and focus any trainer's progress.",
   },
   {
     id: "pokedex",
@@ -128,6 +137,14 @@ export function seasonStatsHref(
   return `${base}?${new URLSearchParams({ section }).toString()}`;
 }
 
+/**
+ * Canonical Catch Map home — still served from `/encounters` (legacy path).
+ * Tools catalog / old Encounters tab links alias here.
+ */
+export function catchMapHref(slug: string): string {
+  return `/challenges/${slug}/encounters`;
+}
+
 export function toolsHref(
   slug: string,
   tool: ToolsId,
@@ -138,12 +155,18 @@ export function toolsHref(
     section?: string | null;
     /** ItemDex entry slug (`spell-tag`). */
     item?: string | null;
+    /** Ownership tracker status filter (`untouched`, …). */
+    status?: string | null;
   },
 ): string {
   // Stats graduated out of Tools into its own season tab — keep callers
-  // (Encounters deep links, catalog cards) pointing at the canonical URL.
+  // (catalog cards, deep links) pointing at the canonical URL.
   if (tool === "stats") {
     return seasonStatsHref(slug, { section: query?.section });
+  }
+  // Catch Map graduated the same way — map-only page at `/encounters`.
+  if (tool === "catch-map") {
+    return catchMapHref(slug);
   }
   const params = new URLSearchParams({ tool });
   if (query?.id != null && query.id !== "") {
@@ -153,6 +176,7 @@ export function toolsHref(
   if (query?.mode) params.set("mode", query.mode);
   if (query?.section) params.set("section", query.section);
   if (query?.item) params.set("item", query.item);
+  if (query?.status) params.set("status", query.status);
   return `/challenges/${slug}/tools?${params.toString()}`;
 }
 
@@ -164,6 +188,7 @@ export function parseToolsId(
   const raw = tool ?? tab;
   if (
     raw === "guide" ||
+    raw === "catch-map" ||
     raw === "pokedex" ||
     raw === "itemdex" ||
     raw === "bounty" ||

@@ -65,9 +65,12 @@ import { EMERALD_BADGE_META } from "@/lib/emerald-badges";
 import { pokemonInSlot } from "@/lib/trainer-display";
 import { memorialPokemonAfterWipe } from "@/lib/wipe-memorial";
 import { RulesIcon } from "@/components/nav-icons";
-import { SeasonStatsToolIcon } from "@/components/tool-icons";
+import {
+  CatchMapToolIcon,
+  SeasonStatsToolIcon,
+} from "@/components/tool-icons";
 import { CTA_PRIMARY_SM } from "@/lib/cta";
-import { seasonStatsHref } from "@/lib/tools-routes";
+import { catchMapHref, seasonStatsHref } from "@/lib/tools-routes";
 import {
   MAIN_PARTY_SIZE,
   firstOpenMainPartyIndex,
@@ -384,26 +387,6 @@ function ToolsShortcutIcon({ className = "h-6 w-6" }: { className?: string }) {
       <path d="M12.5 8.5l3 3" strokeLinecap="round" />
       <circle cx="7.5" cy="7.5" r="2.25" />
       <path d="M16.5 16.5l2 2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function EncountersShortcutIcon({
-  className = "h-6 w-6",
-}: {
-  className?: string;
-}) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      aria-hidden="true"
-    >
-      <path d="M4 7h16M4 12h10M4 17h13" strokeLinecap="round" />
-      <circle cx="18.5" cy="12" r="2.25" />
     </svg>
   );
 }
@@ -965,9 +948,9 @@ export function TrainerBoard({
       icon: <SeasonStatsToolIcon className="h-6 w-6" />,
     },
     {
-      href: `${leagueBoardHref}/encounters`,
-      label: "Encounters",
-      icon: <EncountersShortcutIcon />,
+      href: catchMapHref(challengeSlug),
+      label: "Catch Map",
+      icon: <CatchMapToolIcon className="h-6 w-6" />,
     },
   ] as const;
 
