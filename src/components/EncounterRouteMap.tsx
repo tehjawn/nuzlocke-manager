@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -173,11 +174,10 @@ export function EncounterRouteMap({
     <svg
       aria-label="Hoenn Catch Map"
       className="block h-auto w-full max-w-full"
-      role="img"
+      role="group"
       viewBox={HOENN_MAP_VIEWBOX}
       preserveAspectRatio="xMidYMid meet"
     >
-      <title>Catch Map</title>
       <image
         href={HOENN_MAP_IMAGE}
         height="360"
@@ -297,10 +297,10 @@ export function EncounterRouteMap({
         </label>
       </div>
 
-      {/* Mobile: checklist first. Desktop: map | panel. */}
+      {/* Panel first in DOM for keyboard/mobile; map left on desktop. */}
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(15rem,0.85fr)]">
-        <div className="order-2 min-w-0 lg:order-1">{mapBlock}</div>
-        <div className="order-1 min-w-0 lg:order-2">{panelBlock}</div>
+        <div className="min-w-0 lg:col-start-2">{panelBlock}</div>
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">{mapBlock}</div>
       </div>
 
       {unmapped.length > 0 && (
@@ -341,6 +341,8 @@ function MapViewport({
   hoverTooltip: MapHoverTooltip | null;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
+  const rectRef = useRef<DOMRect | null>(null);
+  const frameRef = useRef<number | null>(null);
   const [pointer, setPointer] = useState<{
     x: number;
     y: number;
@@ -348,18 +350,43 @@ function MapViewport({
     stageH: number;
   } | null>(null);
 
+  function clearPointerTracking() {
+    if (frameRef.current != null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+    rectRef.current = null;
+    setPointer(null);
+  }
+
   function updatePointer(clientX: number, clientY: number) {
     const stage = stageRef.current;
     if (!stage) return;
-    const rect = stage.getBoundingClientRect();
+    const rect = rectRef.current ?? stage.getBoundingClientRect();
+    rectRef.current = rect;
     if (rect.width <= 0 || rect.height <= 0) return;
-    setPointer({
+    const next = {
       x: Math.min(Math.max(clientX - rect.left, 0), rect.width),
       y: Math.min(Math.max(clientY - rect.top, 0), rect.height),
       stageW: rect.width,
       stageH: rect.height,
+    };
+    if (frameRef.current != null) cancelAnimationFrame(frameRef.current);
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      setPointer(next);
     });
   }
+
+  useEffect(
+    () => () => {
+      if (frameRef.current != null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    },
+    [],
+  );
 
   const tooltipPos =
     hoverTooltip && pointer
@@ -378,7 +405,7 @@ function MapViewport({
         title={magnify ? "Magnifier on" : "Magnifier"}
         onClick={() => {
           onMagnifyChange(!magnify);
-          setPointer(null);
+          clearPointerTracking();
         }}
         className={`absolute right-2 top-2 z-20 inline-flex size-8 items-center justify-center rounded-md border shadow-sm transition-colors ${
           magnify
@@ -393,25 +420,22 @@ function MapViewport({
         ref={stageRef}
         className={`relative overflow-hidden ${magnify ? "cursor-crosshair" : ""}`}
         data-testid="encounter-map-stage"
-        onMouseLeave={() => setPointer(null)}
-        onMouseMove={(event) => {
+        onPointerLeave={clearPointerTracking}
+        onPointerMove={(event) => {
           updatePointer(event.clientX, event.clientY);
         }}
       >
         <div
           className={magnify ? "will-change-transform" : undefined}
           style={
-            magnify && pointer
+            magnify
               ? {
                   transform: `scale(${MAP_MAGNIFY_SCALE})`,
-                  transformOrigin: `${pointer.x}px ${pointer.y}px`,
+                  transformOrigin: pointer
+                    ? `${pointer.x}px ${pointer.y}px`
+                    : "50% 50%",
                 }
-              : magnify
-                ? {
-                    transform: `scale(${MAP_MAGNIFY_SCALE})`,
-                    transformOrigin: "50% 50%",
-                  }
-                : undefined
+              : undefined
           }
         >
           {mapSvg}
@@ -611,13 +635,14 @@ function RegionShape({
         : status === "unclaimed" || hatchOnly
           ? 1.5
           : 2;
-  const dash = selected
-    ? undefined
-    : matchHighlight
-      ? "4 3"
-      : !hovered && (status === "unclaimed" || hatchOnly)
-        ? "3.5 2.5"
-        : undefined;
+  // Match dashes live in `.claim-map-region--match` CSS (keeps march offset in sync).
+  const dash =
+    !selected &&
+    !matchHighlight &&
+    !hovered &&
+    (status === "unclaimed" || hatchOnly)
+      ? "3.5 2.5"
+      : undefined;
 
   const statusText = hatchOnly
     ? mapStatusFilterLabel("no-wilds")
@@ -631,7 +656,7 @@ function RegionShape({
     strokeLinejoin: "round" as const,
     opacity: dimmed && !hovered ? 0.18 : dimmed && hovered ? 0.55 : 1,
     className: [
-      "cursor-pointer focus:outline-none focus-visible:stroke-[var(--ink)]",
+      "cursor-pointer focus:outline-none focus-visible:stroke-[var(--ink)] focus-visible:opacity-100",
       pulse ? "claim-map-region--pulse" : "",
       matchHighlight && !hovered ? "claim-map-region--match" : "",
       !pulse
@@ -839,10 +864,12 @@ function ZoneDetail({
         <button
           type="button"
           onClick={onClear}
+          aria-label={`Back to ${backLabel}`}
           className="text-[11px] font-semibold text-interactive hover:underline"
           data-testid="encounter-map-clear-zone"
         >
-          ← {backLabel}
+          <span aria-hidden="true">← </span>
+          {backLabel}
         </button>
 
         <p className="text-[11px] leading-snug text-muted">
