@@ -133,6 +133,14 @@ export function EncounterRouteMap({
 
   const selected =
     zoneStatuses.find((entry) => entry.zone.id === selectedId) ?? null;
+  const hovered =
+    zoneStatuses.find((entry) => entry.zone.id === hoveredId) ?? null;
+  const hoverTooltip = hovered
+    ? {
+        title: hovered.zone.name,
+        subtitle: regionTooltipSubtitle(hovered),
+      }
+    : null;
   const unmapped = useMemo(() => {
     const labels = unmappedOpenCatchRoutes();
     if (!hidePostGame) return labels;
@@ -206,6 +214,7 @@ export function EncounterRouteMap({
 
   const mapBlock = (
     <MapViewport
+      hoverTooltip={hoverTooltip}
       magnify={magnify}
       onMagnifyChange={setMagnify}
       mapSvg={mapSvg}
@@ -306,28 +315,56 @@ export function EncounterRouteMap({
 /** In-place map zoom — scale the map; cursor sets the magnification center. */
 const MAP_MAGNIFY_SCALE = 2.4;
 
+type MapHoverTooltip = {
+  title: string;
+  subtitle: string | null;
+};
+
+function regionTooltipSubtitle(entry: MapZoneStatus): string | null {
+  const hatchOnly =
+    entry.status === "empty" && zoneHasHatchSafe(entry);
+  if (hatchOnly) return mapStatusFilterLabel("no-wilds");
+  const slotTotal = entry.claimedOpenSlots + entry.openSlots;
+  if (slotTotal <= 0) return mapStatusLabel(entry.status);
+  return `${mapStatusLabel(entry.status)} · ${entry.claimedOpenSlots}/${slotTotal}`;
+}
+
 function MapViewport({
   magnify,
   onMagnifyChange,
   mapSvg,
+  hoverTooltip,
 }: {
   magnify: boolean;
   onMagnifyChange: (next: boolean) => void;
   mapSvg: ReactNode;
+  hoverTooltip: MapHoverTooltip | null;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
-  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
+  const [pointer, setPointer] = useState<{
+    x: number;
+    y: number;
+    stageW: number;
+    stageH: number;
+  } | null>(null);
 
-  function updateOrigin(clientX: number, clientY: number) {
+  function updatePointer(clientX: number, clientY: number) {
     const stage = stageRef.current;
     if (!stage) return;
     const rect = stage.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
-    setOrigin({
+    setPointer({
       x: Math.min(Math.max(clientX - rect.left, 0), rect.width),
       y: Math.min(Math.max(clientY - rect.top, 0), rect.height),
+      stageW: rect.width,
+      stageH: rect.height,
     });
   }
+
+  const tooltipPos =
+    hoverTooltip && pointer
+      ? clampTooltipPosition(pointer.x + 14, pointer.y + 14, pointer.stageW, pointer.stageH)
+      : null;
 
   return (
     <div className="relative min-w-0 overflow-hidden rounded-md border border-frame/40 bg-[color-mix(in_srgb,var(--interactive)_10%,var(--surface))] p-1">
@@ -341,7 +378,7 @@ function MapViewport({
         title={magnify ? "Magnifier on" : "Magnifier"}
         onClick={() => {
           onMagnifyChange(!magnify);
-          setOrigin(null);
+          setPointer(null);
         }}
         className={`absolute right-2 top-2 z-20 inline-flex size-8 items-center justify-center rounded-md border shadow-sm transition-colors ${
           magnify
@@ -356,19 +393,18 @@ function MapViewport({
         ref={stageRef}
         className={`relative overflow-hidden ${magnify ? "cursor-crosshair" : ""}`}
         data-testid="encounter-map-stage"
-        onMouseLeave={() => setOrigin(null)}
+        onMouseLeave={() => setPointer(null)}
         onMouseMove={(event) => {
-          if (!magnify) return;
-          updateOrigin(event.clientX, event.clientY);
+          updatePointer(event.clientX, event.clientY);
         }}
       >
         <div
           className={magnify ? "will-change-transform" : undefined}
           style={
-            magnify && origin
+            magnify && pointer
               ? {
                   transform: `scale(${MAP_MAGNIFY_SCALE})`,
-                  transformOrigin: `${origin.x}px ${origin.y}px`,
+                  transformOrigin: `${pointer.x}px ${pointer.y}px`,
                 }
               : magnify
                 ? {
@@ -380,9 +416,42 @@ function MapViewport({
         >
           {mapSvg}
         </div>
+
+        {hoverTooltip && tooltipPos && (
+          <div
+            role="tooltip"
+            data-testid="encounter-map-tooltip"
+            className="pointer-events-none absolute z-30 max-w-[14rem] rounded-md border border-frame/60 bg-surface/95 px-2.5 py-1.5 shadow-md backdrop-blur-sm"
+            style={{ left: tooltipPos.x, top: tooltipPos.y }}
+          >
+            <p className="text-xs font-semibold leading-snug text-ink">
+              {hoverTooltip.title}
+            </p>
+            {hoverTooltip.subtitle && (
+              <p className="mt-0.5 text-[10px] font-semibold leading-snug text-muted">
+                {hoverTooltip.subtitle}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+function clampTooltipPosition(
+  x: number,
+  y: number,
+  stageW: number,
+  stageH: number,
+): { x: number; y: number } {
+  const pad = 8;
+  const estW = 160;
+  const estH = 44;
+  return {
+    x: Math.min(Math.max(x, pad), Math.max(pad, stageW - estW - pad)),
+    y: Math.min(Math.max(y, pad), Math.max(pad, stageH - estH - pad)),
+  };
 }
 
 function MagnifierIcon({ className }: { className?: string }) {
