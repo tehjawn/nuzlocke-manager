@@ -391,7 +391,7 @@ export const HOENN_MAP_REGIONS: readonly HoennMapRegion[] = [
   },
   {
     id: "mt-chimney",
-    name: "Mt.. Chimney",
+    name: "Mt. Chimney",
     labels: ["Mt. Chimney"],
     shape: { type: "rect", x: 157.75, y: 56.75, width: 35.75, height: 35.5 },
     mapsec: 56,
