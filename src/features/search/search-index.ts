@@ -236,6 +236,7 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
         "encounters",
         "routes",
         "still open",
+        "untouched",
         "claimed",
         "unclaimed",
         "open slots",

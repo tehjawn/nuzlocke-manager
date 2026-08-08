@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -51,6 +52,24 @@ export function frameCountTitle(label: string, count: number): ReactNode {
   );
 }
 
+/**
+ * Mid-page disclosures (Reserves / R.I.P.) insert height above later siblings.
+ * Browser scroll anchoring then walks the viewport down the new content. Pin the
+ * summary's viewport Y across open + deferred hydrate so the header stays put
+ * (same feel as Encountered, which only grows the document end).
+ */
+function restoreSummaryScrollPin(
+  summary: HTMLElement | null,
+  pinRef: { current: number | null },
+) {
+  if (!summary || pinRef.current == null) return;
+  const delta = summary.getBoundingClientRect().top - pinRef.current;
+  if (Math.abs(delta) > 0.5) {
+    window.scrollBy(0, delta);
+  }
+  pinRef.current = summary.getBoundingClientRect().top;
+}
+
 export function Frame({
   title,
   actions,
@@ -72,6 +91,8 @@ export function Frame({
   const controlled = openControlled !== undefined;
   const open = controlled ? openControlled : openUncontrolled;
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  const summaryRef = useRef<HTMLElement | null>(null);
+  const summaryPinRef = useRef<number | null>(null);
   const dataBg = cardBackgroundDataAttr(cardBackgroundKey);
   const customUrl = cardBackgroundCustomUrl(cardBackgroundKey);
   const style = customUrl
@@ -89,6 +110,23 @@ export function Frame({
     if (node && node.open !== open) node.open = open;
   }, [controlled, open]);
 
+  // Capture summary Y before the next commit that changes open/body; restore
+  // after layout so skeleton → strip (and re-open with cached data) don't jump.
+  useLayoutEffect(() => {
+    if (!collapsible) return;
+    if (!open) {
+      summaryPinRef.current = null;
+      return;
+    }
+    restoreSummaryScrollPin(summaryRef.current, summaryPinRef);
+    return () => {
+      const summary = summaryRef.current;
+      if (summary) {
+        summaryPinRef.current = summary.getBoundingClientRect().top;
+      }
+    };
+  }, [collapsible, open, children]);
+
   const shellClass = `gba-frame overflow-hidden ${
     tone === "rip" ? "bg-rip" : ""
   } ${className}`;
@@ -99,10 +137,24 @@ export function Frame({
     </div>
   ) : null;
 
+  function captureSummaryPin() {
+    const summary = summaryRef.current;
+    if (summary) {
+      summaryPinRef.current = summary.getBoundingClientRect().top;
+    }
+  }
+
   function handleToggle(event: ToggleEvent<HTMLDetailsElement>) {
     const next = event.currentTarget.open;
     if (!controlled) setOpenUncontrolled(next);
     onOpenChange?.(next);
+    // Native open already grew the body (and may have scroll-anchored) before
+    // React re-renders — correct synchronously so the first paint stays put.
+    if (next) {
+      restoreSummaryScrollPin(summaryRef.current, summaryPinRef);
+    } else {
+      summaryPinRef.current = null;
+    }
   }
 
   if (collapsible && title) {
@@ -112,12 +164,16 @@ export function Frame({
         data-tour={dataTour}
         data-card-bg={dataBg}
         style={style}
-        className={`${shellClass} open:[&_.frame-chevron]:rotate-90`}
+        className={`${shellClass} [overflow-anchor:none] open:[&_.frame-chevron]:rotate-90`}
         open={open}
         onToggle={handleToggle}
       >
         {overlay}
-        <summary className="gba-frame-title relative z-[1] flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base [&::-webkit-details-marker]:hidden">
+        <summary
+          ref={summaryRef}
+          className="gba-frame-title relative z-[1] flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm sm:text-base [&::-webkit-details-marker]:hidden"
+          onClickCapture={captureSummaryPin}
+        >
           <span className="flex min-w-0 items-center gap-2">
             <span
               aria-hidden

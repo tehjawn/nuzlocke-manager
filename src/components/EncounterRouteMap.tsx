@@ -12,6 +12,7 @@ import {
 import { Frame } from "@/components/Frame";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { CatchRouteEncounter } from "@/data/catch-routes";
+import { catchVisitOrderIndex } from "@/data/hoenn-catch-visit-order";
 import {
   HOENN_MAP_IMAGE,
   HOENN_MAP_VIEWBOX,
@@ -54,7 +55,7 @@ type EncounterRouteMapProps = {
 
 /**
  * Status reads primarily from stroke; fills stay light so route art shows through.
- * Still open = outline only · partial/done = soft wash + strong border.
+ * Untouched = outline only · partial/done = soft wash + strong border.
  */
 const STATUS_FILL: Record<MapRouteClaimStatus, string> = {
   unclaimed: "color-mix(in srgb, var(--ink) 6%, transparent)",
@@ -85,10 +86,15 @@ const SELECTED_STROKE: Record<MapRouteClaimStatus, string> = {
   empty: "var(--danger)",
 };
 
-const HATCH_FILL = "color-mix(in srgb, var(--interactive) 14%, transparent)";
-const HATCH_STROKE = "color-mix(in srgb, var(--interactive) 55%, var(--ink))";
-const SELECTED_HATCH_FILL = "var(--interactive)";
-const SELECTED_HATCH_STROKE = "var(--interactive)";
+/**
+ * Egg / gift — bright cyan. Distinct from green (done), gold (partial), and
+ * ink (untouched); stronger wash so small towns stay readable on the art.
+ */
+const HATCH_COLOR = "#67e8f9";
+const HATCH_FILL = `color-mix(in srgb, ${HATCH_COLOR} 48%, transparent)`;
+const HATCH_STROKE = "#22d3ee";
+const SELECTED_HATCH_FILL = "#22d3ee";
+const SELECTED_HATCH_STROKE = "#67e8f9";
 
 /** Solid color for selected pulse (map wash + panel status dot). */
 function selectedStatusColor(
@@ -116,7 +122,7 @@ export function EncounterRouteMap({
     () => myTrainerId ?? routeStatuses[0]?.trainerId ?? "",
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  /** Default Still open — land as a next-catch planner. */
+  /** Default Untouched — land as a next-catch planner. */
   const [statusFilter, setStatusFilter] = useState<MapStatusFilter | null>(
     "unclaimed",
   );
@@ -139,11 +145,6 @@ export function EncounterRouteMap({
   );
 
   const filter = useMemo(() => ({ status: statusFilter }), [statusFilter]);
-  /** Checklist stays useful when the map filter is cleared — still show opens. */
-  const listFilter = useMemo(
-    () => ({ status: statusFilter ?? ("unclaimed" as const) }),
-    [statusFilter],
-  );
 
   const statusCounts = useMemo(() => {
     const counts = {} as Record<MapStatusFilter, number>;
@@ -154,8 +155,8 @@ export function EncounterRouteMap({
   }, [zoneStatuses]);
 
   const openSlots = useMemo(
-    () => listOpenSlotsForMap(zoneStatuses, listFilter),
-    [zoneStatuses, listFilter],
+    () => listOpenSlotsForMap(zoneStatuses, filter),
+    [zoneStatuses, filter],
   );
 
   /** Paint large regions first; small towns stay on top for clicks. */
@@ -186,7 +187,6 @@ export function EncounterRouteMap({
     return labels.filter((label) => !isPostGameCatchRouteLabel(label));
   }, [hidePostGame]);
   const planningActive = statusFilter != null;
-  const panelFilter = listFilter.status;
 
   function toggleStatus(status: MapStatusFilter) {
     setSelectedId(null);
@@ -267,11 +267,15 @@ export function EncounterRouteMap({
       selected={selected}
       slug={slug}
       onClear={() => setSelectedId(null)}
-      backLabel={mapStatusFilterLabel(panelFilter)}
+      backLabel={
+        statusFilter != null
+          ? mapStatusFilterLabel(statusFilter)
+          : "All catches"
+      }
     />
   ) : (
     <OpenSlotsPanel
-      filter={panelFilter}
+      filter={statusFilter}
       focusHandle={focusHandle}
       mapFilterCleared={statusFilter == null}
       slots={openSlots}
@@ -656,7 +660,7 @@ function RegionShape({
           : SELECTED_STROKE[status]
       : hovered
         ? hatchOnly
-          ? "var(--interactive)"
+          ? SELECTED_HATCH_STROKE
           : status === "claimed"
             ? "var(--accent-deep)"
             : status === "partial"
@@ -669,7 +673,7 @@ function RegionShape({
     ? selectedStatusColor(status, hatchOnly)
     : hovered
       ? hatchOnly
-        ? "color-mix(in srgb, var(--interactive) 42%, transparent)"
+        ? `color-mix(in srgb, ${HATCH_COLOR} 55%, transparent)`
         : status === "claimed"
           ? "color-mix(in srgb, var(--accent) 55%, transparent)"
           : status === "partial"
@@ -684,7 +688,7 @@ function RegionShape({
       ? 3
       : matchHighlight
         ? 2.5
-        : status === "unclaimed" || hatchOnly
+        : status === "unclaimed"
           ? 1.5
           : 2;
   // Match dashes live in `.claim-map-region--match` CSS (keeps march offset in sync).
@@ -774,17 +778,21 @@ function OpenSlotsPanel({
   onSelectZone,
 }: {
   slots: MapOpenSlot[];
-  filter: MapStatusFilter;
+  filter: MapStatusFilter | null;
   focusHandle: string | null;
   mapFilterCleared: boolean;
   slug: string;
   onSelectZone: (zoneId: string) => void;
 }) {
-  const title = mapStatusFilterLabel(filter);
-  const openLeft =
-    filter === "partial"
-      ? slots.filter((slot) => !slot.focusClaimed).length
-      : null;
+  const title =
+    filter != null ? mapStatusFilterLabel(filter) : "All catches";
+  // Catch progress is wild open slots only (same unit as legend chips).
+  const wildSlots = slots.filter((slot) => !slot.hatchSafe);
+  const openWildCount = wildSlots.filter((slot) => !slot.focusClaimed).length;
+  const countLabel =
+    filter == null
+      ? `${openWildCount} Left / ${wildSlots.length} Total`
+      : String(slots.length);
 
   return (
     <Frame
@@ -792,21 +800,21 @@ function OpenSlotsPanel({
       title={title}
       actions={
         <span className="text-[11px] font-semibold tabular-nums text-white/80">
-          {slots.length}
+          {countLabel}
         </span>
       }
     >
       <div className="space-y-2">
         <p className="text-[11px] leading-snug text-muted">
           {mapFilterCleared
-            ? "Map shows all statuses"
+            ? "Wild catch slots in story order — open first (egg/gift listed too)"
             : filter === "no-wilds"
-              ? "Egg / gift spots — no wild slot spent"
-              : filter === "partial" && openLeft != null
-                ? `${openLeft} still open across partial zones`
+              ? "Egg / gift spots in story order"
+              : filter === "partial"
+                ? "Open wild slots on partial zones"
                 : filter === "claimed"
                   ? "Caught or catch-failed wild slots"
-                  : "Still open — tap to jump"}
+                  : "Untouched wild slots in story order — tap to jump"}
           {focusHandle ? ` · ${focusHandle}` : ""}.
         </p>
 
@@ -864,6 +872,7 @@ function OpenSlotsPanel({
                         focusClaims={slot.focusClaims}
                         focusFlagClaims={slot.focusFlagClaims}
                         hatchSafe={slot.hatchSafe}
+                        seed={slot.label}
                         slug={slug}
                       />
                     )}
@@ -873,9 +882,11 @@ function OpenSlotsPanel({
           </ul>
         ) : (
           <p className="text-sm text-muted">
-            {filter === "unclaimed"
-              ? "No open catches left on the map."
-              : "No spots match this filter."}
+            {filter == null
+              ? "No spots on the map."
+              : filter === "unclaimed"
+                ? "No untouched catches left on the map."
+                : "No spots match this filter."}
           </p>
         )}
       </div>
@@ -1002,7 +1013,7 @@ function RowStatusBadge({
       : "Open"
     : claimed
       ? catchFailed
-        ? "Catch failed!"
+        ? "It got away!"
         : "Caught"
       : "Open";
   return (
@@ -1025,14 +1036,18 @@ function RowStatusBadge({
   );
 }
 
-/** Display order: unclaimed first, then claimed (stable within each bucket). */
+/** Display order: unclaimed first, then typical visit order. */
 function sortRowsUnclaimedFirst(rows: MapRouteRow[]): MapRouteRow[] {
   return rows
     .map((row, index) => ({ row, index }))
     .sort((a, b) => {
       const rankA = a.row.focusClaimed ? 1 : 0;
       const rankB = b.row.focusClaimed ? 1 : 0;
-      return rankA !== rankB ? rankA - rankB : a.index - b.index;
+      if (rankA !== rankB) return rankA - rankB;
+      const visit =
+        catchVisitOrderIndex(a.row.label) - catchVisitOrderIndex(b.row.label);
+      if (visit !== 0) return visit;
+      return a.index - b.index;
     })
     .map(({ row }) => row);
 }
@@ -1088,6 +1103,7 @@ function RouteRowDetail({
           focusClaims={row.focusClaims}
           focusFlagClaims={row.focusFlagClaims}
           hatchSafe={hatchSafe}
+          seed={row.label}
           slug={slug}
         />
       )}
@@ -1095,11 +1111,23 @@ function RouteRowDetail({
   );
 }
 
+/** Face of a failed catch with no species logged — stable per seed. */
+const GOT_AWAY_EMOJIS = ["🥲", "😭", "🫥", "👻", "?"] as const;
+
+function gotAwayEmoji(seed: string): (typeof GOT_AWAY_EMOJIS)[number] {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  }
+  return GOT_AWAY_EMOJIS[Math.abs(hash) % GOT_AWAY_EMOJIS.length]!;
+}
+
 function FocusEncounterStrip({
   claimed,
   focusClaims,
   focusFlagClaims,
   hatchSafe,
+  seed,
   slug,
 }: {
   claimed: boolean;
@@ -1107,6 +1135,8 @@ function FocusEncounterStrip({
   focusClaims: MapRouteRow["focusClaims"];
   focusFlagClaims: MapRouteRow["focusFlagClaims"];
   hatchSafe: boolean;
+  /** Stable id for picking a got-away face (route label). */
+  seed: string;
   slug: string;
 }) {
   const showUnknown =
@@ -1118,11 +1148,11 @@ function FocusEncounterStrip({
     <div className="flex shrink-0 flex-col items-end justify-center gap-1">
       {showUnknown && (
         <span
-          className="flex h-8 w-8 items-center justify-center rounded-sm border border-dashed border-accent/40 bg-surface text-sm font-semibold text-muted"
-          title="Catch failed — no species logged (fled, failed, or released)"
-          aria-label="Catch failed — no species logged"
+          className="flex h-8 w-8 items-center justify-center rounded-sm border border-dashed border-accent/40 bg-surface text-base leading-none"
+          title="It got away — no species logged (fled, failed, or released)"
+          aria-label="It got away — no species logged"
         >
-          ?
+          {gotAwayEmoji(seed)}
         </span>
       )}
       {focusClaims.length > 0 && (

@@ -6,6 +6,7 @@ import {
   type CatchRouteEncounter,
   type CatchRouteKind,
 } from "@/data/catch-routes";
+import { catchVisitOrderIndex } from "@/data/hoenn-catch-visit-order";
 import {
   HOENN_MAP_LABELS,
   HOENN_MAP_REGIONS,
@@ -116,23 +117,36 @@ export const POST_GAME_MAP_ZONE_IDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Catch-route labels that are post-Champion (or ticket/BP gated) for a
- * League-capped nuzlocke. Includes labels folded onto story parent zones.
+ * Catch-route labels that are post-Champion (National Dex / Sealed Chamber /
+ * ticket / BP gated) for a League-capped nuzlocke. Folded onto story parent
+ * zones on the map — filtered out when “Hide post-game areas” is on.
+ *
+ * Not included: mid-story spots that also host later ME legendary chains
+ * (Meteor Falls, Magma Hideout, New Mauville, Shoal Cave, Victory Road, …).
  */
 export const POST_GAME_CATCH_ROUTE_LABELS: ReadonlySet<string> = new Set([
+  // Regi unlock + classic / ME chambers (National Dex + Sealed Chamber)
+  "Sealed Chamber",
+  "Desert Ruins",
+  "Island Cave",
+  "Ancient Tomb",
+  "Route 110 East", // ME Regieleki chamber (aliases Route 101 bit)
+  "Route 132 North", // ME Regidrago chamber (aliases Route 101 bit)
+
+  // Optional / ticket / Frontier
   "Battle Frontier",
   "Southern Island",
-  "Trainer Hill",
-  "Altering Cave",
-  "Artisan Cave",
-  "Scorched Slab",
-  "Desert Underpass",
-  "Mirage Island",
   "Birth Island",
   "Faraway Island",
   "Navel Rock",
   "Marine Cave",
   "Terra Cave",
+  "Mirage Island",
+  "Trainer Hill",
+  "Altering Cave",
+  "Artisan Cave",
+  "Desert Underpass",
+  "Scorched Slab", // ME post-game Zapdos chain; also aliases Route 101 bit
 ]);
 
 export function isPostGameMapZone(zoneId: string): boolean {
@@ -313,6 +327,10 @@ function zoneMatchesStatusFilter(
   status: MapStatusFilter,
 ): boolean {
   if (status === "no-wilds") return zoneHasHatchSafe(zone);
+  // Untouched / Done are fully open / fully spent zones.
+  // Leftovers on mixed zones live under Partial only.
+  if (status === "unclaimed") return zone.status === "unclaimed";
+  if (status === "claimed") return zone.status === "claimed";
   return zone.status === status;
 }
 
@@ -351,10 +369,16 @@ export function listOpenSlotsForMap(
 ): MapOpenSlot[] {
   const slots: MapOpenSlot[] = [];
   const status = filter.status;
-  if (!status) return slots;
 
   for (const zone of zones) {
     if (!zoneMatchesMapFilter(zone, filter)) continue;
+
+    // No legend chip: every wild + hatch/gift row on the map.
+    if (!status) {
+      for (const row of zone.rows) pushSlot(slots, zone, row);
+      for (const row of zone.hatchRows) pushSlot(slots, zone, row);
+      continue;
+    }
 
     if (status === "no-wilds") {
       for (const row of zone.hatchRows) pushSlot(slots, zone, row);
@@ -366,22 +390,53 @@ export function listOpenSlotsForMap(
         if (row.focusClaimed) pushSlot(slots, zone, row);
         continue;
       }
-      // unclaimed / partial zones: list still-open wild rows
+      // Untouched / partial: leftover wild rows in matching zones
       if (!row.focusClaimed) pushSlot(slots, zone, row);
     }
   }
+
+  // Story visit order; cleared filter keeps still-open catches on top.
+  slots.sort((a, b) => {
+    if (!status) {
+      const rankA = a.focusClaimed ? 1 : 0;
+      const rankB = b.focusClaimed ? 1 : 0;
+      if (rankA !== rankB) return rankA - rankB;
+    }
+    const visit =
+      catchVisitOrderIndex(a.label) - catchVisitOrderIndex(b.label);
+    if (visit !== 0) return visit;
+    return a.label.localeCompare(b.label);
+  });
   return slots;
 }
 
-/** Counts for legend status chips. */
+/**
+ * Legend chip counts — catch filters use wild open-slot rows (not zones) so
+ * the chip matches the sidebar header. Egg/gift uses hatch-safe rows.
+ */
 export function countZonesForStatusFilter(
   zones: MapZoneStatus[],
   status: MapStatusFilter,
 ): number {
   if (status === "no-wilds") {
-    return zones.filter((zone) => zoneHasHatchSafe(zone)).length;
+    return zones.reduce((sum, zone) => sum + zone.hatchRows.length, 0);
   }
-  return zones.filter((zone) => zone.status === status).length;
+  if (status === "unclaimed") {
+    return zones
+      .filter((zone) => zone.status === "unclaimed")
+      .reduce((sum, zone) => sum + zone.openSlots, 0);
+  }
+  if (status === "claimed") {
+    return zones
+      .filter((zone) => zone.status === "claimed")
+      .reduce((sum, zone) => sum + zone.claimedOpenSlots, 0);
+  }
+  if (status === "partial") {
+    return zones
+      .filter((zone) => zone.status === "partial")
+      .reduce((sum, zone) => sum + zone.openSlots, 0);
+  }
+  return 0;
 }
 
 /**
@@ -407,7 +462,7 @@ export function mapStatusLabel(status: MapRouteClaimStatus): string {
     case "partial":
       return "Partial";
     case "unclaimed":
-      return "Still open";
+      return "Untouched";
     case "empty":
       return "No wild catch";
     default:
@@ -419,7 +474,7 @@ export function mapStatusLabel(status: MapRouteClaimStatus): string {
 export function mapStatusFilterLabel(status: MapStatusFilter): string {
   switch (status) {
     case "unclaimed":
-      return "Still open";
+      return "Untouched";
     case "partial":
       return "Partial";
     case "claimed":
