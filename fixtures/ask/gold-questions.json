@@ -19,25 +19,25 @@
     "id": "rank-strongest-board",
     "question": "What are the strongest Pokémon?",
     "expectRoute": "deterministic",
-    "mustInclude": ["Swampert"]
+    "mustInclude": ["Strongest", "Swampert"]
   },
   {
     "id": "rank-weakest-board",
     "question": "Who is the weakest Pokémon?",
     "expectRoute": "deterministic",
-    "mustInclude": ["Zigzagoon"]
+    "mustInclude": ["Weakest", "Zigzagoon"]
   },
   {
     "id": "rank-my-team",
     "question": "What are the strongest on my team?",
     "expectRoute": "deterministic",
-    "mustInclude": ["Swampert"]
+    "mustInclude": ["Strongest", "Swampert"]
   },
   {
     "id": "rank-handle-team",
     "question": "Strongest on ash's team?",
     "expectRoute": "deterministic",
-    "mustInclude": ["Swampert"]
+    "mustInclude": ["Strongest", "Swampert"]
   },
   {
     "id": "list-my-pokemon",

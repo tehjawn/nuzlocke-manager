@@ -82,6 +82,8 @@ function isGeminiConfigured(): boolean {
   return Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim());
 }
 
+const GEMINI_TIMEOUT_MS = 30_000;
+
 async function askGeminiEval(
   question: string,
   snapshot: string | null,
@@ -93,6 +95,7 @@ async function askGeminiEval(
       prompt: buildAskUserPrompt(question, snapshot),
       maxOutputTokens: 400,
       maxRetries: 1,
+      abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
     });
     const text = result.text.trim();
     if (!text) return { ok: false, error: "empty response" };
@@ -107,6 +110,9 @@ async function askGeminiEval(
 
 async function main() {
   const gold = loadGold();
+  if (!gold.length) {
+    throw new Error("fixtures/ask/gold-questions.json is empty");
+  }
   const season = buildEvalSeason();
   const geminiOn = isGeminiConfigured();
 
@@ -135,7 +141,7 @@ async function main() {
       mustTotal += 1;
       const pass = includesAll(local.text, row.mustInclude);
       if (pass) mustOk += 1;
-      must = pass ? "ok" : `fail(${row.mustInclude.join("|")})`;
+      must = pass ? "ok" : `fail(${row.mustInclude.join(", ")})`;
     } else if (row.mustInclude?.length && row.expectRoute === "generative") {
       must = "n/a-local";
     }
@@ -157,7 +163,7 @@ async function main() {
           mustTotal += 1;
           const pass = includesAll(result.text, row.mustInclude);
           if (pass) mustOk += 1;
-          must = pass ? "ok" : `fail(${row.mustInclude.join("|")})`;
+          must = pass ? "ok" : `fail(${row.mustInclude.join(", ")})`;
         }
       } else {
         geminiSnippet = clip(result.error);
@@ -196,7 +202,7 @@ async function main() {
 - Generative rows are Gemini-only for rules / meta / open-ended chat.
 `);
 
-  if (localOk < gold.length) {
+  if (localOk < gold.length || mustOk < mustTotal) {
     process.exitCode = 1;
   }
 }

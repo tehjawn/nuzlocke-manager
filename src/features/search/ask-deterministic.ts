@@ -39,6 +39,10 @@ function resolveMyTrainer(
   return season.trainers.find((t) => t.id === season.myTrainerId) ?? null;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /** Match a trainer handle mentioned in the question (case-insensitive). */
 function findMentionedTrainer(
   normalized: string,
@@ -49,7 +53,11 @@ function findMentionedTrainer(
   for (const trainer of season.trainers) {
     const handle = trainer.handle.trim().toLowerCase();
     if (handle.length < 2) continue;
-    if (!normalized.includes(handle)) continue;
+    // Word-ish boundaries so "ash" doesn't match "cash" / "ivysaur".
+    const boundary = new RegExp(
+      `(?:^|[^a-z0-9])${escapeRegExp(handle)}(?:[^a-z0-9]|$)`,
+    );
+    if (!boundary.test(normalized)) continue;
     if (handle.length > bestLen) {
       best = trainer;
       bestLen = handle.length;
@@ -243,9 +251,13 @@ function buildLevelRanking(
     );
 
   const adj = ascending ? "weakest" : "strongest";
+  const more =
+    pool.length > LIST_LIMIT
+      ? ` Showing ${LIST_LIMIT} of ${pool.length}.`
+      : "";
   return {
     kind: "pokemon_ranking",
-    summaryMarkdown: `**${adj[0]!.toUpperCase()}${adj.slice(1)}** living Pokémon ${scope.scopeLabel} (by level).`,
+    summaryMarkdown: `**${adj[0]!.toUpperCase()}${adj.slice(1)}** living Pokémon ${scope.scopeLabel} (by level).${more}`,
     items,
   };
 }
@@ -465,7 +477,9 @@ export function matchDeterministicAsk(
       /\bhow many\b/.test(normalized) &&
       findMentionedTrainer(normalized, season)
     ) {
-      return buildCountAnswer(season, normalized);
+      return (
+        buildCountAnswer(season, normalized) ?? buildBadgeStandings(season)
+      );
     }
     return buildBadgeStandings(season);
   }
