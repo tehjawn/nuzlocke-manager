@@ -1,9 +1,10 @@
 /**
  * Pokémon Showdown sprite path helpers.
  *
- * Browsers load sprites from our same-origin `/api/sprites/…` proxy so
- * intermittent Cloudflare 403s on play.pokemonshowdown.com never hit the UI.
- * Upstream fetches + caching live in the route handler.
+ * Hot-path trainers + item icons are vendored under `/sprites/…` (see
+ * `npm run data:sprites`). The `/api/sprites` proxy remains for animated
+ * GIFs (`ani` / `ani-shiny`) and rare gen5 name fallbacks — Cloudflare
+ * intermittently 403s direct browser hits on play.pokemonshowdown.com.
  */
 
 export const SHOWDOWN_ORIGIN = "https://play.pokemonshowdown.com";

@@ -62,7 +62,8 @@ export async function uploadCustomTextureAction(
         access: "public",
         addRandomSuffix: false,
         allowOverwrite: true,
-        cacheControlMaxAge: 60,
+        // URLs are version-busted with `?v=`; long TTL is safe for overwrites.
+        cacheControlMaxAge: 60 * 60 * 24 * 30,
         contentType: file.type,
         token,
       },

@@ -5,7 +5,8 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Frame } from "@/components/Frame";
 import { ModeTabs } from "@/components/ModeTabs";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { heldItemDescription, heldItemSpriteUrl } from "@/data/pokemon-index";
+import { ItemAtlasIcon } from "@/components/ItemAtlasIcon";
+import { heldItemDescription, heldItemIconStem } from "@/data/pokemon-index";
 import {
   evolutionUsesForItem,
   findItem,
@@ -256,15 +257,9 @@ export function ItemDexPanel({
 
 function ItemIcon({ item, size = 32 }: { item: ModernItem; size?: number }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={heldItemSpriteUrl(item.slug)}
-      alt=""
-      width={size}
-      height={size}
-      className="pixelated shrink-0 object-contain"
-      style={{ width: size, height: size }}
-      decoding="async"
+    <ItemAtlasIcon
+      stem={heldItemIconStem(item.slug)}
+      size={size}
       loading="lazy"
     />
   );

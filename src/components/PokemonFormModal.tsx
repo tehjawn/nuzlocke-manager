@@ -10,9 +10,10 @@ import { PokemonSpriteBrowser } from "@/components/SpriteBrowser";
 import { StatSpreadEditor } from "@/components/StatSpreadEditor";
 import { TypeBadge } from "@/components/TypeBadge";
 import type { PokemonEntry, PokemonSlot } from "@/lib/challenge-types";
+import { ItemAtlasIcon } from "@/components/ItemAtlasIcon";
 import {
   heldItemDescription,
-  heldItemSpriteUrl,
+  heldItemIconStem,
   searchHeldItems,
 } from "@/data/pokemon-index";
 import {
@@ -490,13 +491,10 @@ function PokemonFormModalInner({
                         embedded
                         className="shrink-0"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={heldItemSpriteUrl(form.heldItem)}
-                          alt=""
-                          width={28}
-                          height={28}
-                          className="pixelated h-7 w-7 object-contain"
+                        <ItemAtlasIcon
+                          stem={heldItemIconStem(form.heldItem)}
+                          size={28}
+                          className="h-7 w-7"
                         />
                       </InfoTip>
                     )}
@@ -535,13 +533,10 @@ function PokemonFormModalInner({
                             }}
                             title={item.description ?? undefined}
                           >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={heldItemSpriteUrl(item.slug)}
-                              alt=""
-                              width={24}
-                              height={24}
-                              className="pixelated h-6 w-6 object-contain"
+                            <ItemAtlasIcon
+                              stem={heldItemIconStem(item.slug)}
+                              size={24}
+                              className="h-6 w-6"
                             />
                             <span className="min-w-0 flex-1 truncate">
                               {item.name}

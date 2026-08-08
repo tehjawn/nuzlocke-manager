@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
         hostname: "raw.githubusercontent.com",
         pathname: "/PokeAPI/sprites/**",
       },
-      // Showdown sprites are served via same-origin `/api/sprites` (no remote).
+      // Trainers/itemicons: static `/sprites`. Ani/gen5 fallbacks: `/api/sprites`.
       {
         protocol: "https",
         hostname: "cdn.discordapp.com",
