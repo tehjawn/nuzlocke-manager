@@ -10,8 +10,8 @@ import type { Challenge } from "@/lib/challenge-types";
 import { getChallengeMeta, getChallengeTournament } from "@/lib/challenges";
 import { getPrisma } from "@/lib/db";
 import { listFeedbackForGm } from "@/lib/feedback";
+import { resolveGmConsoleTab } from "@/lib/gm-console-tabs";
 import { getAccessForChallenge } from "@/lib/permissions";
-
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -94,8 +94,8 @@ export default async function GmPage({ params, searchParams }: PageProps) {
             gmInviteCode: secrets?.gmInviteCode ?? null,
           })}
           feedbackSubmissions={feedbackSubmissions}
-          initialTab={query.tab === "feedback" ? "feedback" : "season"}
-          key={query.tab === "feedback" ? "feedback" : "season"}
+          initialTab={resolveGmConsoleTab(query.tab)}
+          key={resolveGmConsoleTab(query.tab)}
         />
       </main>
     </div>

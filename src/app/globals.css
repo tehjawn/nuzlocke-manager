@@ -3986,6 +3986,293 @@ button:disabled,
   }
 }
 
+/* GM Analytics tab (#404) */
+.gm-analytics {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.gm-analytics__sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.gm-analytics__section-btn {
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  border-radius: calc(var(--radius) - 2px);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.gm-analytics__section-btn:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--interactive) 35%, var(--frame));
+}
+
+.gm-analytics__section-btn--active {
+  border-color: color-mix(in srgb, var(--interactive) 40%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 45%, var(--surface));
+  color: var(--ink);
+}
+
+.gm-analytics__section-btn:focus-visible {
+  outline: 2px solid var(--interactive);
+  outline-offset: 1px;
+}
+
+.gm-analytics__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+}
+
+.gm-analytics__section-blurb {
+  margin: 0;
+  flex: 1 1 14rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.gm-analytics__stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.gm-analytics__summary {
+  display: grid;
+  gap: 0.55rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--interactive) 22%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 22%, var(--surface));
+  padding: 0.75rem 0.9rem;
+}
+
+.gm-analytics__counts {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.gm-analytics__callouts {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.gm-analytics__notice {
+  border-radius: var(--radius);
+  border: 1px dashed color-mix(in srgb, var(--frame) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  padding: 0.7rem 0.85rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.gm-analytics__notice-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.gm-analytics__notice p {
+  margin: 0;
+}
+
+.gm-analytics__stat-grid {
+  margin: 0;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+}
+
+.gm-analytics__stat {
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  padding: 0.55rem 0.65rem;
+}
+
+.gm-analytics__stat dt {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gm-analytics__stat dd {
+  margin: 0.2rem 0 0;
+  display: grid;
+  gap: 0.1rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.gm-analytics__stat-hint {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.gm-analytics__sort {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  padding: 0.35rem 0.4rem;
+}
+
+.gm-analytics__sort-label {
+  padding: 0 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.gm-analytics__sort-btn {
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.gm-analytics__sort-btn:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--interactive-soft) 35%, transparent);
+}
+
+.gm-analytics__sort-btn--active {
+  border-color: color-mix(in srgb, var(--interactive) 30%, var(--frame));
+  background: color-mix(in srgb, var(--interactive-soft) 45%, var(--surface));
+  color: var(--ink);
+}
+
+.gm-analytics__sort-btn:focus-visible {
+  outline: 2px solid var(--interactive);
+  outline-offset: 1px;
+}
+
+.gm-analytics__grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .gm-analytics__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.gm-analytics__metric {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.gm-analytics__metric-head {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.gm-analytics__metric-title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.gm-analytics__metric-desc {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.gm-analytics__rank {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.gm-analytics__rank-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid color-mix(in srgb, var(--frame) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  padding: 0.45rem 0.55rem;
+}
+
+.gm-analytics__rank-index {
+  flex: 0 0 1.1rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-align: right;
+}
+
+.gm-analytics__rank-copy {
+  flex: 1 1 8rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.gm-analytics__disclosure {
+  border-top: 1px solid color-mix(in srgb, var(--frame) 75%, transparent);
+  padding-top: 0.65rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.gm-analytics__disclosure summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.gm-analytics__disclosure p {
+  margin: 0.45rem 0 0;
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
 @keyframes gm-console-panel-in {
   from {
     opacity: 0;
