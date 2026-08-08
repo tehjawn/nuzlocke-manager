@@ -15,30 +15,41 @@ import { displayActionError } from "@/lib/action-error-display";
 import type { PokemonSlot } from "@/lib/challenge-types";
 import {
   buildImportSaveReview,
+  encounteredImportHasDelta,
   importReviewPreviewParts,
+  isHighlightReviewStatus,
+  isIdenticalPokemonReview,
+  trainerSyncHasDelta,
+  type ImportDraftReviewStatus,
+  type SaveImportBoardEncounter,
   type SaveImportBoardGrave,
   type SaveImportBoardLiving,
+  type SaveImportBoardTrainer,
 } from "@/lib/import-save-review";
+import { catchGradeFor } from "@/lib/pokemon-grades";
+import { catchTierHasChrome, catchTierTip } from "@/lib/iv-quality";
+import { summarizeEncounterFlagBits } from "@/lib/personal-routes";
 import { resolveMoveNames } from "@/lib/move-names";
 import {
   BadgesIcon,
-  CatchFailedIcon,
+  CaughtIcon,
   MoneyIcon,
   PlayTimeIcon,
   ReviveIcon,
   TrainerNameIcon,
 } from "@/components/trainer-stat-icons";
 
-export type { SaveImportBoardGrave, SaveImportBoardLiving };
+export type {
+  SaveImportBoardEncounter,
+  SaveImportBoardGrave,
+  SaveImportBoardLiving,
+  SaveImportBoardTrainer,
+};
 
 /** Cap matches server import proof limit (under server-action body size). */
 const MAX_SAVE_PROOF_BYTES = 3 * 1024 * 1024;
 /** Parse ceiling — party/box still work from large emulator dumps. */
 const MAX_SAVE_PARSE_BYTES = 32 * 1024 * 1024;
-/** Collapse Encountered by default above this count (scroll budget, not opt-out). */
-const ENCOUNTERED_COLLAPSE_THRESHOLD = 24;
-/** Prefer fullscreen once the review list gets long. */
-const FULLSCREEN_MON_THRESHOLD = 18;
 
 const SAVE_ACCEPT =
   ".state,.sav,.srm,.ss0,.ss1,.ss2,.ss3,.ss4,.ss5,.ss6,.ss7,.ss8,.ss9,.s0,.s1,.s2,.s3,.s4,.s5,.s6,.s7,.s8,.s9,.sr0,.sr1,.sr2,.sr3,.sr4,.sr5,.sr6,.sr7,.sr8,.sr9,application/octet-stream";
@@ -103,9 +114,13 @@ type SaveImportModalProps = {
   boardLiving?: SaveImportBoardLiving[];
   /** Existing memorial rows for R.I.P. PID refresh / append preview. */
   boardGraves?: SaveImportBoardGrave[];
+  /** Existing Encountered strip for same-save fingerprinting. */
+  boardEncountered?: SaveImportBoardEncounter[];
+  /** Current trainer sync fields (badges / money / playtime / …). */
+  boardTrainer?: SaveImportBoardTrainer | null;
   /**
-   * False while deferred Reserves / R.I.P. are still loading — preview may
-   * under-count until ready.
+   * False while deferred Reserves / R.I.P. / Encountered are still loading —
+   * preview may under-count until ready.
    */
   boardLivingReady?: boolean;
   onClose: () => void;
@@ -167,9 +182,13 @@ function levelCaption(level: string): string {
 function Chip({
   children,
   tone = "neutral",
+  title,
+  className = "",
 }: {
   children: ReactNode;
   tone?: "neutral" | "ok" | "warn" | "muted" | "info";
+  title?: string;
+  className?: string;
 }) {
   const toneClass =
     tone === "ok"
@@ -183,7 +202,10 @@ function Chip({
             : "border-frame/60 bg-surface text-ink";
   return (
     <span
-      className={`inline-flex items-center rounded-md border px-2 py-1 text-[0.7rem] font-semibold tracking-tight ${toneClass}`}
+      title={title}
+      className={`inline-flex items-center rounded-md border px-2 py-1 text-[0.7rem] font-semibold tracking-tight ${toneClass} ${
+        title ? "cursor-help" : ""
+      } ${className}`}
     >
       {children}
     </span>
@@ -195,12 +217,65 @@ function draftReviewKey(category: SaveMonCategory, index: number): string {
 }
 
 function statusChip(
-  kind: "updated" | "new" | "died" | "add" | undefined,
+  kind: ImportDraftReviewStatus["kind"] | undefined,
+  changeLabels: string[] = [],
 ): ReactNode {
-  if (!kind || kind === "add") return null;
-  if (kind === "updated") return <Chip tone="ok">Updated</Chip>;
-  if (kind === "new") return <Chip tone="info">New</Chip>;
-  return <Chip tone="warn">Died</Chip>;
+  if (!kind || kind === "add" || kind === "same") return null;
+  if (kind === "changed") {
+    const tip = changeLabels.length ? changeLabels.join(" · ") : undefined;
+    return (
+      <Chip tone="ok" title={tip}>
+        Updated!
+      </Chip>
+    );
+  }
+  if (kind === "new") return <Chip tone="info">New Catch!</Chip>;
+  return <Chip tone="warn">R.I.P.</Chip>;
+}
+
+function deltaCardClass(
+  kind: ImportDraftReviewStatus["kind"] | undefined,
+  muted?: boolean,
+): string {
+  const base = `relative flex flex-col gap-1 rounded-md border bg-surface-2 p-1.5 ${
+    muted ? "opacity-55" : ""
+  }`;
+  if (kind === "changed") {
+    return `${base} import-delta-card import-delta-card--updated`;
+  }
+  if (kind === "new") {
+    return `${base} import-delta-card import-delta-card--new`;
+  }
+  if (kind === "died") {
+    return `${base} import-delta-card import-delta-card--rip`;
+  }
+  return `${base} border-frame/60`;
+}
+
+function sectionDeltaSummary(
+  list: SaveImportDraft[],
+  category: SaveMonCategory,
+  review: ReturnType<typeof buildImportSaveReview>,
+): string {
+  let changed = 0;
+  let neu = 0;
+  let died = 0;
+  let same = 0;
+  for (let i = 0; i < list.length; i++) {
+    const st = review.byDraftKey.get(draftReviewKey(category, i));
+    if (!st) continue;
+    if (st.kind === "changed") changed += 1;
+    else if (st.kind === "new") neu += 1;
+    else if (st.kind === "died") died += 1;
+    else if (st.kind === "same") same += 1;
+  }
+  const bits: string[] = [];
+  if (changed) bits.push(`${changed} updated`);
+  if (neu) bits.push(`${neu} new`);
+  if (died) bits.push(`${died} R.I.P.`);
+  if (same && bits.length === 0) bits.push(`${same} matched`);
+  else if (same && (changed || neu || died)) bits.push(`${same} same`);
+  return bits.join(" · ");
 }
 
 /** Note + pen — nickname fields are the editable override. */
@@ -228,11 +303,45 @@ function NicknameEditIcon({ className = "h-3.5 w-3.5" }: { className?: string })
   );
 }
 
+/** Soft blur + pocket-spin while the import action resolves. */
+function SyncingOverlay({ label }: { label: string }) {
+  return (
+    <div
+      className="absolute inset-0 z-20 flex items-center justify-center bg-surface/55 px-4 backdrop-blur-[3px] motion-safe:animate-[search-scrim-in_160ms_ease-out]"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-frame/60 bg-surface/95 px-6 py-5 shadow-[0_12px_40px_rgba(0,0,0,0.28)]">
+        <div className="relative h-12 w-12" aria-hidden>
+          <span className="nuzlocke-cloud-bridge-spinner absolute inset-0 !h-12 !w-12 border-[2.5px]" />
+          <span className="absolute inset-[0.7rem] rounded-full bg-accent/25 motion-safe:animate-pulse" />
+          <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent" />
+        </div>
+        <p className="text-sm font-semibold tracking-tight text-ink">{label}</p>
+        <div className="flex items-center gap-1.5" aria-hidden>
+          <span className="h-1.5 w-1.5 rounded-full bg-accent motion-safe:animate-[assist-dot_1s_ease-in-out_infinite]" />
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-accent motion-safe:animate-[assist-dot_1s_ease-in-out_infinite]"
+            style={{ animationDelay: "160ms" }}
+          />
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-accent motion-safe:animate-[assist-dot_1s_ease-in-out_infinite]"
+            style={{ animationDelay: "320ms" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SaveImportModal({
   open,
   pending = false,
   boardLiving = [],
   boardGraves = [],
+  boardEncountered = [],
+  boardTrainer = null,
   boardLivingReady = true,
   onClose,
   onApply,
@@ -246,7 +355,6 @@ export function SaveImportModal({
     SaveMonCategory,
     SaveImportDraft[]
   > | null>(null);
-  const [encounteredOpen, setEncounteredOpen] = useState(true);
   const [parseReveal, setParseReveal] = useState(false);
   const [trainerName, setTrainerName] = useState<string | null>(null);
   const [applyTrainerName, setApplyTrainerName] = useState(false);
@@ -283,7 +391,6 @@ export function SaveImportModal({
     setFormat(null);
     setWarnings([]);
     setSections(null);
-    setEncounteredOpen(true);
     setParseReveal(false);
     setTrainerName(null);
     setApplyTrainerName(false);
@@ -352,15 +459,13 @@ export function SaveImportModal({
       setEncounterFlagsReliable(flagsOk);
       setNuzlockeEncounterBits(flagsOk ? result.encounterFlags.usedBits : null);
       setApplyEncounterFlags(flagsOk);
-      setEncounteredOpen(
-        result.encountered.length <= ENCOUNTERED_COLLAPSE_THRESHOLD,
-      );
       setSections({
         party: categoryToDrafts(result.party, "MAIN"),
         box: categoryToDrafts(result.box, "RESERVE"),
         rip: categoryToDrafts(result.rip, "GRAVEYARD"),
         encountered: categoryToDrafts(result.encountered, "ENCOUNTERED"),
       });
+      // Compact delta brief at render — save is source of truth for roster.
       setParserNotesOpen(false);
       setParseReveal(true);
     } catch (e) {
@@ -378,8 +483,6 @@ export function SaveImportModal({
     ? CATEGORY_META.flatMap((c) => sections[c.key])
     : [];
   const included = allDrafts.filter((d) => d.include);
-  const totalMons = allDrafts.length;
-  const useFullscreen = totalMons >= FULLSCREEN_MON_THRESHOLD;
 
   const includedByCategory = CATEGORY_META.map(({ key, shortLabel }) => {
     const list = sections?.[key] ?? [];
@@ -424,10 +527,58 @@ export function SaveImportModal({
     reviewDrafts,
     boardGraves,
   );
+  const pokemonIdentical =
+    isReimport && boardLivingReady && isIdenticalPokemonReview(saveReview);
+  const encounteredDelta =
+    sections != null &&
+    encounteredImportHasDelta(
+      boardEncountered,
+      CATEGORY_META.flatMap(({ key }) =>
+        sections[key].map((d) => ({
+          include: d.include,
+          slot: d.slot,
+          species: d.species,
+          nickname: d.nickname,
+          pokedexId: d.pokedexId,
+          isShiny: d.isShiny,
+          catchRoute: d.catchRoute,
+        })),
+      ),
+    );
+  const trainerDelta =
+    boardTrainer != null &&
+    trainerSyncHasDelta(boardTrainer, {
+      applyTrainerName: Boolean(applyTrainerName && trainerName),
+      trainerName,
+      applyBadges: Boolean(applyBadges && badgesReliable),
+      badgeKeys,
+      applyRevive: Boolean(
+        applyRevive && reviveReliable && reviveUsed != null,
+      ),
+      reviveUsed,
+      applyMoney: Boolean(applyMoney && moneyReliable && money != null),
+      money,
+      applyPlayTime: Boolean(
+        applyPlayTime && playTimeReliable && playTimeSeconds != null,
+      ),
+      playTimeSeconds,
+      applyEncounterFlags: Boolean(
+        applyEncounterFlags &&
+          encounterFlagsReliable &&
+          nuzlockeEncounterBits != null,
+      ),
+      nuzlockeEncounterBits,
+    });
+  const sameSaveDetected =
+    pokemonIdentical && !encounteredDelta && !trainerDelta;
+
   const applyPreviewParts = importReviewPreviewParts(saveReview, {
-    encounteredIncluded,
-    ripIncluded,
-    trainerSyncParts,
+    encounteredIncluded: encounteredDelta ? encounteredIncluded : 0,
+    ripIncluded:
+      saveReview.memorialCreated > 0 || saveReview.memorialChanged > 0
+        ? ripIncluded
+        : 0,
+    trainerSyncParts: trainerDelta ? trainerSyncParts : [],
     includedCount: included.length,
   });
   // First-import party/box still need a voice when sticky review is empty.
@@ -438,8 +589,9 @@ export function SaveImportModal({
   ) {
     applyPreviewParts.unshift(`${partyBoxIncluded} Main/Reserves`);
   }
-  const applyPreview =
-    applyPreviewParts.join(" · ") || "Nothing selected to apply";
+  const applyPreview = sameSaveDetected
+    ? "Same save file detected!"
+    : applyPreviewParts.join(" · ") || "Nothing selected to apply";
 
   function updateDraft(
     category: SaveMonCategory,
@@ -457,17 +609,8 @@ export function SaveImportModal({
     });
   }
 
-  function setCategoryInclude(category: SaveMonCategory, include: boolean) {
-    setSections((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        [category]: prev[category].map((d) => ({ ...d, include })),
-      };
-    });
-  }
-
   function handleClose() {
+    if (pending) return;
     reset();
     onClose();
   }
@@ -475,6 +618,7 @@ export function SaveImportModal({
   const canApply =
     Boolean(sections) &&
     !busy &&
+    !sameSaveDetected &&
     (included.length > 0 ||
       Boolean(applyTrainerName && trainerName) ||
       Boolean(applyBadges && badgesReliable) ||
@@ -489,9 +633,11 @@ export function SaveImportModal({
 
   const primaryLabel = pending
     ? "Saving…"
-    : isReimport
-      ? `Update board (${included.length})`
-      : `Apply import (${included.length})`;
+    : sameSaveDetected
+      ? "Nothing to update"
+      : isReimport
+        ? `Update board (${included.length})`
+        : `Apply import (${included.length})`;
 
   const trainerUnavailable: string[] = [];
   if (!badgesReliable) trainerUnavailable.push("badges");
@@ -501,19 +647,54 @@ export function SaveImportModal({
   if (!encounterFlagsReliable) trainerUnavailable.push("flags");
   const hasParsedFile = Boolean(sections) && !parsing;
 
-  function syncCellClass(reliable: boolean): string {
-    return `flex items-start gap-2.5 rounded-lg border px-3 py-2.5 ${
-      reliable
-        ? "border-frame/55 bg-surface-2"
-        : "border-frame/30 bg-surface/40 opacity-70"
+  function syncChipClass(reliable: boolean, checked: boolean): string {
+    return `inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${
+      !reliable
+        ? "cursor-not-allowed border-frame/30 bg-surface/40 text-muted opacity-60"
+        : checked
+          ? "cursor-pointer border-accent/35 bg-accent/10 text-ink hover:border-accent/55 hover:bg-accent/20"
+          : "cursor-pointer border-frame/50 bg-surface-2 text-muted hover:border-frame hover:bg-surface hover:text-ink"
     }`;
   }
+
+  const honestyBits: string[] = [];
+  if (sameSaveDetected) {
+    honestyBits.push("No Pokémon or trainer changes vs this board");
+  } else {
+    if (saveReview.hasBoardLiving) honestyBits.push("Matched update in place");
+    if (
+      saveReview.memorialCreated > 0 ||
+      saveReview.memorialChanged > 0
+    ) {
+      honestyBits.push("R.I.P. append");
+    }
+    if (encounteredDelta) honestyBits.push("Encountered replace");
+    if (!honestyBits.length && partyBoxIncluded > 0) {
+      honestyBits.push("Write Pokémon from save");
+    }
+  }
+  const honesty = honestyBits.join(" · ");
+
+  const ownedCatchRoutesForFlags = sections
+    ? (["party", "box", "rip"] as const).flatMap((cat) =>
+        sections[cat]
+          .map((d) => d.catchRoute?.trim())
+          .filter((route): route is string => Boolean(route)),
+      )
+    : [];
+  const encounterFlagSummary =
+    encounterFlagsReliable && nuzlockeEncounterBits != null
+      ? summarizeEncounterFlagBits(
+          nuzlockeEncounterBits,
+          ownedCatchRoutesForFlags,
+        )
+      : null;
 
   return (
     <Modal
       open={open}
       title={modalTitle}
-      size={useFullscreen || parsing ? "fullscreen" : "wide"}
+      size="wide"
       containScroll
       onClose={handleClose}
       footer={
@@ -535,6 +716,7 @@ export function SaveImportModal({
               disabled={!canApply}
               className="pressable rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-[var(--on-accent)] disabled:opacity-50"
               onClick={() => {
+                if (!canApply || sameSaveDetected) return;
                 const needsEconomyProof =
                   Boolean(applyMoney && moneyReliable && money != null) ||
                   Boolean(
@@ -581,7 +763,18 @@ export function SaveImportModal({
         </div>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col text-sm">
+      <div className="relative flex min-h-0 flex-1 flex-col text-sm">
+        {pending ? (
+          <SyncingOverlay
+            label={isReimport ? "Updating board…" : "Importing save…"}
+          />
+        ) : null}
+        <div
+          className={`flex min-h-0 flex-1 flex-col ${
+            pending ? "pointer-events-none select-none" : ""
+          }`}
+          aria-hidden={pending || undefined}
+        >
         <input
           ref={fileInputRef}
           type="file"
@@ -596,7 +789,7 @@ export function SaveImportModal({
 
         <>
             {(hasParsedFile || (sections && !parsing)) && (
-            <div className="shrink-0 space-y-3 border-b border-frame/50 px-4 py-3 sm:px-5">
+            <div className="shrink-0 space-y-2 border-b border-frame/50 px-4 py-2.5 sm:px-5">
               {hasParsedFile ? (
                 <div
                   className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-frame/70 bg-surface-2 px-3 py-2.5"
@@ -617,7 +810,11 @@ export function SaveImportModal({
                     </p>
                     <p className="truncate text-xs text-muted">
                       {format ?? "Parsed save"}
-                      {isReimport ? " · updating board" : " · ready to import"}
+                      {sameSaveDetected
+                        ? " · same as board"
+                        : isReimport
+                          ? " · updating board"
+                          : " · ready to import"}
                     </p>
                   </div>
                   <button
@@ -632,21 +829,17 @@ export function SaveImportModal({
               ) : null}
 
               {sections && !parsing ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {format && <Chip>{format}</Chip>}
-                    <Chip tone="ok">Roster</Chip>
-                    {trainerUnavailable.length === 0 ? (
-                      <Chip tone="ok">Trainer syncs</Chip>
-                    ) : (
+                    {trainerUnavailable.length > 0 ? (
                       <Chip tone="muted">
                         Missing {trainerUnavailable.join(", ")}
                       </Chip>
-                    )}
+                    ) : null}
                     {warnings.length > 0 && (
                       <button
                         type="button"
-                        className="pressable rounded-md border border-frame/50 bg-surface px-2.5 py-1 text-xs font-semibold tracking-tight text-muted"
+                        className="pressable rounded-md border border-frame/50 bg-surface px-2 py-0.5 text-[0.7rem] font-semibold tracking-tight text-muted"
                         onClick={() => setParserNotesOpen((o) => !o)}
                       >
                         {parserNotesOpen
@@ -654,31 +847,28 @@ export function SaveImportModal({
                           : `Notes (${warnings.length})`}
                       </button>
                     )}
+                    {!boardLivingReady && isReimport ? (
+                      <span className="text-[0.7rem] text-muted">
+                        Loading board for match preview…
+                      </span>
+                    ) : null}
+                    {sameSaveDetected ? (
+                      <Chip tone="muted">Same save file detected!</Chip>
+                    ) : null}
                   </div>
                   {parserNotesOpen && warnings.length > 0 && (
-                    <ul className="max-h-28 space-y-1 overflow-y-auto rounded-md border border-frame/40 bg-surface-2/80 px-3 py-2 text-xs leading-snug text-muted">
+                    <ul className="max-h-24 space-y-1 overflow-y-auto rounded-md border border-frame/40 bg-surface-2/80 px-2.5 py-1.5 text-[0.7rem] leading-snug text-muted">
                       {warnings.map((w) => (
                         <li key={w}>{w}</li>
                       ))}
                     </ul>
-                  )}
-                  <p className="text-sm leading-snug text-ink">
-                    <span className="font-semibold tracking-tight">
-                      Preview
-                    </span>
-                    <span className="text-muted"> · {applyPreview}</span>
-                  </p>
-                  {!boardLivingReady && isReimport && (
-                    <p className="text-xs text-muted">
-                      Loading board sections for match preview…
-                    </p>
                   )}
                 </div>
               ) : null}
             </div>
             )}
 
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-3 sm:px-5 sm:py-4">
               {parsing && (
                 <div
                   className="space-y-3"
@@ -736,8 +926,8 @@ export function SaveImportModal({
                         </p>
                         <p>
                           Species, level, shiny, and destination stay locked to
-                          the save. Nickname and include are the only overrides —
-                          rearrange on the board after import. On re-import,
+                          the save. Nickname is the only override — rearrange
+                          on the board after import. On re-import,
                           Main/Reserves match by PID so Survive/Die and notes
                           stick.
                         </p>
@@ -774,324 +964,384 @@ export function SaveImportModal({
 
               {sections && !parsing && (
                 <div
-                  className={`space-y-5 ${
+                  className={`space-y-3 ${
                     parseReveal
                       ? "motion-safe:animate-[search-panel-in_180ms_cubic-bezier(0.22,1,0.36,1)]"
                       : ""
                   }`}
                 >
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold tracking-tight text-muted">
-                      Trainer syncs
-                    </p>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {trainerName ? (
-                        <label className={syncCellClass(true)}>
-                          <input
-                            type="checkbox"
-                            className="mt-1 shrink-0"
-                            checked={applyTrainerName}
-                            disabled={busy}
-                            onChange={(e) =>
-                              setApplyTrainerName(e.target.checked)
-                            }
-                          />
-                          <span className="mt-0.5 shrink-0 text-muted">
-                            <TrainerNameIcon className="h-4 w-4" />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-xs font-semibold tracking-tight text-muted">
-                              Name
-                            </span>
-                            <span className="block truncate text-sm font-semibold text-ink">
-                              {trainerName}
-                            </span>
-                          </span>
-                        </label>
-                      ) : null}
-
-                      <label className={syncCellClass(badgesReliable)}>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {trainerName ? (
+                      <label
+                        className={syncChipClass(true, applyTrainerName)}
+                        title="Trainer name"
+                      >
                         <input
                           type="checkbox"
-                          className="mt-1 shrink-0"
-                          checked={applyBadges && badgesReliable}
-                          disabled={!badgesReliable || busy}
-                          onChange={(e) => setApplyBadges(e.target.checked)}
-                        />
-                        <span className="mt-0.5 shrink-0 text-muted">
-                          <BadgesIcon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-xs font-semibold tracking-tight text-muted">
-                            Badges
-                          </span>
-                          <span className="block truncate text-sm font-semibold text-ink">
-                            {badgesReliable
-                              ? `${badgeKeys.length} earned`
-                              : "Unavailable"}
-                          </span>
-                        </span>
-                      </label>
-
-                      <label className={syncCellClass(reviveReliable)}>
-                        <input
-                          type="checkbox"
-                          className="mt-1 shrink-0"
-                          checked={applyRevive && reviveReliable}
-                          disabled={
-                            !reviveReliable || reviveUsed == null || busy
-                          }
-                          onChange={(e) => setApplyRevive(e.target.checked)}
-                        />
-                        <span className="mt-0.5 shrink-0 text-muted">
-                          <ReviveIcon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-xs font-semibold tracking-tight text-muted">
-                            Revive
-                          </span>
-                          <span className="block truncate text-sm font-semibold text-ink">
-                            {reviveReliable && reviveUsed != null
-                              ? reviveUsed
-                                ? "Used"
-                                : "Available"
-                              : "Unavailable"}
-                          </span>
-                        </span>
-                      </label>
-
-                      <label className={syncCellClass(moneyReliable)}>
-                        <input
-                          type="checkbox"
-                          className="mt-1 shrink-0"
-                          checked={applyMoney && moneyReliable}
-                          disabled={!moneyReliable || money == null || busy}
-                          onChange={(e) => setApplyMoney(e.target.checked)}
-                        />
-                        <span className="mt-0.5 shrink-0 text-muted">
-                          <MoneyIcon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-xs font-semibold tracking-tight text-muted">
-                            Money
-                          </span>
-                          <span className="block truncate text-sm font-semibold text-ink">
-                            {moneyReliable && money != null
-                              ? formatPokedollars(money)
-                              : "Unavailable"}
-                          </span>
-                        </span>
-                      </label>
-
-                      <label className={syncCellClass(playTimeReliable)}>
-                        <input
-                          type="checkbox"
-                          className="mt-1 shrink-0"
-                          checked={applyPlayTime && playTimeReliable}
-                          disabled={
-                            !playTimeReliable ||
-                            playTimeSeconds == null ||
-                            busy
-                          }
-                          onChange={(e) => setApplyPlayTime(e.target.checked)}
-                        />
-                        <span className="mt-0.5 shrink-0 text-muted">
-                          <PlayTimeIcon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-xs font-semibold tracking-tight text-muted">
-                            Playtime
-                          </span>
-                          <span className="block truncate text-sm font-semibold text-ink">
-                            {playTimeReliable && playTimeSeconds != null
-                              ? formatPlayTime(playTimeSeconds)
-                              : "Unavailable"}
-                          </span>
-                        </span>
-                      </label>
-
-                      <label className={syncCellClass(encounterFlagsReliable)}>
-                        <input
-                          type="checkbox"
-                          className="mt-1 shrink-0"
-                          checked={
-                            applyEncounterFlags && encounterFlagsReliable
-                          }
-                          disabled={!encounterFlagsReliable || busy}
+                          className="shrink-0"
+                          checked={applyTrainerName}
+                          disabled={busy}
                           onChange={(e) =>
-                            setApplyEncounterFlags(e.target.checked)
+                            setApplyTrainerName(e.target.checked)
                           }
                         />
-                        <span className="mt-0.5 shrink-0 text-muted">
-                          <CatchFailedIcon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-xs font-semibold tracking-tight text-muted">
-                            Catch-failed
-                          </span>
-                          <span className="block truncate text-sm font-semibold text-ink">
-                            {encounterFlagsReliable &&
-                            nuzlockeEncounterBits != null
-                              ? `${nuzlockeEncounterBits.length} flagged`
-                              : "Unavailable"}
-                          </span>
+                        <TrainerNameIcon className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate font-semibold tracking-tight">
+                          {trainerName}
                         </span>
                       </label>
-                    </div>
+                    ) : null}
+
+                    <label
+                      className={syncChipClass(
+                        badgesReliable,
+                        applyBadges && badgesReliable,
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="shrink-0"
+                        checked={applyBadges && badgesReliable}
+                        disabled={!badgesReliable || busy}
+                        onChange={(e) => setApplyBadges(e.target.checked)}
+                      />
+                      <BadgesIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate font-semibold tracking-tight">
+                        {badgesReliable
+                          ? `${badgeKeys.length} badges`
+                          : "Badges —"}
+                      </span>
+                    </label>
+
+                    <label
+                      className={syncChipClass(
+                        reviveReliable,
+                        applyRevive && reviveReliable,
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="shrink-0"
+                        checked={applyRevive && reviveReliable}
+                        disabled={
+                          !reviveReliable || reviveUsed == null || busy
+                        }
+                        onChange={(e) => setApplyRevive(e.target.checked)}
+                      />
+                      <ReviveIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate font-semibold tracking-tight">
+                        {reviveReliable && reviveUsed != null
+                          ? reviveUsed
+                            ? "Revive used"
+                            : "Revive ready"
+                          : "Revive —"}
+                      </span>
+                    </label>
+
+                    <label
+                      className={syncChipClass(
+                        moneyReliable,
+                        applyMoney && moneyReliable,
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="shrink-0"
+                        checked={applyMoney && moneyReliable}
+                        disabled={!moneyReliable || money == null || busy}
+                        onChange={(e) => setApplyMoney(e.target.checked)}
+                      />
+                      <MoneyIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate font-semibold tracking-tight">
+                        {moneyReliable && money != null
+                          ? formatPokedollars(money)
+                          : "Money —"}
+                      </span>
+                    </label>
+
+                    <label
+                      className={syncChipClass(
+                        playTimeReliable,
+                        applyPlayTime && playTimeReliable,
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="shrink-0"
+                        checked={applyPlayTime && playTimeReliable}
+                        disabled={
+                          !playTimeReliable ||
+                          playTimeSeconds == null ||
+                          busy
+                        }
+                        onChange={(e) => setApplyPlayTime(e.target.checked)}
+                      />
+                      <PlayTimeIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate font-semibold tracking-tight">
+                        {playTimeReliable && playTimeSeconds != null
+                          ? formatPlayTime(playTimeSeconds)
+                          : "Playtime —"}
+                      </span>
+                    </label>
+
+                    <label
+                      className={syncChipClass(
+                        encounterFlagsReliable,
+                        applyEncounterFlags && encounterFlagsReliable,
+                      )}
+                      title={
+                        encounterFlagSummary
+                          ? `${encounterFlagSummary.exhausted - encounterFlagSummary.failed} caught (owned on that slot) · ${encounterFlagSummary.failed} got away (flag set, no Pokémon) · ${encounterFlagSummary.exhausted} exhausted total`
+                          : encounterFlagsReliable
+                            ? "Sync Nuzlocke encounter flags from the save"
+                            : "Encounter flags unavailable in this save"
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        className="shrink-0"
+                        checked={
+                          applyEncounterFlags && encounterFlagsReliable
+                        }
+                        disabled={!encounterFlagsReliable || busy}
+                        onChange={(e) =>
+                          setApplyEncounterFlags(e.target.checked)
+                        }
+                      />
+                      <CaughtIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate font-semibold tracking-tight">
+                        {encounterFlagSummary
+                          ? `${encounterFlagSummary.exhausted - encounterFlagSummary.failed} caught · ${encounterFlagSummary.failed} got away`
+                          : "Flags —"}
+                      </span>
+                    </label>
                   </div>
+
+                  {honesty ? (
+                    <p className="text-[0.7rem] leading-snug text-muted">
+                      {honesty}
+                    </p>
+                  ) : null}
 
                   {CATEGORY_META.map(({ key, title }) => {
                     const list = sections[key];
                     if (list.length === 0) return null;
 
-                    const includedCount = list.filter((d) => d.include).length;
-                    const allIncluded = includedCount === list.length;
-                    const noneIncluded = includedCount === 0;
                     const isEncountered = key === "encountered";
-                    const collapsed = isEncountered && !encounteredOpen;
+                    const indexed = list.map((mon, index) => ({
+                      mon,
+                      index,
+                      status: saveReview.byDraftKey.get(
+                        draftReviewKey(key, index),
+                      ),
+                    }));
+                    const deltaBit = isReimport
+                      ? sectionDeltaSummary(list, key, saveReview)
+                      : "";
+                    const highlightRows = indexed.filter(({ status }) =>
+                      isHighlightReviewStatus(status),
+                    );
+                    const sameRows = indexed.filter(
+                      ({ status }) => status?.kind === "same",
+                    );
+                    const otherRows = indexed.filter(({ status }) => {
+                      if (!isReimport) return true;
+                      if (isHighlightReviewStatus(status)) return false;
+                      if (status?.kind === "same") return false;
+                      return true;
+                    });
+                    const useCompactRoster = isReimport && !isEncountered;
 
-                    return (
-                      <section key={key} className="space-y-2.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <label className="flex min-w-0 items-center gap-2.5">
+                    function renderMonCard(
+                      mon: SaveImportDraft,
+                      index: number,
+                      status: ImportDraftReviewStatus | undefined,
+                      muted = false,
+                    ) {
+                      const changeLabels = status?.changeLabels ?? [];
+                      const changeBit = changeLabels.length
+                        ? changeLabels.join(" · ")
+                        : "";
+                      const chip = statusChip(status?.kind, changeLabels);
+                      // Catch wash only on true deltas — matched sprites stay plain.
+                      const catchGrade = isHighlightReviewStatus(status)
+                        ? catchGradeFor({
+                            pokedexId: mon.pokedexId,
+                            nature: mon.nature,
+                            ability: mon.ability,
+                            ivs: mon.ivs,
+                            evs: mon.evs,
+                            friendship: mon.friendship,
+                          })
+                        : null;
+                      const catchTier = catchGrade?.tier ?? null;
+                      const hasCatchChrome =
+                        catchTier != null && catchTierHasChrome(catchTier);
+                      const catchTip =
+                        catchTier != null
+                          ? catchTierTip(catchTier, catchGrade?.score)
+                          : undefined;
+                      const washClass =
+                        hasCatchChrome && catchTier
+                          ? `import-catch-wash import-catch-wash--${catchTier}`
+                          : "";
+
+                      return (
+                        <li
+                          key={`${key}-${mon.pid}-${index}`}
+                          className={`${deltaCardClass(status?.kind, muted)} ${washClass}`.trim()}
+                          title={catchTip}
+                        >
+                          {chip ? (
+                            <div className="absolute right-1.5 top-1.5 z-[2] origin-top-right scale-90">
+                              {chip}
+                            </div>
+                          ) : null}
+                          <div className="flex justify-center pt-5">
+                            <PokemonSpriteImage
+                              alt=""
+                              className="pixelated h-14 w-14"
+                              height={56}
+                              pokedexId={mon.pokedexId}
+                              shiny={mon.isShiny}
+                              species={mon.species}
+                              width={56}
+                            />
+                          </div>
+                          <label className="relative block">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1 text-muted/50">
+                              <NicknameEditIcon className="h-3 w-3" />
+                            </span>
                             <input
-                              type="checkbox"
-                              checked={allIncluded}
-                              ref={(el) => {
-                                if (el) {
-                                  el.indeterminate =
-                                    !allIncluded && !noneIncluded;
-                                }
-                              }}
+                              value={mon.nickname}
+                              placeholder={mon.species}
                               disabled={busy}
+                              aria-label={`Nickname for ${mon.species}`}
+                              title="Editable nickname"
+                              className="w-full rounded border border-frame/60 bg-surface py-0.5 pl-5 pr-1 text-center text-[0.7rem] disabled:opacity-60 sm:text-xs"
                               onChange={(e) =>
-                                setCategoryInclude(key, e.target.checked)
+                                updateDraft(key, index, {
+                                  nickname: e.target.value,
+                                })
                               }
                             />
-                            <h3 className="text-sm font-semibold tracking-tight text-ink">
-                              {title}{" "}
-                              <span className="font-normal text-muted">
-                                ({includedCount}/{list.length})
-                              </span>
-                            </h3>
                           </label>
-                          {isEncountered &&
-                            list.length > ENCOUNTERED_COLLAPSE_THRESHOLD && (
-                              <button
-                                type="button"
-                                className="pressable ml-auto rounded-md border border-frame/60 bg-surface px-2.5 py-1 text-xs font-semibold tracking-tight text-muted"
-                                disabled={busy}
-                                onClick={() => setEncounteredOpen((o) => !o)}
+                          <p
+                            className="truncate text-center text-[0.65rem] leading-tight text-muted"
+                            title={changeBit || undefined}
+                          >
+                            {mon.species}
+                            {" · "}
+                            {levelCaption(mon.level)}
+                            {mon.isShiny ? " · shiny" : ""}
+                          </p>
+                        </li>
+                      );
+                    }
+
+                    function renderSpriteStrip(
+                      rows: {
+                        mon: SaveImportDraft;
+                        index: number;
+                        status: ImportDraftReviewStatus | undefined;
+                      }[],
+                    ) {
+                      return (
+                        <ul className="flex flex-wrap items-center gap-0.5">
+                          {rows.map(({ mon, index, status }) => {
+                            const label =
+                              mon.nickname.trim() || mon.species;
+                            const tip = [
+                              label,
+                              mon.species,
+                              levelCaption(mon.level),
+                              status?.kind === "changed"
+                                ? "Updated!"
+                                : status?.kind === "new"
+                                  ? "New Catch!"
+                                  : status?.kind === "died"
+                                    ? "R.I.P."
+                                    : status?.kind === "same"
+                                      ? "matched"
+                                      : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ");
+                            return (
+                              <li
+                                key={`${key}-strip-${mon.pid}-${index}`}
+                                className="opacity-80"
+                                title={tip}
                               >
-                                {collapsed
-                                  ? `Show ${list.length} species`
-                                  : "Collapse"}
-                              </button>
-                            )}
+                                <PokemonSpriteImage
+                                  alt=""
+                                  className="pixelated h-12 w-12"
+                                  height={48}
+                                  pokedexId={mon.pokedexId}
+                                  shiny={mon.isShiny}
+                                  species={mon.species}
+                                  width={48}
+                                />
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      );
+                    }
+
+                    return (
+                      <section key={key} className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="min-w-0 text-sm font-semibold tracking-tight text-ink">
+                            {title}{" "}
+                            <span className="font-normal text-muted">
+                              ({list.length})
+                            </span>
+                            {deltaBit ? (
+                              <span className="ml-1.5 font-normal text-accent-ink">
+                                · {deltaBit}
+                              </span>
+                            ) : null}
+                          </h3>
                         </div>
 
-                        {collapsed ? (
-                          <p className="rounded-lg border border-frame/50 bg-surface-2 px-3 py-2.5 text-sm text-muted">
-                            {list.length} species · will replace Encountered
-                            {includedCount < list.length
-                              ? ` (${includedCount} included)`
-                              : ""}
-                          </p>
+                        {useCompactRoster ? (
+                          <div className="space-y-2">
+                            {highlightRows.length > 0 ? (
+                              <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                                {highlightRows.map(
+                                  ({ mon, index, status }) =>
+                                    renderMonCard(mon, index, status),
+                                )}
+                              </ul>
+                            ) : null}
+                            {sameRows.length > 0
+                              ? renderSpriteStrip(sameRows)
+                              : null}
+                            {otherRows.length > 0 ? (
+                              <div className="opacity-60">
+                                {renderSpriteStrip(otherRows)}
+                              </div>
+                            ) : null}
+                            {highlightRows.length === 0 &&
+                            sameRows.length === 0 &&
+                            otherRows.length === 0 ? (
+                              <p className="text-[0.7rem] text-muted">
+                                No Pokémon in this section.
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : isEncountered ? (
+                          <div className="rounded-md border border-frame/40 bg-surface-2/60 px-2.5 py-1.5">
+                            <p className="text-[0.7rem] text-muted">
+                              {list.length} species · will replace Encountered
+                            </p>
+                          </div>
                         ) : (
-                          <ul
-                            className={`grid gap-2 ${
-                              isEncountered
-                                ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6"
-                                : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-                            }`}
-                          >
-                            {list.map((mon, index) => {
-                              const reviewStatus = saveReview.byDraftKey.get(
-                                draftReviewKey(key, index),
-                              );
-                              const detailLine = [
-                                mon.nature,
-                                mon.ability,
-                                mon.moves.length
-                                  ? resolveMoveNames(mon.moves).join(" · ")
-                                  : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ");
-                              const changeBit = reviewStatus?.changeLabels
-                                .length
-                                ? reviewStatus.changeLabels.join(" · ")
-                                : "";
-                              return (
-                                <li
-                                  key={`${key}-${mon.pid}-${index}`}
-                                  className={`flex flex-col gap-1.5 rounded-lg border border-frame/70 bg-surface-2 p-2 ${
-                                    mon.include ? "" : "opacity-45"
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between gap-1">
-                                    <input
-                                      type="checkbox"
-                                      className="shrink-0"
-                                      checked={mon.include}
-                                      disabled={busy}
-                                      onChange={(e) =>
-                                        updateDraft(key, index, {
-                                          include: e.target.checked,
-                                        })
-                                      }
-                                      aria-label={`Include ${mon.nickname.trim() || mon.species}`}
-                                    />
-                                    {mon.include
-                                      ? statusChip(reviewStatus?.kind)
-                                      : null}
-                                  </div>
-                                  <div className="flex justify-center py-0.5">
-                                    <PokemonSpriteImage
-                                      alt=""
-                                      className="pixelated h-11 w-11"
-                                      height={44}
-                                      pokedexId={mon.pokedexId}
-                                      shiny={mon.isShiny}
-                                      species={mon.species}
-                                      width={44}
-                                    />
-                                  </div>
-                                  <label className="relative block">
-                                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1.5 text-muted/50">
-                                      <NicknameEditIcon className="h-3.5 w-3.5" />
-                                    </span>
-                                    <input
-                                      value={mon.nickname}
-                                      placeholder={mon.species}
-                                      disabled={busy}
-                                      aria-label={`Nickname for ${mon.species}`}
-                                      title="Editable nickname"
-                                      className="w-full rounded-md border border-frame/70 bg-surface px-6 py-1 text-center text-xs disabled:opacity-60 sm:text-sm"
-                                      onChange={(e) =>
-                                        updateDraft(key, index, {
-                                          nickname: e.target.value,
-                                        })
-                                      }
-                                    />
-                                  </label>
-                                  <p
-                                    className="truncate text-center text-[0.7rem] text-muted"
-                                    title={detailLine || undefined}
-                                  >
-                                    {mon.species}
-                                    {" · "}
-                                    {levelCaption(mon.level)}
-                                    {mon.isShiny ? " · shiny" : ""}
-                                  </p>
-                                  {changeBit ? (
-                                    <p className="truncate text-center text-[0.7rem] text-accent-ink">
-                                      {changeBit}
-                                    </p>
-                                  ) : null}
-                                </li>
-                              );
-                            })}
+                          <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                            {indexed.map(({ mon, index, status }) =>
+                              renderMonCard(mon, index, status),
+                            )}
                           </ul>
                         )}
                       </section>
@@ -1099,136 +1349,55 @@ export function SaveImportModal({
                   })}
 
                   {saveReview.cleared.length > 0 && (
-                    <section className="space-y-2.5">
+                    <section className="space-y-1.5">
                       <h3 className="text-sm font-semibold tracking-tight text-ink">
                         Leaving the board{" "}
                         <span className="font-normal text-muted">
                           ({saveReview.cleared.length})
                         </span>
                       </h3>
-                      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                      <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {saveReview.cleared.map(({ board, nullPid }) => (
                           <li
                             key={board.id}
-                            className="flex flex-col items-center gap-1.5 rounded-lg border border-danger/25 bg-danger/5 p-2"
+                            className="flex flex-col items-center gap-1 rounded-md border border-danger/25 bg-danger/5 p-1.5"
                           >
                             <Chip tone="warn">
                               {nullPid ? "Replace" : "Clear"}
                             </Chip>
                             <PokemonSpriteImage
                               alt=""
-                              className="pixelated h-11 w-11 opacity-80"
-                              height={44}
+                              className="pixelated h-14 w-14 opacity-80"
+                              height={56}
                               pokedexId={board.pokedexId ?? 0}
                               shiny={board.isShiny}
                               species={board.species}
-                              width={44}
+                              width={56}
                             />
-                            <p className="w-full truncate text-center text-sm font-semibold tracking-tight text-ink">
+                            <p className="w-full truncate text-center text-xs font-semibold tracking-tight text-ink">
                               {board.nickname?.trim() || board.species}
                             </p>
-                            <p className="w-full truncate text-center text-[0.7rem] text-muted">
+                            <p className="w-full truncate text-center text-[0.65rem] text-muted">
                               {board.species}
                               {board.level != null
                                 ? ` · Lv ${board.level}`
                                 : ""}
-                              {" · "}
-                              {board.slot === "MAIN" ? "Main" : "Reserves"}
                             </p>
                           </li>
                         ))}
                       </ul>
-                      <p className="text-xs leading-relaxed text-muted">
-                        Not in this save’s living party/box
+                      <p className="text-[0.7rem] leading-snug text-muted">
+                        Not in this save
                         {ripIncluded > 0 ? " or R.I.P." : ""}. Open Survive/Die
-                        bets on cleared Pokémon will be voided.
+                        bets void.
                       </p>
                     </section>
                   )}
-
-                  <div className="space-y-1.5 rounded-lg border border-frame/50 bg-surface-2/50 px-3 py-2.5 text-xs leading-relaxed text-muted sm:text-sm">
-                    {saveReview.hasBoardLiving &&
-                      (saveReview.updated > 0 ||
-                        saveReview.created > 0 ||
-                        saveReview.died > 0 ||
-                        saveReview.cleared.length > 0) && (
-                        <p>
-                          Matched Main/Reserves{" "}
-                          <span className="font-semibold text-ink">
-                            update in place
-                          </span>
-                          {saveReview.updated > 0
-                            ? ` (${saveReview.updated})`
-                            : ""}
-                          — Survive/Die stays open. New PIDs are added
-                          {saveReview.created > 0
-                            ? ` (${saveReview.created})`
-                            : ""}
-                          .
-                          {saveReview.died > 0
-                            ? ` ${saveReview.died} living → R.I.P. resolve as Die.`
-                            : ""}
-                          {saveReview.cleared.length > 0
-                            ? ` ${saveReview.cleared.length} leave the board (open bets void).`
-                            : ""}
-                        </p>
-                      )}
-                    {(saveReview.memorialUpdated > 0 ||
-                      saveReview.memorialCreated > 0) && (
-                      <p>
-                        Matched R.I.P.{" "}
-                        <span className="font-semibold text-ink">
-                          refresh in place
-                        </span>
-                        {saveReview.memorialUpdated > 0
-                          ? ` (${saveReview.memorialUpdated})`
-                          : ""}
-                        without overwriting cause of death or notes.
-                        {saveReview.memorialCreated > 0
-                          ? ` ${saveReview.memorialCreated} new memorial ${
-                              saveReview.memorialCreated === 1
-                                ? "entry"
-                                : "entries"
-                            } append.`
-                          : ""}
-                      </p>
-                    )}
-                    {!saveReview.hasBoardLiving && partyBoxIncluded > 0 && (
-                      <p>
-                        Included Main/Reserves will be written to the board.
-                      </p>
-                    )}
-                    {encounteredIncluded > 0 && (
-                      <p>
-                        Encountered will{" "}
-                        <span className="font-semibold text-ink">replace</span>{" "}
-                        your current Encountered list.
-                      </p>
-                    )}
-                    {ripIncluded > 0 &&
-                      saveReview.memorialUpdated === 0 &&
-                      saveReview.memorialCreated === 0 && (
-                      <p>
-                        R.I.P.{" "}
-                        <span className="font-semibold text-ink">appends</span>{" "}
-                        to the memorial (duplicates skipped); existing graves
-                        stay.
-                      </p>
-                    )}
-                    {!partyBoxIncluded &&
-                      !encounteredIncluded &&
-                      !ripIncluded &&
-                      saveReview.cleared.length === 0 && (
-                        <p>
-                          No Pokémon selected — only checked trainer syncs will
-                          apply.
-                        </p>
-                      )}
-                  </div>
                 </div>
               )}
             </div>
         </>
+        </div>
       </div>
     </Modal>
   );

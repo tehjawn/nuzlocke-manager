@@ -1873,6 +1873,50 @@ button:disabled,
   color: var(--ink);
 }
 
+/* Progressive-load placeholders — soft sweeping shine */
+.skeleton-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.skeleton-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    color-mix(in srgb, #fff 22%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(-130%);
+  animation: skeleton-shine-sweep 1.85s ease-in-out infinite;
+}
+
+@keyframes skeleton-shine-sweep {
+  0% {
+    transform: translateX(-130%);
+  }
+  55%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shine::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .skeleton-shine {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
 /* Import save — occasional soft RGB glow + hover shine */
 .cta-import-save {
   position: relative;
@@ -5314,5 +5358,165 @@ button:disabled,
 
   .claim-map-region--match {
     animation: none;
+  }
+}
+
+/* Save import review — marching dotted ring on delta cards (#401) */
+@property --import-delta-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.import-delta-card {
+  border-color: transparent;
+  isolation: isolate;
+}
+
+.import-delta-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from var(--import-delta-angle),
+    var(--import-delta-color) 0deg 10deg,
+    transparent 10deg 20deg
+  );
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  animation: import-delta-dash-spin 28s linear infinite;
+}
+
+.import-delta-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.import-delta-card--updated {
+  --import-delta-color: color-mix(in srgb, var(--accent) 28%, var(--frame));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.import-delta-card--new {
+  --import-delta-color: color-mix(in srgb, var(--accent-2) 24%, var(--frame));
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--accent-2) 5%, transparent);
+}
+
+.import-delta-card--rip {
+  --import-delta-color: color-mix(in srgb, var(--danger) 26%, var(--frame));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 5%, transparent);
+}
+
+@keyframes import-delta-dash-spin {
+  to {
+    --import-delta-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .import-delta-card::before {
+    animation: none;
+    background: var(--import-delta-color);
+    opacity: 0.55;
+    padding: 1.5px;
+  }
+}
+
+/* Import delta cards — catch tier as inner wash (not a border; keeps dotted delta ring readable) */
+.import-catch-wash {
+  --catch-tint: var(--interactive);
+  --catch-wash-peak: 16%;
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      color-mix(in srgb, var(--catch-tint) var(--catch-wash-peak), transparent) 0%,
+      color-mix(in srgb, var(--catch-tint) 6%, transparent) 48%,
+      var(--surface-2) 78%
+    );
+}
+
+.import-catch-wash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.45;
+  background: conic-gradient(
+    from var(--catch-angle, 0deg),
+    color-mix(in srgb, var(--catch-tint) 4%, transparent),
+    color-mix(in srgb, var(--catch-tint) 14%, transparent),
+    color-mix(in srgb, var(--catch-tint) 5%, transparent),
+    color-mix(in srgb, var(--catch-tint) 12%, transparent),
+    color-mix(in srgb, var(--catch-tint) 4%, transparent)
+  );
+  animation: pokemon-catch-revolve 28s linear infinite;
+  mix-blend-mode: soft-light;
+}
+
+.import-catch-wash > * {
+  position: relative;
+  z-index: 1;
+}
+
+.import-catch-wash--good {
+  --catch-tint: color-mix(in srgb, var(--interactive) 78%, #8ec8e8);
+  --catch-wash-peak: 12%;
+}
+
+.import-catch-wash--great {
+  --catch-tint: #b794f6;
+  --catch-wash-peak: 18%;
+}
+
+.import-catch-wash--cracked {
+  --catch-tint: #f0c14a;
+  --catch-wash-peak: 22%;
+}
+
+.import-catch-wash--god {
+  --catch-tint: #c77dff;
+  --catch-wash-peak: 20%;
+  /* Match trainers-page prismatic wash — soft rainbow, not solid violet. */
+  background: radial-gradient(
+    circle at 50% 42%,
+    color-mix(in srgb, #ffb020 18%, transparent) 0%,
+    color-mix(in srgb, #4ec4ff 14%, transparent) 36%,
+    color-mix(in srgb, #ff6ec7 12%, transparent) 58%,
+    var(--surface-2) 82%
+  );
+}
+
+.import-catch-wash--god::after {
+  opacity: 0.38;
+  mix-blend-mode: soft-light;
+  background: conic-gradient(
+    from var(--catch-angle, 0deg),
+    color-mix(in srgb, #ff5a5a 22%, transparent),
+    color-mix(in srgb, #ffb020 24%, transparent),
+    color-mix(in srgb, #5ee08a 20%, transparent),
+    color-mix(in srgb, #4ec4ff 24%, transparent),
+    color-mix(in srgb, #c77dff 22%, transparent),
+    color-mix(in srgb, #ff6ec7 20%, transparent),
+    color-mix(in srgb, #ff5a5a 22%, transparent)
+  );
+  animation: pokemon-catch-revolve 32s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .import-catch-wash::after {
+    animation: none;
+    opacity: 0.28;
   }
 }

@@ -45,8 +45,12 @@ export type SaveImportReviewDraft = {
   isShiny: boolean;
 };
 
+/**
+ * `changed` = PID match with visible chrome delta (evo / level / nick / shiny / slot).
+ * `same` = PID match with no visible chrome change (still upserts on apply).
+ */
 export type ImportDraftReviewStatus = {
-  kind: "updated" | "new" | "died" | "add";
+  kind: "changed" | "same" | "new" | "died" | "add";
   /** Short captions like `Shelgon → Salamence` or `Lv 34 → 48`. */
   changeLabels: string[];
 };
@@ -60,11 +64,16 @@ export type ImportReviewClearedMon = {
 export type ImportSaveReview = {
   /** Status keyed by draft `key` for included living / grave rows. */
   byDraftKey: Map<string, ImportDraftReviewStatus>;
-  updated: number;
+  /** Living PID matches with visible chrome deltas. */
+  changed: number;
+  /** Living PID matches with no visible chrome change. */
+  matched: number;
   created: number;
   died: number;
-  /** Existing memorial PIDs refreshed (not living→RIP deaths). */
-  memorialUpdated: number;
+  /** Existing memorial PIDs with visible chrome refresh. */
+  memorialChanged: number;
+  /** Existing memorial PIDs refreshed with no visible chrome change. */
+  memorialMatched: number;
   /** Brand-new memorial rows from this import. */
   memorialCreated: number;
   cleared: ImportReviewClearedMon[];
@@ -136,9 +145,20 @@ function changeLabelsForChrome(
   return labels;
 }
 
+function statusForUpsert(
+  changeLabels: string[],
+): ImportDraftReviewStatus {
+  return changeLabels.length > 0
+    ? { kind: "changed", changeLabels }
+    : { kind: "same", changeLabels: [] };
+}
+
 /**
  * Client-side preview of sticky-PID living merge + memorial append for the
  * import review UI. Mirrors `planLivingPidMerge` / `importedGravesToAppend`.
+ *
+ * Highlights **true** deltas (chrome changes, new PIDs, deaths, clears) —
+ * silent PID matches are classified as `same` so the UI can de-emphasize them.
  */
 export function buildImportSaveReview(
   boardLiving: SaveImportBoardLiving[],
@@ -186,13 +206,16 @@ export function buildImportSaveReview(
   );
 
   const byDraftKey = new Map<string, ImportDraftReviewStatus>();
+  let changed = 0;
+  let matched = 0;
 
   for (const { existing: ex, incoming } of plan.upserts) {
     const board = boardById.get(ex.id);
-    byDraftKey.set(incoming.key, {
-      kind: "updated",
-      changeLabels: board ? changeLabelsForChrome(board, incoming) : [],
-    });
+    const labels = board ? changeLabelsForChrome(board, incoming) : [];
+    const status = statusForUpsert(labels);
+    byDraftKey.set(incoming.key, status);
+    if (status.kind === "changed") changed += 1;
+    else matched += 1;
   }
 
   for (const mon of plan.creates) {
@@ -238,15 +261,16 @@ export function buildImportSaveReview(
     memorialIncoming,
   );
 
-  let memorialUpdated = 0;
+  let memorialChanged = 0;
+  let memorialMatched = 0;
   let memorialCreated = 0;
   for (const { personalityValue, incoming } of memorialPlan.toRefresh) {
     const grave = gravesByPid.get(personalityValue);
-    byDraftKey.set(incoming.key, {
-      kind: "updated",
-      changeLabels: grave ? changeLabelsForChrome(grave, incoming) : [],
-    });
-    memorialUpdated += 1;
+    const labels = grave ? changeLabelsForChrome(grave, incoming) : [];
+    const status = statusForUpsert(labels);
+    byDraftKey.set(incoming.key, status);
+    if (status.kind === "changed") memorialChanged += 1;
+    else memorialMatched += 1;
   }
   for (const mon of memorialPlan.toCreate) {
     byDraftKey.set(mon.key, {
@@ -255,6 +279,13 @@ export function buildImportSaveReview(
       changeLabels: [],
     });
     memorialCreated += 1;
+  }
+  // Species+nickname dedupe skips (pre-PID graves) — still on the memorial,
+  // just no chrome refresh. Surface as matched so the UI uses the sprite strip.
+  for (const mon of memorialIncoming) {
+    if (byDraftKey.has(mon.key)) continue;
+    byDraftKey.set(mon.key, { kind: "same", changeLabels: [] });
+    memorialMatched += 1;
   }
 
   const cleared: ImportReviewClearedMon[] = [];
@@ -274,14 +305,178 @@ export function buildImportSaveReview(
 
   return {
     byDraftKey,
-    updated: plan.upserts.length,
+    changed,
+    matched,
     created: plan.creates.length,
     died: plan.deaths.length,
-    memorialUpdated,
+    memorialChanged,
+    memorialMatched,
     memorialCreated,
     cleared,
     hasBoardLiving: boardLiving.length > 0,
   };
+}
+
+/** True when the row should surface in the “what’s changing” brief. */
+export function isHighlightReviewStatus(
+  status: ImportDraftReviewStatus | undefined,
+): boolean {
+  if (!status) return false;
+  return (
+    status.kind === "changed" ||
+    status.kind === "new" ||
+    status.kind === "died"
+  );
+}
+
+/**
+ * Sticky re-import with no living / memorial chrome deltas (creates, deaths,
+ * clears, or visible updates). Silent PID matches still count as identical.
+ */
+export function isIdenticalPokemonReview(review: ImportSaveReview): boolean {
+  const hasStickyContext =
+    review.hasBoardLiving ||
+    review.matched > 0 ||
+    review.memorialMatched > 0 ||
+    review.changed > 0 ||
+    review.memorialChanged > 0 ||
+    review.created > 0 ||
+    review.memorialCreated > 0 ||
+    review.died > 0 ||
+    review.cleared.length > 0;
+  if (!hasStickyContext) return false;
+  return (
+    review.changed === 0 &&
+    review.memorialChanged === 0 &&
+    review.created === 0 &&
+    review.memorialCreated === 0 &&
+    review.died === 0 &&
+    review.cleared.length === 0
+  );
+}
+
+/** Board trainer fields compared against optional import sync chips. */
+export type SaveImportBoardTrainer = {
+  handle: string;
+  earnedBadgeKeys: readonly string[];
+  reviveUsed: boolean;
+  money: number | null;
+  playTimeSeconds: number | null;
+  nuzlockeEncounterBits: readonly number[];
+};
+
+/** Encountered strip rows for same-save fingerprinting. */
+export type SaveImportBoardEncounter = {
+  species: string;
+  nickname: string | null;
+  pokedexId: number | null;
+  isShiny: boolean;
+  catchRoute: string | null;
+};
+
+function sortedJoin(values: readonly string[]): string {
+  return [...values].sort().join("\n");
+}
+
+function encounterFingerprint(
+  mons: readonly {
+    species: string;
+    nickname?: string | null;
+    pokedexId?: number | null;
+    isShiny: boolean;
+    catchRoute?: string | null;
+  }[],
+): string {
+  return sortedJoin(
+    mons.map((m) => {
+      const nick = m.nickname?.trim().toLowerCase() ?? "";
+      const route = m.catchRoute?.trim().toLowerCase() ?? "";
+      return `${m.species.trim().toLowerCase()}|${nick}|${m.pokedexId ?? ""}|${m.isShiny ? 1 : 0}|${route}`;
+    }),
+  );
+}
+
+/** True when included Encountered drafts differ from the board strip. */
+export function encounteredImportHasDelta(
+  board: readonly SaveImportBoardEncounter[],
+  drafts: readonly {
+    include: boolean;
+    slot: PokemonSlot;
+    species: string;
+    nickname: string;
+    pokedexId: number;
+    isShiny: boolean;
+    catchRoute: string | null;
+  }[],
+): boolean {
+  const incoming = drafts.filter(
+    (d) => d.include && d.slot === "ENCOUNTERED",
+  );
+  return (
+    encounterFingerprint(board) !==
+    encounterFingerprint(
+      incoming.map((d) => ({
+        species: d.species,
+        nickname: d.nickname,
+        pokedexId: d.pokedexId,
+        isShiny: d.isShiny,
+        catchRoute: d.catchRoute,
+      })),
+    )
+  );
+}
+
+/**
+ * True when at least one checked trainer sync chip would change board state.
+ * Unchecked chips are ignored (player opted out).
+ */
+export function trainerSyncHasDelta(
+  board: SaveImportBoardTrainer,
+  incoming: {
+    applyTrainerName: boolean;
+    trainerName: string | null;
+    applyBadges: boolean;
+    badgeKeys: readonly string[];
+    applyRevive: boolean;
+    reviveUsed: boolean | null;
+    applyMoney: boolean;
+    money: number | null;
+    applyPlayTime: boolean;
+    playTimeSeconds: number | null;
+    applyEncounterFlags: boolean;
+    nuzlockeEncounterBits: readonly number[] | null;
+  },
+): boolean {
+  if (incoming.applyTrainerName && incoming.trainerName) {
+    if (incoming.trainerName.trim() !== board.handle.trim()) return true;
+  }
+  if (incoming.applyBadges) {
+    if (
+      sortedJoin(incoming.badgeKeys) !== sortedJoin(board.earnedBadgeKeys)
+    ) {
+      return true;
+    }
+  }
+  if (incoming.applyRevive && incoming.reviveUsed != null) {
+    if (incoming.reviveUsed !== board.reviveUsed) return true;
+  }
+  if (incoming.applyMoney && incoming.money != null) {
+    if (incoming.money !== board.money) return true;
+  }
+  if (incoming.applyPlayTime && incoming.playTimeSeconds != null) {
+    if (incoming.playTimeSeconds !== board.playTimeSeconds) return true;
+  }
+  if (
+    incoming.applyEncounterFlags &&
+    incoming.nuzlockeEncounterBits != null
+  ) {
+    const next = sortedJoin(
+      incoming.nuzlockeEncounterBits.map(String),
+    );
+    const prev = sortedJoin(board.nuzlockeEncounterBits.map(String));
+    if (next !== prev) return true;
+  }
+  return false;
 }
 
 export function importReviewPreviewParts(
@@ -295,15 +490,16 @@ export function importReviewPreviewParts(
   },
 ): string[] {
   const parts: string[] = [];
-  const updatedTotal = review.updated + review.memorialUpdated;
+  const changedTotal = review.changed + review.memorialChanged;
   const createdTotal = review.created + review.memorialCreated;
   if (
     review.hasBoardLiving ||
-    review.memorialUpdated > 0 ||
+    review.memorialChanged > 0 ||
+    review.memorialMatched > 0 ||
     review.memorialCreated > 0
   ) {
     const livingBits: string[] = [];
-    if (updatedTotal) livingBits.push(`${updatedTotal} updated`);
+    if (changedTotal) livingBits.push(`${changedTotal} updated`);
     if (createdTotal) livingBits.push(`${createdTotal} new`);
     if (review.died) livingBits.push(`${review.died} → R.I.P.`);
     if (review.cleared.length) {
