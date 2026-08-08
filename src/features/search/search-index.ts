@@ -12,6 +12,7 @@ import type {
 // `pokemon-index` into this bundle.
 import { ITEM_SEARCH_ROWS } from "@/data/items-lite.generated";
 import { heldItemSpriteUrl } from "@/data/pokemon-index";
+import { encountersHref } from "@/lib/encounters-view";
 import { avatarImageUrl } from "@/lib/sprites";
 import { toolsHref, seasonStatsHref } from "@/lib/tools-routes";
 
@@ -217,8 +218,36 @@ export function buildSeasonResults(ctx: SearchSeasonContext): SearchResult[] {
               "shiny",
               "tools",
             ]
-          : [tab.label.toLowerCase(), "section", "tab"],
+          : tab.label === "Encounters"
+            ? [
+                "encounters",
+                "section",
+                "tab",
+                "routes",
+                "claims",
+                "ledger",
+                "map",
+                "hoenn",
+              ]
+            : [tab.label.toLowerCase(), "section", "tab"],
     })),
+    {
+      id: `nav-encounters-map-${ctx.slug}`,
+      title: "Hoenn claim map",
+      subtitle: `${ctx.name} · Encounters map`,
+      href: encountersHref(ctx.slug, "map"),
+      category: "navigate",
+      tags: [
+        "map",
+        "hoenn",
+        "claim map",
+        "encounters map",
+        "routes",
+        "claimed",
+        "unclaimed",
+        "open slots",
+      ],
+    },
     {
       id: `nav-faq-${ctx.slug}`,
       title: "FAQ",

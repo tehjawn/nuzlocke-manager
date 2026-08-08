@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { EncounterLedger } from "@/components/EncounterLedger";
 import { EncounterRouteMap } from "@/components/EncounterRouteMap";
 import { ModeTabs } from "@/components/ModeTabs";
@@ -18,6 +18,11 @@ import {
 } from "@/components/SeasonStatCards";
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
 import type { EncounterSeasonHighlights } from "@/lib/encounter-stats";
+import {
+  encountersHref,
+  parseEncounterView,
+  type EncounterView,
+} from "@/lib/encounters-view";
 import type { ModernEmeraldSpeciesRef } from "@/lib/modern-emerald-dex";
 import type { PersonalRouteStatus } from "@/lib/personal-routes";
 import { toolsHref } from "@/lib/tools-routes";
@@ -31,8 +36,6 @@ type EncounterSeasonViewProps = {
   slug: string;
 };
 
-type EncounterView = "claims" | "map" | "missing" | "routes";
-
 export function EncounterSeasonView({
   groups,
   highlights,
@@ -41,9 +44,8 @@ export function EncounterSeasonView({
   routeStatuses,
   slug,
 }: EncounterSeasonViewProps) {
-  const [view, setView] = useState<EncounterView>(() =>
-    myTrainerId ? "routes" : "claims",
-  );
+  const searchParams = useSearchParams();
+  const view = parseEncounterView(searchParams.get("view"), myTrainerId);
   const hasCallouts =
     highlights.mostLogged.length > 0 ||
     highlights.rarestSeen.length > 0 ||
@@ -130,6 +132,7 @@ export function EncounterSeasonView({
       <ModeTabs
         aria-label="Encounter views"
         idPrefix="encounters"
+        linkReplace
         size="sm"
         value={view}
         tabs={
@@ -137,26 +140,34 @@ export function EncounterSeasonView({
             {
               id: "claims",
               label: "Route claims",
+              href: encountersHref(slug, "claims"),
               "data-testid": "encounter-view-claims",
             },
             {
               id: "routes",
               label: myTrainerId ? "My routes" : "Open routes",
+              href: encountersHref(slug, "routes"),
               "data-testid": "encounter-view-routes",
             },
-            { id: "map", label: "Map", "data-testid": "encounter-view-map" },
+            {
+              id: "map",
+              label: "Map",
+              href: encountersHref(slug, "map"),
+              "data-testid": "encounter-view-map",
+            },
             {
               id: "missing",
               label: "Missing dex",
+              href: encountersHref(slug, "missing"),
               "data-testid": "encounter-view-missing",
             },
           ] satisfies ReadonlyArray<{
             id: EncounterView;
             label: string;
+            href: string;
             "data-testid": string;
           }>
         }
-        onValueChange={setView}
         trailing={
           <Link
             href={toolsHref(slug, "bounty")}
@@ -174,7 +185,6 @@ export function EncounterSeasonView({
           <EncounterRouteMap
             groups={groups}
             myTrainerId={myTrainerId}
-            onJumpToClaims={() => setView("claims")}
             routeStatuses={routeStatuses}
             slug={slug}
           />

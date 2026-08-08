@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { Frame } from "@/components/Frame";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
-import { HOENN_MAP_VIEWBOX, type HoennMapZone } from "@/data/hoenn-map-zones";
+import {
+  HOENN_MAP_IMAGE,
+  HOENN_MAP_VIEWBOX,
+  regionArea,
+} from "@/data/hoenn-map-zones";
 import type { EncounterRouteGroup } from "@/lib/encounter-ledger";
 import {
   buildEncounterMapStatuses,
@@ -14,6 +18,7 @@ import {
   type MapRouteRow,
   type MapZoneStatus,
 } from "@/lib/encounter-route-map";
+import { encountersHref } from "@/lib/encounters-view";
 import type { PersonalRouteStatus } from "@/lib/personal-routes";
 
 type EncounterRouteMapProps = {
@@ -21,24 +26,24 @@ type EncounterRouteMapProps = {
   myTrainerId?: string | null;
   routeStatuses: PersonalRouteStatus[];
   slug: string;
-  /** Switch Encounters ModeTabs to the ledger list. */
-  onJumpToClaims?: () => void;
 };
 
+/**
+ * Status reads primarily from stroke; fills stay light so route art shows through.
+ * Unclaimed = outline only · partial/claimed = soft wash + strong border.
+ */
 const STATUS_FILL: Record<MapRouteClaimStatus, string> = {
-  open: "color-mix(in srgb, var(--surface) 70%, var(--surface-2))",
-  mine: "color-mix(in srgb, var(--accent) 42%, var(--surface))",
-  theirs: "color-mix(in srgb, var(--interactive) 38%, var(--surface))",
-  mixed: "color-mix(in srgb, var(--accent-2) 36%, var(--surface))",
-  static: "color-mix(in srgb, var(--frame) 18%, var(--surface))",
+  unclaimed: "color-mix(in srgb, var(--ink) 6%, transparent)",
+  partial: "color-mix(in srgb, var(--accent-2) 28%, transparent)",
+  claimed: "color-mix(in srgb, var(--accent) 32%, transparent)",
+  empty: "transparent",
 };
 
 const STATUS_STROKE: Record<MapRouteClaimStatus, string> = {
-  open: "color-mix(in srgb, var(--frame) 55%, transparent)",
-  mine: "var(--accent-deep)",
-  theirs: "var(--interactive)",
-  mixed: "var(--accent-2)",
-  static: "color-mix(in srgb, var(--frame) 40%, transparent)",
+  unclaimed: "color-mix(in srgb, var(--ink) 55%, transparent)",
+  partial: "var(--accent-2)",
+  claimed: "var(--accent-deep)",
+  empty: "transparent",
 };
 
 export function EncounterRouteMap({
@@ -46,12 +51,12 @@ export function EncounterRouteMap({
   myTrainerId = null,
   routeStatuses,
   slug,
-  onJumpToClaims,
 }: EncounterRouteMapProps) {
   const [trainerId, setTrainerId] = useState(
     () => myTrainerId ?? routeStatuses[0]?.trainerId ?? "",
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showEncounters, setShowEncounters] = useState(false);
 
   const focusStatus =
     routeStatuses.find((entry) => entry.trainerId === trainerId) ?? null;
@@ -60,6 +65,13 @@ export function EncounterRouteMap({
     () => buildEncounterMapStatuses(groups, focusStatus),
     [groups, focusStatus],
   );
+
+  /** Paint large regions first; small towns stay on top for clicks. */
+  const paintOrder = useMemo(() => {
+    return [...zoneStatuses].sort(
+      (a, b) => regionArea(b.zone) - regionArea(a.zone),
+    );
+  }, [zoneStatuses]);
 
   const selected =
     zoneStatuses.find((entry) => entry.zone.id === selectedId) ?? null;
@@ -80,61 +92,65 @@ export function EncounterRouteMap({
             Hoenn claim map
           </h3>
           <p className="max-w-xl text-xs text-muted">
-            Schematic zones keyed to catch-route labels. Colors follow the
-            selected trainer&apos;s open slots plus pack claims. Click a region
-            for the same claim detail as the ledger.
+            Game region map with pret-accurate route hit targets. Colors follow
+            the focused trainer&apos;s open-slot progress — unclaimed, partial,
+            or fully claimed. Click a route or town for detail.
           </p>
         </div>
-        {routeStatuses.length > 0 && (
-          <label className="min-w-[11rem] space-y-1 text-xs font-semibold text-muted">
-            Focus trainer
-            <select
-              className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
-              data-testid="encounter-map-trainer"
-              onChange={(event) => setTrainerId(event.target.value)}
-              value={focusStatus?.trainerId ?? trainerId}
-            >
-              {routeStatuses.map((entry) => (
-                <option key={entry.trainerId} value={entry.trainerId}>
-                  {entry.trainerHandle}
-                  {entry.trainerId === myTrainerId ? " (you)" : ""}
-                </option>
-              ))}
-            </select>
+        <div className="flex flex-wrap items-end gap-3">
+          {routeStatuses.length > 0 && (
+            <label className="min-w-[11rem] space-y-1 text-xs font-semibold text-muted">
+              Focus trainer
+              <select
+                className="w-full rounded-md border border-frame bg-surface px-2.5 py-2 text-sm font-normal text-ink"
+                data-testid="encounter-map-trainer"
+                onChange={(event) => setTrainerId(event.target.value)}
+                value={focusStatus?.trainerId ?? trainerId}
+              >
+                {routeStatuses.map((entry) => (
+                  <option key={entry.trainerId} value={entry.trainerId}>
+                    {entry.trainerHandle}
+                    {entry.trainerId === myTrainerId ? " (you)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-frame/40 bg-surface/70 px-2.5 py-2 text-xs font-semibold text-ink">
+            <input
+              checked={showEncounters}
+              className="accent-[var(--accent)]"
+              data-testid="encounter-map-show-encounters"
+              onChange={(event) => setShowEncounters(event.target.checked)}
+              type="checkbox"
+            />
+            Show encounters
           </label>
-        )}
+        </div>
       </div>
 
       <MapLegend />
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,1fr)]">
-        <div className="overflow-x-auto rounded-md border border-frame/40 bg-[color-mix(in_srgb,var(--interactive)_8%,var(--surface))]">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(15rem,0.9fr)]">
+        <div className="min-w-0 overflow-hidden rounded-md border border-frame/40 bg-[color-mix(in_srgb,var(--interactive)_10%,var(--surface))] p-1">
           <svg
             aria-label="Hoenn region claim map"
-            className="h-auto min-w-[36rem] w-full"
+            className="block h-auto w-full max-w-full"
             role="img"
             viewBox={HOENN_MAP_VIEWBOX}
+            preserveAspectRatio="xMidYMid meet"
           >
             <title>Hoenn claim map</title>
-            <rect
-              fill="color-mix(in srgb, var(--interactive) 14%, var(--surface-2))"
-              height="400"
-              rx="6"
+            <image
+              href={HOENN_MAP_IMAGE}
+              height="360"
+              opacity={0.78}
               width="640"
               x="0"
               y="0"
             />
-            <text
-              className="fill-[var(--muted)]"
-              fontSize="11"
-              fontWeight="600"
-              x="16"
-              y="22"
-            >
-              West ← → East · schematic (not to scale)
-            </text>
-            {zoneStatuses.map((entry) => (
-              <ZoneShape
+            {paintOrder.map((entry) => (
+              <RegionShape
                 key={entry.zone.id}
                 entry={entry}
                 selected={entry.zone.id === selectedId}
@@ -150,8 +166,8 @@ export function EncounterRouteMap({
 
         <ZoneDetail
           focusHandle={focusStatus?.trainerHandle ?? null}
-          onJumpToClaims={onJumpToClaims}
           selected={selected}
+          showEncounters={showEncounters}
           slug={slug}
         />
       </div>
@@ -166,12 +182,14 @@ export function EncounterRouteMap({
 }
 
 function MapLegend() {
-  const items: { status: MapRouteClaimStatus; hint: string }[] = [
-    { status: "open", hint: "Open for focus trainer" },
-    { status: "mine", hint: "Claimed by focus trainer" },
-    { status: "theirs", hint: "Claimed by someone else / pack" },
-    { status: "mixed", hint: "Mix of open + claimed" },
-    { status: "static", hint: "No wild open slot" },
+  const items: {
+    status: MapRouteClaimStatus;
+    hint: string;
+    dashed?: boolean;
+  }[] = [
+    { status: "unclaimed", hint: "Unclaimed (outline)", dashed: true },
+    { status: "partial", hint: "Partially claimed" },
+    { status: "claimed", hint: "Fully claimed" },
   ];
   return (
     <ul className="flex flex-wrap gap-2 text-[10px] font-semibold text-muted">
@@ -182,10 +200,11 @@ function MapLegend() {
         >
           <span
             aria-hidden
-            className="inline-block h-2.5 w-2.5 rounded-sm border"
+            className="inline-block h-2.5 w-2.5 rounded-sm border-2"
             style={{
               background: STATUS_FILL[item.status],
               borderColor: STATUS_STROKE[item.status],
+              borderStyle: item.dashed ? "dashed" : "solid",
             }}
           />
           {item.hint}
@@ -195,7 +214,7 @@ function MapLegend() {
   );
 }
 
-function ZoneShape({
+function RegionShape({
   entry,
   selected,
   onSelect,
@@ -205,17 +224,32 @@ function ZoneShape({
   onSelect: () => void;
 }) {
   const { zone, status } = entry;
-  const center = shapeCenter(zone);
-  const common = {
+  // Skip pure static regions (no open slots) — keeps the art readable.
+  if (status === "empty") return null;
+
+  const slotTotal = entry.claimedOpenSlots + entry.openSlots;
+  const stroke = selected ? "var(--ink)" : STATUS_STROKE[status];
+  const strokeWidth = selected ? 2.5 : status === "unclaimed" ? 1.5 : 2;
+  const dash =
+    status === "unclaimed" && !selected ? "3.5 2.5" : undefined;
+
+  const shared = {
     fill: STATUS_FILL[status],
-    stroke: selected ? "var(--ink)" : STATUS_STROKE[status],
-    strokeWidth: selected ? 2.25 : 1.25,
+    stroke,
+    strokeWidth,
+    strokeDasharray: dash,
+    strokeLinejoin: "round" as const,
     className:
       "cursor-pointer transition-[filter] hover:brightness-105 focus:outline-none focus-visible:stroke-[var(--ink)]",
     tabIndex: 0 as const,
     role: "button" as const,
-    "aria-label": `${zone.name}: ${mapStatusLabel(status)}, ${entry.claimedOpenSlots} claimed of ${entry.claimedOpenSlots + entry.openSlots} open slots`,
+    "aria-label": `${zone.name}: ${mapStatusLabel(status)}${
+      slotTotal > 0
+        ? `, ${entry.claimedOpenSlots} claimed of ${slotTotal}`
+        : ""
+    }`,
     "aria-pressed": selected,
+    "data-region": zone.id,
     onClick: onSelect,
     onKeyDown: (event: KeyboardEvent) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -225,91 +259,50 @@ function ZoneShape({
     },
   };
 
-  return (
-    <g data-zone={zone.id}>
-      {zone.shape.type === "rect" ? (
-        <rect
-          {...common}
-          height={zone.shape.height}
-          rx={5}
-          width={zone.shape.width}
-          x={zone.shape.x}
-          y={zone.shape.y}
-        />
-      ) : (
-        <polygon {...common} points={zone.shape.points} />
-      )}
-      <text
-        className="pointer-events-none select-none fill-[var(--ink)]"
-        fontSize="11"
-        fontWeight="700"
-        textAnchor="middle"
-        x={zone.labelAt?.x ?? center.x}
-        y={(zone.labelAt?.y ?? center.y) - 4}
-      >
-        {zone.name}
-      </text>
-      <text
-        className="pointer-events-none select-none fill-[var(--muted)]"
-        fontSize="9"
-        fontWeight="600"
-        textAnchor="middle"
-        x={zone.labelAt?.x ?? center.x}
-        y={(zone.labelAt?.y ?? center.y) + 10}
-      >
-        {entry.claimedOpenSlots + entry.openSlots > 0
-          ? `${entry.claimedOpenSlots}/${entry.claimedOpenSlots + entry.openSlots}`
-          : "—"}
-      </text>
-    </g>
-  );
-}
-
-function shapeCenter(zone: HoennMapZone): { x: number; y: number } {
-  if (zone.shape.type === "rect") {
-    return {
-      x: zone.shape.x + zone.shape.width / 2,
-      y: zone.shape.y + zone.shape.height / 2,
-    };
+  // One contiguous shape: solid pret fills → rect; L / doughnut → path.
+  if (zone.shape.type === "path") {
+    return <path d={zone.shape.d} fillRule="evenodd" {...shared} />;
   }
-  const pairs = zone.shape.points
-    .trim()
-    .split(/\s+/)
-    .map((pair) => pair.split(",").map(Number));
-  const xs = pairs.map(([x]) => x);
-  const ys = pairs.map(([, y]) => y);
-  return {
-    x: (Math.min(...xs) + Math.max(...xs)) / 2,
-    y: (Math.min(...ys) + Math.max(...ys)) / 2,
-  };
+
+  const inset = 0.6;
+  const { x, y, width, height } = zone.shape;
+  return (
+    <rect
+      x={x + inset}
+      y={y + inset}
+      width={Math.max(width - inset * 2, 2)}
+      height={Math.max(height - inset * 2, 2)}
+      rx={Math.min(2.5, Math.min(width, height) / 5)}
+      {...shared}
+    />
+  );
 }
 
 function ZoneDetail({
   selected,
   slug,
   focusHandle,
-  onJumpToClaims,
+  showEncounters,
 }: {
   selected: MapZoneStatus | null;
   slug: string;
   focusHandle: string | null;
-  onJumpToClaims?: () => void;
+  showEncounters: boolean;
 }) {
   if (!selected) {
     return (
-      <Frame dense title="Zone detail">
+      <Frame dense title="Route detail">
         <p className="text-sm text-muted">
-          Select a region on the map to see open slots and who claimed them
+          Select a route or town on the map to see open-slot progress
           {focusHandle ? ` (focus: ${focusHandle})` : ""}.
         </p>
       </Frame>
     );
   }
 
-  const { zone, status, rows, packClaimCount } = selected;
+  const { zone, status, rows } = selected;
   const slotTotal = selected.claimedOpenSlots + selected.openSlots;
-  const hasFocus = focusHandle != null;
-  const displayRows = hasFocus ? sortRowsOpenFirst(rows) : rows;
+  const displayRows = sortRowsUnclaimedFirst(rows);
 
   return (
     <Frame
@@ -324,156 +317,160 @@ function ZoneDetail({
       <div className="space-y-3">
         <p className="text-xs text-muted">
           {slotTotal > 0
-            ? `${selected.claimedOpenSlots} of ${slotTotal} open slots claimed`
-            : "No wild open slots in this zone"}
-          {selected.openSlots > 0 ? ` · ${selected.openSlots} still open` : ""}
-          {packClaimCount > 0 ? ` · ${packClaimCount} pack logs` : ""}
-          {hasFocus ? ` (focus: ${focusHandle})` : ""}.
+            ? `${selected.claimedOpenSlots} of ${slotTotal} claimed`
+            : "No wild open slots here"}
+          {selected.openSlots > 0
+            ? ` · ${selected.openSlots} still unclaimed`
+            : ""}
+          {focusHandle ? ` (focus: ${focusHandle})` : ""}.
         </p>
 
-        <ul className="space-y-2">
-          {displayRows.map((row) => (
-            <RouteRowDetail key={row.label} row={row} slug={slug} />
-          ))}
-        </ul>
-
-        {onJumpToClaims && (
-          <button
-            type="button"
-            className="text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
-            onClick={onJumpToClaims}
-          >
-            Open Route claims list
-          </button>
+        {displayRows.length > 0 ? (
+          <ul className="space-y-2">
+            {displayRows.map((row) => (
+              <RouteRowDetail
+                key={row.label}
+                row={row}
+                showEncounters={showEncounters}
+                slug={slug}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">No open-slot routes here.</p>
         )}
+
+        <Link
+          href={encountersHref(slug, "claims")}
+          className="inline-block text-xs font-semibold text-interactive underline decoration-interactive/35 underline-offset-2 hover:decoration-interactive"
+        >
+          Open Route claims list
+        </Link>
       </div>
     </Frame>
   );
 }
 
-/** Display order when a focus trainer is selected: open → yours → other. */
-function sortRowsOpenFirst(rows: MapRouteRow[]): MapRouteRow[] {
+/** Display order: unclaimed first, then claimed (stable within each bucket). */
+function sortRowsUnclaimedFirst(rows: MapRouteRow[]): MapRouteRow[] {
   return rows
     .map((row, index) => ({ row, index }))
     .sort((a, b) => {
-      const rankDiff = rowScanRank(a.row) - rowScanRank(b.row);
-      return rankDiff !== 0 ? rankDiff : a.index - b.index;
+      const rankA = a.row.focusClaimed ? 1 : 0;
+      const rankB = b.row.focusClaimed ? 1 : 0;
+      return rankA !== rankB ? rankA - rankB : a.index - b.index;
     })
     .map(({ row }) => row);
 }
 
-function rowScanRank(row: MapRouteRow): number {
-  if (row.countsTowardOpen && !row.focusClaimed) {
-    const packClaimed = row.claims.length + row.flagClaims.length > 0;
-    if (!packClaimed) return 0; // still open for focus
-  }
-  if (row.focusClaimed) return 1; // yours
-  return 2; // pack-claimed / static
-}
+function RouteRowDetail({
+  row,
+  slug,
+  showEncounters,
+}: {
+  row: MapRouteRow;
+  slug: string;
+  showEncounters: boolean;
+}) {
+  const claimed = row.focusClaimed;
+  const rowChrome = claimed
+    ? "border-accent/50 bg-accent/10"
+    : "border-frame bg-surface-2";
 
-type RouteRowBadge = "Yours" | "Open" | "Claimed" | "Logged" | "Static";
-
-function routeRowBadge(row: MapRouteRow): RouteRowBadge {
-  const claimCount = row.claims.length + row.flagClaims.length;
-  if (row.countsTowardOpen) {
-    if (row.focusClaimed) return "Yours";
-    if (claimCount > 0) return "Claimed";
-    return "Open";
-  }
-  return claimCount > 0 ? "Logged" : "Static";
-}
-
-function RouteRowDetail({ row, slug }: { row: MapRouteRow; slug: string }) {
-  const claimCount = row.claims.length + row.flagClaims.length;
-  const badge = routeRowBadge(row);
-
-  const rowChrome =
-    badge === "Open"
-      ? "border-interactive/50 bg-interactive-soft/55"
-      : badge === "Yours"
-        ? "border-accent/40 bg-accent/10"
-        : "border-frame/30 bg-surface/50";
+  const hasFocusEncounters =
+    row.focusClaims.length > 0 || row.focusFlagClaims.length > 0;
 
   return (
     <li className={`rounded-md border px-2.5 py-2 ${rowChrome}`}>
-      <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="text-sm font-semibold leading-tight">{row.label}</span>
-        <RouteStatusChip badge={badge} />
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`min-w-0 text-sm font-semibold leading-tight tracking-tight ${
+            claimed ? "text-accent-deep" : "text-ink"
+          }`}
+        >
+          {row.label}
+        </span>
+        <RouteStatusChip claimed={claimed} />
       </div>
-      {row.flagClaims.length > 0 && (
-        <ul className="mb-1.5 flex flex-wrap gap-1">
-          {row.flagClaims.map((claim) => (
-            <li
-              className="rounded-full border border-frame/40 bg-interactive-soft/40 px-2 py-0.5 text-[10px] font-semibold text-ink"
-              key={claim.trainerId}
-            >
-              {claim.trainerHandle} · flag
-            </li>
-          ))}
-        </ul>
-      )}
-      {row.claims.length > 0 ? (
-        <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4">
-          {row.claims.map((claim) => {
-            const label = claim.nickname?.trim() || claim.species;
-            return (
-              <li key={claim.pokemonId}>
-                <Link
-                  href={`/challenges/${slug}/trainers/${claim.trainerId}`}
-                  title={`${label} · ${claim.trainerHandle}`}
-                  aria-label={`${label} · ${claim.trainerHandle}${
-                    claim.isAlive ? "" : " · fallen"
-                  }`}
-                  className="pressable flex flex-col items-center gap-0.5 rounded-md border border-frame/25 bg-surface/40 px-1 py-1 text-center hover:border-interactive/40"
+
+      {showEncounters && (
+        <div className="mt-1.5">
+          {row.focusFlagClaims.length > 0 && (
+            <ul className="mb-1.5 flex flex-wrap gap-1">
+              {row.focusFlagClaims.map((claim) => (
+                <li
+                  className="rounded-full border border-frame/40 bg-interactive-soft/40 px-2 py-0.5 text-[10px] font-semibold text-ink"
+                  key={claim.trainerId}
                 >
-                  <PokemonSpriteImage
-                    alt=""
-                    className={`pixelated h-10 w-10 object-contain ${
-                      claim.isAlive ? "" : "opacity-50 grayscale"
-                    }`}
-                    height={40}
-                    pokedexId={claim.pokedexId}
-                    shiny={claim.isShiny}
-                    species={claim.species}
-                    width={40}
-                  />
-                  <span className="w-full truncate text-[10px] font-semibold leading-tight">
-                    {label}
-                  </span>
-                  <span className="w-full truncate text-[9px] text-muted">
-                    {claim.trainerHandle}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      ) : claimCount === 0 ? (
-        <p className="text-[11px] text-muted">No pack claims yet.</p>
-      ) : null}
+                  {claim.trainerHandle} · flag
+                </li>
+              ))}
+            </ul>
+          )}
+          {row.focusClaims.length > 0 ? (
+            <ul className="grid grid-cols-3 gap-1 sm:grid-cols-4">
+              {row.focusClaims.map((claim) => {
+                const label = claim.nickname?.trim() || claim.species;
+                return (
+                  <li key={claim.pokemonId}>
+                    <Link
+                      href={`/challenges/${slug}/trainers/${claim.trainerId}`}
+                      title={`${label} · ${claim.trainerHandle}`}
+                      aria-label={`${label} · ${claim.trainerHandle}${
+                        claim.isAlive ? "" : " · fallen"
+                      }`}
+                      className="pressable flex flex-col items-center gap-0.5 rounded-md border border-frame/25 bg-surface/40 px-1 py-1 text-center hover:border-interactive/40"
+                    >
+                      <PokemonSpriteImage
+                        alt=""
+                        className={`pixelated h-10 w-10 object-contain ${
+                          claim.isAlive ? "" : "opacity-50 grayscale"
+                        }`}
+                        height={40}
+                        pokedexId={claim.pokedexId}
+                        shiny={claim.isShiny}
+                        species={claim.species}
+                        width={40}
+                      />
+                      <span className="w-full truncate text-[10px] font-semibold leading-tight">
+                        {label}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : !hasFocusEncounters ? (
+            <p className="text-[11px] text-muted">
+              {claimed
+                ? "Slot claimed — no catch logged on the board."
+                : "No encounters logged yet."}
+            </p>
+          ) : null}
+        </div>
+      )}
     </li>
   );
 }
 
-function RouteStatusChip({ badge }: { badge: RouteRowBadge }) {
-  if (badge === "Yours") {
+function RouteStatusChip({ claimed }: { claimed: boolean }) {
+  if (claimed) {
     return (
-      <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold text-accent-deep">
-        <CheckIcon className="h-3 w-3" />
-        Yours
-      </span>
-    );
-  }
-  if (badge === "Open") {
-    return (
-      <span className="inline-flex shrink-0 items-center rounded-full border border-interactive/55 bg-interactive-soft px-1.5 py-0.5 text-[10px] font-semibold text-ink">
-        Open
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent-deep">
+        <span
+          className="flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[var(--on-accent)]"
+          aria-hidden
+        >
+          <CheckIcon className="h-2.5 w-2.5" />
+        </span>
+        Claimed
       </span>
     );
   }
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-frame/35 bg-surface/70 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
-      {badge}
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-frame/45 bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+      <UnclaimedIcon className="h-3 w-3 text-muted" />
+      Unclaimed
     </span>
   );
 }
@@ -487,6 +484,22 @@ function CheckIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function UnclaimedIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} fill="none" aria-hidden>
+      <rect
+        x="3"
+        y="3"
+        width="10"
+        height="10"
+        rx="1.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
       />
     </svg>
   );
