@@ -43,6 +43,7 @@ import {
   statRankHint,
   statRankToneClass,
 } from "@/lib/species-ranks";
+import { mapZoneIdForCatchRoute } from "@/lib/encounter-route-map";
 import {
   baseStatsForSpecies,
   bstOf,
@@ -53,7 +54,7 @@ import {
   STAT_KEYS,
   STAT_LABELS,
 } from "@/lib/stats";
-import { toolsHref } from "@/lib/tools-routes";
+import { catchMapHref, toolsHref } from "@/lib/tools-routes";
 
 /** Matches collapsed ME learnset disclosures so the chunk load doesn’t grow the modal. */
 function LearnsetSkeleton() {
@@ -240,6 +241,11 @@ export function PokemonDetailsModal({
     slug && heldItemSlug
       ? toolsHref(slug, "itemdex", { item: heldItemSlug })
       : null;
+  const routeZoneId = mapZoneIdForCatchRoute(pokemon.catchRoute);
+  const catchMapLink =
+    slug && routeZoneId
+      ? catchMapHref(slug, { route: routeZoneId })
+      : null;
   const speciesLabel = pokedexHref ? (
     <Link
       href={pokedexHref}
@@ -365,7 +371,22 @@ export function PokemonDetailsModal({
           ),
         }
       : null,
-    pokemon.catchRoute ? { label: "Route", value: pokemon.catchRoute } : null,
+    pokemon.catchRoute
+      ? {
+          label: "Route",
+          value: catchMapLink ? (
+            <Link
+              href={catchMapLink}
+              className="text-accent-deep underline-offset-2 hover:underline"
+              onClick={onClose}
+            >
+              {pokemon.catchRoute}
+            </Link>
+          ) : (
+            pokemon.catchRoute
+          ),
+        }
+      : null,
     pokemon.heldItem
       ? {
           label: "Item",

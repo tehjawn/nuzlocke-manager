@@ -14,6 +14,7 @@ import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { CatchRouteEncounter } from "@/data/catch-routes";
 import { catchVisitOrderIndex } from "@/data/hoenn-catch-visit-order";
 import {
+  findHoennMapZone,
   HOENN_MAP_IMAGE,
   HOENN_MAP_VIEWBOX,
   regionArea,
@@ -48,10 +49,31 @@ import type { PersonalRouteStatus } from "@/lib/personal-routes";
 
 type EncounterRouteMapProps = {
   groups: EncounterRouteGroup[];
+  /** Validated zone id from `?route=` (server). Client also re-reads the live URL. */
+  initialRoute?: string | null;
   myTrainerId?: string | null;
   routeStatuses: PersonalRouteStatus[];
   slug: string;
 };
+
+/**
+ * Read `?route=` off the live URL, or null on the server.
+ *
+ * Selection `pushState`s without telling the Next router, so the cached RSC
+ * payload can disagree with the address bar after back/restore. Seeding from
+ * the URL keeps selection honest — same lesson as ItemDex / Pokédex.
+ */
+function routeUrlParam(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("route");
+}
+
+function resolveRouteSelection(
+  raw: string | null | undefined,
+): string | null {
+  if (!raw) return null;
+  return findHoennMapZone(raw) ? raw : null;
+}
 
 /**
  * Status reads primarily from stroke; fills stay light so route art shows through.
@@ -114,6 +136,7 @@ function claimMapPulseDelayMs(now = Date.now()): number {
 
 export function EncounterRouteMap({
   groups,
+  initialRoute = null,
   myTrainerId = null,
   routeStatuses,
   slug,
@@ -121,15 +144,27 @@ export function EncounterRouteMap({
   const [trainerId, setTrainerId] = useState(
     () => myTrainerId ?? routeStatuses[0]?.trainerId ?? "",
   );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Seeded from the live URL, then the SSR deep link — see `routeUrlParam`.
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    resolveRouteSelection(routeUrlParam() ?? initialRoute),
+  );
   /** Default Untouched — land as a next-catch planner. */
   const [statusFilter, setStatusFilter] = useState<MapStatusFilter | null>(
     "unclaimed",
   );
-  /** On by default — season runs are League-capped; show post-game when needed. */
-  const [hidePostGame, setHidePostGame] = useState(true);
+  /**
+   * On by default — season runs are League-capped. Deep-linking a post-game
+   * zone auto-unhides so selection isn't filtered out immediately.
+   */
+  const [hidePostGame, setHidePostGame] = useState(() => {
+    const seeded = resolveRouteSelection(routeUrlParam() ?? initialRoute);
+    if (seeded && isPostGameMapZone(seeded)) return false;
+    return true;
+  });
   const [magnify, setMagnify] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const didScrollDeepLink = useRef(false);
 
   const focusStatus =
     routeStatuses.find((entry) => entry.trainerId === trainerId) ?? null;
@@ -188,17 +223,53 @@ export function EncounterRouteMap({
   }, [hidePostGame]);
   const planningActive = statusFilter != null;
 
+  function writeRouteUrl(zoneId: string | null) {
+    const url = new URL(window.location.href);
+    if (zoneId) url.searchParams.set("route", zoneId);
+    else url.searchParams.delete("route");
+    if (url.href === window.location.href) return;
+    window.history.pushState(window.history.state, "", url.href);
+  }
+
+  function selectZone(zoneId: string | null) {
+    if (zoneId && isPostGameMapZone(zoneId)) {
+      setHidePostGame(false);
+    }
+    setSelectedId(zoneId);
+    writeRouteUrl(zoneId);
+  }
+
+  // Selection URL updates use history.pushState (not the Next router) so the
+  // encounters RSC payload doesn't refetch. Sync on back/forward.
+  useEffect(() => {
+    function onPopState() {
+      const next = resolveRouteSelection(
+        new URL(window.location.href).searchParams.get("route"),
+      );
+      setSelectedId(next);
+      if (next && isPostGameMapZone(next)) setHidePostGame(false);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // Mobile: bring the zone panel into view when landing with `?route=`.
+  useEffect(() => {
+    if (didScrollDeepLink.current) return;
+    if (!selectedId || !panelRef.current) return;
+    didScrollDeepLink.current = true;
+    panelRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [selectedId]);
+
   function toggleStatus(status: MapStatusFilter) {
-    setSelectedId(null);
+    selectZone(null);
     setStatusFilter((prev) => (prev === status ? null : status));
   }
 
   function onHidePostGameChange(checked: boolean) {
     setHidePostGame(checked);
-    if (checked) {
-      setSelectedId((prev) =>
-        prev && isPostGameMapZone(prev) ? null : prev,
-      );
+    if (checked && selectedId && isPostGameMapZone(selectedId)) {
+      selectZone(null);
     }
   }
 
@@ -241,8 +312,8 @@ export function EncounterRouteMap({
               setHoveredId(active ? entry.zone.id : null)
             }
             onSelect={() =>
-              setSelectedId((prev) =>
-                prev === entry.zone.id ? null : entry.zone.id,
+              selectZone(
+                selectedId === entry.zone.id ? null : entry.zone.id,
               )
             }
           />
@@ -266,7 +337,7 @@ export function EncounterRouteMap({
       pulseDelayMs={pulseDelayMs}
       selected={selected}
       slug={slug}
-      onClear={() => setSelectedId(null)}
+      onClear={() => selectZone(null)}
       backLabel={
         statusFilter != null
           ? mapStatusFilterLabel(statusFilter)
@@ -280,7 +351,7 @@ export function EncounterRouteMap({
       mapFilterCleared={statusFilter == null}
       slots={openSlots}
       slug={slug}
-      onSelectZone={(zoneId) => setSelectedId(zoneId)}
+      onSelectZone={(zoneId) => selectZone(zoneId)}
     />
   );
 
@@ -343,7 +414,9 @@ export function EncounterRouteMap({
 
       {/* Panel first in DOM for keyboard/mobile; map left on desktop. */}
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(15rem,0.85fr)]">
-        <div className="min-w-0 lg:col-start-2">{panelBlock}</div>
+        <div className="min-w-0 lg:col-start-2" ref={panelRef}>
+          {panelBlock}
+        </div>
         <div className="min-w-0 lg:col-start-1 lg:row-start-1">{mapBlock}</div>
       </div>
 

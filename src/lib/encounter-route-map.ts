@@ -32,12 +32,13 @@ export type MapRouteClaimStatus =
   | "claimed"
   | "empty";
 
-/** Stable display order for wild-table methods. */
+/** Stable display order for catch methods (wild table + scripted statics). */
 export const MAP_ENCOUNTER_METHODS: readonly CatchRouteEncounter[] = [
   "land",
   "water",
   "fishing",
   "rock-smash",
+  "static",
 ];
 
 /** Legend status chips — single-select toggle (null = show all). */
@@ -64,7 +65,7 @@ export type MapRouteRow = {
    * No-wilds row: focus has a met-location log here (not a ROM slot spend).
    */
   focusClaimed: boolean;
-  /** ROM wild-table methods for this catch-route label (empty for no-wilds). */
+  /** Catch methods for this label (wild table ± scripted static). Empty for no-wilds. */
   methods: readonly CatchRouteEncounter[];
   /** Outdoor no-wild-table met location (egg-only or empty-static). */
   hatchSafe: boolean;
@@ -151,6 +152,37 @@ export const POST_GAME_CATCH_ROUTE_LABELS: ReadonlySet<string> = new Set([
 
 export function isPostGameMapZone(zoneId: string): boolean {
   return POST_GAME_MAP_ZONE_IDS.has(zoneId);
+}
+
+/** Label → drawn zone id (nested labels like Petalburg Woods → route-104). */
+const ZONE_ID_BY_LABEL = new Map<string, string>();
+for (const zone of HOENN_MAP_REGIONS) {
+  for (const label of zone.labels) {
+    const key = normalizeCatchRoute(label);
+    if (!ZONE_ID_BY_LABEL.has(key)) ZONE_ID_BY_LABEL.set(key, zone.id);
+  }
+}
+
+/**
+ * Resolve a stored `catchRoute` string to a Catch Map zone id for deep links.
+ *
+ * Uses the catalog canonical label (and the original string for nested labels
+ * that are themselves catalog rows). Unmapped open slots, aliasesRoute101-only
+ * cells, and free-typed junk return null — no silent remap to Route 101.
+ */
+export function mapZoneIdForCatchRoute(
+  catchRoute: string | null | undefined,
+): string | null {
+  if (!catchRoute?.trim()) return null;
+  const catalog = findCatchRoute(catchRoute);
+  const candidates = [catalog?.label, catchRoute.trim()].filter(
+    (value): value is string => Boolean(value),
+  );
+  for (const candidate of candidates) {
+    const zoneId = ZONE_ID_BY_LABEL.get(normalizeCatchRoute(candidate));
+    if (zoneId) return zoneId;
+  }
+  return null;
 }
 
 export function isPostGameCatchRouteLabel(label: string): boolean {
@@ -496,6 +528,8 @@ export function mapMethodLabel(method: CatchRouteEncounter): string {
       return "Fishing";
     case "rock-smash":
       return "Rock Smash";
+    case "static":
+      return "Static";
     default:
       return method;
   }
@@ -524,7 +558,7 @@ export function mapOffRouteKindNote(kind: MapOffRouteKind | null): string {
   }
 }
 
-/** Sort methods into the canonical Grass → Surf → Fishing → Rock Smash order. */
+/** Sort methods into Grass → Surf → Fishing → Rock Smash → Static order. */
 export function sortMapMethods(
   methods: readonly CatchRouteEncounter[],
 ): CatchRouteEncounter[] {

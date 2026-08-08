@@ -140,9 +140,16 @@ export function seasonStatsHref(
 /**
  * Canonical Catch Map home — still served from `/encounters` (legacy path).
  * Tools catalog / old Encounters tab links alias here.
+ * Optional `route` is a `HoennMapRegion.id` (`route-101`, `petalburg-city`, …).
  */
-export function catchMapHref(slug: string): string {
-  return `/challenges/${slug}/encounters`;
+export function catchMapHref(
+  slug: string,
+  query?: { route?: string | null },
+): string {
+  const base = `/challenges/${slug}/encounters`;
+  const route = query?.route?.trim();
+  if (!route) return base;
+  return `${base}?${new URLSearchParams({ route }).toString()}`;
 }
 
 export function toolsHref(
@@ -157,6 +164,8 @@ export function toolsHref(
     item?: string | null;
     /** Ownership tracker status filter (`untouched`, …). */
     status?: string | null;
+    /** Catch Map zone id (`route-101`). */
+    route?: string | null;
   },
 ): string {
   // Stats graduated out of Tools into its own season tab — keep callers
@@ -166,7 +175,7 @@ export function toolsHref(
   }
   // Catch Map graduated the same way — map-only page at `/encounters`.
   if (tool === "catch-map") {
-    return catchMapHref(slug);
+    return catchMapHref(slug, { route: query?.route });
   }
   const params = new URLSearchParams({ tool });
   if (query?.id != null && query.id !== "") {
