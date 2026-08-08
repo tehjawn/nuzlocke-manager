@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type KeyboardEvent } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { Frame } from "@/components/Frame";
 import { PokemonSpriteImage } from "@/components/PokemonSpriteImage";
 import type { CatchRouteEncounter } from "@/data/catch-routes";
@@ -82,6 +88,8 @@ export function EncounterRouteMap({
   );
   /** On by default — season runs are League-capped; show post-game when needed. */
   const [hidePostGame, setHidePostGame] = useState(true);
+  const [magnify, setMagnify] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const focusStatus =
     routeStatuses.find((entry) => entry.trainerId === trainerId) ?? null;
@@ -153,45 +161,55 @@ export function EncounterRouteMap({
       : `${focusHandle}'s`
     : "this trainer's";
 
+  const mapSvg = (
+    <svg
+      aria-label="Hoenn Catch Map"
+      className="block h-auto w-full max-w-full"
+      role="img"
+      viewBox={HOENN_MAP_VIEWBOX}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <title>Catch Map</title>
+      <image
+        href={HOENN_MAP_IMAGE}
+        height="360"
+        opacity={0.78}
+        width="640"
+        x="0"
+        y="0"
+      />
+      {paintOrder.map((entry) => {
+        const emphasized = zoneMatchesMapFilter(entry, filter);
+        const isSelected = entry.zone.id === selectedId;
+        return (
+          <RegionShape
+            key={entry.zone.id}
+            dimmed={planningActive && !emphasized && !isSelected}
+            entry={entry}
+            hovered={hoveredId === entry.zone.id}
+            matchHighlight={planningActive && emphasized && !isSelected}
+            pulse={isSelected}
+            selected={isSelected}
+            onHoverChange={(active) =>
+              setHoveredId(active ? entry.zone.id : null)
+            }
+            onSelect={() =>
+              setSelectedId((prev) =>
+                prev === entry.zone.id ? null : entry.zone.id,
+              )
+            }
+          />
+        );
+      })}
+    </svg>
+  );
+
   const mapBlock = (
-    <div className="min-w-0 overflow-hidden rounded-md border border-frame/40 bg-[color-mix(in_srgb,var(--interactive)_10%,var(--surface))] p-1">
-      <svg
-        aria-label="Hoenn Catch Map"
-        className="block h-auto w-full max-w-full"
-        role="img"
-        viewBox={HOENN_MAP_VIEWBOX}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <title>Catch Map</title>
-        <image
-          href={HOENN_MAP_IMAGE}
-          height="360"
-          opacity={0.78}
-          width="640"
-          x="0"
-          y="0"
-        />
-        {paintOrder.map((entry) => {
-          const emphasized = zoneMatchesMapFilter(entry, filter);
-          const isSelected = entry.zone.id === selectedId;
-          return (
-            <RegionShape
-              key={entry.zone.id}
-              dimmed={planningActive && !emphasized && !isSelected}
-              entry={entry}
-              matchHighlight={planningActive && emphasized && !isSelected}
-              pulse={isSelected}
-              selected={isSelected}
-              onSelect={() =>
-                setSelectedId((prev) =>
-                  prev === entry.zone.id ? null : entry.zone.id,
-                )
-              }
-            />
-          );
-        })}
-      </svg>
-    </div>
+    <MapViewport
+      magnify={magnify}
+      onMagnifyChange={setMagnify}
+      mapSvg={mapSvg}
+    />
   );
 
   const panelBlock = selected ? (
@@ -285,6 +303,104 @@ export function EncounterRouteMap({
   );
 }
 
+/** In-place map zoom — scale the map; cursor sets the magnification center. */
+const MAP_MAGNIFY_SCALE = 2.4;
+
+function MapViewport({
+  magnify,
+  onMagnifyChange,
+  mapSvg,
+}: {
+  magnify: boolean;
+  onMagnifyChange: (next: boolean) => void;
+  mapSvg: ReactNode;
+}) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
+
+  function updateOrigin(clientX: number, clientY: number) {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    setOrigin({
+      x: Math.min(Math.max(clientX - rect.left, 0), rect.width),
+      y: Math.min(Math.max(clientY - rect.top, 0), rect.height),
+    });
+  }
+
+  return (
+    <div className="relative min-w-0 overflow-hidden rounded-md border border-frame/40 bg-[color-mix(in_srgb,var(--interactive)_10%,var(--surface))] p-1">
+      <button
+        type="button"
+        aria-pressed={magnify}
+        aria-label={
+          magnify ? "Turn off map magnifier" : "Turn on map magnifier"
+        }
+        data-testid="encounter-map-magnify"
+        title={magnify ? "Magnifier on" : "Magnifier"}
+        onClick={() => {
+          onMagnifyChange(!magnify);
+          setOrigin(null);
+        }}
+        className={`absolute right-2 top-2 z-20 inline-flex size-8 items-center justify-center rounded-md border shadow-sm transition-colors ${
+          magnify
+            ? "border-interactive/50 bg-interactive-soft text-interactive"
+            : "border-frame/50 bg-surface/90 text-muted hover:bg-ink/8 hover:text-ink"
+        }`}
+      >
+        <MagnifierIcon className="size-4" />
+      </button>
+
+      <div
+        ref={stageRef}
+        className={`relative overflow-hidden ${magnify ? "cursor-crosshair" : ""}`}
+        data-testid="encounter-map-stage"
+        onMouseLeave={() => setOrigin(null)}
+        onMouseMove={(event) => {
+          if (!magnify) return;
+          updateOrigin(event.clientX, event.clientY);
+        }}
+      >
+        <div
+          className={magnify ? "will-change-transform" : undefined}
+          style={
+            magnify && origin
+              ? {
+                  transform: `scale(${MAP_MAGNIFY_SCALE})`,
+                  transformOrigin: `${origin.x}px ${origin.y}px`,
+                }
+              : magnify
+                ? {
+                    transform: `scale(${MAP_MAGNIFY_SCALE})`,
+                    transformOrigin: "50% 50%",
+                  }
+                : undefined
+          }
+        >
+          {mapSvg}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MagnifierIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <circle cx="10.5" cy="10.5" r="6" />
+      <path d="M15.5 15.5L20 20" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function MapLegend({
   activeStatus,
   counts,
@@ -370,6 +486,8 @@ function RegionShape({
   pulse,
   matchHighlight,
   dimmed,
+  hovered = false,
+  onHoverChange,
   onSelect,
 }: {
   entry: MapZoneStatus;
@@ -378,6 +496,8 @@ function RegionShape({
   /** Static emphasis for filter matches — no animation (avoids map strobe). */
   matchHighlight: boolean;
   dimmed: boolean;
+  hovered?: boolean;
+  onHoverChange?: (active: boolean) => void;
   onSelect: () => void;
 }) {
   const { zone, status } = entry;
@@ -385,31 +505,50 @@ function RegionShape({
 
   const hatchOnly = status === "empty" && zoneHasHatchSafe(entry);
   const slotTotal = entry.claimedOpenSlots + entry.openSlots;
-  // Selection uses a solid interactive wash (blinks via CSS) — ink outlines
-  // disappear against the map art.
+  // Selection: solid scarlet wash that blinks. Filter matches: marching dashes.
+  // Hover: stronger wash so the hit target is obvious when magnified.
   const stroke = selected
-    ? "var(--interactive)"
-    : hatchOnly
-      ? HATCH_STROKE
-      : STATUS_STROKE[status];
+    ? "var(--danger)"
+    : hovered
+      ? hatchOnly
+        ? "var(--interactive)"
+        : status === "claimed"
+          ? "var(--accent-deep)"
+          : status === "partial"
+            ? "var(--accent-2)"
+            : "var(--ink)"
+      : hatchOnly
+        ? HATCH_STROKE
+        : STATUS_STROKE[status];
   const fill = selected
-    ? "var(--interactive)"
-    : hatchOnly
-      ? HATCH_FILL
-      : STATUS_FILL[status];
+    ? "var(--danger)"
+    : hovered
+      ? hatchOnly
+        ? "color-mix(in srgb, var(--interactive) 42%, transparent)"
+        : status === "claimed"
+          ? "color-mix(in srgb, var(--accent) 55%, transparent)"
+          : status === "partial"
+            ? "color-mix(in srgb, var(--accent-2) 48%, transparent)"
+            : "color-mix(in srgb, var(--ink) 22%, transparent)"
+      : hatchOnly
+        ? HATCH_FILL
+        : STATUS_FILL[status];
   const strokeWidth = selected
     ? 2.5
+    : hovered
+      ? 3
+      : matchHighlight
+        ? 2.5
+        : status === "unclaimed" || hatchOnly
+          ? 1.5
+          : 2;
+  const dash = selected
+    ? undefined
     : matchHighlight
-      ? 2.75
-      : status === "unclaimed" || hatchOnly
-        ? 1.5
-        : 2;
-  const dash =
-    !selected &&
-    !matchHighlight &&
-    (status === "unclaimed" || hatchOnly)
-      ? "3.5 2.5"
-      : undefined;
+      ? "4 3"
+      : !hovered && (status === "unclaimed" || hatchOnly)
+        ? "3.5 2.5"
+        : undefined;
 
   const statusText = hatchOnly
     ? mapStatusFilterLabel("no-wilds")
@@ -421,13 +560,17 @@ function RegionShape({
     strokeWidth,
     strokeDasharray: dash,
     strokeLinejoin: "round" as const,
-    opacity: dimmed ? 0.18 : 1,
+    opacity: dimmed && !hovered ? 0.18 : dimmed && hovered ? 0.55 : 1,
     className: [
       "cursor-pointer focus:outline-none focus-visible:stroke-[var(--ink)]",
-      pulse
-        ? "claim-map-region--pulse"
-        : "transition-opacity hover:brightness-105",
-    ].join(" "),
+      pulse ? "claim-map-region--pulse" : "",
+      matchHighlight && !hovered ? "claim-map-region--match" : "",
+      !pulse
+        ? "transition-[fill,stroke,stroke-width,opacity] duration-100"
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
     tabIndex: 0 as const,
     role: "button" as const,
     "aria-label": `${zone.name}: ${statusText}${
@@ -438,17 +581,20 @@ function RegionShape({
       zoneHasHatchSafe(entry) && !hatchOnly ? ", egg or gift spot" : ""
     }${dimmed ? ", filtered out" : ""}`,
     "aria-pressed": selected,
-    "data-region": zone.id,
-    "data-dimmed": dimmed ? "true" : undefined,
-    "data-hatch-only": hatchOnly ? "true" : undefined,
-    "data-match": matchHighlight ? "true" : undefined,
     onClick: onSelect,
+    onMouseEnter: () => onHoverChange?.(true),
+    onMouseLeave: () => onHoverChange?.(false),
     onKeyDown: (event: KeyboardEvent) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         onSelect();
       }
     },
+    "data-region": zone.id,
+    "data-dimmed": dimmed ? "true" : undefined,
+    "data-hatch-only": hatchOnly ? "true" : undefined,
+    "data-match": matchHighlight ? "true" : undefined,
+    "data-hovered": hovered ? "true" : undefined,
   };
 
   // One contiguous shape: solid pret fills → rect; L / doughnut → path.

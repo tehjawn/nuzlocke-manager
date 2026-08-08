@@ -4935,9 +4935,9 @@ button:disabled,
 }
 
 /*
- * Catch Map — Gen 3 blink for the selected zone only.
- * Solid interactive fill (not ink outline). No drop-shadow — SVG filters
- * on sibling shapes flicker neighbors. Filter matches stay static.
+ * Catch Map motion:
+ * - Selected: Gen 3 scarlet (--danger) wash blink
+ * - Filter matches: marching dashed stroke (no fill strobe / no drop-shadow)
  */
 .claim-map-region--pulse {
   animation: claim-map-select-pulse 0.85s steps(1, end) infinite;
@@ -4956,10 +4956,25 @@ button:disabled,
   }
 }
 
+.claim-map-region--match {
+  stroke-dasharray: 4 3;
+  animation: claim-map-dash-march 1.4s linear infinite;
+}
+
+@keyframes claim-map-dash-march {
+  to {
+    stroke-dashoffset: -7;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .claim-map-region--pulse {
     animation: none;
     fill-opacity: 0.55;
     stroke-opacity: 1;
+  }
+
+  .claim-map-region--match {
+    animation: none;
   }
 }
