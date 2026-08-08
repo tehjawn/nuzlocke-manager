@@ -1,4 +1,5 @@
 import type { PokemonEntry } from "@/lib/challenge-types";
+import { dbBigIntToU32 } from "@/lib/gen3-save";
 import { resolvePokemonTypes } from "@/lib/resolve-pokemon-types";
 import { clampEvs, clampIvs, IvsSchema, parseStatSpread } from "@/lib/stats";
 
@@ -24,8 +25,8 @@ export function mapPokemonRow(p: {
   causeOfDeath: string | null;
   diedOnRun: number | null;
   runId: string | null;
-  personalityValue?: number | null;
-  otId?: number | null;
+  personalityValue?: bigint | number | null;
+  otId?: bigint | number | null;
   notes?: string | null;
 }): PokemonEntry {
   return {
@@ -62,9 +63,8 @@ export function mapPokemonRow(p: {
       p.friendship <= 255
         ? p.friendship
         : null,
-    personalityValue:
-      typeof p.personalityValue === "number" ? p.personalityValue : null,
-    otId: typeof p.otId === "number" ? p.otId : null,
+    personalityValue: dbBigIntToU32(p.personalityValue),
+    otId: dbBigIntToU32(p.otId),
     causeOfDeath: p.causeOfDeath,
     notes: p.notes ?? null,
     diedOnRun: p.diedOnRun ?? null,

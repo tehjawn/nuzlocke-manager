@@ -301,6 +301,33 @@ export function realPersonalityValue(
   if (isSyntheticSavePid(n)) return null;
   return n;
 }
+
+/** Coerce a JS u32 into Prisma `BigInt` for Postgres BIGINT columns. */
+export function u32ToDbBigInt(
+  value: number | null | undefined,
+): bigint | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  const n = Math.trunc(Number(value));
+  if (n < 0 || n > 0xffffffff) return null;
+  return BigInt(n);
+}
+
+/** Coerce Prisma `BigInt` / number back to a JS u32 for app types. */
+export function dbBigIntToU32(
+  value: bigint | number | null | undefined,
+): number | null {
+  if (value == null) return null;
+  if (typeof value === "bigint") {
+    if (value < BigInt(0) || value > BigInt(0xffffffff)) return null;
+    return Number(value);
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const n = Math.trunc(value);
+    if (n < 0 || n > 0xffffffff) return null;
+    return n;
+  }
+  return null;
+}
 /**
  * Crest seen/owned bitfields have been observed near mid-EWRAM (~0x27bxx).
  * Search preferred windows first; only fall through to the rest of EWRAM if needed.

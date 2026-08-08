@@ -400,10 +400,11 @@ model PokemonEntry {
   evs          Json?
   /// Gen 3 growth friendship (0–255); null when unknown / pre-import rows.
   friendship   Int?
-  /// Gen 3 personality value (PID). Null for manual rows / dex-seen stubs.
-  personalityValue Int?
-  /// Optional OT id from the box struct (debug / future trade nuance). Not a match key.
-  otId         Int?
+  /// Gen 3 personality value (PID, unsigned 32-bit). Null for manual / dex stubs.
+  /// Stored as BigInt — Postgres INTEGER cannot hold PIDs ≥ 2^31.
+  personalityValue BigInt?
+  /// Optional OT id from the box struct (u32). Not a match key.
+  otId         BigInt?
   causeOfDeath String?
   /// 1-based run attempt when this mon entered GRAVEYARD (wipeCount + 1 at death).
   diedOnRun    Int?

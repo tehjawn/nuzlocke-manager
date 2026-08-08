@@ -14,7 +14,7 @@ import {
 } from "@/lib/activity-watermark";
 import { failAction } from "@/lib/action-error";
 import { getPrisma } from "@/lib/db";
-import { parsePokemonSaveAsync, realPersonalityValue } from "@/lib/gen3-save";
+import { parsePokemonSaveAsync, realPersonalityValue, u32ToDbBigInt, dbBigIntToU32 } from "@/lib/gen3-save";
 import { MAX_PLAY_TIME_SECONDS } from "@/lib/gen3-save/playtime";
 import { revalidateBoardViews } from "@/lib/revalidate-season";
 import {
@@ -2062,8 +2062,14 @@ async function prismaMemorialBackfillCreate(
       friendship:
         typeof mon.friendship === "number" ? mon.friendship : null,
       personalityValue:
-        typeof mon.personalityValue === "number" ? mon.personalityValue : null,
-      otId: typeof mon.otId === "number" ? mon.otId : null,
+        typeof mon.personalityValue === "number" ||
+        typeof mon.personalityValue === "bigint"
+          ? u32ToDbBigInt(dbBigIntToU32(mon.personalityValue))
+          : null,
+      otId:
+        typeof mon.otId === "number" || typeof mon.otId === "bigint"
+          ? u32ToDbBigInt(dbBigIntToU32(mon.otId))
+          : null,
       causeOfDeath: c.causeOfDeath,
       diedOnRun: c.diedOnRun,
       runId: c.runId,
@@ -2317,15 +2323,18 @@ export async function upsertPokemonAction(
       notes: data.notes ?? null,
       ...(data.personalityValue !== undefined
         ? {
-            personalityValue: realPersonalityValue(data.personalityValue),
+            personalityValue: u32ToDbBigInt(
+              realPersonalityValue(data.personalityValue),
+            ),
           }
         : {}),
       ...(data.otId !== undefined
         ? {
-            otId:
+            otId: u32ToDbBigInt(
               data.otId == null
                 ? null
                 : Math.max(0, Math.min(0xffffffff, Math.trunc(data.otId))),
+            ),
           }
         : {}),
     };
@@ -2891,8 +2900,8 @@ export async function importFromSaveAction(
           mon.friendship == null
             ? null
             : Math.max(0, Math.min(255, Math.trunc(mon.friendship))),
-        personalityValue,
-        otId: personalityValue == null ? null : otId,
+        personalityValue: u32ToDbBigInt(personalityValue),
+        otId: u32ToDbBigInt(personalityValue == null ? null : otId),
         causeOfDeath,
         diedOnRun:
           mon.slot === "GRAVEYARD"
@@ -2906,23 +2915,7 @@ export async function importFromSaveAction(
 
     type ImportRow = ReturnType<typeof buildImportRow>;
 
-    function livingStatsFromRow(
-      row: ImportRow,
-    ): Omit<
-      ImportRow,
-      | "trainerId"
-      | "slot"
-      | "partyIndex"
-      | "causeOfDeath"
-      | "diedOnRun"
-      | "runId"
-      | "notes"
-      | "personalityValue"
-      | "otId"
-    > & {
-      personalityValue: number | null;
-      otId: number | null;
-    } {
+    function livingStatsFromRow(row: ImportRow) {
       return {
         nickname: row.nickname,
         species: row.species,
@@ -3003,7 +2996,7 @@ export async function importFromSaveAction(
 
       // --- MAIN / RESERVE: sticky PID upsert ---
       if (livingSlots.length > 0) {
-        const existingLiving = await tx.pokemonEntry.findMany({
+        const existingLivingRaw = await tx.pokemonEntry.findMany({
           where: {
             trainerId: trainer.id,
             slot: { in: [...livingSlots] },
@@ -3017,6 +3010,10 @@ export async function importFromSaveAction(
             partyIndex: true,
           },
         });
+        const existingLiving = existingLivingRaw.map((row) => ({
+          ...row,
+          personalityValue: dbBigIntToU32(row.personalityValue),
+        }));
 
         const plan = planLivingPidMerge(
           existingLiving,
@@ -3187,7 +3184,7 @@ export async function importFromSaveAction(
           importedCount += 1;
         }
       } else if (incomingGraves.length > 0) {
-        const existingGraves = await tx.pokemonEntry.findMany({
+        const existingGravesRaw = await tx.pokemonEntry.findMany({
           where: { trainerId: trainer.id, slot: "GRAVEYARD" },
           select: {
             id: true,
@@ -3200,6 +3197,10 @@ export async function importFromSaveAction(
           },
           orderBy: { partyIndex: "asc" },
         });
+        const existingGraves = existingGravesRaw.map((g) => ({
+          ...g,
+          personalityValue: dbBigIntToU32(g.personalityValue),
+        }));
 
         const gravesForAppend = incomingGraves.filter(
           (mon) =>
