@@ -147,6 +147,26 @@ function compactIds(slots: readonly string[]): string[] {
   return slots.filter(Boolean);
 }
 
+function sameEntryIds(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((id, i) => id === b[i]);
+}
+
+/** Player-facing status for coverage / vs grid rows (internal keys unchanged). */
+function coverageStatusLabel(
+  status: "covered" | "soft" | "blind" | "answered",
+): string {
+  switch (status) {
+    case "covered":
+    case "answered":
+      return "Hits hard";
+    case "soft":
+      return "Soft (neutral / resisted)";
+    case "blind":
+      return "No answer";
+  }
+}
+
 export function TeamPlannerView({
   slug,
   trainers,
@@ -225,14 +245,24 @@ export function TeamPlannerView({
     const fromStorage = stored.entryIds
       .filter((id) => valid.has(id))
       .slice(0, PLANNER_DRAFT_MAX);
-    // Missing key → seed from Main. Found empty → intentional Clear.
-    const next = found ? fromStorage : defaultDraftIds(trainer);
+    // Non-empty edited draft → restore. Missing / empty / all-stale → Main.
+    // Drop stale keys (found but nothing still living) so they don't linger.
+    if (found && fromStorage.length === 0) {
+      clearPlannerDraft(key);
+    }
+    const next =
+      found && fromStorage.length > 0
+        ? fromStorage
+        : defaultDraftIds(trainer);
     skipPersistRef.current = true;
     setDraftIds(next);
     setActiveSlot(firstEmptySlot(toSlots(next)));
     setDraftHydrated(true);
   }, [slug, viewerId, trainers]);
 
+  // Persist only when the draft itself changes — not on Plan-for switches.
+  // viewerId is read from the render closure; omitting it from deps avoids
+  // writing the outgoing (often empty) draft onto the incoming trainer.
   useEffect(() => {
     if (!draftHydrated || !viewerId) return;
     if (skipPersistRef.current) {
@@ -240,7 +270,8 @@ export function TeamPlannerView({
       return;
     }
     setPlannerDraftIds(plannerDraftStorageKey(slug, viewerId), draftIds);
-  }, [draftIds, draftHydrated, slug, viewerId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit viewerId
+  }, [draftIds, draftHydrated, slug]);
 
   const coverage = useMemo(() => offensiveCoverage(draft), [draft]);
   const defense = useMemo(() => teamDefensiveProfile(draft), [draft]);
@@ -350,6 +381,9 @@ export function TeamPlannerView({
   }
 
   const filledCount = draft.length;
+  const mainIds = viewer ? defaultDraftIds(viewer) : [];
+  const differsFromMain =
+    draftHydrated && !sameEntryIds(compactIds(slots), mainIds);
   const activeEntry = slots[activeSlot]
     ? poolById.get(slots[activeSlot]!)
     : undefined;
@@ -365,7 +399,12 @@ export function TeamPlannerView({
           Plan for
           <select
             value={viewerId}
-            onChange={(e) => setViewerId(e.target.value)}
+            onChange={(e) => {
+              // Block the persist effect from writing the outgoing draft onto
+              // the incoming trainer while hydrate seeds Main / stored draft.
+              skipPersistRef.current = true;
+              setViewerId(e.target.value);
+            }}
             className="w-full min-w-[12rem] rounded-md border border-frame bg-surface px-2 py-1.5 text-sm font-normal normal-case tracking-normal text-ink"
           >
             {trainers.map((t) => (
@@ -392,7 +431,15 @@ export function TeamPlannerView({
             </select>
           </label>
         )}
-        <div className="ml-auto flex flex-wrap gap-1.5 pb-0.5">
+        <div className="ml-auto flex flex-wrap items-center gap-1.5 pb-0.5">
+          {differsFromMain && (
+            <span
+              className="rounded border border-accent-2/50 bg-accent-2/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink"
+              title="Planned team differs from this trainer's Main Squad"
+            >
+              Draft
+            </span>
+          )}
           <button
             type="button"
             className={CTA_SECONDARY_SM}
@@ -421,6 +468,15 @@ export function TeamPlannerView({
                   ({filledCount}/{PLANNER_DRAFT_MAX})
                 </span>
               </h3>
+              {differsFromMain ? (
+                <span className="text-[10px] font-medium text-muted">
+                  Differs from Main
+                </span>
+              ) : filledCount > 0 ? (
+                <span className="text-[10px] font-medium text-muted">
+                  Seeded from Main
+                </span>
+              ) : null}
             </div>
             <PartyStripSlots
               slots={slots}
@@ -754,7 +810,7 @@ function RecommendedPanel({
           >
             {result.coverageLabel}
             <span className="ml-2 align-middle text-xs font-bold tabular-nums text-muted">
-              {result.coveredCount}/{result.totalTypes}
+              {result.coveredCount}/{result.totalTypes} types covered
             </span>
           </p>
           <p className="mt-0.5 text-[12px] leading-snug text-muted">
@@ -912,7 +968,7 @@ function CoveragePanels({
           >
             {verdict.label}
             <span className="ml-2 align-middle text-xs font-bold tabular-nums text-muted">
-              {verdict.coveredCount}/{verdict.total}
+              {verdict.coveredCount}/{verdict.total} types covered
             </span>
           </p>
           <p className="mt-0.5 text-[12px] leading-snug text-muted">
@@ -921,8 +977,8 @@ function CoveragePanels({
         </div>
         <div
           className="flex max-w-[11rem] shrink-0 flex-wrap items-center justify-end gap-0.5"
-          title={`${verdict.coveredCount} covered · ${verdict.softCount} soft · ${verdict.blindCount} blind`}
-          aria-label={`${verdict.coveredCount} covered, ${verdict.softCount} soft, ${verdict.blindCount} blind`}
+          title={`${verdict.coveredCount} hit hard · ${verdict.softCount} soft · ${verdict.blindCount} no answer`}
+          aria-label={`${verdict.coveredCount} hit hard, ${verdict.softCount} soft, ${verdict.blindCount} no answer`}
         >
           {offenseGrid.map((row) => (
             <span
@@ -934,7 +990,7 @@ function CoveragePanels({
                     ? "bg-accent-2"
                     : "bg-danger"
               }`}
-              title={`${row.defendingType}: ${formatMatchupMult(row.bestMult)}`}
+              title={`${row.defendingType}: ${coverageStatusLabel(row.status)} (${formatMatchupMult(row.bestMult)})`}
             />
           ))}
         </div>
@@ -961,7 +1017,7 @@ function CoveragePanels({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-          {showAllTypes ? "All types" : `Gaps · ${gapCount}`}
+          {showAllTypes ? "All types" : `Needs work · ${gapCount}`}
         </p>
         {gapCount > 0 && (
           <button
@@ -969,7 +1025,7 @@ function CoveragePanels({
             className={`${CTA_SECONDARY_SM} !px-2 !py-0.5 !text-[10px]`}
             onClick={() => setPreferAllTypes((v) => !v)}
           >
-            {preferAllTypes ? "Gaps only" : "Show all 18"}
+            {preferAllTypes ? "Needs work only" : "Show all 18"}
           </button>
         )}
       </div>
@@ -977,7 +1033,7 @@ function CoveragePanels({
       <div className="mt-1.5 overflow-x-auto rounded-md border border-frame/60">
         <table className="w-full min-w-[18rem] border-collapse text-left">
           <caption className="sr-only">
-            Coverage grid: rows are defending types, columns are your planned
+            Coverage grid: rows are defending types, columns are this planned
             team. Cells show each Pokémon&apos;s best multiplier into that type.
           </caption>
           <thead>
@@ -1012,10 +1068,10 @@ function CoveragePanels({
               ))}
               <th
                 scope="col"
-                className="px-1 py-1.5 text-center text-[0.6rem] font-semibold uppercase tracking-wide text-muted"
-                title="How many of your draft take ≥2× from this type"
+                className="px-1 py-1.5 text-center text-[0.55rem] font-semibold uppercase tracking-wide text-muted"
+                title="How many of this planned team are weak to this attack type"
               >
-                Weak
+                Weak to
               </th>
             </tr>
           </thead>
@@ -1030,6 +1086,7 @@ function CoveragePanels({
                       ? "bg-accent-2/10"
                       : "bg-accent/5"
                 }`}
+                title={`${row.defendingType}: ${coverageStatusLabel(row.status)}`}
               >
                 <th
                   scope="row"
@@ -1083,7 +1140,7 @@ function CoveragePanels({
                             ? "bg-accent-2/20 text-ink"
                             : "bg-surface-2 text-muted"
                       }`}
-                      title={`${row.threatenedCount}/${draft.length} of your draft take ≥2× from ${row.defendingType}`}
+                      title={`${row.threatenedCount}/${draft.length} of this team are weak to ${row.defendingType}`}
                     >
                       {row.threatenedCount}/{draft.length}
                     </span>
@@ -1097,11 +1154,18 @@ function CoveragePanels({
         </table>
       </div>
 
-      <p className="mt-2 text-[10px] leading-snug text-muted">
-        Columns are your planned team. Green cells are ≥2× into that type;
-        dashes are gaps. Weak = how many of yours take ≥2× from that attack
-        type.
-      </p>
+      <details className="mt-2 text-[10px] leading-snug text-muted">
+        <summary className="cursor-pointer font-semibold text-muted hover:text-ink">
+          How this is scored
+        </summary>
+        <p className="mt-1">
+          Columns are this planned team. Green cells hit that type hard
+          (super-effective); dashes mean no damage into it.{" "}
+          <span className="font-semibold">Weak to</span> counts how many on
+          this team take super-effective damage from that attack type. Power
+          users: hard hit = ≥2×.
+        </p>
+      </details>
     </Frame>
   );
 }
@@ -1561,7 +1625,8 @@ function VsTrainerPanel({
 
   const callouts = matchup.bullets.filter(
     (b) =>
-      b.tone === "warn" || /pressure|blind|No ≥2|Only neutral/i.test(b.text),
+      b.tone === "warn" ||
+      /threaten|no answer|Only soft|pressures/i.test(b.text),
   );
 
   return (
@@ -1589,8 +1654,8 @@ function VsTrainerPanel({
         </div>
         <div
           className="flex shrink-0 items-center gap-0.5"
-          title={`${matchup.answeredCount} answered · ${matchup.softCount} soft · ${matchup.blindCount} blind`}
-          aria-label={`${matchup.answeredCount} answered, ${matchup.softCount} soft, ${matchup.blindCount} blind`}
+          title={`${matchup.answeredCount} hit hard · ${matchup.softCount} soft · ${matchup.blindCount} no answer`}
+          aria-label={`${matchup.answeredCount} hit hard, ${matchup.softCount} soft, ${matchup.blindCount} no answer`}
         >
           {matchup.targets.map((t) => (
             <span
@@ -1602,6 +1667,7 @@ function VsTrainerPanel({
                     ? "bg-accent-2"
                     : "bg-danger"
               }`}
+              title={`${t.displayName}: ${coverageStatusLabel(t.status)}`}
             />
           ))}
         </div>
@@ -1627,8 +1693,8 @@ function VsTrainerPanel({
         <table className="w-full min-w-[18rem] border-collapse text-left">
           <caption className="sr-only">
             Matchup grid: rows are {displayName(opponent)}&apos;s Main, columns
-            are your planned team. Cells show your best type multiplier into
-            that Pokémon.
+            are this planned team. Cells show each Pokémon&apos;s best type
+            multiplier into that opponent.
           </caption>
           <thead>
             <tr className="border-b border-frame/50 bg-surface-2/60">
@@ -1662,10 +1728,10 @@ function VsTrainerPanel({
               ))}
               <th
                 scope="col"
-                className="px-1 py-1.5 text-center text-[0.6rem] font-semibold uppercase tracking-wide text-muted"
-                title="How many of your draft this mon hits for ≥2×"
+                className="px-1 py-1.5 text-center text-[0.55rem] font-semibold uppercase tracking-wide text-muted"
+                title="How many of this planned team this Pokémon hits hard"
               >
-                Threat
+                Threatens
               </th>
             </tr>
           </thead>
@@ -1684,6 +1750,7 @@ function VsTrainerPanel({
                         ? "bg-accent/5"
                         : "bg-transparent"
                   }`}
+                  title={`${monLabel(target)}: ${coverageStatusLabel(status)}`}
                 >
                   <th
                     scope="row"
@@ -1757,8 +1824,8 @@ function VsTrainerPanel({
                         }`}
                         title={
                           assessment.threatAttackType
-                            ? `Hits ${assessment.threatenedCount}/${draft.length} of your draft for ≥2× (${formatMatchupMult(assessment.threatMult)} ${assessment.threatAttackType})`
-                            : `Hits ${assessment.threatenedCount}/${draft.length} of your draft for ≥2×`
+                            ? `Threatens ${assessment.threatenedCount}/${draft.length} of this team (${formatMatchupMult(assessment.threatMult)} ${assessment.threatAttackType})`
+                            : `Threatens ${assessment.threatenedCount}/${draft.length} of this team`
                         }
                       >
                         {assessment.threatenedCount}/{draft.length}
@@ -1774,10 +1841,18 @@ function VsTrainerPanel({
         </table>
       </div>
 
-      <p className="mt-2 text-[10px] leading-snug text-muted">
-        Columns are your planned team. Green cells are ≥2× answers; dashes are
-        gaps. Threat = how many of yours they hit for ≥2×.
-      </p>
+      <details className="mt-2 text-[10px] leading-snug text-muted">
+        <summary className="cursor-pointer font-semibold text-muted hover:text-ink">
+          How this is scored
+        </summary>
+        <p className="mt-1">
+          Columns are this planned team. Green cells hit their Pokémon hard
+          (super-effective); dashes mean no answer.{" "}
+          <span className="font-semibold">Threatens</span> counts how many on
+          this team they hit hard. Opponent side is always their Main Squad.
+          Power users: hard hit = ≥2×.
+        </p>
+      </details>
     </Frame>
   );
 }

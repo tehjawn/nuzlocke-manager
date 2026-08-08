@@ -1,6 +1,9 @@
 /**
  * Per-season Team Planner drafts.
  * Stored in localStorage only (not the DB) — keyed by season + trainer.
+ *
+ * Empty drafts are not persisted: a missing key means “seed from Main Squad”
+ * on the next hydrate (Clear / emptied sandbox must not stick across trainer picks).
  */
 
 export const PLANNER_DRAFT_CHANGE_EVENT = "nuzlocke-planner-draft-change";
@@ -11,7 +14,7 @@ export type PlannerDraft = {
 };
 
 export type PlannerDraftState = {
-  /** True when a value was persisted (including an intentional empty clear). */
+  /** True when a non-empty draft was persisted. */
   found: boolean;
   draft: PlannerDraft;
 };
@@ -44,19 +47,30 @@ function loadFromStorage(key: string): PlannerDraftState {
     if (stored == null) {
       return { found: false, draft: EMPTY_PLANNER_DRAFT };
     }
-    return { found: true, draft: normalize(JSON.parse(stored) as Partial<PlannerDraft>) };
+    const draft = normalize(JSON.parse(stored) as Partial<PlannerDraft>);
+    // Legacy: older builds persisted intentional empties after Clear. Treat
+    // empty as missing so Main re-seeds on the next trainer pick / reload.
+    if (draft.entryIds.length === 0) {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // private mode / blocked storage
+      }
+      return { found: false, draft: EMPTY_PLANNER_DRAFT };
+    }
+    return { found: true, draft };
   } catch {
     return { found: false, draft: EMPTY_PLANNER_DRAFT };
   }
 }
 
-/** Draft contents only (empty when missing). Prefer `readPlannerDraftState` when clearing matters. */
+/** Draft contents only (empty when missing). Prefer `readPlannerDraftState` when presence matters. */
 export function readPlannerDraft(key: string): PlannerDraft {
   return readPlannerDraftState(key).draft;
 }
 
 /**
- * Distinguishes “never saved” from an intentional empty draft after Clear.
+ * Distinguishes “never saved / empty” from a non-empty edited draft.
  * Caps entry ids to PLANNER_DRAFT_MAX on load.
  */
 export function readPlannerDraftState(key: string): PlannerDraftState {
@@ -78,10 +92,25 @@ function notify(key: string) {
 
 export function writePlannerDraft(key: string, next: PlannerDraft): PlannerDraft {
   const stable = normalize(next);
+  // Empty → remove key so hydrate falls back to Main Squad.
+  if (stable.entryIds.length === 0) {
+    const state: PlannerDraftState = {
+      found: false,
+      draft: EMPTY_PLANNER_DRAFT,
+    };
+    cacheByKey.set(key, state);
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // private mode / blocked storage
+    }
+    notify(key);
+    return EMPTY_PLANNER_DRAFT;
+  }
+
   const state: PlannerDraftState = { found: true, draft: stable };
   cacheByKey.set(key, state);
   try {
-    // Persist empty drafts too so Clear survives reload (vs missing key → default Main).
     localStorage.setItem(key, JSON.stringify(stable));
   } catch {
     // private mode / blocked storage
@@ -97,6 +126,7 @@ export function setPlannerDraftIds(
   return writePlannerDraft(key, { entryIds: [...entryIds] });
 }
 
+/** Clear the sandbox and drop any persisted draft for this key. */
 export function clearPlannerDraft(key: string): PlannerDraft {
   return writePlannerDraft(key, EMPTY_PLANNER_DRAFT);
 }
