@@ -281,31 +281,69 @@ export function countSpentWithoutCatch(
     return null;
   }
 
-  const { slotKeys: ownedSlots, hasUmbrellaSafari } = ownedEncounterSlotKeys(
-    ownedCatchRouteLabels(trainer),
-  );
+  const ownedRoutes = ownedCatchRouteLabels(trainer);
 
   if (trainer.nuzlockeEncounterBitsReliable) {
-    const usedBits = new Set(trainer.nuzlockeEncounterBits ?? []);
-    let count = 0;
-    for (const route of catalog) {
-      if (route.nuzlockeBit == null || !usedBits.has(route.nuzlockeBit)) {
-        continue;
-      }
-      if (route.slotKey == null) continue;
-      if (ownedSlots.has(route.slotKey)) continue;
-      if (hasUmbrellaSafari && SAFARI_AREA_BITS.has(route.nuzlockeBit)) {
-        continue;
-      }
-      count += 1;
-    }
-    return count;
+    return countCatchFailedFromBits(
+      trainer.nuzlockeEncounterBits ?? [],
+      ownedRoutes,
+      catalog,
+    );
   }
 
+  const { hasUmbrellaSafari } = ownedEncounterSlotKeys(ownedRoutes);
   // Legacy Safari-only imports: count flagged areas that are not covered by an
   // umbrella Safari catch (we cannot tell which area succeeded).
   if (hasUmbrellaSafari) return 0;
   return (trainer.safariZoneAreas ?? []).filter((route) =>
     MODERN_SAFARI_ZONE_AREAS.some((area) => area.route === route),
   ).length;
+}
+
+/**
+ * Import / preview: spent NuzlockeEncounterFlags vs catch-failed (flag set,
+ * no owned mon on that slot). `exhausted` is unique catalog slots with a set
+ * bit; `failed` matches {@link countSpentWithoutCatch}'s full-bitset path.
+ */
+export function summarizeEncounterFlagBits(
+  usedBits: readonly number[],
+  ownedCatchRoutes: readonly string[],
+  catalog: readonly CatchRoute[] = CATCH_ROUTE_TABLE,
+): { exhausted: number; failed: number } {
+  const usedSet = new Set(usedBits);
+  const exhaustedSlots = new Set<number>();
+  for (const route of catalog) {
+    if (route.nuzlockeBit == null || !usedSet.has(route.nuzlockeBit)) {
+      continue;
+    }
+    if (route.slotKey == null) continue;
+    exhaustedSlots.add(route.slotKey);
+  }
+  return {
+    exhausted: exhaustedSlots.size,
+    failed: countCatchFailedFromBits(usedBits, ownedCatchRoutes, catalog),
+  };
+}
+
+function countCatchFailedFromBits(
+  usedBits: readonly number[],
+  ownedCatchRoutes: readonly string[],
+  catalog: readonly CatchRoute[] = CATCH_ROUTE_TABLE,
+): number {
+  const usedSet = new Set(usedBits);
+  const { slotKeys: ownedSlots, hasUmbrellaSafari } =
+    ownedEncounterSlotKeys(ownedCatchRoutes);
+  let count = 0;
+  for (const route of catalog) {
+    if (route.nuzlockeBit == null || !usedSet.has(route.nuzlockeBit)) {
+      continue;
+    }
+    if (route.slotKey == null) continue;
+    if (ownedSlots.has(route.slotKey)) continue;
+    if (hasUmbrellaSafari && SAFARI_AREA_BITS.has(route.nuzlockeBit)) {
+      continue;
+    }
+    count += 1;
+  }
+  return count;
 }

@@ -170,6 +170,32 @@ function ImportSaveIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   );
 }
 
+function ImportBusySpinner({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      className={`motion-safe:animate-spin ${className}`}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="5.25"
+        stroke="currentColor"
+        strokeOpacity="0.22"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M13.25 8a5.25 5.25 0 0 0-5.25-5.25"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 /** Finish line — ending the attempt, however it ended. */
 function EndRunIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
@@ -567,6 +593,8 @@ export function TrainerBoard({
   const resetSave = useSaveStatus();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [importSaveGlow, setImportSaveGlow] = useState(encourageImportSave);
+  /** True from import apply until the refreshed RSC board stamp lands. */
+  const [importRefreshing, setImportRefreshing] = useState(false);
 
   const [endRunOpen, setEndRunOpen] = useState(false);
   /** Optimistic "run is over" until the RSC refresh carries runEnded. */
@@ -689,6 +717,32 @@ export function TrainerBoard({
     setSaveImportOpen(false);
     if (pendingBoardAction === "import-save") clearBoardAction();
   };
+  const openSaveImport = () => {
+    setSaveImportOpen(true);
+    // Prefetch Reserves / R.I.P. / Encountered for sticky-PID + same-save review
+    // (SSR is Main-only).
+    if (
+      reservesPokemon == null &&
+      (trainer.slotCounts?.reserve ?? 0) > 0
+    ) {
+      setReservesLoading(true);
+      setReservesError(null);
+    }
+    if (
+      graveyardPokemon == null &&
+      (trainer.slotCounts?.graveyard ?? 0) > 0
+    ) {
+      setGraveyardLoading(true);
+      setGraveyardError(null);
+    }
+    if (
+      encounteredPokemon == null &&
+      (trainer.slotCounts?.encountered ?? 0) > 0
+    ) {
+      setEncounteredLoading(true);
+      setEncounteredError(null);
+    }
+  };
   const closeTeamExport = () => {
     setTeamExportOpen(false);
     if (pendingBoardAction === "export-team") clearBoardAction();
@@ -697,6 +751,7 @@ export function TrainerBoard({
   if (serverStamp !== seenStamp) {
     setSeenStamp(serverStamp);
     setImportSaveGlow(encourageImportSave);
+    setImportRefreshing(false);
 
     // Keep wipe/reset optimism until the RSC payload reflects the operation.
     // Both clear the live board (including R.I.P.). Wipe also bumps wipeCount
@@ -826,11 +881,17 @@ export function TrainerBoard({
     trainer.slotCounts?.encountered ??
     encountered.length;
 
-  // Deferred slot hydrate — open (or stay open across revalidate).
+  // Deferred slot hydrate — open (or stay open across revalidate), or prefetch
+  // Reserves / R.I.P. when import opens so sticky-PID review sees living + memorial.
   // Await before setState so we don't trip react-hooks/set-state-in-effect
   // (same pattern as ToolsView: state updates only after async work).
   useEffect(() => {
-    if (!reservesOpen || reservesPokemon != null) return;
+    if (
+      (!reservesOpen && !importModalOpen) ||
+      reservesPokemon != null
+    ) {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       await Promise.resolve();
@@ -853,10 +914,21 @@ export function TrainerBoard({
     return () => {
       cancelled = true;
     };
-  }, [reservesOpen, reservesPokemon, challengeSlug, trainer.id]);
+  }, [
+    reservesOpen,
+    importModalOpen,
+    reservesPokemon,
+    challengeSlug,
+    trainer.id,
+  ]);
 
   useEffect(() => {
-    if (!graveyardOpen || graveyardPokemon != null) return;
+    if (
+      (!graveyardOpen && !importModalOpen) ||
+      graveyardPokemon != null
+    ) {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       await Promise.resolve();
@@ -879,10 +951,21 @@ export function TrainerBoard({
     return () => {
       cancelled = true;
     };
-  }, [graveyardOpen, graveyardPokemon, challengeSlug, trainer.id]);
+  }, [
+    graveyardOpen,
+    importModalOpen,
+    graveyardPokemon,
+    challengeSlug,
+    trainer.id,
+  ]);
 
   useEffect(() => {
-    if (!encounteredOpen || encounteredPokemon != null) return;
+    if (
+      (!encounteredOpen && !importModalOpen) ||
+      encounteredPokemon != null
+    ) {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       await Promise.resolve();
@@ -907,6 +990,7 @@ export function TrainerBoard({
     };
   }, [
     encounteredOpen,
+    importModalOpen,
     encounteredPokemon,
     challengeSlug,
     trainer.id,
@@ -938,6 +1022,12 @@ export function TrainerBoard({
 
   const wiping =
     wipeSave.status.kind === "saving" || resetSave.status.kind === "saving";
+  const importBusy = pending || wiping || importRefreshing;
+  const importBusyIcon = importBusy ? (
+    <ImportBusySpinner className="h-4 w-4" />
+  ) : (
+    <ImportSaveIcon className="h-4 w-4" />
+  );
   const seasonLinkTiles = [
     {
       href: `${leagueBoardHref}/rules`,
@@ -1516,10 +1606,10 @@ export function TrainerBoard({
     import: {
       shortcut: canEdit && (
         <ShortcutActionTile
-          disabled={pending || wiping}
-          icon={<ImportSaveIcon className="h-4 w-4" />}
-          label="Import save"
-          onClick={() => setSaveImportOpen(true)}
+          disabled={importBusy}
+          icon={importBusyIcon}
+          label={importRefreshing ? "Updating…" : "Import save"}
+          onClick={openSaveImport}
           tone="import"
           firstImport={importSaveGlow}
         />
@@ -1530,12 +1620,17 @@ export function TrainerBoard({
             importSaveGlow ? " is-first-import" : ""
           }`}
           data-tour="import-save"
-          disabled={pending || wiping}
-          onClick={() => setSaveImportOpen(true)}
+          disabled={importBusy}
+          onClick={openSaveImport}
           type="button"
+          aria-busy={importBusy || undefined}
         >
-          <ImportSaveIcon />
-          <span>Import save</span>
+          {importBusy ? (
+            <ImportBusySpinner />
+          ) : (
+            <ImportSaveIcon />
+          )}
+          <span>{importRefreshing ? "Updating…" : "Import save"}</span>
         </button>
       ),
       menu: null,
@@ -1853,6 +1948,44 @@ export function TrainerBoard({
           </Frame>
 
           {canEdit ? (
+            importRefreshing ? (
+              <div
+                className="space-y-4"
+                aria-busy="true"
+                aria-label="Updating board from save"
+              >
+                <Frame title="Main Squad">
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <Skeleton
+                        key={`import-main-${i}`}
+                        className="min-h-28 rounded-lg border border-frame/40 bg-surface"
+                      />
+                    ))}
+                  </div>
+                </Frame>
+                <Frame title="The Reserves">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <Skeleton
+                        key={`import-reserve-${i}`}
+                        className="min-h-24 rounded-lg border border-frame/40 bg-surface"
+                      />
+                    ))}
+                  </div>
+                </Frame>
+                <Frame title="R.I.P.">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {Array.from({ length: 3 }, (_, i) => (
+                      <Skeleton
+                        key={`import-rip-${i}`}
+                        className="min-h-24 rounded-lg border border-frame/40 bg-surface"
+                      />
+                    ))}
+                  </div>
+                </Frame>
+              </div>
+            ) : (
             <PartyBoardDnd
               key={boardPokemon
                 .map((p) => `${p.id}:${p.slot}:${p.partyIndex}`)
@@ -1927,6 +2060,7 @@ export function TrainerBoard({
                 count: graveyardCount,
               }}
             />
+            )
           ) : (
             <>
               <Frame
@@ -2249,7 +2383,7 @@ export function TrainerBoard({
           pending={pending || wiping}
           onImportSave={() => {
             setEndRunOpen(false);
-            setSaveImportOpen(true);
+            openSaveImport();
           }}
           onMarkFinalTeam={() => {
             void markFinalTeam();
@@ -2264,9 +2398,64 @@ export function TrainerBoard({
         <SaveImportModal
           open
           pending={pending}
+          boardLiving={boardPokemon
+            .filter((p) => p.slot === "MAIN" || p.slot === "RESERVE")
+            .map((p) => ({
+              id: p.id,
+              slot: p.slot as "MAIN" | "RESERVE",
+              personalityValue: p.personalityValue ?? null,
+              species: p.species,
+              nickname: p.nickname,
+              level: p.level,
+              pokedexId: p.pokedexId,
+              isShiny: p.isShiny,
+              causeOfDeath: p.causeOfDeath,
+              notes: p.notes ?? null,
+            }))}
+          boardGraves={boardPokemon
+            .filter((p) => p.slot === "GRAVEYARD")
+            .map((p) => ({
+              id: p.id,
+              partyIndex: p.partyIndex,
+              personalityValue: p.personalityValue ?? null,
+              species: p.species,
+              nickname: p.nickname,
+              level: p.level,
+              pokedexId: p.pokedexId,
+              isShiny: p.isShiny,
+            }))}
+          boardEncountered={encountered.map((p) => ({
+            species: p.species,
+            nickname: p.nickname,
+            pokedexId: p.pokedexId,
+            isShiny: p.isShiny,
+            catchRoute: p.catchRoute ?? null,
+          }))}
+          boardTrainer={{
+            handle,
+            earnedBadgeKeys,
+            reviveUsed,
+            money: boardMoney,
+            playTimeSeconds: boardPlayTimeSeconds,
+            nuzlockeEncounterBits: boardTrainer.nuzlockeEncounterBits ?? [],
+          }}
+          boardLivingReady={
+            (reservesPokemon != null ||
+              reservesCount === 0 ||
+              boardPokemon.filter((p) => p.slot === "RESERVE").length >=
+                reservesCount) &&
+            (graveyardPokemon != null ||
+              graveyardCount === 0 ||
+              boardPokemon.filter((p) => p.slot === "GRAVEYARD").length >=
+                graveyardCount) &&
+            (encounteredPokemon != null ||
+              encounteredCount === 0 ||
+              encountered.length >= encounteredCount)
+          }
           onClose={closeSaveImport}
           onApply={(payload) => {
             partySave.markSaving("Importing save…");
+            setImportRefreshing(true);
             startTransition(async () => {
               const result = await importFromSaveAction({
                 trainerId: trainer.id,
@@ -2314,6 +2503,13 @@ export function TrainerBoard({
                 partySave.markSaved(result.message ?? "Save imported");
                 setImportSaveGlow(false);
                 closeSaveImport();
+                // Drop deferred hydrates so reopen/refetch matches the new board.
+                setReservesPokemon(null);
+                setReservesError(null);
+                setGraveyardPokemon(null);
+                setGraveyardError(null);
+                setEncounteredPokemon(null);
+                setEncounteredError(null);
                 // Mirror server gate: non-GMs may only spend a revive via import.
                 if (
                   payload.applyRevive &&
@@ -2324,6 +2520,7 @@ export function TrainerBoard({
                 }
                 router.refresh();
               } else {
+                setImportRefreshing(false);
                 partySave.markError(result.error);
               }
             });

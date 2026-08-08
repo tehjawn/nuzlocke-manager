@@ -6,7 +6,7 @@ type SkeletonProps = {
 };
 
 /**
- * Layout-stable pulse block for progressive-load placeholders.
+ * Layout-stable placeholder with a sweeping shine for progressive loads.
  * Prefer matching the final content’s height so swaps don’t shift the page.
  */
 export function Skeleton({
@@ -16,7 +16,7 @@ export function Skeleton({
   return (
     <Tag
       aria-hidden
-      className={`animate-pulse ${Tag === "span" ? "inline-block " : ""}${className}`}
+      className={`skeleton-shine ${Tag === "span" ? "inline-block " : ""}${className}`}
     />
   );
 }
