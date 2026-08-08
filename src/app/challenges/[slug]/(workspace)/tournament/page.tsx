@@ -1,58 +1,11 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { auth } from "@/auth";
-import { DataSourceBanner } from "@/components/DataSourceBanner";
-import { SeasonStatusBanner } from "@/components/SeasonStatusBanner";
-import { TournamentBracket } from "@/components/TournamentBracket";
-import { getChallengeMeta, getChallengeTournament } from "@/lib/challenges";
-import { getAccessForChallenge } from "@/lib/permissions";
-import { getTournamentForChallenge } from "@/lib/tournament";
-
+import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
+/** Legacy single-tournament route → multi-tournament lobby. */
+export default async function LegacyTournamentRedirect({ params }: PageProps) {
   const { slug } = await params;
-  const challenge = await getChallengeMeta(slug);
-  if (!challenge) return { title: "Tournament" };
-  return { title: `Tournament · ${challenge.name}` };
-}
-
-export default async function TournamentPage({ params }: PageProps) {
-  const { slug } = await params;
-  const session = await auth();
-  const challenge = await getChallengeTournament(slug, session?.user?.id);
-  if (!challenge) notFound();
-
-  const access = challenge.id
-    ? await getAccessForChallenge(challenge.id)
-    : null;
-  // TEMP (#240): Tournament is WIP — refuse non-GMs at the route too.
-  if (!access?.isGm) notFound();
-
-  const tournament = challenge.id
-    ? await getTournamentForChallenge(challenge.id)
-    : null;
-
-  return (
-    <>
-      <DataSourceBanner source={challenge.source} />
-      <div className="mb-4">
-        <SeasonStatusBanner
-          slug={challenge.slug}
-          status={challenge.status}
-          isGm
-        />
-      </div>
-      <TournamentBracket
-        challenge={challenge}
-        tournament={tournament}
-        isGm
-      />
-    </>
-  );
+  redirect(`/challenges/${slug}/tournaments`);
 }

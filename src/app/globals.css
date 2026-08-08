@@ -5295,3 +5295,135 @@ button:disabled,
     animation: none;
   }
 }
+
+/* ── Tournament arena (#185) ─────────────────────────────────────────── */
+.tournament-hero {
+  background:
+    radial-gradient(
+      120% 80% at 10% -10%,
+      color-mix(in srgb, var(--accent-2) 28%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      90% 70% at 100% 0%,
+      color-mix(in srgb, var(--accent) 22%, transparent),
+      transparent 50%
+    ),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--surface-2) 70%, var(--accent) 8%) 0%,
+      var(--surface) 55%,
+      color-mix(in srgb, var(--surface-2) 85%, var(--accent-2) 6%) 100%
+    );
+}
+
+.tournament-hero__glow {
+  pointer-events: none;
+  position: absolute;
+  inset: -20% -10% auto;
+  height: 70%;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--accent-2) 35%, transparent),
+    transparent 70%
+  );
+  opacity: 0.55;
+  animation: tournament-glow 6s ease-in-out infinite alternate;
+}
+
+.tournament-hero__rays {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-conic-gradient(
+    from 0deg at 85% 15%,
+    transparent 0deg 8deg,
+    color-mix(in srgb, var(--accent-2) 8%, transparent) 8deg 10deg
+  );
+  opacity: 0.35;
+  mask-image: radial-gradient(circle at 85% 15%, black 0%, transparent 55%);
+}
+
+.tournament-hero--crown .tournament-hero__glow {
+  animation: tournament-crown-burst 1.2s ease-out;
+  opacity: 0.9;
+}
+
+.tournament-champion-chip {
+  animation: tournament-chip-in 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tournament-card,
+.tournament-round {
+  animation: tournament-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.tournament-match__rail {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    var(--accent-2),
+    var(--accent),
+    transparent
+  );
+}
+
+@keyframes tournament-glow {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateY(8%) scale(1.05);
+    opacity: 0.7;
+  }
+}
+
+@keyframes tournament-crown-burst {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+}
+
+@keyframes tournament-chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tournament-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tournament-hero__glow,
+  .tournament-hero--crown .tournament-hero__glow,
+  .tournament-champion-chip,
+  .tournament-card,
+  .tournament-round {
+    animation: none;
+  }
+}

@@ -7,7 +7,7 @@ import { seasonStatsHref } from "@/lib/tools-routes";
 type SeasonStatusBannerProps = {
   slug: string;
   status: ChallengeStatus;
-  /** Temporary WIP gate (#240): tournament CTA is GM-only. */
+  /** When true, emphasize GM ladder tooling in the copy. */
   isGm?: boolean;
 };
 
@@ -41,16 +41,16 @@ export function SeasonStatusBanner({
       </p>
       <p className="mt-1 text-muted">
         Main Squads are locked for the ladder.
-        {isGm && " Check the tournament board."}
+        {isGm
+          ? " Manage brackets from Tournaments."
+          : " Watch the arena as matches land."}
       </p>
-      {isGm && (
-        <Link
-          href={`/challenges/${slug}/tournament`}
-          className={`${CTA_PRIMARY_SM} mt-3`}
-        >
-          Open tournament
-        </Link>
-      )}
+      <Link
+        href={`/challenges/${slug}/tournaments`}
+        className={`${CTA_PRIMARY_SM} mt-3`}
+      >
+        Open tournaments
+      </Link>
     </div>
   );
 }

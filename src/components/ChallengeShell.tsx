@@ -31,7 +31,7 @@ type ChallengeShellProps = {
    * so Get Started stays the focus.
    */
   firstRun?: boolean;
-  /** GM view (lens) on — gates WIP Tournament under Info. */
+  /** GM view (lens) on — reserved for WIP chrome. */
   gmViewOn?: boolean;
   children: ReactNode;
 };
@@ -105,7 +105,7 @@ export function ChallengeShell({
           , then follow Get Started through ROM setup and save import.
         </p>
       )}
-      <GetStartedSeasonCta slug={slug} />
+      <GetStartedSeasonCta slug={slug} isGm={showGm} />
       {!signedIn && (
         <Link
           href="/login"

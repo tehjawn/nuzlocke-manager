@@ -118,8 +118,11 @@ export function buildPageContext(
     lines.push("VIEW: GM console");
   } else if (path.startsWith(`${base}/about`)) {
     lines.push("VIEW: Season about");
-  } else if (path.startsWith(`${base}/tournament`)) {
-    lines.push("VIEW: Tournament / Ladder");
+  } else if (
+    path.startsWith(`${base}/tournaments`) ||
+    path.startsWith(`${base}/tournament`)
+  ) {
+    lines.push("VIEW: Tournament arena");
   } else if (/\/season-stats|\/memorial|\/stats/.test(path)) {
     lines.push("VIEW: Season stats / memorial");
   } else if (path.includes("/tools")) {

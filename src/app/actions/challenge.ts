@@ -115,11 +115,17 @@ import {
 } from "@/lib/export-challenge";
 import { canViewChallenge } from "@/lib/challenge-access";
 import { ChallengeStatusSchema } from "@/lib/types";
+import type { TournamentFormat } from "@/lib/challenge-types";
 import {
   buildFirstRoundPairings,
   buildRoundPairings,
   roundIsComplete,
 } from "@/lib/tournament";
+import { buildMatchSideSnapshot } from "@/lib/tournament-snapshots";
+import {
+  buildSwissPairings,
+  recomputeSwissStandings,
+} from "@/lib/tournament-swiss";
 import {
   buildSnapshotSummaryLine,
   captureTrainerBoardSnapshotInTx,
@@ -152,7 +158,16 @@ function revalidateChallenge(slug: string, trainerId?: string) {
   revalidatePath(`/challenges/${slug}/gm`);
   revalidatePath(`/challenges/${slug}/join`);
   revalidatePath(`/challenges/${slug}/tournament`);
+  revalidatePath(`/challenges/${slug}/tournaments`);
   revalidatePath("/challenges");
+}
+
+function revalidateTournamentPaths(slug: string, tournamentId?: string) {
+  revalidatePath(`/challenges/${slug}/tournament`);
+  revalidatePath(`/challenges/${slug}/tournaments`);
+  if (tournamentId) {
+    revalidatePath(`/challenges/${slug}/tournaments/${tournamentId}`);
+  }
 }
 
 export type ActionResult =
@@ -3493,78 +3508,244 @@ export async function gmExportChallengeAction(input: {
   }
 }
 
+const TournamentFormatSchema = z.enum(["SINGLE_ELIM", "SWISS"]);
+
+/** Create a new tournament shell (DRAFT). Seed separately to lock squads. */
+export async function gmCreateTournamentAction(input: {
+  challengeId: string;
+  name: string;
+  format: TournamentFormat;
+  swissRoundCount?: number | null;
+}): Promise<ActionResult & { tournamentId?: string }> {
+  try {
+    await requireGm(input.challengeId);
+    const name = input.name.trim();
+    if (!name) return { ok: false, error: "Name is required" };
+    const format = TournamentFormatSchema.parse(input.format);
+    const swissRoundCount =
+      format === "SWISS"
+        ? Math.max(1, Math.min(16, input.swissRoundCount ?? 4))
+        : null;
+
+    const prisma = getPrisma();
+    const challenge = await prisma.challenge.findUnique({
+      where: { id: input.challengeId },
+      select: { id: true, slug: true, name: true },
+    });
+    if (!challenge) return { ok: false, error: "Challenge not found" };
+
+    const tournament = await prisma.tournament.create({
+      data: {
+        challengeId: challenge.id,
+        name,
+        format,
+        swissRoundCount,
+        status: "DRAFT",
+      },
+    });
+
+    revalidateTournamentPaths(challenge.slug, tournament.id);
+    revalidateChallenge(challenge.slug);
+    return {
+      ok: true,
+      message: `Created ${name}`,
+      tournamentId: tournament.id,
+    };
+  } catch (e) {
+    return failAction("tournament-create-failed", e, "Could not create tournament");
+  }
+}
+
+/**
+ * Seed (or reseed) a tournament from locked Main Squads.
+ * Snapshots each side's roster at pair time.
+ */
+export async function gmSeedTournamentAction(input: {
+  tournamentId: string;
+  /** Optional override list; defaults to all locked Main Squads. */
+  trainerIds?: string[];
+}): Promise<ActionResult> {
+  try {
+    const prisma = getPrisma();
+    const tournament = await prisma.tournament.findUnique({
+      where: { id: input.tournamentId },
+      include: { challenge: true },
+    });
+    if (!tournament) return { ok: false, error: "Tournament not found" };
+    await requireGm(tournament.challengeId);
+
+    const locked = await prisma.trainerProfile.findMany({
+      where: {
+        challengeId: tournament.challengeId,
+        mainSquadLocked: true,
+        ...(input.trainerIds?.length
+          ? { id: { in: input.trainerIds } }
+          : {}),
+      },
+      orderBy: { sortOrder: "asc" },
+      select: {
+        id: true,
+        handle: true,
+        pokemon: {
+          where: { slot: "MAIN" },
+          orderBy: { partyIndex: "asc" },
+          select: {
+            species: true,
+            nickname: true,
+            pokedexId: true,
+            level: true,
+            isShiny: true,
+            types: true,
+            partyIndex: true,
+          },
+        },
+      },
+    });
+
+    if (locked.length < 2) {
+      return {
+        ok: false,
+        error: "Lock at least two Main Squads before seeding",
+      };
+    }
+
+    const snapshotByTrainer = new Map(
+      locked.map((t) => [
+        t.id,
+        buildMatchSideSnapshot({
+          trainerId: t.id,
+          handle: t.handle,
+          pokemon: t.pokemon,
+        }),
+      ]),
+    );
+
+    const trainerIds = locked.map((t) => t.id);
+    const format = tournament.format as TournamentFormat;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT 1 FROM "Tournament" WHERE id = ${tournament.id} FOR UPDATE`;
+
+      await tx.tournamentMatch.deleteMany({
+        where: { tournamentId: tournament.id },
+      });
+      await tx.tournamentStanding.deleteMany({
+        where: { tournamentId: tournament.id },
+      });
+
+      const lockedAt = new Date();
+
+      if (format === "SWISS") {
+        await tx.tournamentStanding.createMany({
+          data: locked.map((t, index) => ({
+            tournamentId: tournament.id,
+            trainerId: t.id,
+            sortOrder: index,
+          })),
+        });
+
+        const pairings = buildSwissPairings(
+          locked.map((t) => ({
+            trainerId: t.id,
+            handle: t.handle,
+            points: 0,
+            buchholz: 0,
+            wins: 0,
+            losses: 0,
+            draws: 0,
+          })),
+          [],
+          1,
+        );
+
+        for (let index = 0; index < pairings.length; index++) {
+          const p = pairings[index]!;
+          await createMatchWithSnapshots(tx, {
+            tournamentId: tournament.id,
+            round: 1,
+            sortOrder: index,
+            label: p.label,
+            trainerAId: p.trainerAId,
+            trainerBId: p.trainerBId,
+            snapshotByTrainer,
+            lockedAt,
+          });
+        }
+      } else {
+        const pairings = buildFirstRoundPairings(trainerIds);
+        for (let index = 0; index < pairings.length; index++) {
+          const p = pairings[index]!;
+          await createMatchWithSnapshots(tx, {
+            tournamentId: tournament.id,
+            round: 1,
+            sortOrder: index,
+            label: p.label,
+            trainerAId: p.trainerAId,
+            trainerBId: p.trainerBId,
+            snapshotByTrainer,
+            lockedAt,
+          });
+        }
+      }
+
+      await tx.tournament.update({
+        where: { id: tournament.id },
+        data: { status: "ACTIVE" },
+      });
+    });
+
+    if (
+      tournament.challenge.status === "ACTIVE" ||
+      tournament.challenge.status === "DRAFT"
+    ) {
+      await prisma.challenge.update({
+        where: { id: tournament.challengeId },
+        data: { status: "TOURNAMENT" },
+      });
+    }
+
+    revalidateTournamentPaths(tournament.challenge.slug, tournament.id);
+    revalidateChallenge(tournament.challenge.slug);
+    return {
+      ok: true,
+      message: `Seeded with ${locked.length} entrants`,
+    };
+  } catch (e) {
+    return failAction("tournament-seed-failed", e, "Tournament seed failed");
+  }
+}
+
+/**
+ * Legacy one-shot seed: create + seed a single-elim ladder.
+ * Prefer gmCreateTournamentAction + gmSeedTournamentAction for multi-event seasons.
+ */
 export async function gmInitTournamentAction(input: {
   challengeId: string;
-}): Promise<ActionResult> {
+}): Promise<ActionResult & { tournamentId?: string }> {
   try {
     await requireGm(input.challengeId);
     const prisma = getPrisma();
     const challenge = await prisma.challenge.findUnique({
       where: { id: input.challengeId },
-      include: {
-        trainers: {
-          where: { mainSquadLocked: true },
-          orderBy: { sortOrder: "asc" },
-          select: { id: true, handle: true },
-        },
-      },
+      select: { id: true, name: true },
     });
     if (!challenge) return { ok: false, error: "Challenge not found" };
-    if (challenge.trainers.length < 2) {
-      return {
-        ok: false,
-        error: "Lock at least two Main Squads before seeding a bracket",
-      };
-    }
 
-    const pairings = buildFirstRoundPairings(
-      challenge.trainers.map((t) => t.id),
-    );
-
-    await prisma.$transaction(async (tx) => {
-      const existing = await tx.tournament.findUnique({
-        where: { challengeId: challenge.id },
-      });
-      if (existing) {
-        await tx.tournamentMatch.deleteMany({
-          where: { tournamentId: existing.id },
-        });
-        await tx.tournament.delete({ where: { id: existing.id } });
-      }
-
-      const tournament = await tx.tournament.create({
-        data: {
-          challengeId: challenge.id,
-          name: `${challenge.name} Ladder`,
-          status: "ACTIVE",
-        },
-      });
-
-      await tx.tournamentMatch.createMany({
-        data: pairings.map((p, index) => ({
-          tournamentId: tournament.id,
-          round: 1,
-          sortOrder: index,
-          label: p.label,
-          trainerAId: p.trainerAId,
-          trainerBId: p.trainerBId,
-          // Bye: auto-advance the lone trainer
-          winnerId: p.trainerAId && !p.trainerBId ? p.trainerAId : null,
-        })),
-      });
+    const created = await gmCreateTournamentAction({
+      challengeId: challenge.id,
+      name: `${challenge.name} Ladder`,
+      format: "SINGLE_ELIM",
     });
+    if (!created.ok || !created.tournamentId) return created;
 
-    if (challenge.status === "ACTIVE" || challenge.status === "DRAFT") {
-      await prisma.challenge.update({
-        where: { id: challenge.id },
-        data: { status: "TOURNAMENT" },
-      });
-    }
-
-    revalidateChallenge(challenge.slug);
+    const seeded = await gmSeedTournamentAction({
+      tournamentId: created.tournamentId,
+    });
+    if (!seeded.ok) return seeded;
     return {
       ok: true,
-      message: `Bracket seeded with ${pairings.length} round-1 match(es)`,
+      message: seeded.message,
+      tournamentId: created.tournamentId,
     };
   } catch (e) {
     return failAction("tournament-seed-failed", e, "Tournament seed failed");
@@ -3594,7 +3775,6 @@ export async function gmSetMatchWinnerAction(input: {
     }
 
     const advanceMessage = await prisma.$transaction(async (tx) => {
-      // Serialize winner writes + round advance for this bracket.
       await tx.$executeRaw`SELECT 1 FROM "Tournament" WHERE id = ${match.tournamentId} FOR UPDATE`;
 
       await tx.tournamentMatch.update({
@@ -3605,8 +3785,9 @@ export async function gmSetMatchWinnerAction(input: {
       return advanceTournamentRoundLocked(tx, match.tournamentId, match.round);
     });
 
-    revalidatePath(
-      `/challenges/${match.tournament.challenge.slug}/tournament`,
+    revalidateTournamentPaths(
+      match.tournament.challenge.slug,
+      match.tournamentId,
     );
     revalidateChallenge(match.tournament.challenge.slug);
     return {
@@ -3618,19 +3799,111 @@ export async function gmSetMatchWinnerAction(input: {
   }
 }
 
+export async function gmSetMatchPokepasteAction(input: {
+  matchId: string;
+  side: "A" | "B";
+  pokepaste: string;
+}): Promise<ActionResult> {
+  try {
+    const prisma = getPrisma();
+    const match = await prisma.tournamentMatch.findUnique({
+      where: { id: input.matchId },
+      include: {
+        tournament: { include: { challenge: { select: { slug: true } } } },
+      },
+    });
+    if (!match) return { ok: false, error: "Match not found" };
+    await requireGm(match.tournament.challengeId);
+
+    const paste = input.pokepaste.trim();
+    if (paste.length > 20_000) {
+      return { ok: false, error: "Poképaste is too long" };
+    }
+
+    await prisma.tournamentMatch.update({
+      where: { id: match.id },
+      data:
+        input.side === "A"
+          ? { pokepasteA: paste || null }
+          : { pokepasteB: paste || null },
+    });
+
+    revalidateTournamentPaths(
+      match.tournament.challenge.slug,
+      match.tournamentId,
+    );
+    return { ok: true, message: paste ? "Poképaste saved" : "Poképaste cleared" };
+  } catch (e) {
+    return failAction("pokepaste-save-failed", e, "Could not save Poképaste");
+  }
+}
+
 type TournamentTx = Parameters<
   Parameters<ReturnType<typeof getPrisma>["$transaction"]>[0]
 >[0];
 
+async function createMatchWithSnapshots(
+  tx: TournamentTx,
+  input: {
+    tournamentId: string;
+    round: number;
+    sortOrder: number;
+    label: string;
+    trainerAId: string | null;
+    trainerBId: string | null;
+    snapshotByTrainer: Map<
+      string,
+      ReturnType<typeof buildMatchSideSnapshot>
+    >;
+    lockedAt: Date;
+  },
+) {
+  const squadA = input.trainerAId
+    ? input.snapshotByTrainer.get(input.trainerAId) ?? null
+    : null;
+  const squadB = input.trainerBId
+    ? input.snapshotByTrainer.get(input.trainerBId) ?? null
+    : null;
+  const isBye = Boolean(input.trainerAId && !input.trainerBId);
+
+  await tx.tournamentMatch.create({
+    data: {
+      tournamentId: input.tournamentId,
+      round: input.round,
+      sortOrder: input.sortOrder,
+      label: input.label,
+      trainerAId: input.trainerAId,
+      trainerBId: input.trainerBId,
+      winnerId: isBye ? input.trainerAId : null,
+      ...(squadA
+        ? { squadA: squadA as unknown as Prisma.InputJsonValue }
+        : {}),
+      ...(squadB
+        ? { squadB: squadB as unknown as Prisma.InputJsonValue }
+        : {}),
+      lockedAt: input.lockedAt,
+    },
+  });
+}
+
 /**
  * Advance while holding a tournament row lock (caller must FOR UPDATE first).
- * Cascades through bye-only rounds inside the same transaction.
+ * Handles single-elim bracket advance and Swiss next-round pairing.
  */
 async function advanceTournamentRoundLocked(
   tx: TournamentTx,
   tournamentId: string,
   startRound: number,
 ): Promise<string | null> {
+  const tournament = await tx.tournament.findUnique({
+    where: { id: tournamentId },
+  });
+  if (!tournament) return null;
+
+  if (tournament.format === "SWISS") {
+    return advanceSwissRoundLocked(tx, tournamentId, startRound, tournament);
+  }
+
   let round = startRound;
   let lastSeeded: number | null = null;
 
@@ -3644,7 +3917,6 @@ async function advanceTournamentRoundLocked(
       break;
     }
 
-    // Already advanced past this round (idempotent under concurrent picks)
     if (matches.some((m) => m.round > round)) {
       break;
     }
@@ -3667,17 +3939,26 @@ async function advanceTournamentRoundLocked(
 
     const nextRound = round + 1;
     const pairings = buildRoundPairings(winners, `R${nextRound}`);
-    await tx.tournamentMatch.createMany({
-      data: pairings.map((p, index) => ({
+    const lockedAt = new Date();
+    const snapshotByTrainer = await loadSnapshotsForTrainers(
+      tx,
+      tournament.challengeId,
+      winners,
+    );
+
+    for (let index = 0; index < pairings.length; index++) {
+      const p = pairings[index]!;
+      await createMatchWithSnapshots(tx, {
         tournamentId,
         round: nextRound,
         sortOrder: index,
         label: p.label,
         trainerAId: p.trainerAId,
         trainerBId: p.trainerBId,
-        winnerId: p.trainerAId && !p.trainerBId ? p.trainerAId : null,
-      })),
-    });
+        snapshotByTrainer,
+        lockedAt,
+      });
+    }
 
     lastSeeded = nextRound;
     round = nextRound;
@@ -3685,6 +3966,132 @@ async function advanceTournamentRoundLocked(
 
   if (lastSeeded == null) return null;
   return `Winner recorded — round ${lastSeeded} seeded`;
+}
+
+async function advanceSwissRoundLocked(
+  tx: TournamentTx,
+  tournamentId: string,
+  startRound: number,
+  tournament: {
+    challengeId: string;
+    swissRoundCount: number | null;
+  },
+): Promise<string | null> {
+  const matches = await tx.tournamentMatch.findMany({
+    where: { tournamentId },
+    orderBy: [{ round: "asc" }, { sortOrder: "asc" }],
+  });
+
+  if (!roundIsComplete(matches, startRound)) return null;
+  if (matches.some((m) => m.round > startRound)) return null;
+
+  const standingsRows = await tx.tournamentStanding.findMany({
+    where: { tournamentId },
+    include: { trainer: { select: { handle: true } } },
+  });
+  const entrantIds = standingsRows.map((s) => s.trainerId);
+  const handles = new Map(
+    standingsRows.map((s) => [s.trainerId, s.trainer.handle]),
+  );
+
+  const recomputed = recomputeSwissStandings({
+    entrantIds,
+    handles,
+    matches,
+  });
+
+  for (let i = 0; i < recomputed.length; i++) {
+    const row = recomputed[i]!;
+    await tx.tournamentStanding.update({
+      where: {
+        tournamentId_trainerId: {
+          tournamentId,
+          trainerId: row.trainerId,
+        },
+      },
+      data: {
+        wins: row.wins,
+        losses: row.losses,
+        draws: row.draws,
+        points: row.points,
+        buchholz: row.buchholz,
+        sortOrder: i,
+      },
+    });
+  }
+
+  const planned = tournament.swissRoundCount ?? 4;
+  if (startRound >= planned) {
+    await tx.tournament.update({
+      where: { id: tournamentId },
+      data: { status: "COMPLETE" },
+    });
+    return "Winner recorded — Swiss complete";
+  }
+
+  const nextRound = startRound + 1;
+  const pairings = buildSwissPairings(recomputed, matches, nextRound);
+  const lockedAt = new Date();
+  const snapshotByTrainer = await loadSnapshotsForTrainers(
+    tx,
+    tournament.challengeId,
+    entrantIds,
+  );
+
+  for (let index = 0; index < pairings.length; index++) {
+    const p = pairings[index]!;
+    await createMatchWithSnapshots(tx, {
+      tournamentId,
+      round: nextRound,
+      sortOrder: index,
+      label: p.label,
+      trainerAId: p.trainerAId,
+      trainerBId: p.trainerBId,
+      snapshotByTrainer,
+      lockedAt,
+    });
+  }
+
+  return `Winner recorded — Swiss round ${nextRound} paired`;
+}
+
+async function loadSnapshotsForTrainers(
+  tx: TournamentTx,
+  challengeId: string,
+  trainerIds: string[],
+) {
+  const unique = [...new Set(trainerIds)];
+  const trainers = await tx.trainerProfile.findMany({
+    where: { challengeId, id: { in: unique } },
+    select: {
+      id: true,
+      handle: true,
+      pokemon: {
+        where: { slot: "MAIN" },
+        orderBy: { partyIndex: "asc" },
+        select: {
+          species: true,
+          nickname: true,
+          pokedexId: true,
+          level: true,
+          isShiny: true,
+          types: true,
+          partyIndex: true,
+        },
+      },
+    },
+  });
+
+  return new Map(
+    trainers.map((t) => [
+      t.id,
+      buildMatchSideSnapshot({
+        trainerId: t.id,
+        handle: t.handle,
+        pokemon: t.pokemon,
+      }),
+    ]),
+  );
 }
 
 function isValidReactionEmoji(emoji: string): boolean {

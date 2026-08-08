@@ -140,6 +140,7 @@ function buildSeasonActions(ctx: SearchSeasonContext): SearchResult[] {
 }
 
 function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
+  void status;
   const base = `/challenges/${slug}`;
   const tabs = [
     { href: `${base}/about`, label: "About" },
@@ -148,10 +149,8 @@ function seasonSectionTabs(slug: string, status: string, isGm: boolean) {
     { href: `${base}/tools`, label: "Tools" },
     { href: seasonStatsHref(slug), label: "Season Stats" },
   ];
-  // TEMP (#240): Tournament / Ladder is still WIP — GMs only.
   if (isGm) {
-    const tournamentLabel = status === "TOURNAMENT" ? "Ladder" : "Tournament";
-    tabs.push({ href: `${base}/tournament`, label: tournamentLabel });
+    tabs.push({ href: `${base}/tournaments`, label: "Tournaments" });
   }
   return tabs;
 }
