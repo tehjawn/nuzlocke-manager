@@ -2263,6 +2263,9 @@ export function TrainerBoard({
         <SaveImportModal
           open
           pending={pending}
+          hasLivingPokemon={boardPokemon.some(
+            (p) => p.slot === "MAIN" || p.slot === "RESERVE",
+          )}
           onClose={closeSaveImport}
           onApply={(payload) => {
             partySave.markSaving("Importing save…");
