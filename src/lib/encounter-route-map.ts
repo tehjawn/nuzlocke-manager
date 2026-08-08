@@ -32,12 +32,13 @@ export type MapRouteClaimStatus =
   | "claimed"
   | "empty";
 
-/** Stable display order for wild-table methods. */
+/** Stable display order for catch methods (wild table + scripted statics). */
 export const MAP_ENCOUNTER_METHODS: readonly CatchRouteEncounter[] = [
   "land",
   "water",
   "fishing",
   "rock-smash",
+  "static",
 ];
 
 /** Legend status chips — single-select toggle (null = show all). */
@@ -64,7 +65,7 @@ export type MapRouteRow = {
    * No-wilds row: focus has a met-location log here (not a ROM slot spend).
    */
   focusClaimed: boolean;
-  /** ROM wild-table methods for this catch-route label (empty for no-wilds). */
+  /** Catch methods for this label (wild table ± scripted static). Empty for no-wilds. */
   methods: readonly CatchRouteEncounter[];
   /** Outdoor no-wild-table met location (egg-only or empty-static). */
   hatchSafe: boolean;
@@ -527,6 +528,8 @@ export function mapMethodLabel(method: CatchRouteEncounter): string {
       return "Fishing";
     case "rock-smash":
       return "Rock Smash";
+    case "static":
+      return "Static";
     default:
       return method;
   }
@@ -555,7 +558,7 @@ export function mapOffRouteKindNote(kind: MapOffRouteKind | null): string {
   }
 }
 
-/** Sort methods into the canonical Grass → Surf → Fishing → Rock Smash order. */
+/** Sort methods into Grass → Surf → Fishing → Rock Smash → Static order. */
 export function sortMapMethods(
   methods: readonly CatchRouteEncounter[],
 ): CatchRouteEncounter[] {

@@ -29,7 +29,13 @@ export type CatchRouteKind =
   /** `METLOC_*` sentinel rather than a place. */
   | "pseudo";
 
-export type CatchRouteEncounter = "land" | "water" | "rock-smash" | "fishing";
+export type CatchRouteEncounter =
+  | "land"
+  | "water"
+  | "rock-smash"
+  | "fishing"
+  /** Scripted catch (`setwildbattle` / `givemon` / `seteventmon`), e.g. New Mauville Voltorbs. */
+  | "static";
 
 export type CatchRouteClaimSource =
   /** Claimable from a Pokémon's met location and from the nuzlocke encounter flags. */

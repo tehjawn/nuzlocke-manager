@@ -154,7 +154,29 @@ const ENCOUNTER_FIELDS = {
   fishing_mons: "fishing",
 };
 
-const STATIC_COMMANDS = /^\s*(seteventmon|givemon|giveegg|setwildbattle)\b/;
+/** Stable order for the emitted `encounters` array (matches map method chips). */
+const ENCOUNTER_ORDER = ["land", "water", "fishing", "rock-smash", "static"];
+
+/**
+ * Script commands that mark a mapsec as having a gift / fossil / legendary /
+ * scripted battle — used for `kind: "static"` when there is no wild table.
+ * `giveegg` counts for classification but not for the map "Static" method chip.
+ */
+const STATIC_COMMANDS =
+  /^\s*(seteventmon|givemon|giveegg|setwildbattle)\s+(SPECIES_[A-Z0-9_]+)/gm;
+
+/**
+ * True when this `setwildbattle` is an uncatchable fight — the script sets
+ * `FLAG_SYS_NO_CATCHING` near the command (Frontier EV demos, chase battles).
+ * Same window heuristic as `scripts/generate-randomizer-tables.mjs`.
+ */
+function isNoCatchingWildBattle(script, matchIndex) {
+  const window = script.slice(
+    Math.max(0, matchIndex - 160),
+    Math.min(script.length, matchIndex + 320),
+  );
+  return /^\s*setflag\s+FLAG_SYS_NO_CATCHING\b/m.test(window);
+}
 
 function ensureSource() {
   if (existsSync(join(localRoot, "include/constants/region_map_sections.h"))) {
@@ -262,20 +284,49 @@ function readWildEncounters(src, mapToSection) {
   return bySection;
 }
 
+/**
+ * Per mapsec: which static script commands appear, and whether any are a
+ * catchable method a player would log on that route (Voltorb item balls,
+ * Kecleon, Castform gift, legendaries, …).
+ *
+ * Skips `Unused*` map dirs (dead scaffolding with wrong mapsecs — e.g.
+ * Regigigas stamped on Granite Cave) and `SPECIES_TEST` debug rows.
+ */
 function readStatics(src, sectionToMaps) {
   const bySection = new Map();
   for (const [section, maps] of sectionToMaps) {
     const found = new Set();
+    let methodWorthy = false;
     for (const map of maps) {
       if (!map.dir) continue;
       const file = join(src, "data/maps", map.dir, "scripts.inc");
       if (!existsSync(file)) continue;
-      for (const line of readFileSync(file, "utf8").split("\n")) {
-        const m = STATIC_COMMANDS.exec(line);
-        if (m) found.add(m[1]);
+      const text = readFileSync(file, "utf8");
+      // Unused* dirs are dead scaffolding with odd mapsecs — still count their
+      // scripts for `kind: "static"` (Draco Chamber / Cave of Shock), but never
+      // for the map method chip (would falsely tag Granite Cave with Regigigas).
+      const unusedScaffold = /Unused/i.test(map.dir);
+      for (const m of text.matchAll(STATIC_COMMANDS)) {
+        const command = m[1];
+        const species = m[2];
+        if (species === "SPECIES_TEST") continue;
+        found.add(command);
+        if (unusedScaffold || command === "giveegg") continue;
+        if (
+          command === "setwildbattle" &&
+          isNoCatchingWildBattle(text, m.index)
+        ) {
+          continue;
+        }
+        methodWorthy = true;
       }
     }
-    if (found.size > 0) bySection.set(section, [...found].sort());
+    if (found.size > 0) {
+      bySection.set(section, {
+        commands: [...found].sort(),
+        methodWorthy,
+      });
+    }
   }
   return bySection;
 }
@@ -323,7 +374,10 @@ function main() {
     const isPseudo = name.startsWith("METLOC_");
     const maps = sectionToMaps.get(name) ?? [];
     const encounters = [...(wild.get(name) ?? [])].sort();
-    const sectionStatics = statics.get(name) ?? [];
+    const sectionStatics = statics.get(name) ?? {
+      commands: [],
+      methodWorthy: false,
+    };
     const label =
       LABEL_OVERRIDES[id] ?? displayNames.get(name) ?? name.replace(/^MAPSEC_/, "");
     // Dead constants nothing can ever produce: no map, no encounters, no bit.
@@ -338,7 +392,7 @@ function main() {
     }
     const kind = classify({
       encounters,
-      statics: sectionStatics,
+      statics: sectionStatics.commands,
       mapCount: maps.length,
       isPseudo,
     });
@@ -351,6 +405,7 @@ function main() {
       kind,
       encounters: [],
       statics: [],
+      hasCatchableStatic: false,
       mapCount: 0,
       onDiskMapCount: 0,
       claimSource: "none",
@@ -364,9 +419,10 @@ function main() {
     for (const kindName of encounters) {
       if (!row.encounters.includes(kindName)) row.encounters.push(kindName);
     }
-    for (const command of sectionStatics) {
+    for (const command of sectionStatics.commands) {
       if (!row.statics.includes(command)) row.statics.push(command);
     }
+    if (sectionStatics.methodWorthy) row.hasCatchableStatic = true;
     // A LUT bit only counts when some map can actually resolve to that mapsec.
     // MAPSEC_ALTERING_CAVE_FRLG owns bit 0x42 but no map carries it, so the real
     // Altering Cave is untracked despite sharing the display name.
@@ -434,12 +490,23 @@ function main() {
     row.slotKey = row.countsTowardOpen ? (row.nuzlockeBit ?? 0) : null;
     const extra = EXTRA_ALIASES[row.label];
     if (extra) row.aliases = extra;
+    // Wild table + catchable scripted encounter (New Mauville Voltorbs, Route
+    // 119 Kecleon, Magma Hideout Entei, …): surface "static" beside grass/surf.
+    // Pure-static open slots (Aqua Hideout Electrode) keep empty `encounters`
+    // so hatch-safe outdoor towns stay `kind: "static"` with no wild methods.
+    if (row.encounters.length > 0 && row.hasCatchableStatic) {
+      if (!row.encounters.includes("static")) row.encounters.push("static");
+    }
+    row.encounters.sort(
+      (a, b) => ENCOUNTER_ORDER.indexOf(a) - ENCOUNTER_ORDER.indexOf(b),
+    );
     // Derivation-only fields. This JSON reaches the client bundle via the
     // catch-route picker, so it ships nothing the app does not read.
     delete row.mapCount;
     delete row.onDiskMapCount;
     delete row.mapsecNames;
     delete row.statics;
+    delete row.hasCatchableStatic;
   }
 
   const ordered = [...rows.values()].sort((a, b) => {
